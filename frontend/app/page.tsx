@@ -1,47 +1,75 @@
-/**
- * Home page (Frame 1 — "Ввод").
- * 
- * Основной экран с полем ввода запроса и превью режимов работы.
- */
+'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import SearchForm from '@/components/SearchForm';
+import { SearchControls } from '@/components/SearchControls';
+import { ModuleCards } from '@/components/ModuleCards';
+import { saveRun, saveRunResults } from '@/lib/storage';
+import { generateMockResults } from '@/lib/mock';
 
 export default function HomePage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [city, setCity] = useState('');
+  const [engine, setEngine] = useState('yandex');
+
+  const handleSearch = async (keyword: string) => {
+    if (!city) return;
+    
+    setIsLoading(true);
+    
+    // Simulate loading
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Create run
+    const runId = Date.now().toString();
+    const run = {
+      id: runId,
+      keyword,
+      geoCity: city,
+      engine: engine,
+      createdAt: Date.now(),
+      status: 'done' as const,
+      resultCount: 20,
+    };
+    
+    // Generate mock results
+    const results = generateMockResults(20);
+    
+    // Save to localStorage
+    saveRun(run);
+    saveRunResults(runId, results);
+    
+    setIsLoading(false);
+    
+    // Redirect to results
+    router.push(`/runs/${runId}`);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900">
-      {/* Hero блок */}
-      <header className="bg-red-600 h-[200px] flex items-center px-4">
-        <div className="container mx-auto">
-          <h1 className="text-white text-2xl font-bold">LeadGen Constructor</h1>
-        </div>
-      </header>
-
-      {/* Контент */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Заголовок */}
-        <h2 className="text-4xl font-bold text-white mb-8">Ввод</h2>
-
-        {/* Поле ввода */}
-        <SearchForm />
-
-        {/* Превью/режимы */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-5xl">
-          {/* Режим "для лидов" */}
-          <div className="bg-blue-600 h-32 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm">для лидов</span>
+    <>
+      <SearchControls 
+        city={city}
+        engine={engine}
+        onCityChange={setCity}
+        onEngineChange={setEngine}
+      />
+      
+      <div className="space-y-8">
+        <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Ввод</h2>
+        
+        <SearchForm onSubmit={handleSearch} />
+        
+        {isLoading && (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Поиск...</p>
           </div>
-
-          {/* Режим "для SEO" */}
-          <div className="bg-blue-600 h-32 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm">для SEO</span>
-          </div>
-
-          {/* Режим "для цен" */}
-          <div className="bg-gray-700 h-32 rounded-lg flex items-center justify-center opacity-50">
-            <span className="text-gray-400 text-sm">для цен (скоро)</span>
-          </div>
-        </div>
-      </main>
-    </div>
+        )}
+        
+        <ModuleCards activeModule="seo" />
+      </div>
+    </>
   );
 }

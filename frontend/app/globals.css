@@ -47,6 +47,32 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
+
+  /* Стили для select - светлая тема */
+  select {
+    background-color: rgb(243 244 246); /* gray-100 */
+    color: rgb(17 24 39); /* gray-900 */
+  }
+
+  select option {
+    background-color: rgb(243 244 246);
+    color: rgb(17 24 39);
+  }
+
+  /* Стили для select в темной теме */
+  .dark select {
+    background-color: rgb(55 65 81); /* gray-700 */
+    color: white;
+  }
+
+  .dark select option {
+    background-color: rgb(55 65 81);
+    color: white;
+  }
+
+  select:focus {
+    outline: none;
+  }
 }
 
 @layer base {
@@ -54,6 +80,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white;
   }
 }

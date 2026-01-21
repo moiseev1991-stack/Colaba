@@ -35,25 +35,28 @@
     ],
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ],
       "@/components/*": [
-        "./src/components/*"
+        "./components/*"
+      ],
+      "@/lib/*": [
+        "./lib/*"
       ],
       "@/hooks/*": [
-        "./src/hooks/*"
+        "./hooks/*"
       ],
       "@/services/*": [
-        "./src/services/*"
+        "./services/*"
       ],
       "@/stores/*": [
-        "./src/stores/*"
+        "./stores/*"
       ],
       "@/types/*": [
-        "./src/types/*"
+        "./types/*"
       ],
       "@/utils/*": [
-        "./src/utils/*"
+        "./utils/*"
       ]
     },
     "noEmit": true
