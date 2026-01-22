@@ -16,7 +16,7 @@ class Search(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)
     query = Column(String(500), nullable=False)
-    search_provider = Column(String(50), default="serpapi")
+    search_provider = Column(String(50), default="duckduckgo")
     num_results = Column(Integer, default=50)
     status = Column(String(50), default="pending")
     result_count = Column(Integer, default=0)

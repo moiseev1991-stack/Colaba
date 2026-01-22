@@ -25,6 +25,7 @@ python-multipart==0.0.6
 httpx==0.25.2
 aiohttp==3.9.1
 beautifulsoup4==4.12.2
+duckduckgo-search==4.1.1  # Бесплатный поиск DuckDuckGo без API ключа
 
 # LLM & AI
 langchain==0.1.0

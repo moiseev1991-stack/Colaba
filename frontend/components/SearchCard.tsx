@@ -42,18 +42,19 @@ const RUSSIAN_CITIES = [
 interface SearchCardProps {
   city: string;
   onCityChange: (city: string) => void;
-  onSubmit: (keyword: string) => void;
+  onSubmit: (keyword: string, searchProvider: string) => void;
   activeModule?: 'seo' | 'contacts' | 'prices';
   onModuleChange?: (module: 'seo' | 'contacts' | 'prices') => void;
 }
 
 export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo', onModuleChange }: SearchCardProps) {
   const [keyword, setKeyword] = useState('');
+  const [searchProvider, setSearchProvider] = useState('duckduckgo'); // По умолчанию DuckDuckGo (бесплатный)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!keyword.trim() || !city || activeModule !== 'seo') return;
-    onSubmit(keyword.trim());
+    onSubmit(keyword.trim(), searchProvider);
   };
 
   const isDisabled = !keyword.trim() || !city || activeModule !== 'seo';
@@ -107,14 +108,20 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
       <div className="p-6">
         <form onSubmit={handleSubmit}>
           <div className="flex items-center gap-4 flex-wrap">
-          {/* Engine Badge */}
+          {/* Search Provider Select */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
               Поисковая система:
             </span>
-            <span className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md text-sm font-medium whitespace-nowrap">
-              Яндекс
-            </span>
+            <Select
+              value={searchProvider}
+              onChange={(e) => setSearchProvider(e.target.value)}
+              className="w-[180px] h-12 flex-shrink-0"
+            >
+              <option value="duckduckgo">DuckDuckGo (бесплатно)</option>
+              <option value="yandex_xml">Яндекс XML</option>
+              <option value="serpapi">SerpAPI (deprecated)</option>
+            </Select>
           </div>
 
           {/* Keyword Input */}

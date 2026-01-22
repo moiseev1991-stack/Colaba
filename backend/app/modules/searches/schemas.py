@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 class SearchCreate(BaseModel):
     """Schema for creating a search."""
     query: str = Field(..., min_length=1, max_length=500, description="Search query")
-    search_provider: str = Field(default="serpapi", description="Search provider")
+    search_provider: str = Field(
+        default="duckduckgo",
+        description="Search provider: 'duckduckgo' (бесплатный, без ключа), 'yandex_xml' (требует ключи), 'serpapi' (deprecated)"
+    )
     num_results: int = Field(default=50, ge=1, le=100, description="Number of results")
     config: Optional[Dict[str, Any]] = Field(default=None, description="Additional config")
 

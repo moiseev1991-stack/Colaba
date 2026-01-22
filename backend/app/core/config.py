@@ -57,7 +57,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key (optional)")
 
     # External APIs
-    SERPAPI_KEY: str = Field(default="", description="SerpAPI key (optional)")
+    SERPAPI_KEY: str = Field(default="", description="SerpAPI key (optional, deprecated - use YANDEX_XML)")
+    YANDEX_XML_USER: str = Field(default="", description="Yandex XML API user ID (required for Yandex search)")
+    YANDEX_XML_KEY: str = Field(default="", description="Yandex XML API key (required for Yandex search)")
+    YANDEX_XML_URL: str = Field(
+        default="https://yandex.com/search/xml",
+        description="Yandex XML API endpoint URL (можно использовать сторонние прокси: xmlriver.com, xmlstock.com)"
+    )
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")

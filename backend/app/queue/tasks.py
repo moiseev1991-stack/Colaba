@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 from app.core.config import settings
 from app.models.search import Search, SearchResult
-from app.modules.searches.providers.serpapi import fetch_search_results
 
 
 # Create async engine for tasks
@@ -50,8 +49,10 @@ async def _execute_search_async(search_id: int):
         await db.commit()
         
         try:
-            # Fetch results from SerpAPI
-            results_data = await fetch_search_results(
+            # Fetch results using selected provider
+            from app.modules.searches.providers import fetch_search_results as provider_fetch
+            results_data = await provider_fetch(
+                provider=search.search_provider or "duckduckgo",  # По умолчанию DuckDuckGo (бесплатный)
                 query=search.query,
                 num_results=search.num_results,
             )

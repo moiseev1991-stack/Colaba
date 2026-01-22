@@ -1,5 +1,8 @@
 """
 SerpAPI provider for search results.
+
+DEPRECATED: Этот провайдер устарел. Используйте yandex_xml.py вместо этого.
+Оставлен для обратной совместимости.
 """
 
 import httpx
