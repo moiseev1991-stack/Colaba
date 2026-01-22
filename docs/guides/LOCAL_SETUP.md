@@ -41,6 +41,12 @@ docker stop $(docker ps -q)
 
 ```powershell
 cd c:\Colaba
+.\scripts\start.ps1
+```
+
+Или расширенный скрипт с проверкой портов:
+```powershell
+cd c:\Colaba
 .\scripts\setup\start-docker-project.ps1
 ```
 
