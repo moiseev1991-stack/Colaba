@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Moon, Sun, User as UserIcon, LogIn, History, Ban, Home } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Moon, Sun, User as UserIcon, LogIn, History, Ban, Home, CreditCard, Settings, Menu, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { getTheme, setTheme, getUser, setUser } from '@/lib/storage';
 import { useRouter, usePathname } from 'next/navigation';
@@ -11,6 +11,8 @@ import type { Theme, User } from '@/lib/types';
 export function TopBar() {
   const [theme, setThemeState] = useState<Theme>('dark');
   const [user, setUserState] = useState<User | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -21,6 +23,22 @@ export function TopBar() {
       setUserState(getUser());
     }
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
 
   const toggleTheme = () => {
     const newTheme: Theme = theme === 'dark' ? 'light' : 'dark';
@@ -50,44 +68,6 @@ export function TopBar() {
               SpinLid
             </Link>
           </div>
-          
-          <nav className="flex items-center gap-2 ml-4">
-            <Link
-              href="/"
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                pathname === '/'
-                  ? 'bg-red-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800'
-              }`}
-            >
-              <Home className="h-4 w-4 inline mr-1" />
-              Главная
-            </Link>
-            <Link
-              href="/runs"
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                pathname?.startsWith('/runs')
-                  ? 'bg-red-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800'
-              }`}
-            >
-              <History className="h-4 w-4 inline mr-1" />
-              История
-            </Link>
-            {user && (
-              <Link
-                href="/settings/blacklist"
-                className={`px-3 py-1 rounded text-sm transition-colors ${
-                  pathname === '/settings/blacklist'
-                    ? 'bg-red-600 text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800'
-                }`}
-              >
-                <Ban className="h-4 w-4 inline mr-1" />
-                Blacklist
-              </Link>
-            )}
-          </nav>
         </div>
         
         <div className="flex items-center gap-4">
@@ -100,24 +80,104 @@ export function TopBar() {
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleAuth}
-            className="flex items-center gap-2"
-          >
-            {user ? (
-              <>
-                <UserIcon className="h-4 w-4" />
-                <span>Профиль</span>
-              </>
-            ) : (
-              <>
-                <LogIn className="h-4 w-4" />
-                <span>Войти</span>
-              </>
+          {/* Dropdown Menu */}
+          <div className="relative" ref={menuRef}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="h-8 w-8"
+            >
+              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
+            
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                <Link
+                  href="/"
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                    pathname === '/'
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Home className="h-4 w-4" />
+                  Главная
+                </Link>
+                <Link
+                  href="/runs"
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                    pathname?.startsWith('/runs')
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <History className="h-4 w-4" />
+                  История
+                </Link>
+                <Link
+                  href="/payment"
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                    pathname === '/payment'
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Оплата
+                </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                    pathname === '/settings'
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Settings className="h-4 w-4" />
+                  Конфигурация
+                </Link>
+                {user && (
+                  <Link
+                    href="/settings/blacklist"
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                      pathname === '/settings/blacklist'
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Ban className="h-4 w-4" />
+                    Blacklist
+                  </Link>
+                )}
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                <button
+                  onClick={() => {
+                    handleAuth();
+                    setMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors"
+                >
+                  {user ? (
+                    <>
+                      <UserIcon className="h-4 w-4" />
+                      Профиль
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-4 w-4" />
+                      Войти
+                    </>
+                  )}
+                </button>
+              </div>
             )}
-          </Button>
+          </div>
         </div>
       </div>
     </div>

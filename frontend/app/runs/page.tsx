@@ -72,10 +72,11 @@ export default function RunsHistoryPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
-        {showDemoTable ? 'История запусков' : 'История запусков'}
-      </h2>
+    <div className="max-w-[1250px] mx-auto px-6">
+      <div className="space-y-6">
+        <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
+          {showDemoTable ? 'История запусков' : 'История запусков'}
+        </h2>
 
       {/* Filters and Actions - только если показываем таблицу результатов */}
       {showDemoTable && (
@@ -313,6 +314,7 @@ export default function RunsHistoryPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

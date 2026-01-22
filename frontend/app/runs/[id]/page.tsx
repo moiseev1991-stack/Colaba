@@ -2,10 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import SearchForm from '@/components/SearchForm';
-import { SearchControls } from '@/components/SearchControls';
-import { ModuleCards } from '@/components/ModuleCards';
-import { ResultsTabs } from '@/components/ResultsTabs';
 import { LeadsTable } from '@/components/LeadsTable';
 import { getRun, getRunResults } from '@/lib/storage';
 import type { Run, LeadRow } from '@/lib/types';
@@ -18,8 +14,6 @@ export default function RunResultsPage() {
   const [run, setRun] = useState<Run | null>(null);
   const [results, setResults] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [city, setCity] = useState('');
-  const [engine, setEngine] = useState('yandex');
 
   useEffect(() => {
     const runData = getRun(runId);
@@ -29,8 +23,6 @@ export default function RunResultsPage() {
     }
     
     setRun(runData);
-    setCity(runData.geoCity);
-    setEngine(runData.engine);
     const runResults = getRunResults(runId);
     setResults(runResults);
     setLoading(false);
@@ -56,27 +48,8 @@ export default function RunResultsPage() {
   }
 
   return (
-    <>
-      <SearchControls 
-        city={city}
-        engine={engine}
-        onCityChange={setCity}
-        onEngineChange={setEngine}
-      />
-      
-      <div className="space-y-8">
-        <div className="space-y-6">
-          <SearchForm 
-            initialKeyword={run.keyword}
-            showButton={false}
-          />
-          <ModuleCards activeModule="seo" />
-        </div>
-        
-        <ResultsTabs activeTab="seo" />
-        
-        <LeadsTable results={results} runId={runId} />
-      </div>
-    </>
+    <div className="max-w-[1250px] mx-auto px-6">
+      <LeadsTable results={results} runId={runId} />
+    </div>
   );
 }

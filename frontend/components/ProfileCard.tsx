@@ -31,7 +31,7 @@ export function ProfileCard() {
   }
 
   return (
-    <div className="p-6 bg-gray-100 dark:bg-gray-800 rounded-lg max-w-md">
+    <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm w-full max-w-2xl">
       <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Профиль</h2>
       <div className="space-y-3 mb-6">
         <div>
