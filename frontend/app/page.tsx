@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import SearchForm from '@/components/SearchForm';
-import { SearchControls } from '@/components/SearchControls';
+import { SearchCard } from '@/components/SearchCard';
 import { ModuleCards } from '@/components/ModuleCards';
 import { saveRun, saveRunResults } from '@/lib/storage';
 import { generateMockResults } from '@/lib/mock';
@@ -12,7 +11,6 @@ export default function HomePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [city, setCity] = useState('');
-  const [engine, setEngine] = useState('yandex');
 
   const handleSearch = async (keyword: string) => {
     if (!city) return;
@@ -28,7 +26,7 @@ export default function HomePage() {
       id: runId,
       keyword,
       geoCity: city,
-      engine: engine,
+      engine: 'yandex',
       createdAt: Date.now(),
       status: 'done' as const,
       resultCount: 20,
@@ -48,19 +46,16 @@ export default function HomePage() {
   };
 
   return (
-    <>
-      <SearchControls 
-        city={city}
-        engine={engine}
-        onCityChange={setCity}
-        onEngineChange={setEngine}
-      />
-      
+    <div className="max-w-6xl mx-auto px-6">
       <div className="space-y-8">
-        <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Ввод</h2>
+        {/* Search Card */}
+        <SearchCard 
+          city={city}
+          onCityChange={setCity}
+          onSubmit={handleSearch}
+        />
         
-        <SearchForm onSubmit={handleSearch} />
-        
+        {/* Loading State */}
         {isLoading && (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
@@ -68,8 +63,9 @@ export default function HomePage() {
           </div>
         )}
         
-        <ModuleCards activeModule="seo" />
+        {/* Module Cards */}
+        {!isLoading && <ModuleCards activeModule="seo" />}
       </div>
-    </>
+    </div>
   );
 }

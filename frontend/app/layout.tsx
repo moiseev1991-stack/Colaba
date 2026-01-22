@@ -26,7 +26,7 @@ export default function RootLayout({
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
           <TopBar />
           <HeroHeader />
-          <main className="container mx-auto px-4 py-8">
+          <main className="py-8">
             {children}
           </main>
         </div>
