@@ -1,1 +1,0 @@
-"""Celery queue tasks."""

@@ -1,3 +1,0 @@
-Generic single-database configuration with an async db api.
-
-Alembic migrations for LeadGen Constructor database schema.
