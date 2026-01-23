@@ -31,6 +31,13 @@ export interface SearchResultResponse {
   url: string;
   snippet?: string;
   domain?: string;
+  seo_score?: number;
+  phone?: string;
+  email?: string;
+  contact_status?: string;
+  outreach_subject?: string;
+  outreach_text?: string;
+  extra_data?: Record<string, any>;
   created_at: string;
 }
 

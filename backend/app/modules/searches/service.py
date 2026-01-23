@@ -13,6 +13,7 @@ from app.modules.searches import schemas
 async def create_search(
     db: AsyncSession,
     user_id: int,
+    organization_id: Optional[int],
     search_data: schemas.SearchCreate,
 ) -> schemas.SearchResponse:
     """Create a new search and trigger background task."""
@@ -20,6 +21,7 @@ async def create_search(
     
     search = Search(
         user_id=user_id,
+        organization_id=organization_id,
         query=search_data.query,
         search_provider=search_data.search_provider,
         num_results=search_data.num_results,
@@ -45,11 +47,20 @@ async def create_search(
 async def get_searches(
     db: AsyncSession,
     user_id: int,
+    organization_id: Optional[int],
 ) -> List[schemas.SearchResponse]:
-    """Get all searches for a user."""
-    result = await db.execute(
-        select(Search).where(Search.user_id == user_id).order_by(Search.created_at.desc())
-    )
+    """
+    Get all searches for a user in their organization.
+    
+    If organization_id is None (superuser), returns all searches.
+    """
+    query = select(Search)
+    
+    # Superusers can see all searches
+    if organization_id is not None:
+        query = query.where(Search.organization_id == organization_id)
+    
+    result = await db.execute(query.order_by(Search.created_at.desc()))
     searches = result.scalars().all()
     return [schemas.SearchResponse.model_validate(s) for s in searches]
 
@@ -58,10 +69,14 @@ async def get_search(
     db: AsyncSession,
     search_id: int,
     user_id: int,
+    organization_id: int,
 ) -> Optional[schemas.SearchResponse]:
     """Get a specific search."""
     result = await db.execute(
-        select(Search).where(Search.id == search_id, Search.user_id == user_id)
+        select(Search).where(
+            Search.id == search_id,
+            Search.organization_id == organization_id
+        )
     )
     search = result.scalar_one_or_none()
     if not search:
@@ -73,10 +88,11 @@ async def get_search_results(
     db: AsyncSession,
     search_id: int,
     user_id: int,
+    organization_id: Optional[int],
 ) -> List[schemas.SearchResultResponse]:
     """Get results for a search."""
-    # Verify search belongs to user
-    search = await get_search(db, search_id, user_id)
+    # Verify search belongs to organization (or user is superuser)
+    search = await get_search(db, search_id, user_id, organization_id)
     if not search:
         return []
     
@@ -93,10 +109,14 @@ async def delete_search(
     db: AsyncSession,
     search_id: int,
     user_id: int,
+    organization_id: int,
 ) -> None:
     """Delete a search."""
     result = await db.execute(
-        select(Search).where(Search.id == search_id, Search.user_id == user_id)
+        select(Search).where(
+            Search.id == search_id,
+            Search.organization_id == organization_id
+        )
     )
     search = result.scalar_one_or_none()
     if search:
@@ -108,10 +128,11 @@ async def get_search_results_grouped_by_domain(
     db: AsyncSession,
     search_id: int,
     user_id: int,
+    organization_id: Optional[int],
 ) -> schemas.SearchResultsGroupedResponse:
     """Get search results grouped by domain."""
-    # Verify search belongs to user
-    search = await get_search(db, search_id, user_id)
+    # Verify search belongs to organization (or user is superuser)
+    search = await get_search(db, search_id, user_id, organization_id)
     if not search:
         return schemas.SearchResultsGroupedResponse(
             domains=[],

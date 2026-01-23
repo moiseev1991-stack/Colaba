@@ -47,7 +47,10 @@
         "./hooks/*"
       ],
       "@/services/*": [
-        "./services/*"
+        "./src/services/*"
+      ],
+      "@/src/*": [
+        "./src/*"
       ],
       "@/stores/*": [
         "./stores/*"

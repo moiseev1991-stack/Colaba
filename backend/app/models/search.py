@@ -15,6 +15,7 @@ class Search(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)  # Nullable for superuser global searches
     query = Column(String(500), nullable=False)
     search_provider = Column(String(50), default="duckduckgo")
     num_results = Column(Integer, default=50)
@@ -26,6 +27,7 @@ class Search(Base):
 
     # Relationships
     user = relationship("User", back_populates="searches")
+    organization = relationship("Organization", back_populates="searches")
     results = relationship("SearchResult", back_populates="search", cascade="all, delete-orphan")
 
 

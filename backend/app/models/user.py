@@ -24,3 +24,9 @@ class User(Base):
     # Relationships
     searches = relationship("Search", back_populates="user", cascade="all, delete-orphan")
     blacklist_domains = relationship("BlacklistDomain", back_populates="user", cascade="all, delete-orphan")
+    organizations = relationship(
+        "Organization",
+        secondary="user_organizations",
+        back_populates="users",
+        lazy="dynamic"
+    )

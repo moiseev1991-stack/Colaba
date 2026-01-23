@@ -29,7 +29,16 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import all models here so Alembic can detect them
-from app.models import User, Search, SearchResult, Filter, BlacklistDomain
+from app.models import (
+    User,
+    Search,
+    SearchResult,
+    Filter,
+    BlacklistDomain,
+    Organization,
+    OrganizationRole,
+    user_organizations,
+)
 
 # target_metadata for autogenerate
 target_metadata = Base.metadata

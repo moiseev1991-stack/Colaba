@@ -19,7 +19,9 @@ async def api_health() -> dict[str, str]:
 from app.modules.auth.router import router as auth_router
 from app.modules.searches.router import router as searches_router
 from app.modules.filters.router import router as filters_router
+from app.modules.organizations.router import router as organizations_router
 
 api_router.include_router(auth_router)
 api_router.include_router(searches_router)
 api_router.include_router(filters_router)
+api_router.include_router(organizations_router)

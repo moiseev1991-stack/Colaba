@@ -116,10 +116,12 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
             <Select
               value={searchProvider}
               onChange={(e) => setSearchProvider(e.target.value)}
-              className="w-[180px] h-12 flex-shrink-0"
+              className="w-[200px] h-12 flex-shrink-0"
             >
               <option value="duckduckgo">DuckDuckGo (бесплатно)</option>
-              <option value="yandex_xml">Яндекс XML</option>
+              <option value="yandex_html">Яндекс HTML (бесплатно)</option>
+              <option value="google_html">Google HTML (бесплатно)</option>
+              <option value="yandex_xml">Яндекс XML (требует ключи)</option>
               <option value="serpapi">SerpAPI (deprecated)</option>
             </Select>
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, User as UserIcon, LogIn, LogOut, History, Ban, Home, CreditCard, Settings, Menu, X } from 'lucide-react';
+import { Moon, Sun, User as UserIcon, LogIn, LogOut, History, Ban, Home, CreditCard, Settings, Menu, X, Building2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { getTheme, setTheme } from '@/lib/storage';
 import { useRouter, usePathname } from 'next/navigation';
@@ -14,6 +14,7 @@ export function TopBar() {
   const [theme, setThemeState] = useState<Theme>('dark');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isSuperuser, setIsSuperuser] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -34,14 +35,17 @@ export function TopBar() {
         const response = await apiClient.get('/auth/me');
         setIsAuthenticated(true);
         setUserEmail(response.data.email);
+        setIsSuperuser(response.data.is_superuser || false);
       } catch (error) {
         setIsAuthenticated(false);
         setUserEmail(null);
+        setIsSuperuser(false);
         tokenStorage.clearTokens();
       }
     } else {
       setIsAuthenticated(false);
       setUserEmail(null);
+      setIsSuperuser(false);
     }
   };
 
@@ -178,6 +182,20 @@ export function TopBar() {
                   >
                     <Ban className="h-4 w-4" />
                     Blacklist
+                  </Link>
+                )}
+                {isAuthenticated && isSuperuser && (
+                  <Link
+                    href="/organizations"
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                      pathname?.startsWith('/organizations')
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Организации
                   </Link>
                 )}
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>

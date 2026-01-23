@@ -49,12 +49,13 @@ async def _execute_search_async(search_id: int):
         await db.commit()
         
         try:
-            # Fetch results using selected provider
+            # Fetch results using selected provider with fallback enabled
             from app.modules.searches.providers import fetch_search_results as provider_fetch
             results_data = await provider_fetch(
                 provider=search.search_provider or "duckduckgo",  # По умолчанию DuckDuckGo (бесплатный)
                 query=search.query,
                 num_results=search.num_results,
+                enable_fallback=True,  # Включить автоматический fallback при блокировках
             )
             
             # Filter blacklisted domains
@@ -161,9 +162,9 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
             return {"error": "No results found for domain"}
         
         try:
-            # 1. Mini-crawl domain
-            from app.modules.filters.crawler import crawl_domain
-            crawl_data = await crawl_domain(first_url, max_pages=20, timeout=30)
+            # 1. Mini-crawl domain with fallback
+            from app.modules.filters.crawler import crawl_domain_with_fallback
+            crawl_data = await crawl_domain_with_fallback(first_url, max_pages=20, timeout=30)
             
             # 2. Extract contacts
             contacts = crawl_data.get("contacts", {})

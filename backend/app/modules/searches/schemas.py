@@ -12,10 +12,11 @@ class SearchCreate(BaseModel):
     query: str = Field(..., min_length=1, max_length=500, description="Search query")
     search_provider: str = Field(
         default="duckduckgo",
-        description="Search provider: 'duckduckgo' (бесплатный, без ключа), 'yandex_xml' (требует ключи), 'serpapi' (deprecated)"
+        description="Search provider: 'duckduckgo' (бесплатный, без ключа), 'yandex_xml' (требует ключи), 'yandex_html' (парсинг HTML), 'google_html' (парсинг HTML), 'serpapi' (deprecated)"
     )
     num_results: int = Field(default=50, ge=1, le=100, description="Number of results")
     config: Optional[Dict[str, Any]] = Field(default=None, description="Additional config")
+    organization_id: Optional[int] = Field(default=None, description="Organization ID (required for superusers, auto-filled for regular users)")
 
 
 class SearchUpdate(BaseModel):
