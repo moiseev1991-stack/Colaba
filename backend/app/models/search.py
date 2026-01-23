@@ -14,7 +14,7 @@ class Search(Base):
     __tablename__ = "searches"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     query = Column(String(500), nullable=False)
     search_provider = Column(String(50), default="duckduckgo")
     num_results = Column(Integer, default=50)
@@ -25,6 +25,7 @@ class Search(Base):
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="searches")
     results = relationship("SearchResult", back_populates="search", cascade="all, delete-orphan")
 
 

@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SearchCard } from '@/components/SearchCard';
 import { createSearch } from '@/search';
+import { tokenStorage } from '@/client';
 
 export default function HomePage() {
   const router = useRouter();
+  
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    const token = tokenStorage.getAccessToken();
+    if (!token) {
+      router.push('/auth/login');
+    }
+  }, [router]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState('');

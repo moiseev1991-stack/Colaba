@@ -85,8 +85,8 @@ export default function RunResultsPage() {
         const leadRows = searchResults.map(convertToLeadRow);
         setResults(leadRows);
 
-        // Stop polling if search is completed
-        if (searchData.status === 'completed' || searchData.status === 'error') {
+        // Stop polling if search is completed or failed
+        if (searchData.status === 'completed' || searchData.status === 'error' || searchData.status === 'failed') {
           setPolling(false);
         }
       } catch (err) {
@@ -154,6 +154,7 @@ export default function RunResultsPage() {
               {search.status === 'completed' ? 'Завершено' :
                search.status === 'processing' ? 'Обработка...' :
                search.status === 'pending' ? 'Ожидание...' :
+               search.status === 'failed' ? 'Ошибка' :
                'Ошибка'}
             </div>
             {polling && (
@@ -168,6 +169,12 @@ export default function RunResultsPage() {
             Найдено результатов: {search.result_count}
           </p>
         )}
+        {search.status === 'failed' && search.config?.error && (
+          <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+            <p className="text-sm text-red-800 dark:text-red-200 font-medium">Ошибка поиска:</p>
+            <p className="text-sm text-red-700 dark:text-red-300 mt-1 whitespace-pre-wrap">{search.config.error}</p>
+          </div>
+        )}
       </div>
 
       {/* Results Table */}
@@ -178,6 +185,8 @@ export default function RunResultsPage() {
           <p className="text-gray-600 dark:text-gray-400">
             {search.status === 'pending' || search.status === 'processing'
               ? 'Ожидание результатов...'
+              : search.status === 'failed'
+              ? 'Поиск завершился с ошибкой'
               : 'Результаты не найдены'}
           </p>
         </div>

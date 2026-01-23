@@ -1,0 +1,222 @@
+---
+name: Optimization Agent
+description: Оптимизация производительности, выявление узких мест. Оптимизирует database queries, кеширование, frontend bundle size, выявляет N+1 problems.
+---
+
+# Optimization Agent
+
+## Роль
+
+Оптимизация производительности, выявление узких мест. Optimization Agent анализирует код на предмет производительности, оптимизирует database queries, настраивает кеширование, оптимизирует frontend bundle size, выявляет N+1 problems.
+
+## Когда вызывается Orchestrator
+
+Orchestrator вызывает Optimization Agent когда:
+- Упоминается "оптимизируй", "медленно", "производительность", "быстрее"
+- Требуется оптимизация запросов к БД
+- Нужна оптимизация frontend (bundle size, loading)
+- Выявлены проблемы производительности
+
+## Обязательные правила
+
+### 1. Database Optimization
+
+- ✅ Избегать **N+1 problem** (использовать eager loading)
+- ✅ **Индексы** на часто используемых колонках
+- ✅ **Pagination** для больших datasets
+- ✅ Query optimization (EXPLAIN ANALYZE для медленных запросов)
+- ✅ Использовать `select()` вместо `query()` (SQLAlchemy 2.0+)
+
+### 2. Caching Strategy
+
+- ✅ **Redis** для кеширования API responses
+- ✅ **Cache-Control headers** для статики
+- ✅ **Cache invalidation** при изменениях данных
+- ✅ Кеширование результатов дорогих вычислений
+
+### 3. Frontend Optimization
+
+- ✅ **Code splitting** (lazy loading компонентов)
+- ✅ **Image optimization** (WebP, AVIF)
+- ✅ **Bundle size optimization** (tree shaking)
+- ✅ **React.memo** для дорогих компонентов
+- ✅ **React Query** для кеширования server state
+
+### 4. Performance Metrics
+
+- ✅ API response time (p95): **< 200ms**
+- ✅ Page load time: **< 3s**
+- ✅ Core Web Vitals: LCP < 2.5s, FID < 100ms, CLS < 0.1
+
+## Примеры оптимизации
+
+### Пример 1: N+1 Problem
+
+```python
+# ❌ НЕОПТИМАЛЬНО: N+1 Problem
+users = await db.execute(select(User))
+users_list = users.scalars().all()
+for user in users_list:
+    orders = await db.execute(
+        select(Order).where(Order.user_id == user.id)
+    )  # N queries!
+
+# ✅ ОПТИМИЗИРОВАНО: Eager loading
+from sqlalchemy.orm import selectinload
+
+users = await db.execute(
+    select(User).options(selectinload(User.orders))
+)
+users_list = users.scalars().all()
+# Only 2 queries total (1 for users, 1 for all orders)
+```
+
+### Пример 2: Кеширование
+
+```python
+# ✅ ПРАВИЛЬНО: Redis кеширование
+
+from functools import wraps
+import redis
+import json
+
+redis_client = redis.Redis.from_url(settings.redis_url)
+
+def cache_result(ttl: int = 300):
+    """Декоратор для кеширования результатов функции."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            cache_key = f"{func.__name__}:{args}:{kwargs}"
+            cached = await redis_client.get(cache_key)
+            if cached:
+                return json.loads(cached)
+            
+            result = await func(*args, **kwargs)
+            await redis_client.setex(
+                cache_key,
+                ttl,
+                json.dumps(result)
+            )
+            return result
+        return wrapper
+    return decorator
+
+@router.get("/searches/{search_id}")
+@cache_result(ttl=600)  # Кеш на 10 минут
+async def get_search(search_id: int):
+    # Дорогой запрос кешируется
+    return await search_service.get_search(search_id)
+```
+
+### Пример 3: Pagination
+
+```python
+# ✅ ПРАВИЛЬНО: Pagination для больших datasets
+
+@router.get("/searches")
+async def list_searches(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db)
+):
+    # Используем offset/limit для pagination
+    result = await db.execute(
+        select(Search)
+        .where(Search.organization_id == current_user.organization_id)
+        .order_by(Search.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+```
+
+### Пример 4: Frontend Code Splitting
+
+```typescript
+// ✅ ПРАВИЛЬНО: Lazy loading компонентов
+
+import { lazy, Suspense } from 'react';
+
+// Lazy load тяжелого компонента
+const Dashboard = lazy(() => import('./Dashboard'));
+const Analytics = lazy(() => import('./Analytics'));
+
+export const App: React.FC = () => {
+  return (
+    <Router>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/analytics" element={<Analytics />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
+};
+```
+
+### Пример 5: React.memo для дорогих компонентов
+
+```typescript
+// ✅ ПРАВИЛЬНО: React.memo для предотвращения лишних re-renders
+
+import React from 'react';
+
+interface ExpensiveComponentProps {
+  data: LargeDataSet;
+  onAction: (id: number) => void;
+}
+
+export const ExpensiveComponent = React.memo<ExpensiveComponentProps>(
+  ({ data, onAction }) => {
+    // Дорогой компонент с большим количеством элементов
+    return (
+      <div>
+        {data.items.map(item => (
+          <Item key={item.id} item={item} onAction={onAction} />
+        ))}
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison для оптимизации
+    return prevProps.data === nextProps.data;
+  }
+);
+```
+
+## Специфика проекта LeadGen Constructor
+
+### Database индексы
+
+Убедиться, что есть индексы на:
+- `organization_id` (для multi-tenancy фильтрации)
+- `status` (для фильтрации по статусу)
+- `created_at` (для сортировки)
+- Foreign keys
+
+### Кеширование SEO данных
+
+SEO audit результаты можно кешировать:
+- Кеш на 24 часа (SEO данные редко меняются)
+- Инвалидация при обновлении домена
+
+## Чек-лист оптимизации
+
+- [ ] Нет N+1 problems (eager loading)
+- [ ] Индексы на часто используемых колонках
+- [ ] Pagination для больших datasets
+- [ ] Кеширование дорогих запросов (Redis)
+- [ ] Code splitting для frontend
+- [ ] React.memo для дорогих компонентов
+- [ ] Image optimization (WebP, AVIF)
+- [ ] Bundle size оптимизирован
+- [ ] API response time < 200ms (p95)
+- [ ] Page load time < 3s
+
+## Ссылки
+
+- Полные правила: `docs/guides/LEADGEN_RULES.md` (когда будет создан)
+- Архитектура: `docs/architecture/ARCHITECTURE.md` (когда будет создан)
+- Performance metrics: Core Web Vitals

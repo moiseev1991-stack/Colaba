@@ -8,12 +8,9 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.config import settings
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
@@ -29,7 +26,10 @@ def hash_password(password: str) -> str:
     Example:
         hashed = hash_password("secure123")
     """
-    return pwd_context.hash(password)
+    # Используем bcrypt напрямую для избежания проблем с passlib
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -47,7 +47,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         if verify_password("secure123", user.hashed_password):
             ...
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Используем bcrypt напрямую для избежания проблем с passlib
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

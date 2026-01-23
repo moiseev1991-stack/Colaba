@@ -115,9 +115,18 @@ async def _execute_search_async(search_id: int):
             }
             
         except Exception as e:
+            error_message = str(e)
             search.status = "failed"
+            # Сохраняем сообщение об ошибке в config
+            # Важно: создаем новый словарь, чтобы SQLAlchemy увидел изменение
+            current_config = search.config or {}
+            new_config = dict(current_config)  # Создаем копию
+            new_config["error"] = error_message
+            new_config["error_type"] = type(e).__name__
+            search.config = new_config  # Присваиваем новый объект
             await db.commit()
-            return {"error": str(e)}
+            await db.refresh(search)  # Обновляем объект из БД
+            return {"error": error_message}
 
 
 @celery_app.task(name="process_domain_task")

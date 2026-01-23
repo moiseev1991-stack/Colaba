@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, User as UserIcon, LogIn, History, Ban, Home, CreditCard, Settings, Menu, X } from 'lucide-react';
+import { Moon, Sun, User as UserIcon, LogIn, LogOut, History, Ban, Home, CreditCard, Settings, Menu, X } from 'lucide-react';
 import { Button } from './ui/button';
-import { getTheme, setTheme, getUser, setUser } from '@/lib/storage';
+import { getTheme, setTheme } from '@/lib/storage';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import type { Theme, User } from '@/lib/types';
+import { tokenStorage } from '@/client';
+import { apiClient } from '@/client';
+import type { Theme } from '@/lib/types';
 
 export function TopBar() {
   const [theme, setThemeState] = useState<Theme>('dark');
-  const [user, setUserState] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -20,9 +23,27 @@ export function TopBar() {
     if (typeof window !== 'undefined') {
       const currentTheme = getTheme();
       setThemeState(currentTheme);
-      setUserState(getUser());
+      checkAuth();
     }
   }, []);
+
+  const checkAuth = async () => {
+    const token = tokenStorage.getAccessToken();
+    if (token) {
+      try {
+        const response = await apiClient.get('/auth/me');
+        setIsAuthenticated(true);
+        setUserEmail(response.data.email);
+      } catch (error) {
+        setIsAuthenticated(false);
+        setUserEmail(null);
+        tokenStorage.clearTokens();
+      }
+    } else {
+      setIsAuthenticated(false);
+      setUserEmail(null);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -47,15 +68,19 @@ export function TopBar() {
   };
 
   const handleAuth = () => {
-    if (user) {
+    if (isAuthenticated) {
       router.push('/profile');
     } else {
-      // Mock Google OAuth - set user
-      const mockUser = { email: 'user@example.com', name: 'Username' };
-      setUser(mockUser);
-      setUserState(mockUser);
-      router.push('/profile');
+      router.push('/auth/login');
     }
+  };
+
+  const handleLogout = () => {
+    tokenStorage.clearTokens();
+    setIsAuthenticated(false);
+    setUserEmail(null);
+    setMenuOpen(false);
+    router.push('/auth/login');
   };
 
   return (
@@ -141,7 +166,7 @@ export function TopBar() {
                   <Settings className="h-4 w-4" />
                   Конфигурация
                 </Link>
-                {user && (
+                {isAuthenticated && (
                   <Link
                     href="/settings/blacklist"
                     onClick={() => setMenuOpen(false)}
@@ -156,25 +181,41 @@ export function TopBar() {
                   </Link>
                 )}
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                <button
-                  onClick={() => {
-                    handleAuth();
-                    setMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors"
-                >
-                  {user ? (
-                    <>
+                {isAuthenticated ? (
+                  <>
+                    {userEmail && (
+                      <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        {userEmail}
+                      </div>
+                    )}
+                    <Link
+                      href="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
                       <UserIcon className="h-4 w-4" />
                       Профиль
-                    </>
-                  ) : (
-                    <>
-                      <LogIn className="h-4 w-4" />
-                      Войти
-                    </>
-                  )}
-                </button>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Выйти
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleAuth();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Войти
+                  </button>
+                )}
               </div>
             )}
           </div>

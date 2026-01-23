@@ -4,6 +4,7 @@ Filter models.
 
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, JSON, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -25,6 +26,9 @@ class BlacklistDomain(Base):
     __tablename__ = "blacklist_domains"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     domain = Column(String(255), nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="blacklist_domains")
