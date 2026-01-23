@@ -47,6 +47,26 @@ export function getRun(id: string): Run | null {
   return runs.find(r => r.id === id) || null;
 }
 
+export function deleteRun(runId: string): void {
+  if (typeof window === 'undefined') return;
+  const runs = getRuns();
+  const filtered = runs.filter(r => r.id !== runId);
+  localStorage.setItem(STORAGE_KEYS.RUNS, JSON.stringify(filtered));
+  // Also delete associated results
+  localStorage.removeItem(STORAGE_KEYS.RUN_RESULTS + runId);
+}
+
+export function clearAllRuns(): void {
+  if (typeof window === 'undefined') return;
+  const runs = getRuns();
+  // Delete all associated results
+  runs.forEach(run => {
+    localStorage.removeItem(STORAGE_KEYS.RUN_RESULTS + run.id);
+  });
+  // Clear runs
+  localStorage.removeItem(STORAGE_KEYS.RUNS);
+}
+
 // Run Results
 export function getRunResults(runId: string): LeadRow[] {
   if (typeof window === 'undefined') return [];

@@ -2,7 +2,7 @@
  * Генерация моковых данных для MVP
  */
 
-import { LeadRow, IssueCheck } from './types';
+import { LeadRow, IssueCheck, SEOData } from './types';
 
 const MOCK_DOMAINS = [
   'example.com',
@@ -31,6 +31,12 @@ const MOCK_PHONES = [
   '+7 (846) 678-90-12',
   '+7 (383) 789-01-23',
   '+7 (351) 890-12-34',
+  '8 (800) 123-45-67',
+  '8 (800) 234-56-78',
+  '8 (800) 345-67-89',
+  '+7 (495) 987-65-43',
+  '+7 (812) 876-54-32',
+  null, // Some without phone
   null, // Some without phone
 ];
 
@@ -41,6 +47,12 @@ const MOCK_EMAILS = [
   'support@service-provider.ru',
   'sales@online-shop.com',
   'admin@local-business.ru',
+  'info@domain.ru',
+  'sales@domain.com',
+  'contact@domain.ru',
+  'support@domain.com',
+  'hello@domain.ru',
+  null, // Some without email
   null, // Some without email
 ];
 
@@ -58,6 +70,35 @@ function randomIssueCheck(): IssueCheck {
     sitemap: randomBoolean(),
     titleDuplicates: randomBoolean(),
     descriptionDuplicates: randomBoolean(),
+  };
+}
+
+function generateSEOData(): SEOData {
+  const robotsOptions: SEOData['robots'][] = ['OK', 'не найден', 'Disallow:/'];
+  const sitemapOptions: SEOData['sitemap'][] = ['OK', 'не найдена'];
+  const httpOptions: SEOData['http'][] = ['200', '3xx', '4xx', '5xx'];
+  
+  const metaTitleFound = Math.floor(Math.random() * 100);
+  const metaTitleDuplicates = Math.floor(Math.random() * 50);
+  const metaDescMissing = Math.floor(Math.random() * 100);
+  const metaDescDuplicates = Math.floor(Math.random() * 50);
+  const h1Missing = Math.floor(Math.random() * 100);
+  const h1Duplicates = Math.floor(Math.random() * 50);
+  
+  return {
+    robots: randomItem(robotsOptions),
+    sitemap: randomItem(sitemapOptions),
+    metaTitle: metaTitleDuplicates > 0 
+      ? `найден ${metaTitleFound}% / дублируется ${metaTitleDuplicates}%`
+      : `найден ${metaTitleFound}%`,
+    metaDesc: metaDescDuplicates > 0
+      ? `не найден ${metaDescMissing}% / дублируется ${metaDescDuplicates}%`
+      : `не найден ${metaDescMissing}%`,
+    h1: h1Duplicates > 0
+      ? `не найден ${h1Missing}% / дублируется ${h1Duplicates}%`
+      : `не найден ${h1Missing}%`,
+    http: randomItem(httpOptions),
+    pagesCrawled: Math.floor(Math.random() * 20) + 1,
   };
 }
 
@@ -100,6 +141,7 @@ export function generateMockResults(count: number = 20): LeadRow[] {
       email,
       score,
       issues,
+      seo: generateSEOData(),
       status,
       outreachText: generateOutreachText(domain, issues),
     });

@@ -24,6 +24,16 @@ export interface IssueCheck {
   descriptionDuplicates: boolean;
 }
 
+export interface SEOData {
+  robots: 'OK' | 'не найден' | 'Disallow:/';
+  sitemap: 'OK' | 'не найдена';
+  metaTitle: string; // найден% / дублируется%
+  metaDesc: string; // не найден% / дублируется%
+  h1: string; // не найден % / дублируется%
+  http: '200' | '3xx' | '4xx' | '5xx';
+  pagesCrawled: number; // сколько страниц проверили (до 20)
+}
+
 export interface LeadRow {
   id: string;
   domain: string;
@@ -31,6 +41,7 @@ export interface LeadRow {
   email: string | null;
   score: number;
   issues: IssueCheck;
+  seo?: SEOData; // Новые SEO данные
   status: 'ok' | 'error';
   outreachText: string;
 }

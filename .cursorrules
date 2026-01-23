@@ -1,0 +1,112 @@
+# Правила проекта Colaba для Cursor AI
+
+## Структура проекта
+
+Проект следует монорепозиторий структуре:
+- `backend/` - весь backend код (FastAPI, Python)
+- `frontend/` - весь frontend код (Next.js, TypeScript, React)
+- `docs/` - вся документация
+- `scripts/` - все скрипты
+- Корень - только конфигурационные файлы (docker-compose.yml, .env.example, README.md)
+
+## Критические правила размещения файлов
+
+### Скрипты
+- ✅ Все скрипты → `scripts/`
+- ✅ Скрипты настройки → `scripts/setup/`
+- ❌ НИКОГДА не создавать скрипты в корне
+
+### Документация
+- ✅ Вся документация → `docs/`
+- ✅ Руководства → `docs/guides/`
+- ❌ НИКОГДА не создавать документацию в корне (кроме README.md)
+
+### Backend
+- ✅ Все Python файлы → `backend/app/`
+- ✅ Модели → `backend/app/models/`
+- ✅ API роутеры → `backend/app/modules/`
+- ✅ Core конфигурация → `backend/app/core/`
+- ❌ НИКОГДА не создавать Python файлы в корне
+
+### Frontend
+- ✅ Все React/TypeScript файлы → `frontend/`
+- ✅ Страницы → `frontend/app/`
+- ✅ Компоненты → `frontend/components/`
+- ✅ Утилиты → `frontend/lib/`
+- ❌ НИКОГДА не создавать frontend файлы в корне
+
+## Правила работы с Git
+
+### ⚠️ КРИТИЧЕСКИ ВАЖНОЕ ПРАВИЛО
+
+**НИКОГДА не выполнять `git push` автоматически!**
+
+Push в удаленный репозиторий выполняется **ТОЛЬКО** после явного указания пользователя.
+
+### Процесс работы с Git
+
+1. Выполнить задачу
+2. Добавить изменения: `git add`
+3. Создать коммит: `git commit -m "..."`
+4. **ОСТАНОВИТЬСЯ** - сообщить пользователю
+5. Спросить: "Выполнить push в репозиторий?"
+6. Дождаться явного указания пользователя
+7. Только после команды выполнить `git push`
+
+## Технологический стек
+
+### Backend
+- FastAPI 0.104+
+- Python 3.11+
+- SQLAlchemy 2.0+ (async)
+- Alembic (миграции)
+- PostgreSQL 16
+- Redis
+- Celery 5.3+
+
+### Frontend
+- Next.js 14+ (App Router)
+- TypeScript
+- React
+- TailwindCSS
+- shadcn/ui компоненты
+
+## Правила кодирования
+
+### Python (Backend)
+- Использовать type hints везде
+- Async/await для всех I/O операций
+- Pydantic схемы для валидации
+- SQLAlchemy async ORM
+- Следовать PEP 8
+
+### TypeScript/React (Frontend)
+- Строгая типизация (TypeScript)
+- Функциональные компоненты с хуками
+- Использовать `localStorage` для mock данных (в MVP)
+- TailwindCSS для стилей
+- shadcn/ui для базовых компонентов
+
+## Перед созданием файла
+
+1. Проверить `docs/guides/PROJECT_STRUCTURE_RULES.md`
+2. Убедиться, что файл в правильном месте согласно структуре
+3. Проверить, нет ли дубликатов
+4. Убедиться, что файл не должен быть в корне
+
+## Docker и развертывание
+
+- Использовать Docker Compose для локальной разработки
+- Все сервисы описаны в `docker-compose.yml`
+- Backend: порт 8000
+- Frontend: порт 3000
+- PostgreSQL: порт 5432
+- Redis: порт 6379
+
+## Дополнительные правила
+
+См. подробные правила в:
+- `.cursor/rules/project-rules.mdc` - основные правила проекта
+- `.cursor/rules/repository-workflow.mdc` - правила работы с Git
+- `docs/guides/PROJECT_STRUCTURE_RULES.md` - полная структура проекта
+- `docs/guides/REPOSITORY_WORKFLOW_RULES.md` - полные правила Git workflow
