@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { LeadsTable } from '@/components/LeadsTable';
 import { getSearch, getSearchResults } from '@/src/services/api/search';
+import { generateMockResults } from '@/lib/mock';
 import type { LeadRow } from '@/lib/types';
 
 export default function RunResultsPage() {
@@ -16,8 +17,38 @@ export default function RunResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(true);
-
   useEffect(() => {
+    // Check for demo mode via URL query parameter
+    const checkDemoMode = () => {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('demo') === 'true';
+      }
+      return false;
+    };
+
+    const isDemo = checkDemoMode();
+
+    // Demo mode: use mock data
+    if (isDemo) {
+      setLoading(true);
+      // Simulate loading delay
+      setTimeout(() => {
+        const mockResults = generateMockResults(25);
+        setResults(mockResults);
+        setSearch({
+          query: 'Тестовый запрос',
+          search_provider: 'yandex_html',
+          status: 'completed',
+          result_count: mockResults.length,
+        });
+        setLoading(false);
+        setPolling(false);
+      }, 500);
+      return;
+    }
+
+    // Real API mode (only if not demo)
     const fetchData = async () => {
       try {
         const searchId = parseInt(runId);

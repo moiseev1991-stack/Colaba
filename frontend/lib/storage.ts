@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   RUN_RESULTS: 'spinlid_run_results_',
   BLACKLIST: 'spinlid_blacklist',
   THEME: 'spinlid_theme',
+  RESULTS_PAGE_SIZE: 'results_page_size',
 } as const;
 
 // User
@@ -138,6 +139,22 @@ export function setTheme(theme: Theme): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEYS.THEME, theme);
   document.documentElement.classList.toggle('dark', theme === 'dark');
+}
+
+// Results Page Size
+export function getResultsPageSize(): number {
+  if (typeof window === 'undefined') return 25;
+  const data = localStorage.getItem(STORAGE_KEYS.RESULTS_PAGE_SIZE);
+  const size = data ? parseInt(data, 10) : 25;
+  // Validate: must be one of allowed values
+  return [10, 25, 50, 100].includes(size) ? size : 25;
+}
+
+export function setResultsPageSize(size: number): void {
+  if (typeof window === 'undefined') return;
+  if ([10, 25, 50, 100].includes(size)) {
+    localStorage.setItem(STORAGE_KEYS.RESULTS_PAGE_SIZE, size.toString());
+  }
 }
 
 // Initialize theme on load

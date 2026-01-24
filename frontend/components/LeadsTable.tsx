@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
+import { Select } from './ui/select';
 import type { LeadRow } from '@/lib/types';
-import { isBlacklisted, addToBlacklist } from '@/lib/storage';
+import { isBlacklisted, addToBlacklist, getResultsPageSize, setResultsPageSize } from '@/lib/storage';
 import { exportToCSV, downloadCSV } from '@/lib/mock';
 import { ToastContainer, type Toast } from './Toast';
 
@@ -18,6 +20,9 @@ type SortField = 'domain' | 'score' | null;
 type SortOrder = 'asc' | 'desc';
 
 export function LeadsTable({ results, runId }: LeadsTableProps) {
+  const router = useRouter();
+  const tableRef = useRef<HTMLDivElement>(null);
+  
   const [filterPhoneOnly, setFilterPhoneOnly] = useState(false);
   const [filterErrors, setFilterErrors] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -28,6 +33,59 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
   const [showMobileActions, setShowMobileActions] = useState(false);
   const mobileActionsRef = useRef<HTMLDivElement>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // Pagination state - initialize from URL and localStorage
+  const [pageSize, setPageSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPageSize = urlParams.get('pageSize');
+      if (urlPageSize) {
+        const size = parseInt(urlPageSize, 10);
+        if ([10, 25, 50, 100].includes(size)) {
+          setResultsPageSize(size);
+          return size;
+        }
+      }
+    }
+    return getResultsPageSize();
+  });
+  
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const page = parseInt(urlParams.get('page') || '1', 10);
+      return isNaN(page) || page < 1 ? 1 : page;
+    }
+    return 1;
+  });
+  
+  // Sync URL params on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPage = urlParams.get('page');
+      const urlPageSize = urlParams.get('pageSize');
+      
+      if (urlPage) {
+        const page = parseInt(urlPage, 10);
+        if (!isNaN(page) && page >= 1) {
+          setCurrentPage(page);
+        }
+      }
+      
+      if (urlPageSize) {
+        const size = parseInt(urlPageSize, 10);
+        if ([10, 25, 50, 100].includes(size)) {
+          setPageSize(size);
+          setResultsPageSize(size);
+        }
+      } else {
+        // If no pageSize in URL, update URL with current localStorage value
+        updateURL(currentPage, pageSize);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close mobile actions menu when clicking outside
   useEffect(() => {
@@ -78,6 +136,95 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
     
     return sorted;
   }, [filteredResults, sortField, sortOrder]);
+
+  // Pagination calculations
+  const totalResults = sortedResults.length;
+  const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedResults = useMemo(() => {
+    return sortedResults.slice(startIndex, endIndex);
+  }, [sortedResults, startIndex, endIndex]);
+
+  // Adjust current page if it's out of bounds (e.g., after filtering)
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      const newPage = totalPages;
+      setCurrentPage(newPage);
+      updateURL(newPage, pageSize);
+    }
+  }, [totalPages, currentPage, pageSize]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (currentPage > 1) {
+      setCurrentPage(1);
+      updateURL(1, pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterPhoneOnly, filterErrors]);
+
+  // Update URL when page or pageSize changes
+  const updateURL = (page: number, size: number) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', page.toString());
+    url.searchParams.set('pageSize', size.toString());
+    router.push(url.pathname + url.search, { scroll: false });
+  };
+
+  // Scroll to top of table when page changes
+  useEffect(() => {
+    if (tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [currentPage]);
+
+  // Handle page size change
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setResultsPageSize(newSize);
+    setCurrentPage(1);
+    updateURL(1, newSize);
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      updateURL(newPage, pageSize);
+    }
+  };
+
+  // Generate page numbers with ellipsis
+  const getPageNumbers = (): (number | string)[] => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 7;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -252,7 +399,7 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={tableRef}>
       {/* Filters, Actions and View Mode */}
       <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Desktop Toolbar */}
@@ -279,6 +426,21 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Показывать по:</span>
+              <Select
+                value={pageSize.toString()}
+                onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
+                className="w-20 h-8 text-sm"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </Select>
+            </div>
+            
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -303,28 +465,44 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
         </div>
 
         {/* Mobile Toolbar */}
-        <div className="md:hidden px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
-            {/* Checkboxes */}
-            <div className="flex items-center gap-3 flex-wrap flex-1">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filterPhoneOnly}
-                  onChange={(e) => setFilterPhoneOnly(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
-                />
-                <span className="text-xs text-gray-700 dark:text-gray-300">Только с телефоном</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filterErrors}
-                  onChange={(e) => setFilterErrors(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
-                />
-                <span className="text-xs text-gray-700 dark:text-gray-300">Ошибки</span>
-              </label>
+        <div className="md:hidden px-3 py-2 space-y-2">
+          {/* Row 1: Checkboxes */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filterPhoneOnly}
+                onChange={(e) => setFilterPhoneOnly(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
+              />
+              <span className="text-xs text-gray-700 dark:text-gray-300">Только с телефоном</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filterErrors}
+                onChange={(e) => setFilterErrors(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500"
+              />
+              <span className="text-xs text-gray-700 dark:text-gray-300">Ошибки</span>
+            </label>
+          </div>
+          
+          {/* Row 2: Page Size + Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+              <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">По:</span>
+              <Select
+                value={pageSize.toString()}
+                onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
+                className="flex-1 min-w-[140px] h-8 text-xs"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </Select>
             </div>
 
             {/* Actions Menu */}
@@ -440,14 +618,14 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedResults.length === 0 ? (
+              {paginatedResults.length === 0 ? (
                 <tr>
                   <td colSpan={viewMode === 'compact' ? 8 : 12} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     Ничего не найдено
                   </td>
                 </tr>
               ) : (
-                sortedResults.map((row) => {
+                paginatedResults.map((row) => {
                   const blacklisted = isBlacklisted(row.domain);
                   const seo = row.seo;
                   const isExpanded = expandedRow === row.id;
@@ -745,7 +923,7 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
 
       {/* Mobile Cards */}
       <div className="md:hidden space-y-2">
-        {sortedResults.map((row) => {
+        {paginatedResults.map((row) => {
           const blacklisted = isBlacklisted(row.domain);
           const seo = row.seo;
           const isExpanded = expandedRow === row.id;
@@ -915,6 +1093,71 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Page Info */}
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Страница <span className="font-semibold">{currentPage}</span> из <span className="font-semibold">{totalPages}</span>
+              {' '}(показано {startIndex + 1}-{Math.min(endIndex, totalResults)} из {totalResults})
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-2">
+              {/* Previous Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Пред</span>
+              </Button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((page, index) => {
+                  if (page === '...') {
+                    return (
+                      <span key={`ellipsis-${index}`} className="px-2 text-gray-500 dark:text-gray-400">
+                        ...
+                      </span>
+                    );
+                  }
+                  const pageNum = page as number;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className="min-w-[36px] h-9"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1"
+              >
+                <span className="hidden sm:inline">След</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onClose={removeToast} />

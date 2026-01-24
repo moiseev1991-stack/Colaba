@@ -82,7 +82,8 @@ export default function RunsHistoryPage() {
   };
 
   const handleOpen = (runId: string) => {
-    router.push(`/runs/${runId}`);
+    // Always open demo results page (frontend-only, no API calls)
+    router.push('/runs/demo?demo=true');
   };
 
   const showToast = (type: Toast['type'], message: string) => {

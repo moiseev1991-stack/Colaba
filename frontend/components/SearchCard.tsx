@@ -1,10 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+
+// Process Steps Indicator Component
+function ProcessStepsIndicator() {
+  const steps = [
+    'Парсим выдачу поисковой системы',
+    'Собираем домены',
+    'Ищем robots.txt и sitemap',
+    'Проверяем мета-теги и H1',
+  ];
+  
+  const [activeStep, setActiveStep] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % steps.length);
+    }, 700); // Switch every 700ms
+    
+    return () => clearInterval(interval);
+  }, [steps.length]);
+  
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+        Идёт сбор результатов…
+      </h3>
+      <div className="space-y-2">
+        {steps.map((step, index) => (
+          <div
+            key={index}
+            className={cn(
+              'flex items-center gap-2 text-sm transition-all',
+              activeStep === index
+                ? 'text-gray-900 dark:text-white'
+                : 'text-gray-500 dark:text-gray-400'
+            )}
+          >
+            {activeStep === index ? (
+              <Loader2 className="w-4 h-4 animate-spin text-red-600 dark:text-red-500 flex-shrink-0" />
+            ) : (
+              <div className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span>{step}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const RUSSIAN_CITIES = [
   'Москва',
@@ -45,36 +94,42 @@ interface SearchCardProps {
   onSubmit: (keyword: string, searchProvider: string) => void;
   activeModule?: 'seo' | 'contacts' | 'prices';
   onModuleChange?: (module: 'seo' | 'contacts' | 'prices') => void;
+  isLoading?: boolean;
 }
 
-export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo', onModuleChange }: SearchCardProps) {
+export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo', onModuleChange, isLoading = false }: SearchCardProps) {
   const [keyword, setKeyword] = useState('');
   const [searchProvider, setSearchProvider] = useState('duckduckgo'); // По умолчанию DuckDuckGo (бесплатный)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keyword.trim() || !city || activeModule !== 'seo') return;
+    if (!keyword.trim() || !city || activeModule !== 'seo' || isLoading) return;
     onSubmit(keyword.trim(), searchProvider);
   };
 
-  const isDisabled = !keyword.trim() || !city || activeModule !== 'seo';
+  const isDisabled = !keyword.trim() || !city || activeModule !== 'seo' || isLoading;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-      {/* Browser-style Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-2 pt-2">
+      {/* Tabs Header - Segmented/Pill Style */}
+      <div className="flex gap-1 px-4 pt-4 pb-0 border-b border-gray-200 dark:border-gray-700 flex-wrap">
         {/* SEO Tab */}
         <button
           type="button"
           className={cn(
-            'px-4 py-2.5 text-sm font-medium transition-all relative -mb-px z-10',
+            'px-4 py-2.5 text-sm font-medium transition-all relative',
             activeModule === 'seo'
-              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-t border-l border-r border-gray-200 dark:border-gray-700 rounded-t-lg border-b-2 border-b-transparent'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              ? 'text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50/50 dark:hover:bg-gray-700/30'
           )}
           onClick={() => onModuleChange?.('seo')}
         >
-          SEO
+          <span className="relative inline-block">
+            SEO
+            {activeModule === 'seo' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-500 -mb-2.5 rounded-full" />
+            )}
+          </span>
         </button>
 
         {/* Contacts Tab */}
@@ -87,7 +142,7 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
           disabled
         >
           Контакты
-          <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">Скоро</span>
+          <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">Скоро</span>
         </button>
 
         {/* Price Monitoring Tab */}
@@ -99,8 +154,10 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
           )}
           disabled
         >
-          Мониторинг цен
-          <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">Скоро</span>
+          <span className="whitespace-nowrap">
+            Мониторинг цен
+            <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">Скоро</span>
+          </span>
         </button>
       </div>
 
@@ -116,6 +173,7 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
             <Select
               value={searchProvider}
               onChange={(e) => setSearchProvider(e.target.value)}
+              disabled={isLoading}
               className="w-[200px] h-12 flex-shrink-0"
             >
               <option value="duckduckgo">DuckDuckGo (бесплатно)</option>
@@ -132,6 +190,7 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
             placeholder="Введите ключевое слово..."
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
+            disabled={isLoading}
             className="flex-1 min-w-[250px] h-12"
           />
 
@@ -139,6 +198,7 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
           <Select
             value={city}
             onChange={(e) => onCityChange(e.target.value)}
+            disabled={isLoading}
             className="w-[190px] h-12 flex-shrink-0"
           >
             <option value="">Выберите город</option>
@@ -156,10 +216,25 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
             disabled={isDisabled}
             className="h-12 px-6 flex-shrink-0"
           >
-            Найти
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <span className="hidden sm:inline">Поиск…</span>
+                <span className="sm:hidden">Поиск…</span>
+              </>
+            ) : (
+              'Найти'
+            )}
           </Button>
           </div>
         </form>
+        
+        {/* Loading Indicator - Process Steps */}
+        {isLoading && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <ProcessStepsIndicator />
+          </div>
+        )}
       </div>
     </div>
   );
