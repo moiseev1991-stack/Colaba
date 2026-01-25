@@ -23,6 +23,7 @@ from app.modules.organizations.router import router as organizations_router
 from app.modules.providers.router import router as providers_router
 from app.modules.ai_assistants.router import router as ai_assistants_router
 from app.modules.captcha.router import router as captcha_router
+from app.modules.monitor.router import router as monitor_router
 
 api_router.include_router(auth_router)
 api_router.include_router(searches_router)
@@ -31,3 +32,4 @@ api_router.include_router(organizations_router)
 api_router.include_router(providers_router)
 api_router.include_router(ai_assistants_router)
 api_router.include_router(captcha_router)
+api_router.include_router(monitor_router)

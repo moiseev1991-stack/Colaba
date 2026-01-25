@@ -275,11 +275,11 @@ export default function AiAssistantsPage() {
                       По умолчанию
                     </span>
                   )}
-                  {a.config?.api_key && (
+                  {a.config?.api_key ? (
                     <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                       Настроен
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex gap-2">
                   {!a.is_default && (

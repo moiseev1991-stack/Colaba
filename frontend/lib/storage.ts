@@ -141,13 +141,12 @@ export function setTheme(theme: Theme): void {
   document.documentElement.classList.toggle('dark', theme === 'dark');
 }
 
-// Results Page Size
+// Results Page Size (default 100; affects only display, not fetched results)
 export function getResultsPageSize(): number {
-  if (typeof window === 'undefined') return 25;
+  if (typeof window === 'undefined') return 100;
   const data = localStorage.getItem(STORAGE_KEYS.RESULTS_PAGE_SIZE);
-  const size = data ? parseInt(data, 10) : 25;
-  // Validate: must be one of allowed values
-  return [10, 25, 50, 100].includes(size) ? size : 25;
+  const size = data ? parseInt(data, 10) : 100;
+  return [10, 25, 50, 100].includes(size) ? size : 100;
 }
 
 export function setResultsPageSize(size: number): void {

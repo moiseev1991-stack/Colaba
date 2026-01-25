@@ -29,7 +29,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [filterPhoneOnly, setFilterPhoneOnly] = useState(false);
   const [filterErrors, setFilterErrors] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('compact');
+  const viewMode: ViewMode = 'compact';
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -106,6 +106,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
+    return undefined;
   }, [showMobileActions]);
 
   const filteredResults = useMemo(() => {
@@ -405,28 +406,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
     }
   };
 
-  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <th
-      className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        {sortField === field ? (
-          sortOrder === 'asc' ? (
-            <ChevronUp className="h-3 w-3" />
-          ) : (
-            <ChevronDown className="h-3 w-3" />
-          )
-        ) : (
-          <ChevronsUpDown className="h-3 w-3 opacity-30" />
-        )}
-      </div>
-    </th>
-  );
-
   return (
-    <div className="space-y-4" ref={tableRef}>
+    <div className="space-y-4" ref={tableRef} key={blacklistVersion}>
       {/* Filters, Actions and View Mode */}
       <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Desktop Toolbar */}
@@ -453,7 +434,10 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Page Size Selector */}
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Показано: <span className="font-medium">{paginatedResults.length}</span> из{' '}
+              <span className="font-medium">{totalResults}</span>
+            </span>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-700 dark:text-gray-300">Показывать по:</span>
               <Select
@@ -515,9 +499,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             </label>
           </div>
           
-          {/* Row 2: Page Size + Actions */}
+          {/* Row 2: Показано N из M + Page Size + Actions */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Page Size Selector */}
+            <span className="text-xs text-gray-700 dark:text-gray-300">
+              Показано: <span className="font-medium">{paginatedResults.length}</span> из{' '}
+              <span className="font-medium">{totalResults}</span>
+            </span>
             <div className="flex items-center gap-2 flex-1 min-w-[160px]">
               <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">По:</span>
               <Select
@@ -773,9 +760,9 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                     handleCopy(row);
                                   }}
                                   className="h-7 w-7"
-                                  title="Копировать"
+                                  title={copiedId === row.id ? 'Скопировано' : 'Копировать'}
                                 >
-                                  <Copy className="h-3.5 w-3.5" />
+                                  {copiedId === row.id ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -883,9 +870,9 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                   size="icon"
                                   onClick={() => handleCopy(row)}
                                   className="h-7 w-7"
-                                  title="Копировать"
+                                  title={copiedId === row.id ? 'Скопировано' : 'Копировать'}
                                 >
-                                  <Copy className="h-3.5 w-3.5" />
+                                  {copiedId === row.id ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -994,7 +981,6 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
       {/* Mobile Cards */}
       <div className="md:hidden space-y-2">
         {paginatedResults.map((row) => {
-          const blacklisted = isBlacklisted(row.domain);
           const seo = row.seo;
           const isExpanded = expandedRow === row.id;
           const metaSummary = formatMetaSummary(seo);
@@ -1098,8 +1084,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   onClick={() => handleCopy(row)}
                   className="flex items-center justify-center gap-1 h-7 flex-1 text-xs"
                 >
-                  <Copy className="h-3 w-3" />
-                  Copy
+                  {copiedId === row.id ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedId === row.id ? 'Скопировано' : 'Copy'}
                 </Button>
                 <Button
                   variant="outline"

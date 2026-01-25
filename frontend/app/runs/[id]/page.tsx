@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { LeadsTable } from '@/components/LeadsTable';
-import { ProcessStepsIndicator } from '@/components/ProcessStepsIndicator';
+import { LoadingProcessPanel } from '@/components/LoadingProcessPanel';
+import { ActivityTable } from '@/components/ActivityTable';
 import { getSearch, getSearchResults } from '@/src/services/api/search';
 import type { LeadRow } from '@/lib/types';
 import { mapExtraDataToSeo, mapExtraDataToIssues } from '@/lib/searchResultMapping';
@@ -23,11 +24,17 @@ export default function RunResultsPage() {
   const [polling, setPolling] = useState(true);
   const [pollTimeout, setPollTimeout] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [loadingStep, setLoadingStep] = useState(0);
 
   useEffect(() => {
     processingStartedAt.current = null;
     setPollTimeout(false);
   }, [runId]);
+
+  useEffect(() => {
+    const t = setInterval(() => setLoadingStep((s) => (s + 1) % 4), 2000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -91,11 +98,9 @@ export default function RunResultsPage() {
 
   if (loading && !search) {
     return (
-      <div className="max-w-[1250px] mx-auto px-6 py-8">
-        <div className="flex flex-col items-center gap-4">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-          <p className="text-gray-600 dark:text-gray-400">Загрузка…</p>
-        </div>
+      <div className="max-w-[1250px] mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <LoadingProcessPanel progress={0} indeterminate step={loadingStep} />
+        <ActivityTable step={loadingStep} isComplete={false} isActive />
       </div>
     );
   }
@@ -120,24 +125,28 @@ export default function RunResultsPage() {
 
   return (
     <div className="max-w-[1250px] mx-auto px-6">
-      {/* Блок: запрос, провайдер, статус, кол-во */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
-          <div><span className="font-medium">Запрос:</span> {searchQuery}</div>
-          <div><span className="font-medium">Провайдер:</span> {searchProvider}</div>
-          <div><span className="font-medium">Статус:</span> {searchStatus}</div>
-          <div><span className="font-medium">Найдено результатов:</span> {resultCount}</div>
-          {isProcessing && !pollTimeout && (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-              <span className="text-xs text-gray-500 dark:text-gray-400">Обновление каждые 3 сек</span>
-            </div>
-          )}
-          {searchStatus === 'failed' && (
-            <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-200">Ошибка</span>
-          )}
+      {/* Мета: запрос, провайдер, статус — когда не показываем Loading Hero (готово, ошибка или таймаут) */}
+      {(!isProcessing || pollTimeout) && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
+            <div><span className="font-medium">Запрос:</span> {searchQuery}</div>
+            <div><span className="font-medium">Провайдер:</span> {searchProvider}</div>
+            <div><span className="font-medium">Статус:</span> {searchStatus}</div>
+            <div><span className="font-medium">Найдено результатов:</span> {resultCount}</div>
+            {searchStatus === 'failed' && (
+              <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-200">Ошибка</span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Loading + живая лента, когда идёт поиск */}
+      {isProcessing && !pollTimeout && (
+        <div className="space-y-4 mb-4">
+          <LoadingProcessPanel progress={0} indeterminate step={loadingStep} />
+          <ActivityTable step={loadingStep} isComplete={false} isActive />
+        </div>
+      )}
 
       {/* Ошибка: поиск не удался — причина из бэкенда */}
       {searchStatus === 'failed' && (
@@ -151,7 +160,7 @@ export default function RunResultsPage() {
         </div>
       )}
 
-      {/* Таймаут опроса: долго в processing */}
+      {/* Таймаут опроса: долго в processing (мета уже показана выше, т.к. !isProcessing) */}
       {pollTimeout && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
           <h3 className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-200">Поиск занимает необычно много времени</h3>
@@ -164,20 +173,13 @@ export default function RunResultsPage() {
         </div>
       )}
 
-      {/* Этапы процесса — анимация, когда идёт поиск */}
-      {isProcessing && !pollTimeout && (
-        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <ProcessStepsIndicator title="Идёт сбор результатов…" />
-        </div>
-      )}
-
       {/* Результаты не найдены (успешное завершение, 0 результатов) */}
       {searchStatus === 'completed' && results.length === 0 && (
         <div className="py-8 text-center text-gray-600 dark:text-gray-400">Результаты не найдены</div>
       )}
 
-      {/* Таблица результатов */}
-      {results.length > 0 && (
+      {/* Таблица результатов — только когда сбор завершён */}
+      {results.length > 0 && !isProcessing && (
         <LeadsTable
           results={results}
           runId={runId}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, Trash2, Edit, ArrowLeft, Shield, UserCheck, User } from 'lucide-react';
+import { Users, UserPlus, Trash2, ArrowLeft, Shield, UserCheck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   getOrganizationUsers,
@@ -25,7 +25,6 @@ export default function OrganizationUsersPage() {
   const [users, setUsers] = useState<UserOrganizationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSuperuser, setIsSuperuser] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUserId, setNewUserId] = useState('');
   const [newUserRole, setNewUserRole] = useState<OrganizationRole>(OrganizationRole.MEMBER);
@@ -38,9 +37,8 @@ export default function OrganizationUsersPage() {
     try {
       setLoading(true);
       
-      // Check if user is superuser or has admin access
-      const userResponse = await apiClient.get('/auth/me');
-      setIsSuperuser(userResponse.data.is_superuser || false);
+      // Check if user is superuser or has admin access (401/403 → catch)
+      await apiClient.get('/auth/me');
 
       // Load organization and users
       const [orgData, usersData] = await Promise.all([

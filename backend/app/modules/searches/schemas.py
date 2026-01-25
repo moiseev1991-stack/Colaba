@@ -14,7 +14,7 @@ class SearchCreate(BaseModel):
         default="duckduckgo",
         description="Search provider: 'duckduckgo' (бесплатный, без ключа), 'yandex_xml' (требует ключи), 'yandex_html' (парсинг HTML), 'google_html' (парсинг HTML), 'serpapi' (deprecated)"
     )
-    num_results: int = Field(default=50, ge=1, le=100, description="Number of results")
+    num_results: int = Field(default=100, ge=1, le=100, description="Number of results (max 100)")
     config: Optional[Dict[str, Any]] = Field(default=None, description="Additional config")
     organization_id: Optional[int] = Field(default=None, description="Organization ID (required for superusers, auto-filled for regular users)")
 

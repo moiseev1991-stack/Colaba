@@ -1,7 +1,24 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, User as UserIcon, LogIn, LogOut, History, Ban, Home, CreditCard, Settings, Menu, X, Building2, Search, Bot, Shield } from 'lucide-react';
+import {
+  Moon,
+  Sun,
+  User as UserIcon,
+  LogIn,
+  LogOut,
+  History,
+  Ban,
+  Home,
+  CreditCard,
+  Settings,
+  Building2,
+  Search,
+  Bot,
+  Shield,
+  Activity,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { getTheme, setTheme } from '@/lib/storage';
 import { useRouter, usePathname } from 'next/navigation';
@@ -9,6 +26,34 @@ import Link from 'next/link';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
 import type { Theme } from '@/lib/types';
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  authOnly?: boolean;
+  superuserOnly?: boolean;
+  match?: 'exact' | 'startsWith';
+};
+
+const topNavItems: NavItem[] = [
+  { href: '/', label: 'Главная', icon: Home, match: 'exact' },
+  { href: '/runs', label: 'История', icon: History, match: 'startsWith' },
+  { href: '/monitor', label: 'Request Monitor', icon: Activity, match: 'exact' },
+  { href: '/payment', label: 'Оплата', icon: CreditCard, match: 'exact' },
+  { href: '/settings', label: 'Конфигурация', icon: Settings, match: 'exact' },
+  { href: '/settings/blacklist', label: 'Blacklist', icon: Ban, authOnly: true, match: 'exact' },
+  { href: '/settings/providers', label: 'Провайдеры', icon: Search, authOnly: true, match: 'exact' },
+  { href: '/settings/ai-assistants', label: 'AI-ассистенты', icon: Bot, authOnly: true, match: 'exact' },
+  { href: '/settings/captcha', label: 'Обход капчи', icon: Shield, authOnly: true, match: 'exact' },
+  { href: '/organizations', label: 'Организации', icon: Building2, superuserOnly: true, match: 'startsWith' },
+];
+
+function isNavActive(pathname: string | null, item: NavItem): boolean {
+  if (!pathname) return false;
+  if (item.match === 'startsWith') return pathname === item.href || pathname.startsWith(item.href + '/');
+  return pathname === item.href;
+}
 
 export function TopBar() {
   const [theme, setThemeState] = useState<Theme>('dark');
@@ -22,8 +67,7 @@ export function TopBar() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const currentTheme = getTheme();
-      setThemeState(currentTheme);
+      setThemeState(getTheme());
       checkAuth();
     }
   }, []);
@@ -34,9 +78,9 @@ export function TopBar() {
       try {
         const response = await apiClient.get('/auth/me');
         setIsAuthenticated(true);
-        setUserEmail(response.data.email);
-        setIsSuperuser(response.data.is_superuser || false);
-      } catch (error) {
+        setUserEmail(response.data.email ?? null);
+        setIsSuperuser(Boolean(response.data.is_superuser));
+      } catch {
         setIsAuthenticated(false);
         setUserEmail(null);
         setIsSuperuser(false);
@@ -50,33 +94,17 @@ export function TopBar() {
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
-
-    if (menuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
   const toggleTheme = () => {
-    const newTheme: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    setThemeState(newTheme);
-  };
-
-  const handleAuth = () => {
-    if (isAuthenticated) {
-      router.push('/profile');
-    } else {
-      router.push('/auth/login');
-    }
+    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    setThemeState(next);
   };
 
   const handleLogout = () => {
@@ -87,167 +115,70 @@ export function TopBar() {
     router.push('/auth/login');
   };
 
+  const visibleTopNav = topNavItems.filter((item) => {
+    if (item.superuserOnly && !isSuperuser) return false;
+    if (item.authOnly && !isAuthenticated) return false;
+    return true;
+  });
+
+  const navLinkClass = (item: NavItem) => {
+    const active = isNavActive(pathname, item);
+    return `flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+      active
+        ? 'bg-red-600 text-white'
+        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+    }`;
+  };
+
   return (
     <div className="w-full border-b border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-red-600 rounded"></div>
-            <Link href="/" className="text-sm text-gray-700 dark:text-gray-300 hover:text-red-600">
-              SpinLid
-            </Link>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-8 w-8"
-          >
+      <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-2">
+        {/* Horizontal nav — scrollable on mobile */}
+        <nav
+          className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0 py-1 -mx-1 px-1"
+          style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+        >
+          {visibleTopNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href + item.label}
+                href={item.href}
+                className={navLinkClass(item)}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Right: theme + profile dropdown */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8" aria-label="Тема">
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          
-          {/* Dropdown Menu */}
+
           <div className="relative" ref={menuRef}>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMenuOpen(!menuOpen)}
               className="h-8 w-8"
+              aria-label="Профиль"
             >
-              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              <UserIcon className="h-4 w-4" />
             </Button>
-            
+
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-                <Link
-                  href="/"
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                    pathname === '/'
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Home className="h-4 w-4" />
-                  Главная
-                </Link>
-                <Link
-                  href="/runs"
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                    pathname?.startsWith('/runs')
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <History className="h-4 w-4" />
-                  История
-                </Link>
-                <Link
-                  href="/payment"
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                    pathname === '/payment'
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <CreditCard className="h-4 w-4" />
-                  Оплата
-                </Link>
-                <Link
-                  href="/settings"
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                    pathname === '/settings'
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Settings className="h-4 w-4" />
-                  Конфигурация
-                </Link>
-                {isAuthenticated && (
-                  <Link
-                    href="/settings/blacklist"
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                      pathname === '/settings/blacklist'
-                        ? 'bg-red-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <Ban className="h-4 w-4" />
-                    Blacklist
-                  </Link>
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
+                {userEmail && (
+                  <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 truncate border-b border-gray-200 dark:border-gray-700">
+                    {userEmail}
+                  </div>
                 )}
-                {isAuthenticated && (
-                  <Link
-                    href="/settings/providers"
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                      pathname === '/settings/providers'
-                        ? 'bg-red-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <Search className="h-4 w-4" />
-                    Провайдеры
-                  </Link>
-                )}
-                {isAuthenticated && (
-                  <Link
-                    href="/settings/ai-assistants"
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                      pathname === '/settings/ai-assistants'
-                        ? 'bg-red-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <Bot className="h-4 w-4" />
-                    AI-ассистенты
-                  </Link>
-                )}
-                {isAuthenticated && (
-                  <Link
-                    href="/settings/captcha"
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                      pathname === '/settings/captcha'
-                        ? 'bg-red-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <Shield className="h-4 w-4" />
-                    Обход капчи
-                  </Link>
-                )}
-                {isAuthenticated && isSuperuser && (
-                  <Link
-                    href="/organizations"
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                      pathname?.startsWith('/organizations')
-                        ? 'bg-red-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <Building2 className="h-4 w-4" />
-                    Организации
-                  </Link>
-                )}
-                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                 {isAuthenticated ? (
                   <>
-                    {userEmail && (
-                      <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                        {userEmail}
-                      </div>
-                    )}
                     <Link
                       href="/profile"
                       onClick={() => setMenuOpen(false)}
@@ -267,8 +198,8 @@ export function TopBar() {
                 ) : (
                   <button
                     onClick={() => {
-                      handleAuth();
                       setMenuOpen(false);
+                      router.push('/auth/login');
                     }}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors"
                   >

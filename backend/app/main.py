@@ -9,7 +9,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -65,6 +65,13 @@ async def general_exception_handler(request, exc: Exception) -> JSONResponse:
         status_code=500,
         content={"error": "Internal server error", "code": "INTERNAL_ERROR"},
     )
+
+
+# Root redirect (http://localhost:8000/ -> API docs)
+@app.get("/")
+async def root() -> RedirectResponse:
+    """Редирект на документацию API."""
+    return RedirectResponse(url="/api/docs", status_code=302)
 
 
 # Health check endpoint

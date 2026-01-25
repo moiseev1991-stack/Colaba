@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 import { Select } from './ui/select';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-import { ProcessStepsIndicator } from './ProcessStepsIndicator';
 
 const RUSSIAN_CITIES = [
   'Москва',
@@ -181,13 +180,6 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
           </Button>
           </div>
         </form>
-        
-        {/* Loading Indicator - Process Steps */}
-        {isLoading && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <ProcessStepsIndicator />
-          </div>
-        )}
       </div>
     </div>
   );
