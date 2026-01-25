@@ -6,6 +6,7 @@ import { LeadsTable } from '@/components/LeadsTable';
 import { ProcessStepsIndicator } from '@/components/ProcessStepsIndicator';
 import { getSearch, getSearchResults } from '@/src/services/api/search';
 import type { LeadRow } from '@/lib/types';
+import { mapExtraDataToSeo, mapExtraDataToIssues } from '@/lib/searchResultMapping';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 минут
@@ -21,6 +22,7 @@ export default function RunResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(true);
   const [pollTimeout, setPollTimeout] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     processingStartedAt.current = null;
@@ -50,7 +52,8 @@ export default function RunResultsPage() {
             phone: result.phone ?? null,
             email: result.email ?? null,
             score: result.seo_score ?? 0,
-            issues: { robots: true, sitemap: true, titleDuplicates: true, descriptionDuplicates: true },
+            issues: mapExtraDataToIssues(result.extra_data),
+            seo: mapExtraDataToSeo(result.extra_data),
             status,
             outreachText: result.outreach_text || '',
           };
@@ -84,7 +87,7 @@ export default function RunResultsPage() {
     if (!polling) return;
     const t = setInterval(fetchData, POLL_INTERVAL_MS);
     return () => clearInterval(t);
-  }, [runId, polling]);
+  }, [runId, polling, refreshTrigger]);
 
   if (loading && !search) {
     return (
@@ -174,7 +177,13 @@ export default function RunResultsPage() {
       )}
 
       {/* Таблица результатов */}
-      {results.length > 0 && <LeadsTable results={results} runId={runId} />}
+      {results.length > 0 && (
+        <LeadsTable
+          results={results}
+          runId={runId}
+          onAuditComplete={() => setRefreshTrigger((t) => t + 1)}
+        />
+      )}
     </div>
   );
 }

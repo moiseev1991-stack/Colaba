@@ -106,9 +106,10 @@ PROXY_LIST=http://proxy1.example.com:8080,http://proxy2.example.com:8080,socks5:
 
 ## Детектирование блокировок и обход капчи
 
-Функция `detect_blocking` в `common.py` по коду ответа, URL и HTML определяет блокировку и `block_type` (`captcha`, `rate_limit`, `forbidden` и т.п.). При `block_type=="captcha"` вызывающему коду возвращается `response`, чтобы HTML‑провайдер мог вызвать **решатель капчи** (solver) и при успехе отправить форму с решением, после чего повторить парсинг.
+Функция `detect_blocking` в `common.py` по коду ответа, URL и HTML определяет блокировку и `block_type` (`captcha`, `rate_limit`, `forbidden` и т.п.). При `block_type=="captcha"` или 403/429 вызывающему коду возвращается `response`, чтобы HTML‑провайдер мог вызвать **решатель капчи** (solver) и при успехе отправить форму с решением, после чего повторить парсинг.
 
-- **Image-captcha** — решается через AI с поддержкой Vision (настраивается в `/settings/captcha`).
+- **Image-captcha** — решается через AI с поддержкой Vision (настраивается в `/settings/captcha`). Работает только при наличии `<img>` капчи в HTML.
+- **Yandex SmartCaptcha** (Яндекс HTML) — при отсутствии image-captcha вызывается `solve_yandex_smartcaptcha` (2captcha, `method=yandex`). Токен подставляется в `smart-token` / `captcha-token` / `g-recaptcha-response` через `_try_submit_yandex_captcha_form(..., smart_token=token)`. Требуется 2captcha в `/settings/captcha`.
 - **reCAPTCHA v2/v3** — через 2captcha или Anti-captcha (настройки в `/settings/captcha`).
 
 Подробнее: [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md).
@@ -293,7 +294,7 @@ results = await fetch_search_results(
 
 1. **Изменение HTML структуры** - при изменении структуры страниц поиска парсеры могут перестать работать и потребуют обновления
 2. **Блокировки** - при частых запросах возможны блокировки IP, даже с защитными мерами
-3. **Капчи** — при настроенном обходе капчи (AI Vision, 2captcha, Anti-captcha в `/settings/captcha`) image-captcha и reCAPTCHA решаются автоматически. См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
+3. **Капчи** — при настроенном обходе капчи (AI Vision, 2captcha, Anti-captcha в `/settings/captcha`) решаются: image-captcha (AI), Yandex SmartCaptcha (2captcha, `method=yandex`) и reCAPTCHA (2captcha/Anti-captcha). См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 4. **Производительность** - парсинг HTML медленнее чем использование API
 
 ## Альтернативы

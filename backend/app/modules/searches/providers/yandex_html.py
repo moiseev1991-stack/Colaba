@@ -11,7 +11,14 @@ from bs4 import BeautifulSoup
 import httpx
 
 from app.core.config import settings
-from app.modules.searches.providers.common import detect_blocking, fetch_with_retry, random_delay, get_proxy_config, get_random_user_agent
+from app.modules.searches.providers.common import (
+    detect_blocking,
+    fetch_with_retry,
+    random_delay,
+    get_proxy_config,
+    get_random_user_agent,
+    _html_has_captcha,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +72,21 @@ async def fetch_search_results(
             
             if not page_results:
                 if page_num == 0:
-                    # Для первой страницы: 0 результатов = блокировка или смена вёрстки → raise для fallback
-                    logger.warning(f"No results on first page for query: {query} (blocked or HTML changed)")
-                    raise ValueError("Yandex HTML: no results on first page (likely blocked or captcha). Use duckduckgo or Yandex XML with API keys.")
+                    # При 0 с десктопа — одна попытка с мобильным URL (часто мобильная выдача режется иначе)
+                    if not use_mobile:
+                        logger.info("Yandex HTML: 0 on desktop, retrying with mobile URL")
+                        page_results = await _fetch_page(
+                            query, region, 0, max_retries,
+                            proxy_overrides=proxy_overrides,
+                            use_mobile=True,
+                            db=kwargs.get("db"),
+                        )
+                    if not page_results:
+                        logger.warning(f"No results on first page for query: {query} (blocked or HTML changed)")
+                        raise ValueError(
+                            "Яндекс HTML: на первой странице 0 результатов (блокировка или капча). "
+                            "Включите и настройте прокси в настройках провайдера «Яндекс HTML» — без прокси Яндекс блокирует запросы с серверов."
+                        )
                 else:
                     break
             
@@ -121,11 +140,26 @@ async def _fetch_page(
         url = f"https://yandex.ru/search/touch/?text={encoded_query}&lr={region}&p={page}"
     else:
         url = f"https://yandex.ru/search/?text={encoded_query}&lr={region}&p={page}"
-    
-    # Выполняем запрос с ретраями (referer и proxy для обхода блокировок)
+
+    # Прогрев сессии: запрос на главную, затем поиск с теми же cookies (снижает блокировки)
+    search_cookies: dict = {}
+    try:
+        warm = await fetch_with_retry(
+            "https://yandex.ru/",
+            max_retries=1,
+            timeout=10.0,
+            referer=None,
+            proxy_overrides=proxy_overrides,
+        )
+        if warm and getattr(warm, "cookies", None):
+            search_cookies = dict(warm.cookies)
+    except Exception:
+        pass
+
+    # Выполняем запрос с ретраями (referer, proxy, cookies)
     response = await fetch_with_retry(
         url, max_retries=max_retries, timeout=30.0,
-        referer="https://yandex.ru/", proxy_overrides=proxy_overrides
+        referer="https://yandex.ru/", proxy_overrides=proxy_overrides, cookies=search_cookies or None
     )
 
     if response is None:
@@ -135,10 +169,16 @@ async def _fetch_page(
     html_content = response.text
     html_to_parse = html_content
     bi = detect_blocking(response, html_content=html_content)
-    if bi.get("blocked") and bi.get("block_type") == "captcha" and db is not None:
+    solver_tried = False
+    # Пробуем solver: при явной капче или при 403/429 (часто капча без наших ключевых слов в теле)
+    if db is not None and (
+        (bi.get("blocked") and bi.get("block_type") == "captcha")
+        or response.status_code in (403, 429)
+    ):
         try:
-            from app.modules.captcha.solver import solve_image_captcha
+            from app.modules.captcha.solver import solve_image_captcha, solve_yandex_smartcaptcha
 
+            solver_tried = True
             solution = await solve_image_captcha(html_content, str(response.url), "yandex", db)
             if solution:
                 new_html = await _try_submit_yandex_captcha_form(
@@ -147,6 +187,16 @@ async def _fetch_page(
                 if new_html:
                     html_to_parse = new_html
                     logger.info("Yandex captcha form submitted and got new page")
+            else:
+                # Yandex SmartCaptcha (JS): 2captcha method=yandex, sitekey, pageurl
+                token = await solve_yandex_smartcaptcha(html_content, str(response.url), db)
+                if token:
+                    new_html = await _try_submit_yandex_captcha_form(
+                        html_content, str(response.url), None, dict(response.cookies), proxy_overrides, smart_token=token
+                    )
+                    if new_html:
+                        html_to_parse = new_html
+                        logger.info("Yandex SmartCaptcha form submitted and got new page")
         except Exception as e:
             logger.warning("Yandex solve_image_captcha or form submit: %s", e)
 
@@ -175,45 +225,105 @@ async def _fetch_page(
                 if result:
                     results.append(result)
         
-        # Вариант 3: Универсальный поиск по ссылкам в результатах
+        # Вариант 3: Универсальный поиск по ссылкам в основных блоках
         if not results:
-            # Ищем все ссылки в основных результатах
             main_content = soup.find('main') or soup.find('div', class_=re.compile(r'content|serp'))
             if main_content:
                 links = main_content.find_all('a', href=True)
                 for idx, link in enumerate(links[:10], start=page * 10 + 1):
                     href = link.get('href', '')
-                    # Пропускаем внутренние ссылки Яндекса
                     if 'yandex.ru' in href or href.startswith('/'):
                         continue
-                    
-                    # Извлекаем title
                     title = link.get_text(strip=True)
                     if not title:
-                        # Пробуем найти title в родительском элементе
                         parent = link.find_parent(['h2', 'h3', 'div'])
                         if parent:
                             title = parent.get_text(strip=True)
-                    
                     if title and href.startswith('http'):
-                        domain = urlparse(href).netloc
-                        # Ищем snippet рядом со ссылкой
-                        snippet = _find_snippet_near_link(link)
-                        
                         results.append({
                             "position": idx,
                             "title": title,
                             "url": href,
-                            "snippet": snippet,
-                            "domain": domain,
+                            "snippet": _find_snippet_near_link(link),
+                            "domain": urlparse(href).netloc,
                         })
-                        
                         if len(results) >= 10:
                             break
 
-        # Отладка при 0 результатов: логировать начало HTML (капча/блокировка vs смена вёрстки)
-        if len(results) == 0 and settings.DEBUG:
-            logger.debug("[DEBUG] HTML (0 results): %s", (html_to_parse or "")[:5000])
+        # Вариант 4: по всему body — любые внешние ссылки с текстом (на случай смены вёрстки)
+        if not results:
+            seen = set()
+            for link in soup.find_all('a', href=True):
+                if len(results) >= 10:
+                    break
+                href = link.get('href', '').split('#')[0].split('?')[0]
+                if not href.startswith('http') or 'yandex.' in href or href in seen:
+                    continue
+                seen.add(href)
+                title = link.get_text(strip=True) or (link.find_parent(['h2', 'h3', 'h4']) or link).get_text(strip=True)
+                if title and len(title) >= 2:
+                    results.append({
+                        "position": page * 10 + len(results) + 1,
+                        "title": title[:300],
+                        "url": link.get('href', ''),
+                        "snippet": _find_snippet_near_link(link),
+                        "domain": urlparse(href).netloc,
+                    })
+
+        # Второй шанс: 0 результатов, solver не вызывали — попробовать solver (часто капча без наших ключевых слов)
+        if len(results) == 0 and not solver_tried and db is not None:
+            try:
+                from app.modules.captcha.solver import solve_image_captcha, solve_yandex_smartcaptcha
+
+                solution = await solve_image_captcha(html_to_parse, str(response.url), "yandex", db)
+                new_html = None
+                if solution:
+                    new_html = await _try_submit_yandex_captcha_form(
+                        html_to_parse, str(response.url), solution, dict(response.cookies), proxy_overrides
+                    )
+                else:
+                    token = await solve_yandex_smartcaptcha(html_to_parse, str(response.url), db)
+                    if token:
+                        new_html = await _try_submit_yandex_captcha_form(
+                            html_to_parse, str(response.url), None, dict(response.cookies), proxy_overrides, smart_token=token
+                        )
+                if new_html:
+                    soup2 = BeautifulSoup(new_html, "html.parser")
+                    for li in soup2.find_all("li", class_=re.compile(r"serp-item|organic")):
+                        r = _parse_yandex_item(li, len(results) + 1)
+                        if r:
+                            results.append(r)
+                    if not results and (soup2.find("main") or soup2.find("div", class_=re.compile(r"content|serp"))):
+                        mn = soup2.find("main") or soup2.find("div", class_=re.compile(r"content|serp"))
+                        for link in mn.find_all("a", href=True)[:10]:
+                            href = link.get("href", "")
+                            if "yandex.ru" in href or not href.startswith("http"):
+                                continue
+                            tit = link.get_text(strip=True) or (link.find_parent(["h2", "h3"]) or link).get_text(strip=True)
+                            if tit:
+                                results.append({
+                                    "position": len(results) + 1,
+                                    "title": tit,
+                                    "url": href,
+                                    "snippet": _find_snippet_near_link(link),
+                                    "domain": urlparse(href).netloc,
+                                })
+                    if results:
+                        logger.info("Yandex second-chance captcha solve: got %d results", len(results))
+            except Exception as e:
+                logger.warning("Yandex second-chance solve_image_captcha: %s", e)
+
+        # Лог при 0 результатов (диагностика блокировок/капчи)
+        if len(results) == 0:
+            logger.warning(
+                "Yandex HTML: 0 results | status=%s url=%s len_html=%s has_captcha_keywords=%s",
+                getattr(response, "status_code", None),
+                str(getattr(response, "url", ""))[:120],
+                len(html_to_parse or ""),
+                _html_has_captcha(html_to_parse or ""),
+            )
+            if settings.DEBUG:
+                logger.debug("[DEBUG] HTML (0 results): %s", (html_to_parse or "")[:5000])
 
         return results
 
@@ -223,10 +333,16 @@ async def _fetch_page(
 
 
 async def _try_submit_yandex_captcha_form(
-    html_content: str, page_url: str, solution: str, cookies: dict, proxy_overrides: Optional[Dict[str, Any]] = None
+    html_content: str,
+    page_url: str,
+    solution: Optional[str] = None,
+    cookies: Optional[dict] = None,
+    proxy_overrides: Optional[Dict[str, Any]] = None,
+    *,
+    smart_token: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Найти форму капчи в HTML, подставить solution и отправить POST.
+    Найти форму капчи в HTML, подставить solution (image) или smart_token (SmartCaptcha) и отправить POST.
     Возвращает text новой страницы или None.
     """
     soup = BeautifulSoup(html_content, "html.parser")
@@ -237,20 +353,40 @@ async def _try_submit_yandex_captcha_form(
     if not action:
         return None
     action_url = urljoin(page_url, action)
-    # Поле для ответа: rep (Яндекс), captcha, answer, response
-    answer_names = ("rep", "captcha", "answer", "response", "recaptcha-response")
-    answer_input = None
-    for n in answer_names:
-        answer_input = form.find("input", {"name": n})
-        if answer_input:
-            break
-    if not answer_input:
+
+    data: Dict[str, str] = {}
+
+    if smart_token:
+        # Yandex SmartCaptcha: токен в smart-token, captcha-token или g-recaptcha-response
+        token_names = ("smart-token", "captcha-token", "g-recaptcha-response")
+        token_input = None
+        for n in token_names:
+            token_input = form.find("input", {"name": n}) or form.find("textarea", {"name": n})
+            if token_input:
+                data[n] = smart_token
+                break
+        if not token_input:
+            logger.debug("_try_submit_yandex_captcha_form: smart_token передан, но input (smart-token/captcha-token/g-recaptcha-response) не найден")
+            return None
+    elif solution:
+        # Классическая image-captcha: rep, captcha, answer, response
+        answer_names = ("rep", "captcha", "answer", "response", "recaptcha-response")
+        answer_input = None
+        for n in answer_names:
+            answer_input = form.find("input", {"name": n})
+            if answer_input:
+                break
+        if not answer_input:
+            return None
+        data[answer_input.get("name", "rep")] = solution
+    else:
         return None
 
-    data: Dict[str, str] = {answer_input.get("name", "rep"): solution}
+    # Собираем hidden-поля (кроме тех, что уже в data)
+    skip_names = {"smart-token", "captcha-token", "g-recaptcha-response", "rep", "captcha", "answer", "response", "recaptcha-response"}
     for inp in form.find_all("input", {"name": True}):
         name = inp.get("name")
-        if not name or name in answer_names:
+        if not name or name in skip_names:
             continue
         if inp.get("type") == "hidden" and inp.get("value") is not None:
             data[name] = inp.get("value", "")
@@ -263,7 +399,7 @@ async def _try_submit_yandex_captcha_form(
     }
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
-            r = await client.post(action_url, data=data, cookies=cookies, headers=headers)
+            r = await client.post(action_url, data=data, cookies=cookies or {}, headers=headers)
             if r.status_code != 200:
                 return None
             # Если снова капча — не используем

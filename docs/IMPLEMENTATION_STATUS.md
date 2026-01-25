@@ -106,8 +106,9 @@
 - ✅ **Обход капчи**  
   - Модель `CaptchaBypassConfig` (ai_assistant_id, external_services: 2captcha, anticaptcha), миграция 006  
   - API GET/PUT `/api/v1/captcha-config`, POST `test-2captcha`, `test-ai`  
-  - Solver: `solve_image_captcha` (AI Vision), `solve_recaptcha` (2captcha, anticaptcha)  
-  - Интеграция в `common.detect_blocking`, `yandex_html`, `google_html` (подстановка в формы, retry)  
+  - Solver: `solve_image_captcha` (AI Vision), `solve_recaptcha` (2captcha, anticaptcha), **`solve_yandex_smartcaptcha`** (2captcha, `method=yandex`) для Yandex SmartCaptcha  
+  - `_try_submit_yandex_captcha_form` с `solution` (image) и **`smart_token`** (SmartCaptcha: `smart-token`, `captcha-token`, `g-recaptcha-response`)  
+  - Интеграция в `common.detect_blocking`, `yandex_html` (image → при `None` SmartCaptcha через 2captcha), `google_html` (подстановка в формы, retry)  
   - Страница `/settings/captcha`  
 - ✅ **Настройки провайдеров поиска**  
   - Модель `SearchProviderConfig` (provider_id, config), миграция 004, реестр `PROVIDER_REGISTRY`  

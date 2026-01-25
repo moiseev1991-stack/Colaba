@@ -43,7 +43,10 @@ async def solve_image_captcha(
     raw = await get_captcha_config_raw(db)
     ai_id = raw.get("ai_assistant_id")
     if not ai_id:
-        logger.debug("solve_image_captcha: ai_assistant_id не настроен в captcha config")
+        logger.warning(
+            "solve_image_captcha: ai_assistant_id не настроен в настройках обхода капчи. "
+            "Укажите AI-ассистент с Vision в Настройки → Обход капчи."
+        )
         return None
 
     soup = BeautifulSoup(html_content, "html.parser")
@@ -62,7 +65,10 @@ async def solve_image_captcha(
                 break
 
     if not img:
-        logger.warning("solve_image_captcha: изображение капчи не найдено в HTML")
+        logger.warning(
+            "solve_image_captcha: изображение капчи не найдено в HTML. "
+            "Возможно, это Yandex SmartCaptcha или reCAPTCHA (JS) — для них нужны 2captcha/anticaptcha в настройках."
+        )
         return None
 
     src = (img.get("src") or "").strip()
@@ -132,6 +138,17 @@ def _extract_sitekey_and_action(html_content: str) -> tuple[Optional[str], Optio
     return sitekey, action, version
 
 
+def _extract_yandex_smart_sitekey(html_content: str) -> Optional[str]:
+    """Извлечь data-sitekey Yandex SmartCaptcha из HTML (div.smart-captcha и т.п.)."""
+    m = re.search(r'data-sitekey=["\']([^"\']+)["\']', html_content, re.I)
+    if m:
+        return m.group(1)
+    m = re.search(r'["\']sitekey["\']\s*:\s*["\']([^"\']+)["\']', html_content, re.I)
+    if m:
+        return m.group(1)
+    return None
+
+
 async def solve_recaptcha(
     sitekey: str,
     pageurl: str,
@@ -191,28 +208,93 @@ async def _solve_2captcha(
         r = await http.post("https://2captcha.com/in.php", data=params)
         r.raise_for_status()
         data = r.json()
-    if data.get("status") != 1:
-        logger.warning("2captcha in.php: %s", data.get("request", "error"))
-        return None
-
-    captcha_id = data.get("request")
-    if not captcha_id:
-        return None
-
-    # Ждём и забираем результат
-    for _ in range(24):
-        await asyncio.sleep(5)
-        r2 = await http.get("https://2captcha.com/res.php", params={"key": api_key, "action": "get", "id": captcha_id, "json": 1})
-        r2.raise_for_status()
-        d2 = r2.json()
-        if d2.get("status") == 1:
-            return d2.get("request")
-        if d2.get("request") != "CAPCHA_NOT_READY":
-            logger.warning("2captcha res.php: %s", d2.get("request"))
+        if data.get("status") != 1:
+            logger.warning("2captcha in.php: %s", data.get("request", "error"))
             return None
+
+        captcha_id = data.get("request")
+        if not captcha_id:
+            return None
+
+        # Ждём и забираем результат (res.php)
+        for _ in range(24):
+            await asyncio.sleep(5)
+            r2 = await http.get(
+                "https://2captcha.com/res.php",
+                params={"key": api_key, "action": "get", "id": captcha_id, "json": 1},
+            )
+            r2.raise_for_status()
+            d2 = r2.json()
+            if d2.get("status") == 1:
+                return d2.get("request")
+            if d2.get("request") != "CAPCHA_NOT_READY":
+                logger.warning("2captcha res.php: %s", d2.get("request"))
+                return None
 
     logger.warning("2captcha: timeout waiting for solution")
     return None
+
+
+async def _solve_2captcha_yandex_smart(
+    api_key: str, sitekey: str, pageurl: str
+) -> Optional[str]:
+    """2captcha: Yandex SmartCaptcha — method=yandex, sitekey, pageurl; res.php как обычно."""
+    params = {
+        "key": api_key,
+        "method": "yandex",
+        "sitekey": sitekey,
+        "pageurl": pageurl,
+        "json": 1,
+    }
+    async with httpx.AsyncClient(timeout=120.0) as http:
+        r = await http.post("https://2captcha.com/in.php", data=params)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("status") != 1:
+            logger.warning("2captcha in.php (yandex): %s", data.get("request", "error"))
+            return None
+
+        captcha_id = data.get("request")
+        if not captcha_id:
+            return None
+
+        for _ in range(24):
+            await asyncio.sleep(5)
+            r2 = await http.get(
+                "https://2captcha.com/res.php",
+                params={"key": api_key, "action": "get", "id": captcha_id, "json": 1},
+            )
+            r2.raise_for_status()
+            d2 = r2.json()
+            if d2.get("status") == 1:
+                return d2.get("request")
+            if d2.get("request") != "CAPCHA_NOT_READY":
+                logger.warning("2captcha res.php (yandex): %s", d2.get("request"))
+                return None
+
+    logger.warning("2captcha (yandex): timeout waiting for solution")
+    return None
+
+
+async def solve_yandex_smartcaptcha(
+    html_content: str, pageurl: str, db: AsyncSession
+) -> Optional[str]:
+    """
+    Решить Yandex SmartCaptcha через 2captcha (method=yandex).
+    Возвращает токен для подстановки в smart-token / captcha-token / g-recaptcha-response.
+    """
+    sitekey = _extract_yandex_smart_sitekey(html_content)
+    if not sitekey:
+        logger.debug("solve_yandex_smartcaptcha: data-sitekey не найден в HTML")
+        return None
+
+    raw = await get_captcha_config_raw(db)
+    c2 = (raw.get("external_services") or {}).get("2captcha") or {}
+    if not isinstance(c2, dict) or not c2.get("enabled") or not c2.get("api_key"):
+        logger.debug("solve_yandex_smartcaptcha: 2captcha не настроен или не включён")
+        return None
+
+    return await _solve_2captcha_yandex_smart(c2.get("api_key"), sitekey, pageurl)
 
 
 async def _solve_anticaptcha(sitekey: str, pageurl: str, version: str, action: Optional[str], api_key: str) -> Optional[str]:

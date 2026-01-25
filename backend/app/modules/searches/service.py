@@ -180,3 +180,38 @@ async def get_search_results_grouped_by_domain(
         total_results=len(all_results),
         unique_domains=len(domains_list),
     )
+
+
+async def run_result_audit(
+    db: AsyncSession,
+    search_id: int,
+    result_id: int,
+    user_id: int,
+    organization_id: Optional[int],
+) -> Optional[schemas.SearchResultResponse]:
+    """Run SEO audit for one search result, merge into extra_data.audit, set seo_score."""
+    search = await get_search(db, search_id, user_id, organization_id)
+    if not search:
+        return None
+    res = await db.execute(
+        select(SearchResult).where(
+            SearchResult.search_id == search_id,
+            SearchResult.id == result_id,
+        )
+    )
+    sr = res.scalar_one_or_none()
+    if not sr:
+        return None
+    from app.modules.filters.seo_audit import audit_url
+
+    audit_result = await audit_url(sr.url)
+    extra = dict(sr.extra_data) if isinstance(sr.extra_data, dict) else {}
+    extra["audit"] = {
+        "issues": audit_result.get("issues", []),
+        "details": audit_result.get("details", {}),
+    }
+    sr.extra_data = extra
+    sr.seo_score = audit_result.get("score")
+    await db.commit()
+    await db.refresh(sr)
+    return schemas.SearchResultResponse.model_validate(sr)

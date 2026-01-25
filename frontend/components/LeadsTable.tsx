@@ -2,24 +2,27 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, ChevronLeft, ChevronRight, FileSearch } from 'lucide-react';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import type { LeadRow } from '@/lib/types';
 import { isBlacklisted, addToBlacklist, getResultsPageSize, setResultsPageSize } from '@/lib/storage';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
 import { ToastContainer, type Toast } from './Toast';
+import { runResultAudit } from '@/src/services/api/search';
+import { addDomainToBlacklist as addDomainToBlacklistApi } from '@/src/services/api/blacklist';
 
 interface LeadsTableProps {
   results: LeadRow[];
   runId?: string;
+  onAuditComplete?: () => void;
 }
 
 type ViewMode = 'compact' | 'all';
 type SortField = 'domain' | 'score' | null;
 type SortOrder = 'asc' | 'desc';
 
-export function LeadsTable({ results, runId }: LeadsTableProps) {
+export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps) {
   const router = useRouter();
   const tableRef = useRef<HTMLDivElement>(null);
   
@@ -33,7 +36,9 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
   const [showMobileActions, setShowMobileActions] = useState(false);
   const mobileActionsRef = useRef<HTMLDivElement>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  
+  const [auditingResultId, setAuditingResultId] = useState<string | null>(null);
+  const [blacklistVersion, setBlacklistVersion] = useState(0);
+
   // Pagination state - initialize from URL and localStorage
   const [pageSize, setPageSize] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -252,8 +257,30 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
     downloadCSV(csv, filename);
   };
 
-  const handleAddToBlacklist = (domain: string) => {
-    addToBlacklist(domain);
+  const handleAddToBlacklist = async (domain: string) => {
+    try {
+      await addDomainToBlacklistApi(domain);
+      addToBlacklist(domain);
+      showToast('success', 'Домен добавлен в блэклист');
+      setBlacklistVersion((v) => v + 1);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      showToast('error', err?.response?.data?.detail || 'Не удалось добавить в блэклист');
+    }
+  };
+
+  const handleRunAudit = async (row: LeadRow) => {
+    if (!runId) return;
+    setAuditingResultId(row.id);
+    try {
+      await runResultAudit(parseInt(runId, 10), parseInt(row.id, 10));
+      onAuditComplete?.();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      showToast('error', err?.response?.data?.detail || 'Ошибка SEO-аудита');
+    } finally {
+      setAuditingResultId(null);
+    }
   };
 
   const toggleRowDetails = (rowId: string) => {
@@ -762,6 +789,25 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
+                                {runId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRunAudit(row);
+                                    }}
+                                    className="h-7 w-7"
+                                    title="SEO-аудит"
+                                    disabled={auditingResultId === row.id}
+                                  >
+                                    {auditingResultId === row.id ? (
+                                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent block" />
+                                    ) : (
+                                      <FileSearch className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                                 {!blacklisted && (
                                   <Button
                                     variant="ghost"
@@ -850,6 +896,22 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
+                                {runId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRunAudit(row)}
+                                    className="h-7 w-7"
+                                    title="SEO-аудит"
+                                    disabled={auditingResultId === row.id}
+                                  >
+                                    {auditingResultId === row.id ? (
+                                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent block" />
+                                    ) : (
+                                      <FileSearch className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                                 {!blacklisted && (
                                   <Button
                                     variant="ghost"
@@ -899,6 +961,14 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
                               <div>
                                 <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">H1</div>
                                 <div className="text-xs text-gray-600 dark:text-gray-400">{seo?.h1 || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Phone</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">{row.phone || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Email</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">{row.email || '-'}</div>
                               </div>
                               {getTopIssues(row).length > 0 && (
                                 <div className="col-span-2 md:col-span-3">
@@ -1040,6 +1110,22 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
                   <ExternalLink className="h-3 w-3" />
                   Open
                 </Button>
+                {runId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRunAudit(row)}
+                    className="flex items-center justify-center gap-1 h-7 flex-1 text-xs"
+                    disabled={auditingResultId === row.id}
+                    title="SEO-аудит"
+                  >
+                    {auditingResultId === row.id ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <FileSearch className="h-3 w-3" />
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -1080,6 +1166,14 @@ export function LeadsTable({ results, runId }: LeadsTableProps) {
                   <div>
                     <div className="text-gray-500 dark:text-gray-400 mb-0.5">Pages Crawled:</div>
                     <div className="text-gray-600 dark:text-gray-400">{seo?.pagesCrawled || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Phone:</div>
+                    <div className="text-gray-600 dark:text-gray-400">{row.phone || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Email:</div>
+                    <div className="text-gray-600 dark:text-gray-400">{row.email || '-'}</div>
                   </div>
                   {getTopIssues(row).length > 0 && (
                     <div>

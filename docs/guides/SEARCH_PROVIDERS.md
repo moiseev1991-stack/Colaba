@@ -99,7 +99,7 @@ curl -X POST http://localhost:8000/api/v1/searches \
 - Автоматическая ротация User-Agent
 - Случайные задержки между запросами
 - Поддержка прокси и use_mobile (настройка на `/settings/providers` или через .env)
-- Обход капчи: AI Vision, 2captcha, Anti-captcha (настройка на `/settings/captcha`). См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
+- Обход капчи (настройка на `/settings/captcha`): image-captcha через AI Vision; **Yandex SmartCaptcha** через 2captcha (`method=yandex`); reCAPTCHA через 2captcha или Anti-captcha. См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 - Автоматический fallback на другие провайдеры при блокировке
 
 **Настройка:** конфиг (прокси, use_mobile) — через страницу [Настройки провайдеров](PROVIDERS_SETTINGS.md) (`/settings/providers`) или переменные USE_PROXY, PROXY_URL, PROXY_LIST в .env.

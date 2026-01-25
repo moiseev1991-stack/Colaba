@@ -49,7 +49,7 @@ async def _execute_search_async(search_id: int):
         await db.commit()
         
         try:
-            # Fetch results using selected provider: без fallback — используем только выбранную систему
+            # Fetch results using selected provider (без переключения на других провайдеров)
             from app.modules.providers import get_provider_config
             from app.modules.searches.providers import fetch_search_results as provider_fetch
             import asyncio
@@ -63,16 +63,16 @@ async def _execute_search_async(search_id: int):
                         provider=provider_id,
                         query=search.query,
                         num_results=search.num_results,
-                        enable_fallback=False,  # Не переключать на другую систему
+                        enable_fallback=False,
                         provider_config=provider_config,
                         db=db,
                     ),
-                    timeout=120.0,  # Жёсткий лимит: не крутить дольше 2 минут
+                    timeout=120.0,
                 )
             except asyncio.TimeoutError:
                 raise ValueError(
                     "Поисковая система не ответила за 120 с. "
-                    "Яндекс/Google часто блокируют запросы с серверов. Попробуйте DuckDuckGo, другой провайдер или позже."
+                    "Яндекс/Google часто блокируют запросы с серверов. Включите прокси в настройках провайдера или попробуйте позже."
                 )
             
             # Filter blacklisted domains
@@ -150,9 +150,8 @@ async def _execute_search_async(search_id: int):
 @celery_app.task(name="process_domain_task")
 def process_domain_task(search_id: int, domain: str, first_url: str):
     """
-    Process domain: crawl, extract contacts, run SEO audit.
-    
-    This is a synchronous wrapper for async function.
+    Process domain: crawl, extract contacts. SEO audit only via button (POST .../results/{id}/audit).
+    Sync wrapper for async.
     """
     import asyncio
     
@@ -193,48 +192,38 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
             outreach_text = None
             
             # 4. Determine contact status
+            seo_score = None  # Audit only via button (POST .../results/{id}/audit)
             if phone or email:
                 contact_status = "found"
-                # 5. Run SEO audit only if contacts found
-                from app.modules.filters.seo_audit import audit_url
-                audit_result = await audit_url(first_url)
-                seo_score = audit_result.get("score", 0)
-                audit_details = {
-                    "issues": audit_result.get("issues", []),
-                    "details": audit_result.get("details", {}),
-                }
-                
-                # 6. Generate outreach text if contacts found
                 from app.modules.filters.outreach import generate_outreach_text
                 outreach = generate_outreach_text(
                     domain=domain,
-                    seo_issues=audit_result.get("issues", []),
-                    seo_score=seo_score,
+                    seo_issues=[],
+                    seo_score=None,
                 )
                 outreach_subject = outreach.get("subject")
                 outreach_text = outreach.get("text")
             else:
                 contact_status = "no_contacts"
-                seo_score = None
-                audit_details = {}
-            
-            # 5. Update all results for this domain
+                outreach_subject = None
+                outreach_text = None
+
+            # 5. Update all results for this domain (no audit in metadata; audit only by button)
             metadata = {
                 "crawl": {
                     "total_pages": crawl_data.get("total_pages", 0),
                     "pages": crawl_data.get("pages", []),
                 },
-                "audit": audit_details,
             }
-            
-            for result in domain_results:
-                result.phone = phone
-                result.email = email
-                result.contact_status = contact_status
-                result.seo_score = seo_score
-                result.outreach_subject = outreach_subject
-                result.outreach_text = outreach_text
-                result.extra_data = metadata
+
+            for res in domain_results:
+                res.phone = phone
+                res.email = email
+                res.contact_status = contact_status
+                res.seo_score = seo_score
+                res.outreach_subject = outreach_subject
+                res.outreach_text = outreach_text
+                res.extra_data = metadata
             
             await db.commit()
             

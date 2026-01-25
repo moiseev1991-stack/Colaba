@@ -156,4 +156,4 @@
 - [SEARCH_PROVIDERS.md](SEARCH_PROVIDERS.md) — обзор провайдеров и выбора
 - [HTML_SEARCH_PROVIDERS.md](HTML_SEARCH_PROVIDERS.md) — Yandex/Google HTML, прокси, блокировки
 - [YANDEX_XML_SETUP.md](YANDEX_XML_SETUP.md) — настройка Yandex XML
-- [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md) — обход капчи при использовании HTML-провайдеров
+- [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md) — обход капчи при использовании HTML-провайдеров (image-captcha, Yandex SmartCaptcha через 2captcha, reCAPTCHA)

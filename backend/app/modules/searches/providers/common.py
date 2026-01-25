@@ -103,6 +103,36 @@ async def random_delay(min_seconds: float = 1.0, max_seconds: float = 3.0):
     await asyncio.sleep(delay)
 
 
+# Ключевые слова капчи (общие для detect_blocking и единый источник)
+CAPTCHA_KEYWORDS = [
+    "captcha",
+    "капча",
+    "проверка на робота",
+    "unusual traffic",
+    "verify you're not a robot",
+    "showcaptcha",
+    "smartcaptcha",
+    "smart-captcha",
+    "checkcaptcha",
+    "check_captcha",
+    "подтвердите что запросы",
+    "подтвердите, что запросы",
+    "запросы отправляли вы",
+    "введите символы",
+    "символы с картинки",
+    "введите текст с картинки",
+    "recaptcha",
+]
+
+
+def _html_has_captcha(html_content: Optional[str]) -> bool:
+    """Проверить, есть ли в HTML признаки капчи."""
+    if not html_content:
+        return False
+    c = html_content.lower()
+    return any(kw in c for kw in CAPTCHA_KEYWORDS)
+
+
 def detect_blocking(response: httpx.Response, html_content: Optional[str] = None) -> Dict[str, Any]:
     """
     Детектировать блокировку или капчу в ответе.
@@ -124,15 +154,26 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
         "block_type": None,
         "message": None
     }
-    
-    # Проверка статус кодов
+
+    # Для 403/429: если в теле страницы капча — считать block_type=captcha,
+    # чтобы fetch_with_retry вернул response и провайдер мог вызвать solver
     if response.status_code == 403:
+        if _html_has_captcha(html_content or getattr(response, "text", None) or ""):
+            result["blocked"] = True
+            result["block_type"] = "captcha"
+            result["message"] = "403 с капчей в теле — попытка решить через solver"
+            return result
         result["blocked"] = True
         result["block_type"] = "forbidden"
         result["message"] = "403 Forbidden - доступ запрещен"
         return result
-    
+
     if response.status_code == 429:
+        if _html_has_captcha(html_content or getattr(response, "text", None) or ""):
+            result["blocked"] = True
+            result["block_type"] = "captcha"
+            result["message"] = "429 с капчей в теле — попытка решить через solver"
+            return result
         result["blocked"] = True
         result["block_type"] = "rate_limit"
         result["message"] = "429 Too Many Requests - превышен лимит запросов"
@@ -155,18 +196,8 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
     # Анализ HTML содержимого
     if html_content:
         content_lower = html_content.lower()
-        
-        # Ключевые слова капчи
-        captcha_keywords = [
-            "captcha",
-            "капча",
-            "проверка на робота",
-            "unusual traffic",
-            "verify you're not a robot",
-            "showcaptcha",
-        ]
-        
-        for keyword in captcha_keywords:
+
+        for keyword in CAPTCHA_KEYWORDS:
             if keyword in content_lower:
                 result["blocked"] = True
                 result["block_type"] = "captcha"
@@ -193,6 +224,7 @@ async def fetch_with_retry(
     use_proxy: bool = True,
     referer: Optional[str] = None,
     proxy_overrides: Optional[Dict[str, Any]] = None,
+    cookies: Optional[dict] = None,
 ) -> Optional[httpx.Response]:
     """
     Выполнить HTTP запрос с ретраями и защитой от блокировок.
@@ -244,15 +276,20 @@ async def fetch_with_retry(
                 proxies=proxy_config,
                 headers=headers,
             ) as client:
-                response = await client.get(url)
+                response = await client.get(url, cookies=cookies if cookies else {})
                 html_content = response.text
 
                 # Проверяем на блокировки
                 blocking_info = detect_blocking(response, html_content=html_content)
                 if blocking_info["blocked"]:
-                    # При капче возвращаем response, чтобы провайдер мог вызвать solver и (при реализации) отправить форму
+                    # При капче — возвращаем response, провайдер вызовет solver
                     if blocking_info.get("block_type") == "captcha":
                         logger.warning("Captcha detected for %s: %s", url, blocking_info.get("message"))
+                        return response
+                    # 403/429 — отдаём response провайдеру, чтобы он мог попробовать solver
+                    # (даже если в теле не нашли ключевых слов капчи; ретраи редко помогают)
+                    if response.status_code in (403, 429):
+                        logger.warning("403/429 for %s: returning response so provider can try captcha solver", url)
                         return response
 
                     logger.warning(

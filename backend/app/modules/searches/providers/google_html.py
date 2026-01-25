@@ -6,7 +6,9 @@ Google HTML провайдер для парсинга результатов о
 import re
 import logging
 from typing import List, Dict, Any, Optional
-from urllib.parse import urlparse, quote_plus
+
+import httpx
+from urllib.parse import urlparse, quote_plus, urljoin
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
@@ -99,6 +101,7 @@ async def _fetch_page(
     start: int,
     max_retries: int = 3,
     proxy_overrides: Optional[Dict[str, Any]] = None,
+    db=None,
 ) -> List[Dict[str, Any]]:
     """
     Получить одну страницу результатов (до 10 результатов).
@@ -130,7 +133,11 @@ async def _fetch_page(
     html_content = response.text
     html_to_parse = html_content
     bi = detect_blocking(response, html_content=html_content)
-    if bi.get("blocked") and bi.get("block_type") == "captcha" and db is not None:
+    # Пробуем solver: при явной капче или при 403/429 (часто капча/блок)
+    if db is not None and (
+        (bi.get("blocked") and bi.get("block_type") == "captcha")
+        or response.status_code in (403, 429)
+    ):
         try:
             from app.modules.captcha.solver import solve_image_captcha, solve_recaptcha, _extract_sitekey_and_action
 

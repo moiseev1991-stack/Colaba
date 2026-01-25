@@ -39,7 +39,8 @@ def is_blacklisted(domain: str, blacklist: List[str]) -> bool:
     return False
 
 
-# Pre-seeded blacklist domains (50+ domains from TZ)
+# Pre-seeded blacklist domains: соцсети, маркетплейсы, поисковики, агрегаторы и т.п.
+# Поисковики и агрегаторы — чтобы в результатах оставались только конечные сайты.
 SEED_BLACKLIST = [
     "mail.ru", "dzen.ru", "wikipedia.org", "ozon.ru", "ya.ru",
     "youtube.com", "avito.ru", "wildberries.ru", "telegram.org",
@@ -62,4 +63,12 @@ SEED_BLACKLIST = [
     "livejournal.com", "ivi.ru", "doramalive.news",
     "sberbank.ru", "gazeta.ru",
     "porn365.com", "sex-studentki.pub", "porn365.bike",
+    # Поисковики (доп. к уже имеющимся)
+    "yandex.ru", "google.ru", "bing.com", "baidu.com",
+    "ecosia.org", "qwant.com", "ask.com", "yahoo.com",
+    # Агрегаторы и каталоги
+    "otzovik.com", "irecommend.ru", "zoon.ru", "flamp.ru",
+    "spravkaru.net", "all.biz", "prodoctorov.ru", "docdoc.ru",
+    "napopravku.ru", "gderu.ru", "b2b-center.ru", "tiu.ru",
+    "satom.ru", "deal.by", "yell.com", "hotline.ua",
 ]

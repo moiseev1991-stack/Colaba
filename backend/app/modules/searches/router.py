@@ -114,6 +114,30 @@ async def delete_search(
     )
 
 
+@router.post(
+    "/{search_id}/results/{result_id}/audit",
+    response_model=schemas.SearchResultResponse,
+)
+async def run_result_audit(
+    search_id: int,
+    result_id: int,
+    user_id: int = Depends(get_current_user_id),
+    organization_id: Optional[int] = Depends(get_current_organization_id),
+    db=Depends(get_db),
+):
+    """Run SEO audit for one search result; merge into extra_data.audit, set seo_score."""
+    out = await service.run_result_audit(
+        db=db,
+        search_id=search_id,
+        result_id=result_id,
+        user_id=user_id,
+        organization_id=organization_id,
+    )
+    if not out:
+        raise HTTPException(status_code=404, detail="Search or result not found")
+    return out
+
+
 @router.get("/{search_id}/results/grouped", response_model=schemas.SearchResultsGroupedResponse)
 async def get_search_results_grouped(
     search_id: int,

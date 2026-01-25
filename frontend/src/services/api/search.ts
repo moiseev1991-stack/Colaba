@@ -79,3 +79,16 @@ export async function getSearchResults(searchId: number): Promise<SearchResultRe
 export async function deleteSearch(id: number): Promise<void> {
   await apiClient.delete(`/searches/${id}`);
 }
+
+/**
+ * Run SEO audit for one search result. Updates extra_data.audit and seo_score.
+ */
+export async function runResultAudit(
+  searchId: number,
+  resultId: number
+): Promise<SearchResultResponse> {
+  const response = await apiClient.post<SearchResultResponse>(
+    `/searches/${searchId}/results/${resultId}/audit`
+  );
+  return response.data;
+}
