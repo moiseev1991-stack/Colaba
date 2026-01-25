@@ -51,7 +51,10 @@ async def fetch_search_results(
             "Библиотека duckduckgo-search не установлена. "
             "Установите её: pip install duckduckgo-search"
         )
-    
+
+    # Регион из provider_config или аргумент
+    region = (kwargs.get("provider_config") or {}).get("region") or region
+
     # Ограничиваем количество результатов
     num_results = min(num_results, 100)
     

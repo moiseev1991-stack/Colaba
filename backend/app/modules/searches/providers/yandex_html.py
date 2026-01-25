@@ -6,10 +6,12 @@
 import re
 import logging
 from typing import List, Dict, Any, Optional
-from urllib.parse import urlparse, quote_plus
+from urllib.parse import urlparse, quote_plus, urljoin
 from bs4 import BeautifulSoup
+import httpx
 
-from app.modules.searches.providers.common import fetch_with_retry, random_delay
+from app.core.config import settings
+from app.modules.searches.providers.common import detect_blocking, fetch_with_retry, random_delay, get_proxy_config, get_random_user_agent
 
 logger = logging.getLogger(__name__)
 
@@ -49,17 +51,24 @@ async def fetch_search_results(
             # Задержка между страницами
             if page_num > 0:
                 await random_delay(2.0, 4.0)
-            
-            page_results = await _fetch_page(query, region, page_num, max_retries)
+
+            pc = kwargs.get("provider_config")
+            proxy_overrides = {k: pc.get(k) for k in ("use_proxy", "proxy_url", "proxy_list")} if pc is not None else None
+            use_mobile = (pc or {}).get("use_mobile", False)
+
+            page_results = await _fetch_page(
+                query, region, page_num, max_retries,
+                proxy_overrides=proxy_overrides,
+                use_mobile=use_mobile,
+                db=kwargs.get("db"),
+            )
             
             if not page_results:
-                # Если не получили результаты, пробуем еще раз
                 if page_num == 0:
-                    # Для первой страницы это критично - выбрасываем исключение для fallback
-                    logger.warning(f"No results on first page for query: {query}")
-                    raise ValueError(f"Failed to fetch Yandex search results: no results on first page (likely blocked)")
+                    # Для первой страницы: 0 результатов = блокировка или смена вёрстки → raise для fallback
+                    logger.warning(f"No results on first page for query: {query} (blocked or HTML changed)")
+                    raise ValueError("Yandex HTML: no results on first page (likely blocked or captcha). Use duckduckgo or Yandex XML with API keys.")
                 else:
-                    # Для последующих страниц просто останавливаемся
                     break
             
             all_results.extend(page_results)
@@ -90,6 +99,9 @@ async def _fetch_page(
     region: int,
     page: int,
     max_retries: int = 3,
+    proxy_overrides: Optional[Dict[str, Any]] = None,
+    use_mobile: bool = False,
+    db=None,
 ) -> List[Dict[str, Any]]:
     """
     Получить одну страницу результатов (до 10 результатов).
@@ -103,21 +115,44 @@ async def _fetch_page(
     Returns:
         List of search results
     """
-    # URL поиска Яндекса
+    # URL поиска Яндекса: десктоп или мобильный (touch) при use_mobile
     encoded_query = quote_plus(query)
-    url = f"https://yandex.ru/search/?text={encoded_query}&lr={region}&p={page}"
+    if use_mobile:
+        url = f"https://yandex.ru/search/touch/?text={encoded_query}&lr={region}&p={page}"
+    else:
+        url = f"https://yandex.ru/search/?text={encoded_query}&lr={region}&p={page}"
     
-    # Выполняем запрос с ретраями
-    response = await fetch_with_retry(url, max_retries=max_retries, timeout=30.0)
-    
+    # Выполняем запрос с ретраями (referer и proxy для обхода блокировок)
+    response = await fetch_with_retry(
+        url, max_retries=max_retries, timeout=30.0,
+        referer="https://yandex.ru/", proxy_overrides=proxy_overrides
+    )
+
     if response is None:
         logger.error(f"Failed to fetch Yandex search page {page} for query: {query}")
         return []
-    
+
+    html_content = response.text
+    html_to_parse = html_content
+    bi = detect_blocking(response, html_content=html_content)
+    if bi.get("blocked") and bi.get("block_type") == "captcha" and db is not None:
+        try:
+            from app.modules.captcha.solver import solve_image_captcha
+
+            solution = await solve_image_captcha(html_content, str(response.url), "yandex", db)
+            if solution:
+                new_html = await _try_submit_yandex_captcha_form(
+                    html_content, str(response.url), solution, dict(response.cookies), proxy_overrides
+                )
+                if new_html:
+                    html_to_parse = new_html
+                    logger.info("Yandex captcha form submitted and got new page")
+        except Exception as e:
+            logger.warning("Yandex solve_image_captcha or form submit: %s", e)
+
     # Парсим HTML
     try:
-        html_content = response.text
-        soup = BeautifulSoup(html_content, 'html.parser')
+        soup = BeautifulSoup(html_to_parse, "html.parser")
         
         results = []
         
@@ -175,12 +210,70 @@ async def _fetch_page(
                         
                         if len(results) >= 10:
                             break
-        
+
+        # Отладка при 0 результатов: логировать начало HTML (капча/блокировка vs смена вёрстки)
+        if len(results) == 0 and settings.DEBUG:
+            logger.debug("[DEBUG] HTML (0 results): %s", (html_to_parse or "")[:5000])
+
         return results
-        
+
     except Exception as e:
         logger.error(f"Error parsing Yandex HTML for query '{query}', page {page}: {e}")
         return []
+
+
+async def _try_submit_yandex_captcha_form(
+    html_content: str, page_url: str, solution: str, cookies: dict, proxy_overrides: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
+    """
+    Найти форму капчи в HTML, подставить solution и отправить POST.
+    Возвращает text новой страницы или None.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    form = soup.find("form", action=True)
+    if not form:
+        return None
+    action = (form.get("action") or "").strip()
+    if not action:
+        return None
+    action_url = urljoin(page_url, action)
+    # Поле для ответа: rep (Яндекс), captcha, answer, response
+    answer_names = ("rep", "captcha", "answer", "response", "recaptcha-response")
+    answer_input = None
+    for n in answer_names:
+        answer_input = form.find("input", {"name": n})
+        if answer_input:
+            break
+    if not answer_input:
+        return None
+
+    data: Dict[str, str] = {answer_input.get("name", "rep"): solution}
+    for inp in form.find_all("input", {"name": True}):
+        name = inp.get("name")
+        if not name or name in answer_names:
+            continue
+        if inp.get("type") == "hidden" and inp.get("value") is not None:
+            data[name] = inp.get("value", "")
+
+    proxy_config = get_proxy_config(proxy_overrides)
+    headers = {
+        "User-Agent": get_random_user_agent(),
+        "Referer": page_url,
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
+            r = await client.post(action_url, data=data, cookies=cookies, headers=headers)
+            if r.status_code != 200:
+                return None
+            # Если снова капча — не используем
+            bi = detect_blocking(r, r.text)
+            if bi.get("blocked") and bi.get("block_type") == "captcha":
+                return None
+            return r.text
+    except Exception as e:
+        logger.debug("_try_submit_yandex_captcha_form: %s", e)
+        return None
 
 
 def _parse_yandex_item(item, position: int) -> Optional[Dict[str, Any]]:

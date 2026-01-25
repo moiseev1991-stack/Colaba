@@ -46,34 +46,48 @@ def get_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
 
-def get_proxy_config() -> Optional[Dict[str, str]]:
+def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, str]]:
     """
-    Получить конфигурацию прокси из настроек.
+    Получить конфигурацию прокси из настроек или из proxy_overrides.
+    
+    Если proxy_overrides задан и содержит proxy_url или proxy_list и use_proxy — использовать их.
+    Иначе — USE_PROXY, PROXY_URL, PROXY_LIST из settings.
     
     Поддерживает:
-    - PROXY_URL - одиночный прокси (http://proxy:port или socks5://proxy:port)
-    - PROXY_LIST - список прокси через запятую
+    - PROXY_URL / proxy_url — одиночный прокси (http://proxy:port или socks5://proxy:port)
+    - PROXY_LIST / proxy_list — список прокси через запятую
     
     Returns:
         Словарь с настройками прокси для httpx или None
     """
-    if not getattr(settings, 'USE_PROXY', False):
+    use_proxy = False
+    proxy_url = None
+    proxy_list = None
+
+    if proxy_overrides and proxy_overrides.get("use_proxy", True) and (
+        proxy_overrides.get("proxy_url") or proxy_overrides.get("proxy_list")
+    ):
+        use_proxy = True
+        proxy_url = proxy_overrides.get("proxy_url") or None
+        proxy_list = proxy_overrides.get("proxy_list") or None
+    else:
+        use_proxy = settings.USE_PROXY
+        proxy_url = settings.PROXY_URL or None
+        proxy_list = settings.PROXY_LIST or None
+
+    if not use_proxy:
         return None
-    
-    proxy_url = getattr(settings, 'PROXY_URL', None)
-    proxy_list = getattr(settings, 'PROXY_LIST', None)
-    
+
     # Приоритет: PROXY_URL > PROXY_LIST
     if proxy_url:
         return {"http://": proxy_url, "https://": proxy_url}
-    
+
     if proxy_list:
-        # Выбираем случайный прокси из списка
-        proxies = [p.strip() for p in proxy_list.split(',') if p.strip()]
+        proxies = [p.strip() for p in proxy_list.split(",") if p.strip()]
         if proxies:
             selected_proxy = random.choice(proxies)
             return {"http://": selected_proxy, "https://": selected_proxy}
-    
+
     return None
 
 
@@ -177,6 +191,8 @@ async def fetch_with_retry(
     base_delay: float = 2.0,
     timeout: float = 30.0,
     use_proxy: bool = True,
+    referer: Optional[str] = None,
+    proxy_overrides: Optional[Dict[str, Any]] = None,
 ) -> Optional[httpx.Response]:
     """
     Выполнить HTTP запрос с ретраями и защитой от блокировок.
@@ -187,11 +203,12 @@ async def fetch_with_retry(
         base_delay: Базовая задержка для экспоненциального backoff
         timeout: Таймаут запроса в секундах
         use_proxy: Использовать прокси если настроено
+        referer: Реферер для запроса (опционально, напр. https://yandex.ru/ или https://www.google.com/)
     
     Returns:
         Response объект или None если все попытки провалились
     """
-    proxy_config = get_proxy_config() if use_proxy else None
+    proxy_config = get_proxy_config(proxy_overrides) if use_proxy else None
     
     for attempt in range(max_retries):
         try:
@@ -203,7 +220,7 @@ async def fetch_with_retry(
                 # Небольшая случайная задержка перед первым запросом
                 await random_delay(0.5, 1.5)
             
-            # Создаем клиент с прокси и случайным User-Agent
+            # Создаем клиент с прокси и случайным User-Agent; заголовки «как у браузера»
             headers = {
                 "User-Agent": get_random_user_agent(),
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -211,7 +228,15 @@ async def fetch_with_retry(
                 "Accept-Encoding": "gzip, deflate, br",
                 "Connection": "keep-alive",
                 "Upgrade-Insecure-Requests": "1",
+                "Sec-Ch-Ua": '"Google Chrome";v="120", "Not_A Brand";v="24"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Dest": "document",
             }
+            if referer:
+                headers["Referer"] = referer
             
             async with httpx.AsyncClient(
                 timeout=timeout,
@@ -220,18 +245,22 @@ async def fetch_with_retry(
                 headers=headers,
             ) as client:
                 response = await client.get(url)
-                
+                html_content = response.text
+
                 # Проверяем на блокировки
-                blocking_info = detect_blocking(response)
+                blocking_info = detect_blocking(response, html_content=html_content)
                 if blocking_info["blocked"]:
+                    # При капче возвращаем response, чтобы провайдер мог вызвать solver и (при реализации) отправить форму
+                    if blocking_info.get("block_type") == "captcha":
+                        logger.warning("Captcha detected for %s: %s", url, blocking_info.get("message"))
+                        return response
+
                     logger.warning(
                         f"Blocking detected for {url} (attempt {attempt + 1}/{max_retries}): "
                         f"{blocking_info['message']}"
                     )
-                    
-                    # Если это капча или блокировка, пробуем еще раз с большей задержкой
                     if attempt < max_retries - 1:
-                        delay = base_delay * (2 ** attempt) * 2  # Удваиваем задержку для блокировок
+                        delay = base_delay * (2 ** attempt) * 2
                         await asyncio.sleep(delay)
                         continue
                     else:

@@ -68,6 +68,10 @@ results = await fetch_search_results(
 
 Для дополнительной защиты от блокировок можно настроить прокси.
 
+#### Через страницу «Провайдеры» (`/settings/providers`)
+
+Настройки прокси для `yandex_html` и `google_html` задаются в форме провайдера: `use_proxy`, `proxy_url`, `proxy_list`. Они сохраняются в БД (`SearchProviderConfig`) и при запросе объединяются с переменными окружения через `get_provider_config`. В `fetch_with_retry` используется `get_proxy_config(proxy_overrides)` из `common.py`, куда передаётся `{use_proxy, proxy_url, proxy_list}` из `provider_config`. Подробнее: [PROVIDERS_SETTINGS.md](PROVIDERS_SETTINGS.md).
+
 #### Через environment variables
 
 Добавьте в `.env`:
@@ -95,7 +99,21 @@ PROXY_LIST=http://proxy1.example.com:8080,http://proxy2.example.com:8080,socks5:
 
 Если указан `PROXY_LIST`, система случайно выбирает прокси из списка для каждого запроса.
 
-## Детектирование блокировок
+#### Referer и use_mobile
+
+- **Referer** — в `fetch_with_retry` передаётся заголовок `Referer`: для Яндекс `https://yandex.ru/`, для Google `https://www.google.com/`. Снижает вероятность блокировок.
+- **use_mobile (только Яндекс)** — при `use_mobile=true` в настройках провайдера `yandex_html` используется мобильный URL: `https://yandex.ru/search/touch/?text=...` вместо `https://yandex.ru/search/?text=...`. Настраивается на `/settings/providers`.
+
+## Детектирование блокировок и обход капчи
+
+Функция `detect_blocking` в `common.py` по коду ответа, URL и HTML определяет блокировку и `block_type` (`captcha`, `rate_limit`, `forbidden` и т.п.). При `block_type=="captcha"` вызывающему коду возвращается `response`, чтобы HTML‑провайдер мог вызвать **решатель капчи** (solver) и при успехе отправить форму с решением, после чего повторить парсинг.
+
+- **Image-captcha** — решается через AI с поддержкой Vision (настраивается в `/settings/captcha`).
+- **reCAPTCHA v2/v3** — через 2captcha или Anti-captcha (настройки в `/settings/captcha`).
+
+Подробнее: [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md).
+
+---
 
 Система автоматически детектирует следующие типы блокировок:
 
@@ -140,9 +158,11 @@ Fallback можно отключить, установив `enable_fallback=Fals
 
 **Решения:**
 1. Проверьте логи на наличие ошибок парсинга
-2. Настройте прокси
-3. Увеличьте задержки между запросами
-4. Используйте fallback на другой провайдер
+2. При `DEBUG=true` при 0 результатов в лог пишутся первые 5000 символов HTML: `[DEBUG] HTML (0 results): ...` — по ним можно понять капчу или смену вёрстки
+3. Настройте прокси (через `/settings/providers` или USE_PROXY, PROXY_URL, PROXY_LIST в .env)
+4. Настройте обход капчи (AI Vision, 2captcha, Anti-captcha) в `/settings/captcha`
+5. Увеличьте задержки между запросами
+6. Используйте fallback на другой провайдер (если не отключён)
 
 ### Проблема: Частые блокировки
 
@@ -273,7 +293,7 @@ results = await fetch_search_results(
 
 1. **Изменение HTML структуры** - при изменении структуры страниц поиска парсеры могут перестать работать и потребуют обновления
 2. **Блокировки** - при частых запросах возможны блокировки IP, даже с защитными мерами
-3. **Капчи** - поисковые системы могут показывать капчу, которую автоматически решить нельзя
+3. **Капчи** — при настроенном обходе капчи (AI Vision, 2captcha, Anti-captcha в `/settings/captcha`) image-captcha и reCAPTCHA решаются автоматически. См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 4. **Производительность** - парсинг HTML медленнее чем использование API
 
 ## Альтернативы

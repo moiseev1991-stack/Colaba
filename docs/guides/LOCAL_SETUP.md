@@ -89,6 +89,14 @@ docker compose ps
 - **API Documentation (Swagger)**: http://localhost:8000/api/docs
 - **API Documentation (ReDoc)**: http://localhost:8000/api/redoc
 
+### Страницы настроек (после входа)
+
+- **Провайдеры поиска** (прокси, ключи, «Проверить»): http://localhost:3000/settings/providers — см. [PROVIDERS_SETTINGS.md](PROVIDERS_SETTINGS.md)
+- **AI-ассистенты** (CRUD, модели для чата и Vision): http://localhost:3000/settings/ai-assistants — см. [AI_ASSISTANTS.md](AI_ASSISTANTS.md)
+- **Обход капчи** (AI Vision, 2captcha, Anti-captcha): http://localhost:3000/settings/captcha — см. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
+
+Прокси для HTML-провайдеров (Яндекс, Google) можно задать в `/settings/providers` или через USE_PROXY, PROXY_URL, PROXY_LIST в `.env`.
+
 ## Полезные команды
 
 ### Просмотр логов
@@ -120,6 +128,26 @@ docker compose restart
 ```powershell
 docker compose up -d --build
 ```
+
+### После изменений в коде — что делать с контейнерами
+
+Код `backend/` и `frontend/` **монтируется** в контейнеры (`volumes: ./backend:/app`), поэтому файлы на диске и внутри контейнера — одни и те же.
+
+| Что изменилось | Что делать |
+|----------------|------------|
+| **Только .py (backend)** | Ничего. Uvicorn с `--reload` сам подхватывает изменения. |
+| **Только .ts, .tsx, .css (frontend)** | Ничего. Next.js `npm run dev` подхватывает. |
+| **Код, который крутит Celery** (таски, очереди) | `docker compose restart celery-worker` |
+| **requirements.txt** (новые/другие pip-пакеты) | `docker compose build backend` затем `docker compose up -d backend celery-worker` |
+| **package.json** (новые npm-пакеты) | `docker compose build frontend` затем `docker compose up -d frontend` |
+| **Dockerfile** (backend или frontend) | `docker compose build <backend или frontend>` затем `docker compose up -d <сервис>` |
+| **docker-compose.yml** или **.env** | `docker compose up -d` (подхватит новые переменные) |
+
+**Шпаргалка:**
+- Правки в **.py** → сохранить → через 1–2 сек backend уже с новым кодом.
+- Правки в **.ts/.tsx** → сохранить → frontend обновляется сам.
+- Правки в **requirements.txt** → `docker compose build backend` → `docker compose up -d backend celery-worker`.
+- Правки в **package.json** → `docker compose build frontend` → `docker compose up -d frontend`.
 
 ### Выполнение команд в контейнере
 

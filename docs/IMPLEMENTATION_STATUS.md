@@ -1,6 +1,6 @@
 # LeadGen Constructor - Статус реализации по ТЗ
 
-**Последнее обновление**: 23 января 2026
+**Последнее обновление**: 24 января 2026
 
 ## ✅ Реализовано
 
@@ -95,6 +95,29 @@
 - ✅ Frontend для управления организациями
 - ✅ API endpoints для управления организациями и пользователями
 
+### 3. AI-ассистенты, обход капчи, настройки провайдеров
+
+- ✅ **AI-ассистенты**  
+  - Модель `AiAssistant` (provider_type, model, config, supports_vision, is_default), миграция 005  
+  - Реестр провайдеров: openai, anthropic, google, mistral, ollama, groq, together, openrouter, azure_openai, xai, deepseek, other  
+  - CRUD API `/api/v1/ai-assistants`, GET `/ai-assistants/registry`  
+  - Клиент `chat()` и `vision()` в `app.modules.ai_assistants.client`  
+  - Страница `/settings/ai-assistants` (CRUD, шаблоны, «Сделать по умолчанию»)  
+- ✅ **Обход капчи**  
+  - Модель `CaptchaBypassConfig` (ai_assistant_id, external_services: 2captcha, anticaptcha), миграция 006  
+  - API GET/PUT `/api/v1/captcha-config`, POST `test-2captcha`, `test-ai`  
+  - Solver: `solve_image_captcha` (AI Vision), `solve_recaptcha` (2captcha, anticaptcha)  
+  - Интеграция в `common.detect_blocking`, `yandex_html`, `google_html` (подстановка в формы, retry)  
+  - Страница `/settings/captcha`  
+- ✅ **Настройки провайдеров поиска**  
+  - Модель `SearchProviderConfig` (provider_id, config), миграция 004, реестр `PROVIDER_REGISTRY`  
+  - API GET/PUT `/api/v1/providers`, POST `/providers/{id}/test` (тест с `enable_fallback=False`)  
+  - `get_provider_config(provider_id, db)` — БД + env (USE_PROXY, PROXY_*, YANDEX_XML_FOLDER_ID/KEY, SERPAPI_KEY)  
+  - `get_proxy_config(proxy_overrides)` в `common.py` — прокси из provider_config или env; `fetch_with_retry(referer=..., proxy_overrides=...)` — referer (yandex.ru, google.com), прокси  
+  - `use_mobile` для yandex_html — мобильный URL `.../search/touch/?text=...`  
+  - DEBUG: при 0 результатов в HTML-провайдерах в лог пишутся первые 5000 символов HTML  
+  - Страница `/settings/providers`: проверка токена до load (при отсутствии — «Войдите» + ссылка на login), `getErrorMessage` для 401/403/5xx; бэкенд `get_providers_list` — try/except, обработка `row.config is None`
+
 ## ❌ НЕ реализовано (критично для production)
 
 ### 3. Интеграция с Яндекс XML API
@@ -132,7 +155,7 @@
 
 1. **Настройка поисковых провайдеров** (реализовано)
    - **DuckDuckGo** - работает сразу, без настройки (по умолчанию)
-   - **Яндекс XML API** - опционально, добавить YANDEX_XML_USER и YANDEX_XML_KEY в .env
+   - **Яндекс XML** (Yandex Cloud Search API) — опционально, YANDEX_XML_FOLDER_ID и YANDEX_XML_KEY в .env
    - Rate limiting для production (опционально)
 
 2. **Улучшения краулера**
@@ -263,7 +286,10 @@ curl http://localhost:8000/api/v1/searches/{id}/results/grouped
 ## 📚 Дополнительная документация
 
 - Поисковые провайдеры: `docs/guides/SEARCH_PROVIDERS.md` ⭐ (DuckDuckGo работает сразу!)
+- Настройка провайдеров (страница, API, get_provider_config): `docs/guides/PROVIDERS_SETTINGS.md`
 - Настройка Яндекс XML API: `docs/guides/YANDEX_XML_SETUP.md`
+- AI-ассистенты (CRUD, реестр, chat/vision): `docs/guides/AI_ASSISTANTS.md`
+- Обход капчи (AI Vision, 2captcha, anticaptcha, интеграция в HTML-провайдеры): `docs/guides/CAPTCHA_BYPASS.md`
 - Структура проекта: `docs/guides/PROJECT_STRUCTURE_RULES.md`
 - Git workflow: `docs/guides/REPOSITORY_WORKFLOW_RULES.md`
 - Локальная установка: `docs/guides/LOCAL_SETUP.md`

@@ -16,6 +16,9 @@
 - [MODULE_GUIDE.md](guides/MODULE_GUIDE.md) - Руководство по созданию модулей
 - [GIT_SETUP_INSTRUCTIONS.md](guides/GIT_SETUP_INSTRUCTIONS.md) - Инструкции по настройке Git
 - [SETUP_INSTRUCTIONS.md](guides/SETUP_INSTRUCTIONS.md) - Инструкции по установке
+- [PROVIDERS_SETTINGS.md](guides/PROVIDERS_SETTINGS.md) - Настройки провайдеров поиска (страница, API, get_provider_config)
+- [AI_ASSISTANTS.md](guides/AI_ASSISTANTS.md) - AI-ассистенты (CRUD, реестр, chat/vision)
+- [CAPTCHA_BYPASS.md](guides/CAPTCHA_BYPASS.md) - Обход капчи (AI Vision, 2captcha, anticaptcha)
 
 ### Развертывание
 - [DEPLOYMENT.md](deployment/DEPLOYMENT.md) - Документация по развертыванию

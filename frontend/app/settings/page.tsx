@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -194,6 +195,45 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="mt-5"></div>
+        </div>
+
+        {/* Провайдеры поиска */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Провайдеры поиска</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            Настройка DuckDuckGo, Яндекс HTML/XML, Google HTML, SerpAPI: прокси, API-ключи, проверка подключения.
+          </p>
+          <Link href="/settings/providers">
+            <Button variant="outline" size="sm">
+              Открыть настройки провайдеров
+            </Button>
+          </Link>
+        </div>
+
+        {/* AI-ассистенты */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">AI-ассистенты</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            OpenAI, Anthropic, Google, Ollama и др.: настройка моделей для чата и vision (в т.ч. обход капчи).
+          </p>
+          <Link href="/settings/ai-assistants">
+            <Button variant="outline" size="sm">
+              Открыть AI-ассистенты
+            </Button>
+          </Link>
+        </div>
+
+        {/* Обход капчи */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Обход капчи</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            AI Vision для картинок, 2captcha и Anti-captcha для reCAPTCHA. Выбор AI-ассистента, проверка подключения.
+          </p>
+          <Link href="/settings/captcha">
+            <Button variant="outline" size="sm">
+              Открыть настройки обхода капчи
+            </Button>
+          </Link>
         </div>
 
         {/* Contacts Block */}

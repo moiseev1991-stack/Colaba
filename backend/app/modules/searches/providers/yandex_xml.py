@@ -1,174 +1,137 @@
 """
-Яндекс XML API provider for search results.
+Yandex Cloud Search API (web search) через yandex_cloud_ml_sdk.
 
-Документация: https://yandex.ru/dev/xml/doc/dg/concepts/about.html
+Дока: https://yandex.cloud/ru/docs/search-api/quickstart
+Нужны: folder_id (идентификатор каталога), api_key (API-ключ сервисного аккаунта).
 """
 
-import httpx
+import asyncio
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
-from app.core.config import settings
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/132.0.0.0 YaBrowser/25.2.0.0 Safari/537.36"
+)
+
+
+def _is_permission_denied(err: BaseException) -> bool:
+    s = str(err)
+    try:
+        d = getattr(err, "details", None)
+        if callable(d):
+            s = f"{s} {d()}"
+        elif isinstance(d, str):
+            s = f"{s} {d}"
+    except Exception:
+        pass
+    return (
+        "Permission denied" in s
+        or "PERMISSION_DENIED" in s
+        or "grpc_status:7" in s
+        or "StatusCode.PERMISSION_DENIED" in s
+    )
+
+
+def _fetch_page_sync(folder_id: str, api_key: str, query: str, page: int) -> bytes:
+    """Синхронный вызов SDK: одна страница в XML. Блокирует — вызывать из to_thread."""
+    from yandex_cloud_ml_sdk import YCloudML
+    from yandex_cloud_ml_sdk._auth import APIKeyAuth
+
+    auth = APIKeyAuth(api_key=api_key)
+    sdk = YCloudML(folder_id=folder_id, auth=auth)
+    try:
+        sdk.setup_default_logging("error")
+    except Exception:
+        pass
+    try:
+        search = sdk.search_api.web(search_type="ru", user_agent=USER_AGENT)
+        operation = search.run_deferred(query, format="xml", page=page)
+        return operation.wait(poll_interval=1)
+    except Exception as e:
+        if _is_permission_denied(e):
+            raise ValueError(
+                "Yandex Cloud Search API: Permission denied. Часто: 1) Нужен «Создать API-ключ» у СА (не «Статический ключ доступа»), ключ AQVN...; "
+                "2) роли «Редактор» или «ai.editor» на каталог у этого СА; 3) folder_id = ID того же каталога. Подробно: docs/guides/YANDEX_XML_SETUP.md"
+            ) from e
+        raise
+
+
+def _parse_xml_results(xml_bytes: bytes, page: int) -> List[Dict[str, Any]]:
+    """Парсит XML из Search API в список {position, title, url, snippet, domain}."""
+    results = []
+    try:
+        root = ET.fromstring(xml_bytes.decode("utf-8"))
+    except Exception as e:
+        raise ValueError(f"Yandex Cloud Search API: не удалось разобрать XML: {e}") from e
+
+    error = root.find(".//error")
+    if error is not None:
+        code = error.get("code", "unknown")
+        text = error.text or "Unknown error"
+        raise ValueError(f"Yandex Cloud Search API error {code}: {text}")
+
+    response_elem = root.find(".//response")
+    if response_elem is None:
+        return results
+
+    groups = response_elem.findall(".//group")
+    for idx, group in enumerate(groups, start=page * 10 + 1):
+        doc = group.find(".//doc")
+        if doc is None:
+            continue
+        url_elem = doc.find(".//url")
+        title_elem = doc.find(".//title")
+        snippet_elem = doc.find(".//passages/passage") or doc.find(".//headline")
+        url = (url_elem.text or "").strip() if url_elem is not None else ""
+        title = (title_elem.text or "").strip() if title_elem is not None else ""
+        snippet = (snippet_elem.text or "").strip() if snippet_elem is not None and snippet_elem.text else ""
+        domain = urlparse(url).netloc if url else ""
+        results.append({"position": idx, "title": title, "url": url, "snippet": snippet, "domain": domain})
+
+    return results
 
 
 async def fetch_search_results(
     query: str,
     num_results: int = 50,
-    region: int = 213,  # Москва по умолчанию (список регионов: https://yandex.ru/dev/xml/doc/dg/reference/regions.html)
+    region: int = 213,
     page: int = 0,
+    provider_config: Optional[dict] = None,
+    **kwargs,
 ) -> List[Dict[str, Any]]:
     """
-    Получить результаты поиска из Яндекс XML API.
-    
-    Args:
-        query: Поисковый запрос (максимум 40 слов и 400 символов)
-        num_results: Количество результатов (максимум 100 на страницу)
-        region: ID региона поиска (213 = Москва, 1 = Санкт-Петербург, 2 = Екатеринбург и т.д.)
-        page: Номер страницы (0 = первая страница, 10 результатов на страницу)
-    
-    Returns:
-        List of search results with title, url, snippet, position, domain
-    
-    Raises:
-        ValueError: Если API ключ не настроен или произошла ошибка запроса
+    Результаты веб-поиска через Yandex Cloud Search API (yandex_cloud_ml_sdk).
+    Провайдер «Яндекс XML»: folder_id и api_key из provider_config или YANDEX_XML_FOLDER_ID, YANDEX_XML_KEY.
     """
-    if not settings.YANDEX_XML_USER or not settings.YANDEX_XML_KEY:
-        # Для MVP: возвращаем mock данные если нет API ключа
-        return _get_mock_results(query, num_results)
-    
-    # Ограничиваем количество результатов (максимум 100 на страницу)
+    from app.core.config import settings
+
+    cfg = provider_config or {}
+    folder_id = (cfg.get("folder_id") or getattr(settings, "YANDEX_XML_FOLDER_ID", None) or "").strip()
+    api_key = (cfg.get("api_key") or getattr(settings, "YANDEX_XML_KEY", None) or "").strip()
+
+    if not folder_id or not api_key:
+        raise ValueError(
+            "Yandex Cloud Search API не настроен. Укажите в Провайдеры → Яндекс XML: "
+            "«Идентификатор каталога» (folder_id) и «API-ключ» (сервисного аккаунта). "
+            "Дока: https://yandex.cloud/ru/docs/search-api/quickstart"
+        )
+
     num_results = min(num_results, 100)
-    
-    # Яндекс XML API возвращает по 10 результатов на страницу
-    # Нужно сделать несколько запросов если нужно больше результатов
     all_results = []
-    pages_needed = (num_results + 9) // 10  # Округляем вверх
-    
+    pages_needed = (num_results + 9) // 10
+
     for page_num in range(pages_needed):
-        page_results = await _fetch_page(query, region, page_num)
+        xml_bytes = await asyncio.to_thread(
+            _fetch_page_sync, folder_id, api_key, query, page_num
+        )
+        page_results = _parse_xml_results(xml_bytes, page_num)
         all_results.extend(page_results)
-        
-        # Если получили меньше 10 результатов, значит больше нет
         if len(page_results) < 10:
             break
-        
-        # Если уже получили нужное количество, останавливаемся
         if len(all_results) >= num_results:
             break
-    
-    # Возвращаем только нужное количество результатов
+
     return all_results[:num_results]
-
-
-async def _fetch_page(
-    query: str,
-    region: int,
-    page: int,
-) -> List[Dict[str, Any]]:
-    """
-    Получить одну страницу результатов (до 10 результатов).
-    
-    Args:
-        query: Поисковый запрос
-        region: ID региона
-        page: Номер страницы (0-based)
-    
-    Returns:
-        List of search results
-    """
-    # Яндекс XML API endpoint (можно настроить через YANDEX_XML_URL в .env)
-    # Официальный API: https://yandex.ru/dev/xml/
-    # Также можно использовать сторонние прокси (xmlriver.com, xmlstock.com)
-    url = settings.YANDEX_XML_URL
-    
-    params = {
-        "user": settings.YANDEX_XML_USER,
-        "key": settings.YANDEX_XML_KEY,
-        "query": query,
-        "lr": region,  # Регион поиска
-        "page": page,  # Номер страницы (0-based)
-        "groupby": "attr=d.mode=deep.groups-on-page=10.docs-in-group=1",  # Группировка результатов
-    }
-    
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            response = await client.get(url, params=params)
-            response.raise_for_status()
-            
-            # Парсим XML ответ
-            root = ET.fromstring(response.text)
-            
-            # Проверяем на ошибки
-            error = root.find(".//error")
-            if error is not None:
-                error_code = error.get("code", "unknown")
-                error_text = error.text or "Unknown error"
-                raise ValueError(f"Yandex XML API error {error_code}: {error_text}")
-            
-            # Извлекаем результаты
-            results = []
-            response_elem = root.find(".//response")
-            if response_elem is None:
-                return results
-            
-            # Находим все группы результатов
-            groups = response_elem.findall(".//group")
-            
-            for idx, group in enumerate(groups, start=page * 10 + 1):
-                # Берем первый документ из группы (docs-in-group=1)
-                doc = group.find(".//doc")
-                if doc is None:
-                    continue
-                
-                # Извлекаем данные
-                url_elem = doc.find(".//url")
-                title_elem = doc.find(".//title")
-                snippet_elem = doc.find(".//passages/passage")
-                
-                url = url_elem.text if url_elem is not None and url_elem.text else ""
-                title = title_elem.text if title_elem is not None and title_elem.text else ""
-                snippet = snippet_elem.text if snippet_elem is not None and snippet_elem.text else ""
-                
-                # Извлекаем домен из URL
-                domain = urlparse(url).netloc if url else ""
-                
-                results.append({
-                    "position": idx,
-                    "title": title,
-                    "url": url,
-                    "snippet": snippet,
-                    "domain": domain,
-                })
-            
-            return results
-            
-        except httpx.HTTPStatusError as e:
-            raise ValueError(f"Yandex XML API HTTP error: {e.response.status_code} - {e.response.text}")
-        except ET.ParseError as e:
-            raise ValueError(f"Yandex XML API parse error: {str(e)}")
-        except Exception as e:
-            raise ValueError(f"Yandex XML API request failed: {str(e)}")
-
-
-def _get_mock_results(query: str, num_results: int) -> List[Dict[str, Any]]:
-    """
-    Генерирует mock результаты для тестирования без API ключа.
-    
-    Args:
-        query: Поисковый запрос
-        num_results: Количество результатов
-    
-    Returns:
-        List of mock search results
-    """
-    return [
-        {
-            "position": i,
-            "title": f"Mock Result {i} for '{query}'",
-            "url": f"https://example{i}.com",
-            "snippet": f"This is a mock result {i} for testing purposes. Query: {query}",
-            "domain": f"example{i}.com",
-        }
-        for i in range(1, min(num_results, 10) + 1)
-    ]

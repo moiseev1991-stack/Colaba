@@ -8,6 +8,7 @@ async def fetch_search_results(
     query: str,
     num_results: int = 50,
     enable_fallback: bool = True,
+    provider_config: dict | None = None,
     **kwargs,
 ) -> List[Dict[str, Any]]:
     """
@@ -47,23 +48,23 @@ async def fetch_search_results(
         try:
             if current_provider == "duckduckgo":
                 from app.modules.searches.providers.duckduckgo import fetch_search_results as duckduckgo_fetch
-                return await duckduckgo_fetch(query=query, num_results=num_results, **kwargs)
+                return await duckduckgo_fetch(query=query, num_results=num_results, provider_config=provider_config, **kwargs)
             
             elif current_provider == "yandex_xml":
                 from app.modules.searches.providers.yandex_xml import fetch_search_results as yandex_fetch
-                return await yandex_fetch(query=query, num_results=num_results, **kwargs)
+                return await yandex_fetch(query=query, num_results=num_results, provider_config=provider_config, **kwargs)
             
             elif current_provider == "serpapi":
                 from app.modules.searches.providers.serpapi import fetch_search_results as serpapi_fetch
-                return await serpapi_fetch(query=query, num_results=num_results, **kwargs)
+                return await serpapi_fetch(query=query, num_results=num_results, provider_config=provider_config, **kwargs)
             
             elif current_provider == "yandex_html":
                 from app.modules.searches.providers.yandex_html import fetch_search_results as yandex_html_fetch
-                return await yandex_html_fetch(query=query, num_results=num_results, **kwargs)
+                return await yandex_html_fetch(query=query, num_results=num_results, provider_config=provider_config, **kwargs)
             
             elif current_provider == "google_html":
                 from app.modules.searches.providers.google_html import fetch_search_results as google_html_fetch
-                return await google_html_fetch(query=query, num_results=num_results, **kwargs)
+                return await google_html_fetch(query=query, num_results=num_results, provider_config=provider_config, **kwargs)
             
         except ValueError as e:
             error_msg = str(e).lower()

@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SearchCard } from '@/components/SearchCard';
 import { tokenStorage } from '@/client';
+import { createSearch } from '@/src/services/api/search';
 import { Loader2 } from 'lucide-react';
 import { ToastContainer, type Toast } from '@/components/Toast';
 
 export default function HomePage() {
   const router = useRouter();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -17,13 +17,6 @@ export default function HomePage() {
     if (!token) {
       router.push('/auth/login');
     }
-    
-    // Cleanup timeout on unmount
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
   }, [router]);
   
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +34,7 @@ export default function HomePage() {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const handleSearch = (keyword: string, searchProvider: string) => {
+  const handleSearch = async (keyword: string, searchProvider: string) => {
     // Validation
     if (!keyword.trim() || !city || !searchProvider) {
       setError('Заполните все параметры поиска');
@@ -55,23 +48,24 @@ export default function HomePage() {
     // Don't start if already loading
     if (isLoading) return;
     
-    // Clear previous timeout if exists
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
     setIsLoading(true);
     setError(null);
     
-    // Demo: simulate search process (exactly 10 seconds)
-    const searchDuration = 10000; // 10000ms = 10 seconds
-    
-    timeoutRef.current = setTimeout(() => {
+    try {
+      const query = `${keyword.trim()} ${city}`.trim();
+      const search = await createSearch({
+        query,
+        search_provider: searchProvider,
+        num_results: 50,
+      });
       setIsLoading(false);
-      
-      // Redirect to demo results page
-      router.push('/runs/demo?demo=true');
-    }, searchDuration);
+      router.push(`/runs/${search.id}`);
+    } catch (err: any) {
+      setIsLoading(false);
+      const msg = err.response?.data?.detail || err.message || 'Ошибка при создании поиска';
+      setError(msg);
+      showToast('error', msg);
+    }
   };
 
   return (

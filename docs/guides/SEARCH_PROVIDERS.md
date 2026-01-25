@@ -55,8 +55,8 @@ curl -X POST http://localhost:8000/api/v1/searches \
 1. Получите ключи на https://yandex.ru/dev/xml/
 2. Добавьте в `.env`:
    ```env
-   YANDEX_XML_USER=your_user_id
-   YANDEX_XML_KEY=your_api_key
+   YANDEX_XML_FOLDER_ID=идентификатор_каталога
+   YANDEX_XML_KEY=API-ключ_сервисного_аккаунта
    ```
 3. Создайте поиск:
    ```bash
@@ -98,8 +98,11 @@ curl -X POST http://localhost:8000/api/v1/searches \
 **Защита от блокировок:**
 - Автоматическая ротация User-Agent
 - Случайные задержки между запросами
-- Поддержка прокси (опционально, через настройки)
+- Поддержка прокси и use_mobile (настройка на `/settings/providers` или через .env)
+- Обход капчи: AI Vision, 2captcha, Anti-captcha (настройка на `/settings/captcha`). См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 - Автоматический fallback на другие провайдеры при блокировке
+
+**Настройка:** конфиг (прокси, use_mobile) — через страницу [Настройки провайдеров](PROVIDERS_SETTINGS.md) (`/settings/providers`) или переменные USE_PROXY, PROXY_URL, PROXY_LIST в .env.
 
 ### 4. Google HTML (бесплатный, парсинг) ✅ Новый
 
@@ -128,8 +131,11 @@ curl -X POST http://localhost:8000/api/v1/searches \
 **Защита от блокировок:**
 - Автоматическая ротация User-Agent
 - Случайные задержки между запросами
-- Поддержка прокси (рекомендуется для Google)
+- Поддержка прокси (рекомендуется для Google; настройка на `/settings/providers` или .env)
+- Обход капчи: AI Vision, 2captcha, Anti-captcha (настройка на `/settings/captcha`). См. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 - Автоматический fallback на другие провайдеры при блокировке
+
+**Настройка:** конфиг (прокси) — через [Настройки провайдеров](PROVIDERS_SETTINGS.md) (`/settings/providers`) или USE_PROXY, PROXY_URL, PROXY_LIST в .env.
 
 ### 5. SerpAPI (deprecated) ❌ Устарел
 
@@ -258,3 +264,5 @@ pip install -r requirements.txt
 - Яндекс XML API: https://yandex.ru/dev/xml/
 - Настройка Яндекс XML: `docs/guides/YANDEX_XML_SETUP.md`
 - HTML провайдеры (детали): `docs/guides/HTML_SEARCH_PROVIDERS.md`
+- **Настройки провайдеров** (прокси, ключи, «Проверить»): `docs/guides/PROVIDERS_SETTINGS.md` — страница `/settings/providers`
+- **Обход капчи** (AI Vision, 2captcha, Anti-captcha): `docs/guides/CAPTCHA_BYPASS.md` — страница `/settings/captcha`

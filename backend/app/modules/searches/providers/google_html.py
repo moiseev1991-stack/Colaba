@@ -9,7 +9,8 @@ from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse, quote_plus
 from bs4 import BeautifulSoup
 
-from app.modules.searches.providers.common import fetch_with_retry, random_delay
+from app.core.config import settings
+from app.modules.searches.providers.common import detect_blocking, fetch_with_retry, random_delay, get_proxy_config, get_random_user_agent
 
 logger = logging.getLogger(__name__)
 
@@ -51,17 +52,20 @@ async def fetch_search_results(
             # Задержка между страницами
             if page_num > 0:
                 await random_delay(2.0, 4.0)
-            
-            page_results = await _fetch_page(query, lang, country, start, max_retries)
+
+            pc = kwargs.get("provider_config")
+            proxy_overrides = {k: pc.get(k) for k in ("use_proxy", "proxy_url", "proxy_list")} if pc is not None else None
+
+            page_results = await _fetch_page(
+                query, lang, country, start, max_retries, proxy_overrides=proxy_overrides, db=kwargs.get("db")
+            )
             
             if not page_results:
-                # Если не получили результаты, пробуем еще раз
                 if page_num == 0:
-                    # Для первой страницы это критично
-                    logger.warning(f"No results on first page for query: {query}")
-                    break
+                    # Для первой страницы: 0 результатов = блокировка/капча → raise для fallback на DuckDuckGo
+                    logger.warning(f"No results on first page for query: {query} (blocked or HTML changed)")
+                    raise ValueError("Google HTML: no results on first page (likely blocked or captcha). Use duckduckgo.")
                 else:
-                    # Для последующих страниц просто останавливаемся
                     break
             
             all_results.extend(page_results)
@@ -94,6 +98,7 @@ async def _fetch_page(
     country: str,
     start: int,
     max_retries: int = 3,
+    proxy_overrides: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Получить одну страницу результатов (до 10 результатов).
@@ -112,17 +117,49 @@ async def _fetch_page(
     encoded_query = quote_plus(query)
     url = f"https://www.google.com/search?q={encoded_query}&hl={lang}&gl={country}&start={start}&num=10"
     
-    # Выполняем запрос с ретраями
-    response = await fetch_with_retry(url, max_retries=max_retries, timeout=30.0)
-    
+    # Выполняем запрос с ретраями (referer и proxy для обхода блокировок)
+    response = await fetch_with_retry(
+        url, max_retries=max_retries, timeout=30.0,
+        referer="https://www.google.com/", proxy_overrides=proxy_overrides
+    )
+
     if response is None:
         logger.error(f"Failed to fetch Google search page (start={start}) for query: {query}")
         return []
-    
+
+    html_content = response.text
+    html_to_parse = html_content
+    bi = detect_blocking(response, html_content=html_content)
+    if bi.get("blocked") and bi.get("block_type") == "captcha" and db is not None:
+        try:
+            from app.modules.captcha.solver import solve_image_captcha, solve_recaptcha, _extract_sitekey_and_action
+
+            # reCAPTCHA: если есть sitekey — 2captcha/anticaptcha
+            sitekey, action, version = _extract_sitekey_and_action(html_content)
+            if sitekey:
+                token = await solve_recaptcha(sitekey, str(response.url), version, action, db)
+                if token:
+                    new_html = await _try_submit_google_recaptcha_form(
+                        html_content, str(response.url), token, dict(response.cookies), proxy_overrides
+                    )
+                    if new_html:
+                        html_to_parse = new_html
+                        logger.info("Google reCAPTCHA form submitted")
+            else:
+                # Image captcha
+                solution = await solve_image_captcha(html_content, str(response.url), "google", db)
+                if solution:
+                    new_html = await _try_submit_google_captcha_form(
+                        html_content, str(response.url), solution, dict(response.cookies), proxy_overrides
+                    )
+                    if new_html:
+                        html_to_parse = new_html
+        except Exception as e:
+            logger.warning("Google captcha solver: %s", e)
+
     # Парсим HTML
     try:
-        html_content = response.text
-        soup = BeautifulSoup(html_content, 'html.parser')
+        soup = BeautifulSoup(html_to_parse, "html.parser")
         
         results = []
         
@@ -180,12 +217,93 @@ async def _fetch_page(
                         
                         if len(results) >= 10:
                             break
-        
+
+        # Отладка при 0 результатов
+        if len(results) == 0 and settings.DEBUG:
+            logger.debug("[DEBUG] HTML (0 results): %s", (html_to_parse or "")[:5000])
+
         return results
-        
+
     except Exception as e:
         logger.error(f"Error parsing Google HTML for query '{query}', start={start}: {e}")
         return []
+
+
+async def _try_submit_google_recaptcha_form(
+    html_content: str, page_url: str, token: str, cookies: dict, proxy_overrides: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
+    """Подставить g-recaptcha-response и отправить форму. Возвращает text новой страницы или None."""
+    soup = BeautifulSoup(html_content, "html.parser")
+    # Текстарея или инпут с именем g-recaptcha-response
+    recaptcha_field = soup.find(attrs={"name": "g-recaptcha-response"}) or soup.find("textarea", {"name": "g-recaptcha-response"})
+    if not recaptcha_field:
+        return None
+    form = recaptcha_field.find_parent("form")
+    if not form or not form.get("action"):
+        return None
+    action_url = urljoin(page_url, form.get("action", ""))
+
+    data: Dict[str, str] = {"g-recaptcha-response": token}
+    for inp in form.find_all("input", {"name": True}):
+        n, v = inp.get("name"), inp.get("value")
+        if n and n != "g-recaptcha-response" and v is not None:
+            data[n] = v
+
+    proxy_config = get_proxy_config(proxy_overrides)
+    headers = {"User-Agent": get_random_user_agent(), "Referer": page_url, "Content-Type": "application/x-www-form-urlencoded"}
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
+            r = await client.post(action_url, data=data, cookies=cookies, headers=headers)
+            if r.status_code != 200:
+                return None
+            bi = detect_blocking(r, r.text)
+            if bi.get("blocked") and bi.get("block_type") == "captcha":
+                return None
+            return r.text
+    except Exception as e:
+        logger.debug("_try_submit_google_recaptcha_form: %s", e)
+        return None
+
+
+async def _try_submit_google_captcha_form(
+    html_content: str, page_url: str, solution: str, cookies: dict, proxy_overrides: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
+    """Подставить solution в форму image-captcha (если есть). Возвращает text новой страницы или None."""
+    soup = BeautifulSoup(html_content, "html.parser")
+    form = soup.find("form", action=True)
+    if not form:
+        return None
+    answer_names = ("captcha", "response", "answer", "rep")
+    answer_input = None
+    for n in answer_names:
+        answer_input = form.find("input", {"name": n})
+        if answer_input:
+            break
+    if not answer_input:
+        return None
+    action_url = urljoin(page_url, form.get("action", ""))
+    data: Dict[str, str] = {}
+    for inp in form.find_all("input", {"name": True}):
+        n = inp.get("name")
+        if n in answer_names:
+            data[n] = solution
+        elif inp.get("type") == "hidden" and inp.get("value") is not None:
+            data[n] = inp.get("value", "")
+    if not data:
+        return None
+    proxy_config = get_proxy_config(proxy_overrides)
+    headers = {"User-Agent": get_random_user_agent(), "Referer": page_url, "Content-Type": "application/x-www-form-urlencoded"}
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
+            r = await client.post(action_url, data=data, cookies=cookies, headers=headers)
+            if r.status_code != 200:
+                return None
+            bi = detect_blocking(r, r.text)
+            if bi.get("blocked") and bi.get("block_type") == "captcha":
+                return None
+            return r.text
+    except Exception:
+        return None
 
 
 def _parse_google_item(item, position: int) -> Optional[Dict[str, Any]]:

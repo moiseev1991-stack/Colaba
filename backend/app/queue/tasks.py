@@ -49,14 +49,31 @@ async def _execute_search_async(search_id: int):
         await db.commit()
         
         try:
-            # Fetch results using selected provider with fallback enabled
+            # Fetch results using selected provider: без fallback — используем только выбранную систему
+            from app.modules.providers import get_provider_config
             from app.modules.searches.providers import fetch_search_results as provider_fetch
-            results_data = await provider_fetch(
-                provider=search.search_provider or "duckduckgo",  # По умолчанию DuckDuckGo (бесплатный)
-                query=search.query,
-                num_results=search.num_results,
-                enable_fallback=True,  # Включить автоматический fallback при блокировках
-            )
+            import asyncio
+
+            provider_id = search.search_provider or "duckduckgo"
+            provider_config = await get_provider_config(provider_id, db)
+
+            try:
+                results_data = await asyncio.wait_for(
+                    provider_fetch(
+                        provider=provider_id,
+                        query=search.query,
+                        num_results=search.num_results,
+                        enable_fallback=False,  # Не переключать на другую систему
+                        provider_config=provider_config,
+                        db=db,
+                    ),
+                    timeout=120.0,  # Жёсткий лимит: не крутить дольше 2 минут
+                )
+            except asyncio.TimeoutError:
+                raise ValueError(
+                    "Поисковая система не ответила за 120 с. "
+                    "Яндекс/Google часто блокируют запросы с серверов. Попробуйте DuckDuckGo, другой провайдер или позже."
+                )
             
             # Filter blacklisted domains
             from app.modules.filters.blacklist import is_blacklisted, SEED_BLACKLIST

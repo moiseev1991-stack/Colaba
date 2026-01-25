@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, User as UserIcon, LogIn, LogOut, History, Ban, Home, CreditCard, Settings, Menu, X, Building2 } from 'lucide-react';
+import { Moon, Sun, User as UserIcon, LogIn, LogOut, History, Ban, Home, CreditCard, Settings, Menu, X, Building2, Search, Bot, Shield } from 'lucide-react';
 import { Button } from './ui/button';
 import { getTheme, setTheme } from '@/lib/storage';
 import { useRouter, usePathname } from 'next/navigation';
@@ -182,6 +182,48 @@ export function TopBar() {
                   >
                     <Ban className="h-4 w-4" />
                     Blacklist
+                  </Link>
+                )}
+                {isAuthenticated && (
+                  <Link
+                    href="/settings/providers"
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                      pathname === '/settings/providers'
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Search className="h-4 w-4" />
+                    Провайдеры
+                  </Link>
+                )}
+                {isAuthenticated && (
+                  <Link
+                    href="/settings/ai-assistants"
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                      pathname === '/settings/ai-assistants'
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Bot className="h-4 w-4" />
+                    AI-ассистенты
+                  </Link>
+                )}
+                {isAuthenticated && (
+                  <Link
+                    href="/settings/captcha"
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                      pathname === '/settings/captcha'
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Обход капчи
                   </Link>
                 )}
                 {isAuthenticated && isSuperuser && (

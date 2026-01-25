@@ -17,6 +17,7 @@ async def fetch_search_results(
     num_results: int = 50,
     region: str = "ru",
     engine: str = "yandex",
+    **kwargs,
 ) -> List[Dict[str, Any]]:
     """
     Fetch search results from SerpAPI.
@@ -30,24 +31,18 @@ async def fetch_search_results(
     Returns:
         List of search results with title, url, snippet, position
     """
-    if not settings.SERPAPI_KEY:
-        # For MVP: return mock data if no API key
-        return [
-            {
-                "position": i,
-                "title": f"Mock Result {i} for '{query}'",
-                "url": f"https://example{i}.com",
-                "snippet": f"This is a mock result {i} for testing purposes.",
-                "domain": f"example{i}.com",
-            }
-            for i in range(1, min(num_results, 10) + 1)
-        ]
-    
+    api_key = (kwargs.get("provider_config") or {}).get("api_key") or settings.SERPAPI_KEY
+
+    if not api_key:
+        raise ValueError(
+            "SerpAPI key not configured. Set in .env or Provider settings. Use duckduckgo, yandex_html or google_html for free search."
+        )
+
     # Limit num_results to 100
     num_results = min(num_results, 100)
-    
+
     params = {
-        "api_key": settings.SERPAPI_KEY,
+        "api_key": api_key,
         "q": query,
         "engine": engine,
         "num": num_results,

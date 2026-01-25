@@ -56,14 +56,15 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = Field(default="llama2", description="Default Ollama model")
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key (optional)")
 
+    # Proxy for HTML providers (Yandex, Google) — bypass blocks
+    USE_PROXY: bool = Field(default=False, description="Use proxy for HTML search providers")
+    PROXY_URL: str = Field(default="", description="Single proxy: http://host:port or socks5://host:port")
+    PROXY_LIST: str = Field(default="", description="Comma-separated proxy list for rotation")
+
     # External APIs
-    SERPAPI_KEY: str = Field(default="", description="SerpAPI key (optional, deprecated - use YANDEX_XML)")
-    YANDEX_XML_USER: str = Field(default="", description="Yandex XML API user ID (required for Yandex search)")
-    YANDEX_XML_KEY: str = Field(default="", description="Yandex XML API key (required for Yandex search)")
-    YANDEX_XML_URL: str = Field(
-        default="https://yandex.com/search/xml",
-        description="Yandex XML API endpoint URL (можно использовать сторонние прокси: xmlriver.com, xmlstock.com)"
-    )
+    SERPAPI_KEY: str = Field(default="", description="SerpAPI key (optional, deprecated)")
+    YANDEX_XML_FOLDER_ID: str = Field(default="", description="Yandex Cloud: идентификатор каталога (yandex.cloud)")
+    YANDEX_XML_KEY: str = Field(default="", description="Yandex Cloud: API-ключ сервисного аккаунта")
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")

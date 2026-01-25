@@ -1,59 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-
-// Process Steps Indicator Component
-function ProcessStepsIndicator() {
-  const steps = [
-    'Парсим выдачу поисковой системы',
-    'Собираем домены',
-    'Ищем robots.txt и sitemap',
-    'Проверяем мета-теги и H1',
-  ];
-  
-  const [activeStep, setActiveStep] = useState(0);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % steps.length);
-    }, 700); // Switch every 700ms
-    
-    return () => clearInterval(interval);
-  }, [steps.length]);
-  
-  return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-        Идёт сбор результатов…
-      </h3>
-      <div className="space-y-2">
-        {steps.map((step, index) => (
-          <div
-            key={index}
-            className={cn(
-              'flex items-center gap-2 text-sm transition-all',
-              activeStep === index
-                ? 'text-gray-900 dark:text-white'
-                : 'text-gray-500 dark:text-gray-400'
-            )}
-          >
-            {activeStep === index ? (
-              <Loader2 className="w-4 h-4 animate-spin text-red-600 dark:text-red-500 flex-shrink-0" />
-            ) : (
-              <div className="w-4 h-4 flex-shrink-0" />
-            )}
-            <span>{step}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { ProcessStepsIndicator } from './ProcessStepsIndicator';
 
 const RUSSIAN_CITIES = [
   'Москва',

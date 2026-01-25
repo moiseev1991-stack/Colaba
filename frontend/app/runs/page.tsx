@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Download, Eye, Trash2, Search, Plus, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { getRuns, deleteRun, clearAllRuns, getRunResults } from '@/lib/storage';
-import { exportToCSV, downloadCSV } from '@/lib/mock';
+import { listSearches, deleteSearch, getSearchResults } from '@/src/services/api/search';
+import { exportToCSV, downloadCSV } from '@/lib/csv';
 import { ToastContainer, type Toast } from '@/components/Toast';
 import type { Run } from '@/lib/types';
 
@@ -19,19 +19,34 @@ export default function RunsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadRuns = async () => {
+    try {
+      setLoading(true);
+      const data = await listSearches();
+      const mapped: Run[] = data
+        .map((s) => ({
+          id: String(s.id),
+          keyword: s.query,
+          geoCity: '',
+          engine: s.search_provider,
+          createdAt: new Date(s.created_at).getTime(),
+          status: (s.status === 'completed' ? 'done' : s.status === 'failed' ? 'error' : s.status === 'processing' ? 'processing' : 'pending') as Run['status'],
+          resultCount: s.result_count,
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt);
+      setRuns(mapped);
+    } catch (err: any) {
+      showToast('error', err.response?.data?.detail || err.message || 'Ошибка загрузки');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      loadRuns();
-    }
+    loadRuns();
   }, []);
-
-  const loadRuns = () => {
-    const allRuns = getRuns();
-    // Sort by createdAt desc
-    const sorted = allRuns.sort((a, b) => b.createdAt - a.createdAt);
-    setRuns(sorted);
-  };
 
   const filteredRuns = useMemo(() => {
     let filtered = runs;
@@ -52,38 +67,54 @@ export default function RunsHistoryPage() {
     return filtered;
   }, [runs, searchQuery, statusFilter]);
 
-  const handleDelete = (runId: string, e: React.MouseEvent) => {
+  const handleDelete = async (runId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Удалить этот запуск?')) {
-      deleteRun(runId);
-      loadRuns();
+    if (!confirm('Удалить этот запуск?')) return;
+    try {
+      await deleteSearch(parseInt(runId));
+      await loadRuns();
       showToast('success', 'Запуск удалён');
+    } catch (err: any) {
+      showToast('error', err.response?.data?.detail || err.message || 'Ошибка удаления');
     }
   };
 
-  const handleClearAll = () => {
-    if (confirm('Очистить всю историю? Это действие нельзя отменить.')) {
-      clearAllRuns();
-      loadRuns();
+  const handleClearAll = async () => {
+    if (!confirm('Очистить всю историю? Это действие нельзя отменить.')) return;
+    try {
+      for (const r of runs) await deleteSearch(parseInt(r.id));
+      await loadRuns();
       showToast('success', 'История очищена');
+    } catch (err: any) {
+      showToast('error', err.response?.data?.detail || err.message || 'Ошибка очистки');
     }
   };
 
-  const handleExportCSV = (runId: string, e: React.MouseEvent) => {
+  const handleExportCSV = async (runId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const results = getRunResults(runId);
-    if (results.length === 0) {
-      showToast('error', 'Нет данных для CSV');
-      return;
+    try {
+      const resultsData = await getSearchResults(parseInt(runId));
+      const rows = resultsData.map((r: any) => ({
+        domain: r.domain || '',
+        phone: r.phone ?? null,
+        email: r.email ?? null,
+        score: r.seo_score ?? 0,
+        issues: { robots: true, sitemap: true, titleDuplicates: true, descriptionDuplicates: true },
+        status: (r.contact_status === 'found' || r.contact_status === 'no_contacts') ? 'ok' : 'error',
+      }));
+      if (rows.length === 0) {
+        showToast('error', 'Нет данных для CSV');
+        return;
+      }
+      downloadCSV(exportToCSV(rows), `colaba-run-${runId}.csv`);
+      showToast('success', 'CSV скачан');
+    } catch (err: any) {
+      showToast('error', err.response?.data?.detail || err.message || 'Ошибка экспорта');
     }
-    const csv = exportToCSV(results);
-    downloadCSV(csv, `spinlid-run-${runId}.csv`);
-    showToast('success', 'CSV скачан');
   };
 
   const handleOpen = (runId: string) => {
-    // Always open demo results page (frontend-only, no API calls)
-    router.push('/runs/demo?demo=true');
+    router.push(`/runs/${runId}`);
   };
 
   const showToast = (type: Toast['type'], message: string) => {
@@ -195,8 +226,13 @@ export default function RunsHistoryPage() {
             </div>
           </div>
 
-          {/* Empty State */}
-          {runs.length === 0 ? (
+          {/* Loading */}
+          {loading ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2" />
+              <p className="text-gray-600 dark:text-gray-400">Загрузка…</p>
+            </div>
+          ) : runs.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
                 Запусков пока нет
@@ -271,7 +307,7 @@ export default function RunsHistoryPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-700 dark:text-gray-300">
-                              Яндекс
+                              {run.engine}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

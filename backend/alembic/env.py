@@ -38,6 +38,7 @@ from app.models import (
     Organization,
     OrganizationRole,
     user_organizations,
+    SearchProviderConfig,
 )
 
 # target_metadata for autogenerate
