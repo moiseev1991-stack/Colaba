@@ -1,0 +1,133 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: leadgen-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-leadgen_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-leadgen_password}
+      POSTGRES_DB: ${POSTGRES_DB:-leadgen_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-leadgen_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - leadgen-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: leadgen-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - leadgen-network
+
+  backend:
+    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
+    container_name: leadgen-backend
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Optional providers/keys (keep empty if unused)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama2}
+      YANDEX_XML_FOLDER_ID: ${YANDEX_XML_FOLDER_ID:-}
+      YANDEX_XML_KEY: ${YANDEX_XML_KEY:-}
+      USE_PROXY: ${USE_PROXY:-false}
+      PROXY_URL: ${PROXY_URL:-}
+      PROXY_LIST: ${PROXY_LIST:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - leadgen-network
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    command: >
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${BACKEND_WORKERS:-2}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  celery-worker:
+    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
+    container_name: leadgen-celery-worker
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - leadgen-network
+    restart: unless-stopped
+    command: >
+      sh -c "celery -A app.queue.celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-2}"
+
+  frontend:
+    image: ${FRONTEND_IMAGE}:${IMAGE_TAG}
+    container_name: leadgen-frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - leadgen-network
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  leadgen-network:
+    driver: bridge
+

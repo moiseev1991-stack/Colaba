@@ -146,3 +146,7 @@ flake8 app/
 - `/health` - Health check endpoint
 - `/ready` - Readiness check endpoint
 - `/api/v1/health` - API health check
+
+## CI/CD (автодеплой)
+
+См. инструкции: `docs/deployment/CI_CD.md`.
