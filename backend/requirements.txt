@@ -13,7 +13,6 @@ asyncpg==0.29.0
 # Redis & Queue
 redis==5.0.1
 celery==5.3.4
-flower==2.0.1
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
@@ -35,18 +34,3 @@ ollama>=0.4.0
 anthropic==0.39.0
 google-generativeai==0.8.3
 
-# Utilities
-python-dotenv==1.0.0
-pytz==2023.3
-python-dateutil==2.8.2
-
-# Testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-
-# Development
-black==23.12.1
-isort==5.13.2
-mypy==1.7.1
-flake8==6.1.0

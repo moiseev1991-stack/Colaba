@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements
 COPY requirements.txt .
+COPY requirements-dev.txt .
 
-# Install Python dependencies (legacy resolver avoids resolution-too-deep with langchain/google-generativeai)
+# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --use-deprecated=legacy-resolver -r requirements.txt
+    pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy application code
 COPY . .
