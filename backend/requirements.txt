@@ -30,7 +30,6 @@ duckduckgo-search==4.1.1  # Бесплатный поиск DuckDuckGo без AP
 yandex-cloud-ml-sdk>=0.17.0  # Yandex Cloud Search API (folder_id + API-ключ)
 
 # LLM & AI
-langchain==0.1.0
 openai==1.6.1
 ollama>=0.4.0
 anthropic==0.39.0
