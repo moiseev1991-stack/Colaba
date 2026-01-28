@@ -33,7 +33,10 @@ services:
       - leadgen-network
 
   backend:
-    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
+    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: leadgen-backend
     environment:
       ENVIRONMENT: production
@@ -74,7 +77,10 @@ services:
       retries: 12
 
   celery-worker:
-    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
+    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: leadgen-celery-worker
     environment:
       ENVIRONMENT: production
@@ -100,7 +106,10 @@ services:
       sh -c "celery -A app.queue.celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-2}"
 
   frontend:
-    image: ${FRONTEND_IMAGE}:${IMAGE_TAG}
+    image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: leadgen-frontend
     environment:
       NODE_ENV: production
