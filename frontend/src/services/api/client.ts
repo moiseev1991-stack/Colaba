@@ -6,7 +6,8 @@
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// Default to same-origin to work behind reverse proxies and avoid browser loopback/CORS blocks.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({

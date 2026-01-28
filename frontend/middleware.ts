@@ -14,6 +14,8 @@ function isBypassPath(pathname: string): boolean {
   if (pathname.startsWith('/favicon.ico')) return true;
   if (pathname.startsWith('/robots.txt')) return true;
   if (pathname.startsWith('/sitemap.xml')) return true;
+  // API routes (Next route handlers / proxy)
+  if (pathname.startsWith('/api/')) return true;
 
   // Any file with an extension (e.g. .png, .css, .js)
   if (/\.[a-zA-Z0-9]+$/.test(pathname)) return true;

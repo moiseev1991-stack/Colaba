@@ -9,7 +9,8 @@ const nextConfig = {
   //   skipWaiting: true,
   // },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
+    // Use same-origin by default to avoid CORS/loopback issues in production.
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
   },
   // Image optimization
   images: {

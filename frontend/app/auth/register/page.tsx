@@ -53,7 +53,8 @@ export default function RegisterPage() {
       tokenStorage.setTokens(access_token, refresh_token);
 
       // Redirect back (if user was bounced by middleware)
-      router.push(getNextPath());
+      // Use full navigation to ensure Next middleware sees fresh cookies.
+      window.location.href = getNextPath();
     } catch (err: any) {
       setError(
         err.response?.data?.detail || 
