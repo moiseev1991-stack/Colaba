@@ -67,7 +67,8 @@ services:
       - leadgen-network
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      # Expose backend only locally; use Nginx for public access
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     command: >
       sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${BACKEND_WORKERS:-2}"
     healthcheck:
@@ -121,7 +122,8 @@ services:
       - leadgen-network
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      # Expose frontend only locally; use Nginx for public access
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     healthcheck:
       test:
         [
