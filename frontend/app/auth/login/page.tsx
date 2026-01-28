@@ -2,14 +2,21 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { apiClient, tokenStorage } from '@/client';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const getNextPath = (): string => {
+    const next = searchParams?.get('next') || '/';
+    return next.startsWith('/') ? next : '/';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +32,8 @@ export default function LoginPage() {
       const { access_token, refresh_token } = response.data;
       tokenStorage.setTokens(access_token, refresh_token);
 
-      // Redirect to home page
-      router.push('/');
+      // Redirect back (if user was bounced by middleware)
+      router.push(getNextPath());
     } catch (err: any) {
       setError(
         err.response?.data?.detail || 

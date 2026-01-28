@@ -38,10 +38,10 @@ type NavItem = {
 
 const topNavItems: NavItem[] = [
   { href: '/', label: 'Главная', icon: Home, match: 'exact' },
-  { href: '/runs', label: 'История', icon: History, match: 'startsWith' },
-  { href: '/monitor', label: 'Request Monitor', icon: Activity, match: 'exact' },
-  { href: '/payment', label: 'Оплата', icon: CreditCard, match: 'exact' },
-  { href: '/settings', label: 'Конфигурация', icon: Settings, match: 'exact' },
+  { href: '/runs', label: 'История', icon: History, authOnly: true, match: 'startsWith' },
+  { href: '/monitor', label: 'Request Monitor', icon: Activity, authOnly: true, match: 'exact' },
+  { href: '/payment', label: 'Оплата', icon: CreditCard, authOnly: true, match: 'exact' },
+  { href: '/settings', label: 'Конфигурация', icon: Settings, authOnly: true, match: 'exact' },
   { href: '/settings/blacklist', label: 'Blacklist', icon: Ban, authOnly: true, match: 'exact' },
   { href: '/settings/providers', label: 'Провайдеры', icon: Search, authOnly: true, match: 'exact' },
   { href: '/settings/ai-assistants', label: 'AI-ассистенты', icon: Bot, authOnly: true, match: 'exact' },
