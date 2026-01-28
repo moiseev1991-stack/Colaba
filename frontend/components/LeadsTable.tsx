@@ -673,10 +673,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                             <td className="px-3 py-2 align-middle" style={{ width: '220px' }}>
                               <div className="space-y-1">
                                 <div className="flex items-center gap-1.5">
-                                  {seo?.robots === 'OK' ? (
+                                  {seo ? (seo.robots === 'OK' ? (
                                     <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
                                   ) : (
                                     <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                  )) : (
+                                    <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                                   )}
                                   <span className="text-xs">
                                     <span className="text-gray-500 dark:text-gray-400">Robots:</span>{' '}
@@ -684,10 +686,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                  {seo?.sitemap === 'OK' ? (
+                                  {seo ? (seo.sitemap === 'OK' ? (
                                     <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
                                   ) : (
                                     <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                  )) : (
+                                    <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                                   )}
                                   <span className="text-xs">
                                     <span className="text-gray-500 dark:text-gray-400">Sitemap:</span>{' '}
@@ -742,12 +746,14 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                             <td className="px-3 py-2 align-middle">
                               <span
                                 className={`text-xs font-medium px-2 py-0.5 rounded ${
-                                  row.status === 'error' 
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' 
-                                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                  row.status === 'error'
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                    : row.status === 'processing'
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+                                      : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                                 }`}
                               >
-                                {row.status === 'error' ? 'Ошибка' : 'OK'}
+                                {row.status === 'error' ? 'Ошибка' : row.status === 'processing' ? 'Обработка' : 'OK'}
                               </span>
                             </td>
                             <td className="px-2 py-2 align-middle">

@@ -15,17 +15,10 @@ export function mapExtraDataToSeo(
   const details = audit?.details ?? {};
   const pagesCrawled = (crawl?.total_pages ?? 0) as number;
 
-  // Когда нет audit.details — минимальный объект с pagesCrawled и прочерками
+  // По старой логике SEO-аудит запускается только по кнопке.
+  // Если audit/details нет — возвращаем undefined, чтобы UI показывал нейтральное состояние (а не "ошибка").
   if (!audit?.details) {
-    return {
-      robots: 'не найден',
-      sitemap: 'не найдена',
-      metaTitle: '-',
-      metaDesc: '-',
-      h1: '-',
-      http: statusCodeToHttp(crawl?.pages?.[0]?.status_code),
-      pagesCrawled,
-    };
+    return undefined;
   }
 
   const robots: SEOData['robots'] = issues.includes('robots_disallow_all')
@@ -85,8 +78,9 @@ export function mapExtraDataToIssues(
   const issues = audit?.issues ?? [];
 
   return {
-    robots: !issues.includes('no_robots_txt') && !issues.includes('robots_disallow_all'),
-    sitemap: !issues.includes('no_sitemap_in_robots') && !issues.includes('no_robots_txt'),
+    // If audit hasn't been run yet, treat checks as OK (neutral) to avoid marking rows as errors.
+    robots: !audit ? true : (!issues.includes('no_robots_txt') && !issues.includes('robots_disallow_all')),
+    sitemap: !audit ? true : (!issues.includes('no_sitemap_in_robots') && !issues.includes('no_robots_txt')),
     titleDuplicates: true,
     descriptionDuplicates: true,
   };

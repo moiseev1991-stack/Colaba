@@ -38,7 +38,8 @@ def _is_permission_denied(err: BaseException) -> bool:
 def _fetch_page_sync(folder_id: str, api_key: str, query: str, page: int) -> bytes:
     """Синхронный вызов SDK: одна страница в XML. Блокирует — вызывать из to_thread."""
     from yandex_cloud_ml_sdk import YCloudML
-    from yandex_cloud_ml_sdk._auth import APIKeyAuth
+    # Public API (0.19+ moved away from private _auth module)
+    from yandex_cloud_ml_sdk.auth import APIKeyAuth
 
     auth = APIKeyAuth(api_key=api_key)
     sdk = YCloudML(folder_id=folder_id, auth=auth)

@@ -42,7 +42,8 @@ export interface LeadRow {
   score: number;
   issues: IssueCheck;
   seo?: SEOData; // Новые SEO данные
-  status: 'ok' | 'error';
+  // processing: domain parser is still running in background
+  status: 'ok' | 'error' | 'processing';
   outreachText: string;
 }
 

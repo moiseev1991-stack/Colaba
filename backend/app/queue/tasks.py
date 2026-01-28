@@ -192,14 +192,16 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
             outreach_text = None
             
             # 4. Determine contact status
-            seo_score = None  # Audit only via button (POST .../results/{id}/audit)
+            # SEO audit should be run only via button (POST .../results/{id}/audit)
+            seo_score = None
+            seo_issues: list[str] = []
             if phone or email:
                 contact_status = "found"
                 from app.modules.filters.outreach import generate_outreach_text
                 outreach = generate_outreach_text(
                     domain=domain,
-                    seo_issues=[],
-                    seo_score=None,
+                    seo_issues=seo_issues,
+                    seo_score=seo_score,
                 )
                 outreach_subject = outreach.get("subject")
                 outreach_text = outreach.get("text")
@@ -208,7 +210,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                 outreach_subject = None
                 outreach_text = None
 
-            # 5. Update all results for this domain (no audit in metadata; audit only by button)
+            # 5. Update all results for this domain (no audit in metadata)
             metadata = {
                 "crawl": {
                     "total_pages": crawl_data.get("total_pages", 0),

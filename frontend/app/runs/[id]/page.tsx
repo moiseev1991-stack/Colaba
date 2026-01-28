@@ -51,8 +51,12 @@ export default function RunResultsPage() {
 
         const resultsData = await getSearchResults(searchId);
         const convertedResults: LeadRow[] = resultsData.map((result: any) => {
-          const status: 'ok' | 'error' =
-            result.contact_status === 'found' || result.contact_status === 'no_contacts' ? 'ok' : 'error';
+          const status: 'ok' | 'error' | 'processing' =
+            result.contact_status === 'found' || result.contact_status === 'no_contacts'
+              ? 'ok'
+              : result.contact_status === 'failed'
+                ? 'error'
+                : 'processing';
           return {
             id: String(result.id),
             domain: result.domain || '',
