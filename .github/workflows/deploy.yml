@@ -74,7 +74,7 @@ jobs:
   deploy:
     name: Deploy on server (self-hosted runner)
     needs: build_images
-    runs-on: self-hosted
+    runs-on: self-hosted  # Используйте 'self-hosted' или 'self-hosted:colaba-prod' если добавили label
     permissions:
       contents: read
       packages: read

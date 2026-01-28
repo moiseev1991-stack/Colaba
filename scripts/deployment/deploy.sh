@@ -11,6 +11,14 @@ fi
 
 cd "$DEPLOY_PATH"
 
+# Загружаем переменные окружения из .env файла, если он существует
+if [[ -f "$DEPLOY_PATH/.env" ]]; then
+  echo "Loading environment variables from .env file..."
+  set -a
+  source "$DEPLOY_PATH/.env"
+  set +a
+fi
+
 if [[ -n "${GHCR_TOKEN:-}" && -n "${GHCR_USER:-}" ]]; then
   echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
 fi
