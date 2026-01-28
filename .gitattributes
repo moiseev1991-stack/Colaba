@@ -6,3 +6,6 @@
 Dockerfile text eol=lf
 Dockerfile.* text eol=lf
 
+# Python requirements files (avoid CRLF in Docker builds)
+requirements*.txt text eol=lf
+
