@@ -100,7 +100,6 @@ function ChartBar({ data, max, onHover, hovered }: { data: DayPoint; max: number
 }
 
 function StackedBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
-  const total = data.success + data.error + data.running;
   const scale = max > 0 ? (CHART_HEIGHT - 32) / max : 0;
   const hSuccess = Math.max(data.success * scale, 0);
   const hError = Math.max(data.error * scale, 0);

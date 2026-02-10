@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, Users, Search, Plus, Trash2, Edit, Eye } from 'lucide-react';
+import { Users, Search, Plus, Trash2, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
 import {

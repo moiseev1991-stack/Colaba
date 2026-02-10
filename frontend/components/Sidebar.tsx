@@ -11,6 +11,7 @@ import {
   FileSearch,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ModuleId } from '@/lib/ModuleContext';
@@ -21,6 +22,7 @@ const MODULE_ITEMS: Record<ModuleId, { title: string; items: NavItem[] }> = {
   seo: {
     title: 'SEO',
     items: [
+      { href: '/dashboard', label: 'Дэшборд', icon: LayoutDashboard },
       { href: '/app/seo', label: 'Новый запрос', icon: Search },
       { href: '/runs', label: 'История', icon: History },
       { href: '/settings/blacklist', label: 'Блеклист', icon: Ban },

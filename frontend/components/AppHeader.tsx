@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Moon, Sun, User as UserIcon, LogOut, CreditCard, Settings, Activity, LayoutDashboard } from 'lucide-react';
-import { Button } from './ui/button';
+import { Moon, Sun, User as UserIcon, LogOut, CreditCard, Settings, Activity } from 'lucide-react';
 import { getTheme, setTheme } from '@/lib/storage';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
@@ -112,13 +111,6 @@ export function AppHeader() {
             <span className="text-[14px] font-bold" style={{ color: 'hsl(var(--accent))' }}>S</span>
           </div>
           <span className="font-semibold text-[15px]" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
-        </Link>
-        <Link
-          href="/dashboard"
-          className={`flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium ${focusClass} ${pathname === '/dashboard' ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))]'}`}
-          style={{ color: pathname === '/dashboard' ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))' }}
-        >
-          <LayoutDashboard className="h-4 w-4" /> Dashboard
         </Link>
       </div>
 
