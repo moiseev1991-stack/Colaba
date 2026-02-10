@@ -50,7 +50,7 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: |
-          pytest -q
+          PYTHONPATH=. pytest -q
 
   frontend:
     name: Frontend checks
