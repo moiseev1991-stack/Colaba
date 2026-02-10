@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,7 @@ export default function AiAssistantsPage() {
     setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [data, reg] = await Promise.all([listAiAssistants(), getAiAssistantsRegistry()]);
@@ -71,7 +71,7 @@ export default function AiAssistantsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -81,7 +81,7 @@ export default function AiAssistantsPage() {
       return;
     }
     load();
-  }, []);
+  }, [load]);
 
   const currentSchema = (): SettingsSchemaField[] => {
     const e = registry.find((r) => r.provider_type === form.provider_type);

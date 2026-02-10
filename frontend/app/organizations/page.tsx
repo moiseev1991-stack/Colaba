@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Building2, Users, Search, Plus, Trash2, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
@@ -19,11 +19,7 @@ export default function OrganizationsPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    checkSuperuserAndLoad();
-  }, []);
-
-  const checkSuperuserAndLoad = async () => {
+  const checkSuperuserAndLoad = useCallback(async () => {
     try {
       // Check if user is superuser
       const userResponse = await apiClient.get('/auth/me');
@@ -46,7 +42,11 @@ export default function OrganizationsPage() {
       }
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkSuperuserAndLoad();
+  }, [checkSuperuserAndLoad]);
 
   const loadOrganizations = async () => {
     try {

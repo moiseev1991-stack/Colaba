@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ export default function ProvidersPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<Record<string, boolean>>({});
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await listProviders();
@@ -57,7 +57,7 @@ export default function ProvidersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -67,7 +67,7 @@ export default function ProvidersPage() {
       return;
     }
     load();
-  }, []);
+  }, [load]);
 
   const setField = (providerId: string, key: string, value: unknown) => {
     setFormValues((prev) => ({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export default function CaptchaPage() {
     setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [cfg, ais] = await Promise.all([getCaptchaConfig(), listAiAssistants()]);
@@ -67,7 +67,7 @@ export default function CaptchaPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -77,7 +77,7 @@ export default function CaptchaPage() {
       return;
     }
     load();
-  }, []);
+  }, [load]);
 
   const buildExternalServices = () => {
     const es: Record<string, { enabled: boolean; api_key?: string }> = {};

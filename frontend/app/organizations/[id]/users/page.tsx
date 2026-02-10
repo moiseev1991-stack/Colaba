@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Trash2, ArrowLeft, UserCheck, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
@@ -30,11 +30,7 @@ export default function OrganizationUsersPage() {
   const [newUserId, setNewUserId] = useState('');
   const [newUserRole, setNewUserRole] = useState<OrganizationRole>(OrganizationRole.MEMBER);
 
-  useEffect(() => {
-    loadData();
-  }, [organizationId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -62,7 +58,11 @@ export default function OrganizationUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleAddUser = async () => {
     if (!newUserId || !newUserRole) {

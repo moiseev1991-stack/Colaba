@@ -71,6 +71,14 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
     return 1;
   });
   
+  const updateURL = useCallback((page: number, size: number) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', page.toString());
+    url.searchParams.set('pageSize', size.toString());
+    router.push(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
   // Sync URL params on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -96,8 +104,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         updateURL(currentPage, pageSize);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentPage, pageSize, updateURL]);
 
   // При появлении первых данных — убираем спиннер; при таймауте — показываем ошибку
   const checkFirstDataAndTimeout = useCallback(() => {
@@ -212,15 +219,6 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterPhoneOnly, filterErrors]);
-
-  // Update URL when page or pageSize changes
-  const updateURL = (page: number, size: number) => {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', page.toString());
-    url.searchParams.set('pageSize', size.toString());
-    router.push(url.pathname + url.search, { scroll: false });
-  };
 
   // Handle page size change
   const handlePageSizeChange = (newSize: number) => {

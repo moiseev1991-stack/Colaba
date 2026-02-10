@@ -28,7 +28,14 @@ export function DebugPanel() {
 
   const token = tokenStorage.getAccessToken();
   const theme = getTheme();
-  const module = pathname?.startsWith('/app/seo') || pathname?.startsWith('/runs') ? 'seo' : pathname?.startsWith('/app/leads') ? 'leads' : pathname?.startsWith('/app/gos') ? 'tenders' : 'unknown';
+  const currentModule =
+    pathname?.startsWith('/app/seo') || pathname?.startsWith('/runs')
+      ? 'seo'
+      : pathname?.startsWith('/app/leads')
+        ? 'leads'
+        : pathname?.startsWith('/app/gos')
+          ? 'tenders'
+          : 'unknown';
 
   return (
     <div
@@ -38,7 +45,7 @@ export function DebugPanel() {
       <div className="font-semibold mb-2 text-gray-600 dark:text-gray-400">Debug</div>
       <div>Auth: {token ? 'loggedIn' : 'no token'}</div>
       <div>Theme: {theme}</div>
-      <div>Module: {module}</div>
+      <div>Module: {currentModule}</div>
       {lastError && <div className="text-red-600 dark:text-red-400 truncate" title={lastError}>Last error: {lastError}</div>}
     </div>
   );
