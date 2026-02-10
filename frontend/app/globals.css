@@ -1,0 +1,389 @@
+/* SpinLid Design Tokens — theme variables (must load before Tailwind) */
+:root {
+  --radius-sm: 6px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --bg: 216 20% 97%;
+  --surface: 0 0% 100%;
+  --surface-2: 214 32% 95%;
+  --border: 214 32% 89%;
+  --text: 222 47% 8%;
+  --muted: 215 16% 40%;
+  --accent: 217 91% 60%;
+  --accent-strong: 217 91% 45%;
+  --accent-hover: 217 91% 50%;
+  --accent-weak: 217 91% 60% / 0.08;
+  --focus: 217 91% 60%;
+  --danger: 0 84% 60%;
+  --danger-hover: 0 84% 50%;
+  --nav-bg: 0 0% 100%;
+  --nav-border: 214 32% 89%;
+  --nav-text: 222 47% 11%;
+  --nav-text-muted: 215 16% 45%;
+  --nav-text-hover: 222 47% 5%;
+  --nav-hover-bg: 217 91% 60% / 0.1;
+  --nav-active-bg: 217 91% 60% / 0.14;
+  --nav-active-text: 217 91% 40%;
+  --nav-focus-ring: 217 91% 60% / 0.25;
+  --control-border: 214 32% 88%;
+  --control-border-hover: 214 32% 80%;
+  --control-border-focus: 217 91% 60% / 0.6;
+  --focus-ring: 217 91% 60% / 0.2;
+  --control-border-error: 0 84% 60% / 0.6;
+  --focus-ring-error: 0 84% 60% / 0.16;
+  --chart-bar: 217 91% 55%;
+  --chart-grid: 214 32% 88%;
+  --chart-axis: 222 20% 40%;
+  --chart-tooltip-bg: 0 0% 100%;
+  --chart-tooltip-text: 222 47% 11%;
+  --chart-tooltip-border: 214 32% 89%;
+  --chart-success: 142 76% 36%;
+  --chart-error: 0 84% 50%;
+  --chart-running: 217 91% 60%;
+}
+
+.dark {
+  --bg: 222 47% 4%;
+  --surface: 222 47% 7%;
+  --surface-2: 222 47% 6%;
+  --border: 217 33% 18%;
+  --text: 210 40% 95%;
+  --muted: 215 20% 68%;
+  --accent: 213 94% 68%;
+  --accent-strong: 213 94% 75%;
+  --accent-hover: 213 94% 62%;
+  --accent-weak: 213 94% 68% / 0.14;
+  --focus: 213 94% 68%;
+  --danger: 0 84% 60%;
+  --danger-hover: 0 84% 55%;
+  --nav-bg: 222 47% 5%;
+  --nav-border: 217 33% 14%;
+  --nav-text: 213 31% 91%;
+  --nav-text-muted: 215 20% 65%;
+  --nav-text-hover: 210 40% 100%;
+  --nav-hover-bg: 213 94% 68% / 0.12;
+  --nav-active-bg: 213 94% 68% / 0.18;
+  --nav-active-text: 213 94% 80%;
+  --nav-focus-ring: 213 94% 68% / 0.35;
+  --control-border: 217 33% 22%;
+  --control-border-hover: 217 33% 28%;
+  --control-border-focus: 213 94% 68% / 0.6;
+  --focus-ring: 213 94% 68% / 0.28;
+  --control-border-error: 0 84% 60% / 0.65;
+  --focus-ring-error: 0 84% 60% / 0.2;
+  --chart-bar: 213 94% 65%;
+  --chart-grid: 217 33% 22%;
+  --chart-axis: 210 25% 70%;
+  --chart-tooltip-bg: 222 47% 12%;
+  --chart-tooltip-text: 210 40% 95%;
+  --chart-tooltip-border: 217 33% 24%;
+  --chart-success: 142 70% 42%;
+  --chart-error: 0 72% 55%;
+  --chart-running: 213 94% 68%;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: var(--radius-md);
+    /* SaaS tokens: primary = blue, danger = red (alias theme) */
+    --color-primary: 217 91% 60%;
+    --color-primary-hover: 217 91% 50%;
+    --color-primary-weak: 214 100% 97%;
+    --color-primary-weak-dark: 217 91% 60% / 0.15;
+    --color-danger: 0 84% 60%;
+    --color-danger-hover: 0 84% 50%;
+    --color-danger-weak: 0 93% 94%;
+    --color-danger-weak-dark: 0 62% 30% / 0.2;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --color-primary: 217 91% 60%;
+    --color-primary-hover: 217 91% 55%;
+    --color-primary-weak: 217 91% 60% / 0.15;
+    --color-primary-weak-dark: 217 91% 60% / 0.2;
+    --color-danger: 0 84% 60%;
+    --color-danger-hover: 0 84% 55%;
+    --color-danger-weak: 0 62% 30% / 0.3;
+    --color-danger-weak-dark: 0 62% 30% / 0.25;
+  }
+
+  /* Стили для select - светлая тема */
+  select {
+    background-color: rgb(243 244 246); /* gray-100 */
+    color: rgb(17 24 39); /* gray-900 */
+  }
+
+  select option {
+    background-color: rgb(243 244 246);
+    color: rgb(17 24 39);
+  }
+
+  /* Стили для select в темной теме */
+  .dark select {
+    background-color: rgb(55 65 81); /* gray-700 */
+    color: white;
+  }
+
+  .dark select option {
+    background-color: rgb(55 65 81);
+    color: white;
+  }
+
+  select {
+    border-color: hsl(var(--control-border));
+  }
+  select:hover {
+    border-color: hsl(var(--control-border-hover));
+  }
+  select:focus {
+    outline: none;
+    border-color: hsl(var(--control-border-focus));
+    box-shadow: 0 0 0 3px hsl(var(--focus-ring));
+  }
+
+  /* Focus: мягко синий/голубой, не красный */
+  input,
+  textarea {
+    border-color: hsl(var(--control-border));
+  }
+  input:hover,
+  textarea:hover {
+    border-color: hsl(var(--control-border-hover));
+  }
+  input:focus,
+  textarea:focus {
+    outline: none;
+    border-color: hsl(var(--control-border-focus));
+    box-shadow: 0 0 0 3px hsl(var(--focus-ring));
+  }
+  /* Error state — только при валидации */
+  input[data-error="true"]:focus,
+  textarea[data-error="true"]:focus,
+  select[data-error="true"]:focus {
+    border-color: hsl(var(--control-border-error));
+    box-shadow: 0 0 0 3px hsl(var(--focus-ring-error));
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    background-color: hsl(var(--bg));
+    @apply text-gray-900 dark:text-white;
+  }
+}
+
+/* ProcessingHero: orbit + pulse-soft */
+@keyframes orbit {
+  from {
+    transform: rotate(0deg) translateX(54px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(54px) rotate(-360deg);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Request Monitor: skeleton shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@layer utilities {
+  .animate-orbit {
+    animation: orbit 2.5s linear infinite;
+  }
+  .animate-pulse-soft {
+    animation: pulse-soft 1.1s ease-in-out infinite;
+  }
+  .animate-shimmer {
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+/* Request Monitor skeleton shimmer */
+.monitor-skeleton-cell {
+  background: linear-gradient(
+    90deg,
+    rgb(55 65 81) 0%,
+    rgb(75 85 99) 50%,
+    rgb(55 65 81) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* === UI Kit: единые стили (theme tokens) === */
+/* radius-sm: 8px, radius-md: 10px, radius-lg: 12px */
+@layer components {
+  .ui-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-[6px] h-9 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 min-w-[96px];
+  }
+  .ui-btn:focus-visible {
+    --tw-ring-color: hsl(var(--focus));
+  }
+  .ui-table-compact th,
+  .ui-table-compact td {
+    height: 44px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .ui-table-compact tbody tr:hover {
+    background-color: hsl(var(--nav-hover-bg));
+  }
+  .ui-btn-primary {
+    @apply ui-btn text-white;
+    background-color: hsl(var(--color-primary));
+  }
+  .ui-btn-primary:hover {
+    background-color: hsl(var(--color-primary-hover));
+  }
+  .ui-btn-secondary {
+    @apply ui-btn border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700;
+  }
+  .ui-btn-danger {
+    @apply ui-btn text-white;
+    background-color: hsl(var(--color-danger));
+  }
+  .ui-btn-danger:hover {
+    background-color: hsl(var(--color-danger-hover));
+  }
+  .ui-btn-ghost {
+    @apply ui-btn bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700;
+  }
+  .ui-input {
+    @apply flex h-9 w-full rounded-[6px] border border-control-border bg-white dark:bg-gray-800 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-[3px] focus:ring-focus-ring focus:ring-offset-0 disabled:opacity-50;
+  }
+  .ui-input:hover {
+    border-color: hsl(var(--control-border-hover));
+  }
+  .ui-input:focus {
+    border-color: hsl(var(--control-border-focus));
+  }
+  .ui-select {
+    @apply flex h-9 w-full rounded-[6px] border border-control-border bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 pr-9 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-focus-ring focus:ring-offset-0;
+  }
+  .ui-select:hover {
+    border-color: hsl(var(--control-border-hover));
+  }
+  .ui-select:focus {
+    border-color: hsl(var(--control-border-focus));
+  }
+  .ui-card {
+    @apply rounded-[8px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 md:p-5 shadow-sm;
+  }
+  .ui-tab {
+    @apply flex items-center gap-1.5 h-9 px-3 rounded-[10px] text-sm font-medium whitespace-nowrap transition-colors;
+  }
+  .ui-tab-active {
+    @apply ui-tab;
+    background-color: hsl(var(--color-primary-weak));
+    color: hsl(var(--color-primary));
+  }
+  .dark .ui-tab-active {
+    background-color: hsl(var(--color-primary-weak-dark));
+    color: hsl(var(--color-primary));
+  }
+  .ui-tab-inactive {
+    @apply ui-tab text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100;
+  }
+  .ui-badge {
+    @apply inline-flex items-center justify-center rounded-full px-2.5 py-1 h-6 text-xs font-medium;
+  }
+  .ui-dropdown {
+    @apply absolute z-50 mt-1.5 min-w-[180px] max-w-[260px] rounded-[10px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1;
+  }
+  .ui-dropdown-item {
+    @apply flex items-center gap-2 h-9 px-4 text-sm text-gray-700 dark:text-gray-300 transition-colors whitespace-nowrap overflow-hidden text-ellipsis;
+  }
+  .ui-dropdown-item:hover {
+    background-color: hsl(var(--color-primary-weak));
+  }
+  .dark .ui-dropdown-item:hover {
+    background-color: hsl(var(--color-primary-weak-dark));
+  }
+}
+
+/* Primary color as blue for Tailwind arbitrary values */
+.bg-primary-accent {
+  background-color: hsl(var(--color-primary));
+}
+.bg-primary-weak {
+  background-color: hsl(var(--color-primary-weak));
+}
+.dark .bg-primary-weak {
+  background-color: hsl(var(--color-primary-weak-dark));
+}
+.text-primary-accent {
+  color: hsl(var(--color-primary));
+}
+
+

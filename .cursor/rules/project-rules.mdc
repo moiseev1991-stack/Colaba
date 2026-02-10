@@ -1,0 +1,47 @@
+---
+name: Project Rules
+description: Основные правила проекта Colaba - структура, файлы, работа
+---
+
+# Правила проекта Colaba
+
+## Структура проекта
+
+Проект следует монорепозиторий структуре:
+- `backend/` - весь backend код
+- `frontend/` - весь frontend код  
+- `docs/` - вся документация
+- `scripts/` - все скрипты
+- Корень - только конфигурационные файлы
+
+## Правила размещения файлов
+
+### Скрипты
+- ✅ Все скрипты → `scripts/`
+- ✅ Скрипты настройки → `scripts/setup/`
+- ❌ НИКОГДА не создавать скрипты в корне
+
+### Документация
+- ✅ Вся документация → `docs/`
+- ✅ Руководства → `docs/guides/`
+- ❌ НИКОГДА не создавать документацию в корне (кроме README.md)
+
+### Backend
+- ✅ Все Python файлы → `backend/app/`
+- ❌ НИКОГДА не создавать Python файлы в корне
+
+### Frontend
+- ✅ Все React/TypeScript файлы → `frontend/`
+- ❌ НИКОГДА не создавать frontend файлы в корне
+
+## Перед созданием файла
+
+1. Проверить `docs/guides/PROJECT_STRUCTURE_RULES.md`
+2. Убедиться, что файл в правильном месте
+3. Проверить, нет ли дубликатов
+
+## Полные правила
+
+- Структура: `docs/guides/PROJECT_STRUCTURE_RULES.md`
+- Git workflow: `docs/guides/REPOSITORY_WORKFLOW_RULES.md`
+- Cursor AI: `docs/guides/LEADGEN_RULES.md`

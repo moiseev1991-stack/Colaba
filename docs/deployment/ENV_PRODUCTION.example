@@ -1,0 +1,90 @@
+# Пример файла .env для продакшена
+# Скопируйте этот файл в /opt/colaba/.env на сервере и заполните реальными значениями
+# ВАЖНО: Этот файл НЕ должен коммититься в репозиторий!
+
+# ============================================
+# БАЗОВЫЕ НАСТРОЙКИ
+# ============================================
+ENVIRONMENT=production
+DEBUG=False
+
+# Сгенерируйте надежный секретный ключ (например, через: python -c "import secrets; print(secrets.token_urlsafe(32))")
+SECRET_KEY=your-super-secret-key-change-this-in-production
+
+# ============================================
+# БАЗА ДАННЫХ POSTGRESQL
+# ============================================
+POSTGRES_USER=leadgen_user
+POSTGRES_PASSWORD=your-secure-postgres-password
+POSTGRES_DB=leadgen_db
+
+# URL для подключения к базе данных (async и sync версии)
+DATABASE_URL=postgresql+asyncpg://leadgen_user:your-secure-postgres-password@postgres:5432/leadgen_db
+DATABASE_URL_SYNC=postgresql://leadgen_user:your-secure-postgres-password@postgres:5432/leadgen_db
+
+# ============================================
+# REDIS
+# ============================================
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+# ============================================
+# FRONTEND (NEXT.JS)
+# ============================================
+# URL backend API для frontend (замените на ваш домен)
+NEXT_PUBLIC_API_URL=https://your-domain.com/api/v1
+
+# ============================================
+# CORS (Cross-Origin Resource Sharing)
+# ============================================
+# Разрешенные источники для CORS (замените на ваш домен)
+CORS_ORIGINS=https://your-domain.com
+
+# ============================================
+# ЛОГИРОВАНИЕ
+# ============================================
+LOG_LEVEL=INFO
+# Возможные значения: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# ============================================
+# ПОРТЫ (если отличаются от дефолтных)
+# ============================================
+BACKEND_PORT=8000
+FRONTEND_PORT=3000
+
+# ============================================
+# BACKEND WORKERS (количество воркеров uvicorn)
+# ============================================
+BACKEND_WORKERS=2
+
+# ============================================
+# CELERY WORKER (параллелизм)
+# ============================================
+CELERY_CONCURRENCY=2
+
+# ============================================
+# AI ПРОВАЙДЕРЫ (опционально)
+# ============================================
+
+# OpenAI API (если используете)
+OPENAI_API_KEY=
+
+# Ollama (локальный LLM)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama2
+
+# ============================================
+# ЯНДЕКС XML API (опционально)
+# ============================================
+# Для использования Яндекс XML API раскомментируйте и заполните:
+# YANDEX_XML_FOLDER_ID=your-folder-id
+# YANDEX_XML_KEY=your-api-key
+
+# ============================================
+# ПРОКСИ (опционально)
+# ============================================
+# Для использования прокси при HTML-поиске раскомментируйте:
+# USE_PROXY=false
+# PROXY_URL=http://proxy.example.com:8080
+# PROXY_LIST=http://proxy1.example.com:8080,http://proxy2.example.com:8080,socks5://proxy3.example.com:1080
