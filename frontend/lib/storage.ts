@@ -11,7 +11,49 @@ const STORAGE_KEYS = {
   BLACKLIST: 'spinlid_blacklist',
   THEME: 'spinlid_theme',
   RESULTS_PAGE_SIZE: 'results_page_size',
+  SEO_ADVANCED: 'spinlid_seo_advanced',
 } as const;
+
+export interface SeoAdvancedSettings {
+  depth: number;
+  filterPhone: boolean;
+  filterEmail: boolean;
+  excludeBlacklist: boolean;
+  saveToHistory: boolean;
+}
+
+const DEFAULT_SEO_ADVANCED: SeoAdvancedSettings = {
+  depth: 100,
+  filterPhone: false,
+  filterEmail: false,
+  excludeBlacklist: true,
+  saveToHistory: true,
+};
+
+export function getSeoAdvancedSettings(): SeoAdvancedSettings {
+  if (typeof window === 'undefined') return DEFAULT_SEO_ADVANCED;
+  const data = localStorage.getItem(STORAGE_KEYS.SEO_ADVANCED);
+  if (!data) return DEFAULT_SEO_ADVANCED;
+  try {
+    const parsed = JSON.parse(data);
+    return {
+      depth: [10, 20, 50, 100].includes(parsed.depth) ? parsed.depth : 100,
+      filterPhone: !!parsed.filterPhone,
+      filterEmail: !!parsed.filterEmail,
+      excludeBlacklist: parsed.excludeBlacklist !== false,
+      saveToHistory: parsed.saveToHistory !== false,
+    };
+  } catch {
+    return DEFAULT_SEO_ADVANCED;
+  }
+}
+
+export function setSeoAdvancedSettings(s: Partial<SeoAdvancedSettings>): void {
+  if (typeof window === 'undefined') return;
+  const current = getSeoAdvancedSettings();
+  const next = { ...current, ...s };
+  localStorage.setItem(STORAGE_KEYS.SEO_ADVANCED, JSON.stringify(next));
+}
 
 // User
 export function getUser(): User | null {
