@@ -3,7 +3,7 @@ Tests for HTML search providers (yandex_html, google_html).
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from app.main import app
 from app.modules.searches.providers import fetch_search_results
 
@@ -96,7 +96,7 @@ async def test_provider_fallback_integration():
 @pytest.mark.asyncio
 async def test_create_search_with_yandex_html():
     """Test creating a search with yandex_html provider."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/searches",
             json={
@@ -115,7 +115,7 @@ async def test_create_search_with_yandex_html():
 @pytest.mark.asyncio
 async def test_create_search_with_google_html():
     """Test creating a search with google_html provider."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/searches",
             json={

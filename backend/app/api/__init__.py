@@ -24,8 +24,10 @@ from app.modules.providers.router import router as providers_router
 from app.modules.ai_assistants.router import router as ai_assistants_router
 from app.modules.captcha.router import router as captcha_router
 from app.modules.monitor.router import router as monitor_router
+from app.modules.dashboard.router import router as dashboard_router
 
 api_router.include_router(auth_router)
+api_router.include_router(dashboard_router)
 api_router.include_router(searches_router)
 api_router.include_router(filters_router)
 api_router.include_router(organizations_router)
