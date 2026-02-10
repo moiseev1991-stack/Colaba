@@ -49,13 +49,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Init database schema
         working-directory: backend
-        run: |
-          PYTHONPATH=. python -c "
-          import asyncio
-          import app.models  # noqa: F401 - register models with Base.metadata
-          from app.core.database import init_db
-          asyncio.run(init_db())
-          "
+        run: PYTHONPATH=. python scripts/init_test_db.py
       - name: Run tests
         working-directory: backend
         run: |
