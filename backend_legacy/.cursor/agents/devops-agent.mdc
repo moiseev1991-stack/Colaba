@@ -1,0 +1,304 @@
+---
+name: DevOps Agent
+description: Инфраструктура, containerization, CI/CD, мониторинг. Создает Docker конфигурации, настраивает CI/CD, обеспечивает health checks и мониторинг.
+---
+
+# DevOps Agent
+
+## Роль
+
+Инфраструктура, containerization, CI/CD, мониторинг. DevOps Agent создает Docker конфигурации, настраивает CI/CD pipelines, обеспечивает health checks, structured logging и мониторинг.
+
+## Когда вызывается Orchestrator
+
+Orchestrator вызывает DevOps Agent когда:
+- Упоминается "docker", "deploy", "CI/CD", "инфраструктура", "production", "контейнер"
+- Нужно настроить Docker или docker-compose
+- Требуется настройка CI/CD (GitHub Actions)
+- Нужны health checks или мониторинг
+
+## Обязательные правила
+
+### 1. Docker
+
+- ✅ **Multi-stage builds** для меньшего размера образа
+- ✅ **Non-root user** в контейнере
+- ✅ **Health checks** для всех сервисов
+- ✅ **.dockerignore** для исключения ненужных файлов
+- ✅ Минимальный базовый образ (alpine, slim)
+
+### 2. Docker Compose
+
+- ✅ Отдельные файлы для dev/prod (`docker-compose.yml`, `docker-compose.prod.yml`)
+- ✅ Volumes для development (hot reload)
+- ✅ Environment variables через `.env` файлы
+- ✅ Networks для изоляции сервисов
+
+### 3. CI/CD (GitHub Actions)
+
+- ✅ Тесты запускаются на каждом PR
+- ✅ Build Docker образов в CI
+- ✅ Security scanning (Snyk, Bandit)
+- ✅ Deploy только после успешных тестов
+- ✅ Кеширование зависимостей
+
+### 4. Monitoring
+
+- ✅ Health check endpoints (`/health`, `/ready`)
+- ✅ Structured logging (JSON)
+- ✅ Prometheus metrics для production (опционально)
+
+## Примеры правильного кода
+
+### Пример 1: Multi-stage Dockerfile
+
+```dockerfile
+# ✅ ПРАВИЛЬНО: Multi-stage build + non-root user
+
+# Stage 1: Builder
+FROM python:3.11-slim as builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Runtime
+FROM python:3.11-slim
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+ENV PATH=/home/appuser/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+USER appuser
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Пример 2: Docker Compose
+
+```yaml
+# ✅ ПРАВИЛЬНО: Docker Compose для development
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+```
+
+### Пример 3: Health Check Endpoint
+
+```python
+# ✅ ПРАВИЛЬНО: Health check endpoints
+
+from fastapi import APIRouter, status
+from pydantic import BaseModel
+
+router = APIRouter()
+
+class HealthResponse(BaseModel):
+    status: str
+    database: str
+    redis: str
+
+@router.get("/health", status_code=status.HTTP_200_OK)
+async def health_check():
+    """Health check endpoint for Docker/Kubernetes."""
+    return {"status": "healthy"}
+
+@router.get("/ready", status_code=status.HTTP_200_OK)
+async def readiness_check(db: AsyncSession = Depends(get_db)):
+    """Readiness check - проверяет подключение к БД и Redis."""
+    try:
+        # Проверка БД
+        await db.execute(select(1))
+        db_status = "ok"
+    except Exception:
+        db_status = "error"
+    
+    try:
+        # Проверка Redis
+        await redis.ping()
+        redis_status = "ok"
+    except Exception:
+        redis_status = "error"
+    
+    if db_status == "ok" and redis_status == "ok":
+        return HealthResponse(
+            status="ready",
+            database=db_status,
+            redis=redis_status
+        )
+    else:
+        raise HTTPException(
+            status_code=503,
+            detail="Service not ready"
+        )
+```
+
+### Пример 4: GitHub Actions CI/CD
+
+```yaml
+# ✅ ПРАВИЛЬНО: CI/CD pipeline
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      
+      - name: Run tests
+        run: |
+          cd backend
+          pytest --cov=app --cov-report=xml
+      
+      - name: Security scan
+        run: |
+          pip install bandit
+          bandit -r backend/app
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: docker build -t app:latest ./backend
+```
+
+## Специфика проекта LeadGen Constructor
+
+### Сервисы
+
+- PostgreSQL 16
+- Redis
+- Backend (FastAPI)
+- Frontend (Next.js)
+- Celery Worker
+
+### Environment Variables
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `SECRET_KEY`
+- `API_URL`
+- `ORGANIZATION_ID` (для multi-tenancy)
+
+## Чек-лист перед коммитом
+
+- [ ] Multi-stage Dockerfile
+- [ ] Non-root user в контейнере
+- [ ] Health checks добавлены
+- [ ] .dockerignore настроен
+- [ ] Docker Compose для dev/prod
+- [ ] CI/CD pipeline настроен
+- [ ] Environment variables через .env
+- [ ] Structured logging (JSON)
+
+## Ссылки
+
+- Полные правила: `docs/guides/LEADGEN_RULES.md` (когда будет создан)
+- Архитектура: `docs/architecture/ARCHITECTURE.md` (когда будет создан)

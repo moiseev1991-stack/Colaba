@@ -1,0 +1,76 @@
+/**
+ * SpinLid Design Tokens — Data-heavy, современно, без серости
+ * Radii: 6–8px, акцент #2563EB / #60A5FA
+ */
+
+:root {
+  --radius-sm: 6px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Light theme — TZ 8.2 */
+  --bg: 216 20% 97%;
+  --surface: 0 0% 100%;
+  --surface-2: 214 32% 95%;
+  --border: 214 32% 89%;
+  --text: 222 47% 8%;
+  --muted: 215 16% 40%;
+  --accent: 217 91% 60%;
+  --accent-strong: 217 91% 45%;
+  --accent-hover: 217 91% 50%;
+  --accent-weak: 217 91% 60% / 0.08;
+  --focus: 217 91% 60%;
+  --danger: 0 84% 60%;
+  --danger-hover: 0 84% 50%;
+
+  --nav-bg: 0 0% 100%;
+  --nav-border: 214 32% 89%;
+  --nav-text: 222 47% 10%;
+  --nav-text-hover: 222 47% 5%;
+  --nav-hover-bg: 217 91% 60% / 0.08;
+  --nav-active-bg: 217 91% 60% / 0.12;
+  --nav-active-text: 217 91% 45%;
+  --nav-focus-ring: 217 91% 60% / 0.25;
+
+  --control-border: 214 32% 88%;
+  --control-border-hover: 214 32% 80%;
+  --control-border-focus: 217 91% 60% / 0.6;
+  --focus-ring: 217 91% 60% / 0.2;
+  --control-border-error: 0 84% 60% / 0.6;
+  --focus-ring-error: 0 84% 60% / 0.16;
+}
+
+.dark {
+  /* Dark theme — TZ 8.3 */
+  --bg: 222 47% 4%;
+  --surface: 222 47% 7%;
+  --surface-2: 222 47% 6%;
+  --border: 217 33% 18%;
+  --text: 210 40% 95%;
+  --muted: 215 20% 68%;
+  --accent: 213 94% 68%;
+  --accent-strong: 213 94% 75%;
+  --accent-hover: 213 94% 62%;
+  --accent-weak: 213 94% 68% / 0.14;
+  --focus: 213 94% 68%;
+  --danger: 0 84% 60%;
+  --danger-hover: 0 84% 55%;
+
+  --nav-bg: 222 47% 5%;
+  --nav-border: 217 33% 14%;
+  --nav-text: 210 40% 92%;
+  --nav-text-hover: 210 40% 100%;
+  --nav-hover-bg: 213 94% 68% / 0.1;
+  --nav-active-bg: 213 94% 68% / 0.14;
+  --nav-active-text: 213 94% 75%;
+  --nav-focus-ring: 213 94% 68% / 0.35;
+
+  --control-border: 217 33% 22%;
+  --control-border-hover: 217 33% 28%;
+  --control-border-focus: 213 94% 68% / 0.6;
+  --focus-ring: 213 94% 68% / 0.28;
+  --control-border-error: 0 84% 60% / 0.65;
+  --focus-ring-error: 0 84% 60% / 0.2;
+}

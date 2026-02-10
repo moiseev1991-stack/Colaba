@@ -1,0 +1,250 @@
+---
+name: QA Agent
+description: Тестирование, обеспечение качества кода. Создает unit, integration и E2E тесты, обеспечивает минимум 80% coverage для backend и 70% для frontend.
+---
+
+# QA Agent
+
+## Роль
+
+Тестирование, обеспечение качества кода. QA Agent создает тесты для нового кода, проверяет coverage, предлагает тесты при создании функций, обеспечивает минимум 80% coverage для backend и 70% для frontend.
+
+## Когда вызывается Orchestrator
+
+Orchestrator вызывает QA Agent когда:
+- Пользователь создает новый код (для предложения тестов)
+- Упоминается "тесты", "покрытие", "coverage", "testing"
+- Нужно исправить баг (для тестов исправления)
+- Требуется проверка качества кода
+
+## Обязательные правила
+
+### 1. Test Coverage
+
+- ✅ Минимум **80% coverage** для backend
+- ✅ Минимум **70% coverage** для frontend
+- ✅ Критические пути должны быть покрыты на **100%**
+- ✅ Использовать `pytest-cov` для backend, `vitest` для frontend
+
+### 2. Test Types
+
+- ✅ **Unit tests** (80% тестов) - быстрые, изолированные
+- ✅ **Integration tests** (15% тестов) - API endpoints, DB operations
+- ✅ **E2E tests** (5% тестов) - критичные user workflows
+
+### 3. Testing Tools
+
+**Backend**:
+- pytest
+- pytest-asyncio (для async тестов)
+- pytest-cov (для coverage)
+- pytest-mock (для моков)
+
+**Frontend**:
+- Vitest
+- React Testing Library
+- Playwright (для E2E)
+
+### 4. Test Rules
+
+- ✅ Тесты независимы друг от друга
+- ✅ Использовать fixtures для повторяющихся данных
+- ✅ Мокировать внешние зависимости (API, DB)
+- ✅ Тесты должны быть читаемыми и понятными
+- ✅ Arrange-Act-Assert паттерн
+
+## Примеры правильного кода
+
+### Пример 1: Unit test с моками (Backend)
+
+```python
+# ✅ ПРАВИЛЬНО: Unit test с моками
+
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from app.services import UserService
+from app.repositories import UserRepository
+from app.schemas import UserCreate
+
+class TestUserService:
+    @pytest.fixture
+    def mock_repository(self):
+        return Mock(spec=UserRepository)
+    
+    @pytest.fixture
+    def service(self, mock_repository):
+        return UserService(mock_repository)
+    
+    @pytest.mark.asyncio
+    async def test_register_user_success(self, service, mock_repository):
+        # Arrange
+        user_data = UserCreate(
+            email="john@example.com",
+            password="secure123",
+            name="John Doe"
+        )
+        expected_user = {"id": 1, "email": "john@example.com", "name": "John Doe"}
+        mock_repository.get_by_email = AsyncMock(return_value=None)
+        mock_repository.create = AsyncMock(return_value=expected_user)
+        
+        # Act
+        result = await service.register_user(user_data)
+        
+        # Assert
+        assert result["id"] == 1
+        assert result["email"] == "john@example.com"
+        mock_repository.create.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_register_user_email_exists(self, service, mock_repository):
+        # Arrange
+        user_data = UserCreate(
+            email="existing@example.com",
+            password="123",
+            name="Existing User"
+        )
+        mock_repository.get_by_email = AsyncMock(return_value={"id": 1})
+        
+        # Act & Assert
+        with pytest.raises(ValueError, match="Email already registered"):
+            await service.register_user(user_data)
+```
+
+### Пример 2: Integration test (Backend)
+
+```python
+# ✅ ПРАВИЛЬНО: Integration test для API endpoint
+
+import pytest
+from httpx import AsyncClient
+from app.main import app
+
+@pytest.mark.asyncio
+async def test_create_user_endpoint():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/users",
+            json={
+                "email": "test@example.com",
+                "password": "secure123",
+                "name": "Test User"
+            }
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["email"] == "test@example.com"
+        assert "id" in data
+```
+
+### Пример 3: Unit test (Frontend)
+
+```typescript
+// ✅ ПРАВИЛЬНО: Unit test для React компонента
+
+import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { UserCard } from './UserCard';
+import { useUser } from './useUser';
+
+// Mock hook
+vi.mock('./useUser');
+
+describe('UserCard', () => {
+  it('renders user data', () => {
+    // Arrange
+    (useUser as any).mockReturnValue({
+      data: { id: 1, name: 'John Doe', email: 'john@example.com' },
+      isLoading: false,
+      error: null,
+    });
+
+    // Act
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <UserCard userId={1} />
+      </QueryClientProvider>
+    );
+
+    // Assert
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('john@example.com')).toBeInTheDocument();
+  });
+
+  it('shows loading state', () => {
+    // Arrange
+    (useUser as any).mockReturnValue({
+      data: null,
+      isLoading: true,
+      error: null,
+    });
+
+    // Act
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <UserCard userId={1} />
+      </QueryClientProvider>
+    );
+
+    // Assert
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+});
+```
+
+### Пример 4: E2E test (Frontend)
+
+```typescript
+// ✅ ПРАВИЛЬНО: E2E test с Playwright
+
+import { test, expect } from '@playwright/test';
+
+test('user can login and see dashboard', async ({ page }) => {
+  // Arrange
+  await page.goto('http://localhost:3000/login');
+
+  // Act
+  await page.fill('input[name="email"]', 'test@example.com');
+  await page.fill('input[name="password"]', 'password123');
+  await page.click('button[type="submit"]');
+
+  // Assert
+  await expect(page).toHaveURL('http://localhost:3000/dashboard');
+  await expect(page.locator('text=Dashboard')).toBeVisible();
+});
+```
+
+## Специфика проекта LeadGen Constructor
+
+### Multi-tenancy тесты
+
+Все тесты должны проверять `organization_id`:
+```python
+@pytest.mark.asyncio
+async def test_list_searches_filtered_by_organization():
+    # Arrange
+    org1 = await create_organization(name="Org 1")
+    org2 = await create_organization(name="Org 2")
+    user1 = await create_user(organization_id=org1.id)
+    user2 = await create_user(organization_id=org2.id)
+    
+    # Act
+    searches = await list_searches(user1)
+    
+    # Assert
+    assert all(s.organization_id == org1.id for s in searches)
+```
+
+## Чек-лист перед коммитом
+
+- [ ] Unit тесты написаны для новой логики
+- [ ] Integration тесты для API endpoints
+- [ ] Coverage не ниже 80% (backend) / 70% (frontend)
+- [ ] Критические пути покрыты на 100%
+- [ ] Тесты независимы друг от друга
+- [ ] Моки используются для внешних зависимостей
+- [ ] Тесты читаемы и понятны
+
+## Ссылки
+
+- Полные правила: `docs/guides/LEADGEN_RULES.md` (когда будет создан)
+- Архитектура: `docs/architecture/ARCHITECTURE.md` (когда будет создан)
