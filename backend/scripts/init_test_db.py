@@ -20,13 +20,12 @@ def main() -> int:
     engine = create_engine(settings.DATABASE_URL_SYNC)
     Base.metadata.create_all(bind=engine)
     # Create test user (id=1) for conftest's auth override - required for searches FK
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("""
             INSERT INTO users (id, email, hashed_password, is_active, is_superuser, created_at)
-            VALUES (1, 'test@example.com', :pw, true, true, :now)
-            ON CONFLICT (id) DO NOTHING
+            SELECT 1, 'test@example.com', :pw, true, true, :now
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)
         """), {"pw": hash_password("test"), "now": datetime.utcnow()})
-        conn.commit()
     engine.dispose()
     return 0
 
