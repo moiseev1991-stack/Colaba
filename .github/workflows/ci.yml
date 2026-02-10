@@ -47,10 +47,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Run migrations
+      - name: Init database schema
         working-directory: backend
         run: |
-          PYTHONPATH=. alembic upgrade head
+          PYTHONPATH=. python -c "
+          import asyncio
+          import app.models  # noqa: F401 - register models with Base.metadata
+          from app.core.database import init_db
+          asyncio.run(init_db())
+          "
       - name: Run tests
         working-directory: backend
         run: |
