@@ -8,14 +8,16 @@ from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
-# Create async engine
+# Create async engine. Use NullPool in test env to avoid "another operation in progress" with pytest.
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,  # Log SQL queries in debug mode
     future=True,
+    poolclass=NullPool if settings.ENVIRONMENT == "test" else None,
 )
 
 # Create async session factory
