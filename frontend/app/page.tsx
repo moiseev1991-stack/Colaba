@@ -7,6 +7,7 @@ import '@/components/landing/landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { RegisterSection } from '@/components/landing/RegisterSection';
+import { BenefitsSection } from '@/components/landing/BenefitsSection';
 import { ModulesSection } from '@/components/landing/ModulesSection';
 import { AudienceSection } from '@/components/landing/AudienceSection';
 import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
@@ -36,6 +37,7 @@ export default function LandingPage() {
       <LandingHeader />
       <main>
         <HeroSection onCtaRegister={() => scrollTo('register', true)} onCtaExamples={() => scrollTo('examples')} />
+        <BenefitsSection />
         <RegisterSection />
         <ModulesSection />
         <AudienceSection />

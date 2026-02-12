@@ -64,3 +64,22 @@ html {
     padding: 0 16px;
   }
 }
+
+/* BenefitsSection — floating карточки на desktop */
+@keyframes benefits-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@media (min-width: 641px) {
+  .benefits-pseudo-card {
+    animation: benefits-float 4s ease-in-out infinite;
+  }
+  .benefits-pseudo-card:nth-child(2) { animation-delay: 0.5s; }
+  .benefits-pseudo-card:nth-child(3) { animation-delay: 1s; }
+}
+@media (max-width: 420px) {
+  .benefits-pseudo-card,
+  .benefits-pseudo-card > div {
+    transform: none !important;
+  }
+}

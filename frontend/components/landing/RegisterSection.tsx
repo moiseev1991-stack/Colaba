@@ -1,28 +1,4 @@
-import { Check, Zap, FileSpreadsheet, Users } from 'lucide-react';
 import { QuickSignup } from './QuickSignup';
-
-const BENEFITS = [
-  {
-    icon: Users,
-    title: 'Сбор лидов по нише и региону',
-    desc: 'Контакты компаний из открытых источников',
-  },
-  {
-    icon: FileSpreadsheet,
-    title: 'Экспорт CSV и копирование контактов',
-    desc: 'Быстрая выгрузка в таблицы',
-  },
-  {
-    icon: Zap,
-    title: 'Отправка КП и статусы доставки',
-    desc: 'Кампании, шаблоны, аналитика',
-  },
-  {
-    icon: Check,
-    title: 'История запусков и результатов',
-    desc: 'Всё в одном кабинете',
-  },
-];
 
 export function RegisterSection() {
   return (
@@ -52,9 +28,9 @@ export function RegisterSection() {
         <p className="mt-2 text-sm md:text-base max-w-[680px] opacity-75" style={{ color: 'var(--landing-text)' }}>
           Соберите лиды, отправьте КП и получите статусы. SEO и госзакупки — в том же кабинете.
         </p>
-        <div className="mt-8 lg:mt-12 grid gap-8 lg:gap-12 lg:grid-cols-[440px_1fr] lg:items-start">
+        <div className="mt-8 lg:mt-10 flex justify-center lg:justify-start">
           <div
-            className="w-full max-w-[460px] mx-auto lg:mx-0 rounded-[18px] border p-6 lg:p-7"
+            className="w-full max-w-[440px] rounded-[18px] border p-6 lg:p-7"
             style={{
               backgroundColor: 'var(--landing-card)',
               borderColor: 'rgba(15, 23, 42, 0.08)',
@@ -66,25 +42,6 @@ export function RegisterSection() {
             <div className="mt-5">
               <QuickSignup />
             </div>
-          </div>
-          <div className="max-w-[520px] lg:max-w-none">
-            <h3 className="text-base font-semibold mb-4" style={{ color: 'var(--landing-text)' }}>Что вы получите</h3>
-            <ul className="space-y-4">
-              {BENEFITS.map(({ icon: Icon, title, desc }) => (
-                <li key={title} className="flex gap-3">
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]"
-                    style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-[14px] font-semibold leading-tight" style={{ color: 'var(--landing-text)' }}>{title}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--landing-muted)' }}>{desc}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </div>
