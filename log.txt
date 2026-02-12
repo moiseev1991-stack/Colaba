@@ -1,0 +1,5 @@
+﻿84db958 Landing: BenefitsSection, обновления RegisterSection, CSS, Next.js
+943e169 Landing: СЂРµРґРёР·Р°Р№РЅ РїРѕРґ Р›РёРґС‹ + РљРџ - Hero СЃ РґРµРјРѕ-РІРёРґР¶РµС‚РѕРј, 4 РєР°СЂС‚РѕС‡РєРё РІРѕР·РјРѕР¶РЅРѕСЃС‚РµР№, 8 Р°СѓРґРёС‚РѕСЂРёР№, Examples СЃ РєР°РјРїР°РЅРёСЏРјРё РљРџ, FAQ, Pricing Pro
+2d39a19 описание изменений
+8bf7562 fix(tests): use NullPool in test env + session-scoped asyncio loop to fix InterfaceError
+3d55f6b fix(init_test_db): use engine.begin() and WHERE NOT EXISTS for test user insert
