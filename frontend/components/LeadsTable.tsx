@@ -45,6 +45,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [actionRowState, setActionRowState] = useState<Record<string, { state: 'loading' | 'error'; startedAt: number; firstDataAt?: number; errorMessage?: string }>>({});
   const [blacklistVersion, setBlacklistVersion] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Pagination state - initialize from URL and localStorage
   const [pageSize, setPageSize] = useState(() => {
@@ -282,12 +283,14 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   };
 
   const handleCopyAll = async () => {
-    const allText = sortedResults.map(r => r.outreachText).join('\n\n');
+    const rowsToCopy = selectedIds.size > 0 ? sortedResults.filter((r) => selectedIds.has(r.id)) : sortedResults;
+    const allText = rowsToCopy.map((r) => r.outreachText).join('\n\n');
     await navigator.clipboard.writeText(allText);
   };
 
   const handleExportCSV = () => {
-    const csv = exportToCSV(sortedResults);
+    const rowsToExport = selectedIds.size > 0 ? sortedResults.filter((r) => selectedIds.has(r.id)) : sortedResults;
+    const csv = exportToCSV(rowsToExport);
     const filename = runId ? `spinlid-results-${runId}.csv` : 'spinlid-results.csv';
     downloadCSV(csv, filename);
   };
@@ -327,6 +330,32 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
 
   const toggleRowDetails = (rowId: string) => {
     setExpandedRow(expandedRow === rowId ? null : rowId);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllOnPage = () => {
+    const ids = paginatedResults.map((r) => r.id);
+    const allSelected = ids.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const selectAll = () => {
+    setSelectedIds(new Set(sortedResults.map((r) => r.id)));
   };
 
   // Format Meta summary: при наличии SEO — сводка по аудиту, иначе — данные из поиска (сразу без аудита)
@@ -466,6 +495,19 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           </div>
           
           <div className="flex items-center gap-4">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Выбрано: <span className="font-medium">{selectedIds.size}</span>
+                </span>
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 text-xs">
+                  Снять выделение
+                </Button>
+                <Button variant="ghost" size="sm" onClick={selectAll} className="h-7 text-xs">
+                  Выбрать всё ({totalResults})
+                </Button>
+              </div>
+            )}
             <span className="text-sm text-gray-700 dark:text-gray-300">
               Показано: <span className="font-medium">{paginatedResults.length}</span> из{' '}
               <span className="font-medium">{totalResults}</span>
@@ -531,8 +573,14 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             </label>
           </div>
           
-          {/* Row 2: Показано N из M + Page Size + Actions */}
+          {/* Row 2: Selection + Показано N из M + Page Size + Actions */}
           <div className="flex items-center gap-2 flex-wrap">
+            {selectedIds.size > 0 && (
+              <>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Выбрано: <span className="font-medium">{selectedIds.size}</span></span>
+                <button type="button" onClick={clearSelection} className="text-xs text-saas-primary hover:underline">Снять</button>
+              </>
+            )}
             <span className="text-xs text-gray-700 dark:text-gray-300">
               Показано: <span className="font-medium">{paginatedResults.length}</span> из{' '}
               <span className="font-medium">{totalResults}</span>
@@ -598,6 +646,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               <tr>
                 {viewMode === 'compact' ? (
                   <>
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider w-10 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={paginatedResults.length > 0 && paginatedResults.every((r) => selectedIds.has(r.id))}
+                        onChange={selectAllOnPage}
+                        className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                        title="Выбрать все на странице"
+                        aria-label="Выбрать все на странице"
+                      />
+                    </th>
                     <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider w-[180px] max-w-[220px]">
                       <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none min-w-0" onClick={() => handleSort('domain')}>
                         Domain
@@ -647,6 +705,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   </>
                 ) : (
                   <>
+                    <th className="text-left px-2 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-10 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={paginatedResults.length > 0 && paginatedResults.every((r) => selectedIds.has(r.id))}
+                        onChange={selectAllOnPage}
+                        className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                        title="Выбрать все на странице"
+                        aria-label="Выбрать все на странице"
+                      />
+                    </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-48">Domain</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-40">Phone</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-48">Email</th>
@@ -666,7 +734,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {paginatedResults.length === 0 ? (
                 <tr>
-                  <td colSpan={viewMode === 'compact' ? 8 : 12} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={viewMode === 'compact' ? 9 : 13} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     Ничего не найдено
                   </td>
                 </tr>
@@ -685,6 +753,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       >
                         {viewMode === 'compact' ? (
                           <>
+                            <td className="px-2 py-2 align-middle w-10 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(row.id)}
+                                onChange={() => toggleSelect(row.id)}
+                                className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                                title="Выбрать для выгрузки"
+                                aria-label="Выбрать домен"
+                              />
+                            </td>
                             <td 
                               className="px-2 py-2 text-sm font-medium text-gray-900 dark:text-white cursor-pointer align-middle min-w-0 max-w-[220px]"
                               onClick={() => toggleRowDetails(row.id)}
@@ -891,6 +969,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                           </>
                         ) : (
                           <>
+                            <td className="px-2 py-3 align-middle w-10 shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(row.id)}
+                                onChange={() => toggleSelect(row.id)}
+                                className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                                title="Выбрать для выгрузки"
+                                aria-label="Выбрать домен"
+                              />
+                            </td>
                             <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                               {row.domain}
                             </td>
@@ -996,7 +1084,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       {/* Row Details (Accordion) - только в compact режиме */}
                       {viewMode === 'compact' && isExpanded && (
                         <tr className="bg-gray-50 dark:bg-gray-900/30">
-                          <td colSpan={8} className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+                          <td colSpan={9} className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                               {(row.titleFromSearch || row.snippetFromSearch || row.urlFromSearch) && (
                                 <>
@@ -1096,6 +1184,15 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                   )}
                   <span className="line-clamp-1 truncate">{row.domain}</span>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(row.id)}
+                    onChange={(e) => { e.stopPropagation(); toggleSelect(row.id); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-3.5 h-3.5 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary flex-shrink-0"
+                    title="Выбрать для выгрузки"
+                    aria-label="Выбрать домен"
+                  />
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {/* Contacts Icons */}

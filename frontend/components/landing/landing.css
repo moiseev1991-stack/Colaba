@@ -1,17 +1,17 @@
 /* Landing page — светлая тема, фиксированные переменные */
 .landing-light {
-  --landing-bg: #F7F8FB;
+  --landing-bg: #F6F8FC;
   --landing-card: #FFFFFF;
   --landing-text: #0B1220;
-  --landing-muted: #5B667A;
-  --landing-border: rgba(15, 23, 42, 0.10);
+  --landing-muted: #5B6475;
+  --landing-border: #E6EAF2;
   --landing-accent: #2563EB;
   --landing-accent-hover: #1d4ed8;
   --landing-accent-soft: rgba(37, 99, 235, 0.12);
   --landing-success: #16A34A;
   --landing-warning: #F59E0B;
   --landing-danger: #EF4444;
-  --landing-radius: 10px;
+  --landing-radius: 12px;
 }
 
 .landing-light {
@@ -24,11 +24,22 @@ html {
 
 .landing-light .container {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1160px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 24px;
   padding-right: 24px;
+}
+
+.landing-light .landing-section {
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+@media (max-width: 768px) {
+  .landing-light .landing-section {
+    padding-top: 56px;
+    padding-bottom: 56px;
+  }
 }
 @media (max-width: 768px) {
   .landing-light .container {

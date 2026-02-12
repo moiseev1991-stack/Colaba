@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -365,9 +364,13 @@ export default function SeoPage() {
                         </td>
                         <td className="py-2 px-3">{r.result_count ?? 0}</td>
                         <td className="py-2 px-3 text-right">
-                          <Link href={`/runs/${r.id}`} className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/runs/${r.id}`)}
+                            className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0 font-inherit"
+                          >
                             Открыть <ExternalLink className="h-3.5 w-3.5" />
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     ))}

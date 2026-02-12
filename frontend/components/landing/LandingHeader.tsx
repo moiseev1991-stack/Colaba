@@ -6,7 +6,6 @@ import { Menu, X } from 'lucide-react';
 
 const ANCHORS = [
   { id: 'features', label: 'Возможности' },
-  { id: 'audience', label: 'Для кого' },
   { id: 'how', label: 'Как работает' },
   { id: 'examples', label: 'Примеры' },
   { id: 'pricing', label: 'Тарифы' },
@@ -44,15 +43,16 @@ export function LandingHeader() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const scrollTo = (id: string) => {
+  const scrollTo = (id: string, focusEmail?: boolean) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    if (focusEmail) setTimeout(() => document.getElementById('register-email')?.focus(), 600);
     setMobileOpen(false);
   };
 
   return (
     <header
-      className={`sticky top-0 z-50 flex h-14 items-center justify-between px-4 md:px-6 transition-all duration-200 ${
-        scrolled ? 'backdrop-blur-md bg-white/90 border-b border-[var(--landing-border)] shadow-sm' : ''
+      className={`sticky top-0 z-50 flex h-16 items-center justify-between px-4 md:px-6 transition-all duration-200 ${
+        scrolled ? 'backdrop-blur-md bg-white/80 border-b border-[var(--landing-border)] shadow-sm' : ''
       }`}
     >
       <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export function LandingHeader() {
           Войти
         </Link>
         <button
-          onClick={() => scrollTo('register')}
+          onClick={() => scrollTo('register', true)}
           className="px-4 py-2 rounded-[var(--landing-radius)] text-sm font-medium text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-2"
           style={{ backgroundColor: 'var(--landing-accent)' }}
         >
@@ -104,7 +104,7 @@ export function LandingHeader() {
       </button>
 
       {mobileOpen && (
-        <div className="absolute top-14 left-0 right-0 bg-white border-b border-[var(--landing-border)] shadow-lg md:hidden">
+        <div className="absolute top-16 left-0 right-0 bg-white border-b border-[var(--landing-border)] shadow-lg md:hidden">
           <div className="flex flex-col p-4 gap-1">
             {ANCHORS.map(({ id, label }) => (
               <button key={id} onClick={() => scrollTo(id)} className="px-4 py-3 text-left text-sm font-medium rounded-[var(--landing-radius)] hover:bg-[var(--landing-accent-soft)]" style={{ color: activeId === id ? 'var(--landing-accent)' : 'var(--landing-text)' }}>
@@ -115,7 +115,7 @@ export function LandingHeader() {
             <Link href="/auth/login" className="px-4 py-3 text-sm font-medium rounded-[var(--landing-radius)] hover:bg-[var(--landing-accent-soft)]" style={{ color: 'var(--landing-text)' }}>
               Войти
             </Link>
-            <button onClick={() => scrollTo('register')} className="px-4 py-3 text-sm font-medium rounded-[var(--landing-radius)] text-white text-left" style={{ backgroundColor: 'var(--landing-accent)' }}>
+            <button onClick={() => scrollTo('register', true)} className="px-4 py-3 text-sm font-medium rounded-[var(--landing-radius)] text-white text-left" style={{ backgroundColor: 'var(--landing-accent)' }}>
               Регистрация
             </button>
           </div>

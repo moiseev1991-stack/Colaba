@@ -24,21 +24,24 @@ export default function LandingPage() {
     if (token) router.replace('/app');
   }, [router]);
 
-  const scrollTo = (id: string) => {
+  const scrollTo = (id: string, focusEmail?: boolean) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    if (focusEmail) {
+      setTimeout(() => document.getElementById('register-email')?.focus(), 600);
+    }
   };
 
   return (
     <div className="landing-light min-h-screen">
       <LandingHeader />
       <main>
-        <HeroSection onCtaRegister={() => scrollTo('register')} onCtaFeatures={() => scrollTo('features')} />
+        <HeroSection onCtaRegister={() => scrollTo('register', true)} onCtaExamples={() => scrollTo('examples')} />
         <RegisterSection />
         <ModulesSection />
         <AudienceSection />
         <HowItWorksSection />
         <ExamplesSection />
-        <PricingSection onCta={() => scrollTo('register')} />
+        <PricingSection onCta={() => scrollTo('register', true)} />
         <FAQSection />
         <ContactsSection />
         <LandingFooter />
