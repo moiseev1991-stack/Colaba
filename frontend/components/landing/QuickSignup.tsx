@@ -16,7 +16,7 @@ function GoogleIcon() {
 }
 
 const inputBase =
-  'w-full h-[46px] px-4 rounded-[12px] border text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-1 transition-colors placeholder:opacity-80';
+  'w-full h-11 px-4 rounded-[12px] border text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-1 transition-colors placeholder:opacity-80';
 
 export function QuickSignup() {
   const [tab, setTab] = useState<'register' | 'login'>('register');
@@ -91,7 +91,7 @@ export function QuickSignup() {
   const canSubmit = tab === 'register' ? isValidRegister : isValidLogin;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       <div className="flex gap-1 p-1 rounded-[var(--landing-radius)]" style={{ backgroundColor: 'var(--landing-accent-soft)' }}>
         <button
           type="button"
@@ -115,7 +115,7 @@ export function QuickSignup() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         {errors.form && (
           <div
             className="rounded-[12px] p-3 text-sm"
@@ -190,7 +190,7 @@ export function QuickSignup() {
         <button
           type="submit"
           disabled={loading || !canSubmit}
-          className="w-full h-[46px] rounded-[12px] text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-2"
+          className="w-full h-11 rounded-[12px] text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-2"
           style={{ backgroundColor: 'var(--landing-accent)' }}
         >
           {loading ? (
@@ -211,7 +211,7 @@ export function QuickSignup() {
         </div>
         <button
           type="button"
-          className="w-full h-[46px] rounded-[12px] border flex items-center justify-center gap-2 text-sm font-medium transition-colors hover:bg-[var(--landing-accent-soft)]"
+          className="w-full h-11 rounded-[12px] border flex items-center justify-center gap-2 text-sm font-medium transition-colors hover:bg-[var(--landing-accent-soft)]"
           style={{ borderColor: 'var(--landing-border)', color: 'var(--landing-text)' }}
         >
           <GoogleIcon />

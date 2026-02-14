@@ -49,19 +49,35 @@ html {
 }
 
 .landing-light .register-section-container {
-  max-width: 1160px;
-  padding-top: 0;
-  padding-bottom: 0;
+  max-width: 1200px;
+  padding: 0 24px;
+  margin: 0 auto;
 }
-@media (min-width: 1024px) {
-  .landing-light .register-section-container {
-    padding-left: 24px;
-    padding-right: 24px;
-  }
-}
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .landing-light .register-section-container {
     padding: 0 16px;
+  }
+}
+
+/* Register section: 2-col grid desktop, 1-col tablet/mobile */
+.register-section-grid {
+  display: grid;
+  gap: 2rem;
+}
+@media (min-width: 1200px) {
+  .register-section-grid {
+    grid-template-columns: 480px 1fr;
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .register-section-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 767px) {
+  .register-section-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }
 
