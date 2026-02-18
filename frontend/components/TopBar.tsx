@@ -77,6 +77,7 @@ export function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [morePosition, setMorePosition] = useState({ top: 0, left: 0, width: 0 });
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -93,6 +94,10 @@ export function TopBar() {
       if (left < 8) left = 8;
       setMorePosition({ top: rect.bottom + 4, left, width });
     }
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -288,9 +293,7 @@ export function TopBar() {
                 <span>Ещё</span>
                 <ChevronDown className="h-4 w-4" />
               </button>
-              {typeof document !== 'undefined' &&
-                moreOpen &&
-                createPortal(moreDropdownContent, document.body)}
+              {mounted && moreOpen && createPortal(moreDropdownContent, document.body)}
             </div>
           )}
         </nav>
