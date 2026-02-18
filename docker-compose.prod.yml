@@ -22,6 +22,23 @@ services:
     networks:
       - leadgen-network
 
+  migrate:
+    image: colaba-backend-local:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: leadgen-migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - leadgen-network
+    restart: "no"
+    command: alembic upgrade head
+
   redis:
     image: redis:7-alpine
     container_name: leadgen-redis
@@ -62,6 +79,8 @@ services:
       PROXY_URL: ${PROXY_URL}
       PROXY_LIST: ${PROXY_LIST}
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:

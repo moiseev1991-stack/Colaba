@@ -32,3 +32,7 @@
 | USE_PROXY | false |
 | PROXY_URL | (пусто) |
 | PROXY_LIST | (пусто) |
+
+## Pre/Post Deployment Commands
+
+**Оставь пустыми.** Миграции выполняет сервис `migrate` в docker-compose.prod.yml при каждом деплое (backend ждёт завершения миграций).
