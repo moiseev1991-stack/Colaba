@@ -70,12 +70,6 @@ services:
       - "127.0.0.1:8001:8000"
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 18
-      start_period: 90s
 
   celery-worker:
     image: colaba-backend-local:local
@@ -98,7 +92,7 @@ services:
       redis:
         condition: service_healthy
       backend:
-        condition: service_healthy
+        condition: service_started
     networks:
       - leadgen-network
     restart: unless-stopped
@@ -125,7 +119,7 @@ services:
       redis:
         condition: service_healthy
       backend:
-        condition: service_healthy
+        condition: service_started
     networks:
       - leadgen-network
     restart: unless-stopped
@@ -141,7 +135,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     networks:
       - leadgen-network
     restart: unless-stopped

@@ -55,3 +55,11 @@
    - Backend: 8001 (8000 занят Coolify), Frontend: 3000
 
 5. **Перед Redeploy** — сохрани все изменения (Save)
+
+## Если backend не стартует — смотреть логи
+
+На сервере в терминале:
+```bash
+docker ps -a | grep backend-okkkosgk8ckk00g8goc8g4sk
+docker logs <ID_контейнера_backend>
+```
