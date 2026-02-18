@@ -35,7 +35,9 @@
 
 ## Pre/Post Deployment Commands
 
-**Оставь пустыми.** Миграции выполняет backend при старте (alembic upgrade head перед uvicorn).
+**ОБЯЗАТЕЛЬНО оставь пустыми!** Миграции выполняет backend при старте (alembic upgrade head перед uvicorn).
+
+**Важно:** Если там стоит `php artisan migrate` — удали. Это Laravel-команда, наш проект — FastAPI/Python. Такие команды ломают деплой.
 
 ## Твои домены (пример)
 
@@ -81,3 +83,67 @@ docker logs <ID_контейнера_backend>
 2. **Подожди 1–2 минуты** после Redeploy — Next.js и backend могут стартовать не сразу.
 3. **Проверь логи frontend:** `docker ps -a | grep frontend` → `docker logs <ID> --tail 50`
 4. **Предупреждение "No health check"** в Coolify — можно игнорировать, healthcheck задан в docker-compose.
+
+## 504 на frontend при работающем backend
+
+Если `backend/health` открывается, а frontend по своему домену даёт 504:
+
+### Причина
+
+Прокси Coolify (Traefik) не получает ответ от frontend вовремя или маршрутизация указывает не на тот сервис/порт.
+
+### Что проверить в Coolify
+
+1. **Domains / Destinations**
+   - Открой проект Colaba → вкладка **Domains** (или **Destinations** / **General**).
+   - У frontend-домена `ck4g0000k4okkw8ck4sko0ok...` должен быть указан сервис **frontend** и порт **3000**.
+   - У backend-домена `cgckw04gkk0g8g0g8gcwk44w...` — сервис **backend**, порт **8001**.
+
+2. **Если frontend и backend — разные приложения**
+   - У каждого приложения свои домены. Проверь, что домен frontend привязан именно к приложению с контейнером frontend.
+
+3. **Таймаут Gateway (Traefik)**
+   - Next.js может медленно отвечать при первом запросе.
+   - В Coolify: Settings приложения или глобальные настройки → поиск «Timeout», «Read timeout», «Gateway timeout».
+   - Увеличь до 120–180 секунд, если есть такая опция.
+
+4. **Повторная привязка домена**
+   - Удали домен frontend и добавь заново, указав сервис `frontend` и порт `3000`.
+   - Сделай Redeploy.
+
+### Проверка на сервере
+
+```bash
+# Frontend отвечает локально?
+curl -I http://127.0.0.1:3000/
+
+# Должно быть: HTTP/1.1 200 OK
+```
+
+Если `curl` даёт 200, значит контейнер работает, а 504 — из‑за настройки прокси/домена в Coolify.
+
+## Traefik: увеличить таймаут (504 на первом запросе)
+
+Next.js может долго отвечать при первом запросе (>60 сек). Traefik по умолчанию даёт 60 сек.
+
+**Где:** Coolify → **Servers** → spinlid → **Proxy** → Command / Custom configuration
+
+**Добавь в command:**
+```
+--entrypoints.https.transport.respondingTimeouts.readTimeout=5m
+--entrypoints.http.transport.respondingTimeouts.readTimeout=5m
+```
+
+Перезапусти Proxy после изменений.
+
+## Network isolation: прокси не видит контейнеры
+
+Если compose использует кастомную сеть `leadgen-network`, Coolify-proxy может быть не подключён к ней.
+
+**На сервере в терминале** (замени `leadgen-network` на имя сети из `docker network ls`, если другое):
+```bash
+docker network ls | grep leadgen
+docker network connect leadgen-network-okkkosgk8ckk00g8goc8g4sk coolify-proxy
+```
+
+Имя сети часто: `<network>_<uuid>` — смотри в `docker network ls`.
