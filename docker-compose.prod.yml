@@ -1,16 +1,20 @@
+# Coolify-compatible: use simple ${VAR} only (no nested ${VAR:-default})
+# Set all vars in Coolify Environment Variables.
+# Required: SECRET_KEY, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB,
+#   DATABASE_URL, DATABASE_URL_SYNC, NEXT_PUBLIC_API_URL, CORS_ORIGINS
 services:
   postgres:
     image: postgres:16-alpine
     container_name: leadgen-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-leadgen_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-leadgen_password}
-      POSTGRES_DB: ${POSTGRES_DB:-leadgen_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-leadgen_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -33,7 +37,7 @@ services:
       - leadgen-network
 
   backend:
-    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    image: colaba-backend-local:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -42,22 +46,21 @@ services:
       ENVIRONMENT: production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
-      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      # Optional providers/keys (keep empty if unused)
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama2}
-      YANDEX_XML_FOLDER_ID: ${YANDEX_XML_FOLDER_ID:-}
-      YANDEX_XML_KEY: ${YANDEX_XML_KEY:-}
-      USE_PROXY: ${USE_PROXY:-false}
-      PROXY_URL: ${PROXY_URL:-}
-      PROXY_LIST: ${PROXY_LIST:-}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      LOG_LEVEL: ${LOG_LEVEL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      YANDEX_XML_FOLDER_ID: ${YANDEX_XML_FOLDER_ID}
+      YANDEX_XML_KEY: ${YANDEX_XML_KEY}
+      USE_PROXY: ${USE_PROXY}
+      PROXY_URL: ${PROXY_URL}
+      PROXY_LIST: ${PROXY_LIST}
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,10 +70,9 @@ services:
       - leadgen-network
     restart: unless-stopped
     ports:
-      # Expose backend only locally; use Nginx for public access
-      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:8000:8000"
     command: >
-      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${BACKEND_WORKERS:-2}"
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -78,7 +80,7 @@ services:
       retries: 12
 
   celery-worker:
-    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    image: colaba-backend-local:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -87,12 +89,12 @@ services:
       ENVIRONMENT: production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
-      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      LOG_LEVEL: ${LOG_LEVEL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,11 +105,10 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    command: >
-      sh -c "celery -A app.queue.celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-4} -Q celery"
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=4 -Q celery
 
   celery-worker-search:
-    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    image: colaba-backend-local:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -116,12 +117,12 @@ services:
       ENVIRONMENT: production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
-      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://${POSTGRES_USER:-leadgen_user}:${POSTGRES_PASSWORD:-leadgen_password}@postgres:5432/${POSTGRES_DB:-leadgen_db}}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      LOG_LEVEL: ${LOG_LEVEL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,18 +133,17 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    command: >
-      sh -c "celery -A app.queue.celery_app worker --loglevel=info --concurrency=${CELERY_SEARCH_CONCURRENCY:-2} --prefetch-multiplier=1 -Q search_queue"
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue
 
   frontend:
-    image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}
+    image: colaba-frontend-local:local
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: leadgen-frontend
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     depends_on:
       backend:
         condition: service_healthy
@@ -151,8 +151,7 @@ services:
       - leadgen-network
     restart: unless-stopped
     ports:
-      # Expose frontend only locally; use Nginx for public access
-      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test:
         [
@@ -170,4 +169,3 @@ volumes:
 networks:
   leadgen-network:
     driver: bridge
-
