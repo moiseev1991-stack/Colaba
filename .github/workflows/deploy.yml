@@ -33,7 +33,7 @@ jobs:
       - name: Prepare image names
         id: meta
         run: |
-          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          REPO_NAME=$(echo "${GITHUB_REPOSITORY##*/}" | tr '[:upper:]' '[:lower:]')
           echo "backend_image=ghcr.io/${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}-backend" >> "$GITHUB_OUTPUT"
           echo "frontend_image=ghcr.io/${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}-frontend" >> "$GITHUB_OUTPUT"
           echo "image_tag=sha-${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
