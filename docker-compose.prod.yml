@@ -5,7 +5,6 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: leadgen-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -27,7 +26,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: leadgen-migrate
     environment:
       DATABASE_URL: ${DATABASE_URL}
       DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
@@ -41,7 +39,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: leadgen-redis
     volumes:
       - redis_data:/data
     healthcheck:
@@ -58,7 +55,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: leadgen-backend
     environment:
       ENVIRONMENT: production
       DEBUG: "False"
@@ -103,7 +99,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: leadgen-celery-worker
     environment:
       ENVIRONMENT: production
       DEBUG: "False"
@@ -131,7 +126,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: leadgen-celery-worker-search
     environment:
       ENVIRONMENT: production
       DEBUG: "False"
@@ -159,7 +153,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: leadgen-frontend
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}

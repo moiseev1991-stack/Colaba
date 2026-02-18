@@ -35,4 +35,23 @@
 
 ## Pre/Post Deployment Commands
 
-**Оставь пустыми.** Миграции выполняет сервис `migrate` в docker-compose.prod.yml при каждом деплое (backend ждёт завершения миграций).
+**Оставь пустыми.** Миграции выполняет сервис `migrate` в docker-compose.prod.yml при каждом деплое.
+
+## Чек-лист перед Redeploy
+
+1. **Configuration → General**
+   - Base Directory: пусто (если compose в корне)
+   - Docker Compose Location: `docker-compose.prod.yml`
+
+2. **Configuration → Environment Variables**
+   - Все обязательные переменные заполнены
+   - В `DATABASE_URL` и `DATABASE_URL_SYNC` хост = `postgres` (не localhost)
+
+3. **Configuration → Advanced → Pre/Post Deployment**
+   - Pre-deployment: Command и Container Name — пусто
+   - Post-deployment: Command и Container Name — пусто
+
+4. **Configuration → Ports**
+   - Backend: 8000, Frontend: 3000
+
+5. **Перед Redeploy** — сохрани все изменения (Save)
