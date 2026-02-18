@@ -52,6 +52,6 @@
    - Post-deployment: Command и Container Name — пусто
 
 4. **Configuration → Ports**
-   - Backend: 8000, Frontend: 3000
+   - Backend: 8001 (8000 занят Coolify), Frontend: 3000
 
 5. **Перед Redeploy** — сохрани все изменения (Save)
