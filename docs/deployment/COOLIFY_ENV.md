@@ -37,6 +37,17 @@
 
 **Оставь пустыми.** Миграции выполняет backend при старте (alembic upgrade head перед uvicorn).
 
+## Твои домены (пример)
+
+- **Frontend:** `http://ck4g0000k4okkw8ck4sko0ok.88.210.53.183.sslip.io`
+- **Backend:** `http://cgckw04gkk0g8g0g8gcwk44w.88.210.53.183.sslip.io`
+
+В Environment Variables задай:
+- **CORS_ORIGINS:** `http://ck4g0000k4okkw8ck4sko0ok.88.210.53.183.sslip.io`
+- **NEXT_PUBLIC_API_URL:** `http://cgckw04gkk0g8g0g8gcwk44w.88.210.53.183.sslip.io/api/v1`
+
+`NEXT_PUBLIC_API_URL` применяется при сборке — если менял, нужен Redeploy.
+
 ## Чек-лист перед Redeploy
 
 1. **Configuration → General**
