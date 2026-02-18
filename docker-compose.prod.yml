@@ -21,22 +21,6 @@ services:
     networks:
       - leadgen-network
 
-  migrate:
-    image: colaba-backend-local:local
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - leadgen-network
-    restart: "no"
-    command: alembic upgrade head
-
   redis:
     image: redis:7-alpine
     volumes:
@@ -75,8 +59,6 @@ services:
       PROXY_URL: ${PROXY_URL}
       PROXY_LIST: ${PROXY_LIST}
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -87,7 +69,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     command: >
-      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 10s

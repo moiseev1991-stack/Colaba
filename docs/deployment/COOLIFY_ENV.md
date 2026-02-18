@@ -35,7 +35,7 @@
 
 ## Pre/Post Deployment Commands
 
-**Оставь пустыми.** Миграции выполняет сервис `migrate` в docker-compose.prod.yml при каждом деплое.
+**Оставь пустыми.** Миграции выполняет backend при старте (alembic upgrade head перед uvicorn).
 
 ## Чек-лист перед Redeploy
 
