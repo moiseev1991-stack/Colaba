@@ -74,3 +74,10 @@
 docker ps -a | grep backend-okkkosgk8ckk00g8goc8g4sk
 docker logs <ID_контейнера_backend>
 ```
+
+## Gateway Timeout / белый экран
+
+1. **Проверь Environment Variables** — `NEXT_PUBLIC_API_URL` и `CORS_ORIGINS` с правильными доменами.
+2. **Подожди 1–2 минуты** после Redeploy — Next.js и backend могут стартовать не сразу.
+3. **Проверь логи frontend:** `docker ps -a | grep frontend` → `docker logs <ID> --tail 50`
+4. **Предупреждение "No health check"** в Coolify — можно игнорировать, healthcheck задан в docker-compose.
