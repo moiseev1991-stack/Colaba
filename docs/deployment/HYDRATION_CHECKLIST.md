@@ -2,10 +2,10 @@
 
 ## Что уже исправлено в коде
 
-1. **Theme Script полностью удалён** — theme применяется только в `useEffect` после гидрации
-2. **ThemeInit** — вызывает `setTheme(getTheme())` в `useEffect`, без мутации DOM до mount
-3. **reactStrictMode: false** — отключает двойной mount, который может усиливать hydration errors
-4. **Favicon** — добавлен `app/icon.svg`
+1. **ClientOnly wrapper** — контент рендерится только после mount, нет гидрации сложного дерева
+2. **Theme Script удалён** — theme в `useEffect`
+3. **reactStrictMode: false**
+4. **Favicon** — `app/icon.svg`
 
 ---
 
