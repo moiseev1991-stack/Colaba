@@ -33,6 +33,10 @@
 | PROXY_URL | (пусто) |
 | PROXY_LIST | (пусто) |
 
+## Если в логах Postgres: `FATAL: database "leadgen_user" does not exist`
+
+Причина: healthcheck использовал `pg_isready -U user` и по умолчанию подключался к БД с именем пользователя. В `docker-compose.prod.yml` healthcheck исправлен на `-d ${POSTGRES_DB}`. После обновления репозитория — Redeploy.
+
 ## Pre/Post Deployment Commands
 
 **ОБЯЗАТЕЛЬНО оставь пустыми!** Миграции выполняет backend при старте (alembic upgrade head перед uvicorn).
