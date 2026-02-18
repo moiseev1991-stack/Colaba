@@ -1,7 +1,12 @@
 'use client';
 
-/** Theme is applied by inline script in layout.tsx (beforeInteractive).
- * This component is a no-op to avoid hydration issues from mutating DOM during hydration. */
+import { useEffect } from 'react';
+import { getTheme, setTheme } from '@/lib/storage';
+
+/** Apply theme after hydration to avoid React #418/#423. No DOM mutation before React mounts. */
 export function ThemeInit() {
+  useEffect(() => {
+    setTheme(getTheme());
+  }, []);
   return null;
 }

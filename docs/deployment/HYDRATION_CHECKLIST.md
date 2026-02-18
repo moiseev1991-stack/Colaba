@@ -2,9 +2,10 @@
 
 ## Что уже исправлено в коде
 
-1. **Script `beforeInteractive` → `afterInteractive`** — устраняет hydration mismatch (#418, #423)
-2. **ThemeInit** — больше не мутирует DOM во время commit
-3. **Favicon** — добавлен `app/icon.svg` (404 на `/favicon.ico` допустим, если иконка отображается)
+1. **Theme Script полностью удалён** — theme применяется только в `useEffect` после гидрации
+2. **ThemeInit** — вызывает `setTheme(getTheme())` в `useEffect`, без мутации DOM до mount
+3. **reactStrictMode: false** — отключает двойной mount, который может усиливать hydration errors
+4. **Favicon** — добавлен `app/icon.svg`
 
 ---
 
@@ -43,6 +44,7 @@ curl http://127.0.0.1:8001/health # backend: ожидаем JSON
 
 - **Console** — не должно быть React #418, #423, HierarchyRequestError
 - **Network** — запросы к API без CORS-ошибок и 502
+- **Важно:** после деплоя — Ctrl+Shift+R (жёсткое обновление) или режим инкогнито, чтобы не использовать кэш старого JS
 
 ### 6. Открывать именно frontend-домен
 
