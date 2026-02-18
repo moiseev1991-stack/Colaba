@@ -33,27 +33,24 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
-    
-    # Update foreign keys in existing tables
-    # Note: This assumes searches and blacklist_domains tables already exist
-    # If they don't exist yet, these will fail - adjust accordingly
-    try:
+
+    # Add FKs only if target tables exist (avoids transaction abort on missing tables)
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    tables = inspector.get_table_names()
+
+    if 'searches' in tables and 'user_id' in [c['name'] for c in inspector.get_columns('searches')]:
         op.create_foreign_key(
             'fk_searches_user_id_users',
             'searches', 'users',
             ['user_id'], ['id']
         )
-    except Exception:
-        pass  # Table might not exist yet
-    
-    try:
+    if 'blacklist_domains' in tables and 'user_id' in [c['name'] for c in inspector.get_columns('blacklist_domains')]:
         op.create_foreign_key(
             'fk_blacklist_domains_user_id_users',
             'blacklist_domains', 'users',
             ['user_id'], ['id']
         )
-    except Exception:
-        pass  # Table might not exist yet
 
 
 def downgrade() -> None:
