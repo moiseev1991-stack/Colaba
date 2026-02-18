@@ -86,6 +86,14 @@ sudo ./svc.sh start
 sudo ./svc.sh status
 ```
 
+Если runner offline, перезапусти:
+
+```bash
+sudo ./svc.sh restart
+```
+
+**Ручной запуск деплоя:** Actions → Deploy (main) → Run workflow (когда runner онлайн).
+
 ## Что именно деплоится на сервер
 
 - В `/opt/colaba` workflow кладёт:
