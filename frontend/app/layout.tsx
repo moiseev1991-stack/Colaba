@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <Script id="theme-init" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
         <AppShell>{children}</AppShell>
       </body>
     </html>
