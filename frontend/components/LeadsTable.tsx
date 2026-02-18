@@ -6,7 +6,7 @@ import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDo
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import type { LeadRow } from '@/lib/types';
-import { isBlacklisted, addToBlacklist, getResultsPageSize, setResultsPageSize } from '@/lib/storage';
+import { isBlacklisted, addToBlacklist, setResultsPageSize } from '@/lib/storage';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
 import { ToastContainer, type Toast } from './Toast';
 import { runResultAudit } from '@/src/services/api/search';
