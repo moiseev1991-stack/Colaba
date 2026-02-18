@@ -1,12 +1,7 @@
 'use client';
 
-import { useLayoutEffect } from 'react';
-import { getTheme, setTheme } from '@/lib/storage';
-
+/** Theme is applied by inline script in layout.tsx (beforeInteractive).
+ * This component is a no-op to avoid hydration issues from mutating DOM during commit. */
 export function ThemeInit() {
-  useLayoutEffect(() => {
-    const theme = getTheme();
-    setTheme(theme);
-  }, []);
   return null;
 }
