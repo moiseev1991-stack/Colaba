@@ -200,7 +200,4 @@ export function setResultsPageSize(size: number): void {
   }
 }
 
-// Initialize theme on load
-if (typeof window !== 'undefined') {
-  setTheme(getTheme());
-}
+// Theme is applied by ThemeInit component on mount

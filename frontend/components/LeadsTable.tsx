@@ -47,30 +47,9 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [blacklistVersion, setBlacklistVersion] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Pagination state - initialize from URL and localStorage
-  const [pageSize, setPageSize] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlPageSize = urlParams.get('pageSize');
-      if (urlPageSize) {
-        const size = parseInt(urlPageSize, 10);
-        if ([10, 25, 50, 100].includes(size)) {
-          setResultsPageSize(size);
-          return size;
-        }
-      }
-    }
-    return getResultsPageSize();
-  });
-  
-  const [currentPage, setCurrentPage] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const page = parseInt(urlParams.get('page') || '1', 10);
-      return isNaN(page) || page < 1 ? 1 : page;
-    }
-    return 1;
-  });
+  // Pagination state - use stable defaults for hydration; sync from URL/localStorage in useEffect
+  const [pageSize, setPageSize] = useState(100);
+  const [currentPage, setCurrentPage] = useState(1);
   
   const updateURL = useCallback((page: number, size: number) => {
     if (typeof window === 'undefined') return;

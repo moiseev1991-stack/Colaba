@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { getTheme, setTheme } from '@/lib/storage';
 
 export function ThemeInit() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const theme = getTheme();
     setTheme(theme);
   }, []);
