@@ -47,7 +47,15 @@ echo "Running migrations..."
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
   docker compose -f "$COMPOSE_FILE" run --rm backend alembic upgrade head
 
-echo "Stopping and removing existing app containers (free port 8001/3000)..."
+echo "Freeing ports 8001 and 3000..."
+# Stop any container using these ports (Coolify or other projects)
+for port in 8001 3000; do
+  docker ps -q | while read cid; do
+    if docker port "$cid" 2>/dev/null | grep -qE ":${port}(->|$)"; then
+      docker stop "$cid" 2>/dev/null || true
+    fi
+  done
+done
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
   docker compose -f "$COMPOSE_FILE" rm -sf backend frontend celery-worker celery-worker-search 2>/dev/null || true
 
