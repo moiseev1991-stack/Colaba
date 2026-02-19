@@ -2,10 +2,10 @@
 
 ## Что уже исправлено в коде
 
-1. **ClientOnly wrapper** — контент рендерится только после mount, нет гидрации сложного дерева
-2. **Theme Script удалён** — theme в `useEffect`
-3. **reactStrictMode: false**
-4. **Favicon** — `app/icon.svg`
+1. **ClientOnly wrapper** — контент рендерится только после mount
+2. **Inter font удалён** — next/font мог вызывать hydration mismatch; используется font-sans
+3. **Theme Script удалён** — theme в `useEffect`
+4. **reactStrictMode: false**
 
 ---
 
