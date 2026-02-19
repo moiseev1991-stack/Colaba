@@ -5,9 +5,9 @@ Application configuration using Pydantic Settings.
 """
 
 from functools import lru_cache
-from typing import List
+from typing import List, Union
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -58,6 +58,15 @@ class Settings(BaseSettings):
 
     # Proxy for HTML providers (Yandex, Google) — bypass blocks
     USE_PROXY: bool = Field(default=False, description="Use proxy for HTML search providers")
+
+    @field_validator("USE_PROXY", mode="before")
+    @classmethod
+    def parse_use_proxy(cls, v: Union[bool, str]) -> bool:
+        if v in (True, "true", "1", "yes"):
+            return True
+        if v in (False, "false", "0", "no", "", None):
+            return False
+        return bool(v)
     PROXY_URL: str = Field(default="", description="Single proxy: http://host:port or socks5://host:port")
     PROXY_LIST: str = Field(default="", description="Comma-separated proxy list for rotation")
 
