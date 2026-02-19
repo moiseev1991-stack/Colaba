@@ -2,6 +2,9 @@
 # GitHub Actions deploy: sets BACKEND_IMAGE, FRONTEND_IMAGE, IMAGE_TAG (GHCR pull).
 # Required: SECRET_KEY, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB,
 #   DATABASE_URL, DATABASE_URL_SYNC, NEXT_PUBLIC_API_URL, CORS_ORIGINS
+#
+# Traefik labels (вариант Б): для доступа по IP и sslip.io доменам.
+# Домены заданы под Coolify; при других доменах — отредактируйте labels у frontend и backend.
 services:
   postgres:
     image: postgres:16-alpine
@@ -68,6 +71,13 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8001:8000"
+    labels:
+      # Traefik: API и health на IP и домене бэкенда
+      - "traefik.enable=true"
+      - "traefik.http.routers.colaba-backend.rule=(Host(`88.210.53.183`) && (PathPrefix(`/api`) || Path(`/health`))) || Host(`cgckw04gkk0g8g0g8gcwk44w.88.210.53.183.sslip.io`)"
+      - "traefik.http.routers.colaba-backend.entrypoints=http"
+      - "traefik.http.routers.colaba-backend.priority=100"
+      - "traefik.http.services.colaba-backend.loadbalancer.server.port=8000"
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
 
@@ -141,6 +151,13 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
+    labels:
+      # Traefik: маршрутизация через coolify-proxy (вариант Б — деплой из /opt/colaba)
+      - "traefik.enable=true"
+      - "traefik.http.routers.colaba-frontend.rule=Host(`88.210.53.183`) || Host(`ck4g0000k4okkw8ck4sko0ok.88.210.53.183.sslip.io`)"
+      - "traefik.http.routers.colaba-frontend.entrypoints=http"
+      - "traefik.http.routers.colaba-frontend.priority=1"
+      - "traefik.http.services.colaba-frontend.loadbalancer.server.port=3000"
     healthcheck:
       test:
         [

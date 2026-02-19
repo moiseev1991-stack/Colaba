@@ -5,7 +5,8 @@
 set -euo pipefail
 
 echo "Поиск сети приложения Colaba..."
-NETWORK=$(docker network ls --format '{{.Name}}' | grep -E "okkkosgk8ckk00g8goc8g4sk_leadgen|leadgen-network" | head -1)
+# Приоритет: colaba_leadgen-network (деплой из /opt/colaba), затем okkkosgk8ckk, w0wok0gck, любая leadgen
+NETWORK=$(docker network ls --format '{{.Name}}' | grep -E "colaba_leadgen-network|okkkosgk8ckk00g8goc8g4sk_leadgen|w0wok0gck048wwk0k8k4ck4s_leadgen" | head -1)
 
 if [[ -z "$NETWORK" ]]; then
   echo "Сеть не найдена. Доступные сети:"
