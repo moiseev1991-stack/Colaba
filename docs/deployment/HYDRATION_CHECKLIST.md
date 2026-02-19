@@ -2,8 +2,8 @@
 
 ## Что уже исправлено в коде
 
-1. **ClientOnly wrapper** — контент рендерится только после mount
-2. **Inter font удалён** — next/font мог вызывать hydration mismatch; используется font-sans
+1. **ClientOnly wrapper** — в production контент рендерится только после mount
+2. **Inter font** — восстановлен для дизайна
 3. **Theme Script удалён** — theme в `useEffect`
 4. **reactStrictMode: false**
 
