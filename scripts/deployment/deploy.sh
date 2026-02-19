@@ -11,13 +11,25 @@ fi
 
 cd "$DEPLOY_PATH"
 
-# Загружаем переменные окружения из .env файла, если он существует
-if [[ -f "$DEPLOY_PATH/.env" ]]; then
-  echo "Loading environment variables from .env file..."
-  set -a
-  source "$DEPLOY_PATH/.env"
-  set +a
+# Загружаем переменные окружения из .env файла
+if [[ ! -f "$DEPLOY_PATH/.env" ]]; then
+  echo "ERROR: $DEPLOY_PATH/.env not found."
+  echo "Create it before deploy. Copy from docs/deployment/.env.prod.example and fill values."
+  echo "See: https://github.com/moiseev1991-stack/Colaba/blob/main/docs/deployment/COOLIFY_ENV.md"
+  exit 2
 fi
+echo "Loading environment variables from .env file..."
+set -a
+source "$DEPLOY_PATH/.env"
+set +a
+
+# Проверяем критичные переменные
+for v in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB DATABASE_URL DATABASE_URL_SYNC REDIS_URL CELERY_BROKER_URL CELERY_RESULT_BACKEND SECRET_KEY CORS_ORIGINS NEXT_PUBLIC_API_URL; do
+  if [[ -z "${!v}" ]]; then
+    echo "ERROR: Required variable $v is not set in .env"
+    exit 2
+  fi
+done
 
 if [[ -n "${GHCR_TOKEN:-}" && -n "${GHCR_USER:-}" ]]; then
   echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null

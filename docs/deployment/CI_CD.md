@@ -50,14 +50,31 @@ sudo chown -R deploy:deploy /opt/colaba
 
 Перелогиньтесь под `deploy`, чтобы группа `docker` применились.
 
-### 3) Файл окружения приложения
+### 3) Файл окружения `/opt/colaba/.env` (обязательно)
 
-Создайте `/opt/colaba/.env` (НЕ коммитить). Минимум:
+**Без этого файла деплой упадёт.** Создайте на сервере:
 
-- `SECRET_KEY`
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` (или оставить дефолты)
-- `NEXT_PUBLIC_API_URL` (URL backend для frontend, например `https://your-domain/api/v1`)
-- при необходимости: прокси/ключи провайдеров
+```bash
+# В терминале Coolify (или по SSH на сервер)
+cat > /opt/colaba/.env << 'ENVEOF'
+POSTGRES_USER=leadgen_user
+POSTGRES_PASSWORD=YOUR_PASSWORD
+POSTGRES_DB=leadgen_db
+DATABASE_URL=postgresql+asyncpg://leadgen_user:YOUR_PASSWORD@postgres:5432/leadgen_db
+DATABASE_URL_SYNC=postgresql://leadgen_user:YOUR_PASSWORD@postgres:5432/leadgen_db
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+SECRET_KEY=YOUR_SECRET_KEY
+LOG_LEVEL=INFO
+CORS_ORIGINS=http://ваш-домен-фронта.88.210.53.183.sslip.io
+NEXT_PUBLIC_API_URL=http://ваш-домен-бека.88.210.53.183.sslip.io/api/v1
+ENVEOF
+```
+
+Замените `YOUR_PASSWORD`, `YOUR_SECRET_KEY` и домены на свои. Если Colaba уже деплоится через Coolify — скопируй переменные из Coolify → Environment Variables в этот файл.
+
+Шаблон: `docs/deployment/.env.prod.example`
 
 ## Установка self-hosted runner (repo-level)
 
