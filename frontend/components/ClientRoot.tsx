@@ -10,16 +10,17 @@ const LoadingPlaceholder = () => (
   </div>
 );
 
+const isDev = process.env.NODE_ENV === 'development';
+
 /**
- * Renders a loading state until client mount, then the full app.
- * Server and first client render are identical → no hydration mismatch.
- * Avoids React #418/#423, HierarchyRequestError in production.
+ * In dev: render app immediately (no hydration workaround).
+ * In prod: loading until mount → avoids React #418/#423, HierarchyRequestError.
  */
 export function ClientRoot({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(isDev);
 
   useEffect(() => {
-    setMounted(true);
+    if (!isDev) setMounted(true);
   }, []);
 
   if (!mounted) {
