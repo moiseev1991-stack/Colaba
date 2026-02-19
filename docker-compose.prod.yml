@@ -2,6 +2,7 @@
 # Set all vars in Coolify Environment Variables.
 # Required: SECRET_KEY, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB,
 #   DATABASE_URL, DATABASE_URL_SYNC, NEXT_PUBLIC_API_URL, CORS_ORIGINS
+# For GitHub Actions deploy: BACKEND_IMAGE, FRONTEND_IMAGE, IMAGE_TAG (GHCR).
 services:
   postgres:
     image: postgres:16-alpine
@@ -35,7 +36,7 @@ services:
       - leadgen-network
 
   backend:
-    image: colaba-backend-local:local
+    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -72,7 +73,7 @@ services:
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
 
   celery-worker:
-    image: colaba-backend-local:local
+    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -99,7 +100,7 @@ services:
     command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=4 -Q celery
 
   celery-worker-search:
-    image: colaba-backend-local:local
+    image: ${BACKEND_IMAGE}:${IMAGE_TAG}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -126,7 +127,7 @@ services:
     command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue
 
   frontend:
-    image: colaba-frontend-local:local
+    image: ${FRONTEND_IMAGE}:${IMAGE_TAG}
     build:
       context: ./frontend
       dockerfile: Dockerfile

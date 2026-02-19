@@ -41,12 +41,12 @@ BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAG
 
 echo "Waiting for backend health..."
 for i in {1..30}; do
-  if curl -fsS "http://127.0.0.1:${BACKEND_PORT:-8000}/health" >/dev/null; then
+  if curl -fsS "http://127.0.0.1:${BACKEND_PORT:-8001}/health" >/dev/null; then
     break
   fi
   sleep 2
 done
-curl -fsS "http://127.0.0.1:${BACKEND_PORT:-8000}/health" >/dev/null
+curl -fsS "http://127.0.0.1:${BACKEND_PORT:-8001}/health" >/dev/null
 
 echo "Waiting for frontend health..."
 for i in {1..30}; do
