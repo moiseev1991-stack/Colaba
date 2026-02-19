@@ -7,7 +7,7 @@
 - В консоли: React #418, #423, HierarchyRequestError, NotFoundError
 
 ## Что уже сделано
-- `ClientRoot` — убран loading delay; рендер сразу (ранее задержка вызывала белый экран)
+- `ClientRoot` загружается через `dynamic(..., { ssr: false })` — на сервере только placeholder «Загрузка...», сложное дерево рендерится только на клиенте, что устраняет hydration mismatch
 - `AppErrorBoundary` — вместо белого экрана показывается «Обновить страницу»
 - `suppressHydrationWarning` на html/body
 - Исправлены `new Date()` в LandingFooter

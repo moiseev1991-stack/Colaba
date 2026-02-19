@@ -19,6 +19,17 @@ docker compose -f docker-compose.prod.yml up -d
 
 **Если деплой через Coolify и GitHub Actions** — отключите один из них, чтобы не конфликтовали по портам.
 
+### Перед деплоем через Coolify
+
+Если используете **Coolify** для деплоя — перед запуском деплоя остановите ручной стоп из `/opt/colaba`:
+
+```bash
+cd /opt/colaba
+docker compose -f docker-compose.prod.yml down
+```
+
+Иначе порты 8001 и 3000 заняты, и Coolify не сможет поднять свои контейнеры.
+
 ---
 
 ## На сервере нет `frontend` и `npm`
