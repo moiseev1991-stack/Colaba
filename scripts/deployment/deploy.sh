@@ -47,6 +47,10 @@ echo "Running migrations..."
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
   docker compose -f "$COMPOSE_FILE" run --rm backend alembic upgrade head
 
+echo "Stopping existing app containers (free port 8001/3000)..."
+BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
+  docker compose -f "$COMPOSE_FILE" stop backend frontend celery-worker celery-worker-search 2>/dev/null || true
+
 echo "Starting services..."
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
   docker compose -f "$COMPOSE_FILE" up -d --remove-orphans

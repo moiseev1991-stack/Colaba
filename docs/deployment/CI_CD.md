@@ -111,6 +111,8 @@ sudo ./svc.sh restart
 
 **Ручной запуск деплоя:** Actions → Deploy (main) → Run workflow (когда runner онлайн).
 
+**Конфликт портов:** Если Colaba уже запущена через Coolify на портах 8001/3000, GitHub deploy упадёт с «port is already allocated». Нужно выбрать один способ: либо остановить приложение в Coolify перед деплоем, либо не использовать GitHub deploy.
+
 ## Что именно деплоится на сервер
 
 - В `/opt/colaba` workflow кладёт:
