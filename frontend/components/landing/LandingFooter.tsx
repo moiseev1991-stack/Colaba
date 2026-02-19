@@ -26,7 +26,7 @@ export function LandingFooter() {
         </nav>
       </div>
       <div className="container mt-6 pt-6 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-xs" style={{ borderColor: 'var(--landing-border)', color: 'var(--landing-muted)' }}>
-        <span>© {new Date().getFullYear()} SpinLid</span>
+        <span suppressHydrationWarning>© {new Date().getFullYear()} SpinLid</span>
         <div className="flex gap-4">
           <a href="#contacts" className="hover:underline">Контакты</a>
           <a href="/policy" className="hover:underline">Политика</a>
