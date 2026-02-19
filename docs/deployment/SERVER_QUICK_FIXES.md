@@ -32,6 +32,31 @@ docker compose -f docker-compose.prod.yml down
 
 ---
 
+## 404 при открытии домена (curl 127.0.0.1:3000 работает, браузер — 404)
+
+Traefik (coolify-proxy) не видит контейнеры — они в другой сети. Подключите proxy к сети приложения:
+
+```bash
+# 1. Узнать имя сети (подставь свой UUID из Coolify)
+docker network ls | grep -E "okkkosgk8ckk|leadgen"
+
+# 2. Подключить coolify-proxy к сети приложения
+docker network connect <ИМЯ_СЕТИ> coolify-proxy
+```
+
+Пример: если сеть `okkkosgk8ckk00g8goc8g4sk_leadgen-network`:
+```bash
+docker network connect okkkosgk8ckk00g8goc8g4sk_leadgen-network coolify-proxy
+```
+
+Проверка: `docker network inspect <ИМЯ_СЕТИ> --format '{{range .Containers}}{{.Name}} {{end}}'` — должен быть coolify-proxy.
+
+Скрипт: `bash scripts/deployment/fix-coolify-404.sh` (запускать на сервере из корня репозитория).
+
+Подробнее: `docs/deployment/PROXY_NETWORK_ISOLATION.md`
+
+---
+
 ## На сервере нет `frontend` и `npm`
 
 На сервере приложение работает только через **Docker**. Не нужны `cd frontend` и `npm run dev`.
