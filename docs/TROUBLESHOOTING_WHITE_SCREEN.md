@@ -7,7 +7,7 @@
 - В консоли: React #418, #423, HierarchyRequestError, NotFoundError
 
 ## Что уже сделано
-- `ClientHydrationFix` — отложенный рендер до mount
+- `ClientRoot` — весь контент рендерится только после client mount; сервер и первый клиентский рендер совпадают (placeholder), что устраняет hydration mismatch
 - `AppErrorBoundary` — вместо белого экрана показывается «Обновить страницу»
 - `suppressHydrationWarning` на html/body
 - Исправлены `new Date()` в LandingFooter
