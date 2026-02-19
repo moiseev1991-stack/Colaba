@@ -67,11 +67,12 @@ async def general_exception_handler(request, exc: Exception) -> JSONResponse:
     )
 
 
-# Root redirect (http://localhost:8000/ -> API docs)
+# Root redirect (http://localhost:8000/ -> API docs in debug, /health in production)
 @app.get("/")
 async def root() -> RedirectResponse:
-    """Редирект на документацию API."""
-    return RedirectResponse(url="/api/docs", status_code=302)
+    """Редирект: в DEBUG — на Swagger, иначе — на health."""
+    url = "/api/docs" if settings.DEBUG else "/health"
+    return RedirectResponse(url=url, status_code=302)
 
 
 # Health check endpoint
