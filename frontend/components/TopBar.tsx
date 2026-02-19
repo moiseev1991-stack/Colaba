@@ -293,7 +293,7 @@ export function TopBar() {
                 <span>Ещё</span>
                 <ChevronDown className="h-4 w-4" />
               </button>
-              {mounted && moreOpen && createPortal(moreDropdownContent, document.body)}
+              {mounted && moreOpen && createPortal(moreDropdownContent, document.getElementById('portal-root') ?? document.body)}
             </div>
           )}
         </nav>

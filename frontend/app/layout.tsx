@@ -1,7 +1,12 @@
 import './globals.css';
-import { ClientHydrationFix } from '@/components/ClientHydrationFix';
-import { AppShell } from '@/components/AppShell';
+import dynamic from 'next/dynamic';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
+
+// Load AppShell only on client — avoids hydration mismatch (React #418/#423, HierarchyRequestError)
+const AppShellDynamic = dynamic(
+  () => import('@/components/AppShell').then((m) => m.AppShell),
+  { ssr: false, loading: () => <div className="min-h-screen flex items-center justify-center bg-gray-50"><span className="text-gray-500">Загрузка...</span></div> }
+);
 
 export default function RootLayout({
   children,
@@ -11,11 +16,12 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <AppErrorBoundary>
-          <ClientHydrationFix>
-            <AppShell>{children}</AppShell>
-          </ClientHydrationFix>
-        </AppErrorBoundary>
+        <div id="__next" className="min-h-screen">
+          <AppErrorBoundary>
+            <AppShellDynamic>{children}</AppShellDynamic>
+          </AppErrorBoundary>
+        </div>
+        <div id="portal-root" />
       </body>
     </html>
   );
