@@ -3,8 +3,9 @@
 # Required: SECRET_KEY, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB,
 #   DATABASE_URL, DATABASE_URL_SYNC, NEXT_PUBLIC_API_URL, CORS_ORIGINS
 #
-# Traefik labels (вариант Б): для доступа по IP и sslip.io доменам.
-# Домены заданы под Coolify; при других доменах — отредактируйте labels у frontend и backend.
+# Порты 8001/3000 не пробрасываем — Coolify/Traefik маршрутизирует по сети.
+# Иначе при деплое "port is already allocated".
+# Traefik labels (вариант Б для /opt/colaba): для доступа по IP и sslip.io.
 services:
   postgres:
     image: postgres:16-alpine
@@ -69,8 +70,6 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8001:8000"
     labels:
       # Traefik: API и health на IP и домене бэкенда
       - "traefik.enable=true"
@@ -149,8 +148,6 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:3000:3000"
     labels:
       # Traefik: маршрутизация через coolify-proxy (вариант Б — деплой из /opt/colaba)
       - "traefik.enable=true"

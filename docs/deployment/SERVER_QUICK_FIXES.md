@@ -1,23 +1,19 @@
 # Быстрые шаги на сервере
 
-## Порт 8001 занят (Bind failed: port is already allocated)
+## Порт 8001 занят (port is already allocated)
 
-На сервере выполните:
+В `docker-compose.prod.yml` **отключён проброс портов** 8001 и 3000 на хост — Coolify/Traefik маршрутизирует по Docker-сети. Если ошибка всё ещё появляется:
 
 ```bash
-cd /opt/colaba
-
-# 1. Найти контейнер, занимающий порт
+# Найти, кто занимает порт
 docker ps --format "table {{.Names}}\t{{.Ports}}" | grep -E "8001|3000"
 
-# 2. Остановить ВСЕ контейнеры Colaba
+# Остановить контейнеры Colaba
+cd /opt/colaba
 docker compose -f docker-compose.prod.yml down
-
-# 3. Запустить снова (если деплой через GitHub — перезапустить workflow)
-docker compose -f docker-compose.prod.yml up -d
 ```
 
-**Если деплой через Coolify и GitHub Actions** — отключите один из них, чтобы не конфликтовали по портам.
+Используйте **один** способ деплоя: только Coolify или только GitHub Actions.
 
 ### Перед деплоем через Coolify
 

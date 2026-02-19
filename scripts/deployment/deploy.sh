@@ -47,15 +47,7 @@ echo "Running migrations..."
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
   docker compose -f "$COMPOSE_FILE" run --rm backend alembic upgrade head
 
-echo "Freeing ports 8001 and 3000..."
-# Stop any container using these ports (Coolify or other projects)
-for port in 8001 3000; do
-  docker ps -q | while read cid; do
-    if docker port "$cid" 2>/dev/null | grep -qE ":${port}(->|$)"; then
-      docker stop "$cid" 2>/dev/null || true
-    fi
-  done
-done
+echo "Stopping old app containers..."
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
   docker compose -f "$COMPOSE_FILE" rm -sf backend frontend celery-worker celery-worker-search 2>/dev/null || true
 
@@ -64,22 +56,22 @@ BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAG
   docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 
 echo "Waiting for backend health..."
-for i in {1..30}; do
-  if curl -fsS "http://127.0.0.1:${BACKEND_PORT:-8001}/health" >/dev/null; then
+for i in {1..60}; do
+  if docker compose -f "$COMPOSE_FILE" exec -T backend curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
     break
   fi
   sleep 2
 done
-curl -fsS "http://127.0.0.1:${BACKEND_PORT:-8001}/health" >/dev/null
+docker compose -f "$COMPOSE_FILE" exec -T backend curl -fsS http://localhost:8000/health >/dev/null
 
 echo "Waiting for frontend health..."
-for i in {1..30}; do
-  if curl -fsS "http://127.0.0.1:${FRONTEND_PORT:-3000}/" >/dev/null; then
+for i in {1..90}; do
+  if docker compose -f "$COMPOSE_FILE" exec -T frontend node -e "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" 2>/dev/null; then
     break
   fi
   sleep 2
 done
-curl -fsS "http://127.0.0.1:${FRONTEND_PORT:-3000}/" >/dev/null
+docker compose -f "$COMPOSE_FILE" exec -T frontend node -e "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 echo "Deployment OK."
 docker compose -f "$COMPOSE_FILE" ps
