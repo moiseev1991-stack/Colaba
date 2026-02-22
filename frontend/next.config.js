@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
+  experimental: {
+    ppr: false,
+  },
   // PWA configuration (for future)
   // pwa: {
   //   dest: 'public',

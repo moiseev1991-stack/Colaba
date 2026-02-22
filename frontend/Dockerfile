@@ -8,12 +8,6 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Debug: check what was generated
-RUN echo "=== Checking build output ===" && \
-    ls -la .next/ && \
-    ls -la .next/server/ 2>/dev/null || true && \
-    cat .next/server/app/index.html 2>/dev/null | head -c 500 || true
-
 
 FROM node:20-slim AS runner
 
