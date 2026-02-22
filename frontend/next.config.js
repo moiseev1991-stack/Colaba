@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Avoid double-mount hydration issues in production
+  reactStrictMode: false,
   swcMinify: true,
   // PWA configuration (for future)
   // pwa: {
