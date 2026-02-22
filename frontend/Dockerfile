@@ -20,8 +20,9 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/server-fix-html.js ./server-fix-html.js
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "start:fix"]
 
