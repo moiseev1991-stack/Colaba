@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-WORKDIR /app
+WORKDIR /frontend
 
 COPY package*.json ./
 RUN npm ci

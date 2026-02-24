@@ -3,7 +3,7 @@
 # slim (Debian) — SWC Next.js работает; alpine даёт "Failed to load SWC binary"
 FROM node:20-slim
 
-WORKDIR /app
+WORKDIR /frontend
 
 # Copy package files
 COPY package*.json ./

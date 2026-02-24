@@ -1,11 +1,68 @@
-// Middleware temporarily disabled for debugging HTML generation issue
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware() {
+const ACCESS_TOKEN_COOKIE = 'access_token';
+
+const PUBLIC_PATHS = new Set<string>(['/auth/login', '/auth/register']);
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.has(pathname);
+}
+
+function isBypassPath(pathname: string): boolean {
+  if (pathname.startsWith('/_next/')) return true;
+  if (pathname.startsWith('/favicon.ico')) return true;
+  if (pathname.startsWith('/robots.txt')) return true;
+  if (pathname.startsWith('/sitemap.xml')) return true;
+  if (pathname.startsWith('/api/')) return true;
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return true;
+  return false;
+}
+
+function safeNextPath(pathname: string, search: string): string {
+  const next = `${pathname}${search || ''}`;
+  return next.startsWith('/') ? next : '/';
+}
+
+export function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  if (isBypassPath(pathname)) return NextResponse.next();
+
+  const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const isAuthed = Boolean(token);
+
+  if (isAuthed && pathname.startsWith('/auth/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  if (isAuthed && pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  if (isAuthed && pathname === '/app') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  if (isPublicPath(pathname)) return NextResponse.next();
+  if (!isAuthed && pathname === '/') return NextResponse.next();
+
+  if (!isAuthed) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.searchParams.set('next', safeNextPath(pathname, search));
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
-
