@@ -140,6 +140,51 @@ Next.js может долго отвечать при первом запрос�
 
 Перезапусти Proxy после изменений.
 
+## Локальная сборка и пуш в GHCR (обход 504 при сборке на сервере)
+
+Если Coolify не может собрать frontend (504, таймаут) — собери образ локально и запушь в GitHub Container Registry.
+
+### 1. GitHub PAT
+
+Создай токен: GitHub → Settings → Developer settings → Personal access tokens → **write:packages**.
+
+### 2. Сборка и пуш
+
+```powershell
+cd E:\cod\Colaba
+$env:GHCR_TOKEN = "твой_github_pat"
+.\scripts\deployment\build-and-push-frontend.ps1
+```
+
+Или вручную:
+```powershell
+cd frontend
+docker build -t ghcr.io/moiseev1991-stack/colaba-frontend:latest .
+echo $env:GHCR_TOKEN | docker login ghcr.io -u moiseev1991-stack --password-stdin
+docker push ghcr.io/moiseev1991-stack/colaba-frontend:latest
+```
+
+Замени `moiseev1991-stack` на свой GitHub username, если другой.
+
+### 3. Coolify: использовать образ из GHCR
+
+**Вариант А.** Если Coolify поддерживает несколько compose-файлов:
+- Docker Compose Location: `docker-compose.prod.yml -f docker-compose.ghcr-pull.yml`
+- Environment: `FRONTEND_IMAGE=ghcr.io/moiseev1991-stack/colaba-frontend`  
+  `IMAGE_TAG=latest`
+
+**Вариант Б.** В Environment Variables добавь:
+- `FRONTEND_IMAGE` = `ghcr.io/moiseev1991-stack/colaba-frontend`
+- `IMAGE_TAG` = `latest`
+
+И при Redeploy включи опцию «Skip build» / «No build» для frontend, если есть.
+
+**Важно:** если образ приватный — в Coolify нужен registry login (Docker Registry в настройках) с твоим GitHub PAT.
+
+### 4. Сделать образ публичным (опционально)
+
+GitHub → Package → colaba-frontend → Package settings → Change visibility → Public.
+
 ## Network isolation: прокси не видит контейнеры
 
 Если compose использует кастомную сеть `leadgen-network`, Coolify-proxy может быть не подключён к ней.

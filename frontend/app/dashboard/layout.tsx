@@ -2,6 +2,6 @@
 
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 
-export default function AppLayoutRoute({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return <AppErrorBoundary>{children}</AppErrorBoundary>;
 }

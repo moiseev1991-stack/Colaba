@@ -1,0 +1,9 @@
+# Override: use pre-built frontend from GHCR instead of building.
+# Usage: docker compose -f docker-compose.prod.yml -f docker-compose.ghcr-pull.yml up -d
+# Required env: FRONTEND_IMAGE, IMAGE_TAG (e.g. ghcr.io/owner/colaba-frontend, latest)
+# Or: docker compose -f docker-compose.prod.yml up -d --no-build (with FRONTEND_IMAGE, IMAGE_TAG set)
+
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE}:${IMAGE_TAG}
+    build: !reset null

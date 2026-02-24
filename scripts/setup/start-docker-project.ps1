@@ -38,7 +38,7 @@ foreach ($container in $oldContainers) {
 
 # Проверка занятых портов
 Write-Host "`n[4/5] Проверка портов..." -ForegroundColor Yellow
-$ports = @(5432, 6379, 8000, 3000)
+$ports = @(5432, 6379, 8001, 4000)
 $conflicts = @()
 foreach ($port in $ports) {
     $listener = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
@@ -80,9 +80,9 @@ docker compose up -d --build
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n✓ Проект успешно запущен!" -ForegroundColor Green
     Write-Host "`nДоступные сервисы:" -ForegroundColor Cyan
-    Write-Host "  - Backend API: http://localhost:8000" -ForegroundColor White
-    Write-Host "  - Frontend: http://localhost:3000" -ForegroundColor White
-    Write-Host "  - API Docs: http://localhost:8000/api/docs" -ForegroundColor White
+    Write-Host "  - Frontend: http://localhost:4000" -ForegroundColor White
+    Write-Host "  - Backend API: http://localhost:8001" -ForegroundColor White
+    Write-Host "  - API Docs: http://localhost:8001/api/docs" -ForegroundColor White
     Write-Host "`nПолезные команды:" -ForegroundColor Cyan
     Write-Host "  docker compose ps          - статус контейнеров" -ForegroundColor White
     Write-Host "  docker compose logs -f     - логи всех сервисов" -ForegroundColor White

@@ -91,7 +91,7 @@ services:
       - leadgen-network
     command: celery -A app.queue.celery_app worker -Q search_queue,celery --loglevel=info
 
-  # Frontend (Next.js 14) — для CSS: запускать локально: cd frontend && npm run dev
+  # Frontend (Next.js 14) — для CSS в Docker: polling + host 0.0.0.0
   frontend:
     build:
       context: ./frontend
@@ -100,7 +100,12 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
+      # Same-origin: /api/v1 proxies to backend, no CORS
+      - NEXT_PUBLIC_API_URL=/api/v1
+      - INTERNAL_BACKEND_ORIGIN=http://backend:8000
+      # Docker: file watching (Tailwind/PostCSS)
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
@@ -108,7 +113,7 @@ services:
       - backend
     networks:
       - leadgen-network
-    command: npm run dev
+    command: npx next dev -p 4000 -H 0.0.0.0
 
 volumes:
   postgres_data:

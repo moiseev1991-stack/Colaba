@@ -1,67 +1,51 @@
 # Локальная установка и запуск проекта Colaba
 
+**Кратко:** см. [RUN_LOCAL_NOW.md](../RUN_LOCAL_NOW.md) — актуальные команды и порты.
+
 ## Предварительные требования
 
-1. **Docker Desktop** - должен быть установлен и запущен
-2. **Git** - для клонирования репозитория (уже есть)
-3. **PowerShell** - для запуска скриптов (уже есть)
+1. **Docker Desktop** — должен быть установлен и запущен
+2. **Git** — для клонирования репозитория
+3. **PowerShell** — для запуска скриптов
 
 ## Быстрый старт
 
 ### Шаг 1: Запустить Docker Desktop
 
-Убедитесь, что Docker Desktop запущен. Проверить можно командой:
+Убедитесь, что Docker Desktop запущен:
 ```powershell
 docker --version
 ```
 
-Если Docker не запущен, запустите Docker Desktop из меню Пуск.
-
 ### Шаг 2: Остановить старые контейнеры (если есть)
 
-Если у вас есть старые контейнеры от других проектов, которые используют те же порты, остановите их:
-
 ```powershell
-# Посмотреть все контейнеры
 docker ps -a
-
-# Остановить конкретный контейнер
 docker stop <container_id>
-
-# Удалить контейнер
 docker rm <container_id>
-
-# Или остановить все контейнеры
-docker stop $(docker ps -q)
 ```
 
 ### Шаг 3: Запустить проект
 
-**Вариант A: Использовать скрипт (рекомендуется)**
+**Вариант A: Скрипт (рекомендуется)**
 
 ```powershell
-cd c:\Colaba
+cd E:\cod\Colaba
 .\scripts\start.ps1
 ```
 
-Или расширенный скрипт с проверкой портов:
+Или с проверкой портов:
 ```powershell
-cd c:\Colaba
+cd E:\cod\Colaba
 .\scripts\setup\start-docker-project.ps1
 ```
 
-**Вариант B: Ручной запуск**
+**Вариант B: Вручную**
 
 ```powershell
-cd c:\Colaba
-
-# Создать .env файл (если его нет)
-Copy-Item .env.example .env
-
-# Остановить старые контейнеры проекта (если есть)
+cd E:\cod\Colaba
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 docker compose down
-
-# Запустить проект
 docker compose up -d --build
 ```
 
@@ -82,18 +66,18 @@ docker compose ps
 
 ## Доступ к сервисам
 
-После успешного запуска доступны:
+После успешного запуска (порты из текущего `docker-compose.yml`):
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation (Swagger)**: http://localhost:8000/api/docs
-- **API Documentation (ReDoc)**: http://localhost:8000/api/redoc
+- **Frontend**: http://localhost:4000
+- **Backend API**: http://localhost:8001
+- **Swagger**: http://localhost:8001/api/docs
+- **ReDoc**: http://localhost:8001/api/redoc
 
 ### Страницы настроек (после входа)
 
-- **Провайдеры поиска** (прокси, ключи, «Проверить»): http://localhost:3000/settings/providers — см. [PROVIDERS_SETTINGS.md](PROVIDERS_SETTINGS.md)
-- **AI-ассистенты** (CRUD, модели для чата и Vision): http://localhost:3000/settings/ai-assistants — см. [AI_ASSISTANTS.md](AI_ASSISTANTS.md)
-- **Обход капчи** (AI Vision, 2captcha, Anti-captcha): http://localhost:3000/settings/captcha — см. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
+- **Провайдеры поиска**: http://localhost:4000/settings/providers — см. [PROVIDERS_SETTINGS.md](PROVIDERS_SETTINGS.md)
+- **AI-ассистенты**: http://localhost:4000/settings/ai-assistants — см. [AI_ASSISTANTS.md](AI_ASSISTANTS.md)
+- **Обход капчи**: http://localhost:4000/settings/captcha — см. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 
 Прокси для HTML-провайдеров (Яндекс, Google) можно задать в `/settings/providers` или через USE_PROXY, PROXY_URL, PROXY_LIST в `.env`.
 
@@ -166,26 +150,17 @@ docker compose exec backend alembic upgrade head
 
 ### Порт уже занят
 
-Если порт занят другим процессом:
+Если порт занят:
 
 ```powershell
-# Найти процесс, использующий порт
-netstat -ano | findstr :8000
-netstat -ano | findstr :3000
+netstat -ano | findstr :4000
+netstat -ano | findstr :8001
 netstat -ano | findstr :5432
 netstat -ano | findstr :6379
-
-# Остановить процесс (замените PID на найденный)
 taskkill /PID <PID> /F
 ```
 
-Или измените порты в `docker-compose.yml`:
-
-```yaml
-ports:
-  - "8001:8000"  # Вместо 8000:8000
-  - "3001:3000"  # Вместо 3000:3000
-```
+В `docker-compose.yml` фронт уже на **4000**, бэкенд на **8001** (внутри контейнера 8000).
 
 ### Контейнеры не запускаются
 

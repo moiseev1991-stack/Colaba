@@ -32,6 +32,7 @@
 
 ## Быстрый доступ
 
+- **Запустить локальный сервер сейчас**: [RUN_LOCAL_NOW.md](RUN_LOCAL_NOW.md)
 - **Начать работу**: [SETUP_INSTRUCTIONS.md](guides/SETUP_INSTRUCTIONS.md)
 - **Правила работы**: [PROJECT_STRUCTURE_RULES.md](guides/PROJECT_STRUCTURE_RULES.md)
 - **Архитектура**: [ARCHITECTURE.md](architecture/ARCHITECTURE.md)

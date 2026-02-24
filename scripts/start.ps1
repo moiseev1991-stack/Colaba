@@ -38,9 +38,9 @@ docker compose up -d --build
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n✓ Проект запущен!" -ForegroundColor Green
     Write-Host "`nДоступные сервисы:" -ForegroundColor Cyan
-    Write-Host "  Frontend:  http://localhost:3000" -ForegroundColor White
-    Write-Host "  Backend:   http://localhost:8000" -ForegroundColor White
-    Write-Host "  API Docs:  http://localhost:8000/api/docs" -ForegroundColor White
+    Write-Host "  Frontend:  http://localhost:4000" -ForegroundColor White
+    Write-Host "  Backend:   http://localhost:8001" -ForegroundColor White
+    Write-Host "  API Docs:  http://localhost:8001/api/docs" -ForegroundColor White
     Write-Host "`nПросмотр логов: docker compose logs -f" -ForegroundColor Yellow
     Write-Host "Остановка:     docker compose down" -ForegroundColor Yellow
 } else {

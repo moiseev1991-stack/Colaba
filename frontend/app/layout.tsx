@@ -1,7 +1,5 @@
 import './globals.css';
-
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+import { AppShell } from '@/components/AppShell';
 
 export default function RootLayout({
   children,
@@ -9,8 +7,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+    <html lang="ru">
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
