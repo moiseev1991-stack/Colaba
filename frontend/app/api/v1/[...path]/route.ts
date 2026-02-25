@@ -36,10 +36,24 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   headers.delete('host');
   headers.delete('connection');
   headers.delete('content-length');
+  // undici does not support Expect: 100-continue; drop it so the header
+  // validation does not throw before the request reaches the backend.
+  headers.delete('expect');
 
   const method = req.method.toUpperCase();
   const body =
     method === 'GET' || method === 'HEAD' ? undefined : await req.arrayBuffer();
+
+  // #region agent log - DNS diagnostics
+  let dnsInfo = 'not-attempted';
+  try {
+    const ip = await resolveToIPv4(upstreamUrl.hostname);
+    dnsInfo = `ok:${ip}`;
+    upstreamUrl.hostname = ip;
+  } catch (dnsErr: any) {
+    dnsInfo = `fail:${dnsErr?.message}`;
+  }
+  // #endregion
 
   let upstreamRes: Response;
   try {
@@ -51,7 +65,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     });
   } catch (fetchErr: any) {
     const cause = fetchErr?.cause;
-    const detail = `Proxy upstream error: ${fetchErr?.message} | cause: ${cause?.message ?? cause} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
+    const detail = `Proxy upstream error: ${fetchErr?.message} | cause: ${cause?.message ?? cause} | url: ${upstreamUrl.toString()} | dns: ${dnsInfo} | origin: ${BACKEND_ORIGIN}`;
     console.error('[PROXY-ERR]', detail);
     return new Response(JSON.stringify({ detail }), {
       status: 502,
