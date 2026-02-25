@@ -18,7 +18,19 @@ function dbg(msg: string) {
 
 const ipCache = new Map<string, { ip: string; exp: number }>();
 
+// If INTERNAL_BACKEND_ORIGIN already contains an IP (set by entrypoint.sh),
+// skip DNS entirely.
+function isIPv4(s: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(s);
+}
+
 async function resolveToIP(hostname: string): Promise<string> {
+  // If entrypoint.sh already resolved the IP, use it directly
+  if (isIPv4(hostname)) {
+    dbg(`${hostname} is already an IP, skip DNS`);
+    return hostname;
+  }
+
   const cached = ipCache.get(hostname);
   if (cached && cached.exp > Date.now()) {
     dbg(`cache hit: ${hostname} -> ${cached.ip}`);
