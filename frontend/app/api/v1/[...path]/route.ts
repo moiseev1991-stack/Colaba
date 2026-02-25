@@ -1,50 +1,73 @@
 import { NextRequest } from 'next/server';
 import * as http from 'http';
 import * as https from 'https';
-import { lookup as dnsLookup } from 'dns';
+import { resolve4 } from 'dns/promises';
 
 export const runtime = 'nodejs';
 
 const BACKEND_ORIGIN = process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
 
-// Force IPv4-only DNS lookup to avoid EAI_AGAIN from Docker DNS.
-// Node.js/undici (global fetch) sends concurrent A+AAAA queries; Docker's
-// embedded DNS returns SERVFAIL for AAAA on container names, causing
-// EAI_AGAIN. Using http.request with a custom lookup + family:4 avoids this.
-function lookupIPv4(hostname: string, options: any, callback: any) {
-  dnsLookup(hostname, { ...options, family: 4 }, callback);
+// dns.resolve4 uses Node.js c-ares resolver (not libc getaddrinfo).
+// libc getaddrinfo fails with EAI_AGAIN in long-running Next.js processes
+// due to Docker DNS returning SERVFAIL on AAAA queries or search-domain
+// collisions. c-ares queries Docker DNS (127.0.0.11) directly and works.
+// Cache result for 60s to avoid repeated lookups.
+const ipCache = new Map<string, { ip: string; exp: number }>();
+
+async function resolveToIP(hostname: string): Promise<string> {
+  const cached = ipCache.get(hostname);
+  if (cached && cached.exp > Date.now()) return cached.ip;
+  const ips = await resolve4(hostname);
+  const ip = ips[0];
+  ipCache.set(hostname, { ip, exp: Date.now() + 60_000 });
+  return ip;
 }
 
-async function httpRequest(
+async function httpProxyRequest(
   url: URL,
   method: string,
   headers: Headers,
   body: ArrayBuffer | undefined,
 ): Promise<{ status: number; headers: Headers; buffer: Buffer }> {
-  return new Promise((resolve, reject) => {
-    const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
-    const reqHeaders: Record<string, string> = {};
-    headers.forEach((v, k) => { reqHeaders[k] = v; });
+  // Resolve hostname to IPv4 IP using c-ares (bypasses libc EAI_AGAIN issue).
+  // If resolution fails, fall back to original hostname (will likely fail too,
+  // but at least produces a meaningful error).
+  let hostname = url.hostname;
+  try {
+    hostname = await resolveToIP(url.hostname);
+  } catch (dnsErr: any) {
+    console.error('[PROXY] resolve4 failed:', dnsErr?.message, '- using hostname directly');
+  }
 
+  const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
+  const reqHeaders: Record<string, string> = {};
+  headers.forEach((v, k) => { reqHeaders[k] = v; });
+
+  return new Promise((resolve, reject) => {
     const options: http.RequestOptions = {
-      hostname: url.hostname,
+      hostname,  // IP address or fallback hostname
       port,
       path: url.pathname + (url.search || ''),
       method,
       headers: reqHeaders,
-      lookup: lookupIPv4,
     };
 
     const client = url.protocol === 'https:' ? https : http;
     const req = client.request(options, (res) => {
       const chunks: Buffer[] = [];
-      res.on('data', (chunk: Buffer) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      res.on('data', (chunk: Buffer) =>
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
+      );
       res.on('end', () => {
         const resHeaders = new Headers();
         Object.entries(res.headers).forEach(([k, v]) => {
           if (v != null) resHeaders.set(k, Array.isArray(v) ? v.join(', ') : v);
         });
-        resolve({ status: res.statusCode ?? 502, headers: resHeaders, buffer: Buffer.concat(chunks) });
+        resolve({
+          status: res.statusCode ?? 502,
+          headers: resHeaders,
+          buffer: Buffer.concat(chunks),
+        });
       });
       res.on('error', reject);
     });
@@ -68,11 +91,14 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const body = method === 'GET' || method === 'HEAD' ? undefined : await req.arrayBuffer();
 
   try {
-    const upstream = await httpRequest(upstreamUrl, method, headers, body);
+    const upstream = await httpProxyRequest(upstreamUrl, method, headers, body);
     upstream.headers.delete('content-encoding');
     upstream.headers.delete('transfer-encoding');
     upstream.headers.delete('connection');
-    return new Response(upstream.buffer, { status: upstream.status, headers: upstream.headers });
+    return new Response(upstream.buffer, {
+      status: upstream.status,
+      headers: upstream.headers,
+    });
   } catch (err: any) {
     const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
     console.error('[PROXY-ERR]', detail);
