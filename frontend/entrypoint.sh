@@ -21,9 +21,12 @@ require('dns/promises').resolve4('$BACKEND_HOSTNAME')
     if [ -n "$BACKEND_IP" ]; then
         echo "[entrypoint] $BACKEND_HOSTNAME -> $BACKEND_IP"
         export INTERNAL_BACKEND_ORIGIN="http://$BACKEND_IP:$BACKEND_PORT"
-        # Write to file so Next.js route handler can read it at runtime
-        # (env var export is ignored because Next.js bakes process.env at build time)
         echo "http://$BACKEND_IP:$BACKEND_PORT" > /tmp/backend-origin
+        # Write to /etc/hosts so ALL processes (including long-running Next.js)
+        # can resolve the hostname via getaddrinfo without querying Docker DNS.
+        # /etc/hosts is checked before DNS and works in every process context.
+        echo "$BACKEND_IP $BACKEND_HOSTNAME" >> /etc/hosts
+        echo "[entrypoint] /etc/hosts: added $BACKEND_IP $BACKEND_HOSTNAME"
         break
     fi
 
