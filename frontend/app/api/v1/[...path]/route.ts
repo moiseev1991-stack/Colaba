@@ -1,50 +1,79 @@
 import { NextRequest } from 'next/server';
-import * as http from 'http';
-import * as https from 'https';
-import { resolve4 } from 'dns/promises';
+import * as http from 'node:http';
+import * as https from 'node:https';
+import * as dns from 'node:dns';
+import { resolve4 } from 'node:dns/promises';
 
 export const runtime = 'nodejs';
 
 const BACKEND_ORIGIN = process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
 const BACKEND_HOSTNAME = new URL(BACKEND_ORIGIN).hostname;
 
-// Cache resolved IPs for 5 min to avoid repeated DNS lookups
 const ipCache = new Map<string, { ip: string; exp: number }>();
 
-// dns.resolve4 (c-ares) sometimes gets EAI_AGAIN from Docker's embedded DNS
-// under load. Retry up to 3 times with short delays before giving up.
+// Try c-ares (resolve4) first, fall back to libc (dns.lookup) on failure.
+// c-ares can return ESERVFAIL in long-running processes due to Docker DNS quirks.
+// libc can return EAI_AGAIN transiently. Using both maximises success rate.
+async function dnsResolveIPv4(hostname: string): Promise<string> {
+  try {
+    const ips = await resolve4(hostname);
+    // #region agent log
+    console.error('[DNS] resolve4 OK:', hostname, '->', ips[0]);
+    // #endregion
+    return ips[0];
+  } catch (caresErr: any) {
+    // #region agent log
+    console.error('[DNS] resolve4 failed:', caresErr?.code, caresErr?.message, '- falling back to dns.lookup');
+    // #endregion
+    return new Promise<string>((resolve, reject) => {
+      dns.lookup(hostname, { family: 4 }, (err, address) => {
+        if (err) {
+          // #region agent log
+          console.error('[DNS] dns.lookup failed:', err?.code, err?.message);
+          // #endregion
+          reject(err);
+        } else {
+          // #region agent log
+          console.error('[DNS] dns.lookup OK:', hostname, '->', address);
+          // #endregion
+          resolve(address);
+        }
+      });
+    });
+  }
+}
+
 async function resolveToIP(hostname: string): Promise<string> {
   const cached = ipCache.get(hostname);
-  // #region agent log
   if (cached && cached.exp > Date.now()) {
+    // #region agent log
     console.error('[DNS-DEBUG] cache hit:', hostname, '->', cached.ip);
+    // #endregion
     return cached.ip;
   }
-  console.error('[DNS-DEBUG] resolve4 start:', hostname);
+
+  // #region agent log
+  console.error('[DNS-DEBUG] resolving:', hostname);
   // #endregion
 
   let lastErr: any;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const ips = await resolve4(hostname);
-      const ip = ips[0];
-      // #region agent log
-      console.error('[DNS-DEBUG] resolve4 OK attempt', attempt + 1, hostname, '->', ip);
-      // #endregion
+      const ip = await dnsResolveIPv4(hostname);
       ipCache.set(hostname, { ip, exp: Date.now() + 300_000 });
       return ip;
     } catch (err: any) {
       lastErr = err;
       // #region agent log
-      console.error('[DNS-DEBUG] resolve4 FAIL attempt', attempt + 1, hostname, err?.message, err?.code);
+      console.error('[DNS-DEBUG] attempt', attempt + 1, 'failed:', err?.code, err?.message);
       // #endregion
-      if (attempt < 2) await new Promise(r => setTimeout(r, 100 * (attempt + 1)));
+      if (attempt < 4) await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
     }
   }
   throw lastErr;
 }
 
-// Pre-warm DNS cache at module load so the first real request hits the cache
+// Pre-warm DNS cache when module loads so first real request hits the cache
 void (async () => {
   for (let i = 0; i < 5; i++) {
     try {
@@ -52,8 +81,8 @@ void (async () => {
       console.error('[DNS-WARMUP] pre-warmed DNS for', BACKEND_HOSTNAME);
       break;
     } catch (e: any) {
-      console.error('[DNS-WARMUP] attempt', i + 1, 'failed:', e?.message, '- retry in 2s');
-      await new Promise(r => setTimeout(r, 2000));
+      console.error('[DNS-WARMUP] attempt', i + 1, 'failed:', e?.message, '- retry in 3s');
+      await new Promise(r => setTimeout(r, 3000));
     }
   }
 })();
@@ -64,16 +93,15 @@ async function httpProxyRequest(
   headers: Headers,
   body: ArrayBuffer | undefined,
 ): Promise<{ status: number; headers: Headers; buffer: Buffer }> {
-  // Resolve to IPv4 IP so http.request never calls libc getaddrinfo
   let hostname: string;
   try {
     hostname = await resolveToIP(url.hostname);
     // #region agent log
-    console.error('[PROXY-DNS] using resolved IP:', hostname);
+    console.error('[PROXY] using IP:', hostname, 'for', url.hostname);
     // #endregion
   } catch (dnsErr: any) {
     // #region agent log
-    console.error('[PROXY-DNS] DNS failed after retries:', dnsErr?.message, dnsErr?.code);
+    console.error('[PROXY] DNS failed after all retries:', dnsErr?.code, dnsErr?.message);
     // #endregion
     throw dnsErr;
   }
@@ -140,10 +168,9 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     });
   } catch (err: any) {
     // #region agent log
-    console.error('[PROXY-ERR] raw error:', err?.message, 'code:', err?.code, 'syscall:', err?.syscall);
+    console.error('[PROXY-ERR]', err?.code, err?.message);
     // #endregion
     const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
-    console.error('[PROXY-ERR]', detail);
     return new Response(JSON.stringify({ detail }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
