@@ -1,0 +1,7 @@
+.env.local
+.env.*.local
+.env.development
+.env.test
+node_modules
+.next
+*.log
