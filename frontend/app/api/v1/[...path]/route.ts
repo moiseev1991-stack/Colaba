@@ -27,7 +27,12 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       redirect: 'manual',
     });
   } catch (fetchErr: any) {
-    return new Response(JSON.stringify({ detail: `Proxy upstream error: ${fetchErr?.message}` }), {
+    // #region agent log
+    const cause = fetchErr?.cause;
+    const detail = `Proxy upstream error: ${fetchErr?.message} | cause: ${cause?.message ?? cause} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
+    console.error('[PROXY-ERR]', detail);
+    // #endregion
+    return new Response(JSON.stringify({ detail }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
     });
