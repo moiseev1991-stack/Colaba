@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import * as http from 'node:http';
 import * as https from 'node:https';
 import * as dns from 'node:dns';
+import { resolve4 } from 'node:dns/promises';
 import { appendFileSync } from 'node:fs';
 
 export const runtime = 'nodejs';
@@ -17,11 +18,6 @@ function dbg(msg: string) {
 
 const ipCache = new Map<string, { ip: string; exp: number }>();
 
-// Dedicated Resolver with its own c-ares channel + explicit Docker DNS server.
-// Avoids shared c-ares state corruption in long-running Next.js process.
-const dnsResolver = new dns.promises.Resolver({ timeout: 2500, tries: 3 });
-dnsResolver.setServers(['127.0.0.11:53']);
-
 async function resolveToIP(hostname: string): Promise<string> {
   const cached = ipCache.get(hostname);
   if (cached && cached.exp > Date.now()) {
@@ -33,15 +29,15 @@ async function resolveToIP(hostname: string): Promise<string> {
   let lastErr: any;
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    // Try 1: dedicated Resolver (own c-ares channel, explicit 127.0.0.11)
+    // Try 1: global resolve4 via resolv.conf (uses Docker iptables DNAT for 127.0.0.11:53)
     try {
-      const ips = await dnsResolver.resolve4(hostname);
+      const ips = await resolve4(hostname);
       const ip = ips[0];
-      dbg(`Resolver.resolve4 OK attempt ${attempt + 1}: ${hostname} -> ${ip}`);
+      dbg(`resolve4 OK attempt ${attempt + 1}: ${hostname} -> ${ip}`);
       ipCache.set(hostname, { ip, exp: Date.now() + 300_000 });
       return ip;
     } catch (e1: any) {
-      dbg(`Resolver.resolve4 FAIL attempt ${attempt + 1}: ${e1?.code} ${e1?.message}`);
+      dbg(`resolve4 FAIL attempt ${attempt + 1}: ${e1?.code} ${e1?.message}`);
     }
 
     // Try 2: libc dns.lookup (uses getaddrinfo, checks /etc/hosts first)
