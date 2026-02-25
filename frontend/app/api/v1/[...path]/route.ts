@@ -2,86 +2,78 @@ import { NextRequest } from 'next/server';
 import * as http from 'node:http';
 import * as https from 'node:https';
 import * as dns from 'node:dns';
-import { resolve4 } from 'node:dns/promises';
+import { appendFileSync } from 'node:fs';
 
 export const runtime = 'nodejs';
 
 const BACKEND_ORIGIN = process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
 const BACKEND_HOSTNAME = new URL(BACKEND_ORIGIN).hostname;
 
+// File-based debug logging - bypasses any Next.js console interception
+const DEBUG_LOG = '/tmp/proxy-debug.log';
+function dbg(msg: string) {
+  try { appendFileSync(DEBUG_LOG, `${new Date().toISOString()} ${msg}\n`); } catch {}
+}
+
 const ipCache = new Map<string, { ip: string; exp: number }>();
 
-// Try c-ares (resolve4) first, fall back to libc (dns.lookup) on failure.
-// c-ares can return ESERVFAIL in long-running processes due to Docker DNS quirks.
-// libc can return EAI_AGAIN transiently. Using both maximises success rate.
-async function dnsResolveIPv4(hostname: string): Promise<string> {
-  try {
-    const ips = await resolve4(hostname);
-    // #region agent log
-    console.error('[DNS] resolve4 OK:', hostname, '->', ips[0]);
-    // #endregion
-    return ips[0];
-  } catch (caresErr: any) {
-    // #region agent log
-    console.error('[DNS] resolve4 failed:', caresErr?.code, caresErr?.message, '- falling back to dns.lookup');
-    // #endregion
-    return new Promise<string>((resolve, reject) => {
-      dns.lookup(hostname, { family: 4 }, (err, address) => {
-        if (err) {
-          // #region agent log
-          console.error('[DNS] dns.lookup failed:', err?.code, err?.message);
-          // #endregion
-          reject(err);
-        } else {
-          // #region agent log
-          console.error('[DNS] dns.lookup OK:', hostname, '->', address);
-          // #endregion
-          resolve(address);
-        }
-      });
-    });
-  }
-}
+// Dedicated Resolver with its own c-ares channel + explicit Docker DNS server.
+// Avoids shared c-ares state corruption in long-running Next.js process.
+const dnsResolver = new dns.promises.Resolver({ timeout: 2500, tries: 3 });
+dnsResolver.setServers(['127.0.0.11:53']);
 
 async function resolveToIP(hostname: string): Promise<string> {
   const cached = ipCache.get(hostname);
   if (cached && cached.exp > Date.now()) {
-    // #region agent log
-    console.error('[DNS-DEBUG] cache hit:', hostname, '->', cached.ip);
-    // #endregion
+    dbg(`cache hit: ${hostname} -> ${cached.ip}`);
     return cached.ip;
   }
 
-  // #region agent log
-  console.error('[DNS-DEBUG] resolving:', hostname);
-  // #endregion
-
+  dbg(`resolving: ${hostname}`);
   let lastErr: any;
+
   for (let attempt = 0; attempt < 5; attempt++) {
+    // Try 1: dedicated Resolver (own c-ares channel, explicit 127.0.0.11)
     try {
-      const ip = await dnsResolveIPv4(hostname);
+      const ips = await dnsResolver.resolve4(hostname);
+      const ip = ips[0];
+      dbg(`Resolver.resolve4 OK attempt ${attempt + 1}: ${hostname} -> ${ip}`);
       ipCache.set(hostname, { ip, exp: Date.now() + 300_000 });
       return ip;
-    } catch (err: any) {
-      lastErr = err;
-      // #region agent log
-      console.error('[DNS-DEBUG] attempt', attempt + 1, 'failed:', err?.code, err?.message);
-      // #endregion
-      if (attempt < 4) await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
+    } catch (e1: any) {
+      dbg(`Resolver.resolve4 FAIL attempt ${attempt + 1}: ${e1?.code} ${e1?.message}`);
     }
+
+    // Try 2: libc dns.lookup (uses getaddrinfo, checks /etc/hosts first)
+    try {
+      const ip = await new Promise<string>((resolve, reject) => {
+        dns.lookup(hostname, { family: 4 }, (err, address) => {
+          if (err) reject(err); else resolve(address);
+        });
+      });
+      dbg(`dns.lookup OK attempt ${attempt + 1}: ${hostname} -> ${ip}`);
+      ipCache.set(hostname, { ip, exp: Date.now() + 300_000 });
+      return ip;
+    } catch (e2: any) {
+      lastErr = e2;
+      dbg(`dns.lookup FAIL attempt ${attempt + 1}: ${e2?.code} ${e2?.message}`);
+    }
+
+    if (attempt < 4) await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
   }
   throw lastErr;
 }
 
-// Pre-warm DNS cache when module loads so first real request hits the cache
+// Pre-warm DNS cache at module load
 void (async () => {
+  dbg(`[INIT] module loaded, BACKEND_ORIGIN=${BACKEND_ORIGIN}, hostname=${BACKEND_HOSTNAME}`);
   for (let i = 0; i < 5; i++) {
     try {
       await resolveToIP(BACKEND_HOSTNAME);
-      console.error('[DNS-WARMUP] pre-warmed DNS for', BACKEND_HOSTNAME);
+      dbg(`[WARMUP] pre-warmed DNS for ${BACKEND_HOSTNAME}`);
       break;
     } catch (e: any) {
-      console.error('[DNS-WARMUP] attempt', i + 1, 'failed:', e?.message, '- retry in 3s');
+      dbg(`[WARMUP] attempt ${i + 1} failed: ${e?.message} - retry in 3s`);
       await new Promise(r => setTimeout(r, 3000));
     }
   }
@@ -96,13 +88,9 @@ async function httpProxyRequest(
   let hostname: string;
   try {
     hostname = await resolveToIP(url.hostname);
-    // #region agent log
-    console.error('[PROXY] using IP:', hostname, 'for', url.hostname);
-    // #endregion
+    dbg(`[PROXY] using IP: ${hostname} for ${url.hostname}`);
   } catch (dnsErr: any) {
-    // #region agent log
-    console.error('[PROXY] DNS failed after all retries:', dnsErr?.code, dnsErr?.message);
-    // #endregion
+    dbg(`[PROXY] DNS failed after all retries: ${dnsErr?.code} ${dnsErr?.message}`);
     throw dnsErr;
   }
 
@@ -138,7 +126,10 @@ async function httpProxyRequest(
       });
       res.on('error', reject);
     });
-    req.on('error', reject);
+    req.on('error', (err: any) => {
+      dbg(`[HTTP-ERR] ${err?.code} ${err?.message} hostname=${hostname}`);
+      reject(err);
+    });
     if (body && body.byteLength > 0) req.write(Buffer.from(body));
     req.end();
   });
@@ -167,9 +158,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       headers: upstream.headers,
     });
   } catch (err: any) {
-    // #region agent log
-    console.error('[PROXY-ERR]', err?.code, err?.message);
-    // #endregion
+    dbg(`[PROXY-ERR] ${err?.code} ${err?.message}`);
     const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
     return new Response(JSON.stringify({ detail }), {
       status: 502,
