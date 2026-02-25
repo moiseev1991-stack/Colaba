@@ -6,14 +6,13 @@ import { resolve4 } from 'dns/promises';
 export const runtime = 'nodejs';
 
 const BACKEND_ORIGIN = process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
+const BACKEND_HOSTNAME = new URL(BACKEND_ORIGIN).hostname;
 
-// dns.resolve4 uses Node.js c-ares resolver (not libc getaddrinfo).
-// libc getaddrinfo fails with EAI_AGAIN in long-running Next.js processes
-// due to Docker DNS returning SERVFAIL on AAAA queries or search-domain
-// collisions. c-ares queries Docker DNS (127.0.0.11) directly and works.
-// Cache result for 60s to avoid repeated lookups.
+// Cache resolved IPs for 5 min to avoid repeated DNS lookups
 const ipCache = new Map<string, { ip: string; exp: number }>();
 
+// dns.resolve4 (c-ares) sometimes gets EAI_AGAIN from Docker's embedded DNS
+// under load. Retry up to 3 times with short delays before giving up.
 async function resolveToIP(hostname: string): Promise<string> {
   const cached = ipCache.get(hostname);
   // #region agent log
@@ -23,21 +22,41 @@ async function resolveToIP(hostname: string): Promise<string> {
   }
   console.error('[DNS-DEBUG] resolve4 start:', hostname);
   // #endregion
-  try {
-    const ips = await resolve4(hostname);
-    // #region agent log
-    console.error('[DNS-DEBUG] resolve4 OK:', hostname, '->', ips);
-    // #endregion
-    const ip = ips[0];
-    ipCache.set(hostname, { ip, exp: Date.now() + 60_000 });
-    return ip;
-  } catch (dnsErr: any) {
-    // #region agent log
-    console.error('[DNS-DEBUG] resolve4 FAIL:', hostname, 'msg:', dnsErr?.message, 'code:', dnsErr?.code, 'syscall:', dnsErr?.syscall);
-    // #endregion
-    throw dnsErr;
+
+  let lastErr: any;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const ips = await resolve4(hostname);
+      const ip = ips[0];
+      // #region agent log
+      console.error('[DNS-DEBUG] resolve4 OK attempt', attempt + 1, hostname, '->', ip);
+      // #endregion
+      ipCache.set(hostname, { ip, exp: Date.now() + 300_000 });
+      return ip;
+    } catch (err: any) {
+      lastErr = err;
+      // #region agent log
+      console.error('[DNS-DEBUG] resolve4 FAIL attempt', attempt + 1, hostname, err?.message, err?.code);
+      // #endregion
+      if (attempt < 2) await new Promise(r => setTimeout(r, 100 * (attempt + 1)));
+    }
   }
+  throw lastErr;
 }
+
+// Pre-warm DNS cache at module load so the first real request hits the cache
+void (async () => {
+  for (let i = 0; i < 5; i++) {
+    try {
+      await resolveToIP(BACKEND_HOSTNAME);
+      console.error('[DNS-WARMUP] pre-warmed DNS for', BACKEND_HOSTNAME);
+      break;
+    } catch (e: any) {
+      console.error('[DNS-WARMUP] attempt', i + 1, 'failed:', e?.message, '- retry in 2s');
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+})();
 
 async function httpProxyRequest(
   url: URL,
@@ -45,19 +64,18 @@ async function httpProxyRequest(
   headers: Headers,
   body: ArrayBuffer | undefined,
 ): Promise<{ status: number; headers: Headers; buffer: Buffer }> {
-  // Resolve hostname to IPv4 IP using c-ares (bypasses libc EAI_AGAIN issue).
-  // If resolution fails, fall back to original hostname (will likely fail too,
-  // but at least produces a meaningful error).
-  let hostname = url.hostname;
+  // Resolve to IPv4 IP so http.request never calls libc getaddrinfo
+  let hostname: string;
   try {
     hostname = await resolveToIP(url.hostname);
     // #region agent log
-    console.error('[PROXY-DNS] resolved to IP:', hostname);
+    console.error('[PROXY-DNS] using resolved IP:', hostname);
     // #endregion
   } catch (dnsErr: any) {
     // #region agent log
-    console.error('[PROXY-DNS] fallback to hostname after resolve4 error:', dnsErr?.message);
+    console.error('[PROXY-DNS] DNS failed after retries:', dnsErr?.message, dnsErr?.code);
     // #endregion
+    throw dnsErr;
   }
 
   const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
@@ -66,7 +84,7 @@ async function httpProxyRequest(
 
   return new Promise((resolve, reject) => {
     const options: http.RequestOptions = {
-      hostname,  // IP address or fallback hostname
+      hostname,
       port,
       path: url.pathname + (url.search || ''),
       method,
@@ -122,7 +140,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     });
   } catch (err: any) {
     // #region agent log
-    console.error('[PROXY-ERR] raw error:', err?.message, 'code:', err?.code, 'syscall:', err?.syscall, 'cause:', err?.cause?.message);
+    console.error('[PROXY-ERR] raw error:', err?.message, 'code:', err?.code, 'syscall:', err?.syscall);
     // #endregion
     const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
     console.error('[PROXY-ERR]', detail);
