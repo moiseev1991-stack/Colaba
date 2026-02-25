@@ -2,56 +2,42 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// Webpack inlines process.env.VARIABLE at build-time, making runtime env changes
-// invisible. It may also stub node built-ins in server bundles.
-// __non_webpack_require__ is webpack's official escape hatch: it compiles to the
-// native Node.js require(), bypassing all webpack module transformations.
-declare const __non_webpack_require__: (id: string) => unknown;
-const nreq =
-  (typeof __non_webpack_require__ === 'function' ? __non_webpack_require__ : require) as (id: string) => unknown;
-
-const nfs    = nreq('node:fs')    as typeof import('node:fs');
-const nhttp  = nreq('node:http')  as typeof import('node:http');
-const nhttps = nreq('node:https') as typeof import('node:https');
-
-// Cache after first successful resolution to avoid file I/O on every request.
-let _originCache: string | null = null;
-
-// #region agent log - diagnostics
-function collectDiag(): Record<string, unknown> {
-  const d: Record<string, unknown> = {};
-  d.hasNWR = typeof __non_webpack_require__ === 'function';
-  d.nfsReadFileSyncType = typeof nfs?.readFileSync;
-  try {
-    d.fileRaw = nfs.readFileSync('/tmp/backend-origin', 'utf8');
-  } catch (e) { d.fileErr = (e as Error).message; }
-  // Computed key prevents webpack from inlining at build time
-  const k = ['INTERNAL', 'BACKEND', 'ORIGIN'].join('_');
-  d.envVal = (process.env as Record<string, string | undefined>)[k];
-  d.envValDirect = (process.env as Record<string, string | undefined>)['INTERNAL_BACKEND_ORIGIN'];
-  d.cache = _originCache;
-  return d;
+// webpack's DefinePlugin replaces process.env.VARIABLE and process.env['LITERAL']
+// at build time. It does NOT trace through user-defined function calls.
+// By wrapping env access in a function, we get the RUNTIME value from PID-1's env
+// (which entrypoint.sh sets to http://<IP>:8000 before exec-ing next start).
+function readEnv(key: string): string | undefined {
+  return (process.env as Record<string, string | undefined>)[key];
 }
-// #endregion
+
+// 'fs' (without node: prefix) goes through a different webpack externals path
+// than 'node:fs', and is more reliably externalized to the real Node.js module.
+// We import lazily (inside a function) so webpack cannot statically analyze it.
+function readFileSafe(path: string): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return (require('fs') as typeof import('fs')).readFileSync(path, 'utf8').trim();
+  } catch {
+    return null;
+  }
+}
+
+// Cache after first successful resolution.
+let _originCache: string | null = null;
 
 function getBackendOrigin(): string {
   if (_originCache) return _originCache;
 
-  // 1. Read the IP written by entrypoint.sh before Next.js started.
-  //    Exclude values containing 'backend' to avoid caching the hostname fallback.
-  try {
-    const v = nfs.readFileSync('/tmp/backend-origin', 'utf8').trim();
-    if (v && v.startsWith('http://') && !v.includes('backend')) {
-      _originCache = v;
-      return v;
-    }
-  } catch {}
+  // 1. File written by entrypoint.sh: contains http://<IP>:8000
+  const fromFile = readFileSafe('/tmp/backend-origin');
+  if (fromFile && fromFile.startsWith('http://') && !fromFile.includes('backend')) {
+    _originCache = fromFile;
+    return fromFile;
+  }
 
-  // 2. Dynamic key prevents webpack from inlining this at build time.
-  //    PID-1 (next start) inherits INTERNAL_BACKEND_ORIGIN=http://<IP>:8000 from entrypoint.sh.
-  //    Exclude values containing 'backend' to avoid using the docker-compose hostname value.
-  const k = ['INTERNAL', 'BACKEND', 'ORIGIN'].join('_');
-  const fromEnv = (process.env as Record<string, string | undefined>)[k];
+  // 2. Runtime env from PID-1 (set by entrypoint.sh via export + exec).
+  //    readEnv() wraps the access so webpack cannot inline the result.
+  const fromEnv = readEnv('INTERNAL_BACKEND_ORIGIN');
   if (fromEnv && fromEnv.startsWith('http://') && !fromEnv.includes('backend')) {
     _originCache = fromEnv;
     return fromEnv;
@@ -59,6 +45,16 @@ function getBackendOrigin(): string {
 
   return 'http://backend:8000';
 }
+
+// #region agent log - diagnostics (keep until login is confirmed working)
+function collectDiag(): Record<string, unknown> {
+  return {
+    fileRaw: readFileSafe('/tmp/backend-origin'),
+    envVal: readEnv('INTERNAL_BACKEND_ORIGIN'),
+    cache: _originCache,
+  };
+}
+// #endregion
 
 async function httpProxyRequest(
   url: URL,
@@ -71,7 +67,10 @@ async function httpProxyRequest(
   headers.forEach((v, k) => { reqHeaders[k] = v; });
 
   return new Promise((resolve, reject) => {
-    const options: import('node:http').RequestOptions = {
+    const http  = require('http')  as typeof import('http');
+    const https = require('https') as typeof import('https');
+
+    const options: import('http').RequestOptions = {
       hostname: url.hostname,
       port,
       path: url.pathname + (url.search || ''),
@@ -79,28 +78,21 @@ async function httpProxyRequest(
       headers: reqHeaders,
     };
 
-    const client = url.protocol === 'https:' ? nhttps : nhttp;
-    const req = (client as typeof import('node:http')).request(
-      options,
-      (res: import('node:http').IncomingMessage) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) =>
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
-        );
-        res.on('end', () => {
-          const resHeaders = new Headers();
-          Object.entries(res.headers).forEach(([k, v]) => {
-            if (v != null) resHeaders.set(k, Array.isArray(v) ? v.join(', ') : v);
-          });
-          resolve({
-            status: res.statusCode ?? 502,
-            headers: resHeaders,
-            buffer: Buffer.concat(chunks),
-          });
+    const client = url.protocol === 'https:' ? https : http;
+    const req = client.request(options, (res: import('http').IncomingMessage) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) =>
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
+      );
+      res.on('end', () => {
+        const resHeaders = new Headers();
+        Object.entries(res.headers).forEach(([k, v]) => {
+          if (v != null) resHeaders.set(k, Array.isArray(v) ? v.join(', ') : v);
         });
-        res.on('error', reject);
-      },
-    );
+        resolve({ status: res.statusCode ?? 502, headers: resHeaders, buffer: Buffer.concat(chunks) });
+      });
+      res.on('error', reject);
+    });
     req.on('error', reject);
     if (body && body.byteLength > 0) req.write(Buffer.from(body));
     req.end();
@@ -126,12 +118,9 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     upstream.headers.delete('content-encoding');
     upstream.headers.delete('transfer-encoding');
     upstream.headers.delete('connection');
-    return new Response(upstream.buffer, {
-      status: upstream.status,
-      headers: upstream.headers,
-    });
+    return new Response(upstream.buffer, { status: upstream.status, headers: upstream.headers });
   } catch (err: unknown) {
-    // #region agent log - embed diagnostics in 502 to understand root cause
+    // #region agent log - diagnostics
     const diag = collectDiag();
     const detail = `Proxy error: ${(err as Error)?.message} | url: ${upstreamUrl.toString()} | origin: ${origin} | diag: ${JSON.stringify(diag)}`;
     // #endregion
