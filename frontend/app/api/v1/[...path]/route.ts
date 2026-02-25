@@ -1,26 +1,48 @@
 import { NextRequest } from 'next/server';
-import * as http from 'node:http';
-import * as https from 'node:https';
-import { appendFileSync } from 'node:fs';
 
 export const runtime = 'nodejs';
 
-// File-based debug logging
-const DEBUG_LOG = '/tmp/proxy-debug.log';
-function dbg(msg: string) {
-  try { appendFileSync(DEBUG_LOG, `${new Date().toISOString()} ${msg}\n`); } catch {}
+// Webpack inlines process.env.VARIABLE at build-time, making runtime env changes
+// invisible. It may also stub node built-ins in server bundles.
+// __non_webpack_require__ is webpack's official escape hatch: it compiles to the
+// native Node.js require(), bypassing all webpack module transformations.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare const __non_webpack_require__: (id: string) => any;
+const nreq: (id: string) => any =
+  typeof __non_webpack_require__ === 'function' ? __non_webpack_require__ : require;
+
+const nfs    = nreq('node:fs')    as typeof import('node:fs');
+const nhttp  = nreq('node:http')  as typeof import('node:http');
+const nhttps = nreq('node:https') as typeof import('node:https');
+
+// Cache after first successful resolution to avoid file I/O on every request.
+let _originCache: string | null = null;
+
+function getBackendOrigin(): string {
+  if (_originCache) return _originCache;
+
+  // 1. Read the IP written by entrypoint.sh before Next.js started.
+  //    This avoids DNS entirely and is immune to webpack build-time inlining.
+  try {
+    const v = nfs.readFileSync('/tmp/backend-origin', 'utf8').trim();
+    if (v && v.startsWith('http://')) {
+      _originCache = v;
+      return v;
+    }
+  } catch {}
+
+  // 2. Dynamic bracket access: webpack cannot inline process.env[variable].
+  //    PID-1 (next start) inherits INTERNAL_BACKEND_ORIGIN=http://<IP>:8000
+  //    from entrypoint.sh via exec, even though docker exec shows the old value.
+  const k = 'INTERNAL_BACKEND_ORIGIN';
+  const fromEnv = (process.env as Record<string, string | undefined>)[k];
+  if (fromEnv && fromEnv.startsWith('http://')) {
+    _originCache = fromEnv;
+    return fromEnv;
+  }
+
+  return 'http://backend:8000';
 }
-
-// Backend origin: entrypoint.sh writes the resolved IP to /etc/hosts so that
-// getaddrinfo('backend') works reliably in all process contexts.
-// We simply use the hostname directly - no custom DNS needed.
-const BACKEND_ORIGIN = process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
-
-dbg(`[INIT] module loaded, BACKEND_ORIGIN=${BACKEND_ORIGIN}`);
-
-// #region agent log
-fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:init',message:'module loaded',data:{BACKEND_ORIGIN},timestamp:Date.now(),hypothesisId:'H-hosts'})}).catch(()=>{});
-// #endregion
 
 async function httpProxyRequest(
   url: URL,
@@ -32,10 +54,8 @@ async function httpProxyRequest(
   const reqHeaders: Record<string, string> = {};
   headers.forEach((v, k) => { reqHeaders[k] = v; });
 
-  dbg(`[PROXY] ${method} ${url.hostname}:${port}${url.pathname}`);
-
   return new Promise((resolve, reject) => {
-    const options: http.RequestOptions = {
+    const options: import('node:http').RequestOptions = {
       hostname: url.hostname,
       port,
       path: url.pathname + (url.search || ''),
@@ -43,40 +63,38 @@ async function httpProxyRequest(
       headers: reqHeaders,
     };
 
-    const client = url.protocol === 'https:' ? https : http;
-    const req = client.request(options, (res) => {
-      const chunks: Buffer[] = [];
-      res.on('data', (chunk: Buffer) =>
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
-      );
-      res.on('end', () => {
-        const resHeaders = new Headers();
-        Object.entries(res.headers).forEach(([k, v]) => {
-          if (v != null) resHeaders.set(k, Array.isArray(v) ? v.join(', ') : v);
+    const client = url.protocol === 'https:' ? nhttps : nhttp;
+    const req = (client as typeof import('node:http')).request(
+      options,
+      (res: import('node:http').IncomingMessage) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) =>
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
+        );
+        res.on('end', () => {
+          const resHeaders = new Headers();
+          Object.entries(res.headers).forEach(([k, v]) => {
+            if (v != null) resHeaders.set(k, Array.isArray(v) ? v.join(', ') : v);
+          });
+          resolve({
+            status: res.statusCode ?? 502,
+            headers: resHeaders,
+            buffer: Buffer.concat(chunks),
+          });
         });
-        dbg(`[PROXY] response ${res.statusCode}`);
-        resolve({
-          status: res.statusCode ?? 502,
-          headers: resHeaders,
-          buffer: Buffer.concat(chunks),
-        });
-      });
-      res.on('error', reject);
-    });
-    req.on('error', (err: any) => {
-      dbg(`[HTTP-ERR] ${err?.code} ${err?.message}`);
-      reject(err);
-    });
+        res.on('error', reject);
+      },
+    );
+    req.on('error', reject);
     if (body && body.byteLength > 0) req.write(Buffer.from(body));
     req.end();
   });
 }
 
 async function proxy(req: NextRequest, pathParts: string[]) {
-  const upstreamUrl = new URL(`${BACKEND_ORIGIN}/api/v1/${pathParts.join('/')}`);
+  const origin = getBackendOrigin();
+  const upstreamUrl = new URL(`${origin}/api/v1/${pathParts.join('/')}`);
   upstreamUrl.search = req.nextUrl.search;
-
-  dbg(`[PROXY] -> ${upstreamUrl.toString()}`);
 
   const headers = new Headers(req.headers);
   headers.delete('host');
@@ -97,8 +115,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       headers: upstream.headers,
     });
   } catch (err: any) {
-    dbg(`[PROXY-ERR] ${err?.code} ${err?.message}`);
-    const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
+    const detail = `Proxy error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${origin}`;
     return new Response(JSON.stringify({ detail }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
