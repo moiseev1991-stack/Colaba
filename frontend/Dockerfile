@@ -7,8 +7,10 @@ RUN npm ci
 
 COPY . .
 
+# Production build: no eval() in webpack bundles, middleware works in Edge Runtime
+ENV NODE_ENV=production
+RUN npx next build
+
 EXPOSE 3000
 
-# Dev mode avoids production hydration bug
-ENV NODE_ENV=development
-CMD ["npx", "next", "dev", "-p", "3000", "-H", "0.0.0.0"]
+CMD ["npx", "next", "start", "-p", "3000", "-H", "0.0.0.0"]
