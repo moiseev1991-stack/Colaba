@@ -6,10 +6,9 @@ export const runtime = 'nodejs';
 // invisible. It may also stub node built-ins in server bundles.
 // __non_webpack_require__ is webpack's official escape hatch: it compiles to the
 // native Node.js require(), bypassing all webpack module transformations.
-/* eslint-disable @typescript-eslint/no-explicit-any */
-declare const __non_webpack_require__: (id: string) => any;
-const nreq: (id: string) => any =
-  typeof __non_webpack_require__ === 'function' ? __non_webpack_require__ : require;
+declare const __non_webpack_require__: (id: string) => unknown;
+const nreq =
+  (typeof __non_webpack_require__ === 'function' ? __non_webpack_require__ : require) as (id: string) => unknown;
 
 const nfs    = nreq('node:fs')    as typeof import('node:fs');
 const nhttp  = nreq('node:http')  as typeof import('node:http');
