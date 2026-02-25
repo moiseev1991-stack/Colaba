@@ -3,11 +3,21 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import * as dns from 'node:dns';
 import { resolve4 } from 'node:dns/promises';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 
 export const runtime = 'nodejs';
 
-const BACKEND_ORIGIN = process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
+// Read entrypoint-resolved IP from file (more reliable than process.env which
+// Next.js webpack inlines at build time). Fall back to env var or default.
+function readBackendOrigin(): string {
+  try {
+    const v = readFileSync('/tmp/backend-origin', 'utf8').trim();
+    if (v) return v;
+  } catch {}
+  return process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
+}
+
+const BACKEND_ORIGIN = readBackendOrigin();
 const BACKEND_HOSTNAME = new URL(BACKEND_ORIGIN).hostname;
 
 // File-based debug logging - bypasses any Next.js console interception

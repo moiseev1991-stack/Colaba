@@ -21,6 +21,9 @@ require('dns/promises').resolve4('$BACKEND_HOSTNAME')
     if [ -n "$BACKEND_IP" ]; then
         echo "[entrypoint] $BACKEND_HOSTNAME -> $BACKEND_IP"
         export INTERNAL_BACKEND_ORIGIN="http://$BACKEND_IP:$BACKEND_PORT"
+        # Write to file so Next.js route handler can read it at runtime
+        # (env var export is ignored because Next.js bakes process.env at build time)
+        echo "http://$BACKEND_IP:$BACKEND_PORT" > /tmp/backend-origin
         break
     fi
 
