@@ -8,10 +8,6 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const upstreamUrl = new URL(`${BACKEND_ORIGIN}/api/v1/${pathParts.join('/')}`);
   upstreamUrl.search = req.nextUrl.search;
 
-  // #region agent log
-  console.error('[DEBUG-PROXY] INTERNAL_BACKEND_ORIGIN env:', process.env.INTERNAL_BACKEND_ORIGIN, '| resolved BACKEND_ORIGIN:', BACKEND_ORIGIN, '| upstreamUrl:', upstreamUrl.toString(), '| hypothesisId: H-A,H-C');
-  // #endregion
-
   const headers = new Headers(req.headers);
   // Avoid leaking hop-by-hop / invalid headers to upstream
   headers.delete('host');
@@ -30,16 +26,10 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       body,
       redirect: 'manual',
     });
-    // #region agent log
-    console.error('[DEBUG-PROXY] fetch success | status:', upstreamRes.status, '| upstreamUrl:', upstreamUrl.toString(), '| hypothesisId: H-C');
-    // #endregion
   } catch (fetchErr: any) {
-    // #region agent log
-    console.error('[DEBUG-PROXY] fetch ERROR | upstreamUrl:', upstreamUrl.toString(), '| error:', fetchErr?.message, fetchErr?.cause, '| hypothesisId: H-A,H-C');
-    // #endregion
     return new Response(JSON.stringify({ detail: `Proxy upstream error: ${fetchErr?.message}` }), {
       status: 502,
-      headers: { 'content-type': 'application/json', 'x-debug-upstream': upstreamUrl.toString() },
+      headers: { 'content-type': 'application/json' },
     });
   }
 
@@ -48,9 +38,6 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   resHeaders.delete('content-length');
   resHeaders.delete('transfer-encoding');
   resHeaders.delete('connection');
-  // #region agent log
-  resHeaders.set('x-debug-upstream', upstreamUrl.toString());
-  // #endregion
 
   return new Response(await upstreamRes.arrayBuffer(), {
     status: upstreamRes.status,

@@ -8,10 +8,6 @@ const nextConfig = {
   //   register: true,
   //   skipWaiting: true,
   // },
-  env: {
-    // Use same-origin by default to avoid CORS/loopback issues in production.
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
-  },
   // Image optimization
   images: {
     domains: [],
