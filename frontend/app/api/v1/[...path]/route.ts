@@ -17,25 +17,42 @@ const nhttps = nreq('node:https') as typeof import('node:https');
 // Cache after first successful resolution to avoid file I/O on every request.
 let _originCache: string | null = null;
 
+// #region agent log - diagnostics
+function collectDiag(): Record<string, unknown> {
+  const d: Record<string, unknown> = {};
+  d.hasNWR = typeof __non_webpack_require__ === 'function';
+  d.nfsReadFileSyncType = typeof nfs?.readFileSync;
+  try {
+    d.fileRaw = nfs.readFileSync('/tmp/backend-origin', 'utf8');
+  } catch (e) { d.fileErr = (e as Error).message; }
+  // Computed key prevents webpack from inlining at build time
+  const k = ['INTERNAL', 'BACKEND', 'ORIGIN'].join('_');
+  d.envVal = (process.env as Record<string, string | undefined>)[k];
+  d.envValDirect = (process.env as Record<string, string | undefined>)['INTERNAL_BACKEND_ORIGIN'];
+  d.cache = _originCache;
+  return d;
+}
+// #endregion
+
 function getBackendOrigin(): string {
   if (_originCache) return _originCache;
 
   // 1. Read the IP written by entrypoint.sh before Next.js started.
-  //    This avoids DNS entirely and is immune to webpack build-time inlining.
+  //    Exclude values containing 'backend' to avoid caching the hostname fallback.
   try {
     const v = nfs.readFileSync('/tmp/backend-origin', 'utf8').trim();
-    if (v && v.startsWith('http://')) {
+    if (v && v.startsWith('http://') && !v.includes('backend')) {
       _originCache = v;
       return v;
     }
   } catch {}
 
-  // 2. Dynamic bracket access: webpack cannot inline process.env[variable].
-  //    PID-1 (next start) inherits INTERNAL_BACKEND_ORIGIN=http://<IP>:8000
-  //    from entrypoint.sh via exec, even though docker exec shows the old value.
-  const k = 'INTERNAL_BACKEND_ORIGIN';
+  // 2. Dynamic key prevents webpack from inlining this at build time.
+  //    PID-1 (next start) inherits INTERNAL_BACKEND_ORIGIN=http://<IP>:8000 from entrypoint.sh.
+  //    Exclude values containing 'backend' to avoid using the docker-compose hostname value.
+  const k = ['INTERNAL', 'BACKEND', 'ORIGIN'].join('_');
   const fromEnv = (process.env as Record<string, string | undefined>)[k];
-  if (fromEnv && fromEnv.startsWith('http://')) {
+  if (fromEnv && fromEnv.startsWith('http://') && !fromEnv.includes('backend')) {
     _originCache = fromEnv;
     return fromEnv;
   }
@@ -113,8 +130,11 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       status: upstream.status,
       headers: upstream.headers,
     });
-  } catch (err: any) {
-    const detail = `Proxy error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${origin}`;
+  } catch (err: unknown) {
+    // #region agent log - embed diagnostics in 502 to understand root cause
+    const diag = collectDiag();
+    const detail = `Proxy error: ${(err as Error)?.message} | url: ${upstreamUrl.toString()} | origin: ${origin} | diag: ${JSON.stringify(diag)}`;
+    // #endregion
     return new Response(JSON.stringify({ detail }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
