@@ -16,11 +16,27 @@ const ipCache = new Map<string, { ip: string; exp: number }>();
 
 async function resolveToIP(hostname: string): Promise<string> {
   const cached = ipCache.get(hostname);
-  if (cached && cached.exp > Date.now()) return cached.ip;
-  const ips = await resolve4(hostname);
-  const ip = ips[0];
-  ipCache.set(hostname, { ip, exp: Date.now() + 60_000 });
-  return ip;
+  // #region agent log
+  if (cached && cached.exp > Date.now()) {
+    console.error('[DNS-DEBUG] cache hit:', hostname, '->', cached.ip);
+    return cached.ip;
+  }
+  console.error('[DNS-DEBUG] resolve4 start:', hostname);
+  // #endregion
+  try {
+    const ips = await resolve4(hostname);
+    // #region agent log
+    console.error('[DNS-DEBUG] resolve4 OK:', hostname, '->', ips);
+    // #endregion
+    const ip = ips[0];
+    ipCache.set(hostname, { ip, exp: Date.now() + 60_000 });
+    return ip;
+  } catch (dnsErr: any) {
+    // #region agent log
+    console.error('[DNS-DEBUG] resolve4 FAIL:', hostname, 'msg:', dnsErr?.message, 'code:', dnsErr?.code, 'syscall:', dnsErr?.syscall);
+    // #endregion
+    throw dnsErr;
+  }
 }
 
 async function httpProxyRequest(
@@ -35,8 +51,13 @@ async function httpProxyRequest(
   let hostname = url.hostname;
   try {
     hostname = await resolveToIP(url.hostname);
+    // #region agent log
+    console.error('[PROXY-DNS] resolved to IP:', hostname);
+    // #endregion
   } catch (dnsErr: any) {
-    console.error('[PROXY] resolve4 failed:', dnsErr?.message, '- using hostname directly');
+    // #region agent log
+    console.error('[PROXY-DNS] fallback to hostname after resolve4 error:', dnsErr?.message);
+    // #endregion
   }
 
   const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
@@ -100,6 +121,9 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       headers: upstream.headers,
     });
   } catch (err: any) {
+    // #region agent log
+    console.error('[PROXY-ERR] raw error:', err?.message, 'code:', err?.code, 'syscall:', err?.syscall, 'cause:', err?.cause?.message);
+    // #endregion
     const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
     console.error('[PROXY-ERR]', detail);
     return new Response(JSON.stringify({ detail }), {
