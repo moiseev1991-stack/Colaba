@@ -7,35 +7,57 @@ import { appendFileSync, readFileSync } from 'node:fs';
 
 export const runtime = 'nodejs';
 
-// Read entrypoint-resolved IP from file (more reliable than process.env which
-// Next.js webpack inlines at build time). Fall back to env var or default.
-function readBackendOrigin(): string {
-  try {
-    const v = readFileSync('/tmp/backend-origin', 'utf8').trim();
-    if (v) return v;
-  } catch {}
-  return process.env.INTERNAL_BACKEND_ORIGIN || 'http://backend:8000';
-}
-
-const BACKEND_ORIGIN = readBackendOrigin();
-const BACKEND_HOSTNAME = new URL(BACKEND_ORIGIN).hostname;
-
 // File-based debug logging - bypasses any Next.js console interception
 const DEBUG_LOG = '/tmp/proxy-debug.log';
 function dbg(msg: string) {
   try { appendFileSync(DEBUG_LOG, `${new Date().toISOString()} ${msg}\n`); } catch {}
 }
 
+// Lazy-cached backend origin: resolved at first request time (not module load /
+// next build time) to avoid webpack baking in the build-time fallback value.
+let _backendOrigin: string | null = null;
+
+function getBackendOrigin(): string {
+  if (_backendOrigin !== null) return _backendOrigin;
+
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:getBackendOrigin',message:'resolving backend origin',timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+
+  try {
+    const v = readFileSync('/tmp/backend-origin', 'utf8').trim();
+    dbg(`[ORIGIN] readFileSync ok: "${v}"`);
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:getBackendOrigin',message:'file read success',data:{fileContent:v},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+    if (v) {
+      _backendOrigin = v;
+      return v;
+    }
+  } catch (err: any) {
+    dbg(`[ORIGIN] readFileSync failed: ${err?.message}`);
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:getBackendOrigin',message:'file read failed',data:{error:String(err)},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
+  }
+
+  // Use bracket notation to bypass webpack DefinePlugin inlining of process.env
+  const envVal = (process.env as Record<string,string|undefined>)['INTERNAL_BACKEND_ORIGIN'];
+  dbg(`[ORIGIN] env fallback: "${envVal}"`);
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:getBackendOrigin',message:'env fallback',data:{envVal},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+  // #endregion
+  _backendOrigin = envVal || 'http://backend:8000';
+  return _backendOrigin;
+}
+
 const ipCache = new Map<string, { ip: string; exp: number }>();
 
-// If INTERNAL_BACKEND_ORIGIN already contains an IP (set by entrypoint.sh),
-// skip DNS entirely.
 function isIPv4(s: string): boolean {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(s);
 }
 
 async function resolveToIP(hostname: string): Promise<string> {
-  // If entrypoint.sh already resolved the IP, use it directly
   if (isIPv4(hostname)) {
     dbg(`${hostname} is already an IP, skip DNS`);
     return hostname;
@@ -82,20 +104,8 @@ async function resolveToIP(hostname: string): Promise<string> {
   throw lastErr;
 }
 
-// Pre-warm DNS cache at module load
-void (async () => {
-  dbg(`[INIT] module loaded, BACKEND_ORIGIN=${BACKEND_ORIGIN}, hostname=${BACKEND_HOSTNAME}`);
-  for (let i = 0; i < 5; i++) {
-    try {
-      await resolveToIP(BACKEND_HOSTNAME);
-      dbg(`[WARMUP] pre-warmed DNS for ${BACKEND_HOSTNAME}`);
-      break;
-    } catch (e: any) {
-      dbg(`[WARMUP] attempt ${i + 1} failed: ${e?.message} - retry in 3s`);
-      await new Promise(r => setTimeout(r, 3000));
-    }
-  }
-})();
+// Log module load - BACKEND_ORIGIN is resolved lazily at first request
+dbg(`[INIT] module loaded (lazy mode - origin resolved at first request)`);
 
 async function httpProxyRequest(
   url: URL,
@@ -154,6 +164,11 @@ async function httpProxyRequest(
 }
 
 async function proxy(req: NextRequest, pathParts: string[]) {
+  const BACKEND_ORIGIN = getBackendOrigin();
+  dbg(`[PROXY] BACKEND_ORIGIN=${BACKEND_ORIGIN}`);
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:proxy',message:'proxy called',data:{BACKEND_ORIGIN,path:pathParts.join('/')},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   const upstreamUrl = new URL(`${BACKEND_ORIGIN}/api/v1/${pathParts.join('/')}`);
   upstreamUrl.search = req.nextUrl.search;
 
@@ -177,7 +192,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     });
   } catch (err: any) {
     dbg(`[PROXY-ERR] ${err?.code} ${err?.message}`);
-    const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN}`;
+    const detail = `Proxy upstream error: ${err?.message} | url: ${upstreamUrl.toString()} | origin: ${BACKEND_ORIGIN} | file: ${_backendOrigin}`;
     return new Response(JSON.stringify({ detail }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
