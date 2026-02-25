@@ -80,9 +80,16 @@ export const tokenStorage = {
   },
 };
 
+// #region agent log
+fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client.ts:init',message:'apiClient initialized',data:{API_BASE_URL,NEXT_PUBLIC_API_URL_ENV:process.env.NEXT_PUBLIC_API_URL},timestamp:Date.now(),hypothesisId:'H-B'})}).catch(()=>{});
+// #endregion
+
 // Request interceptor: Add auth token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client.ts:request',message:'outgoing request',data:{baseURL:config.baseURL,url:config.url,method:config.method,fullUrl:`${config.baseURL||''}${config.url||''}`},timestamp:Date.now(),hypothesisId:'H-B,H-D'})}).catch(()=>{});
+    // #endregion
     const token = tokenStorage.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -96,8 +103,16 @@ apiClient.interceptors.request.use(
 
 // Response interceptor: Handle errors + dev logging
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client.ts:response-ok',message:'response ok',data:{status:response.status,url:response.config?.url,upstream:response.headers?.['x-debug-upstream']},timestamp:Date.now(),hypothesisId:'H-A,H-C'})}).catch(()=>{});
+    // #endregion
+    return response;
+  },
   async (error: AxiosError) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/0399435a-c7fd-43d9-8a3b-05cfb4c1e391',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'client.ts:response-error',message:'response error',data:{code:error.code,message:error.message,status:error.response?.status,url:error.config?.url,baseURL:error.config?.baseURL,upstream:error.response?.headers?.['x-debug-upstream'],responseData:error.response?.data},timestamp:Date.now(),hypothesisId:'H-A,H-B,H-C,H-D'})}).catch(()=>{});
+    // #endregion
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       const msg = `${error.response?.status} ${error.config?.url} ${JSON.stringify(error.response?.data ?? error.message)}`;
       console.error('[API]', msg);
