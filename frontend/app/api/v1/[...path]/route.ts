@@ -28,7 +28,7 @@ function tryResolveBackendIP(): { ip: string | null; method: string; error?: str
   try {
     const ip = exec(
       `${nodeBin} -e "require('dns/promises').resolve4('backend').then(([ip])=>process.stdout.write(ip)).catch(e=>{process.stderr.write(e.code+':'+e.message.slice(0,60));process.exit(1)})"`,
-      { encoding: 'utf8', timeout: 5000, env: { HOME: '/', PATH: '/usr/local/bin:/usr/bin:/bin' } as NodeJS.ProcessEnv },
+      { encoding: 'utf8', timeout: 5000, env: { HOME: '/', PATH: '/usr/local/bin:/usr/bin:/bin' } as unknown as NodeJS.ProcessEnv },
     ).trim();
     if (IS_IP.test(ip)) return { ip, method: 'node-dns-clean-env' };
     return { ip: null, method: 'node-dns-clean-env', error: `bad_ip:${ip}` };
