@@ -106,6 +106,20 @@ apiClient.interceptors.response.use(
     }
     // Handle 401 Unauthorized (token expired)
     if (error.response?.status === 401) {
+      const requestUrl = error.config?.url ?? '';
+
+      // #region agent log - hypothesis A: auth endpoint redirect causing error to disappear
+      console.log('[AUTH interceptor] 401 on url:', requestUrl, '| will redirect:', !requestUrl.includes('/auth/'));
+      // #endregion
+
+      // Skip redirect logic for auth endpoints (login, register, refresh).
+      // If login itself returns 401, the login page's catch block must handle it —
+      // redirecting here causes a page reload that clears the error state before
+      // the user can see it.
+      if (requestUrl.includes('/auth/')) {
+        return Promise.reject(error);
+      }
+
       const refreshToken = tokenStorage.getRefreshToken();
       if (refreshToken) {
         try {
