@@ -42,11 +42,15 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const method = req.method.toUpperCase();
   const body = method === 'GET' || method === 'HEAD' ? undefined : await req.arrayBuffer();
 
+  // Fail fast: if backend unreachable, return 502 within 10s instead of hanging forever
+  const abort = AbortSignal.timeout(10000);
+
   try {
     const response = await fetch(upstreamUrl.toString(), {
       method,
       headers: fwdHeaders,
       body: body && body.byteLength > 0 ? body : undefined,
+      signal: abort,
     });
 
     const resHeaders = new Headers(response.headers);
@@ -57,10 +61,13 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       headers: resHeaders,
     });
   } catch (err: unknown) {
+    const msg = (err as Error)?.message ?? String(err);
+    const hint =
+      origin === 'http://backend:8000'
+        ? ' | HINT: set INTERNAL_BACKEND_ORIGIN env var in your deployment platform (e.g. Coolify)'
+        : '';
     return new Response(
-      JSON.stringify({
-        detail: `Proxy error: ${(err as Error)?.message} | url: ${upstreamUrl} | origin: ${origin}`,
-      }),
+      JSON.stringify({ detail: `Proxy error: ${msg} | url: ${upstreamUrl} | origin: ${origin}${hint}` }),
       { status: 502, headers: { 'content-type': 'application/json' } },
     );
   }
