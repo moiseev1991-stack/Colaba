@@ -26,17 +26,18 @@ function tryResolveBackendIP(): { ip: string | null; method: string; error?: str
     if (IS_IP.test(ip)) return { ip, method: 'getent' };
   } catch {}
 
-  // M3: dns.lookup in subprocess (uses libc getaddrinfo — reads /etc/hosts + Docker DNS).
-  // Uses getaddrinfo unlike resolve4/c-ares; matches what docker exec subprocesses use.
+  // M3: dns.resolve4 in subprocess (uses c-ares — queries Docker DNS 127.0.0.11 via UDP,
+  // confirmed working via `docker exec node -e "require('dns').resolve4(...)"` while
+  // dns.lookup/getaddrinfo fails with EAI_AGAIN in the same container).
   try {
     const ip = exec(
-      `${nodeBin} -e "require('dns').lookup('backend',{family:4},function(e,a){if(e){process.stderr.write(e.code+':'+e.message.slice(0,50));process.exit(1);}process.stdout.write(a);})"`,
+      `${nodeBin} -e "require('dns').resolve4('backend',function(e,a){if(e){process.stderr.write(e.code+':'+e.message.slice(0,50));process.exit(1);}process.stdout.write(a[0]);})"`,
       { encoding: 'utf8', timeout: 5000 },
     ).trim();
-    if (IS_IP.test(ip)) return { ip, method: 'node-lookup' };
-    return { ip: null, method: 'node-lookup', error: `bad_ip:${ip}` };
+    if (IS_IP.test(ip)) return { ip, method: 'resolve4-subprocess' };
+    return { ip: null, method: 'resolve4-subprocess', error: `bad_ip:${ip}` };
   } catch (e) {
-    return { ip: null, method: 'node-lookup', error: (e as Error).message?.substring(0, 150) };
+    return { ip: null, method: 'resolve4-subprocess', error: (e as Error).message?.substring(0, 150) };
   }
 }
 
