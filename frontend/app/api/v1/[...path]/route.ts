@@ -62,12 +62,34 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     });
   } catch (err: unknown) {
     const msg = (err as Error)?.message ?? String(err);
-    const hint =
-      origin === 'http://backend:8000'
-        ? ' | HINT: set INTERNAL_BACKEND_ORIGIN env var in your deployment platform (e.g. Coolify)'
-        : '';
+
+    // #region agent log - DNS diagnostics (runs after fetch failure to identify root cause)
+    const diag: Record<string, unknown> = {};
+    try {
+      const dns = require('dns') as typeof import('dns');
+      const { promisify } = require('util') as typeof import('util');
+      const resolve4 = promisify(dns.resolve4);
+
+      const originHostname = new URL(origin).hostname;
+      diag.originHostname = originHostname;
+
+      // H-A/H-B: does the sslip.io hostname resolve via DNS from inside the container?
+      diag.dnsResolve = await resolve4(originHostname).catch((e: NodeJS.ErrnoException) => `FAIL:${e.code}`);
+
+      // H-D: does the first segment (Coolify UUID) resolve as an internal hostname?
+      const internalHost = originHostname.split('.')[0];
+      diag.internalHost = internalHost;
+      diag.internalDnsResolve = await resolve4(internalHost).catch((e: NodeJS.ErrnoException) => `FAIL:${e.code}`);
+    } catch (diagErr) {
+      diag.diagException = String(diagErr);
+    }
+    // #endregion
+
+    const hint = origin === 'http://backend:8000'
+      ? ' | HINT: set INTERNAL_BACKEND_ORIGIN in Coolify env vars'
+      : '';
     return new Response(
-      JSON.stringify({ detail: `Proxy error: ${msg} | url: ${upstreamUrl} | origin: ${origin}${hint}` }),
+      JSON.stringify({ detail: `Proxy error: ${msg} | url: ${upstreamUrl} | origin: ${origin}${hint} | diag: ${JSON.stringify(diag)}` }),
       { status: 502, headers: { 'content-type': 'application/json' } },
     );
   }
