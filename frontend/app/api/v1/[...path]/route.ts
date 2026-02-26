@@ -9,8 +9,11 @@ export const runtime = 'nodejs';
 function resolveHostViaSubprocess(hostname: string): string | null {
   try {
     const { execSync } = require('child_process') as typeof import('child_process');
+    // process.execPath = full path to the running Node binary (e.g. /usr/local/bin/node).
+    // We cannot rely on PATH in the child process, so we use the absolute path.
+    const nodeBin = process.execPath;
     const ip = execSync(
-      `node -e "require('dns/promises').resolve4('${hostname}').then(([ip])=>process.stdout.write(ip)).catch(()=>process.exit(1))"`,
+      `${nodeBin} -e "require('dns/promises').resolve4('${hostname}').then(([ip])=>process.stdout.write(ip)).catch(()=>process.exit(1))"`,
       { encoding: 'utf8', timeout: 5000 },
     ).trim();
     if (ip && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return ip;
@@ -48,6 +51,7 @@ function collectDiag(): Record<string, unknown> {
       .readFileSync('/tmp/backend-origin', 'utf8').trim();
   } catch { d.fileRaw = null; }
   d.ipCache = _ipCache;
+  d.nodeBin = process.execPath;
   d.subprocessResolve = resolveHostViaSubprocess('backend');
   try {
     const { execSync } = require('child_process') as typeof import('child_process');
