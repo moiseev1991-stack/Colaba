@@ -13,9 +13,10 @@ echo "[entrypoint] Resolving $BACKEND_HOSTNAME..."
 
 for i in $(seq 1 $MAX_ATTEMPTS); do
     BACKEND_IP=$(node -e "
-require('dns/promises').resolve4('$BACKEND_HOSTNAME')
-  .then(ips => process.stdout.write(ips[0]))
-  .catch(() => process.exit(1))
+require('dns').lookup('$BACKEND_HOSTNAME',{family:4},function(err,addr){
+  if(err){process.exit(1);}
+  process.stdout.write(addr);
+});
 " 2>/dev/null || echo "")
 
     if [ -n "$BACKEND_IP" ]; then

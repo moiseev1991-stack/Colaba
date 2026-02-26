@@ -8,32 +8,35 @@ const IS_IP = /^\d{1,3}(\.\d{1,3}){3}$/;
 // Returns { ip, method } on success or { ip: null, method, error } on failure.
 function tryResolveBackendIP(): { ip: string | null; method: string; error?: string } {
   const exec = (require('child_process') as typeof import('child_process')).execSync;
+  // Explicit PATH so shell commands (grep, awk, getent) are always found.
+  const shellEnv = { PATH: '/usr/local/bin:/usr/bin:/bin', HOME: '/' } as unknown as NodeJS.ProcessEnv;
+  const nodeBin = process.execPath;
 
-  // M1: grep /etc/hosts directly (written by entrypoint.sh if it succeeded)
+  // M1: grep /etc/hosts directly (written by entrypoint.sh on success)
   try {
-    const ip = exec("grep -w backend /etc/hosts | awk '{print $1}' | head -1",
-      { encoding: 'utf8', timeout: 1000 }).trim();
+    const ip = exec("/bin/grep -w backend /etc/hosts | /usr/bin/awk '{print $1}' | /usr/bin/head -1",
+      { encoding: 'utf8', timeout: 1000, env: shellEnv }).trim();
     if (IS_IP.test(ip)) return { ip, method: 'hosts-grep' };
   } catch {}
 
-  // M2: getent hosts (uses nsswitch: files then dns; no Node overhead)
+  // M2: getent hosts (nsswitch: files first, then dns — works even without /etc/hosts entry)
   try {
-    const out = exec('getent hosts backend', { encoding: 'utf8', timeout: 3000 }).trim();
+    const out = exec('/usr/bin/getent hosts backend', { encoding: 'utf8', timeout: 3000, env: shellEnv }).trim();
     const ip = out.split(/\s+/)[0] ?? '';
     if (IS_IP.test(ip)) return { ip, method: 'getent' };
   } catch {}
 
-  // M3: Node subprocess with clean env (strip any NODE_OPTIONS that might interfere)
-  const nodeBin = process.execPath;
+  // M3: dns.lookup in subprocess (uses libc getaddrinfo — reads /etc/hosts + Docker DNS).
+  // Uses getaddrinfo unlike resolve4/c-ares; matches what docker exec subprocesses use.
   try {
     const ip = exec(
-      `${nodeBin} -e "require('dns/promises').resolve4('backend').then(([ip])=>process.stdout.write(ip)).catch(e=>{process.stderr.write(e.code+':'+e.message.slice(0,60));process.exit(1)})"`,
-      { encoding: 'utf8', timeout: 5000, env: { HOME: '/', PATH: '/usr/local/bin:/usr/bin:/bin' } as unknown as NodeJS.ProcessEnv },
+      `${nodeBin} -e "require('dns').lookup('backend',{family:4},function(e,a){if(e){process.stderr.write(e.code+':'+e.message.slice(0,50));process.exit(1);}process.stdout.write(a);})"`,
+      { encoding: 'utf8', timeout: 5000 },
     ).trim();
-    if (IS_IP.test(ip)) return { ip, method: 'node-dns-clean-env' };
-    return { ip: null, method: 'node-dns-clean-env', error: `bad_ip:${ip}` };
+    if (IS_IP.test(ip)) return { ip, method: 'node-lookup' };
+    return { ip: null, method: 'node-lookup', error: `bad_ip:${ip}` };
   } catch (e) {
-    return { ip: null, method: 'node-dns-clean-env', error: (e as Error).message?.substring(0, 150) };
+    return { ip: null, method: 'node-lookup', error: (e as Error).message?.substring(0, 150) };
   }
 }
 
