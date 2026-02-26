@@ -42,11 +42,15 @@ require('dns').lookup('$BACKEND_HOSTNAME',{family:4},function(err,addr){
 done
 
 if [ -z "$BACKEND_IP" ]; then
-    # Internal DNS failed. Fall back to the plain internal hostname so that
-    # route.ts connects directly (no external URL, no hairpin NAT bypass).
-    # Do NOT use INTERNAL_BACKEND_ORIGIN here even if it is set — it may
-    # point to an external sslip.io URL which would cause coolify-proxy timeouts.
-    FALLBACK="http://$BACKEND_HOSTNAME:$BACKEND_PORT"
+    # Internal DNS failed (frontend may be in a separate Docker network from backend).
+    # Fall back to INTERNAL_BACKEND_ORIGIN if set — on Coolify this may be the
+    # backend's sslip.io URL. The hairpin NAT bypass in route.ts will route via
+    # coolify-proxy, which works as long as the backend is in the coolify network.
+    if [ -n "$INTERNAL_BACKEND_ORIGIN" ]; then
+        FALLBACK="$INTERNAL_BACKEND_ORIGIN"
+    else
+        FALLBACK="http://$BACKEND_HOSTNAME:$BACKEND_PORT"
+    fi
     echo "[entrypoint] WARNING: could not resolve $BACKEND_HOSTNAME after $MAX_ATTEMPTS attempts"
     echo "[entrypoint] Falling back to: $FALLBACK"
     echo "$FALLBACK" > /tmp/backend-origin

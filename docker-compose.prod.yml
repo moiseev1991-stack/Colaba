@@ -69,6 +69,7 @@ services:
         condition: service_healthy
     networks:
       - leadgen-network
+      - coolify
     restart: unless-stopped
     labels:
       # Traefik: API и health на IP и домене бэкенда
@@ -174,3 +175,5 @@ volumes:
 networks:
   leadgen-network:
     driver: bridge
+  coolify:
+    external: true

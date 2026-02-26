@@ -124,6 +124,10 @@ async function proxy(req: NextRequest, pathParts: string[]) {
         diag[`dns_${h}`] = await resolve4(h).catch((e: NodeJS.ErrnoException) => `FAIL:${e.code}`);
       }
     } catch (diagErr) { diag.diagException = String(diagErr); }
+    try {
+      diag['backendOriginFile'] = (require('fs') as typeof import('fs')).readFileSync('/tmp/backend-origin', 'utf8').trim();
+    } catch { diag['backendOriginFile'] = 'MISSING'; }
+    diag['internalBackendOriginEnv'] = process.env['INTERNAL_BACKEND_ORIGIN'] ?? 'NOT_SET';
     // #endregion
 
     return new Response(
