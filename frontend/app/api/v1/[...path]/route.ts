@@ -80,6 +80,17 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       const internalHost = originHostname.split('.')[0];
       diag.internalHost = internalHost;
       diag.internalDnsResolve = await resolve4(internalHost).catch((e: NodeJS.ErrnoException) => `FAIL:${e.code}`);
+
+      // H-E: can we reach Coolify proxy containers (Caddy/Traefik) via internal DNS?
+      for (const h of ['coolify-proxy', 'coolify-caddy', 'backend', 'leadgen-backend']) {
+        diag[`dns_${h}`] = await resolve4(h).catch((e: NodeJS.ErrnoException) => `FAIL:${e.code}`);
+      }
+
+      // H-F: what is the default gateway IP (host machine accessible from container)?
+      try {
+        const { execSync } = require('child_process') as typeof import('child_process');
+        diag.gatewayIp = execSync("ip route | grep default | awk '{print $3}'", { encoding: 'utf8', timeout: 1000 }).trim();
+      } catch (gwErr) { diag.gatewayIpErr = String(gwErr); }
     } catch (diagErr) {
       diag.diagException = String(diagErr);
     }
