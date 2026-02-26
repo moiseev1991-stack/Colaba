@@ -68,10 +68,28 @@ function collectDiag(): Record<string, unknown> {
   try {
     d.fileRaw = (require('fs') as typeof import('fs'))
       .readFileSync('/tmp/backend-origin', 'utf8').trim();
-  } catch { d.fileRaw = null; }
+  } catch (e) { d.fileRaw = null; d.fileErr = (e as NodeJS.ErrnoException).code; }
   d.ipCache = _ipCache;
   d.nodeBin = process.execPath;
   d.nodeOptions = process.env.NODE_OPTIONS;
+  // #region agent log H-A: what is process.env.INTERNAL_BACKEND_ORIGIN?
+  d.envOrigin = process.env.INTERNAL_BACKEND_ORIGIN ?? '(undefined)';
+  // #endregion
+  // #region agent log H-B: can Node.js read /etc/hosts directly?
+  try {
+    const hosts = (require('fs') as typeof import('fs')).readFileSync('/etc/hosts', 'utf8');
+    const backendLine = hosts.split('\n').find(l => /\bbackend\b/.test(l) && !/^#/.test(l.trim()));
+    d.hostsBackendLine = backendLine ?? '(not found)';
+  } catch (e) { d.hostsBackendLine = `ERR:${(e as Error).message?.slice(0,60)}`; }
+  // #endregion
+  // #region agent log H-C: M1 detailed error
+  try {
+    const { execSync } = require('child_process') as typeof import('child_process');
+    const shellEnv2 = { PATH: '/usr/local/bin:/usr/bin:/bin', HOME: '/' } as unknown as NodeJS.ProcessEnv;
+    d.m1Result = execSync("/bin/grep -w backend /etc/hosts | /usr/bin/awk '{print $1}' | /usr/bin/head -1",
+      { encoding: 'utf8', timeout: 1000, env: shellEnv2 }).trim();
+  } catch (e) { d.m1Err = (e as Error).message?.slice(0, 120); }
+  // #endregion
   d.resolveAttempt = tryResolveBackendIP();
   try {
     const { execSync } = require('child_process') as typeof import('child_process');
