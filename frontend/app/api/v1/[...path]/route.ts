@@ -2,23 +2,39 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// A fresh child process resolves DNS reliably (proven by docker exec tests).
-// The long-running Next.js process cannot resolve Docker hostnames via getaddrinfo,
-// but a subprocess spawned from it CAN - it inherits the same /etc/resolv.conf
-// and /etc/hosts but uses a fresh libc/dns state.
-function resolveHostViaSubprocess(hostname: string): string | null {
+const IS_IP = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+// Try multiple methods in order to find the backend IP.
+// Returns { ip, method } on success or { ip: null, method, error } on failure.
+function tryResolveBackendIP(): { ip: string | null; method: string; error?: string } {
+  const exec = (require('child_process') as typeof import('child_process')).execSync;
+
+  // M1: grep /etc/hosts directly (written by entrypoint.sh if it succeeded)
   try {
-    const { execSync } = require('child_process') as typeof import('child_process');
-    // process.execPath = full path to the running Node binary (e.g. /usr/local/bin/node).
-    // We cannot rely on PATH in the child process, so we use the absolute path.
-    const nodeBin = process.execPath;
-    const ip = execSync(
-      `${nodeBin} -e "require('dns/promises').resolve4('${hostname}').then(([ip])=>process.stdout.write(ip)).catch(()=>process.exit(1))"`,
-      { encoding: 'utf8', timeout: 5000 },
-    ).trim();
-    if (ip && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return ip;
+    const ip = exec("grep -w backend /etc/hosts | awk '{print $1}' | head -1",
+      { encoding: 'utf8', timeout: 1000 }).trim();
+    if (IS_IP.test(ip)) return { ip, method: 'hosts-grep' };
   } catch {}
-  return null;
+
+  // M2: getent hosts (uses nsswitch: files then dns; no Node overhead)
+  try {
+    const out = exec('getent hosts backend', { encoding: 'utf8', timeout: 3000 }).trim();
+    const ip = out.split(/\s+/)[0] ?? '';
+    if (IS_IP.test(ip)) return { ip, method: 'getent' };
+  } catch {}
+
+  // M3: Node subprocess with clean env (strip any NODE_OPTIONS that might interfere)
+  const nodeBin = process.execPath;
+  try {
+    const ip = exec(
+      `${nodeBin} -e "require('dns/promises').resolve4('backend').then(([ip])=>process.stdout.write(ip)).catch(e=>{process.stderr.write(e.code+':'+e.message.slice(0,60));process.exit(1)})"`,
+      { encoding: 'utf8', timeout: 5000, env: { HOME: '/', PATH: '/usr/local/bin:/usr/bin:/bin' } },
+    ).trim();
+    if (IS_IP.test(ip)) return { ip, method: 'node-dns-clean-env' };
+    return { ip: null, method: 'node-dns-clean-env', error: `bad_ip:${ip}` };
+  } catch (e) {
+    return { ip: null, method: 'node-dns-clean-env', error: (e as Error).message?.substring(0, 150) };
+  }
 }
 
 // Cache after first successful resolution so we only spawn one subprocess total.
@@ -36,9 +52,9 @@ function getBackendOrigin(): string {
     if (m) { _ipCache = m[1]; return content; }
   } catch {}
 
-  // 3. Resolve via fresh subprocess at request time (bypasses broken DNS in long-running process)
-  const ip = resolveHostViaSubprocess('backend');
-  if (ip) { _ipCache = ip; return `http://${ip}:8000`; }
+  // 3. Resolve via subprocess using multiple methods
+  const resolved = tryResolveBackendIP();
+  if (resolved.ip) { _ipCache = resolved.ip; return `http://${resolved.ip}:8000`; }
 
   return 'http://backend:8000';
 }
@@ -52,7 +68,8 @@ function collectDiag(): Record<string, unknown> {
   } catch { d.fileRaw = null; }
   d.ipCache = _ipCache;
   d.nodeBin = process.execPath;
-  d.subprocessResolve = resolveHostViaSubprocess('backend');
+  d.nodeOptions = process.env.NODE_OPTIONS;
+  d.resolveAttempt = tryResolveBackendIP();
   try {
     const { execSync } = require('child_process') as typeof import('child_process');
     d.procEnvHasKey = execSync('cat /proc/self/environ', { encoding: 'utf8' })
