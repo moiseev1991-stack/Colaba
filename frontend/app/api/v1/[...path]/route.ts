@@ -15,7 +15,6 @@ function readEnv(key: string): string | undefined {
 // We import lazily (inside a function) so webpack cannot statically analyze it.
 function readFileSafe(path: string): string | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     return (require('fs') as typeof import('fs')).readFileSync(path, 'utf8').trim();
   } catch {
     return null;
