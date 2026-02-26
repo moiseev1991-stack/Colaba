@@ -2,59 +2,40 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// webpack replaces process.env.VARIABLE and stubs some node built-ins at build time.
-// These helpers use patterns that webpack cannot statically analyze or replace.
-function readEnv(key: string): string | undefined {
-  return (process.env as Record<string, string | undefined>)[key];
-}
-
-function readFileSafe(path: string): string | null {
-  try {
-    return (require('fs') as typeof import('fs')).readFileSync(path, 'utf8').trim();
-  } catch {
-    return null;
-  }
-}
-
-// child_process.execSync launches a real OS subprocess - webpack cannot stub or
-// intercept it. Used as the most reliable fallback to read /tmp/backend-origin.
-function readFileViaShell(path: string): string | null {
+// A fresh child process resolves DNS reliably (proven by docker exec tests).
+// The long-running Next.js process cannot resolve Docker hostnames via getaddrinfo,
+// but a subprocess spawned from it CAN - it inherits the same /etc/resolv.conf
+// and /etc/hosts but uses a fresh libc/dns state.
+function resolveHostViaSubprocess(hostname: string): string | null {
   try {
     const { execSync } = require('child_process') as typeof import('child_process');
-    return execSync(`cat ${path}`, { encoding: 'utf8', timeout: 2000 }).trim();
-  } catch {
-    return null;
-  }
+    const ip = execSync(
+      `node -e "require('dns/promises').resolve4('${hostname}').then(([ip])=>process.stdout.write(ip)).catch(()=>process.exit(1))"`,
+      { encoding: 'utf8', timeout: 5000 },
+    ).trim();
+    if (ip && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return ip;
+  } catch {}
+  return null;
 }
 
-// Cache after first successful resolution.
-let _originCache: string | null = null;
+// Cache after first successful resolution so we only spawn one subprocess total.
+let _ipCache: string | null = null;
 
 function getBackendOrigin(): string {
-  if (_originCache) return _originCache;
+  // 1. Cached IP (resolved on first request)
+  if (_ipCache) return `http://${_ipCache}:8000`;
 
-  // Try each method in order, skip values containing 'backend' (hostname, not IP).
+  // 2. Read pre-resolved IP written by entrypoint.sh (when it succeeds)
+  try {
+    const content = (require('fs') as typeof import('fs'))
+      .readFileSync('/tmp/backend-origin', 'utf8').trim();
+    const m = content.match(/^http:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+$/);
+    if (m) { _ipCache = m[1]; return content; }
+  } catch {}
 
-  // 1. Direct fs read (fast, works if fs is not stubbed)
-  const fromFile = readFileSafe('/tmp/backend-origin');
-  if (fromFile && fromFile.startsWith('http://') && !fromFile.includes('backend')) {
-    _originCache = fromFile;
-    return fromFile;
-  }
-
-  // 2. child_process fallback — guaranteed to use real OS, bypasses all webpack stubbing
-  const fromShell = readFileViaShell('/tmp/backend-origin');
-  if (fromShell && fromShell.startsWith('http://') && !fromShell.includes('backend')) {
-    _originCache = fromShell;
-    return fromShell;
-  }
-
-  // 3. Runtime env var (works if process.env is the real object, not webpack snapshot)
-  const fromEnv = readEnv('INTERNAL_BACKEND_ORIGIN');
-  if (fromEnv && fromEnv.startsWith('http://') && !fromEnv.includes('backend')) {
-    _originCache = fromEnv;
-    return fromEnv;
-  }
+  // 3. Resolve via fresh subprocess at request time (bypasses broken DNS in long-running process)
+  const ip = resolveHostViaSubprocess('backend');
+  if (ip) { _ipCache = ip; return `http://${ip}:8000`; }
 
   return 'http://backend:8000';
 }
@@ -62,11 +43,12 @@ function getBackendOrigin(): string {
 // #region agent log - diagnostics (keep until login confirmed working)
 function collectDiag(): Record<string, unknown> {
   const d: Record<string, unknown> = {};
-  d.fileRaw = readFileSafe('/tmp/backend-origin');
-  d.shellResult = readFileViaShell('/tmp/backend-origin');
-  d.envVal = readEnv('INTERNAL_BACKEND_ORIGIN');
-  d.envCount = Object.keys(process.env).length;
-  d.cache = _originCache;
+  try {
+    d.fileRaw = (require('fs') as typeof import('fs'))
+      .readFileSync('/tmp/backend-origin', 'utf8').trim();
+  } catch { d.fileRaw = null; }
+  d.ipCache = _ipCache;
+  d.subprocessResolve = resolveHostViaSubprocess('backend');
   try {
     const { execSync } = require('child_process') as typeof import('child_process');
     d.procEnvHasKey = execSync('cat /proc/self/environ', { encoding: 'utf8' })
