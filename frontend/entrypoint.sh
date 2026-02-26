@@ -9,6 +9,18 @@ BACKEND_HOSTNAME="${BACKEND_HOSTNAME:-backend}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 MAX_ATTEMPTS=30
 
+# If INTERNAL_BACKEND_ORIGIN is already set to an external URL (hostname contains a dot
+# — it's a real DNS name, not an internal Docker alias like "backend"), use it directly.
+# This handles platforms like Coolify where the operator sets the backend URL explicitly.
+if [ -n "$INTERNAL_BACKEND_ORIGIN" ]; then
+    _HOST=$(echo "$INTERNAL_BACKEND_ORIGIN" | sed 's|https\?://||;s|/.*||;s|:.*||')
+    if echo "$_HOST" | grep -qF '.'; then
+        echo "[entrypoint] Using pre-configured INTERNAL_BACKEND_ORIGIN=$INTERNAL_BACKEND_ORIGIN"
+        echo "$INTERNAL_BACKEND_ORIGIN" > /tmp/backend-origin
+        exec "$@"
+    fi
+fi
+
 echo "[entrypoint] Resolving $BACKEND_HOSTNAME..."
 
 for i in $(seq 1 $MAX_ATTEMPTS); do
