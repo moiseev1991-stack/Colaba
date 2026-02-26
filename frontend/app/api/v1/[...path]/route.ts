@@ -47,7 +47,17 @@ function getBackendOrigin(): string {
   // 1. Cached IP (resolved on first request)
   if (_ipCache) return `http://${_ipCache}:8000`;
 
-  // 2. Read pre-resolved IP written by entrypoint.sh (when it succeeds)
+  // 2. Env var set by entrypoint.sh via export (use bracket notation to bypass
+  //    Next.js/webpack build-time static substitution of process.env.VAR)
+  // eslint-disable-next-line dot-notation
+  const envOrigin = process.env['INTERNAL_BACKEND_ORIGIN'];
+  if (envOrigin) {
+    const m = envOrigin.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+/);
+    if (m) { _ipCache = m[1]; return envOrigin; }
+    // Has a value but it's hostname-based (e.g. http://backend:8000) — fall through to resolve it
+  }
+
+  // 3. Read pre-resolved IP written by entrypoint.sh (when it succeeds)
   try {
     const content = (require('fs') as typeof import('fs'))
       .readFileSync('/tmp/backend-origin', 'utf8').trim();
@@ -55,11 +65,28 @@ function getBackendOrigin(): string {
     if (m) { _ipCache = m[1]; return content; }
   } catch {}
 
-  // 3. Resolve via subprocess using multiple methods
+  // 4. Resolve via subprocess using multiple methods
   const resolved = tryResolveBackendIP();
   if (resolved.ip) { _ipCache = resolved.ip; return `http://${resolved.ip}:8000`; }
 
-  return 'http://backend:8000';
+  // Determine hostname to use (from env var or default)
+  // eslint-disable-next-line dot-notation
+  const hostnameOrigin = process.env['INTERNAL_BACKEND_ORIGIN'] ?? 'http://backend:8000';
+  return hostnameOrigin.startsWith('http') ? hostnameOrigin : 'http://backend:8000';
+}
+
+// Async DNS resolve using c-ares (dns.resolve4) — queries Docker DNS directly,
+// works when getaddrinfo-based methods (dns.lookup, subprocesses) fail with EAI_AGAIN.
+async function resolveHostnameAsync(hostname: string): Promise<string | null> {
+  if (IS_IP.test(hostname)) return hostname;
+  const dns = require('dns') as typeof import('dns');
+  const { promisify } = require('util') as typeof import('util');
+  try {
+    const addresses = await promisify(dns.resolve4)(hostname);
+    const ip = addresses?.[0];
+    if (ip && IS_IP.test(ip)) return ip;
+  } catch {}
+  return null;
 }
 
 // #region agent log - diagnostics (keep until login confirmed working)
@@ -72,8 +99,10 @@ function collectDiag(): Record<string, unknown> {
   d.ipCache = _ipCache;
   d.nodeBin = process.execPath;
   d.nodeOptions = process.env.NODE_OPTIONS;
-  // #region agent log H-A: what is process.env.INTERNAL_BACKEND_ORIGIN?
+  // #region agent log H-A: dot-notation vs bracket-notation env access
   d.envOrigin = process.env.INTERNAL_BACKEND_ORIGIN ?? '(undefined)';
+  // eslint-disable-next-line dot-notation
+  d.envOriginBracket = process.env['INTERNAL_BACKEND_ORIGIN'] ?? '(undefined)';
   // #endregion
   // #region agent log H-B: can Node.js read /etc/hosts directly?
   try {
@@ -146,7 +175,16 @@ async function httpProxyRequest(
 }
 
 async function proxy(req: NextRequest, pathParts: string[]) {
-  const origin = getBackendOrigin();
+  let origin = getBackendOrigin();
+
+  // If sync methods returned a hostname-based URL, try async dns.resolve4 (c-ares).
+  // This queries Docker DNS (127.0.0.11) directly via UDP and often works when
+  // getaddrinfo-based methods fail with EAI_AGAIN in long-running processes.
+  if (!IS_IP.test(new URL(origin).hostname)) {
+    const ip = await resolveHostnameAsync(new URL(origin).hostname);
+    if (ip) { _ipCache = ip; origin = `http://${ip}:8000`; }
+  }
+
   const upstreamUrl = new URL(`${origin}/api/v1/${pathParts.join('/')}`);
   upstreamUrl.search = req.nextUrl.search;
 
