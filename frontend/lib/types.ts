@@ -45,6 +45,7 @@ export interface LeadRow {
   // processing: domain parser is still running in background
   status: 'ok' | 'error' | 'processing';
   outreachText: string;
+  outreachSubject?: string | null;
   /** Из результатов поиска — показываем сразу без SEO-аудита */
   titleFromSearch?: string | null;
   snippetFromSearch?: string | null;

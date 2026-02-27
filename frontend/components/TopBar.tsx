@@ -131,7 +131,7 @@ export function TopBar() {
         setIsAuthenticated(false);
         setUserEmail(null);
         setIsSuperuser(false);
-        tokenStorage.clearTokens();
+        await tokenStorage.clearTokens();
       }
     } else {
       setIsAuthenticated(false);
@@ -170,8 +170,8 @@ export function TopBar() {
     setThemeState(next);
   };
 
-  const handleLogout = () => {
-    tokenStorage.clearTokens();
+  const handleLogout = async () => {
+    await tokenStorage.clearTokens();
     setIsAuthenticated(false);
     setUserEmail(null);
     setMenuOpen(false);

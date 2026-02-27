@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { Search, Users, BarChart3, Calendar, ExternalLink, Loader2, Clock } from 'lucide-react';
 import { getDashboard, type DashboardResponse, type DashboardPeriod, type DashboardModule } from '@/src/services/api/dashboard';
@@ -37,7 +37,7 @@ function formatDateTime(iso: string): string {
   });
 }
 
-function KpiCard({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
+const KpiCard = memo(function KpiCard({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
   return (
     <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-4">
       <div className="text-[12px] font-medium text-gray-600 dark:text-gray-400">{label}</div>
@@ -47,7 +47,7 @@ function KpiCard({ label, value, suffix }: { label: string; value: string | numb
       </div>
     </div>
   );
-}
+});
 
 function SkeletonCard() {
   return (
@@ -57,7 +57,7 @@ function SkeletonCard() {
 
 type DayPoint = { date: string; dateShort: string; total: number; success: number; error: number; running: number };
 
-function ChartBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
+const ChartBar = memo(function ChartBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
   const h = max > 0 ? (data.total / max) * (CHART_HEIGHT - 32) : 0;
   return (
     <div
@@ -91,9 +91,9 @@ function ChartBar({ data, max, onHover, hovered }: { data: DayPoint; max: number
       <span className="text-[11px] font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
     </div>
   );
-}
+});
 
-function StackedBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
+const StackedBar = memo(function StackedBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
   const scale = max > 0 ? (CHART_HEIGHT - 32) / max : 0;
   const hSuccess = Math.max(data.success * scale, 0);
   const hError = Math.max(data.error * scale, 0);
@@ -128,9 +128,9 @@ function StackedBar({ data, max, onHover, hovered }: { data: DayPoint; max: numb
       <span className="text-[11px] font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
     </div>
   );
-}
+});
 
-function DonutChart({ success, errors, running }: { success: number; errors: number; running: number }) {
+const DonutChart = memo(function DonutChart({ success, errors, running }: { success: number; errors: number; running: number }) {
   const total = success + errors + running;
   if (total === 0) return null;
   const deg = 360 / total;
@@ -161,7 +161,7 @@ function DonutChart({ success, errors, running }: { success: number; errors: num
       </div>
     </div>
   );
-}
+});
 
 export default function MainDashboardPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('week');
@@ -173,6 +173,10 @@ export default function MainDashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [hoveredBar, setHoveredBar] = useState<DayPoint | null>(null);
   const [hoveredStacked, setHoveredStacked] = useState<DayPoint | null>(null);
+
+  // Stable callbacks so memoized chart bars don't re-render on every hover change
+  const handleHoverBar = useCallback((v: DayPoint | null) => setHoveredBar(v), []);
+  const handleHoverStacked = useCallback((v: DayPoint | null) => setHoveredStacked(v), []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -197,7 +201,7 @@ export default function MainDashboardPage() {
     load();
   }, [load]);
 
-  const chartData: DayPoint[] = data
+  const chartData = useMemo<DayPoint[]>(() => data
     ? data.runs_by_day.map((d) => ({
         date: d.date,
         dateShort: d.date.slice(5),
@@ -206,9 +210,13 @@ export default function MainDashboardPage() {
         error: d.errors,
         running: d.running,
       }))
-    : [];
+    : [], [data]);
 
   const resultsLabel = module === 'seo' ? 'Домены' : module === 'leads' ? 'Контакты' : module === 'tenders' ? 'Тендеры' : 'Результаты';
+
+  // Pre-compute chart maxima to avoid repeated Math.max(...map) in JSX
+  const chartMaxTotal = useMemo(() => Math.max(...chartData.map((x) => x.total), 1), [chartData]);
+  const chartMaxStacked = useMemo(() => Math.max(...chartData.map((x) => x.success + x.error + x.running), 1), [chartData]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -443,7 +451,7 @@ export default function MainDashboardPage() {
           ) : (
             <div className="absolute inset-6 bottom-10 flex items-end gap-1">
               {chartData.map((d) => (
-                <ChartBar key={d.date} data={d} max={Math.max(...chartData.map((x) => x.total), 1)} onHover={setHoveredBar} hovered={hoveredBar?.date === d.date} />
+                <ChartBar key={d.date} data={d} max={chartMaxTotal} onHover={handleHoverBar} hovered={hoveredBar?.date === d.date} />
               ))}
             </div>
           )}
@@ -492,8 +500,8 @@ export default function MainDashboardPage() {
                 <StackedBar
                   key={d.date}
                   data={d}
-                  max={Math.max(...chartData.map((x) => x.success + x.error + x.running), 1)}
-                  onHover={setHoveredStacked}
+                  max={chartMaxStacked}
+                  onHover={handleHoverStacked}
                   hovered={hoveredStacked?.date === d.date}
                 />
               ))}
@@ -506,31 +514,57 @@ export default function MainDashboardPage() {
       <section>
         <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Модули</h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { id: 'seo', title: 'SEO', desc: 'Аудит, проверки, история запросов', icon: Search, href: MODULE_ROUTES.seo },
-            { id: 'leads', title: 'Поиск лидов', desc: 'Поиск, контакты, экспорт', icon: Users, href: MODULE_ROUTES.leads },
-            { id: 'tenders', title: 'Госзакупки', desc: 'Мониторинг, история, фильтры', icon: BarChart3, href: MODULE_ROUTES.tenders },
-          ].map((m) => {
-            const Icon = m.icon;
-            const stats = data?.kpi ?? { total: 0, success: 0, errors: 0 };
-            return (
-              <Link
-                key={m.id}
-                href={m.href}
-                className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
-              >
-                <Icon className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{m.title}</h3>
-                <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">{m.desc}</p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
-                    {m.id === 'seo' ? `${stats.total} запросов · ${stats.success} OK · ${stats.errors} ошибок` : 'Скоро'}
-                  </span>
-                  <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
-                </div>
-              </Link>
-            );
-          })}
+          {/* SEO — реальные данные */}
+          <Link
+            href={MODULE_ROUTES.seo}
+            className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
+          >
+            <Search className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">SEO</h3>
+            <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">Аудит, проверки, история запросов</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
+                {data
+                  ? `${data.kpi.total} запросов · ${data.kpi.success} OK · ${data.kpi.errors} ошибок`
+                  : '—'}
+              </span>
+              <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
+            </div>
+          </Link>
+
+          {/* Поиск лидов — в разработке */}
+          <Link
+            href={MODULE_ROUTES.leads}
+            className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
+          >
+            <Users className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">Поиск лидов</h3>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">Скоро</span>
+            </div>
+            <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">Поиск, контакты, экспорт</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[13px] text-gray-400 dark:text-gray-500">Модуль в разработке</span>
+              <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
+            </div>
+          </Link>
+
+          {/* Госзакупки — в разработке */}
+          <Link
+            href={MODULE_ROUTES.tenders}
+            className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
+          >
+            <BarChart3 className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">Госзакупки</h3>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">Скоро</span>
+            </div>
+            <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">Мониторинг, история, фильтры</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[13px] text-gray-400 dark:text-gray-500">Модуль в разработке</span>
+              <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
+            </div>
+          </Link>
         </div>
       </section>
     </div>

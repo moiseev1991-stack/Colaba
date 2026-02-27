@@ -57,8 +57,8 @@ export function LandingRegisterForm() {
     setErrors({});
     try {
       await apiClient.post('/auth/register', { email, password });
-      const { data } = await apiClient.post('/auth/login', { email, password });
-      tokenStorage.setTokens(data.access_token, data.refresh_token);
+      await apiClient.post('/auth/login', { email, password });
+      tokenStorage.setTokens('', '');
       window.location.href = '/app';
     } catch (err: any) {
       const msg = err.response?.data?.detail || (err.code === 'ERR_NETWORK' ? 'Сервер недоступен' : err.message) || 'Ошибка при регистрации';

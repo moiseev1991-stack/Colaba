@@ -2,7 +2,11 @@
 Searches module router.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import csv
+import io
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from typing import List, Optional
 
 from app.core.dependencies import (
@@ -45,15 +49,29 @@ async def create_search(
 
 @router.get("", response_model=List[schemas.SearchResponse])
 async def list_searches(
+    limit: int = Query(default=50, ge=1, le=500, description="Number of results per page"),
+    offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+    period: Optional[str] = Query(default=None, description="Filter by period: day, week, month"),
     user_id: int = Depends(get_current_user_id),
     organization_id: Optional[int] = Depends(get_current_organization_id),
     db=Depends(get_db),
 ):
-    """List all searches for the current user's organization."""
+    """List searches for the current user's organization with optional period and pagination."""
+    created_after: Optional[datetime] = None
+    if period == "day":
+        created_after = datetime.now(timezone.utc) - timedelta(days=1)
+    elif period == "week":
+        created_after = datetime.now(timezone.utc) - timedelta(weeks=1)
+    elif period == "month":
+        created_after = datetime.now(timezone.utc) - timedelta(days=30)
+
     return await service.get_searches(
         db=db,
         user_id=user_id,
-        organization_id=organization_id
+        organization_id=organization_id,
+        limit=limit,
+        offset=offset,
+        created_after=created_after,
     )
 
 
@@ -84,16 +102,20 @@ async def get_search(
 @router.get("/{search_id}/results", response_model=List[schemas.SearchResultResponse])
 async def get_search_results(
     search_id: int,
+    limit: int = Query(default=200, ge=1, le=1000, description="Number of results per page"),
+    offset: int = Query(default=0, ge=0, description="Offset for pagination"),
     user_id: int = Depends(get_current_user_id),
     organization_id: Optional[int] = Depends(get_current_organization_id),
     db=Depends(get_db),
 ):
-    """Get results for a specific search."""
+    """Get results for a specific search with optional pagination."""
     results = await service.get_search_results(
         db=db,
         search_id=search_id,
         user_id=user_id,
-        organization_id=organization_id
+        organization_id=organization_id,
+        limit=limit,
+        offset=offset,
     )
     return results
 
@@ -111,6 +133,48 @@ async def delete_search(
         search_id=search_id,
         user_id=user_id,
         organization_id=organization_id
+    )
+
+
+@router.get("/{search_id}/results/export/csv")
+async def export_search_results_csv(
+    search_id: int,
+    user_id: int = Depends(get_current_user_id),
+    organization_id: Optional[int] = Depends(get_current_organization_id),
+    db=Depends(get_db),
+):
+    """Export search results as CSV file."""
+    results = await service.get_search_results(
+        db=db,
+        search_id=search_id,
+        user_id=user_id,
+        organization_id=organization_id,
+        limit=10000,
+        offset=0,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+    writer.writerow([
+        "position", "domain", "url", "title", "phone", "email",
+        "seo_score", "contact_status", "outreach_subject", "outreach_text", "snippet",
+    ])
+    for r in results:
+        writer.writerow([
+            r.position, r.domain or "", r.url, r.title,
+            r.phone or "", r.email or "",
+            r.seo_score if r.seo_score is not None else "",
+            r.contact_status or "",
+            r.outreach_subject or "", r.outreach_text or "",
+            r.snippet or "",
+        ])
+
+    output.seek(0)
+    filename = f"search_{search_id}_results.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

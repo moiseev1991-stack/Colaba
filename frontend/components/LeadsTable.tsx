@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, ChevronLeft, ChevronRight, FileSearch, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, Send, ChevronLeft, ChevronRight, FileSearch, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import type { LeadRow } from '@/lib/types';
@@ -30,8 +29,8 @@ type SortField = 'domain' | 'score' | null;
 type SortOrder = 'asc' | 'desc';
 
 export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps) {
-  const router = useRouter();
   const tableRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
   
   const [filterPhoneOnly, setFilterPhoneOnly] = useState(false);
   const [filterErrors, setFilterErrors] = useState(false);
@@ -51,40 +50,37 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [pageSize, setPageSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   
+  // Use replaceState instead of router.push — avoids triggering Next.js navigation
+  // and the cascading re-renders that come with it.
   const updateURL = useCallback((page: number, size: number) => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     url.searchParams.set('page', page.toString());
     url.searchParams.set('pageSize', size.toString());
-    router.push(url.pathname + url.search, { scroll: false });
-  }, [router]);
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, []);
 
-  // Sync URL params on mount
+  // Sync pagination state from URL once on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlPage = urlParams.get('page');
-      const urlPageSize = urlParams.get('pageSize');
-      
-      if (urlPage) {
-        const page = parseInt(urlPage, 10);
-        if (!isNaN(page) && page >= 1) {
-          setCurrentPage(page);
-        }
-      }
-      
-      if (urlPageSize) {
-        const size = parseInt(urlPageSize, 10);
-        if ([10, 25, 50, 100].includes(size)) {
-          setPageSize(size);
-          setResultsPageSize(size);
-        }
-      } else {
-        // If no pageSize in URL, update URL with current localStorage value
-        updateURL(currentPage, pageSize);
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPageRaw = urlParams.get('page');
+    const urlPageSizeRaw = urlParams.get('pageSize');
+
+    if (urlPageRaw) {
+      const page = parseInt(urlPageRaw, 10);
+      if (!isNaN(page) && page >= 1) setCurrentPage(page);
+    }
+    if (urlPageSizeRaw) {
+      const size = parseInt(urlPageSizeRaw, 10);
+      if ([10, 25, 50, 100].includes(size)) {
+        setPageSize(size);
+        setResultsPageSize(size);
       }
     }
-  }, [currentPage, pageSize, updateURL]);
+    isInitialMount.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // При появлении первых данных — убираем спиннер; при таймауте — показываем ошибку
   const checkFirstDataAndTimeout = useCallback(() => {
@@ -189,7 +185,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
       setCurrentPage(newPage);
       updateURL(newPage, pageSize);
     }
-  }, [totalPages, currentPage, pageSize]);
+  }, [totalPages, currentPage, pageSize, updateURL]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -443,6 +439,22 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
       showToast('success', 'Email скопирован');
     } else {
       showToast('error', 'Не удалось скопировать email');
+    }
+  };
+
+  const handleSendOutreach = async (row: LeadRow) => {
+    if (!row.email || !row.outreachText) return;
+    try {
+      const { apiClient } = await import('@/client');
+      await apiClient.post('/outreach/send/email', {
+        to_email: row.email,
+        subject: row.outreachSubject || 'Коммерческое предложение',
+        body: row.outreachText,
+      });
+      showToast('success', `Outreach отправлен на ${row.email}`);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Ошибка отправки';
+      showToast('error', msg);
     }
   };
 
@@ -818,6 +830,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                     }`}
                                   />
                                 </button>
+                                {hasEmail(row.email) && row.outreachText && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleSendOutreach(row); }}
+                                    title="Отправить outreach на email"
+                                    aria-label="Отправить outreach"
+                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                  >
+                                    <Send className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                             <td className="px-2 py-2 align-middle min-w-0 max-w-[480px]">

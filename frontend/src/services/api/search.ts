@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from '@/client';
+import { cachedFetch, invalidateCachePrefix } from '@/lib/apiCache';
 
 export interface SearchCreate {
   query: string;
@@ -42,19 +43,32 @@ export interface SearchResultResponse {
 }
 
 /**
- * Create a new search.
+ * Create a new search. Invalidates search list cache.
  */
 export async function createSearch(data: SearchCreate): Promise<SearchResponse> {
   const response = await apiClient.post<SearchResponse>('/searches', data);
+  invalidateCachePrefix('searches:list:');
   return response.data;
 }
 
 /**
- * Get all searches.
+ * Get searches with optional pagination and period filter.
+ * Results are cached for 10 s to speed up repeated navigation.
  */
-export async function listSearches(): Promise<SearchResponse[]> {
-  const response = await apiClient.get<SearchResponse[]>('/searches');
-  return response.data;
+export async function listSearches(params?: {
+  limit?: number;
+  offset?: number;
+  period?: 'day' | 'week' | 'month';
+}): Promise<SearchResponse[]> {
+  const qs = new URLSearchParams();
+  if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+  if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+  if (params?.period) qs.set('period', params.period);
+  const cacheKey = `searches:list:${qs.toString()}`;
+  return cachedFetch(cacheKey, async () => {
+    const response = await apiClient.get<SearchResponse[]>('/searches', { params });
+    return response.data;
+  }, 10_000);
 }
 
 /**
@@ -74,10 +88,11 @@ export async function getSearchResults(searchId: number): Promise<SearchResultRe
 }
 
 /**
- * Delete a search.
+ * Delete a search. Invalidates search list cache.
  */
 export async function deleteSearch(id: number): Promise<void> {
   await apiClient.delete(`/searches/${id}`);
+  invalidateCachePrefix('searches:list:');
 }
 
 /**

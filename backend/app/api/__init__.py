@@ -25,6 +25,9 @@ from app.modules.ai_assistants.router import router as ai_assistants_router
 from app.modules.captcha.router import router as captcha_router
 from app.modules.monitor.router import router as monitor_router
 from app.modules.dashboard.router import router as dashboard_router
+from app.modules.outreach.router import router as outreach_router
+from app.modules.tenders.router import router as tenders_router
+from app.modules.payments.router import router as payments_router
 
 api_router.include_router(auth_router)
 api_router.include_router(dashboard_router)
@@ -35,3 +38,6 @@ api_router.include_router(providers_router)
 api_router.include_router(ai_assistants_router)
 api_router.include_router(captcha_router)
 api_router.include_router(monitor_router)
+api_router.include_router(outreach_router)
+api_router.include_router(tenders_router)
+api_router.include_router(payments_router)

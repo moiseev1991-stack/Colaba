@@ -67,7 +67,7 @@ export function AppHeader() {
         setUserEmail(res.data.email ?? null);
       } catch {
         setUserEmail(null);
-        tokenStorage.clearTokens();
+        await tokenStorage.clearTokens();
       }
     } else setUserEmail(null);
   };
@@ -78,8 +78,8 @@ export function AppHeader() {
     setThemeState(next);
   };
 
-  const handleLogout = () => {
-    tokenStorage.clearTokens();
+  const handleLogout = async () => {
+    await tokenStorage.clearTokens();
     setUserEmail(null);
     setMenuOpen(false);
     router.push('/auth/login');

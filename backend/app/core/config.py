@@ -75,6 +75,21 @@ class Settings(BaseSettings):
     YANDEX_XML_FOLDER_ID: str = Field(default="", description="Yandex Cloud: идентификатор каталога (yandex.cloud)")
     YANDEX_XML_KEY: str = Field(default="", description="Yandex Cloud: API-ключ сервисного аккаунта")
 
+    # YooKassa payment gateway
+    YOOKASSA_SHOP_ID: str = Field(default="", description="ЮКасса: идентификатор магазина (ShopId)")
+    YOOKASSA_SECRET_KEY: str = Field(default="", description="ЮКасса: секретный ключ")
+    YOOKASSA_RETURN_URL: str = Field(default="", description="ЮКасса: URL перенаправления после оплаты")
+
+    # SMTP for outreach email sending
+    SMTP_HOST: str = Field(default="", description="SMTP server hostname")
+    SMTP_PORT: int = Field(default=465, description="SMTP server port")
+    SMTP_USER: str = Field(default="", description="SMTP username / from address")
+    SMTP_PASSWORD: str = Field(default="", description="SMTP password")
+    SMTP_USE_SSL: bool = Field(default=True, description="Use SSL for SMTP connection")
+
+    # Telegram Bot for outreach sending
+    TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token for outreach")
+
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 

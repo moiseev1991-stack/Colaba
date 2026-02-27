@@ -19,13 +19,14 @@ export default function LoginPage() {
     const password = String(formData.get('password') ?? '');
 
     try {
-      const response = await apiClient.post('/auth/login', {
+      await apiClient.post('/auth/login', {
         email,
         password,
       });
 
-      const { access_token, refresh_token } = response.data;
-      tokenStorage.setTokens(access_token, refresh_token);
+      // Tokens are now set as httpOnly cookies by the server-side proxy.
+      // setTokens() sets the auth_present sentinel cookie so JS can detect auth state.
+      tokenStorage.setTokens('', '');
       const next = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') : null;
       window.location.href = next && next.startsWith('/') ? next : '/app';
     } catch (err: any) {

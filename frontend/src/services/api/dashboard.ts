@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from '@/client';
+import { cachedFetch } from '@/lib/apiCache';
 
 export interface DashboardKpi {
   total: number;
@@ -67,6 +68,9 @@ export async function getDashboard(
   if (params.module) searchParams.set('module', params.module);
   const qs = searchParams.toString();
   const url = qs ? `/dashboard?${qs}` : '/dashboard';
-  const response = await apiClient.get<DashboardResponse>(url);
-  return response.data;
+  const cacheKey = `dashboard:${qs}`;
+  return cachedFetch(cacheKey, async () => {
+    const response = await apiClient.get<DashboardResponse>(url);
+    return response.data;
+  }, 20_000); // 20 s TTL — dashboard data is not real-time
 }

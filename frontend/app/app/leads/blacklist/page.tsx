@@ -1,10 +1,16 @@
 'use client';
 
+import { BlacklistManager } from '@/components/BlacklistManager';
+import { PageHeader } from '@/components/PageHeader';
+
 export default function LeadsBlacklistPage() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>Блеклист</h1>
-      <p className="mt-4 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке.</p>
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 overflow-x-hidden">
+      <PageHeader
+        breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Лиды', href: '/app/leads' }, { label: 'Чёрный список' }]}
+        title="Чёрный список доменов"
+      />
+      <BlacklistManager />
     </div>
   );
 }

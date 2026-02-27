@@ -2,6 +2,7 @@
 Searches module service.
 """
 
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -52,19 +53,27 @@ async def get_searches(
     db: AsyncSession,
     user_id: int,
     organization_id: Optional[int],
+    limit: int = 50,
+    offset: int = 0,
+    created_after: Optional[datetime] = None,
 ) -> List[schemas.SearchResponse]:
     """
-    Get all searches for a user in their organization.
-    
+    Get searches for a user in their organization with pagination.
+
     If organization_id is None (superuser), returns all searches.
+    created_after: optional datetime filter — only return searches created at or after this timestamp.
     """
     query = select(Search)
-    
-    # Superusers can see all searches
+
     if organization_id is not None:
         query = query.where(Search.organization_id == organization_id)
-    
-    result = await db.execute(query.order_by(Search.created_at.desc()))
+
+    if created_after is not None:
+        query = query.where(Search.created_at >= created_after)
+
+    result = await db.execute(
+        query.order_by(Search.created_at.desc()).limit(limit).offset(offset)
+    )
     searches = result.scalars().all()
     return [schemas.SearchResponse.model_validate(s) for s in searches]
 
@@ -91,17 +100,20 @@ async def get_search_results(
     search_id: int,
     user_id: int,
     organization_id: Optional[int],
+    limit: int = 200,
+    offset: int = 0,
 ) -> List[schemas.SearchResultResponse]:
-    """Get results for a search."""
-    # Verify search belongs to organization (or user is superuser)
+    """Get results for a search with optional pagination."""
     search = await get_search(db, search_id, user_id, organization_id)
     if not search:
         return []
-    
+
     result = await db.execute(
         select(SearchResult)
         .where(SearchResult.search_id == search_id)
         .order_by(SearchResult.position)
+        .limit(limit)
+        .offset(offset)
     )
     results = result.scalars().all()
     return [schemas.SearchResultResponse.model_validate(r) for r in results]

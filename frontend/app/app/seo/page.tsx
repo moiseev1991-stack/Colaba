@@ -75,8 +75,8 @@ export default function SeoPage() {
   const loadRecent = useCallback(async () => {
     setRunsLoading(true);
     try {
-      const data = await listSearches();
-      setRecentRuns(data.slice(0, 10));
+      const data = await listSearches({ limit: 20, offset: 0 });
+      setRecentRuns(data.slice(0, 20));
     } catch {
       setRecentRuns([]);
     } finally {

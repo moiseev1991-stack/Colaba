@@ -87,8 +87,18 @@ async def get_dashboard_data(
     error_runs = len(failed)
     results_total = sum(r.result_count or 0 for r in rows)
 
-    # avg_time: no stored duration, so null
-    avg_time_sec: Optional[float] = None
+    # avg_time: from started_at / finished_at if available
+    timed = [
+        r for r in completed
+        if getattr(r, "started_at", None) and getattr(r, "finished_at", None)
+    ]
+    if timed:
+        total_sec = sum(
+            (r.finished_at - r.started_at).total_seconds() for r in timed
+        )
+        avg_time_sec: Optional[float] = round(total_sec / len(timed), 1)
+    else:
+        avg_time_sec = None
     # cost: no tarification
     cost_rub = 0.0
     has_cost = False

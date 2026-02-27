@@ -47,11 +47,12 @@ export default function RunsHistoryPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const loadRuns = useCallback(async () => {
+  const loadRuns = useCallback(async (period: PeriodFilter) => {
     try {
       setLoading(true);
       setLoadError(null);
-      const data = await listSearches();
+      const apiPeriod = period === 'all' ? undefined : period;
+      const data = await listSearches({ limit: 200, period: apiPeriod });
       const mapped = data.map(mapSearchToRun).sort((a, b) => b.createdAt - a.createdAt);
       setRuns(mapped);
     } catch (err: any) {
@@ -64,8 +65,8 @@ export default function RunsHistoryPage() {
   }, []);
 
   useEffect(() => {
-    loadRuns();
-  }, [loadRuns]);
+    loadRuns(periodFilter);
+  }, [loadRuns, periodFilter]);
 
   const filteredRuns = useMemo(() => {
     let filtered = runs;
@@ -81,13 +82,8 @@ export default function RunsHistoryPage() {
         filtered = filtered.filter(run => run.status === statusFilter);
       }
     }
-    if (periodFilter !== 'all') {
-      const now = Date.now();
-      const ms = periodFilter === 'week' ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
-      filtered = filtered.filter(run => run.createdAt >= now - ms);
-    }
     return filtered;
-  }, [runs, searchQuery, statusFilter, periodFilter]);
+  }, [runs, searchQuery, statusFilter]);
 
   const stats = useMemo(() => {
     const done = runs.filter(r => r.status === 'done').length;
@@ -102,7 +98,7 @@ export default function RunsHistoryPage() {
     if (!confirm('Удалить этот запуск?')) return;
     try {
       await deleteSearch(parseInt(runId));
-      await loadRuns();
+      await loadRuns(periodFilter);
       showToast('success', 'Запуск удалён');
     } catch (err: any) {
       showToast('error', err.response?.data?.detail || err.message || 'Ошибка удаления');
@@ -113,7 +109,7 @@ export default function RunsHistoryPage() {
     if (!confirm('Очистить всю историю? Это действие нельзя отменить.')) return;
     try {
       for (const r of runs) await deleteSearch(parseInt(r.id));
-      await loadRuns();
+      await loadRuns(periodFilter);
       showToast('success', 'История очищена');
     } catch (err: any) {
       showToast('error', err.response?.data?.detail || err.message || 'Ошибка очистки');
@@ -293,7 +289,7 @@ export default function RunsHistoryPage() {
               {loadError && !loading && (
                 <div className="mb-4 rounded-[10px] bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-4 py-3 flex items-center justify-between gap-4">
                   <p className="text-sm text-red-700 dark:text-red-400">{loadError}</p>
-                  <Button variant="outline" size="sm" onClick={loadRuns}>Повторить</Button>
+                  <Button variant="outline" size="sm" onClick={() => loadRuns(periodFilter)}>Повторить</Button>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-4">

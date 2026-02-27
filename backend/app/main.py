@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import init_db, engine
 from app.api import api_router
 
 
@@ -84,10 +84,37 @@ async def health_check() -> dict[str, str]:
 
 # Readiness check endpoint
 @app.get("/ready")
-async def readiness_check() -> dict[str, str]:
-    """Readiness check endpoint для проверки готовности к обработке запросов."""
-    # TODO: Проверка подключения к БД, Redis и т.д.
-    return {"status": "ready"}
+async def readiness_check() -> JSONResponse:
+    """Readiness check endpoint — проверяет подключение к PostgreSQL и Redis."""
+    checks: dict[str, str] = {}
+    ok = True
+
+    # PostgreSQL check
+    try:
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["postgres"] = "ok"
+    except Exception as exc:
+        checks["postgres"] = f"error: {exc}"
+        ok = False
+
+    # Redis check
+    try:
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
+        await r.ping()
+        await r.aclose()
+        checks["redis"] = "ok"
+    except Exception as exc:
+        checks["redis"] = f"error: {exc}"
+        ok = False
+
+    status_code = 200 if ok else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": "ready" if ok else "not_ready", "checks": checks},
+    )
 
 
 # Подключение API routers

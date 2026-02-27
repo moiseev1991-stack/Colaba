@@ -44,13 +44,13 @@ function RegisterForm() {
       });
 
       // Auto login after registration
-      const loginResponse = await apiClient.post('/auth/login', {
+      await apiClient.post('/auth/login', {
         email,
         password,
       });
 
-      const { access_token, refresh_token } = loginResponse.data;
-      tokenStorage.setTokens(access_token, refresh_token);
+      // Tokens are set as httpOnly cookies by the server-side proxy.
+      tokenStorage.setTokens('', '');
 
       // Redirect back (if user was bounced by middleware)
       // Use full navigation to ensure Next middleware sees fresh cookies.

@@ -60,8 +60,10 @@ async def _execute_search_async(search_id: int):
         if not search:
             return {"error": "Search not found"}
         
-        # Update status
+        # Update status and start time
+        from datetime import datetime
         search.status = "processing"
+        search.started_at = datetime.utcnow()
         await db.commit()
         
         try:
@@ -204,6 +206,7 @@ async def _execute_search_async(search_id: int):
                 # Update search status
                 search.status = "completed"
                 search.result_count = saved_count
+                search.finished_at = datetime.utcnow()
                 await db.commit()
                 
                 # Track unique domains for other providers
@@ -218,6 +221,7 @@ async def _execute_search_async(search_id: int):
             if provider_id == "yandex_xml":
                 search.status = "completed"
                 search.result_count = saved_count
+                search.finished_at = datetime.utcnow()
                 await db.commit()
             
             # Trigger domain processing tasks for unique domains (group = один round-trip в Redis)
@@ -252,6 +256,7 @@ async def _execute_search_async(search_id: int):
             logger.error(f"execute_search_task error for search_id={search_id}: {error_message}", exc_info=True)
             
             search.status = "failed"
+            search.finished_at = datetime.utcnow()
             # Сохраняем сообщение об ошибке в config
             # Важно: создаем новый словарь, чтобы SQLAlchemy увидел изменение
             current_config = search.config or {}

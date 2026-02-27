@@ -24,6 +24,8 @@ class Search(Base):
     config = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="searches")

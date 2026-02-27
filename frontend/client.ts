@@ -1,158 +1,97 @@
 /**
- * API client для взаимодействия с backend API.
- * 
- * Использует axios для HTTP запросов с автоматической обработкой ошибок и токенов.
+ * API client для взаимодействия с backend API через Next.js proxy.
+ *
+ * Токены хранятся в httpOnly cookies — JavaScript не имеет к ним доступа.
+ * Authorization header добавляется серверным прокси (route.ts) автоматически.
  */
 
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 
-// Always use same-origin proxy path. The Next.js API route /api/v1/[...path]
-// forwards requests to the backend, so the browser never needs an absolute URL.
+// Always use same-origin proxy path.
 const API_BASE_URL = '/api/v1';
 
-// Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000, // 30 seconds
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000,
 });
 
-// Token management utilities
-const TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
-
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const cookies = document.cookie ? document.cookie.split('; ') : [];
-  for (const part of cookies) {
-    const eqIdx = part.indexOf('=');
-    const key = eqIdx >= 0 ? part.slice(0, eqIdx) : part;
-    if (key === name) {
-      const raw = eqIdx >= 0 ? part.slice(eqIdx + 1) : '';
-      try {
-        return decodeURIComponent(raw);
-      } catch {
-        return raw;
-      }
-    }
-  }
-  return null;
-}
-
-function setCookie(name: string, value: string, days: number): void {
-  if (typeof document === 'undefined') return;
-  const maxAge = Math.max(0, Math.floor(days * 24 * 60 * 60));
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
-}
-
-function deleteCookie(name: string): void {
-  if (typeof document === 'undefined') return;
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
-}
-
+// ---------------------------------------------------------------------------
+// tokenStorage: backward-compat shim.
+// Tokens are now stored as httpOnly cookies (set by the server-side proxy).
+// JS cannot read them — that's intentional. getAccessToken() returns null.
+// Code that checks `!!tokenStorage.getAccessToken()` should migrate to
+// checking `document.cookie` for the non-sensitive `auth_present` cookie,
+// but for now those checks rely on the presence of any access_token cookie.
+// ---------------------------------------------------------------------------
 export const tokenStorage = {
   getAccessToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_KEY) || getCookie(TOKEN_KEY);
+    if (typeof document === 'undefined') return null;
+    // httpOnly cookies are invisible to JS — return sentinel based on auth_present
+    const cookies = document.cookie.split('; ');
+    const sentinel = cookies.find(c => c.startsWith('auth_present='));
+    return sentinel ? '1' : null;
   },
-  getRefreshToken: (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(REFRESH_TOKEN_KEY) || getCookie(REFRESH_TOKEN_KEY);
+  getRefreshToken: (): string | null => null,
+  setTokens: (_accessToken: string, _refreshToken: string): void => {
+    // Tokens are now set via server-side proxy (httpOnly cookies).
+    // Set a non-sensitive sentinel cookie so JS can detect auth state.
+    if (typeof document !== 'undefined') {
+      const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = `auth_present=1; Path=/; SameSite=Lax; Max-Age=${30 * 24 * 3600}${secure}`;
+    }
   },
-  setTokens: (accessToken: string, refreshToken: string): void => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    // Mirror to cookies so Next.js middleware can protect routes.
-    // Note: This is MVP-level (not httpOnly). If needed, we can move this to a Next route handler later.
-    setCookie(TOKEN_KEY, accessToken, 30);
-    setCookie(REFRESH_TOKEN_KEY, refreshToken, 30);
-  },
-  clearTokens: (): void => {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    deleteCookie(TOKEN_KEY);
-    deleteCookie(REFRESH_TOKEN_KEY);
+  /** Clears client-side sentinel. Returns a promise that resolves once the server
+   *  has cleared the httpOnly cookies — callers MUST await before redirecting. */
+  clearTokens: async (): Promise<void> => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'auth_present=; Path=/; SameSite=Lax; Max-Age=0';
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network errors — the redirect will clear the session anyway
+    }
   },
 };
 
-// Request interceptor: Add auth token
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = tokenStorage.getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
-);
+// Guard against multiple simultaneous logout redirects
+let isRedirectingToLogin = false;
 
-// Response interceptor: Handle errors + dev logging
+async function logoutAndRedirect(): Promise<void> {
+  if (isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+  // MUST await so httpOnly cookies are cleared before the browser navigates
+  await tokenStorage.clearTokens();
+  window.location.href = '/auth/login';
+}
+
+// Response interceptor: handle 401 (session expired)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      const msg = `${error.response?.status} ${error.config?.url} ${JSON.stringify(error.response?.data ?? error.message)}`;
-      console.error('[API]', msg);
-      window.dispatchEvent(new CustomEvent('api-error', { detail: { message: msg } }));
-    }
-    // Handle 401 Unauthorized (token expired)
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url ?? '';
 
-      // #region agent log - hypothesis A: auth endpoint redirect causing error to disappear
-      console.log('[AUTH interceptor] 401 on url:', requestUrl, '| will redirect:', !requestUrl.includes('/auth/'));
-      // #endregion
-
-      // Skip redirect logic for auth endpoints (login, register, refresh).
-      // If login itself returns 401, the login page's catch block must handle it —
-      // redirecting here causes a page reload that clears the error state before
-      // the user can see it.
+      // Skip redirect for auth endpoints — let the caller handle the error.
       if (requestUrl.includes('/auth/')) {
         return Promise.reject(error);
       }
 
-      const refreshToken = tokenStorage.getRefreshToken();
-      if (refreshToken) {
-        try {
-          // Try to refresh token
-          const response = await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
-            { refresh_token: refreshToken }
-          );
-          const { access_token, refresh_token } = response.data;
-          tokenStorage.setTokens(access_token, refresh_token);
-          
-          // Retry original request with new token
-          if (error.config) {
-            error.config.headers.Authorization = `Bearer ${access_token}`;
-            return apiClient.request(error.config);
-          }
-        } catch (refreshError) {
-          // Refresh failed, clear tokens and redirect to login
-          tokenStorage.clearTokens();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login';
-          }
+      // Try to refresh via server-side proxy (reads httpOnly refresh_token cookie).
+      try {
+        await axios.post(`${API_BASE_URL}/auth/refresh`, {});
+        // Retry original request — proxy will inject the new access_token.
+        if (error.config) {
+          return apiClient.request(error.config);
         }
-      } else {
-        // No refresh token, redirect to login
-        tokenStorage.clearTokens();
+      } catch {
+        // Refresh failed — session is truly expired; clear cookies and redirect.
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
+          await logoutAndRedirect();
         }
       }
     }
-    
-    // Handle other errors
+
     return Promise.reject(error);
-  }
+  },
 );
