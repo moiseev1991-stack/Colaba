@@ -144,7 +144,7 @@ export function AppHeader() {
 
       <div className="flex items-center gap-2 shrink-0">
         <Link 
-          href="/" 
+          href="/#pricing" 
           className="flex items-center gap-2 h-9 px-4 rounded-[8px] text-[14px] font-semibold transition-all hover:scale-105"
           style={{ 
             background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 

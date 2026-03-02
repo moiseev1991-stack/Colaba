@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { tokenStorage } from '@/client';
 import '@/components/landing/landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
@@ -20,7 +18,6 @@ import { LandingFooter } from '@/components/landing/LandingFooter';
 import { Lightbox } from '@/components/landing/Lightbox';
 
 export default function LandingPage() {
-  const router = useRouter();
   const [lightbox, setLightbox] = useState({ isOpen: false, src: '', alt: '' });
 
   const openLightbox = useCallback((src: string, alt: string = '') => {
@@ -30,11 +27,6 @@ export default function LandingPage() {
   const closeLightbox = useCallback(() => {
     setLightbox((prev) => ({ ...prev, isOpen: false }));
   }, []);
-
-  useEffect(() => {
-    const token = tokenStorage.getAccessToken();
-    if (token) router.replace('/app');
-  }, [router]);
 
   // Reveal on scroll
   useEffect(() => {

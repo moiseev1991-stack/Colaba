@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
 const FAQ_ITEMS = [
   {
@@ -41,21 +41,13 @@ interface FAQItemProps {
 }
 
 function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number>(0);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setHeight(contentRef.current.scrollHeight);
-    }
-  }, [answer]);
-
   return (
-    <div className={`l-faq__item reveal${isOpen ? ' open' : ''}`}>
+    <div className={`l-faq__item${isOpen ? ' open' : ''}`}>
       <button
         className="l-faq__q"
         onClick={onToggle}
         aria-expanded={isOpen}
+        type="button"
       >
         {question}
         <span className="l-faq__icon">
@@ -67,12 +59,12 @@ function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
       <div
         className="l-faq__a-wrapper"
         style={{
-          height: isOpen ? height : 0,
+          maxHeight: isOpen ? '500px' : '0',
           overflow: 'hidden',
-          transition: 'height 0.3s ease-out',
+          transition: 'max-height 0.3s ease-out',
         }}
       >
-        <div ref={contentRef} className="l-faq__a">
+        <div className="l-faq__a">
           {answer}
         </div>
       </div>
