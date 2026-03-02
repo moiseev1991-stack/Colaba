@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const FAQ_ITEMS = [
   {
@@ -33,6 +33,53 @@ const FAQ_ITEMS = [
   },
 ];
 
+interface FAQItemProps {
+  question: string;
+  answer: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setHeight(contentRef.current.scrollHeight);
+    }
+  }, [answer]);
+
+  return (
+    <div className={`l-faq__item reveal${isOpen ? ' open' : ''}`}>
+      <button
+        className="l-faq__q"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+      >
+        {question}
+        <span className="l-faq__icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
+      <div
+        className="l-faq__a-wrapper"
+        style={{
+          height: isOpen ? height : 0,
+          overflow: 'hidden',
+          transition: 'height 0.3s ease-out',
+        }}
+      >
+        <div ref={contentRef} className="l-faq__a">
+          {answer}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FAQSection() {
   const [open, setOpen] = useState<number | null>(0);
 
@@ -45,25 +92,13 @@ export function FAQSection() {
         </h2>
         <div style={{ maxWidth: '760px' }}>
           {FAQ_ITEMS.map((item, i) => (
-            <div
+            <FAQItem
               key={i}
-              className={`l-faq__item reveal${open === i ? ' open' : ''}`}
-            >
-              <button
-                className="l-faq__q"
-                onClick={() => setOpen(open === i ? null : i)}
-              >
-                {item.q}
-                <span className="l-faq__icon">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              </button>
-              {open === i && (
-                <div className="l-faq__a">{item.a}</div>
-              )}
-            </div>
+              question={item.q}
+              answer={item.a}
+              isOpen={open === i}
+              onToggle={() => setOpen(open === i ? null : i)}
+            />
           ))}
         </div>
       </div>

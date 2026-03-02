@@ -929,6 +929,9 @@ html { scroll-behavior: smooth; }
   background: var(--landing-accent);
   color: #fff;
 }
+.landing-light .l-faq__a-wrapper {
+  will-change: height;
+}
 .landing-light .l-faq__a {
   padding: 0 24px 18px;
   font-size: 14px;

@@ -73,60 +73,131 @@ function MiniFunnel() {
   );
 }
 
+const STATS = [
+  { value: '50K+', label: 'Контактов собрано' },
+  { value: '89%', label: 'Доставляемость' },
+  { value: '24/7', label: 'Автоматизация' },
+];
+
+function StatsRow() {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '16px',
+        marginTop: '24px',
+      }}
+    >
+      {STATS.map((stat) => (
+        <div
+          key={stat.label}
+          style={{
+            textAlign: 'center',
+            padding: '16px 12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--landing-bg)',
+            border: '1px solid var(--landing-border)',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '24px',
+              fontWeight: 800,
+              background: 'var(--landing-grad-accent)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            {stat.value}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--landing-muted)', marginTop: '4px' }}>
+            {stat.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PseudoUICards() {
   return (
-    <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-4">
+    <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
       <div className="benefits-pseudo-card order-2 sm:order-1">
         <div
-          className="w-full max-w-[180px] rounded-[10px] border px-3 py-2.5 shadow-sm sm:-rotate-2 sm:translate-y-1"
-          style={{ backgroundColor: 'var(--landing-card)', borderColor: 'var(--landing-border)' }}
+          className="w-full max-w-[200px] rounded-[12px] border px-4 py-3 shadow-sm sm:-rotate-2 sm:translate-y-1"
+          style={{ backgroundColor: 'var(--landing-bg)', borderColor: 'var(--landing-border)' }}
         >
-          <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Лиды</div>
-          <div className="mt-1.5 space-y-0.5 text-[11px]" style={{ color: 'var(--landing-text)' }}>
-            <div>Company / Email / Phone</div>
-            <div>…</div>
-            <div>…</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Лиды</div>
+          <div className="mt-2 space-y-1.5 text-[12px]" style={{ color: 'var(--landing-text)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>ООО «Технолоджи»</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--landing-accent)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>ИП Иванов</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--landing-accent)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>АО «Строй»</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#94a3b8' }} />
+            </div>
           </div>
           <button
             type="button"
-            className="mt-2 rounded px-2 py-0.5 text-[10px] font-medium"
+            className="mt-3 rounded px-3 py-1 text-[11px] font-medium"
             style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
           >
-            CSV
+            Экспорт CSV
           </button>
         </div>
       </div>
       <div className="benefits-pseudo-card order-1 sm:order-2 sm:z-10">
         <div
-          className="w-full max-w-[180px] rounded-[10px] border px-3 py-2.5 shadow-md"
+          className="w-full max-w-[200px] rounded-[12px] border px-4 py-3 shadow-lg"
           style={{
-            backgroundColor: 'var(--landing-card)',
-            borderColor: 'var(--landing-border)',
-            boxShadow: '0 4px 12px rgba(15,23,42,0.08)',
+            backgroundColor: 'var(--landing-bg)',
+            borderColor: 'var(--landing-accent)',
+            boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
           }}
         >
-          <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>КП</div>
-          <div className="mt-1.5 text-[11px]" style={{ color: 'var(--landing-text)' }}>Шаблон КП</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-accent)' }}>Отправка КП</div>
+          <div className="mt-2 text-[12px]" style={{ color: 'var(--landing-text)' }}>
+            <div style={{ marginBottom: '8px' }}>Шаблон: «Услуги B2B»</div>
+            <div style={{ fontSize: '11px', color: 'var(--landing-muted)' }}>Получателей: 127</div>
+          </div>
           <button
             type="button"
-            className="mt-1.5 rounded px-2 py-0.5 text-[10px] font-medium"
+            className="mt-3 w-full rounded px-3 py-1.5 text-[11px] font-semibold"
             style={{ backgroundColor: 'var(--landing-accent)', color: '#fff' }}
           >
-            Отправить
+            Запустить рассылку
           </button>
-          <div className="mt-1 text-[10px]" style={{ color: 'var(--landing-muted)' }}>В обработке</div>
         </div>
       </div>
       <div className="benefits-pseudo-card order-3">
         <div
-          className="w-full max-w-[180px] rounded-[10px] border px-3 py-2.5 shadow-sm sm:rotate-2 sm:-translate-y-1"
-          style={{ backgroundColor: 'var(--landing-card)', borderColor: 'var(--landing-border)' }}
+          className="w-full max-w-[200px] rounded-[12px] border px-4 py-3 shadow-sm sm:rotate-2 sm:-translate-y-1"
+          style={{ backgroundColor: 'var(--landing-bg)', borderColor: 'var(--landing-border)' }}
         >
-          <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Статусы</div>
-          <div className="mt-1.5 flex flex-wrap gap-0.5 text-[10px]">
-            <span className="rounded px-1.5 py-0.5" style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}>Доставлено</span>
-            <span className="rounded px-1.5 py-0.5" style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}>Открыто</span>
-            <span className="rounded px-1.5 py-0.5" style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: 'var(--landing-danger)' }}>Ошибка</span>
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Статусы</div>
+          <div className="mt-2 space-y-1.5">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--landing-accent)' }} />
+              <span style={{ color: 'var(--landing-text)' }}>Доставлено</span>
+              <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--landing-accent)' }}>98</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#22c55e' }} />
+              <span style={{ color: 'var(--landing-text)' }}>Открыто</span>
+              <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#22c55e' }}>43</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ef4444' }} />
+              <span style={{ color: 'var(--landing-text)' }}>Ошибка</span>
+              <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#ef4444' }}>2</span>
+            </div>
           </div>
         </div>
       </div>
@@ -205,6 +276,7 @@ export function BenefitsSection() {
           <div className="reveal" style={{ paddingTop: '8px' }}>
             <MiniFunnel />
             <PseudoUICards />
+            <StatsRow />
           </div>
         </div>
       </div>
