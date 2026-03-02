@@ -1,46 +1,54 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
 
 const ANCHORS = [
   { id: 'features', label: 'Возможности' },
-  { id: 'how', label: 'Как работает' },
-  { id: 'examples', label: 'Примеры' },
+  { id: 'stats', label: 'Результаты' },
   { id: 'pricing', label: 'Тарифы' },
+  { id: 'examples', label: 'Примеры' },
   { id: 'faq', label: 'FAQ' },
-  { id: 'contacts', label: 'Контакты' },
 ] as const;
 
 export function LandingHeader() {
-  const [activeId, setActiveId] = useState<string>('');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const observersRef = useRef<IntersectionObserver[]>([]);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setActiveId(e.target.id);
-            break;
-          }
-        }
-      },
-      { rootMargin: '-20% 0px -70% 0px', threshold: 0 }
-    );
-    ANCHORS.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    observersRef.current.forEach((obs) => obs.disconnect());
+    observersRef.current = [];
+
+    const sectionIds = ANCHORS.map((a) => a.id);
+    sectionIds.forEach((id) => {
+      const section = document.getElementById(id);
+      if (!section) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setActiveSection(id);
+            }
+          });
+        },
+        { threshold: 0.35, rootMargin: '-20% 0px -40% 0px' }
+      );
+      observer.observe(section);
+      observersRef.current.push(observer);
+    });
+
+    return () => {
+      observersRef.current.forEach((obs) => obs.disconnect());
+    };
   }, []);
 
   const scrollTo = (id: string, focusEmail?: boolean) => {
@@ -50,77 +58,60 @@ export function LandingHeader() {
   };
 
   return (
-    <header
-      className={`sticky top-0 z-50 flex h-16 items-center justify-between px-4 md:px-6 transition-all duration-200 ${
-        scrolled ? 'backdrop-blur-md bg-white/80 border-b border-[var(--landing-border)] shadow-sm' : ''
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-[var(--landing-radius)] bg-[var(--landing-accent-soft)]">
-          <span className="text-sm font-bold" style={{ color: 'var(--landing-accent)' }}>S</span>
-        </div>
-        <span className="font-semibold text-[15px]" style={{ color: 'var(--landing-text)' }}>SpinLid</span>
-      </div>
-
-      <nav className="hidden md:flex items-center gap-1">
-        {ANCHORS.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => scrollTo(id)}
-            className={`px-3 py-2 rounded-[var(--landing-radius)] text-sm font-medium transition-colors ${
-              activeId === id
-                ? 'bg-[var(--landing-accent-soft)] text-[var(--landing-accent)]'
-                : 'text-[var(--landing-muted)] hover:text-[var(--landing-text)] hover:bg-[var(--landing-accent-soft)]'
-            }`}
+    <nav className={`l-nav${scrolled ? ' scrolled' : ''}`} id="l-nav">
+      <div className="l-nav__inner">
+        <a href="#top" className="l-nav__logo" onClick={(e) => { e.preventDefault(); scrollTo('top'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
+              boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)'
+            }}
           >
-            {label}
-          </button>
-        ))}
-      </nav>
+            <svg viewBox="0 0 32 32" width="22" height="22" fill="none">
+              <path d="M16,6 C21.5,6 26,10.5 26,16 C26,18.5 25,20.8 23.2,22.3 C21.5,23.8 19.2,24.5 17,24 C14.5,23.4 12.5,21.5 12,19 C11.7,17.5 12,16 13,15.2 C14,15.5 15,16 15,17 C15,18 15.5,19 16.5,19.5 C17.5,20 19,19.8 20,19 C21,18.2 21.5,17 21.5,16 C21.5,13.2 19,11 16,11 C13,11 10.5,13.2 10.5,16 C10.5,17.5 11,19 12,20 C13,21 14.5,21.5 16,21.5" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            </svg>
+          </span>
+          <span>Spin<span style={{ color: 'var(--landing-accent)' }}>.</span>Lid</span>
+        </a>
 
-      <div className="hidden md:flex items-center gap-2">
-        <Link
-          href="/auth/login"
-          className="px-4 py-2 rounded-[var(--landing-radius)] text-sm font-medium transition-colors hover:bg-[var(--landing-accent-soft)]"
-          style={{ color: 'var(--landing-text)' }}
-        >
-          Войти
-        </Link>
-        <button
-          onClick={() => scrollTo('register', true)}
-          className="px-4 py-2 rounded-[var(--landing-radius)] text-sm font-medium text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-2"
-          style={{ backgroundColor: 'var(--landing-accent)' }}
-        >
-          Регистрация
-        </button>
-      </div>
-
-      <button
-        className="md:hidden p-2 rounded-[var(--landing-radius)] hover:bg-[var(--landing-accent-soft)]"
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label="Меню"
-      >
-        {mobileOpen ? <X className="h-5 w-5" style={{ color: 'var(--landing-text)' }} /> : <Menu className="h-5 w-5" style={{ color: 'var(--landing-text)' }} />}
-      </button>
-
-      {mobileOpen && (
-        <div className="absolute top-16 left-0 right-0 bg-white border-b border-[var(--landing-border)] shadow-lg md:hidden">
-          <div className="flex flex-col p-4 gap-1">
-            {ANCHORS.map(({ id, label }) => (
-              <button key={id} onClick={() => scrollTo(id)} className="px-4 py-3 text-left text-sm font-medium rounded-[var(--landing-radius)] hover:bg-[var(--landing-accent-soft)]" style={{ color: activeId === id ? 'var(--landing-accent)' : 'var(--landing-text)' }}>
+        <ul className={`l-nav__links${mobileOpen ? ' open' : ''}`}>
+          {ANCHORS.map(({ id, label }) => (
+            <li key={id}>
+              <button
+                className={activeSection === id ? 'active' : ''}
+                onClick={() => scrollTo(id)}
+              >
                 {label}
               </button>
-            ))}
-            <hr className="my-2 border-[var(--landing-border)]" />
-            <Link href="/auth/login" className="px-4 py-3 text-sm font-medium rounded-[var(--landing-radius)] hover:bg-[var(--landing-accent-soft)]" style={{ color: 'var(--landing-text)' }}>
-              Войти
-            </Link>
-            <button onClick={() => scrollTo('register', true)} className="px-4 py-3 text-sm font-medium rounded-[var(--landing-radius)] text-white text-left" style={{ backgroundColor: 'var(--landing-accent)' }}>
-              Регистрация
+            </li>
+          ))}
+          <li>
+            <Link href="/auth/login" className="l-nav__login">Войти</Link>
+          </li>
+          <li>
+            <button className="l-nav__cta" onClick={() => scrollTo('register', true)}>
+              Начать бесплатно
             </button>
-          </div>
-        </div>
-      )}
-    </header>
+          </li>
+        </ul>
+
+        <button
+          className={`l-nav__burger${mobileOpen ? ' open' : ''}`}
+          id="l-burger"
+          aria-label="Меню"
+          onClick={() => setMobileOpen(!mobileOpen)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
+    </nav>
   );
 }

@@ -224,12 +224,13 @@ export default function RunsHistoryPage() {
 
   return (
     <>
-      <div className="max-w-[1250px] mx-auto px-4 sm:px-6 overflow-x-hidden">
+      <div className="max-w-[1250px] mx-auto px-4 sm:px-6 overflow-x-hidden relative z-10">
         <div className="space-y-4">
           {/* Header */}
-          <PageHeader
-            breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'История' }]}
-            title="История запусков"
+          <div className="app-reveal">
+            <PageHeader
+              breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'История' }]}
+              title="История запусков"
             actions={
               <div className="flex items-center gap-2">
                 <Button variant="default" size="sm" onClick={() => router.push('/app/seo')} className="flex items-center gap-1.5 h-9">
@@ -249,33 +250,31 @@ export default function RunsHistoryPage() {
               </div>
             }
           />
+          </div>
 
           {/* Summary chips */}
           {!loading && runs.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="px-2.5 py-1 rounded-[10px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium">
+            <div className="flex flex-wrap items-center gap-2 text-sm app-reveal app-reveal-delay-1">
+              <span className="app-badge app-badge-accent">
                 Всего: {stats.total}
               </span>
-              <span className="px-2.5 py-1 rounded-[10px] bg-green-500/10 text-green-700 dark:text-green-400 font-medium">
+              <span className="app-badge app-badge-success">
                 OK: {stats.done}
               </span>
-              <span className="px-2.5 py-1 rounded-[10px] bg-red-500/10 text-red-700 dark:text-red-400 font-medium">
+              <span className="app-badge app-badge-danger">
                 Ошибки: {stats.error}
               </span>
-              <span className="px-2.5 py-1 rounded-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
+              <span className="app-badge app-badge-warning">
                 В работе: {stats.inProgress}
               </span>
-              <span className="text-gray-500 dark:text-gray-400">•</span>
-              <span className="text-gray-500 dark:text-gray-400">За период:</span>
+              <span style={{ color: 'hsl(var(--muted))' }}>•</span>
+              <span style={{ color: 'hsl(var(--muted))' }}>За период:</span>
               {(['week', 'month', 'all'] as PeriodFilter[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriodFilter(p)}
-                  className={`px-2.5 py-1 rounded-[10px] text-sm font-medium transition-colors ${
-                    periodFilter === p
-                      ? 'bg-saas-primary text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                  className={`app-chip ${periodFilter === p ? 'app-chip-active' : ''}`}
+                  style={{ padding: '4px 12px' }}
                 >
                   {PERIOD_LABELS[p]}
                 </button>
@@ -284,8 +283,8 @@ export default function RunsHistoryPage() {
           )}
 
           {/* Filter panel (sticky) */}
-          <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-50/80 dark:supports-[backdrop-filter]:bg-gray-900/80 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+          <div className="sticky top-0 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
+            <div className="app-card-enhanced p-4">
               {loadError && !loading && (
                 <div className="mb-4 rounded-[10px] bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-4 py-3 flex items-center justify-between gap-4">
                   <p className="text-sm text-red-700 dark:text-red-400">{loadError}</p>
@@ -328,21 +327,21 @@ export default function RunsHistoryPage() {
 
           {/* Content */}
           {loading ? (
-            <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-saas-primary mb-2" />
-              <p className="text-gray-600 dark:text-gray-400">Загрузка…</p>
+            <div className="app-card-enhanced p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 mb-2" style={{ borderColor: 'hsl(var(--accent))' }} />
+              <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
             </div>
           ) : runs.length === 0 ? (
-            <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 text-center">
-              <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">Запусков пока нет</p>
-              <Button variant="default" onClick={() => router.push('/app/seo')} className="flex items-center gap-2 mx-auto">
+            <div className="app-card-enhanced p-12 text-center">
+              <p className="text-lg mb-4" style={{ color: 'hsl(var(--text))' }}>Запусков пока нет</p>
+              <Button variant="default" onClick={() => router.push('/app/seo')} className="flex items-center gap-2 mx-auto ui-btn-primary app-btn-shine">
                 <Plus className="h-4 w-4" />
                 Сделать первый запуск
               </Button>
             </div>
           ) : filteredRuns.length === 0 ? (
-            <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 text-center">
-              <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">Ничего не найдено</p>
+            <div className="app-card-enhanced p-12 text-center">
+              <p className="text-lg mb-4" style={{ color: 'hsl(var(--text))' }}>Ничего не найдено</p>
               <Button variant="outline" onClick={resetFilters} className="gap-2">
                 Сбросить фильтры
               </Button>
@@ -350,10 +349,10 @@ export default function RunsHistoryPage() {
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden md:block rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+              <div className="hidden md:block app-card-enhanced overflow-hidden app-reveal app-reveal-delay-3">
                 <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)]">
-                  <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                    <thead className="sticky top-0 z-[1] bg-gray-50 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700">
+                  <table className="app-table-enhanced" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                    <thead className="sticky top-0 z-[1]" style={{ background: 'hsl(var(--surface-2))', backdropFilter: 'blur(8px)' }}>
                       <tr>
                         <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[140px]">Дата/Время</th>
                         <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Запрос</th>

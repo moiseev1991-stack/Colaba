@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
 
 const FAQ_ITEMS = [
   {
@@ -36,37 +35,33 @@ const FAQ_ITEMS = [
 
 export function FAQSection() {
   const [open, setOpen] = useState<number | null>(0);
+
   return (
-    <section id="faq" className="landing-section">
+    <section id="faq" className="landing-section l-faq">
       <div className="container">
-        <h2 className="text-2xl font-bold md:text-[30px]" style={{ color: 'var(--landing-text)' }}>
-          FAQ
+        <div className="section-label reveal">FAQ</div>
+        <h2 className="section-title reveal">
+          Частые <span style={{ color: 'var(--landing-accent)' }}>вопросы</span>
         </h2>
-        <p className="mt-2 text-base" style={{ color: 'var(--landing-muted)' }}>
-          Ответы на частые вопросы о лидах и рассылке КП
-        </p>
-        <div className="mt-12 space-y-2">
+        <div style={{ maxWidth: '760px' }}>
           {FAQ_ITEMS.map((item, i) => (
             <div
               key={i}
-              className="rounded-[12px] border overflow-hidden transition-colors"
-              style={{ backgroundColor: 'var(--landing-card)', borderColor: 'var(--landing-border)' }}
+              className={`l-faq__item reveal${open === i ? ' open' : ''}`}
             >
               <button
+                className="l-faq__q"
                 onClick={() => setOpen(open === i ? null : i)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-medium hover:bg-[var(--landing-accent-soft)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--landing-accent)]"
-                style={{ color: 'var(--landing-text)' }}
               >
                 {item.q}
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 transition-transform ${open === i ? 'rotate-180' : ''}`}
-                  style={{ color: 'var(--landing-muted)' }}
-                />
+                <span className="l-faq__icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
               </button>
               {open === i && (
-                <div className="px-4 pb-3 text-sm" style={{ color: 'var(--landing-muted)' }}>
-                  {item.a}
-                </div>
+                <div className="l-faq__a">{item.a}</div>
               )}
             </div>
           ))}

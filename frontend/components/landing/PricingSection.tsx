@@ -1,96 +1,94 @@
 const PLANS = [
   {
     name: 'Starter',
-    badge: 'по запросу',
-    recommended: false,
+    amount: 'Бесплатно',
+    period: '',
+    featured: false,
+    badge: null,
     bullets: [
-      'Лимит сбора лидов: до 500/мес',
-      'Кампании КП: до 5/мес',
-      'Экспорт CSV, копирование',
+      'До 500 лидов в месяц',
+      'До 5 кампаний КП',
+      'Экспорт CSV',
       'История 30 дней',
-      'Поддержка по email',
+      'Email поддержка',
     ],
+    ctaLabel: 'Начать бесплатно',
+    ctaStyle: 'outline',
   },
   {
     name: 'Pro',
-    badge: 'по запросу',
-    recommended: true,
+    amount: 'По запросу',
+    period: '',
+    featured: true,
+    badge: 'Популярный',
     bullets: [
-      'Лимит сбора лидов: до 5000/мес',
-      'Кампании КП: до 50/мес',
+      'До 5 000 лидов в месяц',
+      'До 50 кампаний КП',
       'Приоритет очереди',
       'История 90 дней',
       'Все форматы экспорта',
       'Расширенная поддержка',
     ],
+    ctaLabel: 'Подключить Pro',
+    ctaStyle: 'primary',
   },
   {
     name: 'Team',
-    badge: 'по запросу',
-    recommended: false,
+    amount: 'Custom',
+    period: '',
+    featured: false,
+    badge: null,
     bullets: [
       'Расширенные лимиты',
-      'Неограниченные кампании КП',
+      'Неограниченные кампании',
       'История 365 дней',
       'Командный доступ, роли',
       'API доступ',
       'Персональный менеджер',
     ],
+    ctaLabel: 'Обсудить условия',
+    ctaStyle: 'outline',
   },
 ];
 
 export function PricingSection({ onCta }: { onCta: () => void }) {
   return (
-    <section id="pricing" className="landing-section">
+    <section id="pricing" className="landing-section l-pricing">
       <div className="container">
-        <h2 className="text-2xl font-bold md:text-[30px]" style={{ color: 'var(--landing-text)' }}>
-          Тарифы
+        <div className="section-label reveal">Цены</div>
+        <h2 className="section-title text-center reveal">
+          Простые тарифы <span style={{ color: 'var(--landing-accent)' }}>без сюрпризов</span>
         </h2>
-        <p className="mt-2 text-base" style={{ color: 'var(--landing-muted)' }}>
-          Лимиты по сбору лидов и отправке КП — подберём план под задачи
-        </p>
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {PLANS.map(({ name, badge, recommended, bullets }) => (
+        <div className="l-pricing__grid">
+          {PLANS.map(({ name, amount, period, featured, badge, bullets, ctaLabel, ctaStyle }) => (
             <div
               key={name}
-              className={`rounded-[12px] border p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md relative ${
-                recommended ? 'ring-2 ring-[var(--landing-accent)]' : ''
-              }`}
-              style={{
-                backgroundColor: 'var(--landing-card)',
-                borderColor: recommended ? 'var(--landing-accent)' : 'var(--landing-border)',
-              }}
+              className={`l-pricing-card reveal${featured ? ' l-pricing-card--featured' : ''}`}
             >
-              {recommended && (
-                <span
-                  className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold text-white"
-                  style={{ backgroundColor: 'var(--landing-accent)' }}
-                >
-                  Рекомендуем
-                </span>
+              {badge && (
+                <div className="l-pricing-card__badge">{badge}</div>
               )}
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--landing-text)' }}>
-                {name}
-              </h3>
-              <span
-                className="mt-2 inline-block rounded px-2 py-1 text-xs font-medium"
-                style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
-              >
-                {badge}
-              </span>
-              <ul className="mt-5 space-y-2 text-sm" style={{ color: 'var(--landing-muted)' }}>
+              <div className="l-pricing-card__name">{name}</div>
+              <div className="l-pricing-card__price">
+                <span
+                  className="l-pricing-card__amount"
+                  style={amount.length > 6 ? { fontSize: '32px' } : undefined}
+                >
+                  {amount}
+                </span>
+                {period && <span className="l-pricing-card__period">{period}</span>}
+              </div>
+              <ul className="l-pricing-card__features">
                 {bullets.map((b) => (
-                  <li key={b}>• {b}</li>
+                  <li key={b}>{b}</li>
                 ))}
               </ul>
               <button
                 onClick={onCta}
-                className={`mt-6 w-full h-10 rounded-[var(--landing-radius)] text-sm font-medium text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)] focus:ring-offset-2 ${
-                  recommended ? 'ring-2 ring-white ring-offset-2' : ''
-                }`}
-                style={{ backgroundColor: 'var(--landing-accent)' }}
+                className={`l-btn${ctaStyle === 'primary' ? ' l-btn--primary' : ' l-btn--outline'}`}
+                style={{ width: '100%', justifyContent: 'center' }}
               >
-                Выбрать тариф
+                {ctaLabel}
               </button>
             </div>
           ))}

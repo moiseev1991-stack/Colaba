@@ -1,39 +1,62 @@
 /* SpinLid Design Tokens — theme variables (must load before Tailwind) */
 :root {
-  --radius-sm: 6px;
+  /* === Core radius tokens (from design system) === */
+  --radius-xs: 7px;
+  --radius-sm: 12px;
   --radius-control: 6px;
-  --radius-card: 8px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-card: 18px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  
+  /* === Color tokens === */
   --bg: 216 20% 97%;
   --surface: 0 0% 100%;
   --surface-2: 214 32% 95%;
   --border: 214 32% 89%;
   --text: 222 47% 8%;
   --muted: 215 16% 40%;
-  --accent: 217 91% 60%;
-  --accent-strong: 217 91% 45%;
-  --accent-hover: 217 91% 50%;
-  --accent-weak: 217 91% 60% / 0.08;
-  --focus: 217 91% 60%;
+  
+  /* === Accent colors (green-teal from landing) === */
+  --accent: 160 85% 35%;
+  --accent-strong: 160 85% 28%;
+  --accent-hover: 160 85% 30%;
+  --accent-weak: 160 85% 35% / 0.12;
+  --accent-light: 157 100% 95%;
+  --accent-mid: 160 85% 35% / 0.15;
+  
+  /* === Indigo/Purple accents === */
+  --indigo: 243 75% 59%;
+  --indigo-light: 226 100% 97%;
+  --purple: 262 83% 58%;
+  
+  /* === Focus & interaction === */
+  --focus: 160 85% 35%;
   --danger: 0 84% 60%;
   --danger-hover: 0 84% 50%;
+  --success: 142 76% 36%;
+  --warning: 38 92% 50%;
+  
+  /* === Navigation tokens === */
   --nav-bg: 0 0% 100%;
   --nav-border: 214 32% 89%;
   --nav-text: 222 47% 11%;
   --nav-text-muted: 215 16% 45%;
   --nav-text-hover: 222 47% 5%;
-  --nav-hover-bg: 217 91% 60% / 0.1;
-  --nav-active-bg: 217 91% 60% / 0.14;
-  --nav-active-text: 217 91% 40%;
-  --nav-focus-ring: 217 91% 60% / 0.25;
+  --nav-hover-bg: 160 85% 35% / 0.1;
+  --nav-active-bg: 160 85% 35% / 0.14;
+  --nav-active-text: 160 85% 28%;
+  --nav-focus-ring: 160 85% 35% / 0.25;
+  
+  /* === Control tokens === */
   --control-border: 214 32% 88%;
   --control-border-hover: 214 32% 80%;
-  --control-border-focus: 217 91% 60% / 0.6;
-  --focus-ring: 217 91% 60% / 0.2;
+  --control-border-focus: 160 85% 35% / 0.6;
+  --focus-ring: 160 85% 35% / 0.2;
   --control-border-error: 0 84% 60% / 0.6;
   --focus-ring-error: 0 84% 60% / 0.16;
-  --chart-bar: 217 91% 55%;
+  
+  /* === Chart tokens === */
+  --chart-bar: 160 85% 40%;
   --chart-grid: 214 32% 88%;
   --chart-axis: 222 20% 40%;
   --chart-tooltip-bg: 0 0% 100%;
@@ -41,7 +64,22 @@
   --chart-tooltip-border: 214 32% 89%;
   --chart-success: 142 76% 36%;
   --chart-error: 0 84% 50%;
-  --chart-running: 217 91% 60%;
+  --chart-running: 160 85% 35%;
+  
+  /* === Shadows (from design system) === */
+  --shadow-xs: 0 1px 3px rgba(15,23,42,0.06);
+  --shadow-sm: 0 2px 8px rgba(15,23,42,0.07), 0 1px 3px rgba(15,23,42,0.04);
+  --shadow-md: 0 6px 24px rgba(15,23,42,0.09), 0 2px 6px rgba(15,23,42,0.05);
+  --shadow-lg: 0 12px 48px rgba(15,23,42,0.13), 0 4px 12px rgba(15,23,42,0.06);
+  --shadow-xl: 0 24px 64px rgba(15,23,42,0.16), 0 8px 20px rgba(15,23,42,0.08);
+  --shadow-accent: 0 4px 20px rgba(14, 169, 122, 0.3);
+  
+  /* === Gradients === */
+  --grad-accent: linear-gradient(135deg, #0ea97a, #4f46e5);
+  --grad-accent-rev: linear-gradient(135deg, #4f46e5, #0ea97a);
+  
+  /* === Transitions === */
+  --transition: 0.22s ease;
 }
 
 .dark {
@@ -51,37 +89,54 @@
   --border: 217 33% 18%;
   --text: 210 40% 95%;
   --muted: 215 20% 68%;
-  --accent: 213 94% 68%;
-  --accent-strong: 213 94% 75%;
-  --accent-hover: 213 94% 62%;
-  --accent-weak: 213 94% 68% / 0.14;
-  --focus: 213 94% 68%;
+  
+  /* === Accent colors (green-teal adapted for dark) === */
+  --accent: 160 70% 50%;
+  --accent-strong: 160 70% 60%;
+  --accent-hover: 160 70% 45%;
+  --accent-weak: 160 70% 50% / 0.18;
+  --accent-light: 160 70% 50% / 0.15;
+  --accent-mid: 160 70% 50% / 0.22;
+  
+  /* === Indigo/Purple accents (dark mode) === */
+  --indigo: 243 75% 72%;
+  --indigo-light: 243 75% 72% / 0.15;
+  --purple: 262 83% 70%;
+  
+  --focus: 160 70% 50%;
   --danger: 0 84% 60%;
   --danger-hover: 0 84% 55%;
+  --success: 142 70% 50%;
+  --warning: 38 92% 55%;
+  
   --nav-bg: 222 47% 5%;
   --nav-border: 217 33% 14%;
   --nav-text: 213 31% 91%;
   --nav-text-muted: 215 20% 65%;
   --nav-text-hover: 210 40% 100%;
-  --nav-hover-bg: 213 94% 68% / 0.12;
-  --nav-active-bg: 213 94% 68% / 0.18;
-  --nav-active-text: 213 94% 80%;
-  --nav-focus-ring: 213 94% 68% / 0.35;
+  --nav-hover-bg: 160 70% 50% / 0.15;
+  --nav-active-bg: 160 70% 50% / 0.22;
+  --nav-active-text: 160 70% 65%;
+  --nav-focus-ring: 160 70% 50% / 0.35;
+  
   --control-border: 217 33% 22%;
   --control-border-hover: 217 33% 28%;
-  --control-border-focus: 213 94% 68% / 0.6;
-  --focus-ring: 213 94% 68% / 0.28;
+  --control-border-focus: 160 70% 50% / 0.6;
+  --focus-ring: 160 70% 50% / 0.28;
   --control-border-error: 0 84% 60% / 0.65;
   --focus-ring-error: 0 84% 60% / 0.2;
-  --chart-bar: 213 94% 65%;
+  
+  --chart-bar: 160 70% 55%;
   --chart-grid: 217 33% 22%;
   --chart-axis: 210 25% 70%;
   --chart-tooltip-bg: 222 47% 12%;
   --chart-tooltip-text: 210 40% 95%;
   --chart-tooltip-border: 217 33% 24%;
-  --chart-success: 142 70% 42%;
+  --chart-success: 142 70% 50%;
   --chart-error: 0 72% 55%;
-  --chart-running: 213 94% 68%;
+  --chart-running: 160 70% 50%;
+  
+  --shadow-accent: 0 4px 20px rgba(14, 169, 122, 0.25);
 }
 
 @tailwind base;
@@ -277,10 +332,11 @@
 }
 
 /* === UI Kit: единые стили (theme tokens) === */
-/* radius-sm: 8px, radius-md: 10px, radius-lg: 12px */
 @layer components {
   .ui-btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-[6px] h-9 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 min-w-[96px];
+    @apply inline-flex items-center justify-center gap-2 h-9 px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 min-w-[96px];
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
   }
   .ui-btn:focus-visible {
     --tw-ring-color: hsl(var(--focus));
@@ -296,89 +352,692 @@
   }
   .ui-btn-primary {
     @apply ui-btn text-white;
-    background-color: hsl(var(--color-primary));
+    background: var(--grad-accent);
+    box-shadow: var(--shadow-accent);
   }
   .ui-btn-primary:hover {
-    background-color: hsl(var(--color-primary-hover));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(14, 169, 122, 0.42);
   }
   .ui-btn-secondary {
-    @apply ui-btn border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700;
+    @apply ui-btn border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300;
+    border-color: hsl(var(--border));
+  }
+  .ui-btn-secondary:hover {
+    border-color: hsl(var(--accent));
+    box-shadow: var(--shadow-accent);
+    transform: translateY(-1px);
   }
   .ui-btn-danger {
     @apply ui-btn text-white;
-    background-color: hsl(var(--color-danger));
+    background-color: hsl(var(--danger));
   }
   .ui-btn-danger:hover {
-    background-color: hsl(var(--color-danger-hover));
+    background-color: hsl(var(--danger-hover));
+    transform: translateY(-1px);
   }
   .ui-btn-ghost {
-    @apply ui-btn bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700;
+    @apply ui-btn bg-transparent;
+  }
+  .ui-btn-ghost:hover {
+    background-color: hsl(var(--accent-weak));
+    color: hsl(var(--accent));
   }
   .ui-input {
-    @apply flex h-9 w-full rounded-[6px] border border-control-border bg-white dark:bg-gray-800 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-[3px] focus:ring-focus-ring focus:ring-offset-0 disabled:opacity-50;
+    @apply flex h-9 w-full border bg-white dark:bg-gray-800 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-[3px] focus:ring-offset-0 disabled:opacity-50;
+    border-radius: var(--radius-sm);
+    border-color: hsl(var(--control-border));
+    transition: var(--transition);
   }
   .ui-input:hover {
     border-color: hsl(var(--control-border-hover));
   }
   .ui-input:focus {
     border-color: hsl(var(--control-border-focus));
+    box-shadow: 0 0 0 3px hsl(var(--focus-ring));
   }
   .ui-select {
-    @apply flex h-9 w-full rounded-[6px] border border-control-border bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 pr-9 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-focus-ring focus:ring-offset-0;
+    @apply flex h-9 w-full border bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 pr-9 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-[3px] focus:ring-offset-0;
+    border-radius: var(--radius-sm);
+    border-color: hsl(var(--control-border));
+    transition: var(--transition);
   }
   .ui-select:hover {
     border-color: hsl(var(--control-border-hover));
   }
   .ui-select:focus {
     border-color: hsl(var(--control-border-focus));
+    box-shadow: 0 0 0 3px hsl(var(--focus-ring));
   }
   .ui-card {
-    @apply rounded-[8px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 md:p-5 shadow-sm;
+    @apply border bg-white dark:bg-gray-800 p-4 md:p-5;
+    border-radius: var(--radius-card);
+    border-color: hsl(var(--border));
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+  }
+  .ui-card:hover {
+    box-shadow: var(--shadow-md);
   }
   .ui-tab {
-    @apply flex items-center gap-1.5 h-9 px-3 rounded-[10px] text-sm font-medium whitespace-nowrap transition-colors;
+    @apply flex items-center gap-1.5 h-9 px-3 text-sm font-medium whitespace-nowrap;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
   }
   .ui-tab-active {
     @apply ui-tab;
-    background-color: hsl(var(--color-primary-weak));
-    color: hsl(var(--color-primary));
+    background-color: hsl(var(--accent-weak));
+    color: hsl(var(--accent));
   }
   .dark .ui-tab-active {
-    background-color: hsl(var(--color-primary-weak-dark));
-    color: hsl(var(--color-primary));
+    background-color: hsl(var(--accent-weak));
+    color: hsl(var(--accent));
   }
   .ui-tab-inactive {
-    @apply ui-tab text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100;
+    @apply ui-tab text-gray-700 dark:text-gray-300;
+  }
+  .ui-tab-inactive:hover {
+    background-color: hsl(var(--accent-weak));
+    color: hsl(var(--accent));
   }
   .ui-badge {
     @apply inline-flex items-center justify-center rounded-full px-2.5 py-1 h-6 text-xs font-medium;
   }
+  .ui-badge-accent {
+    background-color: hsl(var(--accent-weak));
+    color: hsl(var(--accent));
+  }
+  .ui-badge-success {
+    background-color: hsl(var(--success) / 0.12);
+    color: hsl(var(--success));
+  }
+  .ui-badge-warning {
+    background-color: hsl(var(--warning) / 0.12);
+    color: hsl(var(--warning));
+  }
+  .ui-badge-danger {
+    background-color: hsl(var(--danger) / 0.12);
+    color: hsl(var(--danger));
+  }
   .ui-dropdown {
-    @apply absolute z-50 mt-1.5 min-w-[180px] max-w-[260px] rounded-[10px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1;
+    @apply absolute z-50 mt-1.5 min-w-[180px] max-w-[260px] border bg-white dark:bg-gray-800 py-1;
+    border-radius: var(--radius-sm);
+    border-color: hsl(var(--border));
+    box-shadow: var(--shadow-lg);
   }
   .ui-dropdown-item {
-    @apply flex items-center gap-2 h-9 px-4 text-sm text-gray-700 dark:text-gray-300 transition-colors whitespace-nowrap overflow-hidden text-ellipsis;
+    @apply flex items-center gap-2 h-9 px-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis;
+    transition: var(--transition);
   }
   .ui-dropdown-item:hover {
-    background-color: hsl(var(--color-primary-weak));
-  }
-  .dark .ui-dropdown-item:hover {
-    background-color: hsl(var(--color-primary-weak-dark));
+    background-color: hsl(var(--accent-weak));
+    color: hsl(var(--accent));
   }
 }
 
-/* Primary color as blue for Tailwind arbitrary values */
+/* === Accent color utilities === */
+.bg-accent {
+  background-color: hsl(var(--accent));
+}
+.bg-accent-weak {
+  background-color: hsl(var(--accent-weak));
+}
+.text-accent {
+  color: hsl(var(--accent));
+}
+.text-accent-strong {
+  color: hsl(var(--accent-strong));
+}
+.border-accent {
+  border-color: hsl(var(--accent));
+}
+.shadow-accent {
+  box-shadow: var(--shadow-accent);
+}
+
+/* Legacy aliases for backward compatibility */
 .bg-primary-accent {
-  background-color: hsl(var(--color-primary));
+  background-color: hsl(var(--accent));
 }
 .bg-primary-weak {
-  background-color: hsl(var(--color-primary-weak));
-}
-.dark .bg-primary-weak {
-  background-color: hsl(var(--color-primary-weak-dark));
+  background-color: hsl(var(--accent-weak));
 }
 .text-primary-accent {
-  color: hsl(var(--color-primary));
+  color: hsl(var(--accent));
 }
 
+/* === Gradient text utility === */
+.text-gradient {
+  background: linear-gradient(130deg, #79f0c7 0%, #a78bfa 60%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
+/* === Card hover effects === */
+.ui-card-interactive {
+  @apply ui-card cursor-pointer;
+}
+.ui-card-interactive:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: hsl(var(--accent) / 0.3);
+}
+
+/* === Reveal animation (can be used in app pages too) === */
+.reveal-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.reveal-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   APP PAGES — Enhanced Visual Design System
+   Градиенты, эффекты и анимации для внутренних страниц
+   ============================================================ */
+
+/* === App Page Background Gradients === */
+.app-bg-gradient {
+  position: relative;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(var(--accent) / 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, hsl(var(--indigo) / 0.06), transparent),
+    hsl(var(--bg));
+}
+
+.dark .app-bg-gradient {
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(var(--accent) / 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, hsl(var(--indigo) / 0.1), transparent),
+    linear-gradient(180deg, hsl(222 47% 6%) 0%, hsl(222 47% 4%) 100%);
+}
+
+/* Grid pattern overlay */
+.app-grid-pattern::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image:
+    linear-gradient(hsl(var(--text)) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--text)) 1px, transparent 1px);
+  background-size: 60px 60px;
+  z-index: 0;
+}
+
+.dark .app-grid-pattern::before {
+  opacity: 0.04;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+}
+
+/* === Enhanced Card Styles === */
+.app-card-enhanced {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.app-card-enhanced::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, hsl(var(--accent) / 0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-card-enhanced:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), 0 0 40px hsl(var(--accent) / 0.08);
+  border-color: hsl(var(--accent) / 0.3);
+}
+
+.app-card-enhanced:hover::before {
+  opacity: 1;
+}
+
+/* === KPI Card with Glow === */
+.app-kpi-card {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.app-kpi-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+.app-kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md), 0 4px 20px hsl(var(--accent) / 0.15);
+  border-color: hsl(var(--accent) / 0.25);
+}
+
+.app-kpi-card:hover::after {
+  transform: scaleX(1);
+}
+
+/* KPI value with gradient option */
+.app-kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: hsl(var(--text));
+}
+
+.app-kpi-value-gradient {
+  background: var(--grad-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* === Section Headers with Accent === */
+.app-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.app-section-header::before {
+  content: '';
+  width: 4px;
+  height: 24px;
+  background: var(--grad-accent);
+  border-radius: 2px;
+}
+
+.app-section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: hsl(var(--text));
+  letter-spacing: -0.3px;
+}
+
+/* === Table with Enhanced Rows === */
+.app-table-enhanced {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.app-table-enhanced thead tr {
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--surface-2) / 0.5);
+}
+
+.app-table-enhanced th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: hsl(var(--muted));
+}
+
+.app-table-enhanced tbody tr {
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  transition: all 0.2s ease;
+}
+
+.app-table-enhanced tbody tr:hover {
+  background: hsl(var(--accent-weak));
+}
+
+.app-table-enhanced td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: hsl(var(--text));
+}
+
+/* === Status Badges with Glow === */
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.app-badge-success {
+  background: hsl(var(--success) / 0.12);
+  color: hsl(var(--success));
+}
+
+.app-badge-success:hover {
+  box-shadow: 0 0 12px hsl(var(--success) / 0.3);
+}
+
+.app-badge-warning {
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
+}
+
+.app-badge-warning:hover {
+  box-shadow: 0 0 12px hsl(var(--warning) / 0.3);
+}
+
+.app-badge-danger {
+  background: hsl(var(--danger) / 0.12);
+  color: hsl(var(--danger));
+}
+
+.app-badge-danger:hover {
+  box-shadow: 0 0 12px hsl(var(--danger) / 0.3);
+}
+
+.app-badge-accent {
+  background: hsl(var(--accent-weak));
+  color: hsl(var(--accent));
+}
+
+.app-badge-accent:hover {
+  box-shadow: 0 0 12px hsl(var(--accent) / 0.3);
+}
+
+/* === Floating Orbs (subtle background decoration) === */
+.app-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  animation: app-orb-float 20s ease-in-out infinite;
+}
+
+.app-orb-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, hsl(var(--accent) / 0.15) 0%, transparent 70%);
+  top: -100px;
+  right: -100px;
+  animation-delay: 0s;
+}
+
+.app-orb-2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, hsl(var(--indigo) / 0.1) 0%, transparent 70%);
+  bottom: -50px;
+  left: 20%;
+  animation-delay: -7s;
+}
+
+.dark .app-orb-1 {
+  background: radial-gradient(circle, hsl(var(--accent) / 0.2) 0%, transparent 70%);
+}
+
+.dark .app-orb-2 {
+  background: radial-gradient(circle, hsl(var(--indigo) / 0.15) 0%, transparent 70%);
+}
+
+@keyframes app-orb-float {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(20px, -30px); }
+  50% { transform: translate(-10px, 20px); }
+  75% { transform: translate(30px, 10px); }
+}
+
+/* === Chart Container with Glass Effect === */
+.app-chart-container {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.dark .app-chart-container {
+  background: hsl(var(--surface) / 0.8);
+}
+
+.app-chart-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(135deg, hsl(var(--accent) / 0.03) 0%, transparent 50%),
+    linear-gradient(225deg, hsl(var(--indigo) / 0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* === Button with Shine Effect === */
+.app-btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.app-btn-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  transition: left 0.5s ease;
+}
+
+.app-btn-shine:hover::before {
+  left: 100%;
+}
+
+/* === Form Input with Focus Glow === */
+.app-input-glow:focus {
+  border-color: hsl(var(--accent));
+  box-shadow: 
+    0 0 0 3px hsl(var(--accent) / 0.15),
+    0 0 20px hsl(var(--accent) / 0.1);
+}
+
+/* === Module Cards === */
+.app-module-card {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-card);
+  padding: 28px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.app-module-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--grad-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.app-module-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+  border-color: hsl(var(--accent) / 0.3);
+}
+
+.app-module-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* === Icon Container with Gradient === */
+.app-icon-gradient {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--grad-accent);
+  color: white;
+  box-shadow: var(--shadow-accent);
+}
+
+.app-icon-soft {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: hsl(var(--accent-weak));
+  color: hsl(var(--accent));
+}
+
+/* === Reveal Animation for App Pages === */
+.app-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: app-reveal-up 0.5s ease forwards;
+}
+
+.app-reveal-delay-1 { animation-delay: 0.1s; }
+.app-reveal-delay-2 { animation-delay: 0.2s; }
+.app-reveal-delay-3 { animation-delay: 0.3s; }
+.app-reveal-delay-4 { animation-delay: 0.4s; }
+
+@keyframes app-reveal-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === Stats Number Animation === */
+.app-stat-number {
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* === Glowing Border on Focus === */
+.app-focus-glow:focus-within {
+  border-color: hsl(var(--accent));
+  box-shadow: 0 0 0 3px hsl(var(--accent) / 0.2), 0 0 20px hsl(var(--accent) / 0.1);
+}
+
+/* === Preset Tags / Chips === */
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--text));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.app-chip:hover {
+  border-color: hsl(var(--accent));
+  background: hsl(var(--accent-weak));
+  color: hsl(var(--accent));
+  box-shadow: var(--shadow-accent);
+  transform: translateY(-2px);
+}
+
+.app-chip-active {
+  background: var(--grad-accent);
+  border-color: transparent;
+  color: white;
+  box-shadow: var(--shadow-accent);
+}
+
+/* === Page Title with Gradient Underline === */
+.app-page-title {
+  position: relative;
+  font-size: 24px;
+  font-weight: 800;
+  color: hsl(var(--text));
+  letter-spacing: -0.5px;
+  padding-bottom: 12px;
+}
+
+.app-page-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background: var(--grad-accent);
+  border-radius: 2px;
+}
+
+/* === Skeleton Loading with Shimmer === */
+.app-skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--surface-2)) 0%,
+    hsl(var(--border)) 50%,
+    hsl(var(--surface-2)) 100%
+  );
+  background-size: 200% 100%;
+  animation: app-skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes app-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* === Subtle Divider with Gradient === */
+.app-divider-gradient {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--border)) 20%,
+    hsl(var(--accent) / 0.3) 50%,
+    hsl(var(--border)) 80%,
+    transparent 100%
+  );
+  margin: 24px 0;
+}

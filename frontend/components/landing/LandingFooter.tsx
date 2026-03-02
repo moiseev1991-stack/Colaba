@@ -1,36 +1,37 @@
-const ANCHORS = [
-  { id: 'features', label: 'Возможности' },
-  { id: 'how', label: 'Как работает' },
-  { id: 'examples', label: 'Примеры' },
-  { id: 'pricing', label: 'Тарифы' },
-  { id: 'faq', label: 'FAQ' },
-  { id: 'contacts', label: 'Контакты' },
+import Link from 'next/link';
+
+const LINKS = [
+  { href: '#features', label: 'Возможности' },
+  { href: '#stats', label: 'Результаты' },
+  { href: '#pricing', label: 'Тарифы' },
+  { href: '#examples', label: 'Примеры' },
+  { href: '#faq', label: 'FAQ' },
+  { href: '/policy', label: 'Политика' },
 ];
 
 export function LandingFooter() {
   return (
-    <footer className="border-t py-10" style={{ borderColor: 'var(--landing-border)', backgroundColor: 'var(--landing-card)' }}>
-      <div className="container flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[var(--landing-radius)]" style={{ backgroundColor: 'var(--landing-accent-soft)' }}>
-            <span className="text-sm font-bold" style={{ color: 'var(--landing-accent)' }}>S</span>
-          </div>
-          <span className="font-semibold text-sm" style={{ color: 'var(--landing-text)' }}>SpinLid</span>
-        </div>
-        <nav className="flex flex-wrap gap-4">
-          {ANCHORS.map(({ id, label }) => (
-            <a key={id} href={`#${id}`} className="text-sm hover:underline" style={{ color: 'var(--landing-muted)' }}>
-              {label}
-            </a>
+    <footer className="l-footer">
+      <div className="l-footer__inner">
+        <a href="#top" className="l-footer__logo">
+          Spin<span style={{ color: 'var(--landing-accent)' }}>.</span>Lid
+        </a>
+
+        <ul className="l-footer__links">
+          {LINKS.map(({ href, label }) => (
+            <li key={label}>
+              {href.startsWith('/') ? (
+                <Link href={href}>{label}</Link>
+              ) : (
+                <a href={href}>{label}</a>
+              )}
+            </li>
           ))}
-        </nav>
-      </div>
-      <div className="container mt-6 pt-6 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-xs" style={{ borderColor: 'var(--landing-border)', color: 'var(--landing-muted)' }}>
-        <span suppressHydrationWarning>© {new Date().getFullYear()} SpinLid</span>
-        <div className="flex gap-4">
-          <a href="#contacts" className="hover:underline">Контакты</a>
-          <a href="/policy" className="hover:underline">Политика</a>
-        </div>
+        </ul>
+
+        <span className="l-footer__note" suppressHydrationWarning>
+          © {new Date().getFullYear()} SpinLid · Сбор лидов и рассылка КП
+        </span>
       </div>
     </footer>
   );

@@ -102,8 +102,8 @@ export default function LeadsPage() {
   const displayedPresets = showMore ? NICHE_PRESETS : NICHE_PRESETS.slice(0, 6);
 
   return (
-    <div className="mx-auto max-w-[1250px] px-6 py-8 overflow-x-hidden">
-      <h1 className="text-[20px] font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
+    <div className="mx-auto max-w-[1250px] px-6 py-8 overflow-x-hidden relative z-10">
+      <h1 className="app-page-title mb-8 app-reveal">
         Поиск лидов
       </h1>
 
@@ -111,7 +111,7 @@ export default function LeadsPage() {
         {/* Левая колонка */}
         <div className="lg:col-span-8 space-y-6">
           {/* Форма */}
-          <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
+          <div className="app-card-enhanced p-6 app-reveal app-reveal-delay-1">
             <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
               Введите нишу и город. Система найдёт сайты компаний, выгрузит телефоны, email и outreach-текст.
             </p>
@@ -147,16 +147,15 @@ export default function LeadsPage() {
           </div>
 
           {/* Шаблоны ниш */}
-          <div>
-            <h3 className="text-[14px] font-medium text-gray-700 dark:text-gray-300 mb-2">Популярные ниши</h3>
+          <div className="app-reveal app-reveal-delay-2">
+            <h3 className="text-[14px] font-medium mb-3" style={{ color: 'hsl(var(--text))' }}>Популярные ниши</h3>
             <div className="flex flex-wrap gap-2">
               {displayedPresets.map(p => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => handlePreset(p)}
-                  className="px-3 py-1.5 rounded-full text-[13px] border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  style={{ color: 'hsl(var(--text))' }}
+                  className="app-chip"
                 >
                   {p}
                 </button>
@@ -165,7 +164,7 @@ export default function LeadsPage() {
                 <button
                   type="button"
                   onClick={() => setShowMore(!showMore)}
-                  className="px-3 py-1.5 rounded-full text-[13px] font-medium"
+                  className="app-chip"
                   style={{ color: 'hsl(var(--accent))' }}
                 >
                   {showMore ? 'Свернуть' : 'Показать ещё'}
@@ -175,17 +174,17 @@ export default function LeadsPage() {
           </div>
 
           {/* Расширенные настройки */}
-          <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+          <div className="app-card-enhanced overflow-hidden app-reveal app-reveal-delay-3">
             <button
               type="button"
               onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[hsl(var(--accent-weak))] transition-colors"
             >
               <span className="text-[14px] font-medium" style={{ color: 'hsl(var(--text))' }}>Расширенные настройки</span>
-              {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {advancedOpen ? <ChevronDown className="h-4 w-4" style={{ color: 'hsl(var(--accent))' }} /> : <ChevronRight className="h-4 w-4" />}
             </button>
             {advancedOpen && (
-              <div className="px-4 pb-4 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-4">
+              <div className="px-5 pb-5 pt-2 border-t space-y-4" style={{ borderColor: 'hsl(var(--border))' }}>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Глубина поиска</label>
                   <Select value={String(depth)} onChange={e => setDepth(Number(e.target.value))} className="w-[140px]">
@@ -208,13 +207,15 @@ export default function LeadsPage() {
           </div>
 
           {/* История запусков */}
-          <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
-            <h3 className="text-[14px] font-medium px-4 py-3 border-b border-gray-200 dark:border-gray-700" style={{ color: 'hsl(var(--text))' }}>
-              Последние запуски
-            </h3>
+          <div className="app-card-enhanced overflow-hidden app-reveal app-reveal-delay-4">
+            <div className="px-5 py-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+              <h3 className="text-[14px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+                Последние запуски
+              </h3>
+            </div>
             {runsLoading ? (
-              <div className="p-6 space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-10 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />)}
+              <div className="p-5 space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-12 app-skeleton rounded-lg" />)}
               </div>
             ) : recentRuns.length === 0 ? (
               <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -268,8 +269,8 @@ export default function LeadsPage() {
 
         {/* Правая колонка — сводка */}
         <div className="lg:col-span-4 order-first lg:order-none">
-          <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm sticky top-4 space-y-4">
-            <h2 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>Параметры запуска</h2>
+          <div className="app-card-enhanced p-6 sticky top-4 space-y-4 app-reveal">
+            <h2 className="text-[16px] font-bold" style={{ color: 'hsl(var(--text))' }}>Параметры запуска</h2>
             <div className="space-y-2 text-sm">
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Ниша:</span>
@@ -289,20 +290,36 @@ export default function LeadsPage() {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Что получите:</p>
-              <ul className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
-                <li className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-green-600" /> Телефоны компаний</li>
-                <li className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-blue-600" /> Email-адреса</li>
-                <li className="flex items-center gap-2"><ExternalLink className="h-3.5 w-3.5 text-gray-400" /> Ссылки на сайты</li>
+            <div className="app-divider-gradient !my-4" />
+            <div>
+              <p className="text-xs mb-3" style={{ color: 'hsl(var(--muted))' }}>Что получите:</p>
+              <ul className="space-y-2 text-xs" style={{ color: 'hsl(var(--text))' }}>
+                <li className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(var(--success) / 0.12)' }}>
+                    <Phone className="h-3.5 w-3.5" style={{ color: 'hsl(var(--success))' }} />
+                  </div>
+                  Телефоны компаний
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(var(--indigo) / 0.12)' }}>
+                    <Mail className="h-3.5 w-3.5" style={{ color: 'hsl(var(--indigo))' }} />
+                  </div>
+                  Email-адреса
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(var(--accent-weak))' }}>
+                    <ExternalLink className="h-3.5 w-3.5" style={{ color: 'hsl(var(--accent))' }} />
+                  </div>
+                  Ссылки на сайты
+                </li>
               </ul>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 pt-2">
               <Button
                 onClick={handleSubmit}
                 disabled={!isValid || isLoading}
-                className="w-full"
+                className="w-full ui-btn-primary app-btn-shine"
               >
                 {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Запуск…</> : 'Найти лидов'}
               </Button>

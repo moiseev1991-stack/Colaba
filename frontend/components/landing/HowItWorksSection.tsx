@@ -1,40 +1,53 @@
-import { MapPin, Users, Filter, Send } from 'lucide-react';
-
 const STEPS = [
-  { icon: MapPin, title: 'Выберите нишу и регион' },
-  { icon: Users, title: 'Соберите лидов и контакты' },
-  { icon: Filter, title: 'Отфильтруйте и выберите получателей' },
-  { icon: Send, title: 'Отправьте КП и получите статусы + экспорт' },
+  {
+    num: '01',
+    title: 'Выберите нишу и регион',
+    desc: 'Укажите запрос, отрасль и географию — система найдёт компании из открытых источников.',
+  },
+  {
+    num: '02',
+    title: 'Соберите лидов и контакты',
+    desc: 'Получите список с телефонами, email и сайтами, нормализованными и готовыми к работе.',
+  },
+  {
+    num: '03',
+    title: 'Отфильтруйте получателей',
+    desc: 'Выберите нужные записи, исключите конкурентов через blacklist, выгрузите CSV.',
+  },
+  {
+    num: '04',
+    title: 'Отправьте КП и следите за статусами',
+    desc: 'Запустите кампанию рассылки — в реальном времени смотрите: доставлено / открыто / ошибка.',
+  },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section id="how" className="landing-section">
+    <section id="how" className="landing-section l-how">
       <div className="container">
-        <h2 className="text-2xl font-bold md:text-[30px]" style={{ color: 'var(--landing-text)' }}>
-          Как это работает
+        <div className="section-label reveal">Как это работает</div>
+        <h2 className="section-title reveal">
+          От запроса до КП — <span style={{ color: 'var(--landing-accent)' }}>4 шага</span>
         </h2>
-        <p className="mt-2 text-base" style={{ color: 'var(--landing-muted)' }}>
-          От сбора лидов до отправки КП — 4 шага
-        </p>
-        <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map(({ icon: Icon, title }, i) => (
-            <div key={i} className="flex flex-col items-center text-center">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
-              >
-                <Icon className="h-6 w-6" />
-              </div>
-              <span className="mt-3 text-xs font-semibold" style={{ color: 'var(--landing-accent)' }}>Шаг {i + 1}</span>
-              <h3 className="mt-1 font-semibold" style={{ color: 'var(--landing-text)' }}>
-                {title}
-              </h3>
+        <div className="l-how__grid">
+          {STEPS.map(({ num, title, desc }) => (
+            <div className="l-how__step reveal" key={num}>
+              <div className="l-how__step-num">{num}</div>
+              <h3>{title}</h3>
+              <p>{desc}</p>
             </div>
           ))}
         </div>
-        <p className="mt-10 text-center text-sm" style={{ color: 'var(--landing-muted)' }}>
-          На выходе: таблица → фильтры → экспорт → история запусков
+        <p
+          className="reveal"
+          style={{
+            marginTop: '48px',
+            textAlign: 'center',
+            fontSize: '14px',
+            color: 'var(--landing-muted)',
+          }}
+        >
+          На выходе: таблица → фильтры → экспорт CSV → история запусков
         </p>
       </div>
     </section>

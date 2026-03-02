@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Moon, Sun, User as UserIcon, LogOut, CreditCard, Settings, Activity } from 'lucide-react';
+import { Moon, Sun, User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles } from 'lucide-react';
 import { getTheme, setTheme } from '@/lib/storage';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
@@ -87,9 +87,9 @@ export function AppHeader() {
 
   const goToModule = (id: ModuleId) => {
     const routes: Record<ModuleId, string> = {
-      seo: '/runs',
-      leads: '/app/leads/history',
-      tenders: '/app/gos/history',
+      seo: '/dashboard',
+      leads: '/app/leads',
+      tenders: '/app/gos',
     };
     router.push(routes[id]);
   };
@@ -102,15 +102,25 @@ export function AppHeader() {
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center justify-between px-6 border-b overflow-visible"
-      style={{ backgroundColor: 'hsl(var(--nav-bg))', borderColor: 'hsl(var(--border))' }}
+      className="flex h-14 shrink-0 items-center justify-between px-6 border-b overflow-visible relative z-20"
+      style={{ 
+        backgroundColor: 'hsl(var(--nav-bg) / 0.95)', 
+        borderColor: 'hsl(var(--border))',
+        backdropFilter: 'blur(12px)',
+      }}
     >
       <div className="flex items-center gap-3 shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-2" aria-label="SpinLid">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[hsl(var(--accent-weak))]" aria-hidden>
-            <span className="text-[14px] font-bold" style={{ color: 'hsl(var(--accent))' }}>S</span>
+        <Link href="/dashboard" className="flex items-center gap-2 group" aria-label="SpinLid">
+          <div 
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] transition-all group-hover:scale-105 overflow-hidden" 
+            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)' }}
+            aria-hidden
+          >
+            <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none">
+              <path d="M16,6 C21.5,6 26,10.5 26,16 C26,18.5 25,20.8 23.2,22.3 C21.5,23.8 19.2,24.5 17,24 C14.5,23.4 12.5,21.5 12,19 C11.7,17.5 12,16 13,15.2 C14,15.5 15,16 15,17 C15,18 15.5,19 16.5,19.5 C17.5,20 19,19.8 20,19 C21,18.2 21.5,17 21.5,16 C21.5,13.2 19,11 16,11 C13,11 10.5,13.2 10.5,16 C10.5,17.5 11,19 12,20 C13,21 14.5,21.5 16,21.5" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            </svg>
           </div>
-          <span className="font-semibold text-[15px]" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
+          <span className="font-bold text-[15px]" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
         </Link>
       </div>
 
@@ -133,6 +143,17 @@ export function AppHeader() {
       </nav>
 
       <div className="flex items-center gap-2 shrink-0">
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 h-9 px-4 rounded-[8px] text-[14px] font-semibold transition-all hover:scale-105"
+          style={{ 
+            background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
+            color: 'white',
+            boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)'
+          }}
+        >
+          <Sparkles className="h-4 w-4" /> Купить подписку
+        </Link>
         <Link href="/monitor" className={navItemClass(pathname === '/monitor')} style={{ color: 'hsl(var(--nav-text))' }}>
           <Activity className="h-4 w-4" /> Request Monitor
         </Link>

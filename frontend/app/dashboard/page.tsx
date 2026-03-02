@@ -39,11 +39,11 @@ function formatDateTime(iso: string): string {
 
 const KpiCard = memo(function KpiCard({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
   return (
-    <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-4">
-      <div className="text-[12px] font-medium text-gray-600 dark:text-gray-400">{label}</div>
-      <div className="mt-1 text-[20px] font-semibold text-gray-900 dark:text-white">
+    <div className="app-kpi-card">
+      <div className="text-[12px] font-medium" style={{ color: 'hsl(var(--muted))' }}>{label}</div>
+      <div className="mt-2 app-kpi-value app-stat-number">
         {value}
-        {suffix && <span className="text-[14px] font-normal ml-1 text-gray-500 dark:text-gray-400">{suffix}</span>}
+        {suffix && <span className="text-[14px] font-normal ml-1" style={{ color: 'hsl(var(--muted))' }}>{suffix}</span>}
       </div>
     </div>
   );
@@ -51,7 +51,10 @@ const KpiCard = memo(function KpiCard({ label, value, suffix }: { label: string;
 
 function SkeletonCard() {
   return (
-    <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-4 h-[72px] animate-pulse bg-gray-100 dark:bg-gray-700" />
+    <div className="app-kpi-card h-[76px]">
+      <div className="app-skeleton h-3 w-20 mb-3" />
+      <div className="app-skeleton h-6 w-16" />
+    </div>
   );
 }
 
@@ -219,9 +222,9 @@ export default function MainDashboardPage() {
   const chartMaxStacked = useMemo(() => Math.max(...chartData.map((x) => x.success + x.error + x.running), 1), [chartData]);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <h1 className="text-[24px] font-semibold text-gray-900 dark:text-white">Дашборд</h1>
+    <div className="mx-auto max-w-6xl px-6 py-8 relative z-10">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8 app-reveal">
+        <h1 className="app-page-title">Дашборд</h1>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600 dark:text-gray-400">Модуль:</span>
@@ -279,8 +282,10 @@ export default function MainDashboardPage() {
       )}
 
       {/* KPI */}
-      <section className="mb-10">
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Общий обзор</h2>
+      <section className="mb-10 app-reveal app-reveal-delay-1">
+        <div className="app-section-header">
+          <h2 className="app-section-title">Общий обзор</h2>
+        </div>
         {loading ? (
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             {[1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} />)}
@@ -291,16 +296,18 @@ export default function MainDashboardPage() {
             <KpiCard label="Успешные" value={data.kpi.success} />
             <KpiCard label="Ошибки" value={data.kpi.errors} />
             <KpiCard label="Ср. время" value={data.kpi.avg_time_sec != null ? `${Math.round(data.kpi.avg_time_sec)} с` : 'нет данных'} />
-            <KpiCard label="Стоимость" value={data.kpi.has_cost_tarification ? `${data.kpi.cost_rub.toFixed(2)} ₽` : '0 ₽ (нет тарификации)'} />
+            <KpiCard label="Стоимость" value={data.kpi.has_cost_tarification ? `${data.kpi.cost_rub.toFixed(2)} ₽` : '—'} />
             <KpiCard label={resultsLabel} value={data.kpi.results} />
           </div>
         ) : null}
       </section>
 
       {/* Сейчас выполняется */}
-      <section className="mb-10">
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Сейчас выполняется</h2>
-        <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6">
+      <section className="mb-10 app-reveal app-reveal-delay-2">
+        <div className="app-section-header">
+          <h2 className="app-section-title">Сейчас выполняется</h2>
+        </div>
+        <div className="app-card-enhanced p-6">
           {loading ? (
             <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
@@ -359,9 +366,11 @@ export default function MainDashboardPage() {
       </section>
 
       {/* Последние запуски */}
-      <section className="mb-10">
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Последние запуски</h2>
-        <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6">
+      <section className="mb-10 app-reveal app-reveal-delay-3">
+        <div className="app-section-header">
+          <h2 className="app-section-title">Последние запуски</h2>
+        </div>
+        <div className="app-card-enhanced p-6">
           {loading ? (
             <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
@@ -428,11 +437,13 @@ export default function MainDashboardPage() {
       </section>
 
       {/* Запросы по дням */}
-      <section className="mb-10">
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Запросы по дням</h2>
+      <section className="mb-10 app-reveal app-reveal-delay-4">
+        <div className="app-section-header">
+          <h2 className="app-section-title">Запросы по дням</h2>
+        </div>
         <div
-          className="rounded-[8px] border p-6 relative overflow-hidden"
-          style={{ borderColor: 'hsl(var(--border))', backgroundColor: 'hsl(var(--surface))', height: CHART_HEIGHT + 80 }}
+          className="app-chart-container p-6 relative overflow-hidden"
+          style={{ height: CHART_HEIGHT + 80 }}
         >
           <div
             className="absolute inset-6 opacity-30 pointer-events-none"
@@ -460,7 +471,9 @@ export default function MainDashboardPage() {
 
       {/* Ошибки / Успешные по дням */}
       <section className="mb-10">
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Ошибки / Успешные по дням</h2>
+        <div className="app-section-header">
+          <h2 className="app-section-title">Ошибки / Успешные по дням</h2>
+        </div>
         <div className="flex items-center gap-4 mb-2">
           <span className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(var(--chart-axis))' }}>
             <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-success))' }} /> Успешные
@@ -473,8 +486,8 @@ export default function MainDashboardPage() {
           </span>
         </div>
         <div
-          className="rounded-[8px] border p-6 relative overflow-hidden"
-          style={{ borderColor: 'hsl(var(--border))', backgroundColor: 'hsl(var(--surface))', height: CHART_HEIGHT + 80 }}
+          className="app-chart-container p-6 relative overflow-hidden"
+          style={{ height: CHART_HEIGHT + 80 }}
         >
           <div
             className="absolute inset-6 opacity-30 pointer-events-none"
@@ -484,7 +497,7 @@ export default function MainDashboardPage() {
           />
           {loading ? (
             <div className="absolute inset-6 flex items-center justify-center">
-              <div className="w-full h-full animate-pulse rounded" style={{ backgroundColor: 'hsl(var(--chart-grid) / 0.3)' }} />
+              <div className="w-full h-full app-skeleton rounded" />
             </div>
           ) : chartData.length === 0 ? (
             <div className="absolute inset-6 flex items-center justify-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
@@ -512,57 +525,74 @@ export default function MainDashboardPage() {
 
       {/* Модули */}
       <section>
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Модули</h2>
+        <div className="app-section-header">
+          <h2 className="app-section-title">Модули</h2>
+        </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* SEO — реальные данные */}
           <Link
             href={MODULE_ROUTES.seo}
-            className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
+            className="app-module-card block group"
           >
-            <Search className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">SEO</h3>
-            <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">Аудит, проверки, история запросов</p>
-            <div className="mt-4 flex items-center justify-between">
+            <div className="app-icon-gradient mb-4">
+              <Search className="h-5 w-5" />
+            </div>
+            <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>SEO</h3>
+            <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Аудит, проверки, история запросов</p>
+            <div className="app-divider-gradient !my-4" />
+            <div className="flex items-center justify-between">
               <span className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
                 {data
-                  ? `${data.kpi.total} запросов · ${data.kpi.success} OK · ${data.kpi.errors} ошибок`
+                  ? `${data.kpi.total} запросов · ${data.kpi.success} OK`
                   : '—'}
               </span>
-              <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
+              <span className="text-[14px] font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+                Открыть →
+              </span>
             </div>
           </Link>
 
-          {/* Поиск лидов — в разработке */}
+          {/* Поиск лидов */}
           <Link
             href={MODULE_ROUTES.leads}
-            className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
+            className="app-module-card block group"
           >
-            <Users className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">Поиск лидов</h3>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">Скоро</span>
+            <div className="app-icon-soft mb-4">
+              <Users className="h-5 w-5" />
             </div>
-            <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">Поиск, контакты, экспорт</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-[13px] text-gray-400 dark:text-gray-500">Модуль в разработке</span>
-              <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>Поиск лидов</h3>
+              <span className="app-badge app-badge-warning">Скоро</span>
+            </div>
+            <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Поиск, контакты, экспорт</p>
+            <div className="app-divider-gradient !my-4" />
+            <div className="flex items-center justify-between">
+              <span className="text-[13px]" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
+              <span className="text-[14px] font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+                Открыть →
+              </span>
             </div>
           </Link>
 
-          {/* Госзакупки — в разработке */}
+          {/* Госзакупки */}
           <Link
             href={MODULE_ROUTES.tenders}
-            className="group rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 transition-colors hover:border-blue-400 block"
+            className="app-module-card block group"
           >
-            <BarChart3 className="mb-3 h-8 w-8 text-blue-600 dark:text-blue-400" />
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">Госзакупки</h3>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">Скоро</span>
+            <div className="app-icon-soft mb-4">
+              <BarChart3 className="h-5 w-5" />
             </div>
-            <p className="mt-1 text-[14px] text-gray-600 dark:text-gray-400">Мониторинг, история, фильтры</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-[13px] text-gray-400 dark:text-gray-500">Модуль в разработке</span>
-              <span className="text-[14px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>Открыть →</span>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>Госзакупки</h3>
+              <span className="app-badge app-badge-warning">Скоро</span>
+            </div>
+            <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Мониторинг, история, фильтры</p>
+            <div className="app-divider-gradient !my-4" />
+            <div className="flex items-center justify-between">
+              <span className="text-[13px]" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
+              <span className="text-[14px] font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+                Открыть →
+              </span>
             </div>
           </Link>
         </div>

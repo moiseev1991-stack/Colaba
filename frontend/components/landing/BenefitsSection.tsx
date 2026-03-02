@@ -1,37 +1,29 @@
 'use client';
 
-import { Search, Users, Download, Send, FileEdit, History, ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 const BENEFITS = [
   {
-    icon: Search,
     title: 'Сбор лидов по ключевым запросам',
     desc: 'Ниша + регион → список компаний и контактов из открытых источников.',
   },
   {
-    icon: Users,
     title: 'Фильтры и нормализация контактов',
     desc: 'Телефоны, email, сайт, город — приводим к единому виду, убираем мусор.',
   },
   {
-    icon: Download,
-    title: 'Экспорт CSV и копирование контактов',
+    title: 'Экспорт CSV и копирование',
     desc: 'В 1 клик выгрузка в таблицу или копирование выбранных строк.',
-    tag: 'CSV',
   },
   {
-    icon: Send,
     title: 'Отправка КП и статусы доставки',
     desc: 'Отправляйте коммерческие предложения и смотрите: доставлено / открыто / ошибка.',
-    tag: 'КП',
   },
   {
-    icon: FileEdit,
     title: 'Редактор КП и шаблоны',
     desc: 'Шаблоны под разные ниши + быстрые правки перед отправкой.',
   },
   {
-    icon: History,
     title: 'История лидов и запусков',
     desc: 'Возвращайтесь к прошлым выгрузкам, повторяйте удачные сценарии.',
   },
@@ -46,16 +38,35 @@ const FUNNEL_STEPS = [
 
 function MiniFunnel() {
   return (
-    <div className="flex items-center justify-between gap-1 rounded-full px-3 py-2 text-xs" style={{ backgroundColor: 'var(--landing-card)', border: '1px solid var(--landing-border)' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '4px',
+        borderRadius: '40px',
+        padding: '10px 20px',
+        backgroundColor: 'var(--landing-card)',
+        border: '1px solid var(--landing-border)',
+        fontSize: '12px',
+      }}
+    >
       {FUNNEL_STEPS.map((step, i) => (
-        <span key={step.label} className="flex items-center gap-1">
+        <span key={step.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span
-            className={`rounded-full px-2 py-1 font-medium ${step.accent ? '' : ''}`}
-            style={step.accent ? { backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' } : { color: 'var(--landing-muted)' }}
+            style={{
+              borderRadius: '40px',
+              padding: '4px 10px',
+              fontWeight: 600,
+              backgroundColor: step.accent ? 'var(--landing-accent-soft)' : 'transparent',
+              color: step.accent ? 'var(--landing-accent)' : 'var(--landing-muted)',
+            }}
           >
             {step.label}
           </span>
-          {i < FUNNEL_STEPS.length - 1 && <ArrowRight className="h-3 w-3 shrink-0" style={{ color: 'var(--landing-muted)' }} />}
+          {i < FUNNEL_STEPS.length - 1 && (
+            <ArrowRight size={12} style={{ color: 'var(--landing-dim)', flexShrink: 0 }} />
+          )}
         </span>
       ))}
     </div>
@@ -65,7 +76,6 @@ function MiniFunnel() {
 function PseudoUICards() {
   return (
     <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-4">
-      {/* Card: Лиды */}
       <div className="benefits-pseudo-card order-2 sm:order-1">
         <div
           className="w-full max-w-[180px] rounded-[10px] border px-3 py-2.5 shadow-sm sm:-rotate-2 sm:translate-y-1"
@@ -77,22 +87,36 @@ function PseudoUICards() {
             <div>…</div>
             <div>…</div>
           </div>
-          <button type="button" className="mt-2 rounded px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}>CSV</button>
+          <button
+            type="button"
+            className="mt-2 rounded px-2 py-0.5 text-[10px] font-medium"
+            style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
+          >
+            CSV
+          </button>
         </div>
       </div>
-      {/* Card: КП */}
       <div className="benefits-pseudo-card order-1 sm:order-2 sm:z-10">
         <div
           className="w-full max-w-[180px] rounded-[10px] border px-3 py-2.5 shadow-md"
-          style={{ backgroundColor: 'var(--landing-card)', borderColor: 'var(--landing-border)', boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}
+          style={{
+            backgroundColor: 'var(--landing-card)',
+            borderColor: 'var(--landing-border)',
+            boxShadow: '0 4px 12px rgba(15,23,42,0.08)',
+          }}
         >
           <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>КП</div>
           <div className="mt-1.5 text-[11px]" style={{ color: 'var(--landing-text)' }}>Шаблон КП</div>
-          <button type="button" className="mt-1.5 rounded px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'var(--landing-accent)', color: '#fff' }}>Отправить</button>
+          <button
+            type="button"
+            className="mt-1.5 rounded px-2 py-0.5 text-[10px] font-medium"
+            style={{ backgroundColor: 'var(--landing-accent)', color: '#fff' }}
+          >
+            Отправить
+          </button>
           <div className="mt-1 text-[10px]" style={{ color: 'var(--landing-muted)' }}>В обработке</div>
         </div>
       </div>
-      {/* Card: Статусы */}
       <div className="benefits-pseudo-card order-3">
         <div
           className="w-full max-w-[180px] rounded-[10px] border px-3 py-2.5 shadow-sm sm:rotate-2 sm:-translate-y-1"
@@ -112,66 +136,73 @@ function PseudoUICards() {
 
 export function BenefitsSection() {
   return (
-    <section id="benefits" className="landing-section py-12 md:py-14 lg:py-16">
-      <div className="container max-w-[72rem]">
-        <div className="grid gap-10 lg:grid-cols-[55%_1fr] lg:gap-12 lg:items-start">
+    <section id="benefits" className="landing-section" style={{ background: 'var(--landing-card)' }}>
+      <div className="container" style={{ maxWidth: '1160px' }}>
+        <div
+          style={{
+            display: 'grid',
+            gap: '48px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            alignItems: 'start',
+          }}
+        >
           {/* Left: text */}
-          <div className="max-w-[560px] lg:max-w-[640px]">
-            <h2 className="text-2xl font-bold md:text-3xl" style={{ color: 'var(--landing-text)' }}>
-              Что вы получите
+          <div>
+            <div className="section-label reveal">Что вы получите</div>
+            <h2
+              className="reveal"
+              style={{
+                fontSize: 'clamp(26px, 3vw, 36px)',
+                fontWeight: 800,
+                color: 'var(--landing-text)',
+                marginBottom: '8px',
+                letterSpacing: '-0.5px',
+              }}
+            >
+              Полный цикл B2B-продаж
             </h2>
-            <p className="mt-2 text-base" style={{ color: 'var(--landing-muted)' }}>
-              Собирайте лиды по запросам, работайте с контактами, отправляйте КП и следите за статусами — всё в одном кабинете.
+            <p className="reveal" style={{ color: 'var(--landing-muted)', marginBottom: '28px', fontSize: '15px' }}>
+              Собирайте лиды, отправляйте КП и следите за статусами — всё в одном кабинете.
             </p>
-            <ul className="mt-6 space-y-3 sm:space-y-4">
-              {BENEFITS.map(({ icon: Icon, title, desc, tag }) => (
-                <li key={title} className="flex gap-3">
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {BENEFITS.map(({ title, desc }) => (
+                <li key={title} className="reveal" style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                   <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--landing-radius)]"
-                    style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden />
-                  </div>
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: 'var(--landing-grad-accent)',
+                      flexShrink: 0,
+                      marginTop: '7px',
+                    }}
+                  />
                   <div>
-                    <p className="text-[14px] font-semibold leading-tight" style={{ color: 'var(--landing-text)' }}>
-                      {title}
-                      {tag && (
-                        <span className="ml-1.5 text-xs font-medium" style={{ color: 'var(--landing-accent)' }}>({tag})</span>
-                      )}
-                    </p>
-                    <p className="mt-0.5 text-[13px] leading-snug" style={{ color: 'var(--landing-muted)' }}>{desc}</p>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--landing-text)', marginBottom: '2px' }}>{title}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--landing-muted)', lineHeight: 1.6 }}>{desc}</p>
                   </div>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-xs" style={{ color: 'var(--landing-muted)' }}>
-              SEO и госзакупки — в том же кабинете.
-            </p>
-            {/* CTA */}
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="reveal" style={{ marginTop: '32px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
               <a
                 href="#register"
-                className="inline-flex items-center gap-2 rounded-[var(--landing-radius)] px-4 py-2.5 text-sm font-semibold transition-colors hover:opacity-90"
-                style={{ backgroundColor: 'var(--landing-accent)', color: '#fff' }}
+                className="l-btn l-btn--primary"
+                style={{ fontSize: '14px', padding: '11px 22px' }}
               >
                 Создать аккаунт
               </a>
               <a
                 href="#examples"
-                className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
-                style={{ color: 'var(--landing-accent)' }}
+                style={{ fontSize: '14px', fontWeight: 600, color: 'var(--landing-accent)', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                Посмотреть пример результата
-                <ExternalLink className="h-3.5 w-3.5" />
+                Посмотреть пример →
               </a>
             </div>
-            <p className="mt-2 text-xs" style={{ color: 'var(--landing-muted)' }}>
-              Без карты • регистрация ~30 секунд
-            </p>
           </div>
 
           {/* Right: infographic */}
-          <div className="lg:pt-2">
+          <div className="reveal" style={{ paddingTop: '8px' }}>
             <MiniFunnel />
             <PseudoUICards />
           </div>

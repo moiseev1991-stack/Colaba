@@ -17,6 +17,6 @@ EXPOSE 3000
 # where Docker DNS works reliably) and sets INTERNAL_BACKEND_ORIGIN to the IP.
 # This avoids DNS resolution inside the long-running Next.js process.
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r//' /entrypoint.sh && chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["npx", "next", "start", "-p", "3000", "-H", "0.0.0.0"]
