@@ -154,7 +154,7 @@ export default function RunsHistoryPage() {
   };
 
   const handleOpen = (runId: string) => {
-    router.push(`/runs/${runId}`);
+    window.location.href = `/runs/${runId}`;
   };
 
   const resetFilters = () => {

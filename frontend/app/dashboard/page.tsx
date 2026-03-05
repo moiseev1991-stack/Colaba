@@ -204,6 +204,7 @@ export default function MainDashboardPage() {
     load();
   }, [load]);
 
+
   const chartData = useMemo<DayPoint[]>(() => data
     ? data.runs_by_day.map((d) => ({
         date: d.date,
@@ -415,6 +416,7 @@ export default function MainDashboardPage() {
                           <Link
                             href={getRunUrl(r.module, r.id)}
                             className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                            onClick={(e) => { e.preventDefault(); window.location.href = getRunUrl(r.module, r.id); }}
                           >
                             Открыть <ExternalLink className="h-3.5 w-3.5" />
                           </Link>
