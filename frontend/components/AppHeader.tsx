@@ -67,7 +67,9 @@ export function AppHeader() {
         setUserEmail(res.data.email ?? null);
       } catch {
         setUserEmail(null);
-        await tokenStorage.clearTokens();
+        // Do NOT clear tokens here. The /auth/me endpoint bypasses the refresh
+        // interceptor, so clearing tokens prematurely would break navigation —
+        // the interceptor will handle refresh/logout on subsequent API calls.
       }
     } else setUserEmail(null);
   };

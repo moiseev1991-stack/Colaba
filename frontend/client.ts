@@ -72,8 +72,9 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url ?? '';
 
-      // Skip redirect for auth endpoints — let the caller handle the error.
-      if (requestUrl.includes('/auth/')) {
+      // Skip refresh for endpoints that would cause infinite loops if they 401.
+      const noRefreshEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];
+      if (noRefreshEndpoints.some(p => requestUrl.includes(p))) {
         return Promise.reject(error);
       }
 
