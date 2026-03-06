@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/select';
 import { ToastContainer, type Toast } from '@/components/Toast';
 import { createSearch, listSearches } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
-import { Loader2, ChevronDown, ChevronRight, ExternalLink, Phone, Mail } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, Eye, Phone, Mail, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const RUSSIAN_CITIES = [
@@ -82,7 +82,6 @@ export default function LeadsPage() {
   const handleSubmit = async () => {
     if (!isValid || isLoading) return;
     setIsLoading(true);
-    setToasts(p => [...p, { id: Date.now().toString(), type: 'success', message: 'Запуск создан' }]);
     try {
       const search = await createSearch({
         query,
@@ -90,7 +89,13 @@ export default function LeadsPage() {
         num_results: depth,
         config: { filter_phone: filterPhone, module: 'leads' },
       });
-      router.push(`/runs/${search.id}`);
+      await loadRecent();
+      setIsLoading(false);
+      setToasts(p => [...p, {
+        id: Date.now().toString(),
+        type: 'success',
+        message: `Запуск создан — можно открыть в списке ниже`,
+      }]);
     } catch (err: unknown) {
       setIsLoading(false);
       const msg = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail
@@ -230,7 +235,7 @@ export default function LeadsPage() {
                       <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Запрос</th>
                       <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Статус</th>
                       <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Контактов</th>
-                      <th className="text-right py-2 px-3 text-gray-600 dark:text-gray-400" />
+                      <th className="text-right py-2 px-3 text-gray-600 dark:text-gray-400 uppercase tracking-wider text-xs">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -253,9 +258,9 @@ export default function LeadsPage() {
                           <button
                             type="button"
                             onClick={() => router.push(`/runs/${r.id}`)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 bg-transparent border-0 p-0 text-sm cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                           >
-                            Открыть <ExternalLink className="h-3.5 w-3.5" />
+                            <Eye className="h-3.5 w-3.5" /> Открыть
                           </button>
                         </td>
                       </tr>

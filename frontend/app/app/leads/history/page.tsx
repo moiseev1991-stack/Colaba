@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { listSearches, deleteSearch } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
-import { ExternalLink, Trash2, Download, Loader2 } from 'lucide-react';
+import { Eye, Trash2, Download, Loader2, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function formatDateTime(iso: string): string {
@@ -25,6 +25,8 @@ export default function LeadsHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
 
   const load = useCallback(async (p: number) => {
@@ -40,6 +42,16 @@ export default function LeadsHistoryPage() {
   }, []);
 
   useEffect(() => { load(page); }, [load, page]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить этот запуск и все его результаты?')) return;
@@ -77,7 +89,7 @@ export default function LeadsHistoryPage() {
                   <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Провайдер</th>
                   <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Статус</th>
                   <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Результатов</th>
-                  <th className="py-3 px-4" />
+                  <th className="py-3 px-4 text-right text-gray-600 dark:text-gray-400 uppercase tracking-wider text-xs">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -98,33 +110,46 @@ export default function LeadsHistoryPage() {
                     </td>
                     <td className="py-3 px-4" style={{ color: 'hsl(var(--text))' }}>{r.result_count ?? 0}</td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {r.status === 'completed' && (
-                          <a
-                            href={`/api/v1/searches/${r.id}/results/export/csv`}
-                            download
-                            className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                            title="Скачать CSV"
-                          >
-                            <Download className="h-4 w-4" />
-                          </a>
-                        )}
+                      <div className="flex items-center justify-end gap-2" ref={menuRef}>
                         <button
                           type="button"
                           onClick={() => router.push(`/runs/${r.id}`)}
-                          className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline bg-transparent border-0 p-0 cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <Eye className="h-3.5 w-3.5" /> Открыть
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(r.id)}
-                          disabled={deletingId === r.id}
-                          className="inline-flex items-center text-xs text-red-500 dark:text-red-400 hover:text-red-700 bg-transparent border-0 p-0 cursor-pointer disabled:opacity-40"
-                          title="Удалить"
-                        >
-                          {deletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </button>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-[8px] text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
+                          {openMenuId === r.id && (
+                            <div className="absolute right-0 top-full mt-1 z-20 min-w-[140px] rounded-[8px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1">
+                              {r.status === 'completed' && (
+                                <a
+                                  href={`/api/v1/searches/${r.id}/results/export/csv`}
+                                  download
+                                  onClick={() => setOpenMenuId(null)}
+                                  className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                  <Download className="h-3.5 w-3.5" /> Скачать CSV
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => { setOpenMenuId(null); handleDelete(r.id); }}
+                                disabled={deletingId === r.id}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 cursor-pointer"
+                              >
+                                {deletingId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                Удалить
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

@@ -45,9 +45,9 @@
 .dark {
   /* Dark theme — TZ 8.3 */
   --bg: 222 47% 4%;
-  --surface: 222 47% 7%;
-  --surface-2: 222 47% 6%;
-  --border: 217 33% 18%;
+  --surface: 222 47% 13%;
+  --surface-2: 222 47% 10%;
+  --border: 217 33% 24%;
   --text: 210 40% 95%;
   --muted: 215 20% 68%;
   --accent: 213 94% 68%;
