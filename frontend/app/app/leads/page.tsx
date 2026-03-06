@@ -83,7 +83,7 @@ export default function LeadsPage() {
     if (!isValid || isLoading) return;
     setIsLoading(true);
     try {
-      const search = await createSearch({
+      await createSearch({
         query,
         search_provider: provider,
         num_results: depth,
