@@ -59,11 +59,11 @@ async def list_searches(
     """List searches for the current user's organization with optional period and pagination."""
     created_after: Optional[datetime] = None
     if period == "day":
-        created_after = datetime.now(timezone.utc) - timedelta(days=1)
+        created_after = datetime.utcnow() - timedelta(days=1)
     elif period == "week":
-        created_after = datetime.now(timezone.utc) - timedelta(weeks=1)
+        created_after = datetime.utcnow() - timedelta(weeks=1)
     elif period == "month":
-        created_after = datetime.now(timezone.utc) - timedelta(days=30)
+        created_after = datetime.utcnow() - timedelta(days=30)
 
     return await service.get_searches(
         db=db,

@@ -3,7 +3,7 @@ Dashboard service - aggregated data from searches (SEO runs).
 """
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy import select, func
@@ -48,7 +48,7 @@ async def get_dashboard_data(
     Build dashboard payload. Currently only SEO (searches) module.
     period: day | week | month | custom
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     if period == "day":
         from_ts = now - timedelta(days=1)
         to_ts = now
