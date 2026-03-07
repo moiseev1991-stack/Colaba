@@ -6,39 +6,7 @@ import { Button } from './ui/button';
 import { Select } from './ui/select';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-
-const RUSSIAN_CITIES = [
-  'Москва',
-  'Санкт-Петербург',
-  'Казань',
-  'Екатеринбург',
-  'Новосибирск',
-  'Краснодар',
-  'Нижний Новгород',
-  'Ростов-на-Дону',
-  'Самара',
-  'Омск',
-  'Челябинск',
-  'Уфа',
-  'Пермь',
-  'Воронеж',
-  'Волгоград',
-  'Красноярск',
-  'Саратов',
-  'Тюмень',
-  'Тольятти',
-  'Ижевск',
-  'Барнаул',
-  'Ульяновск',
-  'Иркутск',
-  'Хабаровск',
-  'Ярославль',
-  'Владивосток',
-  'Махачкала',
-  'Томск',
-  'Оренбург',
-  'Кемерово',
-];
+import { CitySelector } from './CitySelector';
 
 interface SearchCardProps {
   city: string;
@@ -108,12 +76,13 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
             </Select>
           </div>
           <Input type="text" placeholder="Введите ключевое слово..." value={keyword} onChange={(e) => setKeyword(e.target.value)} disabled={isLoading} className="flex-1 min-w-[200px]" />
-          <Select value={city} onChange={(e) => onCityChange(e.target.value)} disabled={isLoading} className="w-[180px] flex-shrink-0">
-            <option value="">Выберите город</option>
-            {RUSSIAN_CITIES.map(cityName => (
-              <option key={cityName} value={cityName}>{cityName}</option>
-            ))}
-          </Select>
+          <CitySelector
+            city={city}
+            onCityChange={onCityChange}
+            disabled={isLoading}
+            regionClassName="w-[200px] flex-shrink-0"
+            cityClassName="w-[160px] flex-shrink-0"
+          />
           <Button type="submit" variant="default" disabled={isDisabled} className="flex-shrink-0">
             {isLoading ? (
               <>

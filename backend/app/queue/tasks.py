@@ -75,6 +75,10 @@ async def _execute_search_async(search_id: int):
             provider_id = search.search_provider or "duckduckgo"
             provider_config = await get_provider_config(provider_id, db)
 
+            # Yandex geo-region from frontend config (lr= parameter for localized results)
+            search_config = search.config if isinstance(search.config, dict) else {}
+            yandex_region_id: int = int(search_config.get("yandex_region_id", 213))
+
             # Filter blacklisted domains
             from app.modules.filters.blacklist import is_blacklisted, SEED_BLACKLIST
             
@@ -175,6 +179,7 @@ async def _execute_search_async(search_id: int):
                             num_results=search.num_results,
                             enable_fallback=False,
                             provider_config=provider_config,
+                            region=yandex_region_id,
                             db=db,
                         ),
                         timeout=120.0,

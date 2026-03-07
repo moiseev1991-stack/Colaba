@@ -10,14 +10,7 @@ import { createSearch, listSearches } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
 import { Loader2, ChevronDown, ChevronRight, Eye, Phone, Mail, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const RUSSIAN_CITIES = [
-  'Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск',
-  'Краснодар', 'Нижний Новгород', 'Ростов-на-Дону', 'Самара', 'Омск',
-  'Челябинск', 'Уфа', 'Пермь', 'Воронеж', 'Волгоград', 'Красноярск',
-  'Саратов', 'Тюмень', 'Тольятти', 'Ижевск', 'Барнаул', 'Ульяновск',
-  'Иркутск', 'Хабаровск', 'Ярославль', 'Владивосток', 'Томск', 'Оренбург',
-];
+import { CitySelector } from '@/components/CitySelector';
 
 const NICHE_PRESETS = [
   'строительные компании {город}',
@@ -133,12 +126,13 @@ export default function LeadsPage() {
                   onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 />
               </div>
-              <div className="w-[180px]">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Город</label>
-                <Select value={city} onChange={e => setCity(e.target.value)} disabled={isLoading} className="w-full">
-                  {RUSSIAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </Select>
-              </div>
+              <CitySelector
+                city={city}
+                onCityChange={setCity}
+                disabled={isLoading}
+                regionClassName="w-[200px]"
+                cityClassName="w-[180px]"
+              />
               <div className="w-[220px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
                 <Select value={provider} onChange={e => setProvider(e.target.value)} disabled={isLoading} className="w-full">

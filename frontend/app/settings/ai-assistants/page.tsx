@@ -237,8 +237,8 @@ export default function AiAssistantsPage() {
       />
 
       {needsAuth ? (
-        <div className="rounded-[14px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-          <p className="text-gray-600 dark:text-gray-400 mb-3">Войдите для доступа к настройкам AI-ассистентов.</p>
+        <div className="app-card-enhanced p-6">
+          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>Войдите для доступа к настройкам AI-ассистентов.</p>
           <Link href="/auth/login" className="text-blue-600 dark:text-blue-400 hover:underline">
             Войти
           </Link>
@@ -250,11 +250,11 @@ export default function AiAssistantsPage() {
           {list.map((a) => (
             <div
               key={a.id}
-              className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm"
+              className="app-card-enhanced p-6"
             >
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{a.name}</h2>
+                  <h2 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>{a.name}</h2>
                   <span className="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
                     {a.provider_type}
                   </span>
@@ -298,10 +298,10 @@ export default function AiAssistantsPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !submitting && setModal(null)}>
           <div
-            className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg shadow-xl"
+            className="app-card-enhanced p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text))' }}>
               {modal === 'create' ? 'Добавить AI-ассистент' : 'Изменить'}
             </h3>
             <div className="space-y-4">

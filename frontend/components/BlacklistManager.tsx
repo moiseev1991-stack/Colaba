@@ -38,17 +38,17 @@ export function BlacklistManager() {
   };
 
   return (
-    <div className="rounded-[14px] shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden bg-[#d2d4d7] dark:bg-[#1f2937]">
+    <div className="app-card-enhanced shadow-md">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-gray-800">
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="flex items-center gap-3">
           <FolderMinus className="h-5 w-5 text-saas-primary" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Блэклист</h2>
+          <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--text))' }}>Блэклист</h2>
         </div>
       </div>
 
       {/* Add Item Section */}
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-gray-800">
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-md">
             <Input
@@ -71,7 +71,7 @@ export function BlacklistManager() {
       </div>
 
       {/* Blacklist Items */}
-      <div className="px-6 py-4 bg-[#d2d4d7] dark:bg-[#1f2937]">
+      <div className="px-6 py-4">
         {blacklist.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
             Черный список пуст
@@ -83,7 +83,7 @@ export function BlacklistManager() {
                 key={item.id}
                 className="flex items-center justify-between py-2"
               >
-                <span className="text-gray-900 dark:text-white font-medium">
+                <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>
                   {item.domain}
                 </span>
                 <Button

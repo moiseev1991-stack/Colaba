@@ -12,16 +12,10 @@ import { getBlacklist } from '@/lib/storage';
 import { Loader2, ChevronDown, ChevronRight, Eye, Download, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LeadsTable } from '@/components/LeadsTable';
+import { CityCombobox } from '@/components/CityCombobox';
 import type { LeadRow } from '@/lib/types';
 import { mapExtraDataToSeo, mapExtraDataToIssues } from '@/lib/searchResultMapping';
 
-const RUSSIAN_CITIES = [
-  'Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск',
-  'Краснодар', 'Нижний Новгород', 'Ростов-на-Дону', 'Самара', 'Омск',
-  'Челябинск', 'Уфа', 'Пермь', 'Воронеж', 'Волгоград', 'Красноярск',
-  'Саратов', 'Тюмень', 'Тольятти', 'Ижевск', 'Барнаул', 'Ульяновск',
-  'Иркутск', 'Хабаровск', 'Ярославль', 'Владивосток', 'Махачкала', 'Томск', 'Оренбург', 'Кемерово',
-];
 
 const PROVIDERS: Record<string, string> = {
   duckduckgo: 'DuckDuckGo (бесплатно)',
@@ -68,6 +62,7 @@ function statusLabel(s: string): string {
 export default function SeoPage() {
   const [keyword, setKeyword] = useState('');
   const [city, setCity] = useState('Москва');
+  const [yandexRegionId, setYandexRegionId] = useState(213);
   const [searchProvider, setSearchProvider] = useState('duckduckgo');
   const [advanced, setAdvanced] = useState<SeoAdvancedSettings>(() => getSeoAdvancedSettings());
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -243,6 +238,7 @@ export default function SeoPage() {
           filter_phone: advanced.filterPhone,
           filter_email: advanced.filterEmail,
           exclude_blacklist: advanced.excludeBlacklist,
+          yandex_region_id: yandexRegionId,
         },
       });
       // Reset polling refs before setting new run
@@ -334,7 +330,7 @@ export default function SeoPage() {
         </div>
 
         {/* Form */}
-        <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
+        <div className="app-card-enhanced p-6">
           <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
             Укажите ключевое слово, провайдер и город. Результат: домены, SEO-оценка, контакты.
           </p>
@@ -352,14 +348,14 @@ export default function SeoPage() {
                   className="w-full border-2"
                 />
               </div>
-              <div className="w-[180px]">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Город</label>
-                <Select value={city} onChange={(e) => setCity(e.target.value)} disabled={isLoading} className="w-full">
-                  <option value="">Выберите город</option>
-                  {RUSSIAN_CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </Select>
+              <div className="flex flex-col gap-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Город</label>
+                <CityCombobox
+                  city={city}
+                  onCityChange={(c, id) => { setCity(c); if (id !== undefined) setYandexRegionId(id); }}
+                  disabled={isLoading}
+                  className="w-[220px]"
+                />
               </div>
               <div className="w-[220px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
@@ -375,37 +371,37 @@ export default function SeoPage() {
           </form>
         </div>
 
+        {/* Validation hint between cards */}
+        <p className="text-xs text-amber-600 dark:text-amber-400 -mt-3" style={{ visibility: invalidReason ? 'visible' : 'hidden', minHeight: '1rem' }}>{invalidReason || '\u00a0'}</p>
+
         {/* Horizontal summary bar */}
-        <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-4 shadow-sm">
+        <div className="app-card-enhanced px-5 py-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <span className="text-[13px] font-semibold shrink-0" style={{ color: 'hsl(var(--text))' }}>Сводка запуска</span>
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 shrink-0 hidden sm:block" />
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 flex-1">
-              <div className="flex items-center gap-1.5 text-[13px]">
-                <span className="text-gray-500 dark:text-gray-400">Запрос:</span>
+            <div className="flex items-center gap-x-5 flex-1 min-w-0 overflow-hidden">
+              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Запрос:</span>
                 <span className="font-medium truncate max-w-[160px]" title={query || '—'} style={{ color: 'hsl(var(--text))' }}>{query || '—'}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px]">
-                <span className="text-gray-500 dark:text-gray-400">Провайдер:</span>
-                <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>{PROVIDERS[searchProvider] || searchProvider}</span>
+              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Провайдер:</span>
+                <span className="font-medium truncate max-w-[200px]" title={PROVIDERS[searchProvider] || searchProvider} style={{ color: 'hsl(var(--text))' }}>{PROVIDERS[searchProvider] || searchProvider}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px]">
-                <span className="text-gray-500 dark:text-gray-400">Город:</span>
-                <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>{city || '—'}</span>
+              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Город:</span>
+                <span className="font-medium truncate max-w-[120px]" title={city || '—'} style={{ color: 'hsl(var(--text))' }}>{city || '—'}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px]">
-                <span className="text-gray-500 dark:text-gray-400">Глубина:</span>
-                <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Top {advanced.depth}</span>
+              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Глубина:</span>
+                <span className="font-medium whitespace-nowrap" style={{ color: 'hsl(var(--text))' }}>Top {advanced.depth}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px]">
-                <span className="text-gray-500 dark:text-gray-400">Фильтры:</span>
-                <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>{filtersLabel}</span>
+              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Фильтры:</span>
+                <span className="font-medium truncate max-w-[120px]" title={filtersLabel} style={{ color: 'hsl(var(--text))' }}>{filtersLabel}</span>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {invalidReason && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 hidden md:block">{invalidReason}</p>
-              )}
               <Button
                 variant="outline"
                 onClick={handleReset}
@@ -430,9 +426,6 @@ export default function SeoPage() {
               </Button>
             </div>
           </div>
-          {invalidReason && (
-            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 md:hidden">{invalidReason}</p>
-          )}
         </div>
 
         {/* Presets */}
@@ -464,17 +457,18 @@ export default function SeoPage() {
         </div>
 
         {/* Advanced settings */}
-        <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+        <div className="app-card-enhanced">
           <button
             type="button"
             onClick={() => setAdvancedOpen(!advancedOpen)}
-            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
+            style={{ '--tw-bg-opacity': '1' } as React.CSSProperties}
           >
             <span className="text-[14px] font-medium" style={{ color: 'hsl(var(--text))' }}>Расширенные настройки</span>
             {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
           {advancedOpen && (
-            <div className="px-4 pb-4 pt-0 space-y-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="px-4 pb-4 pt-0 space-y-4 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Глубина (Top N)</label>
                 <Select
@@ -533,9 +527,9 @@ export default function SeoPage() {
 
         {/* Inline results panel */}
         {activeRunId !== null && (
-          <div ref={resultsRef} className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+          <div ref={resultsRef} className="app-card-enhanced">
             {/* Results header */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
                 <span className="font-semibold" style={{ color: 'hsl(var(--text))' }}>Результаты</span>
                 {activeSearch && (
@@ -582,7 +576,7 @@ export default function SeoPage() {
             <div className="p-4 space-y-3">
               {/* Progress bar */}
               {isProcessing && (
-                <div className="rounded-[10px] border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-4 py-3">
+                <div className="rounded-[10px] border px-4 py-3" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Сбор результатов…</span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">{progressPercent}%</span>
@@ -639,8 +633,8 @@ export default function SeoPage() {
         )}
 
         {/* Last runs */}
-        <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
-          <h3 className="text-[14px] font-medium px-4 py-3 border-b border-gray-200 dark:border-gray-700" style={{ color: 'hsl(var(--text))' }}>
+        <div className="app-card-enhanced">
+          <h3 className="text-[14px] font-medium px-4 py-3 border-b" style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}>
             Последние SEO-запуски
           </h3>
           {runsLoading ? (
@@ -657,7 +651,7 @@ export default function SeoPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                  <tr className="border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
                     <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Дата/время</th>
                     <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Запрос</th>
                     <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Провайдер</th>
@@ -668,7 +662,7 @@ export default function SeoPage() {
                 </thead>
                 <tbody>
                   {recentRuns.map((r) => (
-                    <tr key={r.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                    <tr key={r.id} className="border-b hover:bg-saas-primary-weak dark:hover:bg-saas-primary-weak/20 transition-colors" style={{ borderColor: 'hsl(var(--border))' }}>
                       <td className="py-2 px-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
                       <td className="py-2 px-3 truncate max-w-[180px]" title={r.query} style={{ color: 'hsl(var(--text))' }}>{r.query}</td>
                       <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{r.search_provider}</td>

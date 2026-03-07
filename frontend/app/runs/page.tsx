@@ -451,7 +451,7 @@ export default function RunsHistoryPage() {
                 {filteredRuns.map((run) => (
                   <div
                     key={run.id}
-                    className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
+                    className="app-card-enhanced p-4"
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0 flex-1">
@@ -462,7 +462,7 @@ export default function RunsHistoryPage() {
                       </div>
                       {getStatusBadge(run.status)}
                     </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
                       <span className="text-sm text-gray-600 dark:text-gray-400">Результатов: <strong>{run.resultCount ?? 0}</strong></span>
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleOpen(run.id)} className="h-8 gap-1.5 rounded-[10px]">
@@ -474,7 +474,7 @@ export default function RunsHistoryPage() {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                           {openMenuId === run.id && (
-                            <div className="absolute right-0 top-full mt-1 py-1 rounded-[10px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-20 min-w-[160px]">
+                            <div className="absolute right-0 top-full mt-1 py-1 rounded-[10px] shadow-lg z-20 min-w-[160px]" style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}>
                               <button className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded-[8px] mx-1" onClick={(e) => handleExportCSV(run.id, e)}>
                                 <Download className="h-4 w-4" /> Скачать CSV
                               </button>

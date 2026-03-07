@@ -53,8 +53,8 @@ export default function SettingsPage() {
         <PageHeader breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация' }]} title="Конфигурация" />
 
         {/* SEO Block */}
-        <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">SEO</h2>
+        <div className="app-card-enhanced p-6">
+          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>SEO</h2>
           
           <div className="space-y-4">
             {/* Robots.txt */}
@@ -163,7 +163,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Apply Changes Button */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-6 pt-6 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
             <div className="flex gap-4">
               <Button
                 onClick={handleApplyChanges}
@@ -190,9 +190,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Провайдеры поиска */}
-        <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Провайдеры поиска</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <div className="app-card-enhanced p-6">
+          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>Провайдеры поиска</h2>
+          <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
             Настройка DuckDuckGo, Яндекс HTML/XML, Google HTML, SerpAPI: прокси, API-ключи, проверка подключения.
           </p>
           <Link href="/settings/providers">
@@ -203,9 +203,9 @@ export default function SettingsPage() {
         </div>
 
         {/* AI-ассистенты */}
-        <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">AI-ассистенты</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <div className="app-card-enhanced p-6">
+          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>AI-ассистенты</h2>
+          <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
             OpenAI, Anthropic, Google, Ollama и др.: настройка моделей для чата и vision (в т.ч. обход капчи).
           </p>
           <Link href="/settings/ai-assistants">
@@ -216,9 +216,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Обход капчи */}
-        <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Обход капчи</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <div className="app-card-enhanced p-6">
+          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>Обход капчи</h2>
+          <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
             AI Vision для картинок, 2captcha и Anti-captcha для reCAPTCHA. Выбор AI-ассистента, проверка подключения.
           </p>
           <Link href="/settings/captcha">
@@ -229,15 +229,15 @@ export default function SettingsPage() {
         </div>
 
         {/* Contacts Block */}
-        <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Контакты</h2>
-          <p className="text-gray-500 dark:text-gray-400">Скоро будет</p>
+        <div className="app-card-enhanced p-6">
+          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>Контакты</h2>
+          <p style={{ color: 'hsl(var(--muted))' }}>Скоро будет</p>
         </div>
 
         {/* Price Search Block */}
-        <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Поиск цен</h2>
-          <p className="text-gray-500 dark:text-gray-400">Скоро будет</p>
+        <div className="app-card-enhanced p-6">
+          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>Поиск цен</h2>
+          <p style={{ color: 'hsl(var(--muted))' }}>Скоро будет</p>
         </div>
       </div>
     </div>
