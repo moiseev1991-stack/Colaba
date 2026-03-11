@@ -4,15 +4,6 @@
 
 PROVIDER_REGISTRY = [
     {
-        "id": "duckduckgo",
-        "name": "DuckDuckGo",
-        "type": "free",
-        "description": "Бесплатный поиск, без ключа. Низкий риск блокировок.",
-        "settings_schema": [
-            {"key": "region", "label": "Регион", "type": "string", "required": False, "secret": False, "description": "Код региона (напр. ru-en)"},
-        ],
-    },
-    {
         "id": "yandex_html",
         "name": "Яндекс HTML",
         "type": "free",

@@ -2,6 +2,8 @@
 Celery tasks for background processing.
 """
 
+import asyncio
+
 from app.queue.celery_app import celery_app
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -72,7 +74,7 @@ async def _execute_search_async(search_id: int):
             from app.modules.searches.providers import fetch_search_results as provider_fetch
             import asyncio
 
-            provider_id = search.search_provider or "duckduckgo"
+            provider_id = search.search_provider or "yandex_xml"
             provider_config = await get_provider_config(provider_id, db)
 
             # Yandex geo-region from frontend config (lr= parameter for localized results)
@@ -281,14 +283,28 @@ def process_domain_task(search_id: int, domain: str, first_url: str):
     Sync wrapper for async.
     """
     import asyncio
-    
+    import time
+    import logging
+
+    logger = logging.getLogger(__name__)
+    start = time.monotonic()
+    logger.info(f"process_domain_task started domain={domain!r} search_id={search_id}")
+
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
-    return loop.run_until_complete(_process_domain_async(search_id, domain, first_url))
+
+    try:
+        result = loop.run_until_complete(_process_domain_async(search_id, domain, first_url))
+        duration = time.monotonic() - start
+        logger.info(f"process_domain_task finished domain={domain!r} search_id={search_id} in {duration:.2f}s")
+        return result
+    except Exception as e:
+        duration = time.monotonic() - start
+        logger.warning(f"process_domain_task failed domain={domain!r} search_id={search_id} in {duration:.2f}s: {e}")
+        raise
 
 
 async def _process_domain_async(search_id: int, domain: str, first_url: str):
@@ -300,28 +316,54 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
             .where(SearchResult.search_id == search_id, SearchResult.domain == domain)
         )
         domain_results = result.scalars().all()
-        
+
         if not domain_results:
             return {"error": "No results found for domain"}
-        
+
         try:
-            # 1. Mini-crawl domain with fallback
+            # 1. Mini-crawl domain with fallback (now includes SEO data), max 5 min per domain
+            import time
+            import logging
+            _logger = logging.getLogger(__name__)
+            crawl_start = time.monotonic()
             from app.modules.filters.crawler import crawl_domain_with_fallback
-            crawl_data = await crawl_domain_with_fallback(first_url, max_pages=20, timeout=30)
-            
+            try:
+                crawl_data = await asyncio.wait_for(
+                    crawl_domain_with_fallback(first_url, max_pages=10, timeout=20),
+                    timeout=300.0,
+                )
+            except asyncio.TimeoutError:
+                _logger.warning(f"crawl domain={domain!r} exceeded 5 min, saving partial result")
+                crawl_data = {
+                    "pages": [],
+                    "total_pages": 0,
+                    "contacts": {"phone": None, "email": None},
+                    "seo": {
+                        "score": 0,
+                        "issues": ["crawl_timeout"],
+                        "details": {"error": "crawl timeout (5 min)"},
+                    },
+                }
+            crawl_duration = time.monotonic() - crawl_start
+            pages = crawl_data.get("total_pages", 0)
+            _logger.info(f"crawl domain={domain!r} in {crawl_duration:.2f}s, pages={pages}")
+
             # 2. Extract contacts
             contacts = crawl_data.get("contacts", {})
             phone = contacts.get("phone")
             email = contacts.get("email")
-            
-            # 3. Initialize outreach variables
+
+            # 3. Extract SEO data from crawl
+            seo_info = crawl_data.get("seo", {})
+            seo_score = seo_info.get("score")
+            seo_issues = seo_info.get("issues", [])
+            seo_details = seo_info.get("details", {})
+
+            # 4. Initialize outreach variables
             outreach_subject = None
             outreach_text = None
-            
-            # 4. Determine contact status
-            # SEO audit should be run only via button (POST .../results/{id}/audit)
-            seo_score = None
-            seo_issues: list[str] = []
+
+            # 5. Determine contact status and generate outreach
             if phone or email:
                 contact_status = "found"
                 from app.modules.filters.outreach import generate_outreach_text
@@ -337,11 +379,15 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                 outreach_subject = None
                 outreach_text = None
 
-            # 5. Update all results for this domain (no audit in metadata)
+            # 6. Update all results for this domain with SEO data
             metadata = {
                 "crawl": {
                     "total_pages": crawl_data.get("total_pages", 0),
                     "pages": crawl_data.get("pages", []),
+                },
+                "audit": {
+                    "issues": seo_issues,
+                    "details": seo_details,
                 },
             }
 
@@ -353,18 +399,19 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                 res.outreach_subject = outreach_subject
                 res.outreach_text = outreach_text
                 res.extra_data = metadata
-            
+
             await db.commit()
-            
+
             return {
                 "domain": domain,
                 "contact_status": contact_status,
                 "seo_score": seo_score,
+                "seo_issues": seo_issues,
                 "phone": phone,
                 "email": email,
                 "results_updated": len(domain_results),
             }
-            
+
         except Exception as e:
             # Mark as failed
             for result in domain_results:

@@ -1,6 +1,6 @@
 # Настройки провайдеров поиска
 
-Единая страница и API для настройки всех поисковых провайдеров: DuckDuckGo, Yandex HTML, Google HTML, Yandex XML, SerpAPI. Конфиг хранится в БД с подстановкой значений из env при отсутствии в БД.
+Единая страница и API для настройки всех поисковых провайдеров: Yandex XML (по умолчанию), Yandex HTML, Google HTML, SerpAPI. DuckDuckGo удалён из реестра и UI. Конфиг хранится в БД с подстановкой значений из env при отсутствии в БД.
 
 ---
 
@@ -19,7 +19,7 @@
 | Поле | Тип | Описание |
 |------|-----|----------|
 | `id` | int | PK |
-| `provider_id` | str, unique | duckduckgo, yandex_html, google_html, yandex_xml, serpapi |
+| `provider_id` | str, unique | yandex_xml, yandex_html, google_html, serpapi |
 | `config` | JSONB | Ключи по `settings_schema`: region, use_proxy, proxy_url, proxy_list, use_mobile, folder_id, api_key, … |
 | `updated_at` | datetime | Время обновления |
 
@@ -43,10 +43,9 @@
 
 | provider_id   | type  | Поля settings_schema |
 |---------------|-------|----------------------|
-| duckduckgo    | free  | region (string, optional) |
+| yandex_xml    | paid  | folder_id (required), api_key (required, secret) — Yandex Cloud Search API |
 | yandex_html   | free  | use_proxy (bool), proxy_url (string), proxy_list (string), use_mobile (bool) |
 | google_html   | free  | use_proxy (bool), proxy_url (string), proxy_list (string) |
-| yandex_xml    | paid  | folder_id (required), api_key (required, secret) — Yandex Cloud Search API |
 | serpapi       | paid  | api_key (required, secret) |
 
 ---

@@ -11,8 +11,8 @@ class SearchCreate(BaseModel):
     """Schema for creating a search."""
     query: str = Field(..., min_length=1, max_length=500, description="Search query")
     search_provider: str = Field(
-        default="duckduckgo",
-        description="Search provider: 'duckduckgo' (бесплатный, без ключа), 'yandex_xml' (требует ключи), 'yandex_html' (парсинг HTML), 'google_html' (парсинг HTML), 'serpapi' (deprecated)"
+        default="yandex_xml",
+        description="Search provider: 'yandex_xml' (Yandex Cloud Search API, ключи), 'yandex_html' (парсинг HTML), 'google_html' (парсинг HTML), 'serpapi' (deprecated)"
     )
     num_results: int = Field(default=100, ge=1, le=100, description="Number of results (max 100)")
     config: Optional[Dict[str, Any]] = Field(default=None, description="Additional config")

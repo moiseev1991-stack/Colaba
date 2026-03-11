@@ -18,10 +18,9 @@ import { mapExtraDataToSeo, mapExtraDataToIssues } from '@/lib/searchResultMappi
 
 
 const PROVIDERS: Record<string, string> = {
-  duckduckgo: 'DuckDuckGo (бесплатно)',
+  yandex_xml: 'Яндекс XML (ключи)',
   yandex_html: 'Яндекс HTML (бесплатно)',
   google_html: 'Google HTML (бесплатно)',
-  yandex_xml: 'Яндекс XML (требует ключи)',
   serpapi: 'SerpAPI (deprecated)',
 };
 
@@ -63,7 +62,7 @@ export default function SeoPage() {
   const [keyword, setKeyword] = useState('');
   const [city, setCity] = useState('Москва');
   const [yandexRegionId, setYandexRegionId] = useState(213);
-  const [searchProvider, setSearchProvider] = useState('duckduckgo');
+  const [searchProvider, setSearchProvider] = useState('yandex_xml');
   const [advanced, setAdvanced] = useState<SeoAdvancedSettings>(() => getSeoAdvancedSettings());
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -263,7 +262,7 @@ export default function SeoPage() {
   const handleReset = () => {
     setKeyword('');
     setCity('Москва');
-    setSearchProvider('duckduckgo');
+    setSearchProvider('yandex_xml');
     setAdvanced(getSeoAdvancedSettings());
   };
 
@@ -360,10 +359,9 @@ export default function SeoPage() {
               <div className="w-[220px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
                 <Select value={searchProvider} onChange={(e) => setSearchProvider(e.target.value)} disabled={isLoading} className="w-full">
-                  <option value="duckduckgo">DuckDuckGo (бесплатно)</option>
+                  <option value="yandex_xml">Яндекс XML (ключи)</option>
                   <option value="yandex_html">Яндекс HTML (бесплатно)</option>
                   <option value="google_html">Google HTML (бесплатно)</option>
-                  <option value="yandex_xml">Яндекс XML (требует ключи)</option>
                   <option value="serpapi" disabled>SerpAPI (deprecated)</option>
                 </Select>
               </div>

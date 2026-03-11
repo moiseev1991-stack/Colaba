@@ -19,7 +19,7 @@ interface SearchCardProps {
 
 export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo', onModuleChange, isLoading = false }: SearchCardProps) {
   const [keyword, setKeyword] = useState('');
-  const [searchProvider, setSearchProvider] = useState('duckduckgo'); // По умолчанию DuckDuckGo (работает без ключей)
+  const [searchProvider, setSearchProvider] = useState('yandex_xml');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,10 +68,9 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Поисковая система:</span>
             <Select value={searchProvider} onChange={(e) => setSearchProvider(e.target.value)} disabled={isLoading} className="w-[200px] flex-shrink-0">
-              <option value="duckduckgo">DuckDuckGo (бесплатно)</option>
+              <option value="yandex_xml">Яндекс XML (ключи)</option>
               <option value="yandex_html">Яндекс HTML (бесплатно)</option>
               <option value="google_html">Google HTML (бесплатно)</option>
-              <option value="yandex_xml">Яндекс XML (требует ключи)</option>
               <option value="serpapi" disabled>SerpAPI (deprecated)</option>
             </Select>
           </div>

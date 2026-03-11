@@ -106,7 +106,7 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=4 -Q celery
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=8 -Q celery
 
   celery-worker-search:
     image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}

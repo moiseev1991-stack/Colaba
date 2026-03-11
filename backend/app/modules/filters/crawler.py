@@ -30,6 +30,154 @@ PHONE_PATTERNS = [
 EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
 
+async def check_robots_txt(client: httpx.AsyncClient, base_url: str) -> Dict[str, Any]:
+    """
+    Check robots.txt for SEO audit.
+
+    Returns:
+        Dict with robots_txt status, sitemap presence, and disallow status
+    """
+    parsed = urlparse(base_url)
+    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+
+    result = {
+        "robots_txt": "missing",
+        "sitemap_in_robots": False,
+        "disallow_all": False,
+        "robots_content": None,
+    }
+
+    try:
+        response = await client.get(robots_url, timeout=10.0)
+        if response.status_code == 200:
+            result["robots_txt"] = "exists"
+            content = response.text
+            result["robots_content"] = content[:500]  # Store first 500 chars
+
+            # Check for sitemap
+            if "Sitemap:" in content:
+                result["sitemap_in_robots"] = True
+
+            # Check if all pages are disallowed
+            if "User-agent: *" in content and "Disallow: /" in content:
+                result["disallow_all"] = True
+    except Exception as e:
+        logger.debug(f"Failed to fetch robots.txt for {base_url}: {e}")
+
+    return result
+
+
+def calculate_seo_score(seo_data: Dict[str, Any], pages_data: List[Dict[str, Any]]) -> tuple:
+    """
+    Calculate SEO score based on crawl data.
+
+    Args:
+        seo_data: SEO data from robots.txt check
+        pages_data: List of crawled pages with meta info
+
+    Returns:
+        Tuple of (score, issues_list, details_dict)
+    """
+    score = 100
+    issues = []
+    details = {}
+
+    # Robots.txt checks
+    if seo_data.get("robots_txt") == "missing":
+        score -= 10
+        issues.append("no_robots_txt")
+        details["robots_txt"] = "missing"
+    else:
+        details["robots_txt"] = "exists"
+
+    if seo_data.get("disallow_all"):
+        score -= 20
+        issues.append("robots_disallow_all")
+
+    if not seo_data.get("sitemap_in_robots"):
+        score -= 5
+        issues.append("no_sitemap_in_robots")
+
+    # Analyze pages for SEO issues
+    titles = []
+    descriptions = []
+    empty_titles = 0
+    empty_descriptions = 0
+    missing_h1 = 0
+    multiple_h1 = 0
+
+    for page in pages_data:
+        title = page.get("title")
+        desc = page.get("meta_description")
+        h1_count = page.get("h1_count", 0)
+
+        if not title or not title.strip():
+            empty_titles += 1
+        else:
+            titles.append(title.strip().lower())
+
+        if not desc or not desc.strip():
+            empty_descriptions += 1
+        else:
+            descriptions.append(desc.strip().lower())
+
+        if h1_count == 0:
+            missing_h1 += 1
+        elif h1_count > 1:
+            multiple_h1 += 1
+
+    # Calculate duplicates
+    title_duplicates = len(titles) - len(set(titles))
+    desc_duplicates = len(descriptions) - len(set(descriptions))
+
+    total_pages = len(pages_data) if pages_data else 1
+
+    # Score penalties for page issues
+    if empty_titles > 0:
+        penalty = min(15, empty_titles * 5)
+        score -= penalty
+        if empty_titles == total_pages:
+            issues.append("empty_meta_title")
+
+    if empty_descriptions > 0:
+        penalty = min(10, empty_descriptions * 3)
+        score -= penalty
+        if empty_descriptions == total_pages:
+            issues.append("empty_meta_description")
+
+    if missing_h1 > 0:
+        penalty = min(10, missing_h1 * 3)
+        score -= penalty
+        if missing_h1 == total_pages:
+            issues.append("no_h1")
+
+    if multiple_h1 > 0:
+        score -= 5
+        issues.append("multiple_h1")
+
+    # Store stats in details
+    details["title_stats"] = {
+        "empty": empty_titles,
+        "duplicates": title_duplicates,
+        "total": len(titles) + empty_titles,
+    }
+    details["desc_stats"] = {
+        "empty": empty_descriptions,
+        "duplicates": desc_duplicates,
+        "total": len(descriptions) + empty_descriptions,
+    }
+    details["h1_stats"] = {
+        "missing": missing_h1,
+        "multiple": multiple_h1,
+        "total": total_pages,
+    }
+
+    # Ensure score is between 0 and 100
+    score = max(0, min(100, score))
+
+    return score, issues, details
+
+
 async def fetch_page_with_retry(
     client: httpx.AsyncClient,
     url: str,
@@ -198,6 +346,14 @@ async def crawl_domain_with_fallback(
         "errors": [{"url": base_url, "error": "All crawl attempts failed"}],
         "errors_count": 1,
         "fallback_used": True,
+        "seo": {
+            "score": 0,
+            "issues": ["crawl_failed"],
+            "details": {"error": "All crawl attempts failed"},
+            "robots_txt": "unknown",
+            "sitemap_in_robots": False,
+            "disallow_all": False,
+        },
     }
 
 
@@ -210,19 +366,20 @@ async def crawl_domain(
 ) -> Dict[str, Any]:
     """
     Crawl domain up to max_pages using BFS with retry logic and error handling.
-    
+    Also collects SEO data for automatic audit.
+
     Args:
         base_url: Starting URL to crawl
         max_pages: Maximum number of pages to crawl
         timeout: Request timeout in seconds
         max_retries: Maximum retry attempts per page
         use_cache: Whether to use cached results if available
-    
+
     Returns:
-        Dict with pages data, contacts, and metadata
+        Dict with pages data, contacts, SEO data, and metadata
     """
     base_domain = urlparse(base_url).netloc
-    
+
     # Try to get from cache first
     if use_cache:
         try:
@@ -233,17 +390,18 @@ async def crawl_domain(
                 return cached_data
         except Exception as e:
             logger.warning(f"Failed to check cache for {base_domain}: {e}")
-    
+
     visited: Set[str] = set()
     to_visit: List[str] = [base_url]
     pages_data: List[Dict[str, Any]] = []
     contacts: Dict[str, Any] = {"phone": None, "email": None}
     errors: List[Dict[str, Any]] = []
-    
+    seo_data: Dict[str, Any] = {}
+
     # Configure httpx client with better defaults
     limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
-    timeout_config = httpx.Timeout(timeout, connect=10.0)
-    
+    timeout_config = httpx.Timeout(timeout, connect=5.0)
+
     async with httpx.AsyncClient(
         timeout=timeout_config,
         follow_redirects=True,
@@ -252,32 +410,35 @@ async def crawl_domain(
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
     ) as client:
+        # Check robots.txt for SEO audit (only once at the start)
+        seo_data = await check_robots_txt(client, base_url)
+
         while to_visit and len(visited) < max_pages:
             url = to_visit.pop(0)
-            
+
             if url in visited:
                 continue
-            
+
             # Fetch page with retry
             response = await fetch_page_with_retry(client, url, max_retries=max_retries)
-            
+
             if response is None:
                 errors.append({
                     "url": url,
                     "error": "Failed to fetch after retries"
                 })
                 continue
-            
+
             try:
                 visited.add(url)
                 content = response.text
                 soup = BeautifulSoup(content, 'html.parser')
-                
+
                 # Extract meta tags
                 title = soup.find('title')
                 meta_desc = soup.find('meta', attrs={'name': 'description'})
                 h1_tags = soup.find_all('h1')
-                
+
                 page_data = {
                     "url": url,
                     "status_code": response.status_code,
@@ -287,25 +448,25 @@ async def crawl_domain(
                     "h1_text": h1_tags[0].get_text().strip() if h1_tags else None,
                 }
                 pages_data.append(page_data)
-                
+
                 # Extract contacts (priority: phone > email)
                 if not contacts["phone"]:
                     phone = extract_phone(content)
                     if phone:
                         contacts["phone"] = phone
-                
+
                 if not contacts["email"]:
                     email = extract_email(content)
                     if email:
                         contacts["email"] = email
-                
+
                 # Find internal links
                 if len(visited) < max_pages:
                     links = extract_internal_links(soup, base_url, base_domain)
                     for link in links:
                         if link not in visited and link not in to_visit:
                             to_visit.append(link)
-                            
+
             except Exception as e:
                 logger.error(f"Error processing page {url}: {e}")
                 errors.append({
@@ -313,7 +474,10 @@ async def crawl_domain(
                     "error": str(e)
                 })
                 continue
-    
+
+    # Calculate SEO score from collected data
+    seo_score, seo_issues, seo_details = calculate_seo_score(seo_data, pages_data)
+
     result = {
         "pages": pages_data,
         "total_pages": len(pages_data),
@@ -321,8 +485,16 @@ async def crawl_domain(
         "base_domain": base_domain,
         "errors": errors,
         "errors_count": len(errors),
+        "seo": {
+            "score": seo_score,
+            "issues": seo_issues,
+            "details": seo_details,
+            "robots_txt": seo_data.get("robots_txt"),
+            "sitemap_in_robots": seo_data.get("sitemap_in_robots"),
+            "disallow_all": seo_data.get("disallow_all"),
+        },
     }
-    
+
     # Cache successful results (if we got at least some pages)
     if use_cache and len(pages_data) > 0:
         try:
@@ -330,7 +502,7 @@ async def crawl_domain(
             await set_cached_crawl(base_domain, result)
         except Exception as e:
             logger.warning(f"Failed to cache crawl results for {base_domain}: {e}")
-    
+
     return result
 
 

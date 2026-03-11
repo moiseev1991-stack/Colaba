@@ -89,7 +89,7 @@ services:
       - backend
     networks:
       - leadgen-network
-    command: celery -A app.queue.celery_app worker -Q search_queue,celery --loglevel=info
+    command: celery -A app.queue.celery_app worker -Q search_queue,celery --loglevel=info --concurrency=6
 
   # Frontend (Next.js 14) — production build (next build + next start)
   frontend:

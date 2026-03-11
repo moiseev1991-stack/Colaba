@@ -4,42 +4,7 @@
 
 ## Доступные провайдеры
 
-### 1. DuckDuckGo (по умолчанию) ✅ Бесплатный, без API ключа
-
-**Преимущества:**
-- ✅ Полностью бесплатный
-- ✅ Не требует API ключа
-- ✅ Работает сразу после установки библиотеки
-- ✅ Нет лимитов запросов
-- ✅ Приватный поиск (не отслеживает пользователей)
-
-**Недостатки:**
-- ⚠️ Может быть медленнее чем платные API
-- ⚠️ Результаты могут отличаться от Яндекс/Google
-
-**Использование:**
-```bash
-# Создать поиск с DuckDuckGo (по умолчанию)
-curl -X POST http://localhost:8000/api/v1/searches \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "query": "ремонт окон Москва",
-    "num_results": 50,
-    "search_provider": "duckduckgo"
-  }'
-```
-
-**Установка:**
-Библиотека уже добавлена в `requirements.txt`.
-
-- **Локально:** `pip install -r requirements.txt`
-- **Docker:** пересоберите образы backend и celery-worker (в них ставится `pip install -r requirements.txt` при сборке):
-  ```bash
-  docker compose up -d --build
-  ```
-  Без пересборки пакет `duckduckgo-search` в контейнерах не будет, и поиск через DuckDuckGo выдаст ошибку.
-
-### 2. Яндекс XML API (опционально) ⚠️ Требует ключи
+### 1. Яндекс XML API (по умолчанию) ⚠️ Требует ключи
 
 **Преимущества:**
 - ✅ Официальный API Яндекса
@@ -71,7 +36,7 @@ curl -X POST http://localhost:8000/api/v1/searches \
 
 **Подробнее:** См. `docs/guides/YANDEX_XML_SETUP.md`
 
-### 3. Яндекс HTML (бесплатный, парсинг) ✅ Новый
+### 2. Яндекс HTML (бесплатный, парсинг) ✅
 
 **Преимущества:**
 - ✅ Полностью бесплатный
@@ -104,7 +69,7 @@ curl -X POST http://localhost:8000/api/v1/searches \
 
 **Настройка:** конфиг (прокси, use_mobile) — через страницу [Настройки провайдеров](PROVIDERS_SETTINGS.md) (`/settings/providers`) или переменные USE_PROXY, PROXY_URL, PROXY_LIST в .env.
 
-### 4. Google HTML (бесплатный, парсинг) ✅ Новый
+### 3. Google HTML (бесплатный, парсинг) ✅
 
 **Преимущества:**
 - ✅ Полностью бесплатный
@@ -137,67 +102,57 @@ curl -X POST http://localhost:8000/api/v1/searches \
 
 **Настройка:** конфиг (прокси) — через [Настройки провайдеров](PROVIDERS_SETTINGS.md) (`/settings/providers`) или USE_PROXY, PROXY_URL, PROXY_LIST в .env.
 
-### 5. SerpAPI (deprecated) ❌ Устарел
+### 4. SerpAPI (deprecated) ❌ Устарел
 
-**Статус:** Устарел, не рекомендуется к использованию. Используйте DuckDuckGo, Яндекс XML или HTML провайдеры.
+**Статус:** Устарел, не рекомендуется. Используйте Яндекс XML или HTML провайдеры.
+
+**Примечание:** DuckDuckGo удалён из реестра провайдеров и из UI; в интерфейсе и API по умолчанию используется **Yandex XML**.
 
 ## Выбор провайдера
 
 ### По умолчанию
 
-Если не указать `search_provider`, используется **DuckDuckGo** (бесплатный).
+Если не указать `search_provider`, используется **yandex_xml** (Яндекс XML API). Настройте ключи в `/settings/providers` или в `.env` (см. [YANDEX_XML_SETUP.md](YANDEX_XML_SETUP.md)).
 
 ### При создании поиска
 
-Вы можете указать провайдер в запросе:
+Укажите провайдер в запросе:
 
 ```json
 {
   "query": "ремонт окон Москва",
   "num_results": 50,
-  "search_provider": "duckduckgo"  // или "yandex_xml"
+  "search_provider": "yandex_xml"
 }
 ```
 
 ### Доступные значения
 
-- `"duckduckgo"` - DuckDuckGo (бесплатный, по умолчанию)
-- `"yandex_xml"` - Яндекс XML API (требует ключи)
-- `"yandex_html"` - Яндекс HTML парсинг (бесплатный, новый)
-- `"google_html"` - Google HTML парсинг (бесплатный, новый)
-- `"serpapi"` - SerpAPI (deprecated, не рекомендуется)
+- `"yandex_xml"` — Яндекс XML API (по умолчанию, требует ключи)
+- `"yandex_html"` — Яндекс HTML парсинг (бесплатный)
+- `"google_html"` — Google HTML парсинг (бесплатный)
+- `"serpapi"` — SerpAPI (deprecated)
 
 ## Сравнение провайдеров
 
-| Провайдер | Бесплатный | Требует ключи | Лимиты | Регион |
-|-----------|------------|---------------|--------|--------|
-| DuckDuckGo | ✅ Да | ❌ Нет | Нет | ru-RU, en-US и др. |
-| Яндекс XML | ⚠️ Зависит от тарифа | ✅ Да | Да | Россия (регионы) |
-| SerpAPI | ❌ Нет | ✅ Да | Да | Разные |
+| Провайдер     | Бесплатный | Требует ключи | Лимиты | Регион           |
+|---------------|------------|---------------|--------|------------------|
+| Яндекс XML    | ⚠️ Зависит от тарифа | ✅ Да | Да     | Россия (регионы) |
+| Яндекс HTML   | ✅ Да      | ❌ Нет        | Риск блокировок | Россия |
+| Google HTML   | ✅ Да      | ❌ Нет        | Риск блокировок | Разные  |
 
 ## Рекомендации
 
-### Для разработки и тестирования
-- Используйте **DuckDuckGo** - работает сразу, бесплатно, без настройки, низкий риск блокировок
+### Для production (результаты Яндекса)
+- **Приоритет 1:** **Яндекс XML API** — по умолчанию, стабильный, без риска блокировок. Настройте ключи в [YANDEX_XML_SETUP.md](YANDEX_XML_SETUP.md).
+- **Приоритет 2:** **Яндекс HTML** — бесплатный, возможны блокировки; настройте прокси на `/settings/providers`.
 
-### Для production (если нужны результаты Яндекса)
-- **Приоритет 1:** Используйте **Яндекс XML API** - официальный API, стабильный, без риска блокировок
-- **Приоритет 2:** Используйте **Яндекс HTML** - бесплатный, но может быть заблокирован при частых запросах
-- Получите ключи на https://yandex.ru/dev/xml/ для XML API
-- Настройте прокси для HTML провайдера (опционально)
-
-### Для production (если нужны результаты Google)
-- Используйте **Google HTML** - бесплатный, но высокий риск блокировок
-- **Обязательно** настройте прокси для снижения риска блокировок
-- Рекомендуется использовать с fallback на DuckDuckGo
-
-### Для production (универсальное решение)
-- Используйте **DuckDuckGo** как основной провайдер - бесплатно, без лимитов, работает стабильно
-- Настройте fallback на Яндекс HTML или Google HTML для разнообразия результатов
+### Для production (результаты Google)
+- **Google HTML** — бесплатный, высокий риск блокировок; обязательно настройте прокси.
 
 ## Примеры использования
 
-### Пример 1: Поиск с DuckDuckGo (по умолчанию)
+### Пример 1: Поиск по умолчанию (Yandex XML)
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/searches \
@@ -205,7 +160,7 @@ curl -X POST http://localhost:8000/api/v1/searches \
   -d '{"query":"ремонт окон Москва","num_results":50}'
 ```
 
-### Пример 2: Поиск с Яндекс XML API
+### Пример 2: Поиск с Яндекс HTML
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/searches \
@@ -213,54 +168,35 @@ curl -X POST http://localhost:8000/api/v1/searches \
   -d '{
     "query": "ремонт окон Москва",
     "num_results": 50,
-    "search_provider": "yandex_xml"
+    "search_provider": "yandex_html"
   }'
 ```
 
 ### Пример 3: Frontend
 
 ```typescript
-// Создание поиска с DuckDuckGo
 const response = await fetch('/api/v1/searches', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     query: 'ремонт окон Москва',
     num_results: 50,
-    search_provider: 'duckduckgo'  // опционально, по умолчанию
+    search_provider: 'yandex_xml'  // по умолчанию, можно не указывать
   })
 });
 ```
 
 ## Troubleshooting
 
-### Проблема: "Библиотека duckduckgo-search не установлена"
-
-**Решение:**
-```bash
-pip install duckduckgo-search
-# или
-pip install -r requirements.txt
-```
-
-### Проблема: DuckDuckGo возвращает мало результатов
-
-**Причина:** DuckDuckGo может ограничивать количество результатов
-
-**Решение:**
-- Уменьшите `num_results` (например, до 20-30)
-- Или используйте Яндекс XML API для большего количества результатов
-
 ### Проблема: Яндекс XML возвращает ошибку
 
 **Решение:**
-1. Проверьте ключи в `.env`
-2. Проверьте лимиты вашего тарифа
-3. Используйте DuckDuckGo как fallback
+1. Проверьте ключи в `/settings/providers` или в `.env` (YANDEX_XML_FOLDER_ID, YANDEX_XML_KEY).
+2. Проверьте лимиты тарифа на https://yandex.ru/dev/xml/
+3. Для бесплатного варианта без ключей используйте `yandex_html` (с прокси при необходимости)
 
 ## Дополнительная информация
 
-- DuckDuckGo библиотека: https://github.com/deedy5/duckduckgo_search
 - Яндекс XML API: https://yandex.ru/dev/xml/
 - Настройка Яндекс XML: `docs/guides/YANDEX_XML_SETUP.md`
 - HTML провайдеры (детали): `docs/guides/HTML_SEARCH_PROVIDERS.md`

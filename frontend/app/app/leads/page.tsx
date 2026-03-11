@@ -41,7 +41,7 @@ export default function LeadsPage() {
   const router = useRouter();
   const [keyword, setKeyword] = useState('');
   const [city, setCity] = useState('Москва');
-  const [provider, setProvider] = useState('duckduckgo');
+  const [provider, setProvider] = useState('yandex_xml');
   const [depth, setDepth] = useState(50);
   const [filterPhone, setFilterPhone] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -136,10 +136,9 @@ export default function LeadsPage() {
               <div className="w-[220px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
                 <Select value={provider} onChange={e => setProvider(e.target.value)} disabled={isLoading} className="w-full">
-                  <option value="duckduckgo">DuckDuckGo (бесплатно)</option>
+                  <option value="yandex_xml">Яндекс XML (ключи)</option>
                   <option value="yandex_html">Яндекс HTML (бесплатно)</option>
                   <option value="google_html">Google HTML (бесплатно)</option>
-                  <option value="yandex_xml">Яндекс XML (ключи)</option>
                 </Select>
               </div>
             </div>

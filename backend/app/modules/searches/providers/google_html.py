@@ -66,7 +66,7 @@ async def fetch_search_results(
                 if page_num == 0:
                     # Для первой страницы: 0 результатов = блокировка/капча → raise для fallback на DuckDuckGo
                     logger.warning(f"No results on first page for query: {query} (blocked or HTML changed)")
-                    raise ValueError("Google HTML: no results on first page (likely blocked or captcha). Use duckduckgo.")
+                    raise ValueError("Google HTML: no results on first page (likely blocked or captcha). Try yandex_html or yandex_xml.")
                 else:
                     break
             
