@@ -37,8 +37,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const viewMode: ViewMode = 'compact';
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>(null);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortField, setSortField] = useState<SortField>('score');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [showMobileActions, setShowMobileActions] = useState(false);
   const mobileActionsRef = useRef<HTMLDivElement>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -161,7 +161,20 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         const comparison = a.domain.localeCompare(b.domain);
         return sortOrder === 'asc' ? comparison : -comparison;
       } else if (sortField === 'score') {
-        return sortOrder === 'asc' ? a.score - b.score : b.score - a.score;
+        // Обработанные (status !== 'processing' и есть seo) — выше, необработанные — в конце
+        const aProcessed = a.status !== 'processing' && a.seo;
+        const bProcessed = b.status !== 'processing' && b.seo;
+        
+        if (aProcessed && !bProcessed) return -1;
+        if (!aProcessed && bProcessed) return 1;
+        
+        // Среди обработанных — по score (asc: меньше = лучше = выше)
+        if (aProcessed && bProcessed) {
+          return sortOrder === 'asc' ? a.score - b.score : b.score - a.score;
+        }
+        
+        // Среди необработанных — по domain
+        return a.domain.localeCompare(b.domain);
       }
       return 0;
     });
@@ -941,7 +954,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                     >
                                       <ExternalLink className="h-3.5 w-3.5" />
                                     </Button>
-                                    {runId && (
+                                    {runId && !row.seo && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1064,7 +1077,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                     <Button variant="ghost" size="icon" onClick={() => window.open(`https://${row.domain}`, '_blank')} className="h-7 w-7" title="Открыть">
                                       <ExternalLink className="h-3.5 w-3.5" />
                                     </Button>
-                                    {runId && (
+                                    {runId && !row.seo && (
                                       <Button variant="ghost" size="icon" onClick={() => handleRunAudit(row)} className="h-7 w-7" title="SEO-аудит">
                                         <FileSearch className="h-3.5 w-3.5" />
                                       </Button>
@@ -1305,7 +1318,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       <ExternalLink className="h-3 w-3" />
                       Open
                     </Button>
-                    {runId && (
+                    {runId && !row.seo && (
                       <Button variant="outline" size="sm" onClick={() => handleRunAudit(row)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs" title="SEO-аудит">
                         <FileSearch className="h-3 w-3" />
                       </Button>

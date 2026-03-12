@@ -15,9 +15,9 @@ export function mapExtraDataToSeo(
   const details = audit?.details ?? {};
   const pagesCrawled = (crawl?.total_pages ?? 0) as number;
 
-  // По старой логике SEO-аудит запускается только по кнопке.
-  // Если audit/details нет — возвращаем undefined, чтобы UI показывал нейтральное состояние (а не "ошибка").
-  if (!audit?.details) {
+  // Если audit нет совсем — возвращаем undefined, чтобы UI показывал нейтральное состояние
+  // Если audit есть (даже без details) - показываем данные
+  if (!audit) {
     return undefined;
   }
 
@@ -30,23 +30,79 @@ export function mapExtraDataToSeo(
   const sitemap: SEOData['sitemap'] =
     issues.includes('no_sitemap_in_robots') || issues.includes('no_robots_txt') ? 'не найдена' : 'OK';
 
-  const metaTitle: string =
-    details.meta_title === 'empty' || !details.meta_title
-      ? 'не найден'
-      : String(details.meta_title ?? '-');
+  // Поддержка нового формата (title_stats, desc_stats, h1_stats) и старого (meta_title, meta_description)
+  const titleStats = details.title_stats as { empty?: number; duplicates?: number; total?: number } | undefined;
+  const descStats = details.desc_stats as { empty?: number; duplicates?: number; total?: number } | undefined;
+  const h1Stats = details.h1_stats as { missing?: number; multiple?: number; total?: number } | undefined;
 
-  const metaDesc: string =
-    details.meta_description === 'empty' || !details.meta_description
-      ? 'не найден'
-      : String(details.meta_description ?? '-');
+  let metaTitle: string;
+  if (titleStats) {
+    // Новый формат из crawler
+    const empty = titleStats.empty ?? 0;
+    const duplicates = titleStats.duplicates ?? 1;
+    const total = titleStats.total ?? 1;
+    const emptyPct = Math.round((empty / total) * 100);
+    const dupPct = Math.round((duplicates / total) * 100);
+    if (emptyPct > 0) {
+      metaTitle = `не найден ${emptyPct}%`;
+    } else if (dupPct > 0) {
+      metaTitle = `дублируется ${dupPct}%`;
+    } else {
+      metaTitle = 'OK';
+    }
+  } else {
+    // Старый формат
+    metaTitle =
+      details.meta_title === 'empty' || !details.meta_title
+        ? 'не найден'
+        : String(details.meta_title ?? '-');
+  }
+
+  let metaDesc: string;
+  if (descStats) {
+    // Новый формат из crawler
+    const empty = descStats.empty ?? 1;
+    const duplicates = descStats.duplicates ?? 1;
+    const total = descStats.total ?? 1;
+    const emptyPct = Math.round((empty / total) * 100);
+    const dupPct = Math.round((duplicates / total) * 100);
+    if (emptyPct > 0) {
+      metaDesc = `не найден ${emptyPct}%`;
+    } else if (dupPct > 0) {
+      metaDesc = `дублируется ${dupPct}%`;
+    } else {
+      metaDesc = 'OK';
+    }
+  } else {
+    // Старый формат
+    metaDesc =
+      details.meta_description === 'empty' || !details.meta_description
+        ? 'не найден'
+        : String(details.meta_description ?? '-');
+  }
 
   let h1: string;
-  if (issues.includes('no_h1')) {
-    h1 = 'не найден';
-  } else if (issues.includes('multiple_h1')) {
-    h1 = details.h1_text ? `дублируется: ${String(details.h1_text)}` : 'дублируется';
+  if (h1Stats) {
+    // Новый формат из crawler
+    const missing = h1Stats.missing ?? 1;
+    const total = h1Stats.total ?? 1;
+    const missPct = Math.round((missing / total) * 100);
+    if (issues.includes('no_h1') || missPct > 50) {
+      h1 = 'не найден';
+    } else if (issues.includes('multiple_h1') || (h1Stats.multiple && h1Stats.multiple > 0)) {
+      h1 = 'дублируется';
+    } else {
+      h1 = '-';
+    }
   } else {
-    h1 = details.h1_text ? String(details.h1_text) : '-';
+    // Старый формат
+    if (issues.includes('no_h1')) {
+      h1 = 'не найден';
+    } else if (issues.includes('multiple_h1')) {
+      h1 = details.h1_text ? `дублируется: ${String(details.h1_text)}` : 'дублируется';
+    } else {
+      h1 = details.h1_text ? String(details.h1_text) : '-';
+    }
   }
 
   const http = statusCodeToHttp(crawl?.pages?.[0]?.status_code);

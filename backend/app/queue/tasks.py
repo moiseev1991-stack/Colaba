@@ -192,8 +192,9 @@ async def _execute_search_async(search_id: int):
                         "Яндекс/Google часто блокируют запросы с серверов. Включите прокси в настройках провайдера или попробуйте позже."
                     )
                 
-                # Save results (excluding blacklisted)
+                # Save results immediately (excluding blacklisted) - commit after each for real-time updates
                 saved_count = 0
+                unique_domains = {}
                 for item in results_data:
                     domain = item.get("domain", "")
                     if domain and is_blacklisted(domain, all_blacklist):
@@ -209,20 +210,17 @@ async def _execute_search_async(search_id: int):
                     )
                     db.add(result)
                     saved_count += 1
+                    # Track unique domains
+                    if domain and domain not in unique_domains:
+                        unique_domains[domain] = item["url"]
+                    # Commit immediately for real-time updates
+                    await db.commit()
                 
                 # Update search status
                 search.status = "completed"
                 search.result_count = saved_count
                 search.finished_at = datetime.utcnow()
                 await db.commit()
-                
-                # Track unique domains for other providers
-                unique_domains = {}
-                for item in results_data:
-                    domain = item.get("domain", "")
-                    if domain and not is_blacklisted(domain, all_blacklist):
-                        if domain not in unique_domains:
-                            unique_domains[domain] = item["url"]
             
             # Update search status (for yandex_xml this was already set, but ensure it's completed)
             if provider_id == "yandex_xml":

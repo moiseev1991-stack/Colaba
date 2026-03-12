@@ -142,7 +142,11 @@ export default function SeoPage() {
         const countChanged = searchData.result_count !== lastCountRef.current;
         const statusChanged = searchData.status !== lastStatusRef.current;
         const auditActive = Date.now() < auditUntilRef.current;
-        const needsResults = countChanged || statusChanged || auditActive || lastCountRef.current === -1;
+        const isProcessing = searchData.status === 'processing' || searchData.status === 'pending';
+        
+        // Always fetch results while processing to see real-time SEO updates
+        // Otherwise only fetch when count/status changes
+        const needsResults = countChanged || statusChanged || auditActive || lastCountRef.current === -1 || isProcessing;
 
         if (needsResults) {
           const resultsData = await getSearchResults(activeRunId);
