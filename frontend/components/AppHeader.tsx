@@ -3,42 +3,19 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Moon, Sun, User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles } from 'lucide-react';
-import { getTheme, setTheme } from '@/lib/storage';
+import { User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles } from 'lucide-react';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
-import type { Theme } from '@/lib/types';
-import type { ModuleId } from '@/lib/ModuleContext';
-
-const MODULES: { id: ModuleId; label: string }[] = [
-  { id: 'seo', label: 'SEO' },
-  { id: 'leads', label: 'Поиск лидов' },
-  { id: 'tenders', label: 'Госзакупки' },
-];
-
-function getModuleFromPath(pathname: string): ModuleId | null {
-  if (pathname === '/dashboard') return null;
-  if (pathname.startsWith('/seo')) return 'seo';
-  if (pathname.startsWith('/leads')) return 'leads';
-  if (pathname.startsWith('/tenders')) return 'tenders';
-  if (pathname.startsWith('/app/seo') || pathname.startsWith('/runs') || pathname.startsWith('/settings')) return 'seo';
-  if (pathname.startsWith('/app/leads')) return 'leads';
-  if (pathname.startsWith('/app/gos') || pathname.startsWith('/app/tenders')) return 'tenders';
-  return null;
-}
 
 export function AppHeader() {
-  const [theme, setThemeState] = useState<Theme>('dark');
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const currentModule = pathname ? getModuleFromPath(pathname) : null;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setThemeState(getTheme());
       checkAuth();
     }
   }, []);
@@ -74,12 +51,6 @@ export function AppHeader() {
     } else setUserEmail(null);
   };
 
-  const toggleTheme = () => {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    setThemeState(next);
-  };
-
   const handleLogout = async () => {
     await tokenStorage.clearTokens();
     setUserEmail(null);
@@ -87,34 +58,22 @@ export function AppHeader() {
     router.push('/auth/login');
   };
 
-  const goToModule = (id: ModuleId) => {
-    const routes: Record<ModuleId, string> = {
-      seo: '/dashboard',
-      leads: '/app/leads',
-      tenders: '/app/gos',
-    };
-    router.push(routes[id]);
-  };
-
   const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
-  const navItemClass = (active: boolean) =>
-    `flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium transition-colors ${focusClass} ${
-      active ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))]'
-    }`;
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center justify-between px-6 border-b overflow-visible relative z-20"
-      style={{ 
-        backgroundColor: 'hsl(var(--nav-bg) / 0.95)', 
+      className="flex h-14 shrink-0 items-center justify-between px-3 md:px-6 border-b overflow-visible relative z-20"
+      style={{
+        backgroundColor: 'hsl(var(--nav-bg) / 0.95)',
         borderColor: 'hsl(var(--border))',
         backdropFilter: 'blur(12px)',
       }}
     >
-      <div className="flex items-center gap-3 shrink-0">
+      {/* Left: Logo */}
+      <div className="flex items-center gap-2 shrink-0">
         <Link href="/dashboard" className="flex items-center gap-2 group" aria-label="SpinLid">
-          <div 
-            className="flex h-8 w-8 items-center justify-center rounded-[8px] transition-all group-hover:scale-105 overflow-hidden" 
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] transition-all group-hover:scale-105 overflow-hidden shrink-0"
             style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)' }}
             aria-hidden
           >
@@ -126,55 +85,38 @@ export function AppHeader() {
         </Link>
       </div>
 
-      <nav className="flex items-center gap-2" role="tablist">
-        {MODULES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            role="tab"
-            aria-selected={currentModule === m.id}
-            onClick={() => goToModule(m.id)}
-            className={navItemClass(currentModule === m.id)}
-            style={{
-              color: currentModule === m.id ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
+      {/* Center: Module tabs — desktop only */}
+      <nav className="hidden md:flex items-center gap-2" role="tablist">
+        {/* Rendered by MobileModuleTabs on mobile; desktop tabs stay here */}
+        <DesktopModuleTabs pathname={pathname} />
       </nav>
 
-      <div className="flex items-center gap-2 shrink-0">
-        <Link 
-          href="/#pricing" 
-          className="flex items-center gap-2 h-9 px-4 rounded-[8px] text-[14px] font-semibold transition-all hover:scale-105"
-          style={{ 
-            background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', 
+      {/* Right: actions */}
+      <div className="flex items-center gap-1 md:gap-2 shrink-0">
+        {/* Купить подписку — icon + text on desktop, icon only on mobile */}
+        <Link
+          href="/#pricing"
+          className="flex items-center gap-2 h-9 px-2 md:px-4 rounded-[8px] text-[14px] font-semibold transition-all hover:scale-105"
+          style={{
+            background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
             color: 'white',
-            boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)'
+            boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
           }}
         >
-          <Sparkles className="h-4 w-4" /> Купить подписку
+          <Sparkles className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline">Купить подписку</span>
         </Link>
-        <Link href="/monitor" className={navItemClass(pathname === '/monitor')} style={{ color: 'hsl(var(--nav-text))' }}>
+
+        {/* Request Monitor — desktop only */}
+        <Link
+          href="/monitor"
+          className={`hidden md:flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass} ${pathname === '/monitor' ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : ''}`}
+          style={{ color: pathname === '/monitor' ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))' }}
+        >
           <Activity className="h-4 w-4" /> Request Monitor
         </Link>
-        <Link href="/payment" className={navItemClass(pathname === '/payment')} style={{ color: 'hsl(var(--nav-text))' }}>
-          <CreditCard className="h-4 w-4" /> Оплата
-        </Link>
-        <Link href="/settings" className={navItemClass(pathname?.startsWith('/settings'))} style={{ color: 'hsl(var(--nav-text))' }}>
-          <Settings className="h-4 w-4" /> Конфигурация
-        </Link>
 
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
-          className={`inline-flex h-8 w-8 min-w-0 items-center justify-center rounded-[8px] hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-          aria-label="Тема"
-        >
-          {theme === 'dark' ? <Sun className="h-4 w-4" style={{ color: 'hsl(var(--nav-text))' }} /> : <Moon className="h-4 w-4" style={{ color: 'hsl(var(--nav-text))' }} />}
-        </button>
-
+        {/* User profile dropdown */}
         <div className="relative overflow-visible" ref={menuRef}>
           <button
             type="button"
@@ -205,6 +147,22 @@ export function AppHeader() {
               >
                 <UserIcon className="h-4 w-4" /> Профиль
               </Link>
+              <Link
+                href="/payment"
+                onClick={() => setMenuOpen(false)}
+                className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                <CreditCard className="h-4 w-4" /> Оплата
+              </Link>
+              <Link
+                href="/settings"
+                onClick={() => setMenuOpen(false)}
+                className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                <Settings className="h-4 w-4" /> Конфигурация
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -218,5 +176,65 @@ export function AppHeader() {
         </div>
       </div>
     </header>
+  );
+}
+
+// Desktop-only module tabs (used inside the header nav)
+import { useRouter as useRouterInner } from 'next/navigation';
+import type { ModuleId } from '@/lib/ModuleContext';
+
+const MODULES: { id: ModuleId; label: string }[] = [
+  { id: 'seo', label: 'SEO' },
+  { id: 'leads', label: 'Поиск лидов' },
+  { id: 'tenders', label: 'Госзакупки' },
+];
+
+function getModuleFromPath(pathname: string | null): ModuleId | null {
+  if (!pathname) return null;
+  if (pathname === '/dashboard') return null;
+  if (pathname.startsWith('/seo')) return 'seo';
+  if (pathname.startsWith('/leads')) return 'leads';
+  if (pathname.startsWith('/tenders')) return 'tenders';
+  if (pathname.startsWith('/app/seo') || pathname.startsWith('/runs') || pathname.startsWith('/settings')) return 'seo';
+  if (pathname.startsWith('/app/leads')) return 'leads';
+  if (pathname.startsWith('/app/gos') || pathname.startsWith('/app/tenders')) return 'tenders';
+  return null;
+}
+
+function DesktopModuleTabs({ pathname }: { pathname: string | null }) {
+  const router = useRouterInner();
+  const currentModule = getModuleFromPath(pathname);
+  const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
+
+  const goToModule = (id: ModuleId) => {
+    const routes: Record<ModuleId, string> = {
+      seo: '/dashboard',
+      leads: '/app/leads',
+      tenders: '/app/gos',
+    };
+    router.push(routes[id]);
+  };
+
+  return (
+    <>
+      {MODULES.map((m) => {
+        const active = currentModule === m.id;
+        return (
+          <button
+            key={m.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => goToModule(m.id)}
+            className={`flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium transition-colors ${focusClass} ${
+              active ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))]'
+            }`}
+            style={{ color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))' }}
+          >
+            {m.label}
+          </button>
+        );
+      })}
+    </>
   );
 }
