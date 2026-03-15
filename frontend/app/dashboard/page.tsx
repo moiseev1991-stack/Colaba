@@ -226,13 +226,13 @@ export default function MainDashboardPage() {
     <div className="mx-auto max-w-6xl px-6 py-8 relative z-10">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8 app-reveal">
         <h1 className="app-page-title">Дашборд</h1>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Модуль:</span>
+        <div className="flex flex-nowrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Модуль:</span>
             <select
               value={module}
               onChange={(e) => setModule(e.target.value as DashboardModule)}
-              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-3 py-2 text-[14px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="all">Все</option>
               <option value="seo">SEO</option>
@@ -240,12 +240,12 @@ export default function MainDashboardPage() {
               <option value="tenders">Госзакупки</option>
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400 shrink-0" />
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as DashboardPeriod)}
-              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-3 py-2 text-[14px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="day">День</option>
               <option value="week">Неделя</option>

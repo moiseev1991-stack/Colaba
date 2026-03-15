@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles } from 'lucide-react';
+import { User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles, TrendingUp, Users, Landmark } from 'lucide-react';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
 
@@ -62,7 +62,7 @@ export function AppHeader() {
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center justify-between px-3 md:px-6 border-b overflow-visible relative z-20"
+      className="flex h-14 shrink-0 items-center justify-between px-3 md:px-6 border-b-0 md:border-b overflow-visible relative z-20"
       style={{
         backgroundColor: 'hsl(var(--nav-bg) / 0.95)',
         borderColor: 'hsl(var(--border))',
@@ -86,10 +86,7 @@ export function AppHeader() {
       </div>
 
       {/* Center: Module tabs — desktop only */}
-      <nav className="hidden md:flex items-center gap-2" role="tablist">
-        {/* Rendered by MobileModuleTabs on mobile; desktop tabs stay here */}
-        <DesktopModuleTabs pathname={pathname} />
-      </nav>
+      <DesktopModuleTabs pathname={pathname} />
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
@@ -183,15 +180,15 @@ export function AppHeader() {
 import { useRouter as useRouterInner } from 'next/navigation';
 import type { ModuleId } from '@/lib/ModuleContext';
 
-const MODULES: { id: ModuleId; label: string }[] = [
-  { id: 'seo', label: 'SEO' },
-  { id: 'leads', label: 'Поиск лидов' },
-  { id: 'tenders', label: 'Госзакупки' },
+const MODULES: { id: ModuleId; label: string; icon: React.ElementType }[] = [
+  { id: 'seo', label: 'SEO', icon: TrendingUp },
+  { id: 'leads', label: 'Поиск лидов', icon: Users },
+  { id: 'tenders', label: 'Госзакупки', icon: Landmark },
 ];
 
 function getModuleFromPath(pathname: string | null): ModuleId | null {
   if (!pathname) return null;
-  if (pathname === '/dashboard') return null;
+  if (pathname === '/dashboard') return 'seo';
   if (pathname.startsWith('/seo')) return 'seo';
   if (pathname.startsWith('/leads')) return 'leads';
   if (pathname.startsWith('/tenders')) return 'tenders';
@@ -216,8 +213,16 @@ function DesktopModuleTabs({ pathname }: { pathname: string | null }) {
   };
 
   return (
-    <>
-      {MODULES.map((m) => {
+    <nav
+      className="hidden md:flex items-stretch self-stretch overflow-hidden"
+      role="tablist"
+      style={{
+        borderLeft: '1px solid hsl(var(--border))',
+        borderRight: '1px solid hsl(var(--border))',
+      }}
+    >
+      {MODULES.map((m, index) => {
+        const Icon = m.icon;
         const active = currentModule === m.id;
         return (
           <button
@@ -226,15 +231,20 @@ function DesktopModuleTabs({ pathname }: { pathname: string | null }) {
             role="tab"
             aria-selected={active}
             onClick={() => goToModule(m.id)}
-            className={`flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium transition-colors ${focusClass} ${
-              active ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))]'
+            className={`flex items-center gap-2 px-5 text-[13px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--nav-focus-ring))] ${
+              active ? 'font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))]'
             }`}
-            style={{ color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))' }}
+            style={{
+              color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
+              background: active ? 'hsl(var(--nav-active-bg))' : undefined,
+              borderRight: index < MODULES.length - 1 ? '1px solid hsl(var(--border))' : undefined,
+            }}
           >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
             {m.label}
           </button>
         );
       })}
-    </>
+    </nav>
   );
 }

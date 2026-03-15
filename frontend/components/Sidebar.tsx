@@ -111,7 +111,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col shrink-0 border-r relative overflow-hidden transition-[width] duration-200 ease-out"
+      className="app-sidebar flex flex-col shrink-0 border-r relative overflow-hidden transition-[width] duration-200 ease-out"
       style={{
         width: effectiveCollapsed ? 72 : 260,
         backgroundColor: 'hsl(var(--surface) / 0.97)',
@@ -127,7 +127,7 @@ export function Sidebar() {
       />
 
       {/* Header row: collapse button — desktop only */}
-      <div className="flex h-14 items-center justify-end px-3 border-b shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
+      <div className="app-sidebar-header flex h-14 items-center justify-end px-3 border-b shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
         {/* Only visible on desktop */}
         {!isMobile && (
           <button
@@ -177,6 +177,7 @@ export function Sidebar() {
                   >
                     {active && (
                       <span
+                        data-active-bar="true"
                         className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
                         style={{ background: 'var(--grad-accent)' }}
                         aria-hidden="true"

@@ -1,4 +1,5 @@
 import './globals.css';
+import './mobile-overrides.css';
 import { AppShell } from '@/components/AppShell';
 
 export default function RootLayout({

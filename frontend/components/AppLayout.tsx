@@ -89,13 +89,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="flex flex-1 overflow-hidden relative z-10">
           <Sidebar />
-          <main className="flex-1 overflow-auto">
+          <main className="app-main flex-1 overflow-auto">
             {children}
           </main>
         </div>
 
         <footer
-          className="shrink-0 py-3 px-4 text-center text-[12px] relative z-10 backdrop-blur-sm"
+          className="app-footer hidden md:block shrink-0 py-3 px-4 text-center text-[12px] relative z-10 backdrop-blur-sm"
           style={{
             color: 'hsl(var(--muted))',
             borderTop: '1px solid hsl(var(--border))',
