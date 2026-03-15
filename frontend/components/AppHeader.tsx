@@ -201,7 +201,6 @@ function getModuleFromPath(pathname: string | null): ModuleId | null {
 function DesktopModuleTabs({ pathname }: { pathname: string | null }) {
   const router = useRouterInner();
   const currentModule = getModuleFromPath(pathname);
-  const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
 
   const goToModule = (id: ModuleId) => {
     const routes: Record<ModuleId, string> = {
