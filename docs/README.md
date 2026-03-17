@@ -19,6 +19,7 @@
 - [PROVIDERS_SETTINGS.md](guides/PROVIDERS_SETTINGS.md) - Настройки провайдеров поиска (страница, API, get_provider_config)
 - [AI_ASSISTANTS.md](guides/AI_ASSISTANTS.md) - AI-ассистенты (CRUD, реестр, chat/vision)
 - [CAPTCHA_BYPASS.md](guides/CAPTCHA_BYPASS.md) - Обход капчи (AI Vision, 2captcha, anticaptcha)
+- [ADMIN_PANEL.md](guides/ADMIN_PANEL.md) - Админ-панель (SQLAdmin, разделы, i18n, человекочитаемое отображение)
 
 ### Развертывание
 - [DEPLOYMENT.md](deployment/DEPLOYMENT.md) - Документация по развертыванию

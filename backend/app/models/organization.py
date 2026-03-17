@@ -45,3 +45,9 @@ class Organization(Base):
         lazy="dynamic"
     )
     searches = relationship("Search", back_populates="organization", cascade="all, delete-orphan")
+
+    def __str__(self):
+        return f"#{self.id} - {self.name}"
+
+    def __repr__(self):
+        return self.__str__()

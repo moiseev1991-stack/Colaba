@@ -20,6 +20,12 @@ class Filter(Base):
     config = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+    def __str__(self):
+        return f"#{self.id} - {self.name} ({self.filter_type})"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class BlacklistDomain(Base):
     """Blacklist domain model."""
@@ -32,3 +38,9 @@ class BlacklistDomain(Base):
 
     # Relationships
     user = relationship("User", back_populates="blacklist_domains")
+
+    def __str__(self):
+        return f"#{self.id} - {self.domain}"
+
+    def __repr__(self):
+        return self.__str__()

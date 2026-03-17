@@ -21,9 +21,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager для инициализации и очистки ресурсов."""
     # Startup: Инициализация базы данных
     await init_db()
-    
+
     yield
-    
+
     # Shutdown: Очистка ресурсов (если нужно)
     pass
 
@@ -119,6 +119,11 @@ async def readiness_check() -> JSONResponse:
 
 # Подключение API routers
 app.include_router(api_router, prefix="/api/v1")
+
+
+# Setup SQLAdmin (must be after app creation)
+from app.admin import setup_admin
+setup_admin(app)
 
 
 if __name__ == "__main__":

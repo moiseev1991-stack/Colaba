@@ -11,6 +11,10 @@ alembic==1.12.1
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
 
+# Admin Panel
+sqladmin>=0.19.0
+babel>=2.14.0
+
 # Redis & Queue
 redis==5.0.1
 celery==5.3.4
@@ -21,6 +25,9 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.6
 email-validator==2.1.0
+
+# OAuth
+fastapi-sso>=0.21.0
 
 # HTTP Client (>=0.27 для yandex-cloud-ml-sdk)
 httpx>=0.27,<1

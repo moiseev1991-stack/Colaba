@@ -27,3 +27,10 @@ class AiAssistant(Base):
     supports_vision = Column(Boolean, default=False, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __str__(self):
+        default_marker = " [DEFAULT]" if self.is_default else ""
+        return f"#{self.id} - {self.name} ({self.provider_type}/{self.model}){default_marker}"
+
+    def __repr__(self):
+        return self.__str__()

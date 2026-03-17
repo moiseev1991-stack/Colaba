@@ -32,6 +32,13 @@ class Search(Base):
     organization = relationship("Organization", back_populates="searches")
     results = relationship("SearchResult", back_populates="search", cascade="all, delete-orphan")
 
+    def __str__(self):
+        query_preview = self.query[:50] + "..." if len(self.query) > 50 else self.query
+        return f"#{self.id} - {query_preview} [{self.status}]"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class SearchResult(Base):
     """Search result model."""
@@ -56,3 +63,10 @@ class SearchResult(Base):
 
     # Relationships
     search = relationship("Search", back_populates="results")
+
+    def __str__(self):
+        title_preview = self.title[:40] + "..." if len(self.title) > 40 else self.title
+        return f"#{self.id} - {title_preview}"
+
+    def __repr__(self):
+        return self.__str__()

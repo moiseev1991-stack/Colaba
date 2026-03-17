@@ -1,0 +1,346 @@
+# Russian translations for Colaba Admin
+# Copyright (C) 2026 Colaba
+# This file is distributed under the same license as the Colaba project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Colaba Admin 1.0\n"
+"Report-Msgid-Bugs-To: admin@colaba.com\n"
+"POT-Creation-Date: 2026-03-18 00:00+0300\n"
+"PO-Revision-Date: 2026-03-18 00:00+0300\n"
+"Last-Translator: Colaba Team\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+# Navigation
+msgid "Home"
+msgstr "Главная"
+
+msgid "Admin"
+msgstr "Админка"
+
+msgid "Logout"
+msgstr "Выйти"
+
+# Model names
+msgid "User"
+msgid_plural "Users"
+msgstr[0] "Пользователь"
+msgstr[1] "Пользователя"
+msgstr[2] "Пользователей"
+
+msgid "Organization"
+msgid_plural "Organizations"
+msgstr[0] "Организация"
+msgstr[1] "Организации"
+msgstr[2] "Организаций"
+
+msgid "Search"
+msgid_plural "Searches"
+msgstr[0] "Поиск"
+msgstr[1] "Поиска"
+msgstr[2] "Поисков"
+
+msgid "Search Result"
+msgid_plural "Search Results"
+msgstr[0] "Результат поиска"
+msgstr[1] "Результата поиска"
+msgstr[2] "Результатов поиска"
+
+msgid "Blacklist Domain"
+msgid_plural "Blacklist Domains"
+msgstr[0] "Домен в чёрном списке"
+msgstr[1] "Домена в чёрном списке"
+msgstr[2] "Доменов в чёрном списке"
+
+msgid "Social Account"
+msgid_plural "Social Accounts"
+msgstr[0] "Социальный аккаунт"
+msgstr[1] "Социальных аккаунта"
+msgstr[2] "Социальных аккаунтов"
+
+msgid "Deployment"
+msgid_plural "Deployments"
+msgstr[0] "Деплоймент"
+msgstr[1] "Деплоймента"
+msgstr[2] "Деплойментов"
+
+msgid "Search Provider Config"
+msgid_plural "Search Provider Configs"
+msgstr[0] "Конфигурация провайдера"
+msgstr[1] "Конфигурации провайдеров"
+msgstr[2] "Конфигураций провайдеров"
+
+msgid "AI Assistant"
+msgid_plural "AI Assistants"
+msgstr[0] "AI-ассистент"
+msgstr[1] "AI-ассистента"
+msgstr[2] "AI-ассистентов"
+
+msgid "Captcha Bypass Config"
+msgid_plural "Captcha Bypass Configs"
+msgstr[0] "Конфигурация обхода капчи"
+msgstr[1] "Конфигурации обхода капчи"
+msgstr[2] "Конфигураций обхода капчи"
+
+# Actions
+msgid "Create"
+msgstr "Создать"
+
+msgid "Edit"
+msgstr "Редактировать"
+
+msgid "Delete"
+msgstr "Удалить"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "View"
+msgstr "Просмотр"
+
+msgid "List"
+msgstr "Список"
+
+msgid "Details"
+msgstr "Детали"
+
+msgid "Search..."
+msgstr "Поиск..."
+
+msgid "Filter"
+msgstr "Фильтр"
+
+msgid "Export"
+msgstr "Экспорт"
+
+msgid "Actions"
+msgstr "Действия"
+
+# Status values
+msgid "Active"
+msgstr "Активен"
+
+msgid "Inactive"
+msgstr "Неактивен"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "Pending"
+msgstr "Ожидание"
+
+msgid "Running"
+msgstr "Выполняется"
+
+msgid "Completed"
+msgstr "Завершено"
+
+msgid "Failed"
+msgstr "Ошибка"
+
+msgid "Cancelled"
+msgstr "Отменено"
+
+msgid "Success"
+msgstr "Успешно"
+
+msgid "Rolled Back"
+msgstr "Откачено"
+
+# Search status
+msgid "Found"
+msgstr "Найдено"
+
+msgid "No Contacts"
+msgstr "Нет контактов"
+
+# Field labels
+msgid "Email"
+msgstr "Email"
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Domain"
+msgstr "Домен"
+
+msgid "Query"
+msgstr "Запрос"
+
+msgid "Status"
+msgstr "Статус"
+
+msgid "Results"
+msgstr "Результаты"
+
+msgid "Provider"
+msgstr "Провайдер"
+
+msgid "Created At"
+msgstr "Создано"
+
+msgid "Updated At"
+msgstr "Обновлено"
+
+msgid "Deployed At"
+msgstr "Развёрнуто"
+
+msgid "Deployed By"
+msgstr "Развёрнул"
+
+msgid "Version"
+msgstr "Версия"
+
+msgid "Environment"
+msgstr "Окружение"
+
+msgid "Git SHA"
+msgstr "Git SHA"
+
+msgid "Changelog"
+msgstr "Список изменений"
+
+msgid "Superuser"
+msgstr "Суперпользователь"
+
+msgid "Default"
+msgstr "По умолчанию"
+
+msgid "Vision"
+msgstr "Vision"
+
+msgid "SEO Score"
+msgstr "SEO оценка"
+
+msgid "Contacts"
+msgstr "Контакты"
+
+msgid "Phone"
+msgstr "Телефон"
+
+msgid "Added By"
+msgstr "Добавил"
+
+msgid "Display Name"
+msgstr "Отображаемое имя"
+
+msgid "Avatar URL"
+msgstr "URL аватара"
+
+msgid "Configuration"
+msgstr "Конфигурация"
+
+msgid "AI Assistant"
+msgstr "AI-ассистент"
+
+msgid "External Services"
+msgstr "Внешние сервисы"
+
+# Environment names
+msgid "Staging"
+msgstr "Staging"
+
+msgid "Production"
+msgstr "Production"
+
+# Provider names
+msgid "Google"
+msgstr "Google"
+
+msgid "Yandex"
+msgstr "Яндекс"
+
+msgid "VK"
+msgstr "ВКонтакте"
+
+msgid "Telegram"
+msgstr "Telegram"
+
+msgid "DuckDuckGo"
+msgstr "DuckDuckGo"
+
+msgid "SerpAPI"
+msgstr "SerpAPI"
+
+msgid "OpenAI"
+msgstr "OpenAI"
+
+msgid "Anthropic"
+msgstr "Anthropic"
+
+msgid "Ollama"
+msgstr "Ollama"
+
+msgid "Groq"
+msgstr "Groq"
+
+msgid "Mistral"
+msgstr "Mistral"
+
+# Messages
+msgid "Are you sure you want to delete this item?"
+msgstr "Вы уверены, что хотите удалить этот элемент?"
+
+msgid "Item deleted successfully."
+msgstr "Элемент успешно удалён."
+
+msgid "Item created successfully."
+msgstr "Элемент успешно создан."
+
+msgid "Item updated successfully."
+msgstr "Элемент успешно обновлён."
+
+msgid "No items found."
+msgstr "Элементы не найдены."
+
+msgid "None configured"
+msgstr "Не настроено"
+
+msgid "None enabled"
+msgstr "Не включено"
+
+msgid "Not set"
+msgstr "Не задано"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Russian"
+msgstr "Русский"
+
+msgid "English"
+msgstr "Английский"
+
+# Pagination
+msgid "Previous"
+msgstr "Назад"
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Page"
+msgstr "Страница"
+
+msgid "of"
+msgstr "из"
+
+msgid "Show"
+msgstr "Показать"
+
+msgid "entries"
+msgstr "записей"

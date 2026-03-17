@@ -19,3 +19,9 @@ class SearchProviderConfig(Base):
     provider_id = Column(String(64), unique=True, nullable=False, index=True)
     config = Column(JSONB, default=dict, nullable=False)  # use_proxy, proxy_url, api_key, use_mobile, ...
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __str__(self):
+        return f"#{self.id} - {self.provider_id}"
+
+    def __repr__(self):
+        return self.__str__()

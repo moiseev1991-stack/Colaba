@@ -55,6 +55,7 @@ Colaba/
 
 **Где размещать:**
 - ✅ Все Python файлы → `backend/app/`
+- ✅ Админ-панель (SQLAdmin, views, i18n) → `backend/app/admin/` (см. [ADMIN_PANEL.md](ADMIN_PANEL.md))
 - ✅ Конфигурация Alembic → `backend/alembic/`
 - ✅ Тесты → `backend/tests/`
 - ✅ Dockerfile → `backend/Dockerfile.dev`

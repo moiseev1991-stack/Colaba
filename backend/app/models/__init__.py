@@ -7,6 +7,8 @@ from app.models.organization import Organization, OrganizationRole, user_organiz
 from app.models.search_provider_config import SearchProviderConfig
 from app.models.ai_assistant import AiAssistant
 from app.models.captcha_bypass_config import CaptchaBypassConfig
+from app.models.deployment import Deployment, DeploymentEnvironment, DeploymentStatus
+from app.models.social_account import SocialAccount, OAuthProvider
 
 __all__ = [
     "User",
@@ -20,4 +22,9 @@ __all__ = [
     "SearchProviderConfig",
     "AiAssistant",
     "CaptchaBypassConfig",
+    "Deployment",
+    "DeploymentEnvironment",
+    "DeploymentStatus",
+    "SocialAccount",
+    "OAuthProvider",
 ]

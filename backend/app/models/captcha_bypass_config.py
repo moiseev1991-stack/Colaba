@@ -24,3 +24,9 @@ class CaptchaBypassConfig(Base):
     ai_assistant_id = Column(Integer, ForeignKey("ai_assistant.id", ondelete="SET NULL"), nullable=True, index=True)
     external_services = Column(JSONB, default=dict, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __str__(self):
+        return f"#{self.id} - Captcha Config"
+
+    def __repr__(self):
+        return self.__str__()
