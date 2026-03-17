@@ -28,6 +28,8 @@ from app.modules.dashboard.router import router as dashboard_router
 from app.modules.outreach.router import router as outreach_router
 from app.modules.tenders.router import router as tenders_router
 from app.modules.payments.router import router as payments_router
+from app.modules.deployments.router import router as deployments_router
+from app.modules.auth.oauth_router import router as oauth_router
 
 api_router.include_router(auth_router)
 api_router.include_router(dashboard_router)
@@ -41,3 +43,5 @@ api_router.include_router(monitor_router)
 api_router.include_router(outreach_router)
 api_router.include_router(tenders_router)
 api_router.include_router(payments_router)
+api_router.include_router(deployments_router)
+api_router.include_router(oauth_router)

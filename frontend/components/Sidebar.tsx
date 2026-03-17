@@ -19,6 +19,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { ModuleId } from '@/lib/ModuleContext';
 import { getTheme, setTheme } from '@/lib/storage';
 import type { Theme } from '@/lib/types';
+import { VersionBadge } from './VersionBadge';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -218,6 +219,13 @@ export function Sidebar() {
             <span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span>
           )}
         </button>
+        
+        {/* Version badge - only visible when not collapsed */}
+        {!effectiveCollapsed && (
+          <div className="mt-2 px-3">
+            <VersionBadge />
+          </div>
+        )}
       </div>
     </aside>
   );

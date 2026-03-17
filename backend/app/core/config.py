@@ -90,6 +90,18 @@ class Settings(BaseSettings):
     # Telegram Bot for outreach sending
     TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token for outreach")
 
+    # OAuth Providers
+    GOOGLE_CLIENT_ID: str = Field(default="", description="Google OAuth Client ID")
+    GOOGLE_CLIENT_SECRET: str = Field(default="", description="Google OAuth Client Secret")
+    YANDEX_CLIENT_ID: str = Field(default="", description="Yandex OAuth Client ID")
+    YANDEX_CLIENT_SECRET: str = Field(default="", description="Yandex OAuth Client Secret")
+    VK_CLIENT_ID: str = Field(default="", description="VK ID Client ID")
+    VK_CLIENT_SECRET: str = Field(default="", description="VK ID Client Secret")
+    # Telegram Login Widget uses bot token above
+
+    # OAuth Frontend URL (for redirects)
+    OAUTH_FRONTEND_URL: str = Field(default="http://localhost:4000", description="Frontend URL for OAuth callbacks")
+
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 

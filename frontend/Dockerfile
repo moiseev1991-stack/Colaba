@@ -1,4 +1,14 @@
-FROM node:20-slim
+# Build arguments for version tracking
+ARG APP_VERSION=0.0.0-dev
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
+
+FROM node:20-slim AS builder
+
+# Re-declare args in builder stage
+ARG APP_VERSION
+ARG GIT_SHA
+ARG BUILD_TIME
 
 WORKDIR /frontend
 
@@ -9,6 +19,10 @@ COPY . .
 
 # Production build: no eval() in webpack bundles, middleware works in Edge Runtime
 ENV NODE_ENV=production
+ENV APP_VERSION=$APP_VERSION
+ENV GIT_SHA=$GIT_SHA
+ENV BUILD_TIME=$BUILD_TIME
+
 RUN npx next build
 
 EXPOSE 3000

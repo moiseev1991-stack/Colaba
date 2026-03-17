@@ -25,6 +25,12 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: false,
   },
+  // Version information from environment (injected during build)
+  env: {
+    NEXT_PUBLIC_APP_VERSION: process.env.npm_package_version || process.env.APP_VERSION || '0.0.0-dev',
+    NEXT_PUBLIC_GIT_SHA: process.env.GIT_SHA || process.env.GITHUB_SHA || 'local',
+    NEXT_PUBLIC_BUILD_TIME: process.env.BUILD_TIME || new Date().toISOString(),
+  },
 };
 
 module.exports = nextConfig;

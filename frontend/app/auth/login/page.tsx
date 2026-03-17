@@ -3,10 +3,17 @@
 import { useState } from 'react';
 import { apiClient, tokenStorage } from '@/client';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { OAuthButton } from '@/components/OAuthButton';
+import { GoogleIcon } from '@/components/OAuthIcons';
+import { YandexIcon } from '@/components/OAuthIcons';
+import { VKIcon } from '@/components/OAuthIcons';
+import { TelegramIcon } from '@/components/OAuthIcons';
 
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOAuthLoading] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,7 +31,7 @@ export default function LoginPage() {
         password,
       });
 
-      // Tokens are now set as httpOnly cookies by the server-side proxy.
+      // Tokens are now set as httpOnly cookies by server-side proxy.
       // setTokens() sets the auth_present sentinel cookie so JS can detect auth state.
       tokenStorage.setTokens('', '');
       const next = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') : null;
@@ -47,6 +54,12 @@ export default function LoginPage() {
     }
   };
 
+  const handleOAuthLogin = (provider: string) => {
+    setOAuthLoading(provider);
+    // Redirect to backend OAuth endpoint
+    window.location.href = `/api/v1/auth/oauth/${provider}`;
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'hsl(var(--bg))' }}>
       <div className="w-full max-w-[440px]">
@@ -57,13 +70,62 @@ export default function LoginPage() {
             </div>
             <span className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
           </div>
-          <h2 className="text-center text-2xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
+          <h2 className="text-center text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>
             Вход в систему
           </h2>
           <p className="mt-2 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
-            Регистрация — скоро
+            Войдите или создайте аккаунт
           </p>
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+
+          {/* OAuth Buttons */}
+          <div className="mt-6 space-y-3">
+            <OAuthButton
+              provider="google"
+              label="Войти через Google"
+              icon={<GoogleIcon />}
+              onClick={() => handleOAuthLogin('google')}
+              disabled={oauthLoading !== null}
+              loading={oauthLoading === 'google'}
+            />
+            <OAuthButton
+              provider="yandex"
+              label="Войти через Яндекс"
+              icon={<YandexIcon />}
+              onClick={() => handleOAuthLogin('yandex')}
+              disabled={oauthLoading !== null}
+              loading={oauthLoading === 'yandex'}
+            />
+            <OAuthButton
+              provider="vk"
+              label="Войти через VK"
+              icon={<VKIcon />}
+              onClick={() => handleOAuthLogin('vk')}
+              disabled={oauthLoading !== null}
+              loading={oauthLoading === 'vk'}
+            />
+            <OAuthButton
+              provider="telegram"
+              label="Войти через Telegram"
+              icon={<TelegramIcon />}
+              onClick={() => handleOAuthLogin('telegram')}
+              disabled={oauthLoading !== null}
+              loading={oauthLoading === 'telegram'}
+            />
+          </div>
+
+          <div className="relative mt-6 mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t" style={{ borderColor: 'hsl(var(--border))' }}></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white dark:bg-gray-800" style={{ color: 'hsl(var(--muted))' }}>
+                или через email
+              </span>
+            </div>
+          </div>
+
+          {/* Email/Password Form */}
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
               <div className="rounded-[6px] border-2 border-red-500 bg-red-50 p-4 dark:border-red-400 dark:bg-red-950/50" role="alert">
                 <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
@@ -93,14 +155,24 @@ export default function LoginPage() {
                 className="rounded-t-none"
               />
             </div>
-            <button
+            <Button
               type="submit"
               disabled={loading}
               className="ui-btn ui-btn-primary w-full disabled:opacity-70 disabled:cursor-wait"
             >
               {loading ? 'Подключение...' : 'Войти'}
-            </button>
+            </Button>
           </form>
+
+          <div className="mt-6 text-center">
+            <a
+              href="/auth/register"
+              className="text-sm font-medium hover:underline"
+              style={{ color: 'hsl(var(--primary))' }}
+            >
+              Нет аккаунта? Зарегистрируйтесь
+            </a>
+          </div>
         </div>
       </div>
     </div>

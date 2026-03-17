@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install -g semantic-release
+          cd frontend && npm ci
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+  # После релиза запускаем build и deploy
+  build-and-deploy:
+    needs: release
+    runs-on: ubuntu-latest
+    if: needs.release.outputs.new_release_published == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./frontend/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "git_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Log deployment info
+        run: |
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Git SHA: ${{ steps.version.outputs.git_sha }}"
+          echo "Deployment would be recorded to database here"
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      git_sha: ${{ steps.version.outputs.git_sha }}

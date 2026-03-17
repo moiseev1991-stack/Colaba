@@ -1,6 +1,6 @@
 {
   "name": "leadgen-constructor-frontend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev -p 4000",
@@ -9,10 +9,7 @@
     "start:fix": "node server-fix-html.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "dependencies": {
     "@tanstack/react-query": "5.17.0",
@@ -33,10 +30,7 @@
     "autoprefixer": "10.4.16",
     "eslint": "8.56.0",
     "eslint-config-next": "14.2.20",
-    "jest": "^30.2.0",
-    "jest-environment-jsdom": "^30.2.0",
-    "postcss": "8.4.32",
-    "tailwindcss": "3.4.0",
+    "tailwindcss": "^3.4.0",
     "typescript": "5.3.3"
   }
 }

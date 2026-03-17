@@ -93,6 +93,7 @@ export default function SeoPage() {
   const lastCountRef = useRef<number>(-1);
   const lastStatusRef = useRef<string>('');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasProcessingRef = useRef<boolean>(false);
 
   const loadRecent = useCallback(async () => {
     setRunsLoading(true);
@@ -122,6 +123,7 @@ export default function SeoPage() {
     processingStartRef.current = null;
     lastCountRef.current = -1;
     lastStatusRef.current = '';
+    hasProcessingRef.current = false;
     setActivePollTimeout(false);
     setActiveLoading(true);
     setActiveSearch(null);
@@ -145,8 +147,8 @@ export default function SeoPage() {
         const isProcessing = searchData.status === 'processing' || searchData.status === 'pending';
         
         // Always fetch results while processing to see real-time SEO updates
-        // Otherwise only fetch when count/status changes
-        const needsResults = countChanged || statusChanged || auditActive || lastCountRef.current === -1 || isProcessing;
+        // Also fetch if domains are still being processed (contact_status not set yet)
+        const needsResults = countChanged || statusChanged || auditActive || lastCountRef.current === -1 || isProcessing || hasProcessingRef.current;
 
         if (needsResults) {
           const resultsData = await getSearchResults(activeRunId);
@@ -173,19 +175,26 @@ export default function SeoPage() {
               urlFromSearch: r.url ?? null,
             };
           });
+          
+          // Check if any domains are still being processed
+          const hasProcessingDomains = rows.some(r => r.status === 'processing');
+          hasProcessingRef.current = hasProcessingDomains;
+          
           setActiveResults(rows);
           setActiveLastUpdated(new Date());
           lastCountRef.current = searchData.result_count;
           lastStatusRef.current = searchData.status;
         }
 
-        if ((searchData.status === 'completed' || searchData.status === 'failed') && Date.now() >= auditUntilRef.current) {
+        // Stop polling only if search is done AND no domains are processing AND audit grace period is over
+        if ((searchData.status === 'completed' || searchData.status === 'failed') && !hasProcessingRef.current && Date.now() >= auditUntilRef.current) {
           // Refresh the recent runs list when a run finishes
           loadRecent();
           return;
         }
 
-        if (searchData.status === 'pending' || searchData.status === 'processing') {
+        // Continue polling if search is in progress OR domains are still being processed
+        if (searchData.status === 'pending' || searchData.status === 'processing' || hasProcessingRef.current) {
           if (processingStartRef.current === null) processingStartRef.current = Date.now();
           const elapsed = Date.now() - (processingStartRef.current ?? 0);
           if (elapsed > POLL_TIMEOUT_MS) {
@@ -686,6 +695,7 @@ export default function SeoPage() {
                             activeRef.current = false;
                             if (timeoutRef.current) clearTimeout(timeoutRef.current);
                             auditUntilRef.current = 0;
+                            hasProcessingRef.current = false;
                             setActiveRunId(r.id);
                             setTimeout(() => {
                               resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });

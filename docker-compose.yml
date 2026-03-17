@@ -96,6 +96,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.0}
+        GIT_SHA: ${GIT_SHA:-local}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     container_name: leadgen-frontend
     ports:
       - "4000:3000"

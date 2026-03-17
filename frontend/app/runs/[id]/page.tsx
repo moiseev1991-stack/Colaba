@@ -43,6 +43,7 @@ export default function RunResultsPage() {
   const auditUntilRef = useRef<number>(0);
   const lastCountRef = useRef<number>(-1);    // last known result_count
   const lastStatusRef = useRef<string>('');   // last known status
+  const lastProcessedCountRef = useRef<number>(-1); // last known count of processed results
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Reset on runId change
@@ -51,6 +52,7 @@ export default function RunResultsPage() {
     processingStartRef.current = null;
     lastCountRef.current = -1;
     lastStatusRef.current = '';
+    lastProcessedCountRef.current = -1;
     setPollTimeout(false);
     setLoading(true);
     setSearch(null);
@@ -86,7 +88,9 @@ export default function RunResultsPage() {
         const auditActive = Date.now() < auditUntilRef.current;
         const needsResults = countChanged || statusChanged || auditActive || lastCountRef.current === -1;
 
-        if (needsResults) {
+        // Always fetch results when search is completed to check for background processing
+        // This ensures we continue polling while process_domain_task is running
+        if (needsResults || searchData.status === 'completed') {
           const resultsData = await getSearchResults(searchId);
           if (!activeRef.current) return;
 
@@ -115,11 +119,29 @@ export default function RunResultsPage() {
           setLastUpdated(new Date());
           lastCountRef.current = searchData.result_count;
           lastStatusRef.current = searchData.status;
-        }
 
-        // Stop when finished
-        if ((searchData.status === 'completed' || searchData.status === 'failed') && !auditActive) {
-          return; // no reschedule
+          // Check if there are still unprocessed results (no SEO data yet)
+          // process_domain_task runs in background after search completes
+          // Check fresh rows, not stale closure results
+          const processedCount = rows.filter((r) => r.status !== 'processing').length;
+          const hasUnprocessed = processedCount < rows.length;
+
+          // Stop when finished AND all results have been processed by background tasks
+          // Also stop if processed count hasn't changed (all done)
+          if ((searchData.status === 'completed' || searchData.status === 'failed') && !auditActive && !hasUnprocessed) {
+            return; // no reschedule - everything is processed
+          }
+
+          // Optimization: stop polling if processed count hasn't changed for completed search
+          // (means all background tasks finished)
+          if (searchData.status === 'completed' && !auditActive) {
+            if (processedCount === lastProcessedCountRef.current && !hasUnprocessed) {
+              return; // no reschedule - no progress, all done
+            }
+            lastProcessedCountRef.current = processedCount;
+          }
+        } else {
+          // Search not finished yet - keep polling
         }
 
         // Timeout guard
@@ -184,6 +206,13 @@ export default function RunResultsPage() {
     ? Math.min(100, Math.round((results.length / expectedResults) * 100))
     : searchStatus === 'completed' ? 100 : 0;
 
+  // Count processed results (those that have been processed by background tasks)
+  const processedCount = results.filter((r) => r.status !== 'processing').length;
+  const isBackgroundProcessing = searchStatus === 'completed' && processedCount < results.length;
+  const backgroundProgressPercent = results.length > 0
+    ? Math.round((processedCount / results.length) * 100)
+    : 0;
+
   return (
     <div className="w-full max-w-[1250px] mx-auto px-4 md:px-6 min-w-0 overflow-x-hidden">
       <PageHeader
@@ -196,7 +225,7 @@ export default function RunResultsPage() {
         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
           <div><span className="font-medium">Запрос:</span> {searchQuery}</div>
           <div><span className="font-medium">Провайдер:</span> {searchProvider}</div>
-          <div><span className="font-medium">Статус:</span> {isProcessing ? 'Обработка...' : searchStatus}</div>
+          <div><span className="font-medium">Статус:</span> {isProcessing ? 'Поиск...' : isBackgroundProcessing ? 'Обработка...' : searchStatus}</div>
           <div><span className="font-medium">Найдено:</span> {results.length}</div>
           {lastUpdated && (
             <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -231,6 +260,25 @@ export default function RunResultsPage() {
           </div>
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Найдено {results.length} из {expectedResults} результатов
+          </p>
+        </div>
+      )}
+
+      {/* Background processing progress bar (SEO audit, contacts extraction) */}
+      {isBackgroundProcessing && (
+        <div className="mb-4 rounded-[14px] border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Обработка результатов...</span>
+            <span className="text-sm text-blue-500 dark:text-blue-400">{backgroundProgressPercent}%</span>
+          </div>
+          <div className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all duration-500 ease-out"
+              style={{ width: `${backgroundProgressPercent}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+            Обработано {processedCount} из {results.length} доменов (краулинг, контакты, SEO)
           </p>
         </div>
       )}
