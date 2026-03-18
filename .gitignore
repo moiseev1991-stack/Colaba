@@ -53,6 +53,12 @@ yarn-error.log*
 # Logs
 *.log
 logs/
+*_log*.txt
+log.txt
+
+# Temporary/debug files from agents
+tmp_*.txt
+verify_*.txt
 
 # OS
 Thumbs.db

@@ -703,12 +703,125 @@ docker exec -it colaba-backend redis-cli -h colaba-redis ping
 
 ---
 
+## Environment Variables для Coolify
+
+Скопируйте эти переменные в Coolify --> Environment Variables. Оставьте пустыми те, что не используете.
+
+### Обязательные
+
+| Переменная | Пример |
+|------------|--------|
+| SECRET_KEY | `lv23lirOQsaPIJrzfpyo` (или сгенерируйте новый) |
+| POSTGRES_USER | `leadgen_user` |
+| POSTGRES_PASSWORD | надежный пароль |
+| POSTGRES_DB | `leadgen_db` |
+| DATABASE_URL | `postgresql+asyncpg://leadgen_user:<пароль>@postgres:5432/leadgen_db` |
+| DATABASE_URL_SYNC | `postgresql://leadgen_user:<пароль>@postgres:5432/leadgen_db` |
+| REDIS_URL | `redis://redis:6379/0` |
+| CELERY_BROKER_URL | `redis://redis:6379/0` |
+| CELERY_RESULT_BACKEND | `redis://redis:6379/0` |
+| CORS_ORIGINS | `http://твой-домен-фронтенда.88.210.53.183.sslip.io` |
+| NEXT_PUBLIC_API_URL | `http://твой-домен-бэкенда.88.210.53.183.sslip.io/api/v1` |
+| LOG_LEVEL | `INFO` |
+
+### Опциональные
+
+| Переменная | Значение |
+|------------|----------|
+| OPENAI_API_KEY | (пусто) |
+| OLLAMA_BASE_URL | `http://localhost:11434` |
+| OLLAMA_MODEL | `llama2` |
+| YANDEX_XML_FOLDER_ID | (пусто) |
+| YANDEX_XML_KEY | (пусто) |
+| USE_PROXY | `false` |
+| PROXY_URL | (пусто) |
+| PROXY_LIST | (пусто) |
+
+**Важно:**
+- Pre/Post Deployment Commands -- оставьте **пустыми**. Миграции выполняет backend при старте (`alembic upgrade head` перед uvicorn). Если там стоит `php artisan migrate` -- удалите, это Laravel-команда.
+- `NEXT_PUBLIC_API_URL` применяется при сборке -- если меняли, нужен Redeploy.
+
+---
+
+## Troubleshooting: 504 Gateway Timeout
+
+### Шаг 1: Очистить Pre/Post Deployment
+
+Coolify --> Configuration --> **Advanced** --> Pre/Post Deployment Commands:
+- Все поля (Pre/Post Command + Container Name) -- **пусто**
+- Сохраните.
+
+### Шаг 2: Увеличить таймаут Traefik
+
+Coolify --> **Servers** --> сервер --> **Proxy** --> Command / Custom configuration.
+
+Добавьте:
+```
+--entrypoints.https.transport.respondingTimeouts.readTimeout=5m
+--entrypoints.http.transport.respondingTimeouts.readTimeout=5m
+```
+
+Перезапустите Proxy.
+
+### Шаг 3: Подключить coolify-proxy к сети приложения
+
+```bash
+docker network ls | grep -E "leadgen|okkkosgk"
+docker network connect <имя_сети> coolify-proxy
+```
+
+### Шаг 4: Redeploy
+
+Configuration --> Save --> **Redeploy**. Подождите 2-3 минуты.
+
+### Шаг 5: Проверить
+
+```bash
+# Frontend отвечает локально?
+curl -I http://127.0.0.1:3000/
+# Должно быть: HTTP/1.1 200 OK
+```
+
+Если `curl` дает 200, а браузер 504 -- проблема в настройке прокси/домена в Coolify.
+
+### Проверить домены в Coolify
+
+- Frontend-домен --> сервис **frontend**, порт **3000**
+- Backend-домен --> сервис **backend**, порт **8001**
+
+---
+
+## Troubleshooting: Локальная сборка и пуш в GHCR
+
+Если Coolify не может собрать frontend (504, таймаут):
+
+### 1. Создать GitHub PAT
+
+GitHub --> Settings --> Developer settings --> Personal access tokens --> **write:packages**.
+
+### 2. Сборка и пуш
+
+```powershell
+cd frontend
+docker build -t ghcr.io/moiseev1991-stack/colaba-frontend:latest .
+echo $env:GHCR_TOKEN | docker login ghcr.io -u moiseev1991-stack --password-stdin
+docker push ghcr.io/moiseev1991-stack/colaba-frontend:latest
+```
+
+### 3. В Coolify использовать образ из GHCR
+
+В Environment Variables добавьте:
+- `FRONTEND_IMAGE` = `ghcr.io/moiseev1991-stack/colaba-frontend`
+- `IMAGE_TAG` = `latest`
+
+Или Docker Compose Location: `docker-compose.prod.yml -f docker-compose.ghcr-pull.yml`
+
+---
+
 ## Поддержка
 
 Если возникают проблемы:
 
 1. Проверьте логи в Coolify
-2. Прочтите документацию Coolify: https://coolify.io/docs
-3. Проверьте troubleshooting раздел этой инструкции
-
-Удачи с деплоем! 🚀
+2. Проверьте логи: `docker ps -a | grep backend` --> `docker logs <ID>`
+3. Прочтите документацию Coolify: https://coolify.io/docs

@@ -1,47 +1,142 @@
 ---
 name: Project Rules
-description: Основные правила проекта Colaba - структура, файлы, работа
+description: Правила проекта Colaba -- структура, файлы, документация, запреты
 ---
 
 # Правила проекта Colaba
 
 ## Структура проекта
 
-Проект следует монорепозиторий структуре:
-- `backend/` - весь backend код
-- `frontend/` - весь frontend код  
-- `docs/` - вся документация
-- `scripts/` - все скрипты
-- Корень - только конфигурационные файлы
+```
+colaba2402/
+├── backend/              # FastAPI backend
+├── frontend/             # Next.js frontend
+├── scripts/              # Скрипты (setup/, deployment/)
+├── docs/                 # Вся документация
+│   ├── STATUS.md         # Единый файл статуса проекта
+│   ├── ROADMAP.md        # Дорожная карта развития
+│   ├── README.md         # Индекс документации
+│   ├── changes/          # Журнал изменений (changelog записей)
+│   ├── deployment/       # Документация по развертыванию
+│   ├── guides/           # Руководства
+│   └── планы/            # Планы и аудиты
+├── .github/workflows/    # CI/CD
+├── docker-compose*.yml   # Docker конфигурация
+├── .env.example          # Шаблон переменных окружения
+├── README.md             # Главный README
+├── CHANGELOG.md          # История версий
+└── .gitignore
+```
+
+**Корень содержит ТОЛЬКО конфигурационные файлы.** Никакой документации кроме README.md и CHANGELOG.md.
+
+---
 
 ## Правила размещения файлов
 
+### Код
+- Backend (Python) -- только `backend/app/`
+- Frontend (TypeScript/React) -- только `frontend/`
+- Тесты -- `backend/tests/`
+- Запрещено создавать .py, .tsx, .ts файлы в корне
+
 ### Скрипты
-- ✅ Все скрипты → `scripts/`
-- ✅ Скрипты настройки → `scripts/setup/`
-- ❌ НИКОГДА не создавать скрипты в корне
+- Все скрипты -- `scripts/`
+- Настройка -- `scripts/setup/`
+- Деплой -- `scripts/deployment/`
+- Запрещено создавать скрипты в корне
 
 ### Документация
-- ✅ Вся документация → `docs/`
-- ✅ Руководства → `docs/guides/`
-- ❌ НИКОГДА не создавать документацию в корне (кроме README.md)
+- **Все .md файлы (кроме README.md и CHANGELOG.md)** -- только в `docs/`
+- Руководства -- `docs/guides/`
+- Deployment -- `docs/deployment/`
+- Планы и аудиты -- `docs/планы/`
+- Записи об изменениях -- `docs/changes/`
+- Статус проекта -- `docs/STATUS.md` (один единственный файл)
+- Дорожная карта -- `docs/ROADMAP.md` (один единственный файл)
 
-### Backend
-- ✅ Все Python файлы → `backend/app/`
-- ❌ НИКОГДА не создавать Python файлы в корне
+---
 
-### Frontend
-- ✅ Все React/TypeScript файлы → `frontend/`
-- ❌ НИКОГДА не создавать frontend файлы в корне
+## Категорически запрещено создавать
 
-## Перед созданием файла
+### В корне проекта
+- `*_log*.txt`, `log.txt` -- логи
+- `tmp_*.txt` -- временные файлы
+- `verify_*.txt` -- результаты проверок
+- `*_result*.md`, `*_RESULT*.md` -- одноразовые результаты
+- Любые `.md` кроме README.md и CHANGELOG.md
 
-1. Проверить `docs/guides/PROJECT_STRUCTURE_RULES.md`
-2. Убедиться, что файл в правильном месте
-3. Проверить, нет ли дубликатов
+### Где угодно в репозитории
+- `*_SUMMARY.md`, `*_REPORT.md` -- одноразовые сводки и отчёты (вместо этого обновить STATUS.md)
+- `REORGANIZATION_*.md`, `CLEANUP_*.md`, `DIAGNOSTIC_*.md` -- отчёты о чистке
+- `TROUBLESHOOTING_*.md` -- разовые решения проблем (добавить в существующий troubleshooting-раздел)
+- `RUN_LOCAL_NOW.md`, `*_FIX_SUMMARY.md` -- одноразовые инструкции
+- Файлы с номерами-копиями: `service (2).py`, `page (2).tsx`
 
-## Полные правила
+### Почему
+Эти файлы накапливались как мусор от предыдущих сессий агентов. Каждый раз создавался новый файл вместо обновления существующего. Это привело к 90+ устаревшим файлам.
 
-- Структура: `docs/guides/PROJECT_STRUCTURE_RULES.md`
-- Git workflow: `docs/guides/REPOSITORY_WORKFLOW_RULES.md`
-- Cursor AI: `docs/guides/LEADGEN_RULES.md`
+---
+
+## Правила работы с документацией
+
+### Обновлять существующие, а не создавать новые
+- Нашли проблему и решили её -- обновите `docs/STATUS.md` (убрать из "известных проблем")
+- Сделали новую фичу -- обновите `docs/STATUS.md` (добавить в "реализовано")
+- Запланировали задачу -- обновите `docs/ROADMAP.md` (добавить в соответствующий раздел)
+- Сделали деплой -- добавьте запись в `docs/deployment/WORKLOG.md`
+
+### Когда создавать новый файл
+- Новое руководство для пользователя -- `docs/guides/<NAME>.md`
+- Новая инструкция по deployment -- `docs/deployment/<NAME>.md`
+- Запись об изменении (changelog) -- `docs/changes/<name>-<date>.md`
+- План или аудит -- `docs/планы/<name>-<date>.md`
+
+### Когда НЕ создавать новый файл
+- Отчёт о проделанной работе -- обновите `docs/STATUS.md`
+- Итоги реализации -- обновите `docs/STATUS.md` и `docs/ROADMAP.md`
+- Результат проверки/диагностики -- скажите пользователю, не создавайте файл
+- Решение проблемы -- добавьте в существующий troubleshooting-раздел или скажите пользователю
+
+---
+
+## Именование файлов
+
+### Код
+- Python: `snake_case` -- `user_service.py`, `search_router.py`
+- TypeScript/React: PascalCase для компонентов (`SearchForm.tsx`), camelCase для утилит (`apiClient.ts`)
+- Хуки: `use` + PascalCase -- `useSearch.ts`
+
+### Документация
+- UPPER_SNAKE_CASE -- `GITHUB_ACTIONS.md`, `COOLIFY_DEPLOYMENT.md`
+- Без дат в имени (кроме `docs/changes/` и `docs/планы/`)
+- Без слова "SUMMARY", "REPORT", "RESULT" в имени
+
+### Git коммиты
+Формат: `<type>(<scope>): <description>`
+- `feat(backend)`, `fix(frontend)`, `docs(project)`, `refactor(backend)`, `chore(deps)`
+
+---
+
+## Ключевые файлы
+
+| Назначение | Файл |
+|------------|------|
+| Статус проекта | `docs/STATUS.md` |
+| Дорожная карта | `docs/ROADMAP.md` |
+| Индекс документации | `docs/README.md` |
+| Правила структуры | `docs/guides/PROJECT_STRUCTURE_RULES.md` |
+| Локальная установка | `docs/guides/LOCAL_SETUP.md` |
+| Быстрый старт CI/CD | `docs/deployment/QUICK_START.md` |
+| Coolify деплой | `docs/deployment/COOLIFY_DEPLOYMENT.md` |
+| GitHub Actions | `docs/deployment/GITHUB_ACTIONS.md` |
+
+---
+
+## Чеклист перед созданием файла
+
+1. Файл действительно нужен? Или достаточно обновить существующий?
+2. Файл в правильной папке? (код в backend/frontend, docs в docs/)
+3. Имя не содержит запрещённых слов? (SUMMARY, REPORT, RESULT, FIX)
+4. Нет дубликата с таким же или похожим содержанием?
+5. Файл не в корне? (в корне только конфиги)

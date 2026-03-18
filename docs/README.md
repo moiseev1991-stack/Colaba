@@ -1,40 +1,46 @@
 # Документация проекта Colaba
 
-Этот каталог содержит всю документацию проекта LeadGen Constructor.
+## Статус и план
 
-## Структура документации
+- [STATUS.md](STATUS.md) -- Текущий статус проекта (сервисы, реализовано, проблемы)
+- [ROADMAP.md](ROADMAP.md) -- Дорожная карта развития (кратко/средне/долгосрочно)
 
-### Архитектура
-- [ARCHITECTURE.md](architecture/ARCHITECTURE.md) - Архитектурные решения и структура системы
+## Руководства (`docs/guides/`)
 
-### API
-- [API_REFERENCE.md](api/API_REFERENCE.md) - Справочник по API endpoints
+- [LOCAL_SETUP.md](guides/LOCAL_SETUP.md) -- Локальная установка
+- [PROJECT_STRUCTURE_RULES.md](guides/PROJECT_STRUCTURE_RULES.md) -- Правила структуры проекта
+- [REPOSITORY_WORKFLOW_RULES.md](guides/REPOSITORY_WORKFLOW_RULES.md) -- Правила работы с Git
+- [PROVIDERS_SETTINGS.md](guides/PROVIDERS_SETTINGS.md) -- Настройки провайдеров поиска
+- [SEARCH_PROVIDERS.md](guides/SEARCH_PROVIDERS.md) -- Поисковые провайдеры (DuckDuckGo, Яндекс, Google)
+- [YANDEX_XML_SETUP.md](guides/YANDEX_XML_SETUP.md) -- Настройка Яндекс XML API
+- [AI_ASSISTANTS.md](guides/AI_ASSISTANTS.md) -- AI-ассистенты (CRUD, реестр, chat/vision)
+- [CAPTCHA_BYPASS.md](guides/CAPTCHA_BYPASS.md) -- Обход капчи (AI Vision, 2captcha, anticaptcha)
+- [ADMIN_PANEL.md](guides/ADMIN_PANEL.md) -- Админ-панель (SQLAdmin)
+- [HTML_SEARCH_PROVIDERS.md](guides/HTML_SEARCH_PROVIDERS.md) -- HTML-парсинг поисковиков
+- [CAPACITY_AND_LOAD.md](guides/CAPACITY_AND_LOAD.md) -- Мощность и нагрузка
 
-### Руководства
-- [PROJECT_STRUCTURE_RULES.md](guides/PROJECT_STRUCTURE_RULES.md) - Правила структурирования проекта
-- [LEADGEN_RULES.md](guides/LEADGEN_RULES.md) - Правила работы с Cursor AI и агентами
-- [MODULE_GUIDE.md](guides/MODULE_GUIDE.md) - Руководство по созданию модулей
-- [GIT_SETUP_INSTRUCTIONS.md](guides/GIT_SETUP_INSTRUCTIONS.md) - Инструкции по настройке Git
-- [SETUP_INSTRUCTIONS.md](guides/SETUP_INSTRUCTIONS.md) - Инструкции по установке
-- [PROVIDERS_SETTINGS.md](guides/PROVIDERS_SETTINGS.md) - Настройки провайдеров поиска (страница, API, get_provider_config)
-- [AI_ASSISTANTS.md](guides/AI_ASSISTANTS.md) - AI-ассистенты (CRUD, реестр, chat/vision)
-- [CAPTCHA_BYPASS.md](guides/CAPTCHA_BYPASS.md) - Обход капчи (AI Vision, 2captcha, anticaptcha)
-- [ADMIN_PANEL.md](guides/ADMIN_PANEL.md) - Админ-панель (SQLAdmin, разделы, i18n, человекочитаемое отображение)
+## Развертывание (`docs/deployment/`)
 
-### Развертывание
-- [DEPLOYMENT.md](deployment/DEPLOYMENT.md) - Документация по развертыванию
+- [QUICK_START.md](deployment/QUICK_START.md) -- Быстрый старт CI/CD
+- [COOLIFY_DEPLOYMENT.md](deployment/COOLIFY_DEPLOYMENT.md) -- Развертывание через Coolify (полное руководство)
+- [GITHUB_ACTIONS.md](deployment/GITHUB_ACTIONS.md) -- Настройка GitHub Actions CI/CD
+- [CI_CD.md](deployment/CI_CD.md) -- Архитектура CI/CD
+- [VARIABLES_REFERENCE.md](deployment/VARIABLES_REFERENCE.md) -- Справочник переменных окружения
+- [SELF_HOSTED_RUNNER.md](deployment/SELF_HOSTED_RUNNER.md) -- Self-hosted runner
+- [SPINLID_SSL_FIX.md](deployment/SPINLID_SSL_FIX.md) -- SSL сертификаты
+- [PROXY_NETWORK_ISOLATION.md](deployment/PROXY_NETWORK_ISOLATION.md) -- Сетевая изоляция прокси
+- [SERVER_DIAGNOSTIC.md](deployment/SERVER_DIAGNOSTIC.md) -- Диагностика сервера
+- [SERVER_QUICK_FIXES.md](deployment/SERVER_QUICK_FIXES.md) -- Быстрые исправления на сервере
+- [HYDRATION_CHECKLIST.md](deployment/HYDRATION_CHECKLIST.md) -- Чеклист гидрации
+- [AGENT_CONTEXT.md](deployment/AGENT_CONTEXT.md) -- Контекст для агентов
 
-### Статус и отчеты
-- [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) - Статус реализации
-- [TESTING_REPORT.md](TESTING_REPORT.md) - Отчет о тестировании
-- [STATUS.md](STATUS.md) - Общий статус проекта
-- [FRONTEND_FIX_SUMMARY.md](FRONTEND_FIX_SUMMARY.md) - Сводка исправлений frontend
-- [REORGANIZATION_PLAN.md](REORGANIZATION_PLAN.md) - План реорганизации проекта
+## Журнал изменений (`docs/changes/`)
 
-## Быстрый доступ
+- [frontend-build-fixes-2026-03-16.md](changes/frontend-build-fixes-2026-03-16.md)
+- [realtime-seo-results-2025-03-12.md](changes/realtime-seo-results-2025-03-12.md)
 
-- **Запустить локальный сервер сейчас**: [RUN_LOCAL_NOW.md](RUN_LOCAL_NOW.md)
-- **Начать работу**: [SETUP_INSTRUCTIONS.md](guides/SETUP_INSTRUCTIONS.md)
-- **Правила работы**: [PROJECT_STRUCTURE_RULES.md](guides/PROJECT_STRUCTURE_RULES.md)
-- **Архитектура**: [ARCHITECTURE.md](architecture/ARCHITECTURE.md)
-- **API**: [API_REFERENCE.md](api/API_REFERENCE.md)
+## Планы и аудиты (`docs/планы/`)
+
+- [План развития проекта 2026](планы/план_развития_проекта_2026.md)
+- [Итоги реализации 2026-03-17](планы/итоги-реализации-2026-03-17.md)
+- [Аудит фронтенда 2025-03-06](планы/аудит-фронтенда-2025-03-06.md)
