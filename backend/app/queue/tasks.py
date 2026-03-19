@@ -3,6 +3,7 @@ Celery tasks for background processing.
 """
 
 import asyncio
+import logging
 
 from app.queue.celery_app import celery_app
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -10,6 +11,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 from app.core.config import settings
 from app.models.search import Search, SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 # Create async engine for tasks
@@ -21,33 +24,27 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 def execute_search_task(search_id: int):
     """
     Execute search in background and save results.
-    
+
     This is a synchronous wrapper for async function.
     """
-    import asyncio
-    import logging
     import sys
-    logger = logging.getLogger(__name__)
-    
-    print(f"[DEBUG] execute_search_task started for search_id={search_id}", file=sys.stderr, flush=True)
-    logger.info(f"execute_search_task started for search_id={search_id}")
-    
+
+    logger.info("execute_search_task started for search_id=%d", search_id)
+
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     try:
         result = loop.run_until_complete(_execute_search_async(search_id))
-        print(f"[DEBUG] execute_search_task completed for search_id={search_id}: {result}", file=sys.stderr, flush=True)
-        logger.info(f"execute_search_task completed for search_id={search_id}: {result}")
+        logger.info("execute_search_task completed for search_id=%d: %s", search_id, result)
         return result
-    except Exception as e:
-        print(f"[DEBUG] execute_search_task failed for search_id={search_id}: {e}", file=sys.stderr, flush=True)
+    except Exception:
         import traceback
         traceback.print_exc(file=sys.stderr)
-        logger.error(f"execute_search_task failed for search_id={search_id}: {e}", exc_info=True)
+        logger.error("execute_search_task failed for search_id=%d", search_id, exc_info=True)
         raise
 
 
@@ -133,14 +130,12 @@ async def _execute_search_async(search_id: int):
                     batch_done = False
                     for i, (p, xml_or_err) in enumerate(zip(batch_pages, xml_results_list)):
                         if isinstance(xml_or_err, BaseException):
-                            import logging
-                            logging.warning(f"Error fetching page {p} for search {search.id}: {xml_or_err}")
+                            logger.warning("Error fetching page %d for search %d: %s", p, search.id, xml_or_err)
                             continue
                         try:
                             page_results = _parse_xml_results(xml_or_err, p)
                         except Exception as parse_err:
-                            import logging
-                            logging.warning(f"Error parsing page {p} for search {search.id}: {parse_err}")
+                            logger.warning("Error parsing page %d for search %d: %s", p, search.id, parse_err)
                             continue
                         for item in page_results:
                             domain = item.get("domain", "")
@@ -239,8 +234,7 @@ async def _execute_search_async(search_id: int):
                     )
                     job.apply_async(queue="celery")
                 except Exception as e:
-                    import logging
-                    logging.warning(f"Failed to launch domain tasks: {e}")
+                    logger.warning("Failed to launch domain tasks: %s", e)
             
             return {
                 "search_id": search_id,
@@ -250,15 +244,10 @@ async def _execute_search_async(search_id: int):
             }
             
         except Exception as e:
-            import logging
-            import sys
             import traceback
-            logger = logging.getLogger(__name__)
-            
+
             error_message = str(e)
-            print(f"[DEBUG] execute_search_task error for search_id={search_id}: {error_message}", file=sys.stderr, flush=True)
-            traceback.print_exc(file=sys.stderr)
-            logger.error(f"execute_search_task error for search_id={search_id}: {error_message}", exc_info=True)
+            logger.error("execute_search_task error for search_id=%d: %s", search_id, error_message, exc_info=True)
             
             search.status = "failed"
             search.finished_at = datetime.utcnow()
@@ -280,13 +269,10 @@ def process_domain_task(search_id: int, domain: str, first_url: str):
     Process domain: crawl, extract contacts. SEO audit only via button (POST .../results/{id}/audit).
     Sync wrapper for async.
     """
-    import asyncio
     import time
-    import logging
 
-    logger = logging.getLogger(__name__)
     start = time.monotonic()
-    logger.info(f"process_domain_task started domain={domain!r} search_id={search_id}")
+    logger.info("process_domain_task started domain=%r search_id=%d", domain, search_id)
 
     try:
         loop = asyncio.get_event_loop()
@@ -297,11 +283,11 @@ def process_domain_task(search_id: int, domain: str, first_url: str):
     try:
         result = loop.run_until_complete(_process_domain_async(search_id, domain, first_url))
         duration = time.monotonic() - start
-        logger.info(f"process_domain_task finished domain={domain!r} search_id={search_id} in {duration:.2f}s")
+        logger.info("process_domain_task finished domain=%r search_id=%d in %.2fs", domain, search_id, duration)
         return result
     except Exception as e:
         duration = time.monotonic() - start
-        logger.warning(f"process_domain_task failed domain={domain!r} search_id={search_id} in {duration:.2f}s: {e}")
+        logger.warning("process_domain_task failed domain=%r search_id=%d in %.2fs: %s", domain, search_id, duration, e)
         raise
 
 
@@ -321,8 +307,6 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
         try:
             # 1. Mini-crawl domain with fallback (now includes SEO data), max 5 min per domain
             import time
-            import logging
-            _logger = logging.getLogger(__name__)
             crawl_start = time.monotonic()
             from app.modules.filters.crawler import crawl_domain_with_fallback
             try:
@@ -331,7 +315,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                     timeout=300.0,
                 )
             except asyncio.TimeoutError:
-                _logger.warning(f"crawl domain={domain!r} exceeded 5 min, saving partial result")
+                logger.warning("crawl domain=%r exceeded 5 min, saving partial result", domain)
                 crawl_data = {
                     "pages": [],
                     "total_pages": 0,
@@ -344,7 +328,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                 }
             crawl_duration = time.monotonic() - crawl_start
             pages = crawl_data.get("total_pages", 0)
-            _logger.info(f"crawl domain={domain!r} in {crawl_duration:.2f}s, pages={pages}")
+            logger.info("crawl domain=%r in %.2fs, pages=%d", domain, crawl_duration, pages)
 
             # 2. Extract contacts
             contacts = crawl_data.get("contacts", {})

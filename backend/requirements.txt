@@ -19,6 +19,9 @@ babel>=2.14.0
 redis==5.0.1
 celery==5.3.4
 
+# Rate Limiting
+slowapi>=0.1.9
+
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4

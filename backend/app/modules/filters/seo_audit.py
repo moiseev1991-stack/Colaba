@@ -2,10 +2,14 @@
 SEO audit module for checking website SEO issues.
 """
 
+import logging
+
 import httpx
 from typing import Dict, Any, List
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 
 async def audit_url(url: str) -> Dict[str, Any]:
@@ -48,7 +52,8 @@ async def audit_url(url: str) -> Dict[str, Any]:
                     issues.append("no_robots_txt")
                     score -= 10
                     details["robots_txt"] = "missing"
-            except Exception:
+            except Exception as e:
+                logger.debug("robots.txt fetch failed for %s: %s", url, e)
                 issues.append("no_robots_txt")
                 score -= 10
                 details["robots_txt"] = "missing"
@@ -93,6 +98,7 @@ async def audit_url(url: str) -> Dict[str, Any]:
                     details["h1_text"] = h1_tags[0].get_text().strip()[:100]
                 
             except Exception as e:
+                logger.warning("SEO audit page fetch failed for %s: %s", url, e)
                 issues.append("page_unreachable")
                 score -= 30
                 details["page_error"] = str(e)
@@ -108,6 +114,7 @@ async def audit_url(url: str) -> Dict[str, Any]:
             }
             
         except Exception as e:
+            logger.error("SEO audit failed for %s: %s", url, e)
             return {
                 "url": url,
                 "score": 0,

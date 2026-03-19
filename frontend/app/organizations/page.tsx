@@ -3,9 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Search, Plus, Trash2, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogFooter } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/PageHeader';
 import {
   listOrganizations,
+  createOrganization,
+  updateOrganization,
   deleteOrganization,
   type OrganizationWithUsersResponse,
 } from '@/src/services/api/organizations';
@@ -19,9 +23,15 @@ export default function OrganizationsPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Modal state
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<OrganizationWithUsersResponse | null>(null);
+  const [orgName, setOrgName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   const checkSuperuserAndLoad = useCallback(async () => {
     try {
-      // Check if user is superuser
       const userResponse = await apiClient.get('/auth/me');
       const isSuper = userResponse.data.is_superuser || false;
       setIsSuperuser(isSuper);
@@ -32,7 +42,6 @@ export default function OrganizationsPage() {
         return;
       }
 
-      // Load organizations
       await loadOrganizations();
     } catch (err: any) {
       if (err.response?.status === 403 || err.response?.status === 401) {
@@ -60,6 +69,58 @@ export default function OrganizationsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateOrg = async () => {
+    if (!orgName.trim()) {
+      alert('Введите название организации');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await createOrganization({ name: orgName.trim() });
+      setCreateModalOpen(false);
+      setOrgName('');
+      await loadOrganizations();
+    } catch (err: any) {
+      alert(`Ошибка при создании организации: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditOrg = async () => {
+    if (!orgName.trim() || !editingOrg) {
+      alert('Введите название организации');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await updateOrganization(editingOrg.id, { name: orgName.trim() });
+      setEditModalOpen(false);
+      setEditingOrg(null);
+      setOrgName('');
+      await loadOrganizations();
+    } catch (err: any) {
+      alert(`Ошибка при обновлении организации: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditModal = (org: OrganizationWithUsersResponse) => {
+    setEditingOrg(org);
+    setOrgName(org.name);
+    setEditModalOpen(true);
+  };
+
+  const closeModals = () => {
+    setCreateModalOpen(false);
+    setEditModalOpen(false);
+    setEditingOrg(null);
+    setOrgName('');
   };
 
   const handleDelete = async (id: number, name: string) => {
@@ -105,10 +166,7 @@ export default function OrganizationsPage() {
           title="Организации"
           actions={
             <Button
-              onClick={() => {
-                // TODO: Open create organization modal
-                alert('Функция создания организации будет добавлена');
-              }}
+              onClick={() => setCreateModalOpen(true)}
               variant="default"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -117,15 +175,12 @@ export default function OrganizationsPage() {
           }
         />
 
-
-        {/* Error message */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-[14px] p-4">
             <p className="text-red-800 dark:text-red-200">{error}</p>
           </div>
         )}
 
-        {/* Organizations list */}
         {organizations.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-8 text-center">
             <p className="text-gray-500 dark:text-gray-400">Организации не найдены</p>
@@ -169,10 +224,7 @@ export default function OrganizationsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        // TODO: Open edit modal
-                        alert('Функция редактирования будет добавлена');
-                      }}
+                      onClick={() => openEditModal(org)}
                       className="flex items-center gap-2"
                     >
                       <Edit className="h-4 w-4" />
@@ -192,6 +244,64 @@ export default function OrganizationsPage() {
           </div>
         )}
       </div>
+
+      {/* Create Organization Modal */}
+      <Dialog
+        open={createModalOpen}
+        onClose={closeModals}
+        title="Создать организацию"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Название организации
+            </label>
+            <Input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              placeholder="Введите название"
+              disabled={submitting}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeModals} disabled={submitting}>
+            Отмена
+          </Button>
+          <Button onClick={handleCreateOrg} disabled={submitting}>
+            {submitting ? 'Создание...' : 'Создать'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Edit Organization Modal */}
+      <Dialog
+        open={editModalOpen}
+        onClose={closeModals}
+        title="Редактировать организацию"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Название организации
+            </label>
+            <Input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              placeholder="Введите название"
+              disabled={submitting}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeModals} disabled={submitting}>
+            Отмена
+          </Button>
+          <Button onClick={handleEditOrg} disabled={submitting}>
+            {submitting ? 'Сохранение...' : 'Сохранить'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

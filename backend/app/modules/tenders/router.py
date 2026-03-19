@@ -1,11 +1,14 @@
 """Tenders module — proxy to zakupki.gov.ru search API."""
 
+import logging
 import re
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 import httpx
 
 from app.modules.auth.router import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tenders", tags=["tenders"])
 
@@ -45,8 +48,8 @@ def _parse_results_html(html: str, base_url: str) -> tuple[list[dict[str, Any]],
     if total_match:
         try:
             total = int(re.sub(r'\D', '', total_match.group(1)))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to parse total count: %s", e)
 
     # Extract tender cards via regex patterns
     card_pattern = re.compile(
@@ -117,7 +120,8 @@ def _parse_results_html(html: str, base_url: str) -> tuple[list[dict[str, Any]],
                 "type": law,
                 "url": url or ZAKUPKI_SEARCH_URL,
             })
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to parse tender card #%d: %s", i, e)
             continue
 
     return items, total

@@ -3,6 +3,7 @@ Script to create a test user for development.
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -11,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 from app.core.config import settings
 from app.core.security import hash_password
 from app.models.user import User
@@ -20,36 +22,35 @@ async def create_test_user():
     """Create a test user for development."""
     engine = create_async_engine(settings.DATABASE_URL)
     AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+
+    email = os.environ.get("TEST_EMAIL", "test@example.com")
+    password = os.environ.get("TEST_PASSWORD", "test123456")
+
     async with AsyncSessionLocal() as db:
-        # Check if user already exists
-        from sqlalchemy import select
-        result = await db.execute(select(User).where(User.email == "test@example.com"))
+        result = await db.execute(select(User).where(User.email == email))
         existing_user = result.scalar_one_or_none()
-        
+
         if existing_user:
             print("Test user already exists!")
             print(f"Email: {existing_user.email}")
-            print("Password: test123456")
             return
-        
+
         # Create test user
         user = User(
-            email="test@example.com",
-            hashed_password=hash_password("test123456"),
+            email=email,
+            hashed_password=hash_password(password),
             is_active=True,
             is_superuser=False,
         )
-        
+
         db.add(user)
         await db.commit()
         await db.refresh(user)
-        
+
         print("Test user created successfully!")
         print(f"Email: {user.email}")
-        print("Password: test123456")
         print(f"User ID: {user.id}")
-    
+
     await engine.dispose()
 
 

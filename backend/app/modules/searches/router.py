@@ -5,7 +5,7 @@ Searches module router.
 import csv
 import io
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 
@@ -14,13 +14,16 @@ from app.core.dependencies import (
     get_current_user_id,
     get_current_organization_id,
 )
+from app.core.rate_limit import limiter
 from app.modules.searches import schemas, service
 
 router = APIRouter(prefix="/searches", tags=["searches"])
 
 
 @router.post("", response_model=schemas.SearchResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_search(
+    request: Request,
     search_data: schemas.SearchCreate,
     user_id: int = Depends(get_current_user_id),
     organization_id: Optional[int] = Depends(get_current_organization_id),

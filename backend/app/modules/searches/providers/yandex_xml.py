@@ -6,9 +6,13 @@ Yandex Cloud Search API (web search) через yandex_cloud_ml_sdk.
 """
 
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
+
+
+logger = logging.getLogger(__name__)
 
 
 USER_AGENT = (
@@ -25,8 +29,8 @@ def _is_permission_denied(err: BaseException) -> bool:
             s = f"{s} {d()}"
         elif isinstance(d, str):
             s = f"{s} {d}"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Could not extract error details: %s", e)
     return (
         "Permission denied" in s
         or "PERMISSION_DENIED" in s
@@ -45,8 +49,8 @@ def _fetch_page_sync(folder_id: str, api_key: str, query: str, page: int) -> byt
     sdk = YCloudML(folder_id=folder_id, auth=auth)
     try:
         sdk.setup_default_logging("error")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("setup_default_logging failed: %s", e)
     try:
         search = sdk.search_api.web(search_type="ru", user_agent=USER_AGENT)
         operation = search.run_deferred(query, format="xml", page=page)

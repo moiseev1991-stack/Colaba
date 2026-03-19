@@ -2,18 +2,29 @@
 Captcha config API: GET /captcha-config, PUT /captcha-config, POST test-2captcha, POST test-ai.
 """
 
+import logging
 from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Body, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.core.dependencies import get_db, get_current_user_id, require_superuser
 from app.modules.captcha import service
 from app.modules.captcha.schemas import CaptchaConfigUpdate
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/captcha-config", tags=["captcha-config"])
+
+
+class Test2CaptchaBody(BaseModel):
+    api_key: str | None = Field(None, description="Ключ 2captcha; если не передан — из сохранённого конфига")
+
+
+class TestAiBody(BaseModel):
+    ai_assistant_id: int | None = Field(None, description="ID AI-ассистента с vision; если не передан — из конфига")
 
 
 @router.get("")
@@ -40,10 +51,6 @@ async def put_captcha_config(
     return await service.upsert_captcha_config(db, **kwargs)
 
 
-class Test2CaptchaBody(BaseModel):
-    api_key: str | None = Field(None, description="Ключ 2captcha; если не передан — из сохранённого конфига")
-
-
 @router.post("/test-2captcha")
 async def test_2captcha(
     body: Optional[Test2CaptchaBody] = Body(None),
@@ -67,11 +74,8 @@ async def test_2captcha(
             return {"ok": True, "balance": data.get("request")}
         return {"ok": False, "error": str(data.get("request", "Unknown error"))}
     except Exception as e:
+        logger.warning("2captcha balance check failed: %s", e)
         return {"ok": False, "error": str(e)}
-
-
-class TestAiBody(BaseModel):
-    ai_assistant_id: int | None = Field(None, description="ID AI-ассистента с vision; если не передан — из конфига")
 
 
 @router.post("/test-ai")
@@ -95,4 +99,5 @@ async def test_ai(
         out = await vision(aid, tiny_b64, "Опиши изображение в одном слове.", db)
         return {"ok": True, "reply": (out or "").strip() or "(пусто)"}
     except Exception as e:
+        logger.error("AI Vision captcha test failed: %s", e)
         return {"ok": False, "error": str(e)}

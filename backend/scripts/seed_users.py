@@ -4,6 +4,7 @@ Ensures both can log in. Test user is assigned to default organization.
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -22,6 +23,11 @@ async def seed_users():
     engine = create_async_engine(settings.DATABASE_URL)
     AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+    admin_email = os.environ.get("ADMIN_EMAIL", "sir.nikam@example.com")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "changeme")
+    test_email = os.environ.get("TEST_EMAIL", "test@example.com")
+    test_password = os.environ.get("TEST_PASSWORD", "test123456")
+
     async with AsyncSessionLocal() as db:
         # 1. Ensure default organization exists
         result = await db.execute(select(Organization).where(Organization.id == 1))
@@ -33,9 +39,7 @@ async def seed_users():
             await db.refresh(org)
             print("Created Default Organization (id=1)")
 
-        # 2. Admin user: sir.nikam@example.com / 1234
-        admin_email = "sir.nikam@example.com"
-        admin_password = "1234"
+        # 2. Admin user
         result = await db.execute(select(User).where(User.email == admin_email))
         admin = result.scalar_one_or_none()
         if admin:
@@ -43,7 +47,7 @@ async def seed_users():
             admin.is_superuser = True
             admin.is_active = True
             await db.commit()
-            print(f"Updated admin: {admin_email} / {admin_password}")
+            print(f"Updated admin: {admin_email}")
         else:
             admin = User(
                 email=admin_email,
@@ -54,11 +58,9 @@ async def seed_users():
             db.add(admin)
             await db.commit()
             await db.refresh(admin)
-            print(f"Created admin: {admin_email} / {admin_password} (ID: {admin.id})")
+            print(f"Created admin: {admin_email} (ID: {admin.id})")
 
-        # 3. Test user: test@example.com / test123456
-        test_email = "test@example.com"
-        test_password = "test123456"
+        # 3. Test user
         result = await db.execute(select(User).where(User.email == test_email))
         test_user = result.scalar_one_or_none()
         if test_user:
@@ -67,7 +69,7 @@ async def seed_users():
             test_user.is_superuser = False
             await db.commit()
             await db.refresh(test_user)
-            print(f"Updated test user: {test_email} / {test_password}")
+            print(f"Updated test user: {test_email}")
         else:
             test_user = User(
                 email=test_email,
@@ -78,7 +80,7 @@ async def seed_users():
             db.add(test_user)
             await db.commit()
             await db.refresh(test_user)
-            print(f"Created test user: {test_email} / {test_password} (ID: {test_user.id})")
+            print(f"Created test user: {test_email} (ID: {test_user.id})")
 
         # 4. Ensure test user is in default organization (required for non-superusers)
         check = await db.execute(
@@ -98,12 +100,12 @@ async def seed_users():
                 )
             )
             await db.commit()
-            print(f"Assigned test user to Default Organization")
+            print("Assigned test user to Default Organization")
 
     await engine.dispose()
     print("\nLogin credentials:")
-    print("  Admin:  sir.nikam@example.com / 1234")
-    print("  User:   test@example.com / test123456")
+    print(f"  Admin:  {admin_email}")
+    print(f"  User:   {test_email}")
 
 
 if __name__ == "__main__":

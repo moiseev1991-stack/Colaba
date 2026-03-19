@@ -309,7 +309,8 @@ async def _try_submit_google_captcha_form(
             if bi.get("blocked") and bi.get("block_type") == "captcha":
                 return None
             return r.text
-    except Exception:
+    except Exception as e:
+        logger.debug("_try_submit_google_captcha_form: %s", e)
         return None
 
 

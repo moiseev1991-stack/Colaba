@@ -4,12 +4,14 @@ API routers module.
 Объединяет все API routers в один главный router.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+
+from app.core.rate_limit import limiter
 
 # Create main API router
 api_router = APIRouter()
 
-# Health check endpoint
+# Health check endpoint (no rate limit)
 @api_router.get("/health")
 async def api_health() -> dict[str, str]:
     """API health check endpoint."""

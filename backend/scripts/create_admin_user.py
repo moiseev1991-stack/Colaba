@@ -3,6 +3,7 @@ Script to create an admin user for development.
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -21,15 +22,15 @@ async def create_admin_user():
     """Create an admin user for development."""
     engine = create_async_engine(settings.DATABASE_URL)
     AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
-    email = "sir.nikam@example.com"
-    password = "1234"
-    
+
+    email = os.environ.get("ADMIN_EMAIL", "sir.nikam@example.com")
+    password = os.environ.get("ADMIN_PASSWORD", "changeme")
+
     async with AsyncSessionLocal() as db:
         # Check if user already exists
         result = await db.execute(select(User).where(User.email == email))
         existing_user = result.scalar_one_or_none()
-        
+
         if existing_user:
             print(f"User with email {email} already exists!")
             print("Updating user to admin...")
@@ -40,34 +41,31 @@ async def create_admin_user():
             await db.refresh(existing_user)
             print("User updated successfully!")
             print(f"Email: {existing_user.email}")
-            print(f"Password: {password}")
             print(f"Admin: {existing_user.is_superuser}")
             print(f"Active: {existing_user.is_active}")
             print(f"User ID: {existing_user.id}")
             return
-        
+
         # Create admin user
         user = User(
             email=email,
             hashed_password=hash_password(password),
             is_active=True,
-            is_superuser=True,  # Admin user
+            is_superuser=True,
         )
-        
+
         db.add(user)
         await db.commit()
         await db.refresh(user)
-        
+
         print("Admin user created successfully!")
         print(f"Email: {user.email}")
-        print(f"Password: {password}")
         print(f"Admin: {user.is_superuser}")
         print(f"Active: {user.is_active}")
         print(f"User ID: {user.id}")
         print("\nYou can now login with:")
         print(f"  Email: {email}")
-        print(f"  Password: {password}")
-    
+
     await engine.dispose()
 
 

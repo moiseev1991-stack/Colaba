@@ -153,8 +153,8 @@ async def _fetch_page(
         )
         if warm and getattr(warm, "cookies", None):
             search_cookies = dict(warm.cookies)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Yandex warm-up request failed: %s", e)
 
     # Выполняем запрос с ретраями (referer, proxy, cookies)
     response = await fetch_with_retry(

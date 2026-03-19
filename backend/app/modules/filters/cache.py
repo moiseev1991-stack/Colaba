@@ -4,10 +4,13 @@ Caching utilities for crawler results.
 
 import json
 import hashlib
+import logging
 import asyncio
 from typing import Dict, Any, Optional
 import redis.asyncio as redis
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Redis connection pool (will be initialized on first use)
 _redis_client: Optional[redis.Redis] = None
@@ -60,8 +63,7 @@ async def get_cached_crawl(domain: str) -> Optional[Dict[str, Any]]:
         if cached_data:
             return json.loads(cached_data)
     except Exception as e:
-        import logging
-        logging.warning(f"Failed to get cached crawl for {domain}: {e}")
+        logger.warning("Failed to get cached crawl for %s: %s", domain, e)
     
     return None
 
@@ -82,8 +84,7 @@ async def set_cached_crawl(domain: str, crawl_data: Dict[str, Any], ttl: int = 3
         cache_data = {k: v for k, v in crawl_data.items() if k != "errors"}
         await client.setex(key, ttl, json.dumps(cache_data, ensure_ascii=False))
     except Exception as e:
-        import logging
-        logging.warning(f"Failed to cache crawl for {domain}: {e}")
+        logger.warning("Failed to cache crawl for %s: %s", domain, e)
 
 
 async def invalidate_crawl_cache(domain: str):
@@ -98,5 +99,4 @@ async def invalidate_crawl_cache(domain: str):
         key = get_cache_key(domain, "crawl")
         await client.delete(key)
     except Exception as e:
-        import logging
-        logging.warning(f"Failed to invalidate cache for {domain}: {e}")
+        logger.warning("Failed to invalidate cache for %s: %s", domain, e)

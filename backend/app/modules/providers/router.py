@@ -2,12 +2,16 @@
 Providers API: GET /providers, GET /providers/{id}, PUT /providers/{id}, POST /providers/{id}/test.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.dependencies import get_db, get_current_user_id, require_superuser
 from app.modules.providers import service
 from app.modules.providers.registry import PROVIDER_REGISTRY
 from app.modules.providers.schemas import ProviderConfigUpdate, ProviderTestBody, ProviderTestResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 
@@ -83,4 +87,5 @@ async def test_provider(
         )
         return ProviderTestResponse(ok=True, result_count=len(results))
     except Exception as e:
+        logger.error("Provider test failed for provider=%s: %s", body.provider_key, e)
         return ProviderTestResponse(ok=False, error=str(e))

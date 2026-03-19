@@ -3,10 +3,13 @@ Internationalization (i18n) support for SQLAdmin.
 Uses gettext/babel for translations with Russian as default language.
 """
 
+import logging
 import os
 from functools import lru_cache
 from gettext import GNUTranslations, NullTranslations, translation
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # Default language
 DEFAULT_LANGUAGE = "ru"
@@ -39,8 +42,8 @@ def get_translations(language: str) -> GNUTranslations | NullTranslations:
             languages=[language],
             fallback=True,
         )
-    except Exception:
-        # Return NullTranslations if locale files not found
+    except Exception as e:
+        logger.warning("Failed to load translations for language=%s: %s", language, e)
         return NullTranslations()
 
 
