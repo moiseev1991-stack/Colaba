@@ -1,0 +1,24 @@
+# Фронтенд в режиме разработки (next dev) — обход "missing required error components"
+# в production build.
+#
+# Использование:
+#   cp docker-compose.override.frontend-dev.example.yml docker-compose.override.yml
+#   docker compose up -d --build
+#
+# На Windows при проблемах с DNS добавьте в environment:
+#   - INTERNAL_BACKEND_ORIGIN=http://host.docker.internal:8001
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    command: npm run dev
+    environment:
+      - NEXT_PUBLIC_API_URL=/api/v1
+      - INTERNAL_BACKEND_ORIGIN=http://backend:8000
+      - BACKEND_HOSTNAME=backend
+      - BACKEND_PORT=8000
+      - NODE_ENV=development

@@ -214,7 +214,7 @@ export default function RunResultsPage() {
     : 0;
 
   return (
-    <div className="w-full max-w-[1250px] mx-auto px-4 md:px-6 min-w-0 overflow-x-hidden">
+    <div className="w-full max-w-[1250px] min-w-0 mx-auto px-4 md:px-6 overflow-x-hidden">
       <PageHeader
         breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'История', href: '/runs' }, { label: 'Результаты' }]}
         title={searchQuery || 'Результаты поиска'}

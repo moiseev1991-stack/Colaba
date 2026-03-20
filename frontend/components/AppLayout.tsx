@@ -87,9 +87,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Module switcher tab row — mobile only */}
         <MobileModuleTabs />
 
-        <div className="flex flex-1 overflow-hidden relative z-10">
+        <div className="flex flex-1 min-w-0 overflow-hidden relative z-10">
           <Sidebar />
-          <main className="app-main flex-1 overflow-auto">
+          <main className="app-main flex-1 min-w-0 overflow-auto">
             {children}
           </main>
         </div>

@@ -7,6 +7,8 @@ import { Select } from '@/components/ui/select';
 import { ToastContainer, type Toast } from '@/components/Toast';
 import { createSearch, listSearches, getSearch, getSearchResults } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
+import { getOutreachTemplates } from '@/src/services/api/outreachTemplates';
+import type { OutreachTemplate } from '@/src/services/api/outreachTemplates';
 import { getSeoAdvancedSettings, setSeoAdvancedSettings, type SeoAdvancedSettings } from '@/lib/storage';
 import { getBlacklist } from '@/lib/storage';
 import { Loader2, ChevronDown, ChevronRight, Eye, Download, X } from 'lucide-react';
@@ -72,8 +74,15 @@ export default function SeoPage() {
   const [showMorePresets, setShowMorePresets] = useState(false);
 
   const [hasBlacklist, setHasBlacklist] = useState(false);
+  const [templates, setTemplates] = useState<OutreachTemplate[]>([]);
+  const [templateId, setTemplateId] = useState<number | null>(null);
+
   useEffect(() => {
     setHasBlacklist(getBlacklist().length > 0);
+  }, []);
+
+  useEffect(() => {
+    getOutreachTemplates().then(setTemplates);
   }, []);
 
   // Inline run state
@@ -251,6 +260,7 @@ export default function SeoPage() {
           filter_email: advanced.filterEmail,
           exclude_blacklist: advanced.excludeBlacklist,
           yandex_region_id: yandexRegionId,
+          ...(templateId != null && { template_id: templateId }),
         },
       });
       // Reset polling refs before setting new run
@@ -276,6 +286,7 @@ export default function SeoPage() {
     setKeyword('');
     setCity('Москва');
     setSearchProvider('yandex_xml');
+    setTemplateId(null);
     setAdvanced(getSeoAdvancedSettings());
   };
 
@@ -307,7 +318,7 @@ export default function SeoPage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-[1250px] px-6 py-8 overflow-x-hidden">
+    <div className="mx-auto w-full max-w-[1250px] min-w-0 px-6 py-8 overflow-x-hidden">
       <h1 className="text-[20px] font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
         Поиск / SEO-аудит
       </h1>
@@ -378,6 +389,22 @@ export default function SeoPage() {
                   <option value="serpapi" disabled>SerpAPI (deprecated)</option>
                 </Select>
               </div>
+              <div className="w-[240px]">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Шаблон КП</label>
+                <Select
+                  value={templateId == null ? '' : String(templateId)}
+                  onChange={(e) => setTemplateId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  <option value="">Без шаблона</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </form>
         </div>
@@ -411,6 +438,14 @@ export default function SeoPage() {
                 <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Фильтры:</span>
                 <span className="font-medium truncate max-w-[120px]" title={filtersLabel} style={{ color: 'hsl(var(--text))' }}>{filtersLabel}</span>
               </div>
+              {templates.length > 0 && (
+                <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                  <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Шаблон КП:</span>
+                  <span className="font-medium truncate max-w-[140px]" style={{ color: 'hsl(var(--text))' }}>
+                    {templateId != null ? templates.find((t) => t.id === templateId)?.name ?? '—' : 'Без шаблона'}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button

@@ -1,0 +1,11 @@
+# Обход проблем Docker DNS на Windows.
+# Скопируйте в docker-compose.override.yml и перезапустите:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   docker compose up -d
+#
+# Frontend будет обращаться к backend через host.docker.internal:8001
+# вместо резолва hostname "backend" во внутренней сети Docker.
+services:
+  frontend:
+    environment:
+      - INTERNAL_BACKEND_ORIGIN=http://host.docker.internal:8001

@@ -195,6 +195,82 @@ taskkill /PID <PID> /F
    docker compose up -d
    ```
 
+### «missing required error components, refreshing...» на frontend
+
+Частые причины: несколько экземпляров dev-сервера, повреждённый кэш, конфликт .next, Turbopack (--turbo) в dev-режиме.
+
+**В проекте уже применено:** Turbopack отключён в `package.json` (dev без `--turbo`), добавлен `global-error.tsx`, в `error.tsx` используется нативный `<button>` вместо UI-компонента.
+
+**Шаги:**
+
+1. Остановите все процессы (Ctrl+C, закрыть терминалы с npm run dev).
+2. Убейте порт 4000: `npx kill-port 4000` (или `netstat -ano | findstr :4000` и `taskkill`)
+3. Чистая пересборка frontend:
+   ```powershell
+   cd frontend
+   rmdir /s /q .next 2>nul
+   npm run build
+   npm run dev
+   ```
+4. Или через Docker: `docker compose down` → удалить `frontend/.next` → `docker compose up -d --build`
+
+**Альтернатива:** запуск frontend без Docker — `.\RUN_FRONTEND_LOCAL.bat` (backend в Docker).
+
+### Backend не стартует (ModuleNotFoundError: slowapi, sqladmin и др.)
+
+Образ backend устарел. Установите зависимости в запущенном контейнере:
+
+```powershell
+docker exec leadgen-backend pip install -r /app/requirements.txt
+docker restart leadgen-backend
+```
+
+Или пересоберите образ: `docker compose build --no-cache backend` (при ошибках PyPI повторите позже).
+
+### Proxy error: socket hang up
+
+Ошибка возникает, когда Next.js прокси не может подключиться к backend.
+
+**Вариант 1: Всё в Docker.** Frontend ждёт готовности backend (healthcheck). Если ошибка сохраняется:
+
+- Проверьте backend: `Invoke-WebRequest http://localhost:8001/health`
+- Если backend не отвечает — смотрите логи: `docker logs leadgen-backend`. При `ModuleNotFoundError` см. раздел выше.
+- Перезапустите: `docker compose down` затем `docker compose up -d`
+
+**Вариант 2: Frontend локально (`npm run dev`).** Создайте `frontend/.env.local` из шаблона:
+
+```powershell
+cd frontend
+copy .env.local.example .env.local
+```
+
+Содержимое: `INTERNAL_BACKEND_ORIGIN=http://localhost:8001`. Backend должен быть запущен (Docker: `docker compose up -d backend postgres redis`).
+
+**Вариант 3: Docker на Windows — проблемы с DNS.** Frontend в контейнере не резолвит hostname `backend`:
+
+```powershell
+copy docker-compose.override.yml.example docker-compose.override.yml
+docker compose up -d
+```
+
+Override задаёт `INTERNAL_BACKEND_ORIGIN=http://host.docker.internal:8001`, обходя внутренний DNS Docker.
+
+## Режим «Frontend локально» (npm run dev)
+
+Для разработки можно запускать frontend на хосте, а backend — в Docker:
+
+```powershell
+# Терминал 1: backend и инфраструктура
+docker compose up -d backend postgres redis celery-worker
+
+# Терминал 2: frontend
+cd frontend
+copy .env.local.example .env.local   # один раз
+npm run dev
+```
+
+Frontend: http://localhost:4000. Прокси будет обращаться к backend на localhost:8001.
+
 ## Миграции базы данных
 
 После первого запуска выполните миграции:

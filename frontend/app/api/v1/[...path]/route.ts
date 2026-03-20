@@ -21,7 +21,10 @@ function getBackendOrigin(): string {
   } catch {}
   const env = process.env['INTERNAL_BACKEND_ORIGIN'];
   if (env?.startsWith('http')) { _originCache = env; return env; }
-  return 'http://backend:8000';
+  const devEnv = process.env['BACKEND_ORIGIN'];
+  if (devEnv?.startsWith('http')) { _originCache = devEnv; return devEnv; }
+  _originCache = 'http://backend:8000';
+  return _originCache;
 }
 
 const IS_PRIVATE_IP = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.)/;

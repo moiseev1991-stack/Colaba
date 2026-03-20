@@ -8,6 +8,7 @@ import type { LeadRow } from '@/lib/types';
 import { isBlacklisted, addToBlacklist, setResultsPageSize } from '@/lib/storage';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
 import { ToastContainer, type Toast } from './Toast';
+import { SeoDetailCard } from './seo/SeoDetailCard';
 import { runResultAudit } from '@/src/services/api/search';
 import { addDomainToBlacklist as addDomainToBlacklistApi } from '@/src/services/api/blacklist';
 
@@ -45,6 +46,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [actionRowState, setActionRowState] = useState<Record<string, { state: 'loading' | 'error'; startedAt: number; firstDataAt?: number; errorMessage?: string }>>({});
   const [blacklistVersion, setBlacklistVersion] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSendModalOpen, setBulkSendModalOpen] = useState(false);
+  const [bulkSendLoading, setBulkSendLoading] = useState(false);
 
   // Pagination state - use stable defaults for hydration; sync from URL/localStorage in useEffect
   const [pageSize, setPageSize] = useState(100);
@@ -471,6 +474,34 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
     }
   };
 
+  const selectedRows = useMemo(
+    () => (selectedIds.size > 0 ? sortedResults.filter((r) => selectedIds.has(r.id)) : []),
+    [selectedIds, sortedResults]
+  );
+  const selectedWithEmail = selectedRows.filter((r) => r.email && r.outreachText);
+  const selectedWithoutEmail = selectedRows.filter((r) => !r.email || !r.outreachText);
+
+  const handleBulkSendOutreach = async () => {
+    if (selectedWithEmail.length === 0) return;
+    setBulkSendLoading(true);
+    try {
+      const { apiClient } = await import('@/client');
+      const ids = selectedWithEmail.map((r) => parseInt(r.id, 10));
+      const res = await apiClient.post<{ sent: number; skipped: number; errors: number }>('/outreach/bulk', {
+        search_result_ids: ids,
+        channel: 'email',
+      });
+      showToast('success', `Отправлено: ${res.data.sent}, пропущено: ${res.data.skipped}, ошибок: ${res.data.errors}`);
+      setBulkSendModalOpen(false);
+      clearSelection();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Ошибка отправки';
+      showToast('error', msg);
+    } finally {
+      setBulkSendLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4 w-full min-w-0 max-w-full overflow-x-hidden" ref={tableRef} key={blacklistVersion}>
       {/* Filters, Actions and View Mode */}
@@ -531,6 +562,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             </div>
             
             <div className="flex gap-2">
+              {selectedIds.size > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => setBulkSendModalOpen(true)}
+                  className="flex items-center gap-1.5"
+                >
+                  <Send className="h-4 w-4" />
+                  Отправить КП ({selectedIds.size})
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -615,6 +656,18 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               </Button>
               {showMobileActions && (
                 <div className="absolute right-0 top-full mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[12px] shadow-lg z-50 min-w-[160px]">
+                  {selectedIds.size > 0 && (
+                    <button
+                      onClick={() => {
+                        setBulkSendModalOpen(true);
+                        setShowMobileActions(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      Отправить КП ({selectedIds.size})
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       handleExportCSV();
@@ -644,7 +697,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
 
       {/* Desktop Table */}
       <div className="hidden md:block bg-white dark:bg-gray-800 rounded-[12px] border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm w-full min-w-0 max-w-full">
-        <div className="overflow-x-hidden w-full">
+        <div className="overflow-x-auto w-full min-w-0">
           <table className="w-full table-fixed min-w-0" style={{ tableLayout: 'fixed' }}>
             <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
               <tr>
@@ -1097,71 +1150,13 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       
                       {/* Row Details (Accordion) - только в compact режиме */}
                       {viewMode === 'compact' && isExpanded && (
-                        <tr className="bg-gray-50 dark:bg-gray-900/30">
-                          <td colSpan={9} className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                              {(row.titleFromSearch || row.snippetFromSearch || row.urlFromSearch) && (
-                                <>
-                                  <div className="col-span-2 md:col-span-3">
-                                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Из поиска</div>
-                                    <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                                      {row.titleFromSearch && <div><span className="text-gray-500 dark:text-gray-500">Заголовок:</span> {row.titleFromSearch}</div>}
-                                      {row.snippetFromSearch && <div><span className="text-gray-500 dark:text-gray-500">Сниппет:</span> {row.snippetFromSearch}</div>}
-                                      {row.urlFromSearch && (
-                                        <div>
-                                          <span className="text-gray-500 dark:text-gray-500">URL:</span>{' '}
-                                          <a href={row.urlFromSearch} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate max-w-full inline-block">{row.urlFromSearch}</a>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Robots</div>
-                                <div className={seo?.robots === 'OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                                  {seo?.robots || '-'}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Sitemap</div>
-                                <div className={seo?.sitemap === 'OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                                  {seo?.sitemap || '-'}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Pages Crawled</div>
-                                <div className="text-gray-700 dark:text-gray-300">{seo?.pagesCrawled || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Meta Title</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">{seo?.metaTitle || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Meta Desc</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">{seo?.metaDesc || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">H1</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">{seo?.h1 || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Phone</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">{row.phone || '-'}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Email</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">{row.email || '-'}</div>
-                              </div>
-                              {getTopIssues(row).length > 0 && (
-                                <div className="col-span-2 md:col-span-3">
-                                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Top Issues</div>
-                                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                                    {getTopIssues(row).join(' • ')}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                        <tr className="bg-slate-50/40 dark:bg-slate-900/20">
+                          <td colSpan={9} className="px-3 pb-2 pt-0 border-b border-slate-200 dark:border-slate-700 align-top">
+                            <SeoDetailCard
+                              row={row}
+                              seo={seo}
+                              topIssues={getTopIssues(row)}
+                            />
                           </td>
                         </tr>
                       )}
@@ -1332,68 +1327,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
 
               {/* Expanded Details */}
               {isExpanded && (
-                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1.5 text-xs">
-                  {row.titleFromSearch && (
-                    <div className="pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <div className="text-gray-500 dark:text-gray-400 mb-1">Из поиска: заголовок</div>
-                      <div className="text-gray-700 dark:text-gray-300">{row.titleFromSearch}</div>
-                    </div>
-                  )}
-                  {row.snippetFromSearch && (
-                    <div className="pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <div className="text-gray-500 dark:text-gray-400 mb-1">Из поиска: сниппет</div>
-                      <div className="text-gray-600 dark:text-gray-400">{row.snippetFromSearch}</div>
-                    </div>
-                  )}
-                  {row.urlFromSearch && (
-                    <div className="pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <div className="text-gray-500 dark:text-gray-400 mb-1">Из поиска: URL</div>
-                      <a href={row.urlFromSearch} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline break-all">{row.urlFromSearch}</a>
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Robots:</div>
-                    <div className={seo?.robots === 'OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                      {seo?.robots || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Sitemap:</div>
-                    <div className={seo?.sitemap === 'OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                      {seo?.sitemap || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Meta Title:</div>
-                    <div className="text-gray-600 dark:text-gray-400">{seo?.metaTitle || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Meta Desc:</div>
-                    <div className="text-gray-600 dark:text-gray-400">{seo?.metaDesc || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">H1:</div>
-                    <div className="text-gray-600 dark:text-gray-400">{seo?.h1 || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Pages Crawled:</div>
-                    <div className="text-gray-600 dark:text-gray-400">{seo?.pagesCrawled || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Phone:</div>
-                    <div className="text-gray-600 dark:text-gray-400">{row.phone || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Email:</div>
-                    <div className="text-gray-600 dark:text-gray-400">{row.email || '-'}</div>
-                  </div>
-                  {getTopIssues(row).length > 0 && (
-                    <div>
-                      <div className="text-gray-500 dark:text-gray-400 mb-0.5">Top Issues:</div>
-                      <div className="text-gray-600 dark:text-gray-400">{getTopIssues(row).join(' • ')}</div>
-                    </div>
-                  )}
-                </div>
+                <SeoDetailCard
+                  row={row}
+                  seo={seo}
+                  topIssues={getTopIssues(row)}
+                  compact
+                />
               )}
             </div>
           );
@@ -1459,6 +1398,88 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               >
                 <span className="hidden sm:inline">След</span>
                 <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Send Modal */}
+      {bulkSendModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => !bulkSendLoading && setBulkSendModalOpen(false)}
+          aria-modal="true"
+          role="dialog"
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-[12px] shadow-xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+              <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+                Отправить КП выбранным
+              </h3>
+              <button
+                type="button"
+                onClick={() => !bulkSendLoading && setBulkSendModalOpen(false)}
+                className="p-1 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                aria-label="Закрыть"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
+              {selectedWithEmail.length > 0 && (
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Будет отправлено на {selectedWithEmail.length} адрес(ов):
+                  </p>
+                  <ul className="space-y-1.5 text-sm">
+                    {selectedWithEmail.slice(0, 10).map((r) => (
+                      <li key={r.id} className="flex justify-between gap-2">
+                        <span className="truncate font-medium" style={{ color: 'hsl(var(--text))' }}>{r.domain}</span>
+                        <span className="text-gray-500 dark:text-gray-400 truncate">{r.email}</span>
+                      </li>
+                    ))}
+                    {selectedWithEmail.length > 10 && (
+                      <li className="text-gray-500 dark:text-gray-400">… и ещё {selectedWithEmail.length - 10}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              {selectedWithoutEmail.length > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Пропущено {selectedWithoutEmail.length} без email или текста outreach
+                </p>
+              )}
+              {selectedWithEmail.length === 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Нет выбранных получателей с email и текстом outreach. Добавьте email и сгенерируйте текст в таблице.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-4 py-3 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+              <Button variant="outline" onClick={() => setBulkSendModalOpen(false)} disabled={bulkSendLoading}>
+                Отмена
+              </Button>
+              <Button
+                onClick={handleBulkSendOutreach}
+                disabled={selectedWithEmail.length === 0 || bulkSendLoading}
+                className="gap-1.5"
+              >
+                {bulkSendLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Отправка…
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Отправить ({selectedWithEmail.length})
+                  </>
+                )}
               </Button>
             </div>
           </div>

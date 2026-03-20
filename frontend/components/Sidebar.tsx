@@ -9,6 +9,7 @@ import {
   Ban,
   Settings,
   FileSearch,
+  FileText,
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
@@ -29,6 +30,7 @@ const MODULE_ITEMS: Record<ModuleId, { title: string; items: NavItem[] }> = {
     items: [
       { href: '/dashboard', label: 'Дэшборд', icon: LayoutDashboard },
       { href: '/app/seo', label: 'Новый запрос', icon: Search },
+      { href: '/app/seo/templates', label: 'Шаблоны КП', icon: FileText },
       { href: '/runs', label: 'История', icon: History },
       { href: '/settings/blacklist', label: 'Блеклист', icon: Ban },
       { href: '/settings/providers', label: 'Настройки поиска', icon: Settings },
@@ -61,9 +63,12 @@ function getModuleFromPath(pathname: string | null): ModuleId {
   return 'seo';
 }
 
-function isActive(pathname: string | null, href: string): boolean {
-  if (!pathname) return false;
-  return pathname === href || pathname.startsWith(href + '/');
+function getBestMatch(pathname: string | null, items: NavItem[]): string | null {
+  if (!pathname) return null;
+  const matches = items
+    .filter((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
+    .sort((a, b) => b.href.length - a.href.length);
+  return matches[0]?.href ?? null;
 }
 
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[6px]';
@@ -158,9 +163,11 @@ export function Sidebar() {
             </div>
           )}
           <ul className="space-y-1">
-            {config.items.map((item) => {
+            {(() => {
+              const bestMatch = getBestMatch(pathname, config.items);
+              return config.items.map((item) => {
               const Icon = item.icon;
-              const active = isActive(pathname, item.href);
+              const active = item.href === bestMatch;
               return (
                 <li key={item.href}>
                   <Link
@@ -193,7 +200,8 @@ export function Sidebar() {
                   </Link>
                 </li>
               );
-            })}
+            });
+            })()}
           </ul>
         </div>
       </nav>

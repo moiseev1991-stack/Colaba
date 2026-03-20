@@ -9,8 +9,17 @@
 # even if INTERNAL_BACKEND_ORIGIN is set to an external URL. External URLs
 # cause hairpin NAT issues when routed through coolify-proxy. The internal
 # Docker network path is always preferred.
+#
+# LOCAL OVERRIDE: If INTERNAL_BACKEND_ORIGIN contains host.docker.internal,
+# use it directly (docker-compose.override.yml for Windows Docker DNS issues).
 
 BACKEND_HOSTNAME="${BACKEND_HOSTNAME:-backend}"
+if echo "$INTERNAL_BACKEND_ORIGIN" | grep -q 'host\.docker\.internal'; then
+    echo "[entrypoint] Using INTERNAL_BACKEND_ORIGIN override (host.docker.internal)"
+    echo "$INTERNAL_BACKEND_ORIGIN" > /tmp/backend-origin
+    echo "[entrypoint] Backend origin: $INTERNAL_BACKEND_ORIGIN"
+    exec "$@"
+fi
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 MAX_ATTEMPTS=30
 BACKEND_IP=""
