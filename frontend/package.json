@@ -9,6 +9,7 @@
     "start:fix": "node server-fix-html.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "echo 'No frontend tests configured' && exit 0",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "dependencies": {

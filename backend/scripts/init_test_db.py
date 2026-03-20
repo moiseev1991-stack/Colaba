@@ -26,6 +26,10 @@ def main() -> int:
             SELECT 1, 'test@example.com', :pw, true, true, :now
             WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)
         """), {"pw": hash_password("test"), "now": datetime.utcnow()})
+        # Advance the sequence so subsequent INSERTs don't collide with id=1
+        conn.execute(text(
+            "SELECT setval(pg_get_serial_sequence('users', 'id'), GREATEST(1, (SELECT MAX(id) FROM users)))"
+        ))
     engine.dispose()
     return 0
 
