@@ -2,10 +2,30 @@
 Tests for HTML search providers (yandex_html, google_html).
 """
 
+import uuid
 import pytest
 from httpx import ASGITransport, AsyncClient
 from app.main import app
 from app.modules.searches.providers import fetch_search_results
+from app.core.security import create_access_token, hash_password
+from app.core.database import AsyncSessionLocal
+from app.models.user import User
+
+
+async def _create_superuser_headers() -> dict:
+    """Create a superuser and return Authorization headers."""
+    async with AsyncSessionLocal() as db:
+        user = User(
+            email=f"html_prov_{uuid.uuid4().hex[:8]}@test.example.com",
+            hashed_password=hash_password("testpass"),
+            is_active=True,
+            is_superuser=True,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        token = create_access_token(data={"sub": str(user.id)})
+        return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.mark.asyncio
@@ -96,6 +116,7 @@ async def test_provider_fallback_integration():
 @pytest.mark.asyncio
 async def test_create_search_with_yandex_html():
     """Test creating a search with yandex_html provider."""
+    headers = await _create_superuser_headers()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/searches",
@@ -103,7 +124,8 @@ async def test_create_search_with_yandex_html():
                 "query": "тест",
                 "num_results": 5,
                 "search_provider": "yandex_html"
-            }
+            },
+            headers=headers,
         )
         # Should accept the provider (201) or return validation error (422)
         assert response.status_code in [201, 422]
@@ -115,6 +137,7 @@ async def test_create_search_with_yandex_html():
 @pytest.mark.asyncio
 async def test_create_search_with_google_html():
     """Test creating a search with google_html provider."""
+    headers = await _create_superuser_headers()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/searches",
@@ -122,7 +145,8 @@ async def test_create_search_with_google_html():
                 "query": "test",
                 "num_results": 5,
                 "search_provider": "google_html"
-            }
+            },
+            headers=headers,
         )
         # Should accept the provider (201) or return validation error (422)
         assert response.status_code in [201, 422]

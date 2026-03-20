@@ -201,7 +201,7 @@ class TestOrganizationUsers:
         """Test adding user to organization."""
         response = await client.post(
             f"/api/v1/organizations/{test_organization.id}/users",
-            json={"user_id": regular_user.id, "role": "member"},
+            json={"user_id": regular_user.id, "role": "MEMBER"},
             headers={"Authorization": f"Bearer {superuser_token}"},
         )
         assert response.status_code == 201

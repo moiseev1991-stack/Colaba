@@ -93,7 +93,7 @@ class TestProviderDetail:
     async def test_get_provider_success(self, client, regular_token):
         """Test getting provider detail."""
         response = await client.get(
-            "/api/v1/providers/duckduckgo",
+            "/api/v1/providers/yandex_html",
             headers={"Authorization": f"Bearer {regular_token}"},
         )
         assert response.status_code == 200
@@ -116,8 +116,8 @@ class TestProviderUpdate:
     async def test_update_provider_success(self, client, superuser_token):
         """Test updating provider config as superuser."""
         response = await client.put(
-            "/api/v1/providers/duckduckgo",
-            json={"config": {"test_key": "test_value"}},
+            "/api/v1/providers/yandex_html",
+            json={"config": {"use_proxy": False}},
             headers={"Authorization": f"Bearer {superuser_token}"},
         )
         assert response.status_code == 200
@@ -128,8 +128,8 @@ class TestProviderUpdate:
     async def test_update_provider_non_superuser(self, client, regular_token):
         """Test updating provider as non-superuser fails."""
         response = await client.put(
-            "/api/v1/providers/duckduckgo",
-            json={"config": {"test_key": "test_value"}},
+            "/api/v1/providers/yandex_html",
+            json={"config": {"use_proxy": False}},
             headers={"Authorization": f"Bearer {regular_token}"},
         )
         assert response.status_code == 403
