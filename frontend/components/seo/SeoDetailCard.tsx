@@ -259,7 +259,7 @@ export function SeoDetailCard({ row, seo, topIssues, compact = false }: SeoDetai
     Boolean(row.snippetFromSearch?.trim()) ||
     Boolean(row.urlFromSearch?.trim());
 
-  const displayUrl = ensureAbsoluteUrl(row.urlFromSearch) || row.urlFromSearch;
+  const displayUrl = (ensureAbsoluteUrl(row.urlFromSearch) || row.urlFromSearch) ?? null;
   const statusLabel =
     row.status === 'error'
       ? 'Ошибка'
