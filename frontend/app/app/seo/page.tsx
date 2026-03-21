@@ -318,12 +318,12 @@ export default function SeoPage() {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1250px] min-w-0 px-6 py-8 overflow-x-hidden">
-      <h1 className="text-[20px] font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
+    <div className="mx-auto w-full max-w-[1250px] min-w-0 px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-8 overflow-x-hidden">
+      <h1 className="text-lg sm:text-[18px] md:text-[20px] font-semibold mb-4 sm:mb-6" style={{ color: 'hsl(var(--text))' }}>
         Поиск / SEO-аудит
       </h1>
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Tabs */}
         <div className="flex gap-2 flex-wrap">
           <button
@@ -353,14 +353,14 @@ export default function SeoPage() {
         </div>
 
         {/* Form */}
-        <div className="app-card-enhanced p-6">
+        <div className="app-card-enhanced p-4 sm:p-5 md:p-6">
           <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
             Укажите ключевое слово, провайдер и город. Результат: домены, SEO-оценка, контакты.
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-wrap gap-3 items-end">
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ключевое слово</label>
+              <div className="flex-1 min-w-0 w-full sm:min-w-[200px]">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ключевое слово</label>
                 <Input
                   id="seo-keyword-input"
                   type="text"
@@ -368,20 +368,20 @@ export default function SeoPage() {
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   disabled={isLoading}
-                  className="w-full border-2"
+                  className="w-full border-2 text-sm"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Город</label>
+              <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Город</label>
                 <CityCombobox
                   city={city}
                   onCityChange={(c, id) => { setCity(c); if (id !== undefined) setYandexRegionId(id); }}
                   disabled={isLoading}
-                  className="w-[220px]"
+                  className="w-full sm:w-[220px] min-w-0"
                 />
               </div>
-              <div className="w-[220px]">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
+              <div className="w-full sm:w-[220px] min-w-0">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
                 <Select value={searchProvider} onChange={(e) => setSearchProvider(e.target.value)} disabled={isLoading} className="w-full">
                   <option value="yandex_xml">Яндекс XML (ключи)</option>
                   <option value="yandex_html">Яндекс HTML (бесплатно)</option>
@@ -389,8 +389,8 @@ export default function SeoPage() {
                   <option value="serpapi" disabled>SerpAPI (deprecated)</option>
                 </Select>
               </div>
-              <div className="w-[240px]">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Шаблон КП</label>
+              <div className="w-full sm:w-[240px] min-w-0">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Шаблон КП</label>
                 <Select
                   value={templateId == null ? '' : String(templateId)}
                   onChange={(e) => setTemplateId(e.target.value ? Number(e.target.value) : null)}
@@ -413,7 +413,7 @@ export default function SeoPage() {
         <p className="text-xs text-amber-600 dark:text-amber-400 -mt-3" style={{ visibility: invalidReason ? 'visible' : 'hidden', minHeight: '1rem' }}>{invalidReason || '\u00a0'}</p>
 
         {/* Horizontal summary bar */}
-        <div className="app-card-enhanced px-5 py-4">
+        <div className="app-card-enhanced px-3 py-3 sm:px-4 sm:py-3.5 md:px-5 md:py-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <span className="text-[13px] font-semibold shrink-0" style={{ color: 'hsl(var(--text))' }}>Сводка запуска</span>
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 shrink-0 hidden sm:block" />
@@ -680,7 +680,7 @@ export default function SeoPage() {
 
         {/* Last runs */}
         <div className="app-card-enhanced">
-          <h3 className="text-[14px] font-medium px-4 py-3 border-b" style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}>
+          <h3 className="text-[13px] sm:text-[14px] font-medium px-3 py-2.5 sm:px-4 sm:py-3 border-b" style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}>
             Последние SEO-запуски
           </h3>
           {runsLoading ? (
@@ -694,58 +694,106 @@ export default function SeoPage() {
               Запусков пока нет — сделайте первый запуск
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
-                    <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Дата/время</th>
-                    <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Запрос</th>
-                    <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Провайдер</th>
-                    <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Статус</th>
-                    <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Доменов</th>
-                    <th className="text-right py-2 px-3 text-gray-600 dark:text-gray-400 uppercase tracking-wider text-xs">Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentRuns.map((r) => (
-                    <tr key={r.id} className="border-b hover:bg-saas-primary-weak dark:hover:bg-saas-primary-weak/20 transition-colors" style={{ borderColor: 'hsl(var(--border))' }}>
-                      <td className="py-2 px-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
-                      <td className="py-2 px-3 truncate max-w-[180px]" title={r.query} style={{ color: 'hsl(var(--text))' }}>{r.query}</td>
-                      <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{r.search_provider}</td>
-                      <td className="py-2 px-3">
-                        <span className={cn(
-                          'px-2 py-0.5 rounded text-xs',
-                          r.status === 'completed' && 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-                          r.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
-                          (r.status === 'processing' || r.status === 'pending') && 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
-                        )}>
-                          {statusLabel(r.status)}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">{r.result_count ?? 0}</td>
-                      <td className="py-2 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            activeRef.current = false;
-                            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                            auditUntilRef.current = 0;
-                            hasProcessingRef.current = false;
-                            setActiveRunId(r.id);
-                            setTimeout(() => {
-                              resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 150);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                        >
-                          <Eye className="h-3.5 w-3.5" /> Открыть
-                        </button>
-                      </td>
+            <>
+              {/* Mobile: список карточек */}
+              <div className="md:hidden divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+                {recentRuns.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex flex-col gap-1.5 py-2.5 px-3 active:bg-saas-primary-weak dark:active:bg-saas-primary-weak/20"
+                    style={{ borderColor: 'hsl(var(--border))' }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[13px] font-semibold truncate flex-1" style={{ color: 'hsl(var(--text))' }} title={r.query}>
+                        {r.query}
+                      </span>
+                      <span className={cn(
+                        'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium',
+                        r.status === 'completed' && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+                        r.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+                        (r.status === 'processing' || r.status === 'pending') && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+                      )}>
+                        {statusLabel(r.status)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span>{formatDateTime(r.created_at)}</span>
+                      <span>{r.result_count ?? 0} доменов · {PROVIDERS[r.search_provider] ?? r.search_provider}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        activeRef.current = false;
+                        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                        auditUntilRef.current = 0;
+                        hasProcessingRef.current = false;
+                        setActiveRunId(r.id);
+                        setTimeout(() => {
+                          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 150);
+                      }}
+                      className="mt-0.5 self-start inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <Eye className="h-3 w-3" /> Открыть
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: таблица */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
+                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Дата/время</th>
+                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Запрос</th>
+                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Провайдер</th>
+                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Статус</th>
+                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Доменов</th>
+                      <th className="text-right py-2 px-3 text-gray-600 dark:text-gray-400 uppercase tracking-wider text-xs">Действия</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {recentRuns.map((r) => (
+                      <tr key={r.id} className="border-b hover:bg-saas-primary-weak dark:hover:bg-saas-primary-weak/20 transition-colors" style={{ borderColor: 'hsl(var(--border))' }}>
+                        <td className="py-2 px-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
+                        <td className="py-2 px-3 truncate max-w-[180px]" title={r.query} style={{ color: 'hsl(var(--text))' }}>{r.query}</td>
+                        <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{r.search_provider}</td>
+                        <td className="py-2 px-3">
+                          <span className={cn(
+                            'px-2 py-0.5 rounded text-xs',
+                            r.status === 'completed' && 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+                            r.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
+                            (r.status === 'processing' || r.status === 'pending') && 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
+                          )}>
+                            {statusLabel(r.status)}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">{r.result_count ?? 0}</td>
+                        <td className="py-2 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              activeRef.current = false;
+                              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                              auditUntilRef.current = 0;
+                              hasProcessingRef.current = false;
+                              setActiveRunId(r.id);
+                              setTimeout(() => {
+                                resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }, 150);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> Открыть
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

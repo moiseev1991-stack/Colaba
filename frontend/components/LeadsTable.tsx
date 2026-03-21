@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, Send, ChevronLeft, ChevronRight, FileSearch, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import { Copy, ExternalLink, Ban, Download, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, MoreVertical, Phone, Mail, Send, ChevronLeft, ChevronRight, FileSearch, Loader2, AlertCircle, RefreshCw, FileText } from 'lucide-react';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import type { LeadRow } from '@/lib/types';
@@ -48,6 +50,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSendModalOpen, setBulkSendModalOpen] = useState(false);
   const [bulkSendLoading, setBulkSendLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Pagination state - use stable defaults for hydration; sync from URL/localStorage in useEffect
   const [pageSize, setPageSize] = useState(100);
@@ -562,16 +566,27 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             </div>
             
             <div className="flex gap-2">
-              {selectedIds.size > 0 && (
-                <Button
-                  size="sm"
-                  onClick={() => setBulkSendModalOpen(true)}
-                  className="flex items-center gap-1.5"
-                >
-                  <Send className="h-4 w-4" />
-                  Отправить КП ({selectedIds.size})
-                </Button>
-              )}
+              <Button
+                size="sm"
+                onClick={() => setBulkSendModalOpen(true)}
+                disabled={selectedIds.size === 0 || bulkSendLoading}
+                className="flex items-center gap-1.5"
+                aria-label={selectedIds.size > 0 ? `Отправить КП выбранным (${selectedIds.size})` : 'Выберите строки для отправки КП'}
+              >
+                {bulkSendLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Отправка...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    {selectedIds.size > 0
+                      ? `Отправить КП (${selectedIds.size})`
+                      : 'Отправить КП'}
+                  </>
+                )}
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -806,7 +821,13 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     <>
                       <tr
                         key={row.id}
-                        className={`h-[44px] transition-colors ${actionRowState[row.id]?.state === 'loading' ? 'bg-blue-50/50 dark:bg-blue-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
+                        className={`h-[44px] transition-colors ${
+                          selectedIds.has(row.id)
+                            ? 'bg-blue-50/80 dark:bg-blue-950/30'
+                            : actionRowState[row.id]?.state === 'loading'
+                              ? 'bg-blue-50/50 dark:bg-blue-950/20'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                        }`}
                       >
                         {viewMode === 'compact' ? (
                           <>
@@ -1150,8 +1171,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       
                       {/* Row Details (Accordion) - только в compact режиме */}
                       {viewMode === 'compact' && isExpanded && (
-                        <tr className="bg-slate-50/40 dark:bg-slate-900/20">
-                          <td colSpan={9} className="px-3 pb-2 pt-0 border-b border-slate-200 dark:border-slate-700 align-top">
+                        <tr className="bg-slate-50/50 dark:bg-slate-900/30">
+                          <td colSpan={9} className="px-2 pb-1 pt-0 border-b border-slate-200 dark:border-slate-700 align-top">
                             <SeoDetailCard
                               row={row}
                               seo={seo}
@@ -1169,8 +1190,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         </div>
       </div>
 
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-2">
+      {/* Mobile Cards — компактный mobile-first layout */}
+      <div className="md:hidden space-y-1.5">
         {paginatedResults.map((row) => {
           const seo = row.seo;
           const isExpanded = expandedRow === row.id;
@@ -1179,148 +1200,144 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           return (
             <div
               key={row.id}
-              className={`rounded-[14px] border p-3 shadow-sm ${actionRowState[row.id]?.state === 'loading' ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+              className={`rounded-lg border px-2.5 py-2 transition-colors ${
+                selectedIds.has(row.id)
+                  ? 'ring-2 ring-blue-400/50 dark:ring-blue-500/40 bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                  : actionRowState[row.id]?.state === 'loading'
+                    ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-900/50'
+                    : 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'
+              }`}
             >
-              {/* Header: Domain + Contacts + Status */}
-              <div className="flex items-center justify-between mb-2">
-                <div 
-                  className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer flex items-center gap-1.5 flex-1 min-w-0"
+              {/* Строка 1: checkbox + domain + chevron + status + icons */}
+              <div className="flex items-center gap-2 min-w-0">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(row.id)}
+                  onChange={(e) => { e.stopPropagation(); toggleSelect(row.id); }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary shrink-0"
+                  title="Выбрать"
+                  aria-label="Выбрать домен"
+                />
+                <div
+                  className="flex-1 min-w-0 flex items-center gap-1.5 cursor-pointer"
                   onClick={() => toggleRowDetails(row.id)}
                 >
                   {isExpanded ? (
-                    <ChevronUp className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                    <ChevronUp className="h-4 w-4 text-gray-500 shrink-0" />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                    <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
                   )}
-                  <span className="line-clamp-1 truncate">{row.domain}</span>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(row.id)}
-                    onChange={(e) => { e.stopPropagation(); toggleSelect(row.id); }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-3.5 h-3.5 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary flex-shrink-0"
-                    title="Выбрать для выгрузки"
-                    aria-label="Выбрать домен"
-                  />
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Contacts Icons */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={(e) => handleCopyPhone(e, row.phone)}
-                      title={hasPhone(row.phone) ? 'Скопировать телефон' : 'Телефон не найден'}
-                      aria-label={hasPhone(row.phone) ? 'Скопировать телефон' : 'Телефон не найден'}
-                      className={`cursor-pointer hover:opacity-80 transition-opacity ${!hasPhone(row.phone) ? 'cursor-not-allowed opacity-50' : ''}`}
-                      disabled={!hasPhone(row.phone)}
-                    >
-                      <Phone 
-                        className={`h-4 w-4 ${hasPhone(row.phone) 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
-                        }`}
-                      />
-                    </button>
-                    <button
-                      onClick={(e) => handleCopyEmail(e, row.email)}
-                      title={hasEmail(row.email) ? 'Скопировать email' : 'Email не найден'}
-                      aria-label={hasEmail(row.email) ? 'Скопировать email' : 'Email не найден'}
-                      className={`cursor-pointer hover:opacity-80 transition-opacity ${!hasEmail(row.email) ? 'cursor-not-allowed opacity-50' : ''}`}
-                      disabled={!hasEmail(row.email)}
-                    >
-                      <Mail 
-                        className={`h-4 w-4 ${hasEmail(row.email) 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      row.status === 'error' 
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' 
-                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                    }`}
-                  >
-                    {row.status === 'error' ? 'Ошибка' : 'OK'}
+                  <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {row.domain}
                   </span>
                 </div>
-              </div>
-
-              {/* Score + Pages */}
-              <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mb-2">
-                <span>Score: <span className="font-semibold text-gray-900 dark:text-white">{row.score}</span></span>
-                <span>Pages: <span className="font-semibold text-gray-900 dark:text-white">{seo?.pagesCrawled || '-'}</span></span>
-              </div>
-
-              {/* Tech Badges */}
-              <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${
-                  seo?.robots === 'OK' 
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                }`}>
-                  R: {seo?.robots || '-'}
+                <span
+                  className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                    row.status === 'error'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                  }`}
+                >
+                  {row.status === 'error' ? 'Ошибка' : 'OK'}
                 </span>
-                <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${
-                  seo?.sitemap === 'OK' 
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                }`}>
-                  S: {seo?.sitemap || '-'}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={(e) => handleCopyPhone(e, row.phone)}
+                    aria-label={hasPhone(row.phone) ? 'Скопировать телефон' : 'Телефон не найден'}
+                    disabled={!hasPhone(row.phone)}
+                    className={`p-1 rounded ${!hasPhone(row.phone) ? 'opacity-40' : ''}`}
+                  >
+                    <Phone className={`h-4 w-4 ${hasPhone(row.phone) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`} />
+                  </button>
+                  <button
+                    onClick={(e) => handleCopyEmail(e, row.email)}
+                    aria-label={hasEmail(row.email) ? 'Скопировать email' : 'Email не найден'}
+                    disabled={!hasEmail(row.email)}
+                    className={`p-1 rounded ${!hasEmail(row.email) ? 'opacity-40' : ''}`}
+                  >
+                    <Mail className={`h-4 w-4 ${hasEmail(row.email) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Строка 2: Score, Pages, R/S badges, meta preview */}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Score <span className="font-semibold text-gray-700 dark:text-gray-300">{row.score}</span>
+                  <span className="mx-1">·</span>
+                  Pages <span className="font-semibold text-gray-700 dark:text-gray-300">{seo?.pagesCrawled ?? '—'}</span>
                 </span>
+                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.robots === 'OK' ? 'bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300'}`}>
+                  R
+                </span>
+                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.sitemap === 'OK' ? 'bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300'}`}>
+                  S
+                </span>
+                {metaSummary && metaSummary !== '-' && (
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                    {metaSummary}
+                  </span>
+                )}
               </div>
 
-              {/* Meta Summary */}
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                {metaSummary}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1.5 pt-2 border-t border-gray-200 dark:border-gray-700">
+              {/* Actions — компактные иконки */}
+              <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-700">
                 {actionRowState[row.id]?.state === 'loading' ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 flex-1" title="Идёт аудит…">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-saas-primary shrink-0" />
+                  <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    <Loader2 className="h-3 w-3 animate-spin text-saas-primary" />
                     В работе
                   </span>
-                ) : actionRowState[row.id]?.state === 'error' ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => handleCopy(row)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs">
-                      {copiedId === row.id ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" /> : <Copy className="h-3 w-3" />}
-                      {copiedId === row.id ? 'Скопировано' : 'Copy'}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => window.open(`https://${row.domain}`, '_blank')} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs">
-                      <ExternalLink className="h-3 w-3" />
-                      Open
-                    </Button>
-                    <span className="inline-flex items-center text-red-600 dark:text-red-400" title={actionRowState[row.id]?.errorMessage || 'Ошибка аудита'}>
-                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    </span>
-                    <Button variant="outline" size="sm" onClick={() => handleRunAudit(row)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs" title="Повторить">
-                      <RefreshCw className="h-3 w-3" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => toggleRowDetails(row.id)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs">
-                      {isExpanded ? 'Hide' : 'Details'}
-                    </Button>
-                  </>
                 ) : (
                   <>
-                    <Button variant="outline" size="sm" onClick={() => handleCopy(row)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs">
-                      {copiedId === row.id ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" /> : <Copy className="h-3 w-3" />}
-                      {copiedId === row.id ? 'Скопировано' : 'Copy'}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => window.open(`https://${row.domain}`, '_blank')} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs">
-                      <ExternalLink className="h-3 w-3" />
-                      Open
-                    </Button>
-                    {runId && !row.seo && (
-                      <Button variant="outline" size="sm" onClick={() => handleRunAudit(row)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs" title="SEO-аудит">
-                        <FileSearch className="h-3 w-3" />
-                      </Button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(row)}
+                      className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      title={copiedId === row.id ? 'Скопировано' : 'Копировать'}
+                    >
+                      {copiedId === row.id ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.open(`https://${row.domain}`, '_blank')}
+                      className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      title="Открыть"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                    {actionRowState[row.id]?.state === 'error' && (
+                      <span className="text-red-500 dark:text-red-400 p-1" title={actionRowState[row.id]?.errorMessage}>
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      </span>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => toggleRowDetails(row.id)} className="flex items-center justify-center gap-1 h-7 flex-1 text-xs">
-                      {isExpanded ? 'Hide' : 'Details'}
-                    </Button>
+                    {actionRowState[row.id]?.state === 'error' && (
+                      <button
+                        type="button"
+                        onClick={() => handleRunAudit(row)}
+                        className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        title="Повторить"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {runId && !row.seo && actionRowState[row.id]?.state !== 'error' && (
+                      <button
+                        type="button"
+                        onClick={() => handleRunAudit(row)}
+                        className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        title="SEO-аудит"
+                      >
+                        <FileSearch className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleRowDetails(row.id)}
+                      className="ml-auto p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-[11px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      {isExpanded ? 'Скрыть' : 'Подробнее'}
+                    </button>
                   </>
                 )}
               </div>
@@ -1338,6 +1355,65 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           );
         })}
       </div>
+
+      {/* Sticky bottom action bar: fixed к viewport, показывается только при selectedCount > 0. Portal для гарантированной видимости. */}
+      {mounted &&
+        selectedIds.size > 0 &&
+        document.body &&
+        createPortal(
+          <div
+            className="fixed inset-x-0 bottom-0 z-[9999] flex justify-center px-3 sm:px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))]"
+            role="region"
+            aria-label="Действия с выбранными строками"
+          >
+            <div className="w-full max-w-2xl rounded-t-xl border border-b-0 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-[0_-4px_24px_rgba(0,0,0,0.15)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
+                <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 shrink-0">
+                  Выбрано: <span className="font-semibold">{selectedIds.size}</span>
+                </span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Link
+                    href="/app/seo/templates"
+                    className="inline-flex items-center justify-center gap-1 h-8 sm:h-9 px-2 sm:px-2.5 rounded-lg text-xs sm:text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shrink-0"
+                    aria-label="Выбрать шаблон КП"
+                  >
+                    <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span>Выбрать КП</span>
+                  </Link>
+                  <Button
+                    size="sm"
+                    onClick={() => setBulkSendModalOpen(true)}
+                    disabled={bulkSendLoading}
+                    className="flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] shrink-0"
+                    aria-label={
+                      bulkSendLoading
+                        ? 'Отправка…'
+                        : `Отправить КП выбранным (${selectedIds.size})`
+                    }
+                  >
+                    {bulkSendLoading ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                        Отправка...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Отправить КП ({selectedIds.size})
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Spacer под sticky bar: чтобы контент не прятался под панелью (с учётом safe-area на mobile) */}
+      {selectedIds.size > 0 && (
+        <div className="h-[calc(5rem+env(safe-area-inset-bottom,0.75rem))] sm:h-20" aria-hidden />
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
