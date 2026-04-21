@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
+// Не кэшировать прокси к API — иначе после деплоя возможны «залипшие» 404/502.
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 const ACCESS_COOKIE = 'access_token';
 const REFRESH_COOKIE = 'refresh_token';

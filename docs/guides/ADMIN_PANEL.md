@@ -8,13 +8,19 @@
 - **URL:** после запуска backend — `http://localhost:8000/admin/` (в Docker с маппингом портов — например `http://localhost:8001/admin/`).
 - **Код:** `backend/app/admin/`.
 
-### Важно: на сервере (Coolify)
+### Важно: на сервере (Coolify / SpinLid)
 
-Админка отдаётся **только backend'ом**. Фронт (Next.js) на основном домене не знает путь `/admin`, поэтому даёт 404.
+Админка отдаётся **только процессом FastAPI (backend)**. Next.js на **www** маршрут `/admin` не реализует — будет 404.
 
-- **Правильно:** открывать админку по домену **API**, а не по домену фронта:
-  - `https://api.ваш-домен.com/admin` (подставьте свой поддомен API).
-- **Неправильно:** `https://ваш-домен.com/admin` — запрос уходит во фронт → «This page could not be found».
+1. В панели Coolify откройте сервис **backend** и посмотрите **публичный URL** или внутренний порт (часто `8000`).
+2. Заходите в админку так:
+   - **`https://<хост-API>/admin`** — например `https://api.spinlid.ru/admin`, если в Coolify у API задан поддомен `api`;
+   - либо URL вида `https://<uuid>.sslip.io/admin`, если так выдан доступ к контейнеру;
+   - **не** используйте `https://www.spinlid.ru/admin` — это фронт, не FastAPI.
+
+**Вход:** в текущей сборке `Admin()` подключается без `authentication_backend` из `auth.py`, поэтому SQLAdmin может открываться **без отдельной формы логина** (доступ не защищён кодом — ограничьте доступ в Coolify: IP, Basic Auth у прокси, или закройте порт). Если позже включите `AdminAuth` + session middleware, понадобятся **email и пароль пользователя с `is_superuser=True`** в таблице `users`.
+
+**Проверка, что это тот сервис:** в том же базовом URL должен открываться Swagger: `https://<хост-API>/api/docs` (если `DEBUG=True`) или `https://<хост-API>/health`.
 
 ## Разделы (модели)
 
