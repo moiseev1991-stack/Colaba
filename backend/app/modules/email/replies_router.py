@@ -12,8 +12,8 @@ from app.core.database import get_db
 from app.modules.auth.router import get_current_user_id
 from app.models.email_reply import EmailReply
 
-
-router = APIRouter(prefix="/email/replies", tags=["Email Replies"])
+# Явные пути под /email (без GET "" на prefix=/email/replies — иначе 404 за прокси/слешами).
+router = APIRouter(prefix="/email", tags=["Email Replies"])
 
 
 class EmailReplyResponse(BaseModel):
@@ -32,7 +32,7 @@ class EmailReplyResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("", response_model=dict)
+@router.get("/replies", response_model=dict)
 async def get_email_replies(
     limit: int = 50,
     offset: int = 0,
@@ -78,7 +78,7 @@ async def get_email_replies(
     }
 
 
-@router.get("/{reply_id}", response_model=EmailReplyResponse)
+@router.get("/replies/{reply_id}", response_model=EmailReplyResponse)
 async def get_email_reply(
     reply_id: int,
     db: AsyncSession = Depends(get_db),

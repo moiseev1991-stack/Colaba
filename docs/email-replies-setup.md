@@ -33,6 +33,12 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Ошибка «Request failed with status code 404» на `/app/email/replies` или `/app/email/settings`
+
+1. **Бэкенд без новых роутов** — задеплойте образ с актуальным `main`, затем `alembic upgrade head` (таблица `email_replies`, `email_config`).
+2. **Проверка API** (после авторизации, подставьте свой домен и токен): `GET https://ваш-домен/api/v1/email/replies` и `GET .../api/v1/email/settings/status`. Если 404 — запрос не доходит до FastAPI (старый контейнер) или неверный префикс у reverse proxy (должен проксировать `/api/v1` на backend).
+3. Список ответов регистрируется как **`GET /api/v1/email/replies`** (явный путь, без пустого сегмента URL).
+
 ## Требования
 
 ### 1. DNS настройки
