@@ -9,6 +9,17 @@ from app.models.ai_assistant import AiAssistant
 from app.models.captcha_bypass_config import CaptchaBypassConfig
 from app.models.deployment import Deployment, DeploymentEnvironment, DeploymentStatus
 from app.models.social_account import SocialAccount, OAuthProvider
+from app.models.email import (
+    EmailDomain,
+    EmailTemplate,
+    EmailCampaign,
+    EmailLog,
+    DnsStatus,
+    EmailStatus,
+    CampaignStatus,
+)
+from app.models.email_reply import EmailReply
+from app.models.email_config import EmailConfig
 
 __all__ = [
     "User",
@@ -27,4 +38,13 @@ __all__ = [
     "DeploymentStatus",
     "SocialAccount",
     "OAuthProvider",
+    "EmailDomain",
+    "EmailTemplate",
+    "EmailCampaign",
+    "EmailLog",
+    "DnsStatus",
+    "EmailStatus",
+    "CampaignStatus",
+    "EmailReply",
+    "EmailConfig",
 ]

@@ -7,7 +7,7 @@
 
 ## Руководства (`docs/guides/`)
 
-- [LOCAL_SETUP.md](guides/LOCAL_SETUP.md) -- Локальная установка
+- [LOCAL_SETUP.md](guides/LOCAL_SETUP.md) -- Локальная установка (порты 4000 / 8001 / 5433, прокси, пересборка backend)
 - [PROJECT_STRUCTURE_RULES.md](guides/PROJECT_STRUCTURE_RULES.md) -- Правила структуры проекта
 - [REPOSITORY_WORKFLOW_RULES.md](guides/REPOSITORY_WORKFLOW_RULES.md) -- Правила работы с Git
 - [PROVIDERS_SETTINGS.md](guides/PROVIDERS_SETTINGS.md) -- Настройки провайдеров поиска
@@ -36,8 +36,13 @@
 
 ## Журнал изменений (`docs/changes/`)
 
+- [email-config-local-dev-pytest-2026-04-21.md](changes/email-config-local-dev-pytest-2026-04-21.md)
 - [frontend-build-fixes-2026-03-16.md](changes/frontend-build-fixes-2026-03-16.md)
 - [realtime-seo-results-2025-03-12.md](changes/realtime-seo-results-2025-03-12.md)
+
+## Почта и ответы
+
+- [email-replies-setup.md](email-replies-setup.md) — IMAP, ответы, связка с конфигом
 
 ## Планы и аудиты (`docs/планы/`)
 

@@ -34,6 +34,7 @@ fastapi-sso>=0.21.0
 
 # HTTP Client (>=0.27 для yandex-cloud-ml-sdk)
 httpx>=0.27,<1
+aiosmtplib>=3.0.0
 aiohttp==3.9.1
 beautifulsoup4==4.12.2
 duckduckgo-search==4.1.1  # Бесплатный поиск DuckDuckGo без API ключа

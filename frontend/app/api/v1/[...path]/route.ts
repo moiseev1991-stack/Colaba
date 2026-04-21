@@ -23,7 +23,10 @@ function getBackendOrigin(): string {
   if (env?.startsWith('http')) { _originCache = env; return env; }
   const devEnv = process.env['BACKEND_ORIGIN'];
   if (devEnv?.startsWith('http')) { _originCache = devEnv; return devEnv; }
-  _originCache = 'http://backend:8000';
+  // Docker Compose: задайте INTERNAL_BACKEND_ORIGIN=http://backend:8000.
+  // Локально ``npm run dev`` на хосте: бэкенд на 127.0.0.1:8001 (см. docker-compose ports).
+  const isProd = process.env['NODE_ENV'] === 'production';
+  _originCache = isProd ? 'http://backend:8000' : 'http://127.0.0.1:8001';
   return _originCache;
 }
 

@@ -1,6 +1,6 @@
 # Локальная установка и запуск проекта Colaba
 
-**Кратко:** см. [RUN_LOCAL_NOW.md](../RUN_LOCAL_NOW.md) — актуальные команды и порты.
+**Кратко:** порты — frontend **4000**, backend **8001**, Postgres на хосте **5433** (см. `docker-compose.yml`). Подробности ниже.
 
 ## Предварительные требования
 
@@ -216,16 +216,23 @@ taskkill /PID <PID> /F
 
 **Альтернатива:** запуск frontend без Docker — `.\RUN_FRONTEND_LOCAL.bat` (backend в Docker).
 
-### Backend не стартует (ModuleNotFoundError: slowapi, sqladmin и др.)
+### Backend не стартует (ModuleNotFoundError: slowapi, sqladmin, **aiosmtplib** и др.)
 
-Образ backend устарел. Установите зависимости в запущенном контейнере:
+Образ backend собран без актуального `pip install`. Код монтируется с диска, **пакеты** — из образа; после изменения `requirements.txt` обязательна пересборка.
+
+```powershell
+docker compose build backend
+docker compose up -d --force-recreate backend
+```
+
+Временный обход без пересборки:
 
 ```powershell
 docker exec leadgen-backend pip install -r /app/requirements.txt
 docker restart leadgen-backend
 ```
 
-Или пересоберите образ: `docker compose build --no-cache backend` (при ошибках PyPI повторите позже).
+Если видите `No module named 'aiosmtplib'` — в образе нет зависимости для SMTP; пересоберите backend (см. выше).
 
 ### Proxy error: socket hang up
 
@@ -237,14 +244,14 @@ docker restart leadgen-backend
 - Если backend не отвечает — смотрите логи: `docker logs leadgen-backend`. При `ModuleNotFoundError` см. раздел выше.
 - Перезапустите: `docker compose down` затем `docker compose up -d`
 
-**Вариант 2: Frontend локально (`npm run dev`).** Создайте `frontend/.env.local` из шаблона:
+**Вариант 2: Frontend локально (`npm run dev`).** По умолчанию прокси Next.js (режим разработки) обращается к **`http://127.0.0.1:8001`** — отдельный `.env.local` не обязателен. При необходимости скопируйте шаблон:
 
 ```powershell
 cd frontend
 copy .env.local.example .env.local
 ```
 
-Содержимое: `INTERNAL_BACKEND_ORIGIN=http://localhost:8001`. Backend должен быть запущен (Docker: `docker compose up -d backend postgres redis`).
+Вручную задайте `INTERNAL_BACKEND_ORIGIN`, если backend на другом хосте/порту. Backend должен быть запущен (например `docker compose up -d backend postgres redis`).
 
 **Вариант 3: Docker на Windows — проблемы с DNS.** Frontend в контейнере не резолвит hostname `backend`:
 
@@ -319,13 +326,14 @@ Colaba/
 
 ## Переменные окружения
 
-Основные переменные в `.env`:
+Создайте `.env` из корневого `.env.example`. Для **uvicorn на хосте** (не в Docker-сети) используйте в `DATABASE_URL` хост `127.0.0.1` и порт Postgres с хоста (в compose часто **5433**), для Redis — `redis://127.0.0.1:6379/0`. Внутри Docker оставьте имена сервисов `postgres`, `redis`.
 
-- `DATABASE_URL` - URL подключения к PostgreSQL
-- `REDIS_URL` - URL подключения к Redis
-- `SECRET_KEY` - Секретный ключ для JWT (измените в production!)
-- `DEBUG` - Режим отладки (True/False)
-- `CORS_ORIGINS` - Разрешенные источники для CORS
+Основные переменные:
+
+- `DATABASE_URL` — async PostgreSQL (`postgresql+asyncpg://...`)
+- `REDIS_URL`
+- `SECRET_KEY` — для JWT (смените в production)
+- `DEBUG`, `CORS_ORIGINS`
 
 ## Следующие шаги
 

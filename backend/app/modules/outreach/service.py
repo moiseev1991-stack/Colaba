@@ -1,22 +1,17 @@
-"""Outreach sending service — email (SMTP) and Telegram."""
+"""Outreach sending service — email (SMTP/Hyvor Relay) and Telegram."""
 
 import logging
-import smtplib
-import ssl
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import datetime
 from typing import Optional
 
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.modules.email.service import EmailServiceError, email_service
 from app.modules.outreach.schemas import OutreachResult
 
 logger = logging.getLogger(__name__)
-
-
-def _smtp_configured() -> bool:
-    return bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD)
 
 
 def _telegram_configured() -> bool:
@@ -28,32 +23,25 @@ async def send_email(
     subject: str,
     body: str,
     from_name: Optional[str] = None,
-) -> None:
-    """Send a plain-text email via SMTP.  Raises on failure."""
-    if not _smtp_configured():
-        raise RuntimeError(
-            "SMTP не настроен. Укажите SMTP_HOST, SMTP_USER, SMTP_PASSWORD в переменных окружения."
+    from_email: Optional[str] = None,
+    reply_to: Optional[str] = None,
+    db: Optional[AsyncSession] = None,
+) -> dict:
+    """
+    Send email via ``EmailService`` (DB ``email_config`` or env).
+    """
+    try:
+        return await email_service.send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            from_email=from_email or settings.SMTP_USER,
+            from_name=from_name,
+            reply_to=reply_to,
+            db=db,
         )
-
-    sender = f"{from_name} <{settings.SMTP_USER}>" if from_name else settings.SMTP_USER
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = sender
-    msg["To"] = to_email
-    msg.attach(MIMEText(body, "plain", "utf-8"))
-
-    ctx = ssl.create_default_context()
-
-    if settings.SMTP_USE_SSL:
-        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, context=ctx, timeout=15) as smtp:
-            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            smtp.sendmail(settings.SMTP_USER, to_email, msg.as_bytes())
-    else:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
-            smtp.starttls(context=ctx)
-            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            smtp.sendmail(settings.SMTP_USER, to_email, msg.as_bytes())
+    except EmailServiceError as e:
+        raise RuntimeError(str(e)) from e
 
 
 async def send_telegram(chat_id: str, message: str) -> None:
@@ -74,10 +62,16 @@ async def bulk_send_outreach(
     channel: str,
     telegram_chat_id: Optional[str],
     from_name: Optional[str],
+    user_id: Optional[int] = None,
+    create_campaign: bool = True,
 ) -> dict:
-    """Send outreach to a list of SearchResult IDs.  Reads outreach text from DB."""
+    """
+    Send outreach to a list of SearchResult IDs. Reads outreach text from DB.
+    Optionally creates EmailCampaign and EmailLog records for tracking.
+    """
     from sqlalchemy import select
     from app.models.search import SearchResult
+    from app.models.email import EmailCampaign, EmailLog, CampaignStatus, EmailStatus
 
     result = await db.execute(
         select(SearchResult).where(SearchResult.id.in_(search_result_ids))
@@ -88,6 +82,21 @@ async def bulk_send_outreach(
     skipped = 0
     errors = 0
     detail: list[OutreachResult] = []
+
+    # Create campaign if tracking is enabled
+    campaign = None
+    if create_campaign and channel == "email" and user_id:
+        campaign = EmailCampaign(
+            user_id=user_id,
+            name=f"Outreach {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
+            subject="Коммерческое предложение",
+            body="",
+            status=CampaignStatus.SENDING,
+            total_recipients=len(results),
+            from_name=from_name,
+        )
+        db.add(campaign)
+        await db.flush()  # Get campaign.id
 
     for sr in results:
         rid = sr.id
@@ -100,17 +109,51 @@ async def bulk_send_outreach(
                 detail.append(OutreachResult(search_result_id=rid, status="skipped", reason="no outreach text"))
                 skipped += 1
                 continue
+
+            # Create email log for tracking
+            email_log = None
+            if campaign:
+                email_log = EmailLog(
+                    campaign_id=campaign.id,
+                    search_result_id=sr.id,
+                    user_id=user_id,
+                    organization_id=sr.search.organization_id if sr.search else None,
+                    to_email=sr.email,
+                    subject=sr.outreach_subject or "Коммерческое предложение",
+                    status=EmailStatus.PENDING,
+                )
+                db.add(email_log)
+                await db.flush()
+
             try:
-                await send_email(
+                send_result = await send_email(
                     to_email=sr.email,
                     subject=sr.outreach_subject or "Коммерческое предложение",
                     body=sr.outreach_text,
                     from_name=from_name,
+                    db=db,
                 )
+                
+                # Update log on success
+                if email_log:
+                    email_log.status = EmailStatus.SENT
+                    email_log.sent_at = datetime.utcnow()
+                    email_log.external_message_id = send_result.get("external_message_id")
+                    email_log.body_preview = sr.outreach_text[:500] if sr.outreach_text else None
+                    db.add(email_log)
+                
                 detail.append(OutreachResult(search_result_id=rid, status="sent"))
                 sent += 1
             except Exception as exc:
                 logger.warning(f"Failed to send email to {sr.email}: {exc}")
+                
+                # Update log on error
+                if email_log:
+                    email_log.status = EmailStatus.FAILED
+                    email_log.error_message = str(exc)
+                    email_log.error_code = "SEND_FAILED"
+                    db.add(email_log)
+                
                 detail.append(OutreachResult(search_result_id=rid, status="error", reason=str(exc)))
                 errors += 1
 
@@ -141,4 +184,14 @@ async def bulk_send_outreach(
             detail.append(OutreachResult(search_result_id=rid, status="skipped", reason=f"unknown channel: {channel}"))
             skipped += 1
 
-    return {"sent": sent, "skipped": skipped, "errors": errors, "results": detail}
+    # Finalize campaign
+    if campaign:
+        campaign.sent_count = sent
+        campaign.failed_count = errors
+        campaign.status = CampaignStatus.COMPLETED
+        campaign.completed_at = datetime.utcnow()
+        db.add(campaign)
+
+    await db.commit()
+
+    return {"sent": sent, "skipped": skipped, "errors": errors, "results": detail, "campaign_id": campaign.id if campaign else None}

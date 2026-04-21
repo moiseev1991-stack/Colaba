@@ -12,6 +12,11 @@ from app.admin.views.social_accounts import SocialAccountAdmin
 from app.admin.views.search_provider_configs import SearchProviderConfigAdmin
 from app.admin.views.ai_assistants import AiAssistantAdmin
 from app.admin.views.captcha_bypass_configs import CaptchaBypassConfigAdmin
+from app.admin.views.email_templates import EmailTemplateAdmin
+from app.admin.views.email_domains import EmailDomainAdmin
+from app.admin.views.email_campaigns import EmailCampaignAdmin
+from app.admin.views.email_logs import EmailLogAdmin
+from app.admin.views.email_replies import EmailReplyAdmin
 
 __all__ = [
     "UserAdmin",
@@ -24,4 +29,9 @@ __all__ = [
     "SearchProviderConfigAdmin",
     "AiAssistantAdmin",
     "CaptchaBypassConfigAdmin",
+    "EmailTemplateAdmin",
+    "EmailDomainAdmin",
+    "EmailCampaignAdmin",
+    "EmailLogAdmin",
+    "EmailReplyAdmin",
 ]

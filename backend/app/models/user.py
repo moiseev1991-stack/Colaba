@@ -24,6 +24,10 @@ class User(Base):
     # Relationships
     searches = relationship("Search", back_populates="user", cascade="all, delete-orphan")
     blacklist_domains = relationship("BlacklistDomain", back_populates="user", cascade="all, delete-orphan")
+    email_templates = relationship("EmailTemplate", back_populates="user", cascade="all, delete-orphan")
+    email_campaigns = relationship("EmailCampaign", back_populates="user", cascade="all, delete-orphan")
+    email_logs = relationship("EmailLog", back_populates="user", cascade="all, delete-orphan")
+    email_replies = relationship("EmailReply", back_populates="user", cascade="all, delete-orphan")
     organizations = relationship(
         "Organization",
         secondary="user_organizations",

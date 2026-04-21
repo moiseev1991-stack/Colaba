@@ -1,6 +1,6 @@
 # Colaba -- Статус проекта
 
-**Последнее обновление:** 18 марта 2026
+**Последнее обновление:** 21 апреля 2026
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Сервис | URL | Статус |
 |--------|-----|--------|
-| PostgreSQL | localhost:5432 | Работает (healthy) |
+| PostgreSQL | localhost:5433 → 5432 в контейнере | Работает (healthy) |
 | Redis | localhost:6379 | Работает (healthy) |
 | Backend API | localhost:8001 | Работает |
 | Frontend | localhost:4000 | Работает |
@@ -28,6 +28,7 @@
 - Интеграция с поисковыми провайдерами: DuckDuckGo (по умолчанию), Яндекс XML, Яндекс HTML, Google HTML
 - Celery задачи: поиск, краулинг (до 20 страниц), SEO-аудит, извлечение контактов, генерация outreach
 - Модули: tenders, payments, outreach
+- Почта: кампании, логи, шаблоны, домены, ответы (IMAP), **глобальная конфигурация** `email_config` (Hyvor Relay или SMTP/IMAP из UI и SQLAdmin), API `/email/settings`, отправка через `EmailService` (в т.ч. outreach с передачей `db`)
 - AI-ассистенты (CRUD, реестр, chat/vision)
 - Обход капчи (AI Vision, 2captcha, anticaptcha, Yandex SmartCaptcha)
 - SQLAdmin админка (User, Organization, Search, Deployment)
@@ -36,23 +37,23 @@
 
 ### Frontend
 - Next.js 14 с App Router, TypeScript, Tailwind CSS
-- Страницы: login/register (с OAuth), дашборды (SEO/Leads/Tenders), настройки (AI, провайдеры, капча, деплои)
+- Страницы: login/register (с OAuth), дашборды (SEO/Leads/Tenders), настройки (AI, провайдеры, капча, деплои), **Настройка email** (`/app/email/settings`), рассылки и ответы
 - Адаптивный поллинг, пагинация, клиентский кэш
 - Production build (`next build` + `next start`)
 
 ### DevOps
 - Docker Compose (dev + prod + GHCR)
 - GitHub Actions (CI, deploy, release)
-- Alembic миграции (9 версий)
+- Alembic миграции (в т.ч. email-таблицы и `email_config`, до ревизии **013**)
 - semantic-release + Conventional Commits
 
 ---
 
 ## База данных
 
-Текущая версия миграций: **009**
+Актуальная ревизия Alembic: **013** (см. `backend/alembic/versions/`).
 
-13 таблиц: users, organizations, user_organizations, searches, search_results, search_provider_config, ai_assistant, captcha_bypass_config, blacklist_domains, filters, deployments, social_accounts + celery таблицы.
+В числе прочего: users, organizations, searches, email-кампании/логи/шаблоны/домены, email_replies, **email_config** (singleton), deployments, social_accounts и др.
 
 ---
 
@@ -79,6 +80,12 @@
 - Rate limiting не настроен для production
 
 ---
+
+## Примечания (апрель 2026)
+
+- После добавления pip-зависимостей (например `aiosmtplib`) нужна **пересборка** образа backend: `docker compose build backend` и пересоздание контейнера — иначе API не стартует, фронт через прокси показывает пустые данные.
+- Локальный `npm run dev`: прокси Next.js по умолчанию бьёт в `http://127.0.0.1:8001` (см. `frontend/app/api/v1/[...path]/route.ts`); при необходимости задайте `INTERNAL_BACKEND_ORIGIN` в `frontend/.env.local`.
+- Тесты backend: в `tests/conftest.py` задаётся `ENVIRONMENT=test`; в `pytest.ini` — `asyncio_default_fixture_loop_scope=session` (совместимость SQLAlchemy async + pytest-asyncio).
 
 ## URL
 

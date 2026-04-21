@@ -5,9 +5,17 @@ Provides:
 - Async test client
 - User fixtures (superuser, regular user)
 - Auth token fixtures
+
+Environment must be set before any ``app`` import so ``database.engine`` uses
+NullPool and matches the pytest event loop (see pytest-asyncio session scope).
 """
 
+import os
 import uuid
+
+# Must run before ``from app...`` — engine uses NullPool; Docker sets
+# ENVIRONMENT=development, so ``setdefault`` is not enough.
+os.environ["ENVIRONMENT"] = "test"
 
 import pytest
 from httpx import ASGITransport, AsyncClient

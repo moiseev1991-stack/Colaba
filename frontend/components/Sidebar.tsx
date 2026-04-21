@@ -15,6 +15,10 @@ import {
   LayoutDashboard,
   Moon,
   Sun,
+  Mail,
+  Inbox,
+  BarChart3,
+  Settings2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ModuleId } from '@/lib/ModuleContext';
@@ -34,6 +38,10 @@ const MODULE_ITEMS: Record<ModuleId, { title: string; items: NavItem[] }> = {
       { href: '/runs', label: 'История', icon: History },
       { href: '/settings/blacklist', label: 'Блеклист', icon: Ban },
       { href: '/settings/providers', label: 'Настройки поиска', icon: Settings },
+      { href: '/app/email/settings', label: 'Настройка email', icon: Settings2 },
+      { href: '/app/email/campaigns', label: 'Рассылки', icon: Mail },
+      { href: '/app/email/stats', label: 'Статистика', icon: BarChart3 },
+      { href: '/app/email/replies', label: 'Ответы', icon: Inbox },
     ],
   },
   leads: {
@@ -57,7 +65,7 @@ const MODULE_ITEMS: Record<ModuleId, { title: string; items: NavItem[] }> = {
 
 function getModuleFromPath(pathname: string | null): ModuleId {
   if (!pathname) return 'seo';
-  if (pathname === '/dashboard' || pathname.startsWith('/seo') || pathname.startsWith('/app/seo') || pathname.startsWith('/runs') || pathname.startsWith('/settings')) return 'seo';
+  if (pathname === '/dashboard' || pathname.startsWith('/seo') || pathname.startsWith('/app/seo') || pathname.startsWith('/app/email') || pathname.startsWith('/runs') || pathname.startsWith('/settings')) return 'seo';
   if (pathname.startsWith('/leads') || pathname.startsWith('/app/leads')) return 'leads';
   if (pathname.startsWith('/tenders') || pathname.startsWith('/app/gos')) return 'tenders';
   return 'seo';

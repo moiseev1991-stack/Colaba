@@ -120,9 +120,39 @@ services:
     networks:
       - leadgen-network
 
+  # Hyvor Relay - Email Server (SMTP + API)
+  hyvor-relay:
+    image: hyvor/relay:latest
+    container_name: leadgen-hyvor-relay
+    restart: unless-stopped
+    ports:
+      - "8025:25"      # SMTP (external access for testing)
+      - "8587:587"     # SMTP TLS (external access)
+    expose:
+      - "8000"         # API (internal Docker network only)
+    environment:
+      - APP_URL=${HYVOR_APP_URL:-http://localhost:8000}
+      - APP_KEY=${HYVOR_APP_KEY:-change-me-in-production-32chars}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=leadgen_db
+      - DB_USERNAME=leadgen_user
+      - DB_PASSWORD=leadgen_password
+      - OIDC_CLIENT_ID=${HYVOR_OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${HYVOR_OIDC_CLIENT_SECRET:-}
+      - OIDC_ISSUER=${HYVOR_OIDC_ISSUER:-}
+    volumes:
+      - hyvor_relay_data:/var/lib/relay
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - leadgen-network
+
 volumes:
   postgres_data:
   redis_data:
+  hyvor_relay_data:
 
 networks:
   leadgen-network:

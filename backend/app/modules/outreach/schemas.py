@@ -34,6 +34,7 @@ class BulkOutreachResponse(BaseModel):
     skipped: int
     errors: int
     results: list[OutreachResult]
+    campaign_id: Optional[int] = Field(default=None, description="Created campaign ID for tracking")
 
 
 class SmtpConfig(BaseModel):
@@ -46,8 +47,12 @@ class SmtpConfig(BaseModel):
 
 
 class SmtpConfigResponse(BaseModel):
+    """Effective outbound settings (DB ``email_config`` or env)."""
+
     host: str
     port: int
     user: str
     use_ssl: bool
     configured: bool
+    provider_type: Literal["hyvor", "smtp"] = "smtp"
+    hyvor_api_url: Optional[str] = None

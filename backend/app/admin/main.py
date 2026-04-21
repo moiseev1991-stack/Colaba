@@ -19,6 +19,12 @@ from app.admin.views.deployments import DeploymentAdmin
 from app.admin.views.search_provider_configs import SearchProviderConfigAdmin
 from app.admin.views.ai_assistants import AiAssistantAdmin
 from app.admin.views.captcha_bypass_configs import CaptchaBypassConfigAdmin
+from app.admin.views.email_templates import EmailTemplateAdmin
+from app.admin.views.email_domains import EmailDomainAdmin
+from app.admin.views.email_campaigns import EmailCampaignAdmin
+from app.admin.views.email_logs import EmailLogAdmin
+from app.admin.views.email_replies import EmailReplyAdmin
+from app.admin.views.email_config_admin import EmailConfigAdmin
 from app.admin.i18n import set_language, get_current_language, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 
 
@@ -81,5 +87,13 @@ def setup_admin(app) -> Admin:
 
     # Register admin views - System
     admin.add_view(DeploymentAdmin)
+
+    # Register admin views - Email
+    admin.add_view(EmailTemplateAdmin)
+    admin.add_view(EmailDomainAdmin)
+    admin.add_view(EmailCampaignAdmin)
+    admin.add_view(EmailLogAdmin)
+    admin.add_view(EmailReplyAdmin)
+    admin.add_view(EmailConfigAdmin)
 
     return admin

@@ -87,6 +87,30 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = Field(default="", description="SMTP password")
     SMTP_USE_SSL: bool = Field(default=True, description="Use SSL for SMTP connection")
 
+    # Hyvor Relay - Email API Server
+    HYVOR_RELAY_API_URL: str = Field(default="http://hyvor-relay:8000", description="Hyvor Relay API URL (internal Docker)")
+    HYVOR_RELAY_API_KEY: str = Field(default="", description="Hyvor Relay API key for sending emails")
+    HYVOR_RELAY_WEBHOOK_SECRET: str = Field(default="", description="Secret to verify Hyvor webhooks")
+    HYVOR_RELAY_ENABLED: bool = Field(default=False, description="Use Hyvor Relay instead of direct SMTP")
+
+    @field_validator("HYVOR_RELAY_ENABLED", mode="before")
+    @classmethod
+    def parse_hyvor_enabled(cls, v: Union[bool, str]) -> bool:
+        if v in (True, "true", "1", "yes"):
+            return True
+        if v in (False, "false", "0", "no", "", None):
+            return False
+        return bool(v)
+
+    # IMAP for receiving email replies
+    IMAP_HOST: str = Field(default="", description="IMAP server hostname")
+    IMAP_PORT: int = Field(default=993, description="IMAP server port")
+    IMAP_USER: str = Field(default="", description="IMAP username")
+    IMAP_PASSWORD: str = Field(default="", description="IMAP password")
+    IMAP_USE_SSL: bool = Field(default=True, description="Use SSL for IMAP connection")
+    IMAP_MAILBOX: str = Field(default="INBOX", description="IMAP mailbox to check")
+    REPLY_PREFIX: str = Field(default="reply-", description="Prefix for reply-to email addresses (e.g., reply-123@domain.com)")
+
     # Telegram Bot for outreach sending
     TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token for outreach")
 

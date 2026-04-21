@@ -45,6 +45,10 @@ class Organization(Base):
         lazy="dynamic"
     )
     searches = relationship("Search", back_populates="organization", cascade="all, delete-orphan")
+    email_domains = relationship("EmailDomain", back_populates="organization", cascade="all, delete-orphan")
+    email_templates = relationship("EmailTemplate", back_populates="organization", cascade="all, delete-orphan")
+    email_campaigns = relationship("EmailCampaign", back_populates="organization", cascade="all, delete-orphan")
+    email_logs = relationship("EmailLog", back_populates="organization", cascade="all, delete-orphan")
 
     def __str__(self):
         return f"#{self.id} - {self.name}"

@@ -32,6 +32,10 @@ from app.modules.tenders.router import router as tenders_router
 from app.modules.payments.router import router as payments_router
 from app.modules.deployments.router import router as deployments_router
 from app.modules.auth.oauth_router import router as oauth_router
+from app.modules.email.router import router as email_router
+from app.modules.email.campaigns_router import router as email_campaigns_router
+from app.modules.email.replies_router import router as email_replies_router
+from app.modules.email.settings_router import router as email_settings_router
 
 api_router.include_router(auth_router)
 api_router.include_router(dashboard_router)
@@ -47,3 +51,7 @@ api_router.include_router(tenders_router)
 api_router.include_router(payments_router)
 api_router.include_router(deployments_router)
 api_router.include_router(oauth_router)
+api_router.include_router(email_router)
+api_router.include_router(email_campaigns_router)
+api_router.include_router(email_replies_router)
+api_router.include_router(email_settings_router)

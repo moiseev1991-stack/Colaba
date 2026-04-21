@@ -4,6 +4,15 @@ History of deployment-related changes for Colaba. Update after each task (see AG
 
 ---
 
+## 2026-04-21 — Email config, зависимости backend, прокси локального фронта
+
+- **Task:** Зафиксировать в продакшене настройки почты из БД; устранить падение API из‑за отсутствия `aiosmtplib` в образе; упростить локальный прокси Next → backend.
+- **Deploy note:** Обязательна пересборка образа backend после обновления `requirements.txt` (`docker compose build backend` + recreate). Иначе контейнер не импортирует `aiosmtplib`.
+- **Files / docs:** `docs/STATUS.md`, `docs/guides/LOCAL_SETUP.md`, `docs/changes/email-config-local-dev-pytest-2026-04-21.md`, корневой `.env.example`, `frontend/app/api/v1/[...path]/route.ts`, `frontend/.env.local.example`.
+- **Result:** Документация и журнал изменений синхронизированы с кодом; см. CHANGELOG.md.
+
+---
+
 ## 2026-02-24 — AGENT_CONTEXT and WORKLOG added
 
 - **Task:** Create project memory (AGENT_CONTEXT.md) and worklog (WORKLOG.md) in docs/deployment.

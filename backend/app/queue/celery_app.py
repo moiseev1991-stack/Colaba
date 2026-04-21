@@ -25,4 +25,11 @@ celery_app.conf.update(
     task_soft_time_limit=25 * 60,  # 25 minutes
     # Prefetch: сколько задач забирать заранее (ускоряет обработку очереди)
     worker_prefetch_multiplier=4,
+    # Periodic tasks
+    beat_schedule={
+        'process-email-replies-every-5-minutes': {
+            'task': 'process_email_replies_task',
+            'schedule': 300.0,  # Every 5 minutes
+        },
+    },
 )

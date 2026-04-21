@@ -20,6 +20,37 @@ engine = create_async_engine(settings.DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+@celery_app.task(name="process_email_replies_task")
+def process_email_replies_task():
+    """
+    Process incoming email replies via IMAP.
+    
+    Runs periodically every 5 minutes (configured in celery_app.py).
+    """
+    logger.info("process_email_replies_task started")
+    
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    try:
+        result = loop.run_until_complete(_process_email_replies_async())
+        logger.info("process_email_replies_task completed: processed %d replies", result)
+        return result
+    except Exception as e:
+        logger.error("process_email_replies_task failed: %s", e, exc_info=True)
+        raise
+
+
+async def _process_email_replies_async() -> int:
+    """Async function to process email replies."""
+    async with AsyncSessionLocal() as db:
+        from app.modules.email.replies_service import process_email_replies
+        return await process_email_replies(db)
+
+
 @celery_app.task(name="execute_search_task", queue="search_queue")
 def execute_search_task(search_id: int):
     """
