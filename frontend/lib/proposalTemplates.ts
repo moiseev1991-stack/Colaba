@@ -139,7 +139,43 @@ function genId(): string {
   return `tpl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Seed-шаблоны: показываются новому пользователю "из коробки", чтобы на демо-проде
+ * страница «Шаблоны КП» не была пустой. После первого чтения копируются в
+ * localStorage; если юзер их удалит — обратно не возвращаются (уважаем выбор).
+ */
+function defaultTemplates(): ProposalTemplate[] {
+  const now = Date.now();
+  return [
+    {
+      id: 'tpl_seed_vaflintin',
+      name: 'Вафлинтин',
+      channel: 'email',
+      subject: 'Для {company} — {my_offer}',
+      body:
+        'Здравствуйте, {company}!\n\n' +
+        'Меня зовут {my_name}, я из {my_company}. Зашёл на {domain} — у вас сильное направление, но в выдаче по запросам в {city} вас обходят конкуренты помельче.\n\n' +
+        'Мы делаем {my_offer}. Для похожей компании в {city} за 4 месяца вырастили органический трафик с 0 до 1 200 заявок в месяц.\n\n' +
+        'Если интересно — позвоню в удобное время и за 15 минут на пальцах расскажу, что можно сделать конкретно по {company}. Мой телефон: {my_phone}.\n\n' +
+        'Если не актуально — никаких писем больше не будет.',
+      signature: '—\n{my_name}, {my_company}\n{my_phone} · {my_link}',
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+}
+
 export function listTemplates(): ProposalTemplate[] {
+  // Distinguish "first visit" (no key) from "user has cleared everything"
+  // (key exists with []). Only seed defaults on first visit.
+  if (typeof window !== 'undefined') {
+    const raw = window.localStorage.getItem(TEMPLATES_KEY);
+    if (raw === null) {
+      const seed = defaultTemplates();
+      safeWrite(TEMPLATES_KEY, seed);
+      return [...seed].sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+  }
   const items = safeRead<ProposalTemplate[]>(TEMPLATES_KEY, []);
   // Heal old records that ended up with an empty id — early versions of the
   // editor used `?? genId()` instead of `|| genId()`, so empty strings slipped
