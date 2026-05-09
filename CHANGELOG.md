@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.2.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.1.0...v1.2.0) (2026-05-09)
+
+
+### Features
+
+* **frontend:** seed default proposal template "Вафлинтин" for first-time visitors ([008dc08](https://github.com/moiseev1991-stack/Colaba/commit/008dc08ae05320b3a1a223093fef9145826c2e4e))
+
 # [1.1.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.0.1...v1.1.0) (2026-05-09)
 
 
