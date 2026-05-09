@@ -1,39 +1,11 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
-import { ModuleProvider } from '@/lib/ModuleContext';
+import { ModuleProvider, useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
 import { Sidebar } from './Sidebar';
 import { AppHeader } from './AppHeader';
-import type { ModuleId } from '@/lib/ModuleContext';
-
-const MODULES: { id: ModuleId; label: string }[] = [
-  { id: 'seo', label: 'SEO' },
-  { id: 'leads', label: 'Поиск лидов' },
-  { id: 'tenders', label: 'Госзакупки' },
-];
-
-function getModuleFromPath(pathname: string | null): ModuleId | null {
-  if (!pathname) return null;
-  if (pathname === '/dashboard') return null;
-  if (pathname.startsWith('/seo') || pathname.startsWith('/app/seo') || pathname.startsWith('/runs') || pathname.startsWith('/settings')) return 'seo';
-  if (pathname.startsWith('/leads') || pathname.startsWith('/app/leads')) return 'leads';
-  if (pathname.startsWith('/tenders') || pathname.startsWith('/app/gos')) return 'tenders';
-  return null;
-}
 
 function MobileModuleTabs() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const currentModule = getModuleFromPath(pathname);
-
-  const goToModule = (id: ModuleId) => {
-    const routes: Record<ModuleId, string> = {
-      seo: '/dashboard',
-      leads: '/app/leads',
-      tenders: '/app/gos',
-    };
-    router.push(routes[id]);
-  };
+  const { module, setModule } = useModule();
 
   return (
     <div
@@ -44,22 +16,28 @@ function MobileModuleTabs() {
         backdropFilter: 'blur(12px)',
       }}
     >
-      {MODULES.map((m) => {
-        const active = currentModule === m.id;
+      {MODULE_ORDER.map((id) => {
+        const active = module === id;
+        const disabled = DISABLED_MODULES.has(id);
         return (
           <button
-            key={m.id}
+            key={id}
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => goToModule(m.id)}
-            className="relative flex flex-1 items-center justify-center h-10 text-[13px] font-medium transition-colors"
+            aria-disabled={disabled || undefined}
+            disabled={disabled}
+            onClick={() => { if (!active) setModule(id); }}
+            title={disabled ? 'Модуль скоро будет доступен' : undefined}
+            className={`relative flex flex-1 items-center justify-center h-10 text-[13px] font-medium transition-colors ${
+              disabled ? 'cursor-not-allowed opacity-50' : ''
+            }`}
             style={{
               color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
               background: active ? 'hsl(var(--nav-active-bg))' : undefined,
             }}
           >
-            {m.label}
+            {MODULE_LABELS[id]}
             {active && (
               <span
                 className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full"
@@ -78,13 +56,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ModuleProvider>
       <div className="flex min-h-screen flex-col app-bg-gradient app-grid-pattern">
-        {/* Decorative orbs */}
         <div className="app-orb app-orb-1" aria-hidden="true" />
         <div className="app-orb app-orb-2" aria-hidden="true" />
 
         <AppHeader />
-
-        {/* Module switcher tab row — mobile only */}
         <MobileModuleTabs />
 
         <div className="flex flex-1 min-w-0 overflow-hidden relative z-10">
