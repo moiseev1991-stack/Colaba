@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.1.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.0.1...v1.1.0) (2026-05-09)
+
+
+### Features
+
+* sync remaining WIP changes — backend filters/keyword/proposals, frontend results table, header theme, dashboard ([34ba96d](https://github.com/moiseev1991-stack/Colaba/commit/34ba96d44cef196deda3ecfcf35b4201b14068a4))
+
 ## [1.0.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.0.0...v1.0.1) (2026-05-09)
 
 
