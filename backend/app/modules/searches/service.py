@@ -103,20 +103,58 @@ async def get_search_results(
     limit: int = 200,
     offset: int = 0,
 ) -> List[schemas.SearchResultResponse]:
-    """Get results for a search with optional pagination."""
-    search = await get_search(db, search_id, user_id, organization_id)
-    if not search:
+    """Get results for a search with optional pagination.
+
+    The filter is read off `search.config.filters` — it was attached when the
+    search was created, so the same filter consistently applies on every fetch
+    (including polling) without the frontend re-sending it every request.
+    """
+    # Need full Search object (not just response shape) so we can read config.
+    sq = select(Search).where(Search.id == search_id)
+    if organization_id is not None:
+        sq = sq.where(Search.organization_id == organization_id)
+    search_row = (await db.execute(sq)).scalar_one_or_none()
+    if not search_row:
         return []
 
-    result = await db.execute(
-        select(SearchResult)
-        .where(SearchResult.search_id == search_id)
-        .order_by(SearchResult.position)
-        .limit(limit)
-        .offset(offset)
-    )
+    cfg = search_row.config if isinstance(search_row.config, dict) else {}
+    filter_spec = cfg.get("filters")
+
+    matched_ids: Optional[set[int]] = None
+    highlight_words: List[str] = []
+    keyword_hits: Dict[int, List[str]] = {}
+
+    if filter_spec:
+        from app.modules.searches.keyword_filter import (
+            apply_filter_spec,
+            get_keyword_hits_per_result,
+        )
+
+        matched_ids, highlight_words = await apply_filter_spec(
+            db, search_id=search_id, spec=filter_spec
+        )
+        if highlight_words:
+            keyword_hits = await get_keyword_hits_per_result(
+                db, search_id=search_id, keywords=highlight_words
+            )
+
+    stmt = select(SearchResult).where(SearchResult.search_id == search_id)
+    if matched_ids is not None:
+        if not matched_ids:
+            return []
+        stmt = stmt.where(SearchResult.id.in_(matched_ids))
+    stmt = stmt.order_by(SearchResult.position).limit(limit).offset(offset)
+
+    result = await db.execute(stmt)
     results = result.scalars().all()
-    return [schemas.SearchResultResponse.model_validate(r) for r in results]
+
+    out: List[schemas.SearchResultResponse] = []
+    for r in results:
+        resp = schemas.SearchResultResponse.model_validate(r)
+        if highlight_words:
+            resp.keyword_hits = keyword_hits.get(r.id, [])
+        out.append(resp)
+    return out
 
 
 async def delete_search(

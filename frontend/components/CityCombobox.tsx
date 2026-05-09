@@ -3,13 +3,11 @@
 import {
   useState,
   useEffect,
-  useLayoutEffect,
   useRef,
   useMemo,
   useCallback,
   type KeyboardEvent,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { REGIONS, type CityOption } from '@/lib/cities';
@@ -22,14 +20,6 @@ interface CityComboboxProps {
   placeholder?: string;
 }
 
-interface DropdownPos {
-  top: number;
-  left: number;
-  width: number;
-  openUpward: boolean;
-}
-
-const DROPDOWN_W = 288;   // w-72 = 18rem = 288px
 const DROPDOWN_MAX_H = 340;
 
 /** Нормализует строку для поиска: нижний регистр, без ё/диакритики */
@@ -38,7 +28,7 @@ function normalize(s: string): string {
     .toLowerCase()
     .replace(/ё/g, 'е')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[̀-ͯ]/g, '');
 }
 
 export function CityCombobox({
@@ -51,18 +41,14 @@ export function CityCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlightedIdx, setHighlightedIdx] = useState(0);
-  const [pos, setPos] = useState<DropdownPos>({ top: 0, left: 0, width: DROPDOWN_W, openUpward: false });
-  const [mounted, setMounted] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const portalRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Portal requires document — only available client-side
-  useEffect(() => { setMounted(true); }, []);
-
-  // ── Фильтрация ────────────────────────────────────────────────────────────
+  // Фильтрация
   const { filteredGroups, flatList } = useMemo(() => {
     const q = normalize(query.trim());
     const groups: { regionId: string; regionName: string; cities: CityOption[] }[] = [];
@@ -86,42 +72,34 @@ export function CityCombobox({
     return { filteredGroups: groups, flatList: flat };
   }, [query]);
 
-  // ── Сброс подсветки при смене запроса ─────────────────────────────────────
-  useEffect(() => { setHighlightedIdx(0); }, [query]);
+  // Region label for the secondary line in the trigger
+  const region = useMemo(() => {
+    if (!city) return null;
+    for (const r of REGIONS) {
+      if (r.cities.includes(city)) return r;
+    }
+    return null;
+  }, [city]);
 
-  // ── Пересчёт позиции дропдауна ────────────────────────────────────────────
-  // position:fixed → координаты уже относительно вьюпорта, scrollY не нужен
-  const recalcPos = useCallback(() => {
-    if (!triggerRef.current) return;
+  // Сброс подсветки при смене запроса
+  useEffect(() => {
+    setHighlightedIdx(0);
+  }, [query]);
+
+  // Решение, открывать дропдаун вверх или вниз — по доступному месту в viewport
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - r.bottom;
-    const openUpward = spaceBelow < DROPDOWN_MAX_H && r.top > spaceBelow;
-    setPos({
-      top: openUpward ? r.top - DROPDOWN_MAX_H - 4 : r.bottom + 4,
-      left: r.left,
-      width: Math.max(DROPDOWN_W, r.width),
-      openUpward,
-    });
-  }, []);
+    setOpenUpward(spaceBelow < DROPDOWN_MAX_H && r.top > spaceBelow);
+  }, [open]);
 
-  // Пересчёт при открытии, скролле и ресайзе
-  useLayoutEffect(() => {
-    if (!open) return;
-    recalcPos();
-    window.addEventListener('scroll', recalcPos, true);
-    window.addEventListener('resize', recalcPos);
-    return () => {
-      window.removeEventListener('scroll', recalcPos, true);
-      window.removeEventListener('resize', recalcPos);
-    };
-  }, [open, recalcPos]);
-
-  // ── Фокус на поиске при открытии ─────────────────────────────────────────
+  // Фокус на поиске при открытии
   useEffect(() => {
     if (open) setTimeout(() => searchRef.current?.focus(), 0);
   }, [open]);
 
-  // ── Скролл к выделенному элементу ────────────────────────────────────────
+  // Скролл к выделенному элементу
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current
@@ -129,14 +107,11 @@ export function CityCombobox({
       ?.scrollIntoView({ block: 'nearest' });
   }, [highlightedIdx]);
 
-  // ── Закрытие по клику вне ─────────────────────────────────────────────────
+  // Закрытие по клику вне
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
-      if (
-        triggerRef.current?.contains(e.target as Node) ||
-        portalRef.current?.contains(e.target as Node)
-      ) return;
+      if (wrapperRef.current?.contains(e.target as Node)) return;
       setOpen(false);
       setQuery('');
     }
@@ -144,7 +119,19 @@ export function CityCombobox({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // ── Выбор города ─────────────────────────────────────────────────────────
+  // Закрытие по Escape
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        setQuery('');
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const selectCity = useCallback(
     (option: CityOption) => {
       onCityChange(option.city, option.yandexId);
@@ -154,7 +141,6 @@ export function CityCombobox({
     [onCityChange]
   );
 
-  // ── Клавиатурная навигация ────────────────────────────────────────────────
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'ArrowDown') {
@@ -166,15 +152,11 @@ export function CityCombobox({
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (flatList[highlightedIdx]) selectCity(flatList[highlightedIdx]);
-      } else if (e.key === 'Escape') {
-        setOpen(false);
-        setQuery('');
       }
     },
     [flatList, highlightedIdx, selectCity]
   );
 
-  // ── Подсветка совпадения ──────────────────────────────────────────────────
   function highlight(text: string): React.ReactNode {
     if (!query.trim()) return text;
     const q = normalize(query.trim());
@@ -184,7 +166,14 @@ export function CityCombobox({
     return (
       <>
         {text.slice(0, idx)}
-        <mark className="bg-yellow-200 dark:bg-yellow-700 text-inherit rounded-sm">
+        <mark
+          style={{
+            background: 'hsl(var(--accent) / 0.3)',
+            color: 'inherit',
+            padding: 0,
+            borderRadius: 2,
+          }}
+        >
           {text.slice(idx, idx + q.length)}
         </mark>
         {text.slice(idx + q.length)}
@@ -192,105 +181,9 @@ export function CityCombobox({
     );
   }
 
-  // ── Дропдаун (рендерится в portal) ───────────────────────────────────────
-  const dropdown = (
-    <div
-      ref={portalRef}
-      style={{
-        position: 'fixed',
-        top: pos.top,
-        left: pos.left,
-        width: pos.width,
-        maxHeight: DROPDOWN_MAX_H,
-        zIndex: 9999,
-      }}
-      className={cn(
-        'rounded-[12px] border border-control-border',
-        'bg-white dark:bg-gray-800 shadow-xl',
-        'flex flex-col overflow-hidden',
-        pos.openUpward && 'flex-col-reverse'
-      )}
-    >
-      {/* Строка поиска */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-control-border bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
-        <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
-        <input
-          ref={searchRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Поиск города..."
-          className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-        />
-        {query && (
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setQuery('')}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-
-      {/* Список */}
-      <div ref={listRef} className="overflow-y-auto flex-1" role="listbox">
-        {(() => {
-          let globalIdx = 0;
-          return filteredGroups.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-              Ничего не найдено
-            </p>
-          ) : (
-            filteredGroups.map((group) => (
-              <div key={group.regionId}>
-                <div className="px-3 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 select-none">
-                  {group.regionName}
-                </div>
-                {group.cities.map((option) => {
-                  const idx = globalIdx++;
-                  const isHighlighted = idx === highlightedIdx;
-                  const isSelected = option.city === city;
-                  return (
-                    <button
-                      key={`${group.regionId}-${option.city}`}
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      data-highlighted={isHighlighted}
-                      onMouseEnter={() => setHighlightedIdx(idx)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => selectCity(option)}
-                      className={cn(
-                        'w-full text-left px-4 py-1.5 text-sm flex items-center gap-2 transition-colors',
-                        isHighlighted
-                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                          : 'text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                        isSelected && !isHighlighted && 'font-medium text-blue-600 dark:text-blue-400'
-                      )}
-                    >
-                      {isSelected ? (
-                        <span className="text-blue-500 flex-shrink-0 text-xs">●</span>
-                      ) : (
-                        <span className="w-3 flex-shrink-0" />
-                      )}
-                      <span>{highlight(option.city)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))
-          );
-        })()}
-      </div>
-    </div>
-  );
-
   return (
-    <div className={cn('relative inline-block', className)}>
-      {/* Кнопка-триггер */}
+    <div ref={wrapperRef} className={cn('relative', className)}>
+      {/* Trigger */}
       <button
         ref={triggerRef}
         type="button"
@@ -300,30 +193,183 @@ export function CityCombobox({
           setOpen((o) => !o);
         }}
         className={cn(
-          'flex items-center justify-between gap-2 h-9 w-full min-w-[200px] rounded-[10px]',
-          'border border-control-border bg-gray-100 dark:bg-gray-700',
-          'px-3 text-sm text-gray-900 dark:text-white',
-          'hover:border-control-border-hover hover:bg-gray-200 dark:hover:bg-gray-600',
-          'focus:outline-none focus:border-control-border-focus focus:ring-[3px] focus:ring-focus-ring focus:ring-offset-0',
+          'flex items-center justify-between gap-2 h-11 w-full px-3 transition-all',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          open && 'border-control-border-focus ring-[3px] ring-focus-ring ring-offset-0'
         )}
+        style={{
+          background: 'hsl(var(--surface))',
+          border: `1px solid ${open ? 'hsl(var(--accent))' : 'hsl(var(--border))'}`,
+          borderRadius: 4,
+          color: 'hsl(var(--text))',
+          boxShadow: open ? '0 0 0 3px hsl(var(--accent) / 0.18)' : undefined,
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={cn('truncate', !city && 'text-gray-400 dark:text-gray-500')}>
-          {city || placeholder}
-        </span>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {city ? (
+            <>
+              <span
+                className="text-[14px] font-semibold truncate"
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                {city}
+              </span>
+              {region && region.name !== city && (
+                <span
+                  className="app-bracket-tag truncate"
+                  style={{ color: 'hsl(var(--muted))' }}
+                  title={region.name}
+                >
+                  {region.name}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-[14px]" style={{ color: 'hsl(var(--muted))' }}>
+              {placeholder}
+            </span>
+          )}
+        </div>
         <ChevronDown
           className={cn(
-            'h-4 w-4 flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-150',
-            open && 'rotate-180'
+            'h-4 w-4 flex-shrink-0 transition-transform duration-150',
+            open && 'rotate-180',
           )}
+          style={{ color: 'hsl(var(--muted))' }}
         />
       </button>
 
-      {/* Дропдаун через портал — вне любого overflow-контейнера */}
-      {open && mounted && createPortal(dropdown, document.body)}
+      {/* Dropdown — absolute, anchored to trigger. No portal needed. */}
+      {open && (
+        <div
+          className="absolute left-0 right-0 z-50 flex flex-col"
+          style={{
+            top: openUpward ? undefined : 'calc(100% + 4px)',
+            bottom: openUpward ? 'calc(100% + 4px)' : undefined,
+            maxHeight: DROPDOWN_MAX_H,
+            background: 'hsl(var(--surface))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: 6,
+            boxShadow:
+              '0 14px 40px -10px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.12)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Search bar */}
+          <div
+            className="flex items-center gap-2 px-3 py-2.5 flex-shrink-0"
+            style={{
+              borderBottom: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--surface-2) / 0.6)',
+            }}
+          >
+            <Search
+              className="h-4 w-4 flex-shrink-0"
+              style={{ color: 'hsl(var(--accent))' }}
+            />
+            <input
+              ref={searchRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Поиск города или региона…"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-50"
+              style={{ color: 'hsl(var(--text))' }}
+            />
+            {query && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setQuery('')}
+                className="flex-shrink-0 inline-flex items-center justify-center w-5 h-5"
+                style={{ color: 'hsl(var(--muted))', borderRadius: 3 }}
+                aria-label="Очистить"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div ref={listRef} className="overflow-y-auto flex-1" role="listbox">
+            {(() => {
+              let globalIdx = 0;
+              return filteredGroups.length === 0 ? (
+                <p
+                  className="py-6 text-center text-sm"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  Ничего не найдено
+                </p>
+              ) : (
+                filteredGroups.map((group) => (
+                  <div key={group.regionId}>
+                    <div
+                      className="px-4 pt-2.5 pb-1 select-none app-mono-label flex items-center justify-between"
+                      style={{
+                        color: 'hsl(var(--muted))',
+                        background: 'hsl(var(--surface-2) / 0.3)',
+                      }}
+                    >
+                      <span>{group.regionName}</span>
+                      <span style={{ opacity: 0.5 }}>{group.cities.length}</span>
+                    </div>
+                    {group.cities.map((option) => {
+                      const idx = globalIdx++;
+                      const isHighlighted = idx === highlightedIdx;
+                      const isSelected = option.city === city;
+                      return (
+                        <button
+                          key={`${group.regionId}-${option.city}`}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          data-highlighted={isHighlighted}
+                          onMouseEnter={() => setHighlightedIdx(idx)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => selectCity(option)}
+                          className="w-full text-left px-4 py-2 text-[14px] flex items-center gap-2.5 transition-colors"
+                          style={{
+                            color:
+                              isHighlighted || isSelected
+                                ? 'hsl(var(--accent))'
+                                : 'hsl(var(--text))',
+                            background: isHighlighted
+                              ? 'hsl(var(--accent-weak))'
+                              : 'transparent',
+                            fontWeight: isSelected ? 700 : 500,
+                            borderLeft: isSelected
+                              ? '2px solid hsl(var(--accent))'
+                              : '2px solid transparent',
+                          }}
+                        >
+                          <span
+                            className="flex-shrink-0 inline-block"
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 1,
+                              background: isSelected
+                                ? 'hsl(var(--accent))'
+                                : 'transparent',
+                              border: isSelected
+                                ? 'none'
+                                : '1px solid hsl(var(--border))',
+                            }}
+                          />
+                          <span className="flex-1">{highlight(option.city)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -50,7 +50,31 @@ export interface LeadRow {
   titleFromSearch?: string | null;
   snippetFromSearch?: string | null;
   urlFromSearch?: string | null;
+  /** Meta description главной страницы, как её увидел наш краулер.
+   *  Используется как основной источник «о компании» — он осмысленнее, чем
+   *  поисковый snippet, который Яндекс склеивает под пользовательский запрос. */
+  siteMetaDescription?: string | null;
+  /** Title главной страницы (с самого сайта). Фолбек, если meta-desc пустой. */
+  sitePageTitle?: string | null;
+  /** Backend-cleaned, ready-to-show description (emoji/whitespace stripped,
+   *  short noise discarded). When null, fall back to siteMetaDescription/title. */
+  cleanDescription?: string | null;
+  /** Coarse site type from the backend classifier — drives the «тип» badge
+   *  and the default "только компании" filter. */
+  siteType?: SiteType | null;
+  /** Keywords (from the per-search FTS filter) actually found on this site. */
+  keywordHits?: string[] | null;
 }
+
+export type SiteType =
+  | 'company'
+  | 'catalog'
+  | 'market'
+  | 'social'
+  | 'news'
+  | 'gov'
+  | 'broken'
+  | 'unknown';
 
 export interface BlacklistItem {
   id: string;

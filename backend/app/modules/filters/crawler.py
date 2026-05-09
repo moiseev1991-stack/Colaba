@@ -439,6 +439,17 @@ async def crawl_domain(
                 meta_desc = soup.find('meta', attrs={'name': 'description'})
                 h1_tags = soup.find_all('h1')
 
+                # Visible text for keyword filtering. Strip scripts/styles/svg/nav/etc
+                # before extracting — the body text is what users actually read,
+                # navigation chrome only adds noise to the FTS index.
+                text_soup = BeautifulSoup(content, 'html.parser')
+                for tag in text_soup(['script', 'style', 'noscript', 'svg', 'iframe', 'template']):
+                    tag.decompose()
+                raw_text = text_soup.get_text(separator=' ', strip=True)
+                # Collapse whitespace and cap at 10 KB — Postgres tsvector handles
+                # this fine, and it keeps the row small enough not to bloat the heap.
+                cleaned_text = ' '.join(raw_text.split())[:10000] if raw_text else None
+
                 page_data = {
                     "url": url,
                     "status_code": response.status_code,
@@ -446,6 +457,7 @@ async def crawl_domain(
                     "meta_description": meta_desc.get('content').strip() if meta_desc and meta_desc.get('content') else None,
                     "h1_count": len(h1_tags),
                     "h1_text": h1_tags[0].get_text().strip() if h1_tags else None,
+                    "text_content": cleaned_text,
                 }
                 pages_data.append(page_data)
 

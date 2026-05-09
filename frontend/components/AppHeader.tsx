@@ -3,16 +3,38 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles, TrendingUp, Users, Landmark } from 'lucide-react';
+import { User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles, Moon, Sun } from 'lucide-react';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
+import { getTheme, setTheme } from '@/lib/storage';
+import type { Theme } from '@/lib/types';
 
 export function AppHeader() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setThemeState] = useState<Theme>('dark');
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setThemeState(getTheme());
+    }
+  }, []);
+
+  useEffect(() => {
+    const onThemeChange = () => setThemeState(getTheme());
+    window.addEventListener('themechange', onThemeChange);
+    return () => window.removeEventListener('themechange', onThemeChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    setThemeState(next);
+    window.dispatchEvent(new Event('themechange'));
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -85,8 +107,8 @@ export function AppHeader() {
         </Link>
       </div>
 
-      {/* Center: Module tabs — desktop only */}
-      <DesktopModuleTabs pathname={pathname} />
+      {/* Center: empty — module switcher lives in the sidebar now */}
+      <div className="flex-1" />
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
@@ -103,6 +125,21 @@ export function AppHeader() {
           <Sparkles className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline">Купить подписку</span>
         </Link>
+
+        {/* Theme toggle — sun/moon, icon only */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className={`inline-flex h-8 w-8 min-w-0 items-center justify-center rounded-[8px] transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
+          aria-label={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-4 w-4" style={{ color: 'hsl(var(--accent))' }} aria-hidden />
+          ) : (
+            <Moon className="h-4 w-4" style={{ color: 'hsl(var(--accent))' }} aria-hidden />
+          )}
+        </button>
 
         {/* Request Monitor — desktop only */}
         <Link
@@ -176,74 +213,3 @@ export function AppHeader() {
   );
 }
 
-// Desktop-only module tabs (used inside the header nav)
-import { useRouter as useRouterInner } from 'next/navigation';
-import type { ModuleId } from '@/lib/ModuleContext';
-
-const MODULES: { id: ModuleId; label: string; icon: React.ElementType }[] = [
-  { id: 'seo', label: 'SEO', icon: TrendingUp },
-  { id: 'leads', label: 'Поиск лидов', icon: Users },
-  { id: 'tenders', label: 'Госзакупки', icon: Landmark },
-];
-
-function getModuleFromPath(pathname: string | null): ModuleId | null {
-  if (!pathname) return null;
-  if (pathname === '/dashboard') return 'seo';
-  if (pathname.startsWith('/seo')) return 'seo';
-  if (pathname.startsWith('/leads')) return 'leads';
-  if (pathname.startsWith('/tenders')) return 'tenders';
-  if (pathname.startsWith('/app/seo') || pathname.startsWith('/runs') || pathname.startsWith('/settings')) return 'seo';
-  if (pathname.startsWith('/app/leads')) return 'leads';
-  if (pathname.startsWith('/app/gos') || pathname.startsWith('/app/tenders')) return 'tenders';
-  return null;
-}
-
-function DesktopModuleTabs({ pathname }: { pathname: string | null }) {
-  const router = useRouterInner();
-  const currentModule = getModuleFromPath(pathname);
-
-  const goToModule = (id: ModuleId) => {
-    const routes: Record<ModuleId, string> = {
-      seo: '/dashboard',
-      leads: '/app/leads',
-      tenders: '/app/gos',
-    };
-    router.push(routes[id]);
-  };
-
-  return (
-    <nav
-      className="hidden md:flex items-stretch self-stretch overflow-hidden"
-      role="tablist"
-      style={{
-        borderLeft: '1px solid hsl(var(--border))',
-        borderRight: '1px solid hsl(var(--border))',
-      }}
-    >
-      {MODULES.map((m, index) => {
-        const Icon = m.icon;
-        const active = currentModule === m.id;
-        return (
-          <button
-            key={m.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => goToModule(m.id)}
-            className={`flex items-center gap-2 px-5 text-[13px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--nav-focus-ring))] ${
-              active ? 'font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))]'
-            }`}
-            style={{
-              color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
-              background: active ? 'hsl(var(--nav-active-bg))' : undefined,
-              borderRight: index < MODULES.length - 1 ? '1px solid hsl(var(--border))' : undefined,
-            }}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            {m.label}
-          </button>
-        );
-      })}
-    </nav>
-  );
-}

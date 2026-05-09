@@ -7,9 +7,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { Calendar, Eye } from 'lucide-react';
 import { getDashboard, type DashboardResponse, type DashboardPeriod, type DashboardModule } from '@/src/services/api/dashboard';
-import { cn } from '@/lib/utils';
 
 const CHART_HEIGHT = 160;
 
@@ -35,15 +34,37 @@ function formatDateTime(iso: string): string {
 
 function KpiCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-4">
-      <div className="text-[12px] font-medium text-gray-600 dark:text-gray-400">{label}</div>
-      <div className="mt-1 text-[20px] font-semibold text-gray-900 dark:text-white">{value}</div>
+    <div
+      className="rounded-[8px] border p-4"
+      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+    >
+      <div className="text-[12px] font-medium" style={{ color: 'hsl(var(--muted))' }}>{label}</div>
+      <div className="mt-1 text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>{value}</div>
     </div>
   );
 }
 
 function SkeletonCard() {
-  return <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 h-[72px] animate-pulse" />;
+  return (
+    <div
+      className="rounded-[8px] border h-[72px] app-skeleton"
+      style={{ borderColor: 'hsl(var(--border))' }}
+    />
+  );
+}
+
+function statusBadgeClass(s: string): string {
+  if (s === 'completed') return 'app-badge app-badge-success';
+  if (s === 'failed') return 'app-badge app-badge-danger';
+  if (s === 'processing' || s === 'running' || s === 'pending') return 'app-badge app-badge-warning';
+  return 'app-badge app-badge-accent';
+}
+
+function statusLabel(s: string): string {
+  if (s === 'completed') return 'OK';
+  if (s === 'failed') return 'Ошибка';
+  if (s === 'processing' || s === 'running' || s === 'pending') return 'В работе';
+  return s;
 }
 
 export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) {
@@ -76,13 +97,18 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
     <div className="mx-auto max-w-6xl px-6 py-8">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <h1 className="text-[24px] font-semibold text-gray-900 dark:text-white">{title}</h1>
+        <h1 className="text-[24px] font-semibold" style={{ color: 'hsl(var(--text))' }}>{title}</h1>
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <Calendar className="h-4 w-4" style={{ color: 'hsl(var(--muted))' }} />
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as Period)}
-            className="rounded-[6px] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-[14px]"
+            className="rounded-[6px] border px-3 py-2 text-[14px]"
+            style={{
+              background: 'hsl(var(--surface))',
+              borderColor: 'hsl(var(--border))',
+              color: 'hsl(var(--text))',
+            }}
           >
             <option value="day">День</option>
             <option value="week">Неделя</option>
@@ -92,7 +118,16 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
       </div>
 
       {error && (
-        <div className="mb-6 rounded-[8px] border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">{error}</div>
+        <div
+          className="mb-6 rounded-[8px] border px-4 py-3 text-sm"
+          style={{
+            background: 'hsl(var(--danger) / 0.1)',
+            borderColor: 'hsl(var(--danger) / 0.3)',
+            color: 'hsl(var(--danger))',
+          }}
+        >
+          {error}
+        </div>
       )}
 
       {/* KPI Cards */}
@@ -115,12 +150,17 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
       </div>
 
       {/* Chart */}
-      <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-5 mb-8">
-        <h3 className="text-[14px] font-medium text-gray-700 dark:text-gray-300 mb-4">Запросы по дням</h3>
+      <div
+        className="rounded-[8px] border p-5 mb-8"
+        style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+      >
+        <h3 className="text-[14px] font-medium mb-4" style={{ color: 'hsl(var(--muted))' }}>Запросы по дням</h3>
         {loading ? (
-          <div className="h-[160px] bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-[160px] rounded app-skeleton" />
         ) : chartPoints.length === 0 ? (
-          <div className="h-[160px] flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">Нет данных за период</div>
+          <div className="h-[160px] flex items-center justify-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
+            Нет данных за период
+          </div>
         ) : (
           <div className="flex items-end gap-1" style={{ height: CHART_HEIGHT }}>
             {chartPoints.map((d) => {
@@ -130,10 +170,10 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
                   <div className="w-full flex flex-col justify-end" style={{ height: CHART_HEIGHT - 24 }}>
                     <div
                       className="w-full rounded-t-[4px] min-h-[4px] transition-all"
-                      style={{ height: `${Math.max(h, 4)}px`, backgroundColor: 'hsl(var(--chart-bar, 220 90% 56%))' }}
+                      style={{ height: `${Math.max(h, 4)}px`, backgroundColor: 'hsl(var(--accent))' }}
                     />
                   </div>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-full">{d.date.slice(5)}</span>
+                  <span className="text-[10px] truncate max-w-full" style={{ color: 'hsl(var(--muted))' }}>{d.date.slice(5)}</span>
                 </div>
               );
             })}
@@ -141,59 +181,50 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
         )}
       </div>
 
-      {/* Recent runs */}
+      {/* Recent runs — card style matching /app/leads */}
       <section>
-        <h2 className="text-[16px] font-semibold mb-4 text-gray-900 dark:text-white">Последние запуски</h2>
-        <div className="rounded-[8px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 overflow-hidden">
-          {loading ? (
-            <div className="p-6 space-y-3">
-              {[1, 2, 3].map(i => <div key={i} className="h-8 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />)}
-            </div>
-          ) : recentRuns.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-              Запусков пока нет
-            </div>
-          ) : (
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Дата</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Запрос</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Статус</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Результаты</th>
-                  <th className="w-20" />
-                </tr>
-              </thead>
-              <tbody>
-                {recentRuns.map((r) => (
-                  <tr key={r.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                    <td className="py-3 px-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
-                    <td className="py-3 px-4 truncate max-w-[200px] text-gray-900 dark:text-white" title={r.query}>{r.query}</td>
-                    <td className="py-3 px-4">
-                      <span className={cn(
-                        'px-2 py-0.5 rounded text-xs',
-                        r.status === 'completed' && 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-                        r.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
-                        (r.status === 'processing' || r.status === 'pending') && 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
-                      )}>
-                        {r.status === 'completed' ? 'OK' : r.status === 'failed' ? 'Ошибка' : 'В работе'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-gray-900 dark:text-white">{r.results}</td>
-                    <td className="py-3 px-4">
-                      <Link
-                        href={`${runBaseUrl}/${r.id}`}
-                        className="inline-flex items-center gap-1 text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Открыть <ExternalLink className="h-3 w-3" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <h2 className="text-[16px] font-semibold mb-4" style={{ color: 'hsl(var(--text))' }}>Последние запуски</h2>
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-[64px] app-skeleton" style={{ borderRadius: 4 }} />
+            ))}
+          </div>
+        ) : recentRuns.length === 0 ? (
+          <div
+            className="py-10 text-center text-sm rounded-[8px] border"
+            style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
+          >
+            Запусков пока нет
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {recentRuns.map((r, idx) => (
+              <Link
+                key={r.id}
+                href={`${runBaseUrl}/${r.id}`}
+                className="app-run-card w-full text-left"
+              >
+                <span className="app-mono-label shrink-0 w-10 text-center" style={{ color: 'hsl(var(--muted))' }}>
+                  #{String(idx + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[14px] font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={r.query}>
+                    {r.query}
+                  </div>
+                  <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                    {formatDateTime(r.created_at)} · {r.results} {r.results === 1 ? 'лид' : 'лидов'}
+                  </div>
+                </div>
+                <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
+                <div className="inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden sm:inline">Открыть</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

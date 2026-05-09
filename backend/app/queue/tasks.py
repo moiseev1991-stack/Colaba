@@ -392,17 +392,20 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                 outreach_subject = None
                 outreach_text = None
 
-            # 6. Update all results for this domain with SEO data
-            metadata = {
-                "crawl": {
-                    "total_pages": crawl_data.get("total_pages", 0),
-                    "pages": crawl_data.get("pages", []),
-                },
-                "audit": {
-                    "issues": seo_issues,
-                    "details": seo_details,
-                },
-            }
+            # 6. Classify site type + clean description from the home page —
+            # so the UI can hide catalogs/socials/news by default and show a
+            # tidy "о компании" string instead of raw meta-desc / snippet.
+            from app.modules.filters.classifier import classify_site, clean_description
+
+            pages_list = crawl_data.get("pages", []) or []
+            home_page = pages_list[0] if pages_list else {}
+            home_title = home_page.get("title")
+            home_meta = home_page.get("meta_description")
+            crawl_failed = (
+                crawl_data.get("fallback_used") is True
+                or "crawl_failed" in seo_issues
+                or "crawl_timeout" in seo_issues
+            )
 
             for res in domain_results:
                 res.phone = phone
@@ -411,7 +414,81 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                 res.seo_score = seo_score
                 res.outreach_subject = outreach_subject
                 res.outreach_text = outreach_text
-                res.extra_data = metadata
+
+                # Per-result classification: snippet from the search engine
+                # gives us a fallback when the home page has no meta.
+                site_type = classify_site(
+                    domain=res.domain,
+                    url=res.url,
+                    title=home_title or res.title,
+                    meta_description=home_meta or res.snippet,
+                    crawl_failed=crawl_failed,
+                )
+                clean_desc = (
+                    clean_description(home_meta)
+                    or clean_description(home_title)
+                    or clean_description(res.snippet)
+                )
+
+                # We keep `pages` in extra_data minimal (no text_content) — the full
+                # text lives in search_result_pages so it can be FTS-indexed.
+                pages_summary = [
+                    {
+                        "url": p.get("url"),
+                        "status_code": p.get("status_code"),
+                        "title": p.get("title"),
+                        "meta_description": p.get("meta_description"),
+                        "h1_count": p.get("h1_count"),
+                        "h1_text": p.get("h1_text"),
+                    }
+                    for p in pages_list
+                ]
+                res.extra_data = {
+                    "crawl": {
+                        "total_pages": crawl_data.get("total_pages", 0),
+                        "pages": pages_summary,
+                    },
+                    "audit": {
+                        "issues": seo_issues,
+                        "details": seo_details,
+                    },
+                    "classification": {
+                        "site_type": site_type,
+                        "clean_description": clean_desc,
+                    },
+                }
+
+            # Persist crawled pages for full-text keyword filtering. Replace any
+            # previous run's pages for these results so re-crawls don't pile up.
+            from app.models.search import SearchResultPage
+            from sqlalchemy import delete as sa_delete
+
+            result_ids = [r.id for r in domain_results]
+            if result_ids:
+                await db.execute(
+                    sa_delete(SearchResultPage).where(
+                        SearchResultPage.search_result_id.in_(result_ids)
+                    )
+                )
+                # Crawl is per-domain, so all results for this domain share the
+                # same pages — attach them to every result row to keep filtering
+                # per-result simple.
+                for res in domain_results:
+                    for p in pages_list:
+                        if not p.get("url"):
+                            continue
+                        db.add(
+                            SearchResultPage(
+                                search_result_id=res.id,
+                                search_id=search_id,
+                                url=p.get("url"),
+                                status_code=p.get("status_code"),
+                                title=p.get("title"),
+                                meta_description=p.get("meta_description"),
+                                h1_text=p.get("h1_text"),
+                                text_content=p.get("text_content"),
+                            )
+                        )
 
             await db.commit()
 

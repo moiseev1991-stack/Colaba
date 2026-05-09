@@ -40,6 +40,9 @@ export interface SearchResultResponse {
   outreach_text?: string;
   extra_data?: Record<string, any>;
   created_at: string;
+  /** Words from the keyword filter that were actually found on this site —
+   *  populated only when the request included a `keywords` query. */
+  keyword_hits?: string[];
 }
 
 /**
@@ -80,7 +83,9 @@ export async function getSearch(id: number): Promise<SearchResponse> {
 }
 
 /**
- * Get search results.
+ * Get search results. Filtering (FTS keywords, site type, etc.) is read on
+ * the server from `search.config.filters` — captured at creation time —
+ * so the same filter applies on every fetch without the caller resending it.
  */
 export async function getSearchResults(searchId: number): Promise<SearchResultResponse[]> {
   const response = await apiClient.get<SearchResultResponse[]>(`/searches/${searchId}/results`);

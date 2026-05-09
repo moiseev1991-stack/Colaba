@@ -73,9 +73,17 @@ async def get_dashboard_data(
     result = await db.execute(q.order_by(Search.created_at.desc()))
     rows = result.scalars().all()
 
-    # Filter by module: currently only SEO
-    if module != "all" and module != "seo":
-        rows = []  # leads/tenders not implemented
+    # Module filter. Каждый поиск хранит свой модуль в Search.config['module']
+    # (например, поиски из /app/leads пишут module='leads'). Старые поиски,
+    # созданные до введения тегирования, не имеют этого поля — для модуля
+    # 'seo' мы их сохраняем (исторически SEO был единственным модулем),
+    # для остальных — режем.
+    def _row_module(r) -> str:
+        cfg = r.config or {}
+        return (cfg.get("module") if isinstance(cfg, dict) else None) or "seo"
+
+    if module != "all":
+        rows = [r for r in rows if _row_module(r) == module]
 
     # KPI
     completed = [r for r in rows if _is_completed(r.status)]
@@ -149,13 +157,19 @@ async def get_dashboard_data(
     )
     if organization_id is not None:
         active_q = active_q.where(Search.organization_id == organization_id)
-    active_result = await db.execute(active_q.order_by(Search.created_at.desc()).limit(5))
-    active_rows = active_result.scalars().all()
+    # Active runs тоже фильтруем по выбранному модулю — иначе на дашборде
+    # "Поиск лидов" будут показываться активные SEO-аудиты соседнего модуля.
+    active_result = await db.execute(active_q.order_by(Search.created_at.desc()).limit(20))
+    active_rows_all = active_result.scalars().all()
+    if module != "all":
+        active_rows = [r for r in active_rows_all if _row_module(r) == module][:5]
+    else:
+        active_rows = active_rows_all[:5]
 
     active_runs = [
         schemas.ActiveRunItem(
             id=str(r.id),
-            module="seo",
+            module=_row_module(r),
             query=r.query,
             status=_map_status(r.status),
             started_at=r.created_at.isoformat() if r.created_at else "",
@@ -170,7 +184,7 @@ async def get_dashboard_data(
     recent_runs = [
         schemas.RecentRunItem(
             id=str(r.id),
-            module="seo",
+            module=_row_module(r),
             query=r.query,
             status=_map_status(r.status),
             created_at=r.created_at.isoformat() if r.created_at else "",

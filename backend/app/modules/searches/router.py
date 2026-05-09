@@ -111,7 +111,12 @@ async def get_search_results(
     organization_id: Optional[int] = Depends(get_current_organization_id),
     db=Depends(get_db),
 ):
-    """Get results for a specific search with optional pagination."""
+    """Get results for a specific search with optional pagination.
+
+    Filtering (FTS keywords, site type, has phone/email, etc.) is read from
+    the search's own `config.filters` — captured at creation time. There is
+    no per-request override; rerun the search to change the filter.
+    """
     results = await service.get_search_results(
         db=db,
         search_id=search_id,

@@ -183,18 +183,17 @@ export default function RunsHistoryPage() {
   };
 
   const getStatusBadge = (status: Run['status']) => {
-    const base = 'inline-flex items-center justify-center gap-1 h-6 min-w-[72px] px-2.5 rounded-[8px] text-xs font-medium';
     switch (status) {
       case 'done':
         return (
-          <span className={`${base} bg-green-500/15 text-green-700 dark:text-green-400`}>
+          <span className="app-badge app-badge-success">
             <CheckCircle className="h-3 w-3 shrink-0" />
             OK
           </span>
         );
       case 'error':
         return (
-          <span className={`${base} bg-red-500/15 text-red-700 dark:text-red-400`}>
+          <span className="app-badge app-badge-danger">
             <XCircle className="h-3 w-3 shrink-0" />
             Ошибка
           </span>
@@ -202,7 +201,7 @@ export default function RunsHistoryPage() {
       case 'pending':
       case 'processing':
         return (
-          <span className={`${base} bg-blue-500/15 text-blue-700 dark:text-blue-400`} title="В процессе">
+          <span className="app-badge app-badge-warning" title="В процессе">
             <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
             В работе
           </span>
@@ -241,7 +240,11 @@ export default function RunsHistoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleClearAll}
-                  className="flex items-center gap-1.5 h-9 border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  className="flex items-center gap-1.5 h-9"
+                  style={{
+                    borderColor: 'hsl(var(--danger) / 0.5)',
+                    color: 'hsl(var(--danger))',
+                  }}
                   disabled={runs.length === 0}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -286,14 +289,20 @@ export default function RunsHistoryPage() {
           <div className="sticky top-0 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
             <div className="app-card-enhanced p-4">
               {loadError && !loading && (
-                <div className="mb-4 rounded-[10px] bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-4 py-3 flex items-center justify-between gap-4">
-                  <p className="text-sm text-red-700 dark:text-red-400">{loadError}</p>
+                <div
+                  className="mb-4 rounded-[10px] border px-4 py-3 flex items-center justify-between gap-4"
+                  style={{
+                    background: 'hsl(var(--danger) / 0.1)',
+                    borderColor: 'hsl(var(--danger) / 0.3)',
+                  }}
+                >
+                  <p className="text-sm" style={{ color: 'hsl(var(--danger))' }}>{loadError}</p>
                   <Button variant="outline" size="sm" onClick={() => loadRuns(periodFilter)}>Повторить</Button>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-4">
                 <div className="relative flex-1 min-w-[180px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'hsl(var(--muted))' }} />
                   <Input
                     type="text"
                     placeholder="Поиск по запросу..."
@@ -311,11 +320,12 @@ export default function RunsHistoryPage() {
                     <button
                       key={s}
                       onClick={() => setStatusFilter(s)}
-                      className={`px-3 py-1.5 rounded-[10px] text-xs font-medium transition-colors ${
+                      className="px-3 py-1.5 rounded-[10px] text-xs font-medium transition-colors"
+                      style={
                         isActive
-                          ? 'bg-saas-primary text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }`}
+                          ? { background: 'hsl(var(--accent))', color: 'white' }
+                          : { background: 'hsl(var(--surface-2))', color: 'hsl(var(--muted))' }
+                      }
                     >
                       {s === 'all' ? 'Все' : s === 'done' ? 'OK' : s === 'error' ? 'Ошибки' : 'В работе'}
                     </button>
@@ -348,101 +358,94 @@ export default function RunsHistoryPage() {
             </div>
           ) : (
             <>
-              {/* Desktop Table */}
-              <div className="hidden md:block app-card-enhanced overflow-hidden app-reveal app-reveal-delay-3">
-                <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)]">
-                  <table className="app-table-enhanced" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                    <thead className="sticky top-0 z-[1]" style={{ background: 'hsl(var(--surface-2))', backdropFilter: 'blur(8px)' }}>
-                      <tr>
-                        <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[140px]">Дата/Время</th>
-                        <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Запрос</th>
-                        <th className="text-left px-2 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[90px] shrink-0">Статус</th>
-                        <th className="text-left px-2 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[90px] shrink-0">Результатов</th>
-                        <th className="text-right px-2 py-2.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[120px] shrink-0">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRuns.map((run, i) => (
-                        <tr
-                          key={run.id}
-                          className={`h-[40px] cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800/80 ${
-                            i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'
-                          } hover:bg-saas-primary-weak dark:hover:bg-saas-primary-weak/20`}
-                          onClick={() => handleOpen(run.id)}
+              {/* Desktop Cards — same style as /app/leads "Последние запуски" */}
+              <div className="hidden md:block app-reveal app-reveal-delay-3">
+                <div className="space-y-1.5">
+                  {filteredRuns.map((run, idx) => (
+                    <div
+                      key={run.id}
+                      className="app-run-card cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleOpen(run.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(run.id); }}
+                    >
+                      <span className="app-mono-label shrink-0 w-10 text-center" style={{ color: 'hsl(var(--muted))' }}>
+                        #{String(idx + 1).padStart(2, '0')}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={run.keyword}>
+                          {run.keyword}
+                        </div>
+                        <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                          {formatDate(run.createdAt)}
+                          {(run.geoCity || run.engine) && ` · ${[run.geoCity, run.engine].filter(Boolean).join(' · ')}`}
+                          {' · '}{run.resultCount ?? 0} {(run.resultCount ?? 0) === 1 ? 'лид' : 'лидов'}
+                        </div>
+                      </div>
+                      {getStatusBadge(run.status)}
+                      <div className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleOpen(run.id); }}
+                          className="inline-flex items-center gap-1 text-[13px] font-semibold transition-opacity hover:opacity-80"
+                          style={{ color: 'hsl(var(--accent))' }}
                         >
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <span className="text-sm text-gray-700 dark:text-gray-300" title={formatDate(run.createdAt)}>
-                              {formatDate(run.createdAt)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 overflow-hidden">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" title={run.keyword}>
-                                {run.keyword}
-                              </div>
-                              {(run.geoCity || run.engine) && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                  {[run.geoCity, run.engine].filter(Boolean).join(' • ')}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-2 py-2 w-[90px] shrink-0">{getStatusBadge(run.status)}</td>
-                          <td className="px-2 py-2 whitespace-nowrap">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{run.resultCount ?? 0}</span>
-                          </td>
-                          <td className="px-2 py-2 text-right w-[120px] shrink-0" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => { e.stopPropagation(); handleOpen(run.id); }}
-                                className="h-7 px-2 rounded-[10px] gap-1"
+                          <Eye className="h-4 w-4" />
+                          <span className="hidden sm:inline">Открыть</span>
+                        </button>
+                        <div className="relative" ref={openMenuId === run.id ? menuRef : undefined}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === run.id ? null : run.id); }}
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-[8px] transition-colors"
+                            style={{ color: 'hsl(var(--muted))' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                          {openMenuId === run.id && (
+                            <div
+                              className="absolute right-0 top-full mt-1 py-1 rounded-[10px] border shadow-lg z-20 min-w-[160px]"
+                              style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+                            >
+                              <button
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
+                                style={{ color: 'hsl(var(--text))' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                                onClick={(e) => handleExportCSV(run.id, e)}
                               >
-                                <Eye className="h-3.5 w-3.5" />
-                                Открыть
-                              </Button>
-                              <div className="relative" ref={openMenuId === run.id ? menuRef : undefined}>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-[10px]"
-                                  onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === run.id ? null : run.id); }}
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                                {openMenuId === run.id && (
-                                  <div className="absolute right-0 top-full mt-1 py-1 rounded-[10px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-20 min-w-[160px]">
-                                    <button
-                                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded-[8px] mx-1"
-                                      onClick={(e) => handleExportCSV(run.id, e)}
-                                    >
-                                      <Download className="h-4 w-4" />
-                                      Скачать CSV
-                                    </button>
-                                    <button
-                                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded-[8px] mx-1"
-                                      onClick={(e) => handleCopyAll(run.id, e)}
-                                    >
-                                      <Copy className="h-4 w-4" />
-                                      Копировать всё
-                                    </button>
-                                    <button
-                                      className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 rounded-[8px] mx-1"
-                                      onClick={(e) => handleDelete(run.id, e)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Удалить запуск
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                                <Download className="h-4 w-4" />
+                                Скачать CSV
+                              </button>
+                              <button
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
+                                style={{ color: 'hsl(var(--text))' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                                onClick={(e) => handleCopyAll(run.id, e)}
+                              >
+                                <Copy className="h-4 w-4" />
+                                Копировать всё
+                              </button>
+                              <button
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
+                                style={{ color: 'hsl(var(--danger))' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                                onClick={(e) => handleDelete(run.id, e)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Удалить запуск
+                              </button>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -455,33 +458,58 @@ export default function RunsHistoryPage() {
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{run.keyword}</h3>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        <h3 className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--text))' }}>{run.keyword}</h3>
+                        <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
                           {(run.geoCity || run.engine) ? [run.geoCity, run.engine].filter(Boolean).join(' • ') : formatDate(run.createdAt)}
                         </div>
                       </div>
                       {getStatusBadge(run.status)}
                     </div>
                     <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Результатов: <strong>{run.resultCount ?? 0}</strong></span>
+                      <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
+                        Результатов: <strong style={{ color: 'hsl(var(--text))' }}>{run.resultCount ?? 0}</strong>
+                      </span>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleOpen(run.id)} className="h-8 gap-1.5 rounded-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => handleOpen(run.id)}
+                          className="inline-flex items-center gap-1.5 h-8 px-2 rounded-[10px] text-[13px] font-semibold transition-opacity hover:opacity-80"
+                          style={{ color: 'hsl(var(--accent))' }}
+                        >
                           <Eye className="h-3.5 w-3.5" />
                           Открыть
-                        </Button>
+                        </button>
                         <div className="relative" ref={openMenuId === run.id ? menuRef : undefined}>
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-[10px]" onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === run.id ? null : run.id); }}>
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                           {openMenuId === run.id && (
                             <div className="absolute right-0 top-full mt-1 py-1 rounded-[10px] shadow-lg z-20 min-w-[160px]" style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}>
-                              <button className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded-[8px] mx-1" onClick={(e) => handleExportCSV(run.id, e)}>
+                              <button
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
+                                style={{ color: 'hsl(var(--text))' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                                onClick={(e) => handleExportCSV(run.id, e)}
+                              >
                                 <Download className="h-4 w-4" /> Скачать CSV
                               </button>
-                              <button className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded-[8px] mx-1" onClick={(e) => handleCopyAll(run.id, e)}>
+                              <button
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
+                                style={{ color: 'hsl(var(--text))' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                                onClick={(e) => handleCopyAll(run.id, e)}
+                              >
                                 <Copy className="h-4 w-4" /> Копировать всё
                               </button>
-                              <button className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2 rounded-[8px] mx-1" onClick={(e) => handleDelete(run.id, e)}>
+                              <button
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
+                                style={{ color: 'hsl(var(--danger))' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                                onClick={(e) => handleDelete(run.id, e)}
+                              >
                                 <Trash2 className="h-4 w-4" /> Удалить запуск
                               </button>
                             </div>

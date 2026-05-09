@@ -1,0 +1,18 @@
+# Dev override для локальной разработки на Windows.
+# Frontend запускается в dev-режиме (next dev, горячая перезагрузка).
+# DNS фикс: frontend обращается к backend через host.docker.internal:8001.
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    command: npx next dev -p 3000 -H 0.0.0.0
+    environment:
+      - NEXT_PUBLIC_API_URL=/api/v1
+      - INTERNAL_BACKEND_ORIGIN=http://host.docker.internal:8001
+      - BACKEND_HOSTNAME=host.docker.internal
+      - BACKEND_PORT=8001
+      - NODE_ENV=development

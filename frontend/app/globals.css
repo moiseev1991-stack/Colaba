@@ -1,12 +1,12 @@
 /* SpinLid Design Tokens — theme variables (must load before Tailwind) */
 :root {
-  /* === Core radius tokens (from design system) === */
-  --radius-xs: 7px;
-  --radius-sm: 12px;
-  --radius-control: 6px;
-  --radius-card: 18px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  /* === Core radius tokens — sharper, more architectural feel === */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
   
   /* === Color tokens === */
   --bg: 216 20% 97%;
@@ -726,15 +726,18 @@
   color: hsl(var(--text));
 }
 
-/* === Status Badges with Glow === */
+/* === Status Badges — sharp rectangular === */
 .app-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   transition: all 0.2s ease;
 }
 
@@ -964,56 +967,48 @@
   box-shadow: 0 0 0 3px hsl(var(--accent) / 0.2), 0 0 20px hsl(var(--accent) / 0.1);
 }
 
-/* === Preset Tags / Chips === */
+/* === Preset Tags / Chips — sharp, terminal-flavor === */
 .app-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 6px 12px;
   background: hsl(var(--surface));
   border: 1px solid hsl(var(--border));
-  border-radius: 40px;
+  border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
   color: hsl(var(--text));
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .app-chip:hover {
   border-color: hsl(var(--accent));
   background: hsl(var(--accent-weak));
   color: hsl(var(--accent));
-  box-shadow: var(--shadow-accent);
-  transform: translateY(-2px);
 }
 
 .app-chip-active {
   background: var(--grad-accent);
   border-color: transparent;
   color: white;
-  box-shadow: var(--shadow-accent);
+}
+.app-chip-active:hover {
+  background: var(--grad-accent);
+  color: white;
 }
 
-/* === Page Title with Gradient Underline === */
+/* === Page Title — bold, with mono-bracket prefix on left === */
 .app-page-title {
   position: relative;
   font-size: 24px;
   font-weight: 800;
   color: hsl(var(--text));
   letter-spacing: -0.5px;
-  padding-bottom: 12px;
-}
-
-.app-page-title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 60px;
-  height: 4px;
-  background: var(--grad-accent);
-  border-radius: 2px;
+  padding-left: 14px;
+  border-left: 3px solid hsl(var(--accent));
+  line-height: 1.2;
 }
 
 /* === Skeleton Loading with Shimmer === */
@@ -1047,3 +1042,239 @@
   );
   margin: 24px 0;
 }
+
+/* === Hero text with gradient === */
+.app-hero-gradient {
+  background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--indigo)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* === Mono numeric label (e.g. "01 / 03") === */
+.app-mono-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* === Hero card: architectural slab with hairline borders === */
+/* Important: no overflow:hidden here — dropdowns / popovers anchored inside
+   the card need to render outside its bounds without being clipped. */
+.app-hero-card {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+.app-hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad-accent);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  z-index: 1;
+}
+.app-hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 90% 0%, hsl(var(--indigo) / 0.06), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, hsl(var(--accent) / 0.05), transparent 60%);
+  pointer-events: none;
+}
+.dark .app-hero-card::after {
+  background:
+    radial-gradient(ellipse 60% 50% at 90% 0%, hsl(var(--indigo) / 0.1), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, hsl(var(--accent) / 0.08), transparent 60%);
+}
+.app-hero-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* === Mega CTA button: confident, sharp, with shine === */
+.app-cta-mega {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 28px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  color: white;
+  background: var(--grad-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow:
+    0 6px 18px hsl(var(--accent) / 0.32),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+.app-cta-mega::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+  transition: left 0.55s ease;
+}
+.app-cta-mega:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 26px hsl(var(--accent) / 0.42),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.app-cta-mega:hover:not(:disabled)::before {
+  left: 100%;
+}
+.app-cta-mega:active:not(:disabled) {
+  transform: translateY(0);
+}
+.app-cta-mega:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* === Feature tile (what you get) — flat, hairline, with mono number === */
+.app-feature-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.app-feature-tile:hover {
+  border-color: hsl(var(--accent) / 0.45);
+  background: hsl(var(--surface));
+}
+.app-feature-tile:hover .app-icon-glow {
+  background: var(--grad-accent);
+  color: white;
+  border-color: transparent;
+}
+.app-feature-num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted));
+}
+
+/* === Glowing icon — outlined by default, fills on hover === */
+.app-icon-glow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background: hsl(var(--accent-weak));
+  color: hsl(var(--accent));
+  border: 1px solid hsl(var(--accent) / 0.25);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* === Live pulse indicator === */
+.app-live-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--success));
+  flex-shrink: 0;
+}
+.app-live-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: hsl(var(--success));
+  animation: app-live-ping 1.6s ease-out infinite;
+}
+@keyframes app-live-ping {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* === Run card — sharp, with left accent strip on hover === */
+.app-run-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-left: 3px solid hsl(var(--border));
+  border-radius: 4px;
+  transition: border-left-color 0.2s ease, background 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+.app-run-card:hover {
+  border-left-color: hsl(var(--accent));
+  background: hsl(var(--accent-weak));
+}
+
+/* === Big stat readout (used in hero strip) === */
+.app-mega-stat {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* === Step ribbon (numbered process indicator) === */
+.app-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: hsl(var(--accent-weak));
+  color: hsl(var(--accent));
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.app-step-num-active {
+  background: var(--grad-accent);
+  color: white;
+}
+
+/* === Inline tag with brackets — used for niche category labels === */
+.app-bracket-tag {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted));
+}
+.app-bracket-tag::before { content: '['; opacity: 0.6; }
+.app-bracket-tag::after { content: ']'; opacity: 0.6; }

@@ -42,6 +42,9 @@ class SearchResultResponse(BaseModel):
     outreach_text: Optional[str] = None
     extra_data: Optional[Dict[str, Any]] = None
     created_at: datetime
+    # Populated only when the request used a keyword filter — list of words
+    # actually found on the crawled site (lowercased lemmas, deduplicated).
+    keyword_hits: Optional[List[str]] = None
 
     class Config:
         from_attributes = True
