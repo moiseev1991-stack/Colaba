@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.0.0...v1.0.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **frontend:** add missing proposal templates pages and components ([ecc8b69](https://github.com/moiseev1991-stack/Colaba/commit/ecc8b69ecd38a42d867472c7cc1f3f525d503b57))
+
 # 1.0.0 (2026-05-09)
 
 
