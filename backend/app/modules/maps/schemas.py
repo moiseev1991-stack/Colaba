@@ -1,12 +1,12 @@
 """Pydantic-схемы модуля maps.
 
-Сейчас здесь — только промежуточные схемы для провайдеров (CompanyRaw, ReviewRaw):
-их возвращают providers/*.py, их же читает service.save_*_batch.
+Промежуточные схемы для провайдеров (CompanyRaw, ReviewRaw) — отдают
+providers/*.py, читает service.save_*_batch. Out-схемы — для API.
 
-Out-схемы для API (CompanyOut, MapSearchOut и т.д.) будут добавлены в ШАГе 5.
+NB: НЕ используем `from __future__ import annotations` — Pydantic + FastAPI
+ломаются на ForwardRef в Query/Body. Python 3.11 нативно поддерживает
+union-синтаксис без future-импорта.
 """
-
-from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
@@ -86,3 +86,105 @@ class MapSearchFilter(BaseModel):
     pain_tag_ids: list[int] | None = None
     min_pain_mentions: int = 1
     sort_by: SortBy = "rating_desc"
+
+
+# ---------------------------------------------------------------------------
+# API request/response schemas
+# ---------------------------------------------------------------------------
+
+
+class MapSearchCreate(BaseModel):
+    """Тело POST /api/v1/maps/search."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    niche: str = Field(..., min_length=2, max_length=100)
+    city: str = Field(..., min_length=2, max_length=100)
+    sources: list[Source] = Field(default_factory=lambda: ["2gis"])
+    filters: MapSearchFilter | None = None
+
+
+class PainTagShort(BaseModel):
+    id: int
+    label: str
+    similarity: float | None = None
+
+
+class CompanyOut(BaseModel):
+    """Карточка компании в выдаче. pain_tags пустой до ШАГов 7-11."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    niche: str | None = None
+    city: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    rating: float | None = None
+    reviews_count: int = 0
+    reviews_positive_count: int = 0
+    reviews_negative_count: int = 0
+    reviews_neutral_count: int = 0
+    has_owner_replies: bool = False
+    owner_replies_count: int = 0
+    last_review_at: datetime | None = None
+    source: str
+    pain_tags: list[PainTagShort] = Field(default_factory=list)
+
+
+class ReviewOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    author_masked: str | None = None
+    rating: int | None = None
+    raw_text: str | None = None
+    sentiment: str | None = None
+    sentiment_score: float | None = None
+    posted_at: datetime | None = None
+    has_owner_reply: bool = False
+    source_url: str | None = None
+    pain_tags: list[PainTagShort] = Field(default_factory=list)
+
+
+class CompanyDetailOut(CompanyOut):
+    recent_reviews: list[ReviewOut] = Field(default_factory=list)
+
+
+class MapSearchOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    niche: str
+    city: str
+    sources: str
+    status: str
+    ai_progress: str
+    companies_found: int = 0
+    reviews_found: int = 0
+    error: str | None = None
+    error_type: str | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class CompaniesListOut(BaseModel):
+    items: list[CompanyOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class ReviewsListOut(BaseModel):
+    items: list[ReviewOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class ProvidersHealthOut(BaseModel):
+    twogis: str
+    yandex_maps: str
