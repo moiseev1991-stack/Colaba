@@ -13,6 +13,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
+import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
@@ -38,6 +40,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
   const [filter, setFilter] = useState<MapSearchFilter>(DEFAULT_FILTER);
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
+  const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
 
   const stream = useSearchStream(
     initialMode === 'searching' && !TERMINAL_STATUSES.has(initialSearch.status)
@@ -162,37 +165,21 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
             {renderList.map((c: any) => {
               const id = c.id ?? c.company_id;
               return (
-                <li key={id} className="px-4 py-3 text-sm">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="font-medium text-slate-900">{c.name}</div>
-                    {c.rating != null && (
-                      <span className="app-badge app-badge-accent">
-                        ★ {Number(c.rating).toFixed(1)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {c.address || '—'} · отзывов {c.reviews_count ?? 0} · негатива{' '}
-                    {c.reviews_negative_count ?? 0} · источник {c.source}
-                  </div>
-                  {Array.isArray(c.pain_tags) && c.pain_tags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {c.pain_tags.slice(0, 4).map((t: any) => (
-                        <span
-                          key={t.id}
-                          className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700"
-                        >
-                          {t.label}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </li>
+                <MapsCompanyCard
+                  key={id}
+                  company={c}
+                  onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
+                />
               );
             })}
           </ul>
         )}
       </div>
+
+      <MapsCompanyDetailDrawer
+        companyId={drawerCompanyId}
+        onClose={() => setDrawerCompanyId(null)}
+      />
     </div>
   );
 }
