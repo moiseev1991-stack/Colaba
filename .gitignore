@@ -1,3 +1,6 @@
+# Local DB backups
+backups/
+
 # Python
 __pycache__/
 *.py[cod]
