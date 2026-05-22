@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "api_version": "3.0.502135",
+    "code": 200,
+    "issue_date": "20260522"
+  },
+  "result": {
+    "items": [
+      {
+        "id": "70000001046123459",
+        "name": "Дентал-Сервис",
+        "address_name": "Пресненская наб., 8",
+        "point": {"lat": 55.7497, "lon": 37.5398},
+        "contact_groups": [
+          {
+            "contacts": [
+              {"type": "phone", "value": "+74959998877"}
+            ]
+          }
+        ],
+        "reviews": {
+          "general_rating": 4.7,
+          "general_review_count": 156
+        }
+      }
+    ],
+    "total": 53
+  }
+}

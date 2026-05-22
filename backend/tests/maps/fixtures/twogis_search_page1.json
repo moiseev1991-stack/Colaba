@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "api_version": "3.0.502135",
+    "code": 200,
+    "issue_date": "20260522"
+  },
+  "result": {
+    "items": [
+      {
+        "id": "70000001046123456",
+        "name": "Стоматология «Улыбка»",
+        "address_name": "ул. Тверская, 12",
+        "full_address_name": "Москва, ул. Тверская, 12",
+        "point": {"lat": 55.7558, "lon": 37.6173},
+        "contact_groups": [
+          {
+            "contacts": [
+              {"type": "phone", "value": "+74951234567"},
+              {"type": "website", "value": "https://ulybka.ru"}
+            ]
+          }
+        ],
+        "reviews": {
+          "general_rating": 4.2,
+          "general_review_count": 87
+        },
+        "rubrics": [{"name": "Стоматология"}]
+      },
+      {
+        "id": "70000001046123457",
+        "name": "Стоматология Дентал",
+        "address_name": "Кутузовский пр., 5",
+        "point": {"lat": 55.7401, "lon": 37.5347},
+        "contact_groups": [
+          {
+            "contacts": [
+              {"type": "phone", "value": "+74957654321"}
+            ]
+          }
+        ],
+        "reviews": {
+          "general_rating": 3.8,
+          "general_review_count": 42
+        }
+      },
+      {
+        "id": "70000001046123458",
+        "name": "СтомЦентр без отзывов",
+        "address_name": "Ленинский пр., 100",
+        "point": {"lat": 55.6856, "lon": 37.5536}
+      }
+    ],
+    "total": 53
+  }
+}

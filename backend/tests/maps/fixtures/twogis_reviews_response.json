@@ -1,0 +1,36 @@
+{
+  "meta": {"code": 200},
+  "result": {
+    "items": [
+      {
+        "id": "rev-1001",
+        "user": {"name": "Иван Иванов"},
+        "rating": 5,
+        "text": "Отличная клиника, врачи внимательные. Записывались на чистку, всё прошло быстро.",
+        "url": "https://2gis.ru/moscow/firm/70000001046123456/reviews/rev-1001",
+        "date_created": "2026-04-15T14:30:00+03:00",
+        "is_reply_by_owner": false
+      },
+      {
+        "id": "rev-1002",
+        "user": {"name": "Мария"},
+        "rating": 2,
+        "text": "Долго ждали приёма, врач опоздал на 40 минут. Цены задраны.",
+        "url": "https://2gis.ru/moscow/firm/70000001046123456/reviews/rev-1002",
+        "date_created": "2026-04-10T11:15:00+03:00",
+        "is_reply_by_owner": true
+      },
+      {
+        "id": "rev-1003",
+        "user": {},
+        "rating": 4,
+        "text": "Нормально.",
+        "date_created": "2026-03-28T18:00:00+03:00"
+      },
+      {
+        "rating": null,
+        "text": null
+      }
+    ]
+  }
+}
