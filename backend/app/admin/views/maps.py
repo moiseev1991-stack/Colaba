@@ -12,6 +12,7 @@ from app.models.maps import (
     MapSearchCache,
     Review,
 )
+from app.models.pain_tag import PainTag
 
 
 class CompanyAdmin(ModelView, model=Company):
@@ -101,6 +102,36 @@ class MapSearchAdmin(ModelView, model=MapSearch):
         MapSearch.reviews_found: "Отзывов",
         MapSearch.error_type: "Тип ошибки",
         MapSearch.created_at: "Создано",
+    }
+
+
+class PainTagAdmin(ModelView, model=PainTag):
+    name = "Боль (тег)"
+    name_plural = "Боли (теги)"
+    icon = "fa-solid fa-bullseye"
+
+    column_list = [
+        PainTag.id, PainTag.niche, PainTag.city, PainTag.label,
+        PainTag.occurrences_count, PainTag.cluster_size, PainTag.status,
+        PainTag.created_at, PainTag.updated_at,
+    ]
+    column_searchable_list = [PainTag.label, PainTag.niche, PainTag.description]
+    column_sortable_list = [
+        PainTag.occurrences_count, PainTag.cluster_size,
+        PainTag.created_at, PainTag.updated_at,
+    ]
+    column_default_sort = ("occurrences_count", True)
+    page_size = 50
+
+    column_labels = {
+        PainTag.niche: "Ниша",
+        PainTag.city: "Город",
+        PainTag.label: "Метка",
+        PainTag.occurrences_count: "Упоминаний",
+        PainTag.cluster_size: "Размер кластера",
+        PainTag.status: "Статус",
+        PainTag.created_at: "Создан",
+        PainTag.updated_at: "Обновлён",
     }
 
 
