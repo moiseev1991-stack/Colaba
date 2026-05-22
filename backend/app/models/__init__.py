@@ -27,6 +27,11 @@ from app.models.maps import (
     MapSearchCache,
     MapSearchResult,
 )
+from app.models.pain_tag import (
+    PainTag,
+    ReviewPainTag,
+    CompanyPainScore,
+)
 
 __all__ = [
     "User",
@@ -59,4 +64,7 @@ __all__ = [
     "MapSearch",
     "MapSearchCache",
     "MapSearchResult",
+    "PainTag",
+    "ReviewPainTag",
+    "CompanyPainScore",
 ]

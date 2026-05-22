@@ -61,13 +61,16 @@ def test_sort_by_negative_desc():
     assert "ORDER BY companies.reviews_negative_count DESC" in sql
 
 
-def test_pain_tag_filter_silently_skipped_when_models_missing():
-    """До миграции 016 — pain_tag_ids фильтр должен не падать, а просто
-    не накладываться. И pain_desc сорт деградирует до rating_desc."""
+def test_pain_tag_filter_joins_company_pain_scores():
+    """После миграции 016 — pain_tag_ids накладывает JOIN с company_pain_scores
+    и фильтрует по IN (...). pain_desc сортирует по mention_count DESC."""
     q = select(Company)
-    flt = MapSearchFilter(pain_tag_ids=[1, 2, 3], sort_by="pain_desc")
+    flt = MapSearchFilter(pain_tag_ids=[1, 2, 3], min_pain_mentions=2, sort_by="pain_desc")
     sql = _sql(apply_filters(q, flt))
-    # Никаких упоминаний company_pain_scores в SQL
-    assert "company_pain_scores" not in sql
-    # Сортировка ушла в дефолт
-    assert "ORDER BY companies.rating DESC" in sql
+    assert "company_pain_scores" in sql
+    # фильтр по pain_tag_ids
+    assert "pain_tag_id IN (1, 2, 3)" in sql
+    # min_pain_mentions
+    assert "mention_count >= 2" in sql
+    # сортировка по mention_count
+    assert "mention_count DESC" in sql
