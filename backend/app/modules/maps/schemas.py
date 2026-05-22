@@ -57,3 +57,32 @@ class ReviewRaw(BaseModel):
     source_url: str | None = None
     posted_at: datetime | None = None
     has_owner_reply: bool = False
+
+
+SortBy = Literal[
+    "rating_asc",
+    "rating_desc",
+    "reviews_desc",
+    "negative_desc",
+    "pain_desc",
+]
+
+
+class MapSearchFilter(BaseModel):
+    """Фильтры для get_search_results / списка компаний в API.
+
+    pain_tag_ids — фильтр по AI-тегам болей; работает только после миграции 016
+    (модуль reviews_ai). До миграции 016 фильтр игнорируется (NB не падает —
+    просто молча не накладывается).
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    min_rating: float | None = None
+    max_rating: float | None = None
+    min_reviews: int | None = None
+    min_negative: int | None = None
+    has_owner_replies: bool | None = None
+    pain_tag_ids: list[int] | None = None
+    min_pain_mentions: int = 1
+    sort_by: SortBy = "rating_desc"
