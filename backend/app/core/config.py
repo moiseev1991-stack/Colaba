@@ -134,6 +134,14 @@ class Settings(BaseSettings):
     MAPS_MAX_COMPANIES_PER_SEARCH: int = Field(default=200, description="Hard cap on companies parsed per search")
     MAPS_MAX_REVIEWS_PER_COMPANY: int = Field(default=100, description="Hard cap on reviews fetched per company")
 
+    # === Reviews AI ===
+    REVIEWS_AI_EMBEDDING_PROVIDER: str = Field(default="openai", description="Embedding provider: 'openai' | 'yandex'")
+    REVIEWS_AI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-small", description="OpenAI model name")
+    REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для sentiment; пусто = auto-pick по подсказке 'haiku'")
+    REVIEWS_AI_NAMING_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для naming кластеров; пусто = auto-pick по подсказке 'sonnet'")
+    REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(default=0.78, description="Cosine similarity threshold для матчинга review→pain_tag")
+    REVIEWS_AI_MIN_CLUSTER_SIZE: int = Field(default=8, description="HDBSCAN min_cluster_size")
+
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 
