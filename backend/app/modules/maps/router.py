@@ -20,6 +20,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -131,11 +132,21 @@ async def stream_map_search(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """SSE-стрим прогресса поиска. Реальная реализация — ШАГ 12 (Redis pub/sub)."""
-    await _get_owned_search(db, search_id, user_id)
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="SSE streaming will be enabled in step 12",
+    """SSE-стрим прогресса поиска. Шлёт уже найденные компании на старте,
+    затем подписывается на Redis-канал maps_stream:{search_id}.
+    Закрывается на event=done или при разрыве соединения клиентом.
+    """
+    search = await _get_owned_search(db, search_id, user_id)
+    from app.modules.maps.sse import iter_search_events
+
+    return StreamingResponse(
+        iter_search_events(db, search),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # nginx: не буферить
+            "Connection": "keep-alive",
+        },
     )
 
 

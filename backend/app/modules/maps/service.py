@@ -351,8 +351,9 @@ async def get_search_results(
 
 
 async def publish_progress_event(search_id: int, event_type: str, payload: dict[str, Any]) -> None:
-    """Заглушка. В ШАГе 12 будет публиковать в Redis pub/sub maps_stream:{search_id}."""
-    logger.debug(
-        "maps SSE stub: search=%d event=%s payload=%s",
-        search_id, event_type, json.dumps(payload, default=str)[:300],
-    )
+    """Публикует событие в Redis-канал maps_stream:{search_id}. Из SSE-эндпоинта
+    клиент получит его. При недоступном Redis — просто молча логируется (не блокирует парсинг).
+    """
+    from app.core.redis_pubsub import maps_stream_channel, publish_event
+
+    await publish_event(maps_stream_channel(search_id), event_type, payload)

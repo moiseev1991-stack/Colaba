@@ -240,14 +240,20 @@ async def test_get_company_detail_returns_recent_reviews(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_stream_endpoint_returns_501():
-    """SSE-эндпоинт обещает 501 пока ШАГ 12 не сделан."""
+async def test_stream_endpoint_returns_200_text_event_stream():
+    """После ШАГа 12 SSE-эндпоинт отвечает 200 с text/event-stream."""
     user_id, headers = await _create_user()
     async with AsyncSessionLocal() as db:
-        from app.modules.maps.schemas import MapSearchFilter
+        from sqlalchemy import update
+        from app.models.maps import MapSearch
         search = await service.create_map_search(db, user_id=user_id, niche="x", city="y", sources=["2gis"])
+        # помечаем completed, чтобы стрим сразу закрылся после done
+        await db.execute(update(MapSearch).where(MapSearch.id == search.id).values(status="completed"))
+        await db.commit()
         search_id = search.id
 
     async with _client() as c:
-        r = await c.get(f"/api/v1/maps/search/{search_id}/stream", headers=headers)
-        assert r.status_code == 501
+        async with c.stream("GET", f"/api/v1/maps/search/{search_id}/stream", headers=headers) as r:
+            assert r.status_code == 200
+            ctype = r.headers.get("content-type", "")
+            assert "text/event-stream" in ctype
