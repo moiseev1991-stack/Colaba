@@ -98,7 +98,7 @@ services:
       - backend
     networks:
       - leadgen-network
-    command: celery -A app.queue.celery_app worker -Q search_queue,celery --loglevel=info --concurrency=6
+    command: celery -A app.queue.celery_app worker -Q search_queue,celery,maps,maps_reviews,maps_ai,maintenance --loglevel=info --concurrency=6
 
   # Celery Beat (scheduled tasks)
   celery-beat:
