@@ -190,8 +190,16 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
             logger.warning("parse_company_reviews source=%s for company=%d: %s", source, company_id, e)
 
         await service.update_company_aggregates(db, company.id)
-        # TODO ШАГ 7-11: analyze_reviews_for_company.delay(company.id)
-        return total_inserted
+
+    # После закрытия сессии — ставим AI-пайплайн (если есть, что обрабатывать).
+    # Импорт локальный — иначе circular между maps.tasks и reviews_ai.tasks.
+    if total_inserted > 0:
+        try:
+            from app.modules.reviews_ai.tasks import analyze_reviews_for_company
+            analyze_reviews_for_company.delay(company_id)
+        except Exception as e:
+            logger.warning("parse_company_reviews: не смог поставить analyze_reviews_for_company: %s", e)
+    return total_inserted
 
 
 @celery_app.task(name="parse_company_reviews", queue="maps_reviews", bind=True, max_retries=2)

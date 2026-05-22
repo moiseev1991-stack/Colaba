@@ -14,6 +14,7 @@ celery_app = Celery(
     include=[
         "app.queue.tasks",
         "app.modules.maps.tasks",
+        "app.modules.reviews_ai.tasks",
     ],
 )
 
@@ -39,6 +40,11 @@ celery_app.conf.update(
         'purge-review-raw-text-daily': {
             'task': 'purge_review_raw_text',
             'schedule': crontab(hour=3, minute=30),
+        },
+        # reviews_ai cron: переcclusterизация top-30 ниш
+        'recluster-popular-niches-daily': {
+            'task': 'recluster_popular_niches',
+            'schedule': crontab(hour=4, minute=0),
         },
     },
 )
