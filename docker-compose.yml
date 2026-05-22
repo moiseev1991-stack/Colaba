@@ -60,6 +60,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:4000
+      # Maps module — пробрасываем из .env (docker-compose автоподхватывает .env)
+      - TWOGIS_API_KEY=${TWOGIS_API_KEY:-}
     volumes:
       - ./backend:/app
     depends_on:
@@ -87,6 +89,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:3000
+      - TWOGIS_API_KEY=${TWOGIS_API_KEY:-}
     volumes:
       - ./backend:/app
     depends_on:
@@ -113,6 +116,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:3000
+      - TWOGIS_API_KEY=${TWOGIS_API_KEY:-}
     volumes:
       - ./backend:/app
     depends_on:
