@@ -71,76 +71,102 @@ export function MapsSearchForm({ onStarted }: Props) {
     }
   }
 
+  const isReady = niche.trim().length >= 2 && sources.length > 0;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label className="mb-2 block text-sm font-medium text-slate-700">Ниша / запрос</label>
-        <Input
-          value={niche}
-          onChange={(e) => setNiche(e.target.value)}
-          placeholder="например, стоматология"
-          autoFocus
-        />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {NICHE_PRESETS.map((p) => (
-            <button
-              type="button"
-              key={p}
-              onClick={() => setNiche(p)}
-              className={cn(
-                'app-badge app-badge-accent cursor-pointer transition-opacity',
-                niche === p ? 'opacity-100' : 'opacity-70 hover:opacity-100'
-              )}
-            >
-              {p}
-            </button>
-          ))}
+    <div className="mx-auto max-w-2xl py-6">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900">Поиск по картам</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Введите нишу и город — модуль найдёт компании в 2GIS / Яндекс.Картах,
+          подтянет отзывы и выделит «боли» клиентов.
+        </p>
+      </header>
+
+      <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Ниша / запрос</label>
+          <Input
+            value={niche}
+            onChange={(e) => setNiche(e.target.value)}
+            placeholder="например, стоматология"
+            autoFocus
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {NICHE_PRESETS.map((p) => (
+              <button
+                type="button"
+                key={p}
+                onClick={() => setNiche(p)}
+                className={cn(
+                  'app-badge app-badge-accent cursor-pointer transition-opacity',
+                  niche === p ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div>
-        <label className="mb-2 block text-sm font-medium text-slate-700">Город</label>
-        <CityCombobox city={city} onCityChange={(c) => setCity(c)} />
-      </div>
-
-      <div>
-        <label className="mb-2 block text-sm font-medium text-slate-700">Источники</label>
-        <div className="flex flex-wrap gap-3">
-          {(
-            [
-              { id: '2gis' as MapSource, name: '2GIS' },
-              { id: 'yandex_maps' as MapSource, name: 'Яндекс.Карты' },
-            ]
-          ).map((s) => (
-            <label
-              key={s.id}
-              className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm transition-colors',
-                sources.includes(s.id) ? 'bg-slate-100' : 'hover:bg-slate-50'
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={sources.includes(s.id)}
-                onChange={() => toggleSource(s.id)}
-              />
-              {s.name}
-            </label>
-          ))}
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Город</label>
+          <CityCombobox city={city} onCityChange={(c) => setCity(c)} />
         </div>
-      </div>
 
-      {error && (
-        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      )}
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Источники</label>
+          <div className="flex flex-wrap gap-3">
+            {(
+              [
+                { id: '2gis' as MapSource, name: '2GIS' },
+                { id: 'yandex_maps' as MapSource, name: 'Яндекс.Карты' },
+              ]
+            ).map((s) => (
+              <label
+                key={s.id}
+                className={cn(
+                  'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
+                  sources.includes(s.id)
+                    ? 'border-slate-900 bg-slate-50'
+                    : 'border-slate-200 hover:border-slate-400'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={sources.includes(s.id)}
+                  onChange={() => toggleSource(s.id)}
+                />
+                {s.name}
+              </label>
+            ))}
+          </div>
+        </div>
 
-      <button
-        type="submit"
-        disabled={isLoading || niche.trim().length < 2}
-        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isLoading ? 'Запускаем…' : 'Начать поиск по картам'}
-      </button>
-    </form>
+        {error && (
+          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        )}
+
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={cn(
+              'inline-flex items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors',
+              isReady && !isLoading
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : 'bg-slate-300 cursor-not-allowed'
+            )}
+          >
+            {isLoading ? 'Запускаем…' : 'Найти'}
+          </button>
+          {!isReady && !isLoading && (
+            <span className="text-xs text-slate-500">
+              {niche.trim().length < 2 ? 'Введите нишу (минимум 2 символа)' : 'Выберите хотя бы один источник'}
+            </span>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }
