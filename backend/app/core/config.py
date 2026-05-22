@@ -126,6 +126,14 @@ class Settings(BaseSettings):
     # OAuth Frontend URL (for redirects)
     OAUTH_FRONTEND_URL: str = Field(default="http://localhost:4000", description="Frontend URL for OAuth callbacks")
 
+    # === Maps module ===
+    TWOGIS_API_KEY: str = Field(default="", description="2GIS Catalog API key (dev.2gis.com, free 1000 req/day)")
+    TWOGIS_RATE_LIMIT_DELAY: float = Field(default=1.1, description="Delay (sec) between 2GIS requests, anti-throttle")
+    YANDEX_MAPS_RATE_LIMIT_DELAY: float = Field(default=3.5, description="Base delay (sec) between Yandex Maps requests; jittered ±1s in code")
+    MAPS_CACHE_TTL_DAYS: int = Field(default=14, description="TTL (days) for map_search_cache per (niche, city, source)")
+    MAPS_MAX_COMPANIES_PER_SEARCH: int = Field(default=200, description="Hard cap on companies parsed per search")
+    MAPS_MAX_REVIEWS_PER_COMPANY: int = Field(default=100, description="Hard cap on reviews fetched per company")
+
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 
