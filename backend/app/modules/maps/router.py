@@ -20,14 +20,21 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def sqlalchemy_func_sum_mention():
+    """Хелпер для повторного использования агрегата SUM(company_pain_scores.mention_count)."""
+    from app.models.pain_tag import CompanyPainScore
+    return sa_func.sum(CompanyPainScore.mention_count)
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id
 from app.core.rate_limit import limiter
 from app.models.maps import Company, MapSearch, Review
+from app.models.pain_tag import PainTag
 from app.modules.maps import service
 from app.modules.maps.providers.twogis import CITY_TO_REGION_ID
 from app.modules.maps.schemas import (
@@ -37,6 +44,7 @@ from app.modules.maps.schemas import (
     MapSearchCreate,
     MapSearchFilter,
     MapSearchOut,
+    PainTagOut,
     ProvidersHealthOut,
     ReviewOut,
     ReviewsListOut,
@@ -141,15 +149,15 @@ async def list_search_companies(
     min_reviews: Optional[int] = Query(default=None, ge=0),
     min_negative: Optional[int] = Query(default=None, ge=0),
     has_owner_replies: Optional[bool] = Query(default=None),
+    pain_tag_ids: Optional[list[int]] = Query(default=None),
+    min_pain_mentions: int = Query(default=1, ge=1),
     sort_by: SortBy = Query(default="rating_desc"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Возвращает страницу компаний поиска с фильтрами. pain_tag_ids фильтр
-    появится в API после ШАГов 7-11; до этого pain_tags в карточках всегда [].
-    """
+    """Возвращает страницу компаний поиска с фильтрами."""
     await _get_owned_search(db, search_id, user_id)
     flt = MapSearchFilter(
         min_rating=min_rating,
@@ -157,6 +165,8 @@ async def list_search_companies(
         min_reviews=min_reviews,
         min_negative=min_negative,
         has_owner_replies=has_owner_replies,
+        pain_tag_ids=pain_tag_ids or None,
+        min_pain_mentions=min_pain_mentions,
         sort_by=sort_by,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
@@ -166,6 +176,39 @@ async def list_search_companies(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/search/{search_id}/pain-tags", response_model=list[PainTagOut])
+@limiter.limit("60/minute")
+async def search_pain_tags(
+    request: Request,
+    search_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Теги болей, которые реально встречаются у компаний этого поиска.
+
+    JOIN company_pain_scores → pain_tags; группируем по pain_tag, считаем
+    сумму mention_count. Сортировка по убыванию.
+    """
+    from app.models.maps import MapSearchResult
+    from app.models.pain_tag import CompanyPainScore
+
+    await _get_owned_search(db, search_id, user_id)
+
+    q = (
+        select(PainTag, sqlalchemy_func_sum_mention())
+        .join(CompanyPainScore, CompanyPainScore.pain_tag_id == PainTag.id)
+        .join(MapSearchResult, MapSearchResult.company_id == CompanyPainScore.company_id)
+        .where(
+            MapSearchResult.map_search_id == search_id,
+            PainTag.status == "active",
+        )
+        .group_by(PainTag.id)
+        .order_by(sqlalchemy_func_sum_mention().desc())
+    )
+    rows = list((await db.execute(q)).all())
+    return [PainTagOut.model_validate(row[0]) for row in rows]
 
 
 # ---------------------------------------------------------------------------
@@ -254,14 +297,27 @@ async def niche_suggestions(q: str = Query(default="", min_length=0, max_length=
     return [p for p in presets if needle in p]
 
 
-@router.get("/pain-tags", response_model=list[dict])
+@router.get("/pain-tags", response_model=list[PainTagOut])
+@limiter.limit("60/minute")
 async def list_pain_tags(
-    niche: str = Query(...),
+    request: Request,
+    niche: str = Query(..., min_length=1),
     city: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Заглушка до ШАГов 7-11 (модуль reviews_ai). Возвращает пустой список."""
-    _ = niche, city
-    return []
+    """Активные pain_tags для (niche, city). Без city — глобальные теги ниши.
+
+    Сортировка по occurrences_count DESC — самые «горячие» болевые точки сверху.
+    """
+    q = select(PainTag).where(PainTag.niche == niche, PainTag.status == "active")
+    if city is None:
+        q = q.where(PainTag.city.is_(None))
+    else:
+        # включаем и global (city=NULL), и city-specific
+        q = q.where((PainTag.city == city) | (PainTag.city.is_(None)))
+    q = q.order_by(PainTag.occurrences_count.desc())
+    tags = list((await db.execute(q)).scalars().all())
+    return [PainTagOut.model_validate(t) for t in tags]
 
 
 @router.get("/health/providers", response_model=ProvidersHealthOut)

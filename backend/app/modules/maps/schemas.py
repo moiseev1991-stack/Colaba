@@ -110,6 +110,22 @@ class PainTagShort(BaseModel):
     similarity: float | None = None
 
 
+class PainTagOut(BaseModel):
+    """Полная карточка тега боли для облака тегов / API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    niche: str
+    city: str | None = None
+    label: str
+    description: str | None = None
+    occurrences_count: int = 0
+    cluster_size: int | None = None
+    examples: list[dict] | None = None
+    status: str = "active"
+
+
 class CompanyOut(BaseModel):
     """Карточка компании в выдаче. pain_tags пустой до ШАГов 7-11."""
 
