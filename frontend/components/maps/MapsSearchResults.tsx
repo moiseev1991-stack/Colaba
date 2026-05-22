@@ -1,17 +1,23 @@
 'use client';
 
 /**
- * Заглушка экрана результатов / прогресса парсинга. Расширяется в шагах 14-16:
- *  - useSearchStream (SSE) для live-обновлений
- *  - MapsFiltersPanel + PainTagsCloud
- *  - MapsCompaniesList + MapsCompanyCard
- *  - MapsCompanyDetailDrawer
- *  - MapsExportButton
+ * Экран результатов поиска по картам.
+ *
+ * - useSearchStream: SSE-стрим компаний и прогресса.
+ * - listMapCompanies: финальная подгрузка с фильтрами после done (или сразу для
+ *   статусов completed/from_cache).
+ * - Фильтры / pain tags / drawer добавляются в шагах 15-16.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { getMapSearch, listMapCompanies, type CompanyOut, type MapSearchOut } from '@/src/services/api/maps';
+import { useSearchStream } from '@/components/maps/useSearchStream';
+import {
+  getMapSearch,
+  listMapCompanies,
+  type CompanyOut,
+  type MapSearchOut,
+} from '@/src/services/api/maps';
 
 interface Props {
   search: MapSearchOut;
@@ -19,54 +25,72 @@ interface Props {
   onNewSearch: () => void;
 }
 
-export function MapsSearchResults({ search: initialSearch, onNewSearch }: Props) {
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
+
+export function MapsSearchResults({ search: initialSearch, initialMode, onNewSearch }: Props) {
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(initialMode === 'results');
+
+  const stream = useSearchStream(
+    initialMode === 'searching' && !TERMINAL_STATUSES.has(initialSearch.status)
+      ? initialSearch.id
+      : null
+  );
 
   const refreshCompanies = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await listMapCompanies(search.id, {}, 100, 0);
       setCompanies(data.items);
-      setTotal(data.total);
     } finally {
       setIsLoading(false);
     }
   }, [search.id]);
 
-  // Polling статуса до 'completed/failed/from_cache' (плейсхолдер до SSE-хука в шаге 14)
+  // Финальная загрузка с фильтрами:
+  // - сразу для completed/from_cache
+  // - после event=done из SSE
+  // Также подтягиваем актуальный статус MapSearch (companies_found и пр.).
   useEffect(() => {
-    if (['completed', 'failed', 'from_cache'].includes(search.status)) {
+    if (TERMINAL_STATUSES.has(search.status)) {
       void refreshCompanies();
       return;
     }
-    const timer = setInterval(async () => {
-      try {
-        const updated = await getMapSearch(search.id);
-        setSearch(updated);
-        if (['completed', 'failed', 'from_cache'].includes(updated.status)) {
-          clearInterval(timer);
-          await refreshCompanies();
+    if (stream.done) {
+      void (async () => {
+        try {
+          const updated = await getMapSearch(search.id);
+          setSearch(updated);
+        } catch {
+          /* keep current */
         }
-      } catch {
-        /* swallow — повторим на следующем тике */
-      }
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [search.id, search.status, refreshCompanies]);
+        await refreshCompanies();
+      })();
+    }
+  }, [stream.done, search.id, search.status, refreshCompanies]);
+
+  // Список для отображения: финальный (из API) приоритетнее live-стрима
+  const liveCompanies = stream.companies;
+  const hasFinal = companies.length > 0;
+  const renderList = hasFinal ? companies : liveCompanies;
+  const renderTotal = hasFinal ? companies.length : liveCompanies.length;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
             {search.niche} — {search.city}
           </h2>
           <p className="text-sm text-slate-500">
-            Источники: {search.sources}. Статус: {search.status}. Найдено компаний:{' '}
-            {search.companies_found ?? total}.
+            Источники: {search.sources}. Статус: {search.status}.{' '}
+            {stream.progress &&
+              `Парсим: ${stream.progress.companies_processed ?? stream.progress.processed ?? 0}` +
+              (stream.progress.companies_total ?? stream.progress.total
+                ? ` / ${stream.progress.companies_total ?? stream.progress.total}`
+                : '') + '. '}
+            Найдено компаний: {search.companies_found ?? renderTotal}.
           </p>
         </div>
         <button
@@ -77,30 +101,41 @@ export function MapsSearchResults({ search: initialSearch, onNewSearch }: Props)
         </button>
       </div>
 
-      {isLoading && companies.length === 0 && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          {['pending', 'running'].includes(search.status)
-            ? 'Парсер ищет компании. Результаты появятся здесь по мере готовности.'
-            : 'Загружаем компании…'}
+      {stream.error && (
+        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          Ошибка стрима: {stream.error}
         </div>
       )}
 
-      {companies.length > 0 && (
+      {isLoading && renderList.length === 0 && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          {TERMINAL_STATUSES.has(search.status)
+            ? 'Загружаем компании…'
+            : 'Парсер ищет компании. Карточки появятся по мере готовности.'}
+        </div>
+      )}
+
+      {renderList.length > 0 && (
         <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
-          {companies.map((c) => (
-            <li key={c.id} className="px-4 py-3 text-sm">
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="font-medium text-slate-900">{c.name}</div>
-                {c.rating != null && (
-                  <span className="app-badge app-badge-accent">★ {c.rating.toFixed(1)}</span>
-                )}
-              </div>
-              <div className="mt-1 text-xs text-slate-500">
-                {c.address || '—'} · отзывов {c.reviews_count} · негатива{' '}
-                {c.reviews_negative_count} · источник {c.source}
-              </div>
-            </li>
-          ))}
+          {renderList.map((c: any) => {
+            const id = c.id ?? c.company_id;
+            return (
+              <li key={id} className="px-4 py-3 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="font-medium text-slate-900">{c.name}</div>
+                  {c.rating != null && (
+                    <span className="app-badge app-badge-accent">
+                      ★ {Number(c.rating).toFixed(1)}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {c.address || '—'} · отзывов {c.reviews_count ?? 0} · негатива{' '}
+                  {c.reviews_negative_count ?? 0} · источник {c.source}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
