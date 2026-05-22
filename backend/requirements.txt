@@ -10,6 +10,7 @@ sqlalchemy==2.0.23
 alembic==1.12.1
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
+pgvector==0.4.0  # SQLAlchemy adapter для типа VECTOR (модуль maps/reviews_ai)
 
 # Admin Panel
 sqladmin>=0.19.0

@@ -20,6 +20,13 @@ from app.models.email import (
 )
 from app.models.email_reply import EmailReply
 from app.models.email_config import EmailConfig
+from app.models.maps import (
+    Company,
+    Review,
+    MapSearch,
+    MapSearchCache,
+    MapSearchResult,
+)
 
 __all__ = [
     "User",
@@ -47,4 +54,9 @@ __all__ = [
     "CampaignStatus",
     "EmailReply",
     "EmailConfig",
+    "Company",
+    "Review",
+    "MapSearch",
+    "MapSearchCache",
+    "MapSearchResult",
 ]
