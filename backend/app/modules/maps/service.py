@@ -120,9 +120,8 @@ async def create_map_search(
     Если для всех sources кэш свежий — статус сразу 'from_cache'.
     В обоих случаях возвращается ORM-объект, привязанный к сессии.
     """
-    all_cached = sources and all(
-        await check_cache(db, niche=niche, city=city, source=s) for s in sources
-    )
+    cache_hits = [await check_cache(db, niche=niche, city=city, source=s) for s in sources]
+    all_cached = bool(sources) and all(cache_hits)
     status = "from_cache" if all_cached else "pending"
 
     search = MapSearch(
@@ -215,7 +214,9 @@ async def save_companies_batch(
         )
         await db.execute(link)
 
-        company = await db.get(Company, company_id)
+        # populate_existing=True — иначе при повторном вызове на ту же компанию
+        # identity map вернёт старую версию объекта (без свежего rating и т.п.)
+        company = await db.get(Company, company_id, populate_existing=True)
         if company is not None:
             saved.append(company)
 
