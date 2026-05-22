@@ -134,7 +134,7 @@ def _ld_to_company_raw(ld: dict[str, Any]) -> CompanyRaw | None:
         phone=ld.get("telephone") if isinstance(ld.get("telephone"), str) else None,
         website=ld.get("url") if isinstance(ld.get("url"), str) and "/maps/org/" not in (ld.get("url") or "") else None,
         rating=_safe_float(aggregate.get("ratingValue")) if isinstance(aggregate, dict) else None,
-        reviews_count=_safe_int(aggregate.get("reviewCount")) if isinstance(aggregate, dict) else 0,
+        reviews_count=(_safe_int(aggregate.get("reviewCount")) if isinstance(aggregate, dict) else None) or 0,
         raw_data=ld,
     )
 

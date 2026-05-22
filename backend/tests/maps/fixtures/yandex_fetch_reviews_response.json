@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "id": "ya-rev-1001",
+      "author": {"name": "Анна Петрова"},
+      "rating": 5,
+      "text": "Прекрасный сервис, всё чисто. Записываемся всей семьёй уже год.",
+      "link": "https://yandex.ru/maps/org/x/1010101010101/reviews/ya-rev-1001",
+      "time": 1716000000,
+      "business_reply": null
+    },
+    {
+      "id": "ya-rev-1002",
+      "author": {"name": "Иван"},
+      "rating": 2,
+      "text": "Долго ждал приёма. Цены завышены.",
+      "time": 1715000000,
+      "business_reply": {"text": "Извините, разберёмся"}
+    },
+    {
+      "id": "ya-rev-1003",
+      "author": {},
+      "rating": 4,
+      "text": "Хорошо.",
+      "updated_time": 1714000000000
+    },
+    {
+      "rating": null,
+      "text": null
+    }
+  ]
+}
