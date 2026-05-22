@@ -240,6 +240,40 @@ async def test_get_company_detail_returns_recent_reviews(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_export_csv_returns_attachment(monkeypatch):
+    """GET /export возвращает CSV-файл с заголовком + строками компаний."""
+    from app.modules.maps import tasks as maps_tasks
+    monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
+
+    user_id, headers = await _create_user()
+    async with AsyncSessionLocal() as db:
+        search = await service.create_map_search(
+            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(
+                source="2gis", external_id=_unique_id("co"), name="Stomatology One",
+                rating=4.5, reviews_count=10, phone="+74950000001",
+            ),
+        ], search.id)
+        search_id = search.id
+
+    async with _client() as c:
+        r = await c.get(f"/api/v1/maps/search/{search_id}/export", headers=headers)
+        assert r.status_code == 200
+        assert "text/csv" in r.headers.get("content-type", "")
+        assert "attachment" in r.headers.get("content-disposition", "")
+        body = r.text
+        assert "name,niche,city" in body  # заголовки CSV
+        assert "Stomatology One" in body
+        assert "+74950000001" in body
+
+
+def _unique_id(prefix: str) -> str:
+    return f"r-{prefix}-{uuid.uuid4().hex[:10]}"
+
+
+@pytest.mark.asyncio
 async def test_stream_endpoint_returns_200_text_event_stream():
     """После ШАГа 12 SSE-эндпоинт отвечает 200 с text/event-stream."""
     user_id, headers = await _create_user()

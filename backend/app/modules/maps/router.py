@@ -16,6 +16,8 @@ NB: без `from __future__ import annotations` — Pydantic+FastAPI плохо 
 с ForwardRef в аннотациях параметров эндпоинтов (особенно Query/Body Pydantic-моделей).
 """
 
+import csv
+import io
 import logging
 from typing import Optional
 
@@ -186,6 +188,61 @@ async def list_search_companies(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/search/{search_id}/export")
+@limiter.limit("5/minute")
+async def export_search_csv(
+    request: Request,
+    search_id: int,
+    min_rating: Optional[float] = Query(default=None, ge=0, le=5),
+    max_rating: Optional[float] = Query(default=None, ge=0, le=5),
+    min_reviews: Optional[int] = Query(default=None, ge=0),
+    min_negative: Optional[int] = Query(default=None, ge=0),
+    has_owner_replies: Optional[bool] = Query(default=None),
+    pain_tag_ids: Optional[list[int]] = Query(default=None),
+    sort_by: SortBy = Query(default="rating_desc"),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Экспорт компаний поиска в CSV (с теми же фильтрами что у /companies)."""
+    await _get_owned_search(db, search_id, user_id)
+    flt = MapSearchFilter(
+        min_rating=min_rating, max_rating=max_rating,
+        min_reviews=min_reviews, min_negative=min_negative,
+        has_owner_replies=has_owner_replies,
+        pain_tag_ids=pain_tag_ids or None,
+        sort_by=sort_by,
+    )
+    items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "id", "name", "niche", "city", "address", "phone", "website",
+        "rating", "reviews_count", "reviews_positive", "reviews_negative",
+        "reviews_neutral", "has_owner_replies", "owner_replies_count",
+        "last_review_at", "source",
+    ])
+    for c in items:
+        writer.writerow([
+            c.id, c.name or "", c.niche or "", c.city or "", c.address or "",
+            c.phone or "", c.website or "",
+            float(c.rating) if c.rating is not None else "",
+            c.reviews_count or 0, c.reviews_positive_count or 0,
+            c.reviews_negative_count or 0, c.reviews_neutral_count or 0,
+            "yes" if c.has_owner_replies else "no",
+            c.owner_replies_count or 0,
+            c.last_review_at.isoformat() if c.last_review_at else "",
+            c.source or "",
+        ])
+    output.seek(0)
+    filename = f"maps_search_{search_id}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
