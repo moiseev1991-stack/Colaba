@@ -62,6 +62,24 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
     })();
   }, [stream.done, search.id]);
 
+  // Polling статуса каждые 3с, пока не terminal. SSE через Next.js proxy буферизует
+  // (см. docs/maps-module-guide.md §7.3) — без polling юзер не увидит смену
+  // pending→running→completed/failed до перезагрузки страницы.
+  useEffect(() => {
+    if (TERMINAL_STATUSES.has(search.status)) return;
+    const timer = setInterval(async () => {
+      try {
+        const updated = await getMapSearch(search.id);
+        if (updated.status !== search.status || updated.companies_found !== search.companies_found) {
+          setSearch(updated);
+        }
+      } catch {
+        /* keep current */
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [search.id, search.status, search.companies_found]);
+
   // Перезагрузка списка с фильтрами: только после terminal-статуса, с debounce 300мс
   const refreshCompanies = useCallback(
     async (f: MapSearchFilter) => {
@@ -152,7 +170,33 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
           </div>
         )}
 
-        {isLoading && renderList.length === 0 && (
+        {search.status === 'failed' && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="font-medium">Поиск завершился ошибкой</div>
+            <div className="mt-1 text-red-700">
+              {search.error_type === 'ConnectTimeout' || search.error_type === 'MissingAPIKeyError' ? (
+                search.error_type === 'ConnectTimeout' ? (
+                  <>
+                    2GIS API не отвечает с этой машины (TLS-таймаут). Чаще всего это сеть провайдера или
+                    SNI-фильтрация 2GIS — после деплоя на сервер с РФ-IP должно заработать.
+                  </>
+                ) : (
+                  <>
+                    Не настроен <code>TWOGIS_API_KEY</code> в <code>.env</code>. Получи демо-ключ на{' '}
+                    <a href="https://dev.2gis.com" className="underline" target="_blank" rel="noopener noreferrer">
+                      dev.2gis.com
+                    </a>{' '}
+                    и положи в env.
+                  </>
+                )
+              ) : (
+                <>{search.error_type ?? 'Неизвестная ошибка'}. Подробности в логах celery-worker.</>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isLoading && renderList.length === 0 && search.status !== 'failed' && (
           <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
             {isTerminal
               ? 'Загружаем компании по выбранным фильтрам…'

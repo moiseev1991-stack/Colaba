@@ -30,7 +30,7 @@ def test_resolve_region_id_known_city():
 
 
 def test_city_not_in_map_uses_fallback_region():
-    assert resolve_region_id("Барнаул") == TWOGIS_FALLBACK_REGION_ID
+    assert resolve_region_id("Урюпинск") == TWOGIS_FALLBACK_REGION_ID
     assert resolve_region_id("") == TWOGIS_FALLBACK_REGION_ID
     assert resolve_region_id(None) == TWOGIS_FALLBACK_REGION_ID  # type: ignore[arg-type]
 
@@ -155,7 +155,7 @@ async def test_search_companies_respects_limit(monkeypatch, twogis_search_page1)
 @pytest.mark.asyncio
 async def test_search_companies_city_not_in_map_uses_fallback(monkeypatch, twogis_search_page1):
     provider, rec = _make_provider_with_responses(monkeypatch, [twogis_search_page1])
-    async for _ in provider.search_companies("ремонт", "Барнаул", limit=10):
+    async for _ in provider.search_companies("ремонт", "Урюпинск", limit=10):
         pass
     assert rec.calls[0][1]["region_id"] == TWOGIS_FALLBACK_REGION_ID
 
