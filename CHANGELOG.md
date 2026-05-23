@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.8](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.7...v1.3.8) (2026-05-23)
+
+
+### Bug Fixes
+
+* **maps-2gis:** page_size 10 + проверка meta.code (тихо глотали 400) ([545a8c5](https://github.com/moiseev1991-stack/Colaba/commit/545a8c569a6b3057ec2bd21f211d98feb2b5fdc9))
+* **maps-2gis:** региoн_id Москвы 32 (был 1 = Новосибирск) ([da1ce27](https://github.com/moiseev1991-stack/Colaba/commit/da1ce272d3d708b3e17b531d6e6fe7e48b8091b9))
+* **maps:** graceful обработка 2GIS reviews 404 (Method not found) ([a041d1d](https://github.com/moiseev1991-stack/Colaba/commit/a041d1dd1bfd388c772a5b18689b31c88283236b))
+
 ## [1.3.7](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.6...v1.3.7) (2026-05-23)
 
 
