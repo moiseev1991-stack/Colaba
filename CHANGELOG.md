@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.1...v1.3.2) (2026-05-23)
+
+
+### Bug Fixes
+
+* **tests:** идемпотентные имена в create/update тестах organizations и blacklist ([401b7f9](https://github.com/moiseev1991-stack/Colaba/commit/401b7f9dceccd7a535f36a8256106a0a21dce570))
+
 ## [1.3.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.0...v1.3.1) (2026-05-23)
 
 
