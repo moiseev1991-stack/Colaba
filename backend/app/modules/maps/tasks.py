@@ -188,6 +188,11 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
                 total_inserted += await service.save_reviews_batch(db, company.id, batch)
         except (CaptchaWallError, RateLimitError) as e:
             logger.warning("parse_company_reviews source=%s for company=%d: %s", source, company_id, e)
+        except RuntimeError as e:
+            # 2GIS reviews/list endpoint недоступен на free-плане (meta.code=404 Method not found).
+            # Не валим таск: компания уже сохранена, рейтинг и review_count берутся из items-ответа.
+            # Без этой ветки таск ретраился max_retries раз и забивал очередь.
+            logger.warning("parse_company_reviews source=%s for company=%d skipped: %s", source, company_id, e)
 
         await service.update_company_aggregates(db, company.id)
 
