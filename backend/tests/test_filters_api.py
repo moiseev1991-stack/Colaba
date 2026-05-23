@@ -102,14 +102,15 @@ class TestFiltersBlacklist:
     @pytest.mark.asyncio
     async def test_create_blacklist_domain_success(self, client, test_user_token):
         """Test adding domain to blacklist."""
+        domain = f"spam-{uuid.uuid4().hex[:8]}.example.com"
         response = await client.post(
             "/api/v1/filters/blacklist",
-            json={"domain": "spam.example.com"},
+            json={"domain": domain},
             headers={"Authorization": f"Bearer {test_user_token}"},
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["domain"] == "spam.example.com"
+        assert data["domain"] == domain
         assert "id" in data
         assert "created_at" in data
 

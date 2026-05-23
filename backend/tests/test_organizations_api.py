@@ -78,14 +78,15 @@ class TestOrganizationsCRUD:
     @pytest.mark.asyncio
     async def test_create_organization_success(self, client, superuser_token):
         """Test creating organization as superuser."""
+        name = f"New Test Org {uuid.uuid4().hex[:8]}"
         response = await client.post(
             "/api/v1/organizations",
-            json={"name": "New Test Org"},
+            json={"name": name},
             headers={"Authorization": f"Bearer {superuser_token}"},
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["name"] == "New Test Org"
+        assert data["name"] == name
         assert "id" in data
 
     @pytest.mark.asyncio
@@ -143,14 +144,15 @@ class TestOrganizationsCRUD:
     @pytest.mark.asyncio
     async def test_update_organization_success(self, client, superuser_token, test_organization):
         """Test updating organization."""
+        new_name = f"Updated Name {uuid.uuid4().hex[:8]}"
         response = await client.put(
             f"/api/v1/organizations/{test_organization.id}",
-            json={"name": "Updated Name"},
+            json={"name": new_name},
             headers={"Authorization": f"Bearer {superuser_token}"},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["name"] == "Updated Name"
+        assert data["name"] == new_name
 
     @pytest.mark.asyncio
     async def test_delete_organization_success(self, client, superuser_token):
