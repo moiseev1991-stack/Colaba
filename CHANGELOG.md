@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.7](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.6...v1.3.7) (2026-05-23)
+
+
+### Bug Fixes
+
+* **maps:** NullPool в Celery воркере — лечим "another operation in progress" ([055e2cf](https://github.com/moiseev1991-stack/Colaba/commit/055e2cf1ec61d6188933c60ce0f4ea97b7a32061))
+
 ## [1.3.6](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.5...v1.3.6) (2026-05-23)
 
 
