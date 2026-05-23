@@ -1,3 +1,11 @@
+# Local DB backups
+backups/
+
+# Celery beat scheduler runtime files
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
+
 # Python
 __pycache__/
 *.py[cod]

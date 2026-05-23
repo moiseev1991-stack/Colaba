@@ -1,0 +1,415 @@
+"""Сервис reviews_ai: sentiment, embeddings, match к pain_tags, recluster.
+
+Все функции gracefully отключаются при отсутствии нужных средств:
+- если call_llm_sentiment вернул None → reviews.sentiment остаётся как был (derived from rating)
+- если embed_texts вернул None → reviews.embedding остаётся NULL
+- если call_llm_cluster_naming вернул None → используется fallback label «Кластер N»
+"""
+
+from __future__ import annotations
+
+import logging
+import random
+from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any
+
+import numpy as np
+from sqlalchemy import select, update, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.models.maps import Company, Review
+from app.models.pain_tag import CompanyPainScore, PainTag, ReviewPainTag
+from app.modules.reviews_ai import llm
+from app.modules.reviews_ai.clustering import cluster_embeddings, compute_centroid
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Sentiment
+# ---------------------------------------------------------------------------
+
+
+async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
+    """Гоняет батч отзывов через LLM и обновляет reviews.sentiment/sentiment_score.
+
+    Если LLM недоступен или вернул мусор — оставляем как есть (derived from rating).
+    Возвращает количество обновлённых строк.
+    """
+    if not review_ids:
+        return 0
+
+    rows = list((await db.execute(
+        select(Review.id, Review.raw_text).where(Review.id.in_(review_ids))
+    )).all())
+    payload = [
+        {"id": int(r[0]), "text": (r[1] or "")[:1500]}
+        for r in rows
+        if r[1]  # без текста LLM не нужен
+    ]
+    if not payload:
+        return 0
+
+    result = await llm.call_llm_sentiment(db, payload)
+    if not result:
+        return 0
+
+    valid_labels = {"positive", "negative", "neutral"}
+    updated = 0
+    for item in result:
+        if not isinstance(item, dict):
+            continue
+        rid = item.get("id")
+        label = (item.get("sentiment") or "").lower()
+        if rid is None or label not in valid_labels:
+            continue
+        try:
+            score = float(item.get("score", 0.5))
+        except (TypeError, ValueError):
+            score = 0.5
+        score = max(0.0, min(1.0, score))
+        await db.execute(
+            update(Review)
+            .where(Review.id == int(rid))
+            .values(sentiment=label, sentiment_score=score)
+        )
+        updated += 1
+    await db.commit()
+    return updated
+
+
+# ---------------------------------------------------------------------------
+# Embeddings
+# ---------------------------------------------------------------------------
+
+
+async def compute_embeddings(db: AsyncSession, review_ids: list[int]) -> int:
+    """Вычисляет embeddings и проставляет reviews.embedding. Возвращает count."""
+    if not review_ids:
+        return 0
+    rows = list((await db.execute(
+        select(Review.id, Review.raw_text).where(Review.id.in_(review_ids), Review.raw_text.isnot(None))
+    )).all())
+    if not rows:
+        return 0
+    texts = [(r[1] or "")[:2000] for r in rows]
+    vectors = await llm.embed_texts(texts)
+    if not vectors:
+        return 0
+
+    updated = 0
+    for (rid, _txt), vec in zip(rows, vectors):
+        await db.execute(
+            update(Review).where(Review.id == int(rid)).values(embedding=vec)
+        )
+        updated += 1
+    await db.commit()
+    return updated
+
+
+# ---------------------------------------------------------------------------
+# Pain matching
+# ---------------------------------------------------------------------------
+
+
+async def _pain_tags_for_niche(db: AsyncSession, niche: str, city: str | None) -> list[PainTag]:
+    """Активные pain_tags для (niche, city) — а также глобальные (city=NULL) для этой ниши."""
+    q = (
+        select(PainTag)
+        .where(
+            PainTag.niche == niche,
+            PainTag.status == "active",
+        )
+    )
+    if city is not None:
+        q = q.where((PainTag.city == city) | (PainTag.city.is_(None)))
+    else:
+        q = q.where(PainTag.city.is_(None))
+    return list((await db.execute(q)).scalars().all())
+
+
+async def match_reviews_to_pain_tags(
+    db: AsyncSession,
+    review_ids: list[int],
+    threshold: float | None = None,
+) -> dict[int, list[int]]:
+    """Для каждого review_id, для которого есть embedding, ищет ближайшие pain_tags
+    той же ниши (и города компании или глобальные для ниши) через cosine similarity.
+
+    Сохраняет matches в review_pain_tags и пересчитывает company_pain_scores.
+    Возвращает {review_id: [pain_tag_id, ...]} только для назначенных.
+    """
+    if not review_ids:
+        return {}
+    threshold = threshold if threshold is not None else settings.REVIEWS_AI_PAIN_MATCH_THRESHOLD
+
+    # Берём reviews с embedding + niche/city компании
+    rows = list((await db.execute(
+        select(Review.id, Review.company_id, Review.embedding, Company.niche, Company.city)
+        .join(Company, Company.id == Review.company_id)
+        .where(Review.id.in_(review_ids), Review.embedding.isnot(None))
+    )).all())
+    if not rows:
+        return {}
+
+    # Группируем по (niche, city) чтобы один раз достать pain_tags на пару
+    by_niche_city: dict[tuple[str, str | None], list[tuple]] = defaultdict(list)
+    for r in rows:
+        by_niche_city[(r[3], r[4])].append(r)
+
+    assigned: dict[int, list[int]] = {}
+    now = datetime.now(timezone.utc)
+
+    for (niche, city), bucket in by_niche_city.items():
+        if not niche:
+            continue
+        tags = await _pain_tags_for_niche(db, niche, city)
+        # фильтруем теги с непустым centroid
+        tags_with_c = [(t, np.asarray(list(t.centroid), dtype=np.float64))
+                       for t in tags if t.centroid is not None]
+        if not tags_with_c:
+            continue
+
+        for rid, company_id, embedding, _, _ in bucket:
+            vec = np.asarray(list(embedding), dtype=np.float64)
+            v_norm = float(np.linalg.norm(vec))
+            if v_norm == 0:
+                continue
+            matched: list[tuple[int, float]] = []
+            for tag, centroid in tags_with_c:
+                c_norm = float(np.linalg.norm(centroid))
+                if c_norm == 0:
+                    continue
+                sim = float(np.dot(vec, centroid) / (v_norm * c_norm))
+                if sim >= threshold:
+                    matched.append((tag.id, sim))
+            if not matched:
+                continue
+
+            for tag_id, sim in matched:
+                # review_pain_tags upsert
+                ins = pg_insert(ReviewPainTag).values(
+                    review_id=int(rid), pain_tag_id=int(tag_id),
+                    similarity=round(sim, 3),
+                ).on_conflict_do_update(
+                    index_elements=["review_id", "pain_tag_id"],
+                    set_={"similarity": round(sim, 3)},
+                )
+                await db.execute(ins)
+
+                # company_pain_scores: инкремент mention_count + last_mention_at
+                cps_ins = pg_insert(CompanyPainScore).values(
+                    company_id=int(company_id), pain_tag_id=int(tag_id),
+                    mention_count=1,
+                    first_mention_at=now,
+                    last_mention_at=now,
+                ).on_conflict_do_update(
+                    index_elements=["company_id", "pain_tag_id"],
+                    set_={
+                        "mention_count": CompanyPainScore.__table__.c.mention_count + 1,
+                        "last_mention_at": now,
+                    },
+                )
+                await db.execute(cps_ins)
+
+            assigned[int(rid)] = [t for t, _ in matched]
+
+            # Помечаем отзыв обработанным
+            await db.execute(
+                update(Review).where(Review.id == int(rid)).values(ai_processed_at=now)
+            )
+
+    await db.commit()
+    return assigned
+
+
+# ---------------------------------------------------------------------------
+# Recluster
+# ---------------------------------------------------------------------------
+
+
+async def _archive_unused_pain_tags(
+    db: AsyncSession,
+    niche: str,
+    city: str | None,
+    keep_ids: set[int],
+) -> None:
+    """Помечает archived все active pain_tags данной (niche, city) кроме keep_ids."""
+    q = (
+        update(PainTag)
+        .where(PainTag.niche == niche, PainTag.status == "active")
+        .values(status="archived", updated_at=datetime.now(timezone.utc))
+    )
+    if city is None:
+        q = q.where(PainTag.city.is_(None))
+    else:
+        q = q.where(PainTag.city == city)
+    if keep_ids:
+        q = q.where(PainTag.id.notin_(list(keep_ids)))
+    await db.execute(q)
+
+
+async def recluster_pains_for_niche(
+    db: AsyncSession,
+    niche: str,
+    city: str | None = None,
+    min_cluster_size: int | None = None,
+) -> int:
+    """1. Берём все reviews этой ниши+города с embeddings.
+    2. HDBSCAN.
+    3. Для каждого кластера: centroid + sample + LLM-name → UPSERT pain_tags.
+    4. Старые активные pain_tags этой ниши (не в новом наборе) → archived.
+    5. Сбрасываем review_pain_tags / company_pain_scores этой ниши и матчим заново.
+
+    Возвращает количество созданных/обновлённых тегов.
+    """
+    min_cs = min_cluster_size if min_cluster_size is not None else settings.REVIEWS_AI_MIN_CLUSTER_SIZE
+
+    # 1. Reviews этой ниши+города с embedding
+    base = (
+        select(Review.id, Review.raw_text, Review.embedding, Review.company_id)
+        .join(Company, Company.id == Review.company_id)
+        .where(Review.embedding.isnot(None), Company.niche == niche)
+    )
+    if city is not None:
+        base = base.where(Company.city == city)
+    rows = list((await db.execute(base)).all())
+    if len(rows) < min_cs:
+        logger.info("recluster: %r/%r: только %d reviews с embedding, нужно ≥%d",
+                    niche, city, len(rows), min_cs)
+        return 0
+
+    embeddings = np.asarray([list(r[2]) for r in rows], dtype=np.float64)
+    labels = cluster_embeddings(embeddings, min_cluster_size=min_cs)
+
+    cluster_ids = sorted({int(l) for l in labels if l >= 0})
+    if not cluster_ids:
+        logger.info("recluster: %r/%r: HDBSCAN не нашёл кластеров", niche, city)
+        await _archive_unused_pain_tags(db, niche, city, keep_ids=set())
+        await db.commit()
+        return 0
+
+    # 2-3. Для каждого кластера: centroid + label
+    rng = random.Random(42)
+    upserted_ids: set[int] = set()
+    now = datetime.now(timezone.utc)
+
+    for cidx in cluster_ids:
+        member_idx = [i for i, l in enumerate(labels) if int(l) == cidx]
+        member_emb = embeddings[member_idx]
+        centroid = compute_centroid(member_emb)
+
+        # sample до 10 текстов кластера
+        sample_indices = member_idx if len(member_idx) <= 10 else rng.sample(member_idx, 10)
+        sample_texts = [rows[i][1] for i in sample_indices if rows[i][1]]
+
+        named = await llm.call_llm_cluster_naming(db, niche, sample_texts)
+        if named:
+            label = named["label"]
+            description = named.get("description") or None
+        else:
+            # Fallback label, если LLM недоступен
+            label = f"Кластер {cidx + 1}"
+            description = None
+
+        examples = [
+            {"text_hash": None, "text_preview": (rows[i][1] or "")[:100]}
+            for i in sample_indices[:5]
+        ]
+
+        ins = pg_insert(PainTag).values(
+            niche=niche, city=city, label=label,
+            description=description,
+            occurrences_count=len(member_idx),
+            cluster_size=len(member_idx),
+            examples=examples,
+            status="active",
+            created_at=now, updated_at=now,
+        )
+        # ON CONFLICT по основному UNIQUE — если city не NULL
+        # NB: для (niche, city=NULL, label) используется частичный индекс ux_pain_tags_global;
+        # SQLAlchemy/pg_insert с on_conflict не умеет красиво работать с частичными индексами по-разному
+        # для двух случаев, поэтому для упрощения — на конфликт основного UNIQUE.
+        ins = ins.on_conflict_do_update(
+            index_elements=["niche", "city", "label"],
+            set_={
+                "description": ins.excluded.description,
+                "centroid": centroid.tolist(),
+                "occurrences_count": ins.excluded.occurrences_count,
+                "cluster_size": ins.excluded.cluster_size,
+                "examples": ins.excluded.examples,
+                "status": "active",
+                "updated_at": now,
+            },
+        ).returning(PainTag.id)
+        # centroid отдельно через UPDATE (insert above values() не включал centroid из-за типа)
+        result = await db.execute(ins)
+        tag_id = result.scalar_one()
+        # Гарантируем centroid: ON CONFLICT-кейс выше уже его обновляет в excluded;
+        # для INSERT-кейса — ставим явным UPDATE (insert.values() не передал centroid).
+        await db.execute(
+            text("UPDATE pain_tags SET centroid = :v WHERE id = :id"),
+            {"v": str(centroid.tolist()), "id": int(tag_id)},
+        )
+        upserted_ids.add(int(tag_id))
+
+    # 4. Архивируем неиспользуемые теги этой (niche, city)
+    await _archive_unused_pain_tags(db, niche, city, keep_ids=upserted_ids)
+
+    # 5. Чистим связки для этой ниши и матчим заново
+    review_ids = [int(r[0]) for r in rows]
+    if review_ids:
+        await db.execute(
+            text("DELETE FROM review_pain_tags WHERE review_id = ANY(:ids)"),
+            {"ids": review_ids},
+        )
+        # company_pain_scores: чистим по компаниям этой ниши, чтобы пересчитать
+        company_ids = list({int(r[3]) for r in rows})
+        await db.execute(
+            text(
+                "DELETE FROM company_pain_scores WHERE company_id = ANY(:ids) "
+                "AND pain_tag_id IN (SELECT id FROM pain_tags WHERE niche = :n)"
+            ),
+            {"ids": company_ids, "n": niche},
+        )
+
+    await db.commit()
+
+    # Заново матчим
+    await match_reviews_to_pain_tags(db, review_ids)
+
+    return len(upserted_ids)
+
+
+# ---------------------------------------------------------------------------
+# Full pipeline (used by Celery analyze_reviews_for_company)
+# ---------------------------------------------------------------------------
+
+
+async def process_reviews_pipeline(db: AsyncSession, review_ids: list[int]) -> dict[str, int]:
+    """Полный пайплайн: sentiment → embeddings → match → mark ai_processed_at.
+
+    Возвращает статистику по этапам. Если pain_tags ещё нет для ниши — match
+    просто ничего не назначит (создание тегов выполняет recluster_pains_for_niche).
+    """
+    if not review_ids:
+        return {"sentiment": 0, "embeddings": 0, "matched": 0}
+
+    sentiment_n = await compute_sentiment(db, review_ids)
+    embeddings_n = await compute_embeddings(db, review_ids)
+    assigned = await match_reviews_to_pain_tags(db, review_ids)
+    # помечаем все обработанные (даже если матч пустой)
+    now = datetime.now(timezone.utc)
+    await db.execute(
+        update(Review).where(Review.id.in_(review_ids), Review.ai_processed_at.is_(None))
+        .values(ai_processed_at=now)
+    )
+    await db.commit()
+    return {
+        "sentiment": sentiment_n,
+        "embeddings": embeddings_n,
+        "matched": sum(len(v) for v in assigned.values()),
+    }

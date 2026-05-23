@@ -25,6 +25,13 @@ from app.admin.views.email_campaigns import EmailCampaignAdmin
 from app.admin.views.email_logs import EmailLogAdmin
 from app.admin.views.email_replies import EmailReplyAdmin
 from app.admin.views.email_config_admin import EmailConfigAdmin
+from app.admin.views.maps import (
+    CompanyAdmin,
+    ReviewAdmin,
+    MapSearchAdmin,
+    MapSearchCacheAdmin,
+    PainTagAdmin,
+)
 from app.admin.i18n import set_language, get_current_language, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 
 
@@ -95,5 +102,12 @@ def setup_admin(app) -> Admin:
     admin.add_view(EmailLogAdmin)
     admin.add_view(EmailReplyAdmin)
     admin.add_view(EmailConfigAdmin)
+
+    # Register admin views - Maps
+    admin.add_view(CompanyAdmin)
+    admin.add_view(ReviewAdmin)
+    admin.add_view(MapSearchAdmin)
+    admin.add_view(MapSearchCacheAdmin)
+    admin.add_view(PainTagAdmin)
 
     return admin
