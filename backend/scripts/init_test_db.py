@@ -18,6 +18,8 @@ from app.core.security import hash_password
 
 def main() -> int:
     engine = create_engine(settings.DATABASE_URL_SYNC)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(bind=engine)
     # Create test user (id=1) for conftest's auth override - required for searches FK
     with engine.begin() as conn:
