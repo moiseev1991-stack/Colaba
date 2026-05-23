@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.0...v1.3.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* **ci:** use pgvector image + CREATE EXTENSION vector for backend tests ([642e34e](https://github.com/moiseev1991-stack/Colaba/commit/642e34edc023fa700ab8e9f253ceb6887914a514))
+
 # [1.3.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.2.0...v1.3.0) (2026-05-23)
 
 
