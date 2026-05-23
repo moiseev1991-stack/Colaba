@@ -18,8 +18,6 @@ import { MapsSearchForm } from '@/components/maps/MapsSearchForm';
 import { MapsSearchResults } from '@/components/maps/MapsSearchResults';
 import type { MapSearchOut } from '@/src/services/api/maps';
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 type Mode = 'idle' | 'searching' | 'results';
 
 export function MapsSearchPanel() {
