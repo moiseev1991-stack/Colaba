@@ -91,7 +91,8 @@ TWOGIS_FALLBACK_REGION_ID = 70000001
 BASE_URL_3 = "https://catalog.api.2gis.com/3.0"
 BASE_URL_2 = "https://catalog.api.2gis.com/2.0"
 
-PAGE_SIZE = 50  # максимум для 3.0/items
+PAGE_SIZE = 10  # 2GIS free/standard план ограничивает page_size диапазоном 1..10.
+                # При 50 API возвращает HTTP 200 с meta.code=400 и пустым items.
 REVIEWS_PAGE_SIZE = 50
 
 
@@ -224,7 +225,19 @@ class TwoGisProvider(MapProvider):
                 await asyncio.sleep(5)
                 continue
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            # 2GIS отдаёт HTTP 200 + meta.code != 200 при логических ошибках
+            # (например, page_size вне диапазона). Без этой проверки items=[] и парсер
+            # тихо завершается с yielded=0 — приходится лезть в логи 2GIS вручную.
+            meta = data.get("meta") or {}
+            meta_code = meta.get("code")
+            if isinstance(meta_code, int) and meta_code >= 400:
+                err = (meta.get("error") or {}).get("message") or str(meta.get("error"))
+                logger.error("2gis API logical error %s on %s: %s (params=%s)", meta_code, url, err, params)
+                if meta_code in (401, 403):
+                    raise MissingAPIKeyError(f"2GIS meta.code={meta_code}: {err}")
+                raise RuntimeError(f"2GIS API error (meta.code={meta_code}): {err}")
+            return data
 
         if last_exc:
             raise last_exc
