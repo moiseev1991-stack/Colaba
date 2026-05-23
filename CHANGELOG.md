@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.3.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.2.0...v1.3.0) (2026-05-23)
+
+
+### Bug Fixes
+
+* **maps-ui:** отступы + заметная кнопка «Найти» + заголовок формы ([812422d](https://github.com/moiseev1991-stack/Colaba/commit/812422deae2bb392e7b32fd82891f221a5d41022))
+* **maps:** polling статуса + понятная плашка failed + расширение городов ([4fea76b](https://github.com/moiseev1991-stack/Colaba/commit/4fea76b670594327be04deb7165e6567356e2f45))
+
+
+### Features
+
+* **maps-admin:** SQLAdmin view для PainTag ([06cd6c5](https://github.com/moiseev1991-stack/Colaba/commit/06cd6c5bcce648616d4731ffc24d01588c064b4a))
+* **maps-admin:** SQLAdmin views — Companies, Reviews, Map Searches, Cache ([b6340d3](https://github.com/moiseev1991-stack/Colaba/commit/b6340d3f74b308deb3ea5682f4ca1542e4596da7))
+* **maps-ai:** Celery-задачи AI-пайплайна + cron recluster ([cb84bd9](https://github.com/moiseev1991-stack/Colaba/commit/cb84bd9e729bc7f62a2b4e2d292d5e99d0bd5d11))
+* **maps-ai:** clustering, промпты, LLM-обёртка + embeddings ([41fa2b0](https://github.com/moiseev1991-stack/Colaba/commit/41fa2b002afbbafea444f7637815ec2bfbc3312e))
+* **maps-ai:** pain-tags API + фильтр компаний по pain_tag_ids ([af8701f](https://github.com/moiseev1991-stack/Colaba/commit/af8701f4ed3324bac94d522c425e41c2e6141b03))
+* **maps-ai:** миграция 016 — pain_tags, review_pain_tags, company_pain_scores ([3602a79](https://github.com/moiseev1991-stack/Colaba/commit/3602a79a3b6a22ded25050fd953bf9ca071ae7e2))
+* **maps-ai:** сервис — sentiment, embeddings, match, recluster ([71f0ffd](https://github.com/moiseev1991-stack/Colaba/commit/71f0ffd9cf97c41aea6cd5c08b59e16d22b57ae1))
+* **maps-sse:** Redis pub/sub + SSE endpoint для прогрессивной выдачи ([68b3384](https://github.com/moiseev1991-stack/Colaba/commit/68b3384b00c152d9d75e746071c0b3d2de8515d9))
+* **maps-ui:** API клиент + переключатель режимов на /app/leads (ШАГ 13) ([f9dcc81](https://github.com/moiseev1991-stack/Colaba/commit/f9dcc8146851023bbd5844edee4d3da0e85d8277))
+* **maps-ui:** MapsCompanyCard + MapsCompanyDetailDrawer (ШАГ 16) ([7b371ee](https://github.com/moiseev1991-stack/Colaba/commit/7b371eecb5f35f7664309fbdcaaa074e51fb227f))
+* **maps-ui:** useSearchStream SSE-хук + live прогресс в MapsSearchResults (ШАГ 14) ([d18a49d](https://github.com/moiseev1991-stack/Colaba/commit/d18a49d612a93a838b11e9d82f8fcd491b3bca4d))
+* **maps-ui:** фильтры + облако тегов болей + 3 пресета (ШАГ 15) ([8890669](https://github.com/moiseev1991-stack/Colaba/commit/88906695ccf1167123792fffd5f15453b774108f))
+* **maps:** API endpoints — search, companies, reviews, metadata, health ([476d227](https://github.com/moiseev1991-stack/Colaba/commit/476d22765c2bc07c643e3efa9700016243e9704b))
+* **maps:** Celery-задачи парсинга + cron purge ([f609ae1](https://github.com/moiseev1991-stack/Colaba/commit/f609ae1ea741caadf7e1f6d918eec2de3069b42c))
+* **maps:** базовый интерфейс MapProvider и общие схемы ([181a53d](https://github.com/moiseev1991-stack/Colaba/commit/181a53d6c5f893172a0a36193270f02192b727a1))
+* **maps:** добавлен сервис celery-beat для cron-задач ([6e29d69](https://github.com/moiseev1991-stack/Colaba/commit/6e29d6920417220fa61db0b3a9fe40cbe2b6e02c))
+* **maps:** миграция 015 — companies, reviews, map_searches, кэш ([9beaa26](https://github.com/moiseev1991-stack/Colaba/commit/9beaa26a14cf728c3f461eab306e8c42ab1d2913))
+* **maps:** провайдер 2GIS — Catalog API ([8f065cf](https://github.com/moiseev1991-stack/Colaba/commit/8f065cfac9e3658ee21f0453427255753936236f))
+* **maps:** провайдер Яндекс.Карт — JSON-LD + AJAX + bypass SmartCaptcha ([39b3a53](https://github.com/moiseev1991-stack/Colaba/commit/39b3a5341a2c85c663232511133e390811e94360))
+* **maps:** сервис (кэш, save_*_batch, агрегаты) и фильтры ([5d21d12](https://github.com/moiseev1991-stack/Colaba/commit/5d21d12a5d3b93de6cf69b6b9fd12542f31bee24))
+* **maps:** экспорт компаний поиска в CSV (готов к фронту) ([dee1c30](https://github.com/moiseev1991-stack/Colaba/commit/dee1c30cc569df2196ed97ab6bf75be7d037e374))
+
 # [1.2.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.1.0...v1.2.0) (2026-05-09)
 
 
