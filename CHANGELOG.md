@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.5](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.4...v1.3.5) (2026-05-23)
+
+
+### Performance Improvements
+
+* **frontend:** ускоряем npm ci при сборке (важно для Coolify) ([3374af9](https://github.com/moiseev1991-stack/Colaba/commit/3374af97bd26742ddb1b92ff32d5d5746b8f0848))
+
 ## [1.3.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.3...v1.3.4) (2026-05-23)
 
 
