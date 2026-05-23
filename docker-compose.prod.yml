@@ -65,6 +65,8 @@ services:
       USE_PROXY: ${USE_PROXY}
       PROXY_URL: ${PROXY_URL}
       PROXY_LIST: ${PROXY_LIST}
+      # Maps providers — без ключа /api/v1/maps/health/providers вернёт no_api_key
+      TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,6 +101,7 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
       LOG_LEVEL: ${LOG_LEVEL}
+      TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,6 +131,7 @@ services:
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
       LOG_LEVEL: ${LOG_LEVEL}
+      TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
