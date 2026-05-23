@@ -39,7 +39,7 @@ from app.core.rate_limit import limiter
 from app.models.maps import Company, MapSearch, Review
 from app.models.pain_tag import PainTag
 from app.modules.maps import service
-from app.modules.maps.providers.twogis import CITY_TO_REGION_ID
+from app.modules.maps.providers.twogis import CITY_TO_REGION_ID, KNOWN_CITIES_FOR_UI
 from app.modules.maps.schemas import (
     CompaniesListOut,
     CompanyDetailOut,
@@ -341,14 +341,11 @@ async def list_company_reviews(
 # ---------------------------------------------------------------------------
 
 
-# Список городов, сразу с правильной заглавной буквой для UI.
-_CITIES_CAPITALIZED = sorted({c.capitalize() for c in CITY_TO_REGION_ID.keys()})
-
-
 @router.get("/cities", response_model=list[str])
 async def list_cities():
-    """Список городов, для которых у 2GIS есть точный region_id. Остальные — fallback."""
-    return _CITIES_CAPITALIZED
+    """Список городов для UI. Точный region_id есть только у части (см. CITY_TO_REGION_ID),
+    для остальных используется fallback на «всю Россию» с фильтрацией по адресу."""
+    return KNOWN_CITIES_FOR_UI
 
 
 @router.get("/niche-suggestions", response_model=list[str])
