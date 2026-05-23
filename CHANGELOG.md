@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.3...v1.3.4) (2026-05-23)
+
+
+### Bug Fixes
+
+* **deploy:** pgvector image + maps очереди в celery worker-ах ([2ef596e](https://github.com/moiseev1991-stack/Colaba/commit/2ef596ea1981843d6657dea32a5a5d73263db9e4))
+
 ## [1.3.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.2...v1.3.3) (2026-05-23)
 
 
