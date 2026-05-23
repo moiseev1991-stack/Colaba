@@ -8,7 +8,10 @@
 # Traefik labels (вариант Б для /opt/colaba): для доступа по IP и sslip.io.
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector/pgvector:pg16 = postgres:16 + расширение vector (нужно миграциям 015/016
+    # для AI-эмбеддингов отзывов). Том данных совместим со стандартным postgres:16-alpine,
+    # данные при смене образа не теряются.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -106,7 +109,9 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=8 -Q celery
+    # Очереди: celery (default), maps_ai (LLM-обработка отзывов — мостовые HTTP-ожидания,
+    # высокий concurrency норм), maintenance (редкие cron-задачи).
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=8 -Q celery,maps_ai,maintenance
 
   celery-worker-search:
     image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
@@ -133,7 +138,9 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue
+    # Тяжёлые HTTP-парсеры (поиск + карты + отзывы). Низкий prefetch + concurrency=2,
+    # чтобы каждая задача забирала только себя и не висла на сетевых таймаутах соседа.
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews
 
   frontend:
     image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}

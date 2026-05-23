@@ -13,6 +13,16 @@ History of deployment-related changes for Colaba. Update after each task (see AG
   - #164 (retrigger): `Run actions/checkout@v4` на GitHub-runner-е отвалился через 30s (флак).
 - **Дополнительный латентный риск:** в `docker-compose.prod.yml` postgres — `postgres:16-alpine`, миграция 015 делает `CREATE EXTENSION IF NOT EXISTS vector`. Если pgvector не был установлен вручную, `alembic upgrade head` упадёт. На сервере уже был «server-side fix applied manually» (видимо, расширение поставлено вручную). Стоит вынести фикс в код (`pgvector/pgvector:pg16`) отдельным коммитом, чтобы при пересоздании контейнера ничего не ломалось.
 - **Действие:** этот коммит ретриггерит CI → Deploy. Если #164-style флак повторится — следующий шаг: рерран failed jobs через GitHub UI или явный workflow_dispatch.
+
+### 2026-05-23 (update) — Deploy #165 упал на self-hosted runner, добиваем pgvector + Celery
+
+- **Что увидели:** `build_images` зелёный, шаг `Deploy` (запуск `scripts/deployment/deploy.sh` на сервере) — красный. Почти наверняка падает `alembic upgrade head` на миграции 015 (`CREATE EXTENSION IF NOT EXISTS vector`), потому что в `docker-compose.prod.yml` стояло `postgres:16-alpine` без pgvector.
+- **Фикс в коде:**
+  - `docker-compose.prod.yml`: `postgres:16-alpine` → `pgvector/pgvector:pg16` (тот же PG16, добавлен binary расширения vector; том данных совместим).
+  - `celery-worker`: `-Q celery` → `-Q celery,maps_ai,maintenance` (чтобы LLM-задачи `reviews_ai` и cron-задачи `purge_review_raw_text` начали обрабатываться).
+  - `celery-worker-search`: `-Q search_queue` → `-Q search_queue,maps,maps_reviews` (чтобы `parse_map_search` и `parse_company_reviews` начали выполняться, иначе пользователь создаст поиск и увидит «pending» навсегда).
+- **Что НЕ трогаем сейчас:** добавление `celery-beat` сервиса (cron `process_email_replies` и `purge_review_raw_text` на проде до сих пор не запускались — это отдельный шаг, не блокер для maps-формы).
+- **Риск пересоздания postgres-контейнера:** низкий. Том `postgres_data` сохранится; формат данных PG16 идентичен. Будет ~10-секундный downtime БД.
 - **Проверка после деплоя:**
   - `curl https://spinlid.ru/api/v1/maps/cities` → JSON со списком городов (а не 404).
   - `curl https://spinlid.ru/api/v1/maps/health/providers` → `{"twogis":"...","yandex_maps":"..."}`.
