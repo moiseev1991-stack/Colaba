@@ -4,6 +4,22 @@ History of deployment-related changes for Colaba. Update after each task (see AG
 
 ---
 
+## 2026-05-23 — Maps router 404 на проде: ретриггер деплоя
+
+- **Симптом:** `https://spinlid.ru/api/v1/maps/search` → 404 `{"detail":"Not Found"}`. Аналогично `/maps/cities`, `/maps/health/providers`. Также пропали `/api/v1/email/templates`, `/api/v1/email/settings`, `/api/v1/dashboard/stats`. То есть на проде висит существенно более старый backend, чем то, что в `main`.
+- **Что НЕ проблема:** код в `backend/app/modules/maps/router.py` корректен, роутер подключён в `backend/app/api/__init__.py` (`api_router.include_router(maps_router)`), CI #178 для коммита `01e6b10` зелёный, миграции 015/016 на месте.
+- **Корневая причина:** Deploy-пайплайн `Deploy (main)` падает. Последние два прогона:
+  - #163 (release 1.3.3): `build_images` OK, шаг `Deploy` на self-hosted раннере упал.
+  - #164 (retrigger): `Run actions/checkout@v4` на GitHub-runner-е отвалился через 30s (флак).
+- **Дополнительный латентный риск:** в `docker-compose.prod.yml` postgres — `postgres:16-alpine`, миграция 015 делает `CREATE EXTENSION IF NOT EXISTS vector`. Если pgvector не был установлен вручную, `alembic upgrade head` упадёт. На сервере уже был «server-side fix applied manually» (видимо, расширение поставлено вручную). Стоит вынести фикс в код (`pgvector/pgvector:pg16`) отдельным коммитом, чтобы при пересоздании контейнера ничего не ломалось.
+- **Действие:** этот коммит ретриггерит CI → Deploy. Если #164-style флак повторится — следующий шаг: рерран failed jobs через GitHub UI или явный workflow_dispatch.
+- **Проверка после деплоя:**
+  - `curl https://spinlid.ru/api/v1/maps/cities` → JSON со списком городов (а не 404).
+  - `curl https://spinlid.ru/api/v1/maps/health/providers` → `{"twogis":"...","yandex_maps":"..."}`.
+  - На `/app/leads` форма «По картам» больше не выдаёт «Not Found».
+
+---
+
 ## 2026-04-21 — Email config, зависимости backend, прокси локального фронта
 
 - **Task:** Зафиксировать в продакшене настройки почты из БД; устранить падение API из‑за отсутствия `aiosmtplib` в образе; упростить локальный прокси Next → backend.
