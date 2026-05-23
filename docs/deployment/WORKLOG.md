@@ -23,6 +23,26 @@ History of deployment-related changes for Colaba. Update after each task (see AG
   - `celery-worker-search`: `-Q search_queue` → `-Q search_queue,maps,maps_reviews` (чтобы `parse_map_search` и `parse_company_reviews` начали выполняться, иначе пользователь создаст поиск и увидит «pending» навсегда).
 - **Что НЕ трогаем сейчас:** добавление `celery-beat` сервиса (cron `process_email_replies` и `purge_review_raw_text` на проде до сих пор не запускались — это отдельный шаг, не блокер для maps-формы).
 - **Риск пересоздания postgres-контейнера:** низкий. Том `postgres_data` сохранится; формат данных PG16 идентичен. Будет ~10-секундный downtime БД.
+
+### 2026-05-23 (final) — что реально помогло, итог
+
+Через Coolify Terminal руками сделали то, что должен был сделать deploy-пайплайн:
+
+1. **Docker cleanup** — было 22GB images / 78% reclaimable; Coolify сам прорун-нул чистку, осталось 5.7GB.
+2. **`docker compose pull` с `BACKEND_IMAGE=ghcr.io/.../colaba-backend IMAGE_TAG=latest`** — login в GHCR уже был настроен, образы скачались.
+3. **`docker compose up -d --force-recreate`** — пересоздал backend/frontend/celery с новыми образами. Postgres уже был на pgvector (мой ранний фикс через compose сработал, но только постгрес — потому что image-таги бэка не менялись).
+4. **Alembic мисматч** — БД на `version_num='007'`, а в коде 007 нет (миграция `007_add_search_timing.py` была удалена в коммите `e96b5d2`). `alembic stamp 006` тоже падал, потому что валидирует текущую ревизию. **Помог только прямой `UPDATE alembic_version SET version_num='006'` через psql**. После этого `alembic upgrade head` прокатил 006 → 008 → ... → 016 без ошибок (схема от удалённого 007 — только колонки `started_at/finished_at` в `searches`, они никому не мешают).
+5. **`docker compose restart backend`** — он завис в restart-loop пока миграции не прошли; после фикса BD стартанул чисто, `Application startup complete`.
+
+**Результат:**
+- `https://spinlid.ru/api/v1/maps/cities` → 200, JSON со списком городов.
+- `https://spinlid.ru/api/v1/maps/health/providers` → 200, `{"twogis":"no_api_key","yandex_maps":"no_proxy"}` (ключи API ещё не настроены в .env, это отдельно).
+- Форма «По картам» на `/app/leads` больше не выдаёт «Not Found».
+
+**Уроки на будущее:**
+- Никогда не удалять миграции, которые могли быть применены на проде, не оставив `stamp`-инструкции в `deploy.sh` или хотя бы в WORKLOG.
+- В `docker-compose.prod.yml` рассмотреть переход на `image: ${BACKEND_IMAGE:-ghcr.io/moiseev1991-stack/colaba-backend}:${IMAGE_TAG:-latest}` (с дефолтом на GHCR), чтобы Coolify мог пуллить готовое вместо пересборки, у которой не хватает ресурсов на этом VPS (3.8GB RAM, ~970MB available).
+- GHA self-hosted runner Deploy step тоже падал — стоит понять почему (но это уже не блокер, раз есть рабочий ручной путь через `/opt/colaba`).
 - **Проверка после деплоя:**
   - `curl https://spinlid.ru/api/v1/maps/cities` → JSON со списком городов (а не 404).
   - `curl https://spinlid.ru/api/v1/maps/health/providers` → `{"twogis":"...","yandex_maps":"..."}`.
