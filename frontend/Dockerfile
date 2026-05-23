@@ -13,7 +13,11 @@ ARG BUILD_TIME
 WORKDIR /frontend
 
 COPY package*.json ./
-RUN npm ci
+# --prefer-offline: использует кэш npm если он есть (быстрее при rebuild)
+# --no-audit --no-fund: не делает audit-запрос и не печатает funding-сообщения
+# (экономит сетевые запросы и время; Coolify-сборка на сервере без BuildKit падала
+#  на длинном npm ci с exit 255 — типичный таймаут/OOM на слабых VPS).
+RUN npm ci --prefer-offline --no-audit --no-fund
 
 COPY . .
 
