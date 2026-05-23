@@ -43,6 +43,68 @@ History of deployment-related changes for Colaba. Update after each task (see AG
 - Никогда не удалять миграции, которые могли быть применены на проде, не оставив `stamp`-инструкции в `deploy.sh` или хотя бы в WORKLOG.
 - В `docker-compose.prod.yml` рассмотреть переход на `image: ${BACKEND_IMAGE:-ghcr.io/moiseev1991-stack/colaba-backend}:${IMAGE_TAG:-latest}` (с дефолтом на GHCR), чтобы Coolify мог пуллить готовое вместо пересборки, у которой не хватает ресурсов на этом VPS (3.8GB RAM, ~970MB available).
 - GHA self-hosted runner Deploy step тоже падал — стоит понять почему (но это уже не блокер, раз есть рабочий ручной путь через `/opt/colaba`).
+
+### 2026-05-23 (вечер) — добили maps-парсер: компании реально приходят с 2GIS
+
+После того как 404 на роутере был починен (см. выше), оставались баги в самом парсере, из-за которых поиск завершался со статусом `completed, 0 компаний` или `failed`. По очереди:
+
+1. **`fix(maps): NullPool в Celery воркере` (055e2cf)** — `asyncpg.InterfaceError: cannot perform operation: another operation is in progress`. Причина: `engine` создавался на уровне модуля с обычным пулом коннекшенов, а каждый Celery-таск делал `asyncio.run(...)` со свежим event loop. Asyncpg-коннекшены прибиты к event loop'у — после первого таска коннекшен «мертвый», второй таск его берёт из пула и ломается. Фикс: детектим Celery по `sys.argv` и используем `NullPool` в нём; FastAPI/uvicorn пул сохраняем.
+
+2. **`fix(deploy): TWOGIS_API_KEY в backend и celery воркеры` (f4d033f)** — `/api/v1/maps/health/providers` отдавал `{"twogis":"no_api_key"}`. Ключ был в `/opt/colaba/.env`, но в `docker-compose.prod.yml` секции `environment:` для `backend`, `celery-worker`, `celery-worker-search` его не было — переменная не пробрасывалась в контейнер. Добавили `TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}` во все три сервиса.
+
+3. **`fix(maps-2gis): page_size 10 + проверка meta.code` (545a8c5)** — 2GIS возвращал `HTTP 200` с `items=[]` и парсер тихо завершал с `yielded=0`. На самом деле в `meta.code=400` был спрятан ответ `Length of parameter 'page_size' should be from 1 to 10`. Наш `PAGE_SIZE=50` превышал лимит free-плана. Снизили до 10. Заодно добавили в `_request` проверку `meta.code >= 400` — на 401/403 кидаем `MissingAPIKeyError`, на остальные `RuntimeError`. Раньше эти ошибки молча глотались.
+
+4. **`fix(maps-2gis): region_id Москвы 32` (da1ce27)** — `region_id=1` в нашем словаре был помечен как Москва, но это **Новосибирск**. Запрос `https://catalog.api.2gis.com/2.0/region/search?q=Москва` дал правильный id=32. В `CITY_TO_REGION_ID` оставили только Москву (verified), остальные ID не верифицированы → убрали. UI-список городов вынесли в отдельный `KNOWN_CITIES_FOR_UI` (45 городов), чтобы фронт не сломался — для городов вне словаря провайдер использует `TWOGIS_FALLBACK_REGION_ID=70000001` (вся Россия).
+
+5. **`fix(maps): graceful 404 reviews` (a041d1d)** — после фиксов 3+4 компании пошли (видели РОЛЬФ Алтуфьево, АвтоГермес, Freshclean и др.), но `parse_company_reviews` падал с `RuntimeError: 2GIS API error (meta.code=404): Method not found` на endpoint `/2.0/reviews/list`. Этот endpoint на нашем плане недоступен (только в платной 2GIS Catalog API подписке). Из-за необработанного `RuntimeError` Celery retry-ил 3 раза, забивая очередь, а статус поиска становился `failed`. Добавили `except RuntimeError` рядом с CaptchaWallError/RateLimitError — компания сохраняется без отзывов, рейтинг и review_count берутся из `reviews.general_*` в items-ответе.
+
+### 2026-05-23 (поздний вечер) — деплой в обход GHA: ручная сборка на сервере
+
+После всех фиксов на main внезапно **GitHub Actions перестал триггерить workflows** для новых коммитов (`545a8c5`, `da1ce27`, `39246d6`, `a041d1d` — 0 runs у каждого). Последний прогон CI был для `055e2cf`. Не разобрались почему — возможно, GH-Actions сам отключает workflow при долгих скипах/лимитах.
+
+Деплой сделали в обход через Coolify Terminal на сервере:
+
+```bash
+# Свежий main в /opt/colaba-src
+cd /opt && rm -rf colaba-src && git clone --depth=1 https://github.com/moiseev1991-stack/Colaba.git colaba-src
+cd colaba-src
+# Билд с тем же тегом, что в docker-compose:
+docker build -t ghcr.io/moiseev1991-stack/colaba-backend:latest ./backend
+# Пересоздание контейнеров — НЕ забыть переменные образа:
+cd /opt/colaba && export BACKEND_IMAGE=ghcr.io/moiseev1991-stack/colaba-backend \
+                       FRONTEND_IMAGE=ghcr.io/moiseev1991-stack/colaba-frontend \
+                       IMAGE_TAG=latest
+docker compose -f docker-compose.prod.yml up -d --force-recreate --pull never \
+  backend celery-worker celery-worker-search
+```
+
+Локальный билд `:latest` перекрывает GHCR `:latest` в кэше docker — `up --pull never` подхватывает локальный. Это решило проблему с заблокированной GHA пайплайн.
+
+### 2026-05-23 — Итоговое состояние
+
+**Что работает:**
+- `https://spinlid.ru/api/v1/maps/cities` → 200 OK, 46 городов.
+- `https://spinlid.ru/api/v1/maps/health/providers` → `{"twogis":"ok","yandex_maps":"no_proxy"}`.
+- Поиск «стоматология / Москва» / «автосервис / Москва» / «клининговая компания / Москва» через 2GIS — **возвращает реальные московские компании** с адресом, телефоном (если есть), сайтом, рейтингом, общим количеством отзывов.
+- Celery воркеры не падают, не ретраят бесконечно.
+
+**Что НЕ работает (известные ограничения):**
+- **Текст отзывов** — 2GIS endpoint `/2.0/reviews/list` отдаёт 404 Method not found на нашем ключе. Для текстов нужен платный план 2GIS, или Flamp API, или HTML-парсинг карточек, или Яндекс.Карты как источник (требует прокси).
+- **Города кроме Москвы** в `CITY_TO_REGION_ID` не верифицированы — поиск по ним пойдёт на `region_id=70000001` (вся Россия) и может возвращать нерелевантные регионы. На следующую сессию: пройти `region/search` для всех 45 городов и заполнить mapping.
+- **GitHub Actions** на репо как будто отключили workflow для свежих push-ов. Нужно разобраться (Settings → Actions → check enabled, может быть лимиты).
+- **GHA self-hosted runner Deploy step** до конца тоже не починен, но сейчас ручная сборка через `/opt/colaba-src` его заменяет.
+
+**Карта команд для следующих сессий:**
+```bash
+# Обновить прод после нового пуша в main (когда GHA сломан):
+cd /opt/colaba-src && git fetch && git reset --hard origin/main \
+  && docker build -t ghcr.io/moiseev1991-stack/colaba-backend:latest ./backend \
+  && cd /opt/colaba && BACKEND_IMAGE=ghcr.io/moiseev1991-stack/colaba-backend \
+       FRONTEND_IMAGE=ghcr.io/moiseev1991-stack/colaba-frontend \
+       IMAGE_TAG=latest \
+       docker compose -f docker-compose.prod.yml up -d --force-recreate --pull never \
+       backend celery-worker celery-worker-search
+```
 - **Проверка после деплоя:**
   - `curl https://spinlid.ru/api/v1/maps/cities` → JSON со списком городов (а не 404).
   - `curl https://spinlid.ru/api/v1/maps/health/providers` → `{"twogis":"...","yandex_maps":"..."}`.
