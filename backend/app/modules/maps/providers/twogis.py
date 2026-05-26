@@ -72,11 +72,9 @@ BASE_URL_2 = "https://catalog.api.2gis.com/2.0"
 # карточки компании. Не требует платного ключа: либо без ключа, либо со «слабым»
 # widget-key. Используется как fallback к платному /2.0/reviews/list.
 REVIEWS_PUBLIC_API_URL = "https://public-api.reviews.2gis.com/2.0/branches/{branch_id}/reviews"
-REVIEWS_PUBLIC_FIELDS = (
-    "meta.providers,meta.branch_rating,meta.branch_reviews_count,"
-    "meta.org_rating,meta.org_reviews_count,meta.total_objects_count,"
-    "reviews.hiding_reason,reviews.is_verified"
-)
+# NB: первый прогон с расширенным fields/locale/rated отдавал 400 Bad Request
+# на ВСЕХ компаниях. Минимальный набор параметров, совпадающий с тем, что
+# 2gis.ru шлёт из браузера, без лишней свистоперделки.
 REVIEWS_PUBLIC_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -438,14 +436,13 @@ class TwoGisProvider(MapProvider):
         if limit <= 0:
             return
         url = REVIEWS_PUBLIC_API_URL.format(branch_id=company_external_id)
+        # Минимальный набор параметров. Любые дополнительные `fields`/`locale`/
+        # `rated` ломают endpoint с 400 Bad Request на нашем (анонимном) доступе.
         common: dict[str, Any] = {
             "is_advertiser": "false",
-            "fields": REVIEWS_PUBLIC_FIELDS,
             "without_my_first_review": "false",
-            "rated": "true",
             "sort_by": "date_edited",
             "limit": REVIEWS_PUBLIC_PAGE_SIZE,
-            "locale": "ru",
         }
         widget_key = settings.TWOGIS_REVIEWS_PUBLIC_API_KEY
         if widget_key:
@@ -497,9 +494,12 @@ class TwoGisProvider(MapProvider):
                     )
                     return
                 if resp.status_code != 200:
+                    # Логируем тело — у 2GIS public API текст ошибки часто внутри,
+                    # без него отлаживать формат параметров невозможно.
+                    body_preview = (resp.text or "")[:400]
                     logger.warning(
-                        "2gis public reviews unexpected %d для company=%s — прерываем",
-                        resp.status_code, company_external_id,
+                        "2gis public reviews unexpected %d для company=%s — прерываем. body=%s",
+                        resp.status_code, company_external_id, body_preview,
                     )
                     return
 
