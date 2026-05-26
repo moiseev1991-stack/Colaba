@@ -68,9 +68,30 @@ TWOGIS_FALLBACK_REGION_ID = 70000001
 BASE_URL_3 = "https://catalog.api.2gis.com/3.0"
 BASE_URL_2 = "https://catalog.api.2gis.com/2.0"
 
+# Public widget API — тот же эндпоинт, который дёргает 2gis.ru при отрисовке
+# карточки компании. Не требует платного ключа: либо без ключа, либо со «слабым»
+# widget-key. Используется как fallback к платному /2.0/reviews/list.
+REVIEWS_PUBLIC_API_URL = "https://public-api.reviews.2gis.com/2.0/branches/{branch_id}/reviews"
+REVIEWS_PUBLIC_FIELDS = (
+    "meta.providers,meta.branch_rating,meta.branch_reviews_count,"
+    "meta.org_rating,meta.org_reviews_count,meta.total_objects_count,"
+    "reviews.hiding_reason,reviews.is_verified"
+)
+REVIEWS_PUBLIC_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "ru,en;q=0.9",
+    "Origin": "https://2gis.ru",
+    "Referer": "https://2gis.ru/",
+}
+
 PAGE_SIZE = 10  # 2GIS free/standard план ограничивает page_size диапазоном 1..10.
                 # При 50 API возвращает HTTP 200 с meta.code=400 и пустым items.
 REVIEWS_PAGE_SIZE = 50
+REVIEWS_PUBLIC_PAGE_SIZE = 50  # widget-API без проблем держит limit=50
 
 
 def resolve_region_id(city: str) -> int:
@@ -156,6 +177,47 @@ def _map_review_to_review_raw(item: dict[str, Any]) -> ReviewRaw | None:
         source_url=item.get("url"),
         posted_at=_parse_iso_or_none(item.get("date_created")),
         has_owner_reply=bool(item.get("is_reply_by_owner")),
+    )
+
+
+def _map_public_review_to_review_raw(item: dict[str, Any]) -> ReviewRaw | None:
+    """Маппинг ответа public-api.reviews.2gis.com (widget API) → ReviewRaw.
+
+    Формат отличается от catalog reviews/list:
+    - top-level `reviews` (а не `result.items`)
+    - ответ владельца: `official_answer` (dict) или `comments[].is_official`
+    - дата: `date_edited` приоритетнее `date_created`
+    """
+    raw_text = item.get("text")
+    rating = item.get("rating")
+    if raw_text is None and rating is None:
+        return None
+
+    user = item.get("user") or {}
+    # Имя автора может лежать в user.name или first_name+last_name
+    author_name = user.get("name")
+    if not author_name:
+        first = user.get("first_name") or ""
+        last = user.get("last_name") or ""
+        author_name = (first + " " + last).strip() or None
+
+    # Owner reply: либо явный official_answer, либо comment с is_official=True
+    has_owner_reply = bool(item.get("official_answer"))
+    if not has_owner_reply:
+        for c in (item.get("comments") or []):
+            if c.get("is_official"):
+                has_owner_reply = True
+                break
+
+    return ReviewRaw(
+        source="2gis",
+        external_id=str(item["id"]) if item.get("id") is not None else None,
+        author_masked=mask_author(author_name),
+        rating=int(rating) if rating is not None else None,
+        raw_text=raw_text,
+        source_url=item.get("url"),
+        posted_at=_parse_iso_or_none(item.get("date_edited") or item.get("date_created")),
+        has_owner_reply=has_owner_reply,
     )
 
 
@@ -277,7 +339,45 @@ class TwoGisProvider(MapProvider):
         company_external_id: str,
         limit: int = 100,
     ) -> AsyncIterator[ReviewRaw]:
-        """Стримит отзывы компании. Пагинация по offset."""
+        """Стримит отзывы компании. Стратегии:
+
+        1. Сначала Catalog `/2.0/reviews/list` — работает только на платном плане
+           2GIS API Pro. На бесплатном/демо-ключе возвращает meta.code=404
+           "Method not found" (внутри `_request` это превращается в RuntimeError).
+        2. Если Catalog не отдал данных (исключение или 0 отзывов) и
+           settings.TWOGIS_REVIEWS_PUBLIC_API_ENABLED — пробуем widget API
+           `public-api.reviews.2gis.com/2.0/branches/{id}/reviews`. Это тот же
+           endpoint, что использует 2gis.ru при отрисовке карточки; платный
+           ключ ему не нужен.
+
+        Если оба источника не дали отзывов — генератор просто завершается
+        пустым; вызывающий код (`parse_company_reviews`) не валит таск.
+        """
+        yielded = 0
+        async for review in self._fetch_reviews_catalog(company_external_id, limit):
+            yielded += 1
+            yield review
+            if yielded >= limit:
+                return
+
+        if not settings.TWOGIS_REVIEWS_PUBLIC_API_ENABLED:
+            return
+
+        async for review in self._fetch_reviews_public_api(company_external_id, limit - yielded):
+            yielded += 1
+            yield review
+            if yielded >= limit:
+                return
+
+    async def _fetch_reviews_catalog(
+        self,
+        company_external_id: str,
+        limit: int,
+    ) -> AsyncIterator[ReviewRaw]:
+        """Платный `/2.0/reviews/list`. На бесплатном ключе всегда падает в RuntimeError —
+        ловим его и тихо завершаемся (fallback на widget сделает caller)."""
+        if limit <= 0:
+            return
         url = f"{BASE_URL_2}/reviews/list"
         common = {
             "object_id": company_external_id,
@@ -291,16 +391,27 @@ class TwoGisProvider(MapProvider):
         async with httpx.AsyncClient(timeout=15.0) as client:
             while yielded < limit:
                 params = {**common, "offset": offset}
-                logger.debug("2gis reviews: company=%s offset=%d yielded=%d", company_external_id, offset, yielded)
-                data = await self._request(client, url, params)
+                logger.debug(
+                    "2gis catalog reviews: company=%s offset=%d yielded=%d",
+                    company_external_id, offset, yielded,
+                )
+                try:
+                    data = await self._request(client, url, params)
+                except RuntimeError as e:
+                    # Method not found на free-плане — это ожидаемо, лог только в DEBUG
+                    logger.debug(
+                        "2gis catalog reviews недоступен для company=%s: %s — переходим на public API",
+                        company_external_id, e,
+                    )
+                    return
 
                 items = (data.get("result") or {}).get("items") or []
                 if not items:
-                    break
+                    return
 
                 for item in items:
                     if yielded >= limit:
-                        break
+                        return
                     review = _map_review_to_review_raw(item)
                     if review is None:
                         continue
@@ -308,6 +419,113 @@ class TwoGisProvider(MapProvider):
                     yielded += 1
 
                 if len(items) < REVIEWS_PAGE_SIZE:
-                    break
+                    return
                 offset += REVIEWS_PAGE_SIZE
+                await asyncio.sleep(self._delay)
+
+    async def _fetch_reviews_public_api(
+        self,
+        company_external_id: str,
+        limit: int,
+    ) -> AsyncIterator[ReviewRaw]:
+        """Бесплатный widget API: public-api.reviews.2gis.com.
+
+        Без платного ключа, с заголовками браузера (Referer/Origin: 2gis.ru).
+        Пагинация по offset. Сетевые ошибки и не-2xx ответы логируем как warning
+        и тихо завершаемся: parse_company_reviews уже корректно обрабатывает
+        отсутствие отзывов.
+        """
+        if limit <= 0:
+            return
+        url = REVIEWS_PUBLIC_API_URL.format(branch_id=company_external_id)
+        common: dict[str, Any] = {
+            "is_advertiser": "false",
+            "fields": REVIEWS_PUBLIC_FIELDS,
+            "without_my_first_review": "false",
+            "rated": "true",
+            "sort_by": "date_edited",
+            "limit": REVIEWS_PUBLIC_PAGE_SIZE,
+            "locale": "ru",
+        }
+        widget_key = settings.TWOGIS_REVIEWS_PUBLIC_API_KEY
+        if widget_key:
+            common["key"] = widget_key
+
+        yielded = 0
+        offset = 0
+        async with httpx.AsyncClient(timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS) as client:
+            while yielded < limit:
+                params = {**common, "offset": offset}
+                logger.info(
+                    "2gis public reviews: company=%s offset=%d yielded=%d limit=%d",
+                    company_external_id, offset, yielded, limit,
+                )
+                try:
+                    resp = await client.get(url, params=params)
+                except httpx.HTTPError as e:
+                    logger.warning(
+                        "2gis public reviews: network error company=%s: %s",
+                        company_external_id, e,
+                    )
+                    return
+
+                if resp.status_code == 404:
+                    # Компания скрыта/удалена в 2GIS — отзывов больше не будет
+                    logger.info(
+                        "2gis public reviews 404 для company=%s (компания недоступна)",
+                        company_external_id,
+                    )
+                    return
+                if resp.status_code in (401, 403):
+                    logger.warning(
+                        "2gis public reviews %d для company=%s — widget API требует key. "
+                        "Задайте TWOGIS_REVIEWS_PUBLIC_API_KEY или отключите TWOGIS_REVIEWS_PUBLIC_API_ENABLED.",
+                        resp.status_code, company_external_id,
+                    )
+                    return
+                if resp.status_code == 429:
+                    logger.warning(
+                        "2gis public reviews 429 для company=%s — backoff 30s",
+                        company_external_id,
+                    )
+                    await asyncio.sleep(30)
+                    continue
+                if resp.status_code >= 500:
+                    logger.warning(
+                        "2gis public reviews %d server error для company=%s — прерываем",
+                        resp.status_code, company_external_id,
+                    )
+                    return
+                if resp.status_code != 200:
+                    logger.warning(
+                        "2gis public reviews unexpected %d для company=%s — прерываем",
+                        resp.status_code, company_external_id,
+                    )
+                    return
+
+                try:
+                    data = resp.json()
+                except ValueError:
+                    logger.warning(
+                        "2gis public reviews: не-JSON ответ для company=%s — прерываем",
+                        company_external_id,
+                    )
+                    return
+
+                items = data.get("reviews") or []
+                if not items:
+                    return
+
+                for item in items:
+                    if yielded >= limit:
+                        return
+                    review = _map_public_review_to_review_raw(item)
+                    if review is None:
+                        continue
+                    yield review
+                    yielded += 1
+
+                if len(items) < REVIEWS_PUBLIC_PAGE_SIZE:
+                    return
+                offset += REVIEWS_PUBLIC_PAGE_SIZE
                 await asyncio.sleep(self._delay)
