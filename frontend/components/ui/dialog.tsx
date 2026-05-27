@@ -25,13 +25,13 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
       {/* Dialog */}
       <div
         className={cn(
-          'relative z-50 w-full max-w-md bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 shadow-lg p-6',
+          'relative z-50 mx-4 flex w-full max-w-md max-h-[85vh] flex-col bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 shadow-lg',
           className
         )}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 dark:border-gray-700 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               {title}
             </h2>
@@ -44,7 +44,7 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
           </div>
         )}
         {/* Content */}
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
       </div>
     </div>
   );
