@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.5.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.4.2...v1.5.0) (2026-05-27)
+
+
+### Features
+
+* **maps-ui:** scannable карточки компаний — pill-метрики и индикатор горячего лида ([f1fae9e](https://github.com/moiseev1991-stack/Colaba/commit/f1fae9e14378dbb84468aaf464c2ab142caa78fb))
+
 ## [1.4.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.4.1...v1.4.2) (2026-05-27)
 
 
