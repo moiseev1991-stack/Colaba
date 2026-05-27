@@ -134,12 +134,15 @@ async def call_llm_sentiment(
         return None
 
     prompt = SENTIMENT_PROMPT.format(reviews_json=json.dumps(reviews, ensure_ascii=False))
+    # max_tokens: ~50 tokens на ответ для одного отзыва, плюс запас.
+    # Caller должен бить большие батчи (см. compute_sentiment), но даём и тут потолок.
+    max_tokens = max(800, len(reviews) * 60 + 200)
     try:
         raw = await chat(
             assistant_id=assistant_id,
             messages=[{"role": "user", "content": prompt}],
             db=db,
-            max_tokens=2000,
+            max_tokens=max_tokens,
             temperature=0.1,
         )
     except Exception as e:
@@ -148,7 +151,10 @@ async def call_llm_sentiment(
 
     data = _extract_json(raw)
     if not isinstance(data, list):
-        logger.warning("call_llm_sentiment: ожидали list, получили %s", type(data).__name__)
+        logger.warning(
+            "call_llm_sentiment: ожидали list, получили %s. n_reviews=%d, raw[:300]=%r",
+            type(data).__name__, len(reviews), (raw or "")[:300],
+        )
         return None
     return data
 

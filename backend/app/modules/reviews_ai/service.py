@@ -33,10 +33,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
-    """Гоняет батч отзывов через LLM и обновляет reviews.sentiment/sentiment_score.
+SENTIMENT_BATCH_SIZE = 20  # сколько отзывов отдаём в один LLM-вызов
 
-    Если LLM недоступен или вернул мусор — оставляем как есть (derived from rating).
+
+async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
+    """Гоняет батчи отзывов через LLM и обновляет reviews.sentiment/sentiment_score.
+
+    Бьём по SENTIMENT_BATCH_SIZE, чтобы JSON-ответ умещался в max_tokens
+    модели и не обрезался (на 100 отзывов одного вызова gpt-4o-mini не хватает).
+    Если LLM недоступен или вернул мусор — пропускаем батч, не падаем.
     Возвращает количество обновлённых строк.
     """
     if not review_ids:
@@ -53,31 +58,32 @@ async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
     if not payload:
         return 0
 
-    result = await llm.call_llm_sentiment(db, payload)
-    if not result:
-        return 0
-
     valid_labels = {"positive", "negative", "neutral"}
     updated = 0
-    for item in result:
-        if not isinstance(item, dict):
+    for i in range(0, len(payload), SENTIMENT_BATCH_SIZE):
+        batch = payload[i:i + SENTIMENT_BATCH_SIZE]
+        result = await llm.call_llm_sentiment(db, batch)
+        if not result:
             continue
-        rid = item.get("id")
-        label = (item.get("sentiment") or "").lower()
-        if rid is None or label not in valid_labels:
-            continue
-        try:
-            score = float(item.get("score", 0.5))
-        except (TypeError, ValueError):
-            score = 0.5
-        score = max(0.0, min(1.0, score))
-        await db.execute(
-            update(Review)
-            .where(Review.id == int(rid))
-            .values(sentiment=label, sentiment_score=score)
-        )
-        updated += 1
-    await db.commit()
+        for item in result:
+            if not isinstance(item, dict):
+                continue
+            rid = item.get("id")
+            label = (item.get("sentiment") or "").lower()
+            if rid is None or label not in valid_labels:
+                continue
+            try:
+                score = float(item.get("score", 0.5))
+            except (TypeError, ValueError):
+                score = 0.5
+            score = max(0.0, min(1.0, score))
+            await db.execute(
+                update(Review)
+                .where(Review.id == int(rid))
+                .values(sentiment=label, sentiment_score=score)
+            )
+            updated += 1
+        await db.commit()
     return updated
 
 
