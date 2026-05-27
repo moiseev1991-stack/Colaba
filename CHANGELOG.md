@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.6.1...v1.6.2) (2026-05-27)
+
+
+### Bug Fixes
+
+* **reviews-ai:** батчим sentiment по 20 + динамический max_tokens + лог сырого ответа ([f0a69f5](https://github.com/moiseev1991-stack/Colaba/commit/f0a69f5b727f117253b9fbba89be18709da0e240))
+
 ## [1.6.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.6.0...v1.6.1) (2026-05-27)
 
 
