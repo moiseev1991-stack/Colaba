@@ -20,53 +20,63 @@ interface Props {
   onClick?: () => void;
 }
 
+type Heat = 'hot' | 'warm' | 'cold';
+
 export function MapsCompanyCard({ company, onClick }: Props) {
   const id = company.id ?? company.company_id;
   const reviewsTotal = company.reviews_count ?? 0;
   const reviewsNeg = company.reviews_negative_count ?? 0;
   const ownerReplies = company.has_owner_replies;
   const ratingBadgeClass = ratingClass(company.rating);
+  const heat = leadHeat(company);
 
   return (
     <li
       onClick={onClick}
       className={cn(
-        'cursor-pointer px-4 py-3 text-sm transition-colors hover:bg-slate-50',
+        'group border-l-4 px-4 py-3 text-sm transition-colors hover:bg-slate-50',
+        heat === 'hot'
+          ? 'border-l-red-500 bg-red-50/40'
+          : heat === 'warm'
+          ? 'border-l-amber-400'
+          : 'border-l-transparent',
         onClick ? 'cursor-pointer' : 'cursor-default'
       )}
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="min-w-0 font-medium text-slate-900">
-          <span className="truncate">{company.name || '—'}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-slate-900">{company.name || '—'}</div>
+          {company.address && (
+            <div className="mt-0.5 truncate text-xs text-slate-500">{company.address}</div>
+          )}
         </div>
-        {company.rating != null && (
-          <span className={cn('app-badge', ratingBadgeClass)}>
-            ★ {Number(company.rating).toFixed(1)}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {heat === 'hot' && (
+            <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+              горячий лид
+            </span>
+          )}
+          {company.rating != null && (
+            <span className={cn('app-badge', ratingBadgeClass)}>
+              ★ {Number(company.rating).toFixed(1)}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-        <span>{company.address || '—'}</span>
-        <span>·</span>
-        <span>отзывов {reviewsTotal}</span>
-        {reviewsNeg > 0 && (
-          <>
-            <span>·</span>
-            <span className="text-red-600">негатив {reviewsNeg}</span>
-          </>
-        )}
-        {ownerReplies && (
-          <>
-            <span>·</span>
-            <span className="text-emerald-700">владелец отвечает</span>
-          </>
-        )}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <MetricPill label={`${reviewsTotal} отзывов`} tone="neutral" />
+        <MetricPill
+          label={`негатив ${reviewsNeg}`}
+          tone={reviewsNeg >= 5 ? 'danger' : reviewsNeg > 0 ? 'warn' : 'neutral'}
+        />
+        {ownerReplies === true ? (
+          <MetricPill label="отвечает владелец" tone="success" />
+        ) : ownerReplies === false && reviewsTotal > 0 ? (
+          <MetricPill label="не отвечает" tone="danger" />
+        ) : null}
         {company.source && (
-          <>
-            <span>·</span>
-            <span>{sourceLabel(company.source)}</span>
-          </>
+          <span className="ml-auto text-[11px] text-slate-400">{sourceLabel(company.source)}</span>
         )}
       </div>
 
@@ -83,10 +93,47 @@ export function MapsCompanyCard({ company, onClick }: Props) {
         </div>
       )}
 
-      {/* фолбэк для совместимости со старым кодом */}
       {id == null && <span className="hidden">{/* unused */}</span>}
     </li>
   );
+}
+
+function MetricPill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: 'neutral' | 'success' | 'warn' | 'danger';
+}) {
+  const styles = {
+    neutral: 'bg-slate-100 text-slate-700',
+    success: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
+    warn: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
+    danger: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+  }[tone];
+  return (
+    <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-medium', styles)}>{label}</span>
+  );
+}
+
+// Эвристика «температуры» лида под use-case колабы: ищем компании с реальной
+// проблемой репутации, на которые имеет смысл идти с предложением (SEO/SERM/
+// клиентский сервис). Пороги намеренно консервативные — лучше пропустить
+// слабые сигналы, чем красить весь список «горячим».
+function leadHeat(company: CardCompany): Heat {
+  const total = company.reviews_count ?? 0;
+  const neg = company.reviews_negative_count ?? 0;
+  const rating = company.rating;
+  const owner = company.has_owner_replies;
+
+  if (neg >= 10) return 'hot';
+  if (rating != null && rating < 3.5 && total >= 5) return 'hot';
+  if (owner === false && total >= 10 && rating != null && rating < 4.5) return 'hot';
+
+  if (neg >= 3) return 'warm';
+  if (rating != null && rating < 4.0 && total >= 5) return 'warm';
+
+  return 'cold';
 }
 
 function ratingClass(rating: number | null | undefined): string {
