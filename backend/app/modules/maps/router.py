@@ -292,14 +292,16 @@ async def get_company(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Карточка компании + 10 последних отзывов."""
+    """Карточка компании + 50 последних отзывов (вкладка «Все» в drawer).
+    Лимит выровнен с /reviews?sentiment=...&limit=50, чтобы при переключении
+    табов количество видимых отзывов не падало с 50 до 10."""
     company = await _get_company_or_404(db, company_id)
     recent = list(
         (await db.execute(
             select(Review)
             .where(Review.company_id == company.id)
             .order_by(Review.posted_at.desc().nullslast())
-            .limit(10)
+            .limit(50)
         )).scalars().all()
     )
     detail = CompanyDetailOut.model_validate(company)
