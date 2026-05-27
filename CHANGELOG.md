@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.4.0...v1.4.1) (2026-05-27)
+
+
+### Bug Fixes
+
+* **deploy:** пробрасываем TWOGIS_REVIEWS_PUBLIC_API_KEY в backend и celery воркеры ([dd7405e](https://github.com/moiseev1991-stack/Colaba/commit/dd7405ecc74eb4e82337b64d01f5ce8be3edf642))
+
 # [1.4.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.8...v1.4.0) (2026-05-27)
 
 
