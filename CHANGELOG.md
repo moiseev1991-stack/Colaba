@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.4.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.8...v1.4.0) (2026-05-27)
+
+
+### Bug Fixes
+
+* **maps-2gis:** cap pages at 5 — free plan hard limit on page parameter ([5f9fb06](https://github.com/moiseev1991-stack/Colaba/commit/5f9fb0685aaf186fcc841167834c73ff48acbe98))
+* **maps-2gis:** минимальные параметры public widget API (был 400 на всех) ([c146915](https://github.com/moiseev1991-stack/Colaba/commit/c14691546bf54d670de7b45e96e667584e091865))
+
+
+### Features
+
+* **maps-2gis:** public widget API как бесплатный fallback для отзывов ([433d829](https://github.com/moiseev1991-stack/Colaba/commit/433d829e99f825bdafb2f279019286adb0a206ec))
+
 ## [1.3.8](https://github.com/moiseev1991-stack/Colaba/compare/v1.3.7...v1.3.8) (2026-05-23)
 
 
