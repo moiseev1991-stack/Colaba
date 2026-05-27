@@ -46,7 +46,10 @@ duckduckgo-search==4.1.1  # Бесплатный поиск DuckDuckGo без AP
 yandex-cloud-ml-sdk>=0.17.0  # Yandex Cloud Search API (folder_id + API-ключ)
 
 # LLM & AI
-openai==1.6.1
+# openai 1.55+ нужен для совместимости с httpx>=0.28 (1.6.1 передавал убранный
+# параметр `proxies` в httpx.AsyncClient → AsyncClient.__init__ got an
+# unexpected keyword argument 'proxies').
+openai>=1.55.0,<2
 ollama>=0.4.0
 anthropic==0.39.0
 google-generativeai==0.8.3
