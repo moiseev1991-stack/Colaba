@@ -87,6 +87,11 @@ class MapSearchFilter(BaseModel):
     min_pain_mentions: int = 1
     sort_by: SortBy = "rating_desc"
 
+    # Текстовые фильтры по отзывам: компания включается в выдачу, только если
+    # у неё есть хотя бы один отзыв, который ILIKE %contains% / NOT ILIKE %excludes%.
+    review_text_contains: str | None = None
+    review_text_excludes: str | None = None
+
 
 # ---------------------------------------------------------------------------
 # API request/response schemas

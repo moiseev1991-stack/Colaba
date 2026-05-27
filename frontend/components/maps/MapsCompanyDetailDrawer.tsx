@@ -1,17 +1,25 @@
 'use client';
 
 /**
- * Подробный диалог компании: метрики, сайт/телефон, отзывы (с фильтром по
- * тональности), pain-tags. Используется при клике на карточку из списка.
+ * Подробный диалог компании: метрики, сайт/телефон, отзывы.
  *
- * Реализован поверх существующего Dialog (shadcn в проекте нет). При открытии
- * подтягивает CompanyDetailOut (карточка + 10 последних отзывов) и далее по
- * клику на табы — getCompanyReviews с sentiment-фильтром.
+ * Drawer фильтрации отзывов:
+ *  - вкладки sentiment (все / негатив / позитив)
+ *  - текстовый поиск (text_contains)
+ *  - фильтр «только с ответом владельца»
+ *
+ * Карточки отзывов:
+ *  - звёздный рейтинг
+ *  - цветная боковая полоска по sentiment (красная/зелёная/серая)
+ *  - бейджи sentiment и ответа владельца
+ *  - подсветка совпадений с поисковой подстрокой
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Search as SearchIcon, X, Star } from 'lucide-react';
 
 import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   getCompanyDetail,
@@ -33,11 +41,46 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   const [reviews, setReviews] = useState<ReviewOut[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // drawer-level фильтры (применяются к /maps/companies/{id}/reviews)
+  const [textQuery, setTextQuery] = useState('');
+  const [onlyWithOwnerReply, setOnlyWithOwnerReply] = useState(false);
+
+  // debounce для текстового поиска (300мс)
+  const [debouncedText, setDebouncedText] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedText(textQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [textQuery]);
+
+  const loadReviews = useCallback(async () => {
+    if (companyId == null || !detail) return;
+    setIsLoading(true);
+    try {
+      const data = await getCompanyReviews(
+        companyId,
+        {
+          ...(tab === 'all' ? {} : { sentiment: tab }),
+          ...(debouncedText ? { text_contains: debouncedText } : {}),
+          ...(onlyWithOwnerReply ? { has_owner_reply: true } : {}),
+        },
+        50,
+        0,
+      );
+      setReviews(data.items);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [companyId, detail, tab, debouncedText, onlyWithOwnerReply]);
+
+  // Сбрасываем состояние при смене компании
   useEffect(() => {
     if (companyId == null) {
       setDetail(null);
       setReviews([]);
       setTab('all');
+      setTextQuery('');
+      setDebouncedText('');
+      setOnlyWithOwnerReply(false);
       return;
     }
     setIsLoading(true);
@@ -52,25 +95,20 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
     })();
   }, [companyId]);
 
+  // Любая смена фильтра — повторный fetch
   useEffect(() => {
     if (companyId == null || !detail) return;
-    if (tab === 'all') {
+    // Дефолт «Все» без фильтров — используем уже загруженный recent_reviews,
+    // не делаем лишний запрос.
+    if (tab === 'all' && !debouncedText && !onlyWithOwnerReply) {
       setReviews(detail.recent_reviews);
       return;
     }
-    setIsLoading(true);
-    const sentiment: 'positive' | 'negative' = tab === 'negative' ? 'negative' : 'positive';
-    void (async () => {
-      try {
-        const data = await getCompanyReviews(companyId, sentiment, 50, 0);
-        setReviews(data.items);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, [tab, companyId, detail]);
+    void loadReviews();
+  }, [tab, debouncedText, onlyWithOwnerReply, companyId, detail, loadReviews]);
 
   const open = companyId != null;
+  const hasActiveFilters = tab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
 
   return (
     <Dialog open={open} onClose={onClose} title={detail?.name ?? 'Загрузка…'}>
@@ -78,6 +116,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
         <div className="py-6 text-sm text-slate-500">Загружаем карточку…</div>
       ) : (
         <div className="space-y-4">
+          {/* === Шапка компании === */}
           <div className="text-sm text-slate-600">{detail.address || '—'}</div>
 
           <div className="flex flex-wrap gap-3 text-sm">
@@ -125,6 +164,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             </div>
           )}
 
+          {/* === Tabs sentiment === */}
           <div>
             <div className="mb-2 flex gap-2 border-b border-slate-200">
               {(['all', 'negative', 'positive'] as Tab[]).map((t) => (
@@ -139,65 +179,83 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                       : 'border-transparent text-slate-500 hover:text-slate-700'
                   )}
                 >
-                  {t === 'all' ? 'Все' : t === 'negative' ? 'Негатив' : 'Позитив'}
+                  {t === 'all'
+                    ? `Все${detail.reviews_count > 0 ? ` (${detail.reviews_count})` : ''}`
+                    : t === 'negative'
+                      ? `Негатив${detail.reviews_negative_count > 0 ? ` (${detail.reviews_negative_count})` : ''}`
+                      : `Позитив${detail.reviews_positive_count > 0 ? ` (${detail.reviews_positive_count})` : ''}`}
                 </button>
               ))}
+            </div>
+
+            {/* === Drawer filter row: text search + has_owner_reply === */}
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Поиск в тексте отзыва…"
+                  value={textQuery}
+                  onChange={(e) => setTextQuery(e.target.value)}
+                  className="h-8 text-[13px] pl-8 pr-7"
+                />
+                {textQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setTextQuery('')}
+                    aria-label="Очистить поиск"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={onlyWithOwnerReply}
+                  onChange={(e) => setOnlyWithOwnerReply(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                только с ответом владельца
+              </label>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('all');
+                    setTextQuery('');
+                    setOnlyWithOwnerReply(false);
+                  }}
+                  className="text-[12px] text-slate-500 underline hover:text-slate-800"
+                >
+                  сбросить
+                </button>
+              )}
             </div>
 
             {isLoading && reviews.length === 0 ? (
               <div className="text-sm text-slate-500">Загружаем отзывы…</div>
             ) : reviews.length === 0 ? (
-              <div className="text-sm text-slate-500">Отзывов нет.</div>
+              <div className="text-sm text-slate-500">
+                {hasActiveFilters
+                  ? 'Отзывов под текущие фильтры не найдено.'
+                  : 'Отзывов нет.'}
+              </div>
             ) : (
-              <ul className="space-y-3">
-                {reviews.map((r) => (
-                  <li key={r.id} className="rounded-md border border-slate-200 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-slate-500">
-                      <span>{r.author_masked || 'Аноним'}</span>
-                      {r.rating != null && <span>★ {r.rating}</span>}
-                      {r.posted_at && (
-                        <span>{new Date(r.posted_at).toLocaleDateString('ru-RU')}</span>
-                      )}
-                      {r.has_owner_reply && (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800">
-                          ответ владельца
-                        </span>
-                      )}
-                    </div>
-                    {r.raw_text == null ? (
-                      <div className="text-sm text-slate-400">
-                        Текст удалён по политике хранения.{' '}
-                        {r.source_url && (
-                          <a
-                            className="underline"
-                            href={r.source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Открыть оригинал
-                          </a>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="whitespace-pre-wrap text-sm text-slate-700">
-                        {r.raw_text}
-                      </div>
-                    )}
-                    {Array.isArray(r.pain_tags) && r.pain_tags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {r.pain_tags.map((t) => (
-                          <span
-                            key={t.id}
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700"
-                          >
-                            {t.label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <>
+                {hasActiveFilters && (
+                  <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-400">
+                    показано {reviews.length}
+                    {textQuery ? ` · по запросу «${debouncedText}»` : ''}
+                  </div>
+                )}
+                <ul className="space-y-2">
+                  {reviews.map((r) => (
+                    <ReviewCard key={r.id} review={r} highlight={debouncedText} />
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>
@@ -229,5 +287,122 @@ function Metric({
         {value}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ReviewCard
+// ---------------------------------------------------------------------------
+
+function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: string }) {
+  const sentiment = review.sentiment as 'positive' | 'negative' | 'neutral' | null;
+  const accent =
+    sentiment === 'negative'
+      ? 'border-l-red-400 bg-red-50/40'
+      : sentiment === 'positive'
+        ? 'border-l-emerald-400 bg-emerald-50/30'
+        : 'border-l-slate-300 bg-white';
+
+  return (
+    <li className={cn('rounded-md border border-slate-200 border-l-4 p-3', accent)}>
+      <div className="mb-1.5 flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+        <span className="font-medium text-slate-700">
+          {review.author_masked || 'Аноним'}
+        </span>
+        {review.rating != null && <StarRating value={review.rating} />}
+        {review.posted_at && (
+          <span>{new Date(review.posted_at).toLocaleDateString('ru-RU')}</span>
+        )}
+        {sentiment && <SentimentBadge sentiment={sentiment} />}
+        {review.has_owner_reply && (
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800">
+            ответ владельца
+          </span>
+        )}
+      </div>
+      {review.raw_text == null ? (
+        <div className="text-sm text-slate-400">
+          Текст удалён по политике хранения.{' '}
+          {review.source_url && (
+            <a
+              className="underline"
+              href={review.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Открыть оригинал
+            </a>
+          )}
+        </div>
+      ) : (
+        <div className="whitespace-pre-wrap text-sm text-slate-700">
+          {highlight ? <HighlightedText text={review.raw_text} needle={highlight} /> : review.raw_text}
+        </div>
+      )}
+      {Array.isArray(review.pain_tags) && review.pain_tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {review.pain_tags.map((t) => (
+            <span
+              key={t.id}
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700"
+            >
+              {t.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
+function StarRating({ value }: { value: number }) {
+  // value 1..5; красим первые value звёзд жёлтым, остальные серым
+  const stars = [1, 2, 3, 4, 5].map((i) => {
+    const filled = i <= value;
+    return (
+      <Star
+        key={i}
+        className={cn(
+          'h-3 w-3',
+          filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
+        )}
+      />
+    );
+  });
+  return <span className="inline-flex items-center gap-0.5">{stars}</span>;
+}
+
+function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'neutral' }) {
+  const cfg = {
+    positive: { label: 'позитив', cls: 'bg-emerald-100 text-emerald-800' },
+    negative: { label: 'негатив', cls: 'bg-red-100 text-red-800' },
+    neutral: { label: 'нейтр.', cls: 'bg-slate-100 text-slate-700' },
+  }[sentiment];
+  return (
+    <span className={cn('rounded px-1.5 py-0.5 text-[11px] font-medium', cfg.cls)}>
+      {cfg.label}
+    </span>
+  );
+}
+
+function HighlightedText({ text, needle }: { text: string; needle: string }) {
+  if (!needle) return <>{text}</>;
+  // Регистронезависимое разбиение по needle. Не делаем regex-escape — пользователь
+  // вводит обычные слова, спецсимволы (скобки и т.п.) сломают сплит, поэтому
+  // экранируем minimally.
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === needle.toLowerCase() ? (
+          <mark key={i} className="rounded bg-amber-200/70 px-0.5 text-slate-900">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
   );
 }

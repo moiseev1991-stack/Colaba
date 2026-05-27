@@ -16,16 +16,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 
-export type FilterField =
-  | 'text'
-  | 'title'
-  | 'meta'
-  | 'h1'
-  | 'site_type'
-  | 'has_phone'
-  | 'has_email'
-  | 'has_telegram'
-  | 'domain';
+export type FilterField = string;
 
 export type FilterOp =
   | 'contains'
@@ -48,25 +39,28 @@ export interface FilterSpec {
 }
 
 // Field metadata: which operators apply, what kind of value editor to render.
-type FieldKind = 'text' | 'select' | 'bool';
+export type FieldKind = 'text' | 'select' | 'bool';
 
-// `disabled: true` — опция отображается в выпадашке, но браузер не даст её
-// выбрать. Используется для фильтров, у которых пока нет поддержки на бэке
-// (например, has_telegram — краулер ещё не парсит TG-ссылки). Уберём флаг,
-// когда поднимем соответствующий парсер.
-const FIELDS: Array<{
+export interface FieldDef {
   id: FilterField;
   label: string;
   kind: FieldKind;
   disabled?: boolean;
-}> = [
+  placeholder?: string;
+}
+
+// Дефолтный набор полей — для «По сайтам» (LegacyLeadsPanel).
+// Другие места (например MapsSearchForm) передают свой набор через props.
+// `disabled: true` — опция отображается в выпадашке, но браузер не даст её
+// выбрать.
+export const DEFAULT_SITE_FIELDS: FieldDef[] = [
   { id: 'text', label: 'На сайте есть слово', kind: 'text' },
   { id: 'title', label: 'В заголовке (title)', kind: 'text' },
   { id: 'meta', label: 'В описании (meta)', kind: 'text' },
   { id: 'has_phone', label: 'Есть телефон', kind: 'bool' },
   { id: 'has_email', label: 'Есть email', kind: 'bool' },
   { id: 'has_telegram', label: 'Есть Telegram (скоро)', kind: 'bool', disabled: true },
-  { id: 'domain', label: 'Домен', kind: 'text' },
+  { id: 'domain', label: 'Домен', kind: 'text', placeholder: 'Например: example.ru' },
 ];
 
 const OPS_BY_KIND: Record<FieldKind, Array<{ id: FilterOp; label: string }>> = {
@@ -87,12 +81,12 @@ const OPS_BY_KIND: Record<FieldKind, Array<{ id: FilterOp; label: string }>> = {
   ],
 };
 
-function fieldKind(field: FilterField): FieldKind {
-  return FIELDS.find((f) => f.id === field)?.kind ?? 'text';
+function fieldKind(fields: FieldDef[], field: FilterField): FieldKind {
+  return fields.find((f) => f.id === field)?.kind ?? 'text';
 }
 
-function defaultOpFor(field: FilterField): FilterOp {
-  const kind = fieldKind(field);
+function defaultOpFor(fields: FieldDef[], field: FilterField): FilterOp {
+  const kind = fieldKind(fields, field);
   return OPS_BY_KIND[kind][0]?.id ?? 'contains';
 }
 
@@ -104,19 +98,34 @@ interface FilterBuilderProps {
   value: FilterSpec;
   onChange: (next: FilterSpec) => void;
   disabled?: boolean;
+  /** Набор доступных полей. По умолчанию — поля «По сайтам». */
+  fields?: FieldDef[];
+  /** Заглушка, когда условий нет. По умолчанию — пример для сайтов. */
+  emptyHint?: string;
+  /** Дефолтное значение в Input для каждого field.kind=text (если не задан placeholder в FieldDef). */
+  defaultTextPlaceholder?: string;
 }
 
-export function FilterBuilder({ value, onChange, disabled }: FilterBuilderProps) {
+export function FilterBuilder({
+  value,
+  onChange,
+  disabled,
+  fields = DEFAULT_SITE_FIELDS,
+  emptyHint = 'Добавьте условие, чтобы фильтровать сайты — например, «На сайте есть слово содержит протезирование».',
+  defaultTextPlaceholder = 'Например: протезирование',
+}: FilterBuilderProps) {
   const { logic, conditions } = value;
 
   const updateLogic = (next: 'and' | 'or') => onChange({ ...value, logic: next });
+
+  const firstField = fields[0]?.id ?? 'text';
 
   const addCondition = () =>
     onChange({
       ...value,
       conditions: [
         ...conditions,
-        { field: 'text', op: 'contains', value: '' },
+        { field: firstField, op: defaultOpFor(fields, firstField), value: '' },
       ],
     });
 
@@ -133,7 +142,7 @@ export function FilterBuilder({ value, onChange, disabled }: FilterBuilderProps)
         // new field kind — otherwise we'd leave nonsense like "Тип сайта :
         // не содержит : протезирование".
         if (patch.field && patch.field !== c.field) {
-          next.op = defaultOpFor(patch.field);
+          next.op = defaultOpFor(fields, patch.field);
           next.value = '';
         }
         return next;
@@ -199,14 +208,15 @@ export function FilterBuilder({ value, onChange, disabled }: FilterBuilderProps)
 
       {conditions.length === 0 ? (
         <p className="text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
-          Добавьте условие, чтобы фильтровать сайты — например, «На сайте есть слово содержит протезирование».
+          {emptyHint}
         </p>
       ) : (
         <div className="grid gap-2">
           {conditions.map((cond, idx) => {
-            const kind = fieldKind(cond.field);
+            const kind = fieldKind(fields, cond.field);
             const ops = OPS_BY_KIND[kind];
             const isFirst = idx === 0;
+            const fieldDef = fields.find((f) => f.id === cond.field);
 
             return (
               <div key={idx} className="grid gap-2">
@@ -232,7 +242,7 @@ export function FilterBuilder({ value, onChange, disabled }: FilterBuilderProps)
                     className="h-9 text-[13px]"
                     style={{ minWidth: 220, flex: '0 0 auto' }}
                   >
-                    {FIELDS.map((f) => (
+                    {fields.map((f) => (
                       <option key={f.id} value={f.id} disabled={f.disabled}>
                         {f.label}
                       </option>
@@ -259,11 +269,7 @@ export function FilterBuilder({ value, onChange, disabled }: FilterBuilderProps)
                     {kind === 'text' && (
                       <Input
                         type="text"
-                        placeholder={
-                          cond.field === 'domain'
-                            ? 'Например: example.ru'
-                            : 'Например: протезирование'
-                        }
+                        placeholder={fieldDef?.placeholder ?? defaultTextPlaceholder}
                         value={cond.value}
                         onChange={(e) => updateCondition(idx, { value: e.target.value })}
                         disabled={disabled}

@@ -165,6 +165,8 @@ async def list_search_companies(
     pain_tag_ids: Optional[list[int]] = Query(default=None),
     min_pain_mentions: int = Query(default=1, ge=1),
     sort_by: SortBy = Query(default="rating_desc"),
+    review_text_contains: Optional[str] = Query(default=None, max_length=200),
+    review_text_excludes: Optional[str] = Query(default=None, max_length=200),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -181,6 +183,8 @@ async def list_search_companies(
         pain_tag_ids=pain_tag_ids or None,
         min_pain_mentions=min_pain_mentions,
         sort_by=sort_by,
+        review_text_contains=review_text_contains,
+        review_text_excludes=review_text_excludes,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     return CompaniesListOut(
@@ -203,6 +207,8 @@ async def export_search_csv(
     has_owner_replies: Optional[bool] = Query(default=None),
     pain_tag_ids: Optional[list[int]] = Query(default=None),
     sort_by: SortBy = Query(default="rating_desc"),
+    review_text_contains: Optional[str] = Query(default=None, max_length=200),
+    review_text_excludes: Optional[str] = Query(default=None, max_length=200),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -214,6 +220,8 @@ async def export_search_csv(
         has_owner_replies=has_owner_replies,
         pain_tag_ids=pain_tag_ids or None,
         sort_by=sort_by,
+        review_text_contains=review_text_contains,
+        review_text_excludes=review_text_excludes,
     )
     items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
@@ -315,6 +323,10 @@ async def list_company_reviews(
     request: Request,
     company_id: int,
     sentiment: Optional[str] = Query(default=None, regex="^(positive|negative|neutral)$"),
+    text_contains: Optional[str] = Query(default=None, max_length=200),
+    min_rating: Optional[int] = Query(default=None, ge=1, le=5),
+    max_rating: Optional[int] = Query(default=None, ge=1, le=5),
+    has_owner_reply: Optional[bool] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -324,6 +336,14 @@ async def list_company_reviews(
     q = select(Review).where(Review.company_id == company_id)
     if sentiment:
         q = q.where(Review.sentiment == sentiment)
+    if text_contains and text_contains.strip():
+        q = q.where(Review.raw_text.ilike(f"%{text_contains.strip()}%"))
+    if min_rating is not None:
+        q = q.where(Review.rating >= min_rating)
+    if max_rating is not None:
+        q = q.where(Review.rating <= max_rating)
+    if has_owner_reply is not None:
+        q = q.where(Review.has_owner_reply == has_owner_reply)
     q = q.order_by(Review.posted_at.desc().nullslast())
 
     from sqlalchemy import func

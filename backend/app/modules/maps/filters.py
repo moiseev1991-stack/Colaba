@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import Select
+from sqlalchemy import Select, exists, select
 
-from app.models.maps import Company
+from app.models.maps import Company, Review
 from app.modules.maps.schemas import MapSearchFilter
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,29 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         query = query.where(Company.reviews_negative_count >= filters.min_negative)
     if filters.has_owner_replies is not None:
         query = query.where(Company.has_owner_replies == filters.has_owner_replies)
+
+    # ---- WHERE: тексты отзывов (EXISTS-подзапрос на reviews)
+    # Каждое условие — независимый EXISTS, чтобы AND работал как «есть и тот
+    # и тот отзыв» (а не «один отзыв удовлетворяет обоим»). NOT contains —
+    # тоже корректно: запрещаем наличие хотя бы одного matching отзыва.
+    if filters.review_text_contains:
+        pattern = f"%{filters.review_text_contains.strip()}%"
+        if pattern.strip("%"):
+            query = query.where(
+                exists(
+                    select(Review.id)
+                    .where(Review.company_id == Company.id, Review.raw_text.ilike(pattern))
+                )
+            )
+    if filters.review_text_excludes:
+        pattern = f"%{filters.review_text_excludes.strip()}%"
+        if pattern.strip("%"):
+            query = query.where(
+                ~exists(
+                    select(Review.id)
+                    .where(Review.company_id == Company.id, Review.raw_text.ilike(pattern))
+                )
+            )
 
     # ---- WHERE: pain tags (требует таблиц из миграции 016)
     pain_sort_active = filters.sort_by == "pain_desc"

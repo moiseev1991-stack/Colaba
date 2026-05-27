@@ -29,6 +29,12 @@ export interface MapSearchFilter {
   pain_tag_ids?: number[] | null;
   min_pain_mentions?: number;
   sort_by?: SortBy;
+  /** Подстрока — компания пройдёт фильтр, если у неё есть хотя бы один отзыв,
+   *  содержащий эту подстроку (ILIKE на сервере). */
+  review_text_contains?: string | null;
+  /** Обратное условие — компания пройдёт фильтр, если у неё НЕТ ни одного
+   *  отзыва, содержащего эту подстроку. */
+  review_text_excludes?: string | null;
 }
 
 export interface MapSearchCreate {
@@ -165,6 +171,10 @@ export async function listMapCompanies(
   }
   if (filter.min_pain_mentions !== undefined)
     params.set('min_pain_mentions', String(filter.min_pain_mentions));
+  if (filter.review_text_contains)
+    params.set('review_text_contains', filter.review_text_contains);
+  if (filter.review_text_excludes)
+    params.set('review_text_excludes', filter.review_text_excludes);
   params.set('sort_by', filter.sort_by ?? 'rating_desc');
   params.set('limit', String(limit));
   params.set('offset', String(offset));
@@ -180,14 +190,36 @@ export async function getCompanyDetail(id: number): Promise<CompanyDetailOut> {
   return response.data;
 }
 
+export interface ReviewQueryFilter {
+  sentiment?: 'positive' | 'negative' | 'neutral';
+  /** Подстрока для ILIKE-поиска по raw_text. */
+  text_contains?: string;
+  min_rating?: number;
+  max_rating?: number;
+  has_owner_reply?: boolean;
+}
+
 export async function getCompanyReviews(
   id: number,
-  sentiment?: 'positive' | 'negative' | 'neutral',
+  filterOrSentiment?: ReviewQueryFilter | 'positive' | 'negative' | 'neutral',
   limit = 50,
   offset = 0
 ): Promise<ReviewsListOut> {
+  // Backwards compat: старые места передают sentiment-строку первым аргументом.
+  const filter: ReviewQueryFilter =
+    typeof filterOrSentiment === 'string'
+      ? { sentiment: filterOrSentiment }
+      : (filterOrSentiment ?? {});
   const params = new URLSearchParams();
-  if (sentiment) params.set('sentiment', sentiment);
+  if (filter.sentiment) params.set('sentiment', filter.sentiment);
+  if (filter.text_contains && filter.text_contains.trim())
+    params.set('text_contains', filter.text_contains.trim());
+  if (filter.min_rating !== undefined)
+    params.set('min_rating', String(filter.min_rating));
+  if (filter.max_rating !== undefined)
+    params.set('max_rating', String(filter.max_rating));
+  if (filter.has_owner_reply !== undefined)
+    params.set('has_owner_reply', String(filter.has_owner_reply));
   params.set('limit', String(limit));
   params.set('offset', String(offset));
   const response = await apiClient.get<ReviewsListOut>(
