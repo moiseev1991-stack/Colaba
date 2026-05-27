@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.7.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.6.2...v1.7.0) (2026-05-27)
+
+
+### Features
+
+* **maps-ui:** фильтр отзывов по тексту + переезд формы на стиль «По сайтам» + drawer 2.0 ([b474d0c](https://github.com/moiseev1991-stack/Colaba/commit/b474d0ca92ec9150a6f2982a287f2676b953c132))
+
 ## [1.6.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.6.1...v1.6.2) (2026-05-27)
 
 
