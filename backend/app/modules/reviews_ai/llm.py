@@ -218,6 +218,7 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
         return None
 
     model = settings.REVIEWS_AI_EMBEDDING_MODEL or "text-embedding-3-small"
+    base_url = (settings.OPENAI_BASE_URL or "https://api.openai.com/v1").rstrip("/")
 
     import httpx
 
@@ -227,7 +228,7 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
             batch = texts[i:i + EMBEDDING_BATCH_SIZE]
             try:
                 resp = await client.post(
-                    "https://api.openai.com/v1/embeddings",
+                    f"{base_url}/embeddings",
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",

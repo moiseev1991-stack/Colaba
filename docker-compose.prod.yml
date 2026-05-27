@@ -57,7 +57,13 @@ services:
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
       CORS_ORIGINS: ${CORS_ORIGINS}
       LOG_LEVEL: ${LOG_LEVEL}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # ProxyAPI (https://proxyapi.ru) — российский шлюз к OpenAI.
+      # Дефолт api.openai.com блокируется для RU IP; на проде ставим в .env
+      # https://api.proxyapi.ru/openai/v1
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
+      REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       YANDEX_XML_FOLDER_ID: ${YANDEX_XML_FOLDER_ID}
@@ -108,6 +114,11 @@ services:
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
+      # LLM для reviews_ai (sentiment + naming + embeddings) — через ProxyAPI.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
+      REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
     depends_on:
       postgres:
         condition: service_healthy

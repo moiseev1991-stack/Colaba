@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.modules.ai_assistants.service import get_ai_assistant_row
 
 logger = logging.getLogger(__name__)
@@ -86,8 +87,8 @@ async def vision(assistant_id: int, image_b64: str, prompt: str, db: AsyncSessio
 async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, temperature: float) -> str:
     from openai import AsyncOpenAI
 
-    api_key = cfg.get("api_key") or ""
-    base_url = cfg.get("base_url") or None
+    api_key = (cfg.get("api_key") or settings.OPENAI_API_KEY or "")
+    base_url = cfg.get("base_url") or (settings.OPENAI_BASE_URL or None)
     org = cfg.get("organization") or None
     c = AsyncOpenAI(api_key=api_key, base_url=base_url, organization=org)
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
@@ -97,8 +98,8 @@ async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, t
 async def _vision_openai(model: str, cfg: dict, image_b64: str, prompt: str) -> str:
     from openai import AsyncOpenAI
 
-    api_key = cfg.get("api_key") or ""
-    base_url = cfg.get("base_url") or None
+    api_key = (cfg.get("api_key") or settings.OPENAI_API_KEY or "")
+    base_url = cfg.get("base_url") or (settings.OPENAI_BASE_URL or None)
     org = cfg.get("organization") or None
     c = AsyncOpenAI(api_key=api_key, base_url=base_url, organization=org)
     messages = [

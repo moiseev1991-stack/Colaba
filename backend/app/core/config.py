@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Ollama base URL")
     OLLAMA_MODEL: str = Field(default="llama2", description="Default Ollama model")
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key (optional)")
+    OPENAI_BASE_URL: str = Field(
+        default="https://api.openai.com/v1",
+        description="OpenAI API base URL. Override на https://api.proxyapi.ru/openai/v1 для работы из РФ.",
+    )
 
     # Proxy for HTML providers (Yandex, Google) — bypass blocks
     USE_PROXY: bool = Field(default=False, description="Use proxy for HTML search providers")
