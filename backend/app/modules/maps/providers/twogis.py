@@ -88,6 +88,11 @@ REVIEWS_PUBLIC_HEADERS = {
 
 PAGE_SIZE = 10  # 2GIS free/standard план ограничивает page_size диапазоном 1..10.
                 # При 50 API возвращает HTTP 200 с meta.code=400 и пустым items.
+# Free/standard план также ограничивает номер страницы: page ∈ 1..5.
+# При page=6 API отдаёт meta.code=400 "Length of parameter 'page' should be from 1 to 5".
+# До фикса это вылетало RuntimeError → таск падал в retry → status=failed,
+# хотя 50 компаний (5 страниц × 10) уже были сохранены. Сейчас просто break.
+MAX_PAGES = 5
 REVIEWS_PAGE_SIZE = 50
 REVIEWS_PUBLIC_PAGE_SIZE = 50  # widget-API без проблем держит limit=50
 
@@ -327,6 +332,14 @@ class TwoGisProvider(MapProvider):
                     yielded += 1
 
                 if yielded >= total or len(items) < PAGE_SIZE:
+                    break
+
+                if page >= MAX_PAGES:
+                    logger.info(
+                        "2gis search: достигнут потолок страниц (%d) на free-плане, "
+                        "yielded=%d (max %d на free)",
+                        MAX_PAGES, yielded, MAX_PAGES * PAGE_SIZE,
+                    )
                     break
 
                 page += 1
