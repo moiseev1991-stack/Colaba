@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.4.1...v1.4.2) (2026-05-27)
+
+
+### Bug Fixes
+
+* **ui:** scrollable Dialog с фиксированной высотой 85vh ([82b52ea](https://github.com/moiseev1991-stack/Colaba/commit/82b52ea9f305c88e731b7a880b1e20d06695f199))
+
 ## [1.4.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.4.0...v1.4.1) (2026-05-27)
 
 
