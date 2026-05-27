@@ -67,6 +67,10 @@ services:
       PROXY_LIST: ${PROXY_LIST}
       # Maps providers — без ключа /api/v1/maps/health/providers вернёт no_api_key
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
+      # Widget API ключ для бесплатного fallback на public-api.reviews.2gis.com.
+      # Достаётся из DevTools на 2gis.ru (Network → reviews → key=...).
+      TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,6 +106,8 @@ services:
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
       LOG_LEVEL: ${LOG_LEVEL}
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,6 +138,8 @@ services:
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
       LOG_LEVEL: ${LOG_LEVEL}
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
     depends_on:
       postgres:
         condition: service_healthy
