@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.6.0...v1.6.1) (2026-05-27)
+
+
+### Bug Fixes
+
+* **deps:** openai 1.55+ для совместимости с httpx>=0.28 ([c52742e](https://github.com/moiseev1991-stack/Colaba/commit/c52742e3186d4c2281476469a042e4982eb7f732))
+
 # [1.6.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.5.0...v1.6.0) (2026-05-27)
 
 
