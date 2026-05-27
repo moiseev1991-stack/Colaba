@@ -20,26 +20,18 @@ interface Props {
   onClick?: () => void;
 }
 
-type Heat = 'hot' | 'warm' | 'cold';
-
 export function MapsCompanyCard({ company, onClick }: Props) {
   const id = company.id ?? company.company_id;
   const reviewsTotal = company.reviews_count ?? 0;
   const reviewsNeg = company.reviews_negative_count ?? 0;
   const ownerReplies = company.has_owner_replies;
   const ratingBadgeClass = ratingClass(company.rating);
-  const heat = leadHeat(company);
 
   return (
     <li
       onClick={onClick}
       className={cn(
-        'group border-l-4 px-4 py-3 text-sm transition-colors hover:bg-slate-50',
-        heat === 'hot'
-          ? 'border-l-red-500 bg-red-50/40'
-          : heat === 'warm'
-          ? 'border-l-amber-400'
-          : 'border-l-transparent',
+        'px-4 py-3 text-sm transition-colors hover:bg-slate-50',
         onClick ? 'cursor-pointer' : 'cursor-default'
       )}
     >
@@ -50,18 +42,11 @@ export function MapsCompanyCard({ company, onClick }: Props) {
             <div className="mt-0.5 truncate text-xs text-slate-500">{company.address}</div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {heat === 'hot' && (
-            <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
-              горячий лид
-            </span>
-          )}
-          {company.rating != null && (
-            <span className={cn('app-badge', ratingBadgeClass)}>
-              ★ {Number(company.rating).toFixed(1)}
-            </span>
-          )}
-        </div>
+        {company.rating != null && (
+          <span className={cn('app-badge shrink-0', ratingBadgeClass)}>
+            ★ {Number(company.rating).toFixed(1)}
+          </span>
+        )}
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -114,26 +99,6 @@ function MetricPill({
   return (
     <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-medium', styles)}>{label}</span>
   );
-}
-
-// Эвристика «температуры» лида под use-case колабы: ищем компании с реальной
-// проблемой репутации, на которые имеет смысл идти с предложением (SEO/SERM/
-// клиентский сервис). Пороги намеренно консервативные — лучше пропустить
-// слабые сигналы, чем красить весь список «горячим».
-function leadHeat(company: CardCompany): Heat {
-  const total = company.reviews_count ?? 0;
-  const neg = company.reviews_negative_count ?? 0;
-  const rating = company.rating;
-  const owner = company.has_owner_replies;
-
-  if (neg >= 10) return 'hot';
-  if (rating != null && rating < 3.5 && total >= 5) return 'hot';
-  if (owner === false && total >= 10 && rating != null && rating < 4.5) return 'hot';
-
-  if (neg >= 3) return 'warm';
-  if (rating != null && rating < 4.0 && total >= 5) return 'warm';
-
-  return 'cold';
 }
 
 function ratingClass(rating: number | null | undefined): string {
