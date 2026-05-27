@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.6.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.5.0...v1.6.0) (2026-05-27)
+
+
+### Bug Fixes
+
+* **maps:** drawer «Все отзывы» — лимит 50 вместо 10 ([a7cbde7](https://github.com/moiseev1991-stack/Colaba/commit/a7cbde7df5af7f925ec296af617445fd11924a39))
+
+
+### Features
+
+* **reviews-ai:** подключение ProxyAPI для LLM-пайплайна из РФ ([1a8cd1e](https://github.com/moiseev1991-stack/Colaba/commit/1a8cd1e1023add7bb80c5fc30817f5f7ca3ffb52))
+
+
+### Reverts
+
+* **maps-ui:** убрать «горячий/тёплый лид» индикаторы — не нужны сейчас ([0f14c4a](https://github.com/moiseev1991-stack/Colaba/commit/0f14c4a0a111323f627ad1cc9d7f1977a6f9a5dc))
+
 # [1.5.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.4.2...v1.5.0) (2026-05-27)
 
 
