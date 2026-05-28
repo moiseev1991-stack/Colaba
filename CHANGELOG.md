@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.1...v1.7.2) (2026-05-28)
+
+
+### Bug Fixes
+
+* **maps:** самоисцеление битого кэша + переиспользование результатов прошлого поиска ([ce562b8](https://github.com/moiseev1991-stack/Colaba/commit/ce562b83038549a1e67f2d1d3a047aa8c18b5af1))
+
 ## [1.7.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.0...v1.7.1) (2026-05-28)
 
 
