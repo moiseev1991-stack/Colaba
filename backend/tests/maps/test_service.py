@@ -228,19 +228,94 @@ async def test_get_search_results_with_filters_and_sort():
 # ---------------------------------------------------------------------------
 
 
+async def _seed_completed_search_with_companies(db, niche: str, city: str, source: str, n: int = 3) -> int:
+    """Создаёт «успешный» завершённый MapSearch с n компаниями.
+    Используется как base для проверки копирования при cache hit."""
+    user_id = await _make_user_id(db)
+    prev = await service.create_map_search(
+        db, user_id=user_id, niche=niche, city=city, sources=[source],
+    )
+    raws = [
+        CompanyRaw(
+            source=source, external_id=_unique_id("seed"),
+            name=f"Seed {i}", niche=niche, city=city,
+            rating=4.0 + i * 0.1, reviews_count=10 + i,
+        )
+        for i in range(n)
+    ]
+    await service.save_companies_batch(db, raws, prev.id)
+    # вручную помечаем как completed (в проде это делает Celery)
+    prev.status = "completed"
+    prev.companies_found = n
+    prev.finished_at = datetime.now(timezone.utc)
+    await db.commit()
+    return prev.id
+
+
 @pytest.mark.asyncio
-async def test_create_map_search_uses_cache_when_all_sources_cached():
+async def test_create_map_search_from_cache_copies_results_from_previous_search():
+    """При cache hit на все sources новый поиск получает status='from_cache'
+    и наследует map_search_results от прошлого успешного поиска."""
     niche = _unique_id("cn")
     city = _unique_id("cc")
     async with AsyncSessionLocal() as db:
+        prev_id = await _seed_completed_search_with_companies(db, niche, city, "2gis", n=3)
+        await service.upsert_cache_entry(db, niche, city, "2gis", companies_count=3, reviews_count=0)
+
+        user_id = await _make_user_id(db)
+        search = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+        )
+        assert search.status == "from_cache"
+        assert search.companies_found == 3
+        assert search.finished_at is not None
+
+        items, total = await service.get_search_results(db, search.id)
+        assert total == 3
+        assert len(items) == 3
+        assert all(c.source == "2gis" for c in items)
+        assert search.id != prev_id
+
+
+@pytest.mark.asyncio
+async def test_create_map_search_drops_stale_cache_when_no_results_to_copy():
+    """Кэш есть, но прошлого успешного поиска нет (или он пустой) →
+    запись кэша считается битой, удаляется, новый поиск идёт в pending."""
+    niche = _unique_id("stale")
+    city = _unique_id("city")
+    async with AsyncSessionLocal() as db:
+        # кэш есть, но реальных данных нет
         await service.upsert_cache_entry(db, niche, city, "2gis", companies_count=5, reviews_count=0)
-        await service.upsert_cache_entry(db, niche, city, "yandex_maps", companies_count=3, reviews_count=0)
+        assert (await service.check_cache(db, niche, city, "2gis")) is True
+
+        user_id = await _make_user_id(db)
+        search = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+        )
+        assert search.status == "pending"
+        # битая запись должна быть удалена, чтобы Celery нормально перепарсил
+        assert (await service.check_cache(db, niche, city, "2gis")) is False
+
+
+@pytest.mark.asyncio
+async def test_create_map_search_mixed_cache_falls_back_to_pending():
+    """Один source из кэша берётся успешно, второй кэша не имеет →
+    общий статус 'pending' (Celery допарсит недостающий source)."""
+    niche = _unique_id("mix")
+    city = _unique_id("city")
+    async with AsyncSessionLocal() as db:
+        await _seed_completed_search_with_companies(db, niche, city, "2gis", n=2)
+        await service.upsert_cache_entry(db, niche, city, "2gis", companies_count=2, reviews_count=0)
 
         user_id = await _make_user_id(db)
         search = await service.create_map_search(
             db, user_id=user_id, niche=niche, city=city, sources=["2gis", "yandex_maps"],
         )
-        assert search.status == "from_cache"
+        assert search.status == "pending"
+        # 2gis уже скопировано в новый поиск, чтобы UI не был пустым на старте
+        items, total = await service.get_search_results(db, search.id)
+        assert total == 2
+        assert all(c.source == "2gis" for c in items)
 
 
 @pytest.mark.asyncio
@@ -252,3 +327,38 @@ async def test_create_map_search_pending_when_no_cache():
             niche=_unique_id("n"), city=_unique_id("c"), sources=["2gis"],
         )
         assert search.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_copy_results_filters_by_source_for_multi_source_previous_search():
+    """Если в прошлом поиске были 2gis + yandex_maps, копируем только
+    запрошенный source — UI с режимом «только 2gis» не должен получить
+    чужие компании."""
+    niche = _unique_id("multi")
+    city = _unique_id("city")
+    async with AsyncSessionLocal() as db:
+        user_id = await _make_user_id(db)
+        prev = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city=city, sources=["2gis", "yandex_maps"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("g"), name="G1", niche=niche, city=city),
+            CompanyRaw(source="2gis", external_id=_unique_id("g"), name="G2", niche=niche, city=city),
+            CompanyRaw(source="yandex_maps", external_id=_unique_id("y"), name="Y1", niche=niche, city=city),
+        ], prev.id)
+        prev.status = "completed"
+        prev.finished_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        new_search = MapSearch(
+            user_id=user_id, niche=niche, city=city,
+            sources="2gis", status="pending",
+        )
+        db.add(new_search)
+        await db.commit()
+        await db.refresh(new_search)
+
+        copied = await service.copy_results_from_previous_search(
+            db, niche=niche, city=city, source="2gis", new_search_id=new_search.id,
+        )
+        assert copied == 2  # только две 2gis-компании, yandex_maps не копируется

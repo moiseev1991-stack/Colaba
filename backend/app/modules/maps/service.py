@@ -100,6 +100,94 @@ async def upsert_cache_entry(
     await db.commit()
 
 
+async def delete_cache_entry(
+    db: AsyncSession,
+    niche: str,
+    city: str,
+    source: str,
+) -> None:
+    """Удаляет запись кэша для (niche, city, source). Используется когда кэш
+    оказался «битым» — есть запись в map_search_cache, но в map_search_results
+    прошлого поиска нет реальных компаний (например, после CaptchaWallError
+    в середине прошлой партии). Позволяет следующему запросу полноценно перепарсить."""
+    from sqlalchemy import delete as sql_delete
+
+    await db.execute(
+        sql_delete(MapSearchCache).where(
+            MapSearchCache.niche == niche,
+            MapSearchCache.city == city,
+            MapSearchCache.source == source,
+        )
+    )
+    await db.commit()
+
+
+async def copy_results_from_previous_search(
+    db: AsyncSession,
+    niche: str,
+    city: str,
+    source: str,
+    new_search_id: int,
+) -> int:
+    """Копирует map_search_results из последнего успешного MapSearch с такими же
+    (niche, city) и source, входящим в его sources, в новый поиск new_search_id.
+
+    Используется при cache hit: данные уже есть в companies/reviews, но без
+    привязки к новому поиску UI покажет 0 результатов. Копирование делается
+    одним INSERT ... SELECT, фильтруя companies по source — даже если прошлый
+    поиск был мультисурсный, копируем только нужный источник.
+
+    Возвращает количество вставленных связей (0 — значит реальных данных
+    в прошлом поиске не было, кэш можно считать битым)."""
+    prev_q = (
+        select(MapSearch.id)
+        .where(
+            MapSearch.niche == niche,
+            MapSearch.city == city,
+            MapSearch.status == "completed",
+            MapSearch.sources.ilike(f"%{source}%"),
+            MapSearch.id != new_search_id,
+        )
+        .order_by(MapSearch.finished_at.desc().nullslast(), MapSearch.id.desc())
+        .limit(1)
+    )
+    prev_id = (await db.execute(prev_q)).scalar_one_or_none()
+    if prev_id is None:
+        return 0
+
+    # INSERT ... SELECT с дедупом — если в новом поиске уже есть запись
+    # (теоретически после ретрая), не падаем по PK.
+    await db.execute(
+        text(
+            """
+            INSERT INTO map_search_results (map_search_id, company_id, position)
+            SELECT :new_id, msr.company_id, msr.position
+            FROM map_search_results msr
+            JOIN companies c ON c.id = msr.company_id
+            WHERE msr.map_search_id = :prev_id
+              AND c.source = :source
+            ON CONFLICT (map_search_id, company_id) DO NOTHING
+            """
+        ),
+        {"new_id": new_search_id, "prev_id": prev_id, "source": source},
+    )
+    inserted = (
+        await db.execute(
+            select(func.count()).select_from(
+                select(MapSearchResult)
+                .join(Company, Company.id == MapSearchResult.company_id)
+                .where(
+                    MapSearchResult.map_search_id == new_search_id,
+                    Company.source == source,
+                )
+                .subquery()
+            )
+        )
+    ).scalar_one() or 0
+    await db.commit()
+    return int(inserted)
+
+
 # ---------------------------------------------------------------------------
 # Map search lifecycle
 # ---------------------------------------------------------------------------
@@ -114,26 +202,62 @@ async def create_map_search(
     organization_id: int | None = None,
     filters: MapSearchFilter | None = None,
 ) -> MapSearch:
-    """Создаёт запись MapSearch. Статус начально 'pending' (Celery-задача
-    переключит на 'running'/'completed'/'failed').
+    """Создаёт запись MapSearch и решает: брать из кэша или ставить парсинг.
 
-    Если для всех sources кэш свежий — статус сразу 'from_cache'.
-    В обоих случаях возвращается ORM-объект, привязанный к сессии.
+    Логика на каждый source:
+      1) есть свежая запись map_search_cache → пробуем скопировать
+         map_search_results из последнего успешного MapSearch с теми же
+         (niche, city) и этим source;
+      2) если скопировано >0 — этот source считается «отдан из кэша»;
+      3) если скопировано 0 (битый или осиротевший кэш — например, прошлый
+         парсинг упал в CaptchaWallError до полной партии) — удаляем
+         запись кэша и считаем, что для этого source кэша нет, чтобы
+         Celery нормально перепарсил.
+
+    Если все sources успешно отданы из кэша — status='from_cache' и Celery
+    не ставится. Если хоть один не из кэша — status='pending', и Celery
+    задача парсит только некэшированные источники (см. tasks._parse_map_search_async,
+    где внутри ещё раз вызывается check_cache).
     """
-    cache_hits = [await check_cache(db, niche=niche, city=city, source=s) for s in sources]
-    all_cached = bool(sources) and all(cache_hits)
-    status = "from_cache" if all_cached else "pending"
-
     search = MapSearch(
         user_id=user_id,
         organization_id=organization_id,
         niche=niche,
         city=city,
         sources=",".join(sources),
-        status=status,
+        status="pending",  # переопределим ниже, когда узнаем итог по кэшу
         filters=filters.model_dump(exclude_none=True) if filters else None,
     )
     db.add(search)
+    await db.commit()
+    await db.refresh(search)
+
+    cached_sources: list[str] = []
+    total_copied = 0
+    for s in sources:
+        if not await check_cache(db, niche=niche, city=city, source=s):
+            continue
+        copied = await copy_results_from_previous_search(
+            db, niche=niche, city=city, source=s, new_search_id=search.id,
+        )
+        if copied > 0:
+            cached_sources.append(s)
+            total_copied += copied
+        else:
+            # Кэш есть, но реальных результатов нет — чистим запись, чтобы
+            # следующий парсинг прошёл нормально.
+            logger.warning(
+                "create_map_search: stale cache for (%s, %s, %s) — no rows to copy, dropping",
+                niche, city, s,
+            )
+            await delete_cache_entry(db, niche=niche, city=city, source=s)
+
+    all_cached = bool(sources) and len(cached_sources) == len(sources)
+    search.status = "from_cache" if all_cached else "pending"
+    if total_copied:
+        search.companies_found = total_copied
+    if all_cached:
+        search.finished_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(search)
     return search

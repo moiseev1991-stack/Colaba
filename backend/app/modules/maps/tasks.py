@@ -57,29 +57,37 @@ def _build_provider(source: str, db):
     return cls()
 
 
-async def _parse_companies_for_source(db, search: MapSearch, source: str) -> int:
+async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tuple[int, bool]:
     """Прогоняет provider.search_companies через batch-сейв.
     После каждой партии ставит parse_company_reviews.delay.
-    Возвращает количество найденных компаний."""
+
+    Возвращает (count, completed):
+      - count: сколько компаний реально сохранено и привязано к поиску
+        (пропущенный хвост батча при exception не учитывается).
+      - completed: True если итератор провайдера дошёл до конца без
+        CaptchaWallError/RateLimitError. False означает «парсинг частичный,
+        кэш писать нельзя».
+    """
     try:
         provider = _build_provider(source, db)
     except MissingAPIKeyError as e:
         logger.warning("parse_map_search source=%s missing api key: %s", source, e)
-        return 0
+        return 0, False
 
     from app.core.config import settings
     limit = settings.MAPS_MAX_COMPANIES_PER_SEARCH
 
     batch: list[CompanyRaw] = []
-    yielded = 0
+    saved_count = 0
     position_cursor = 0
+    completed = True
     try:
         async for company_raw in provider.search_companies(search.niche, search.city, limit=limit):
             batch.append(company_raw)
-            yielded += 1
             if len(batch) >= COMPANIES_BATCH_SIZE:
                 saved = await service.save_companies_batch(db, batch, search.id, start_position=position_cursor)
                 position_cursor += len(batch)
+                saved_count += len(saved)
                 batch = []
                 for company in saved:
                     await service.publish_progress_event(
@@ -89,6 +97,7 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> int
                     parse_company_reviews.delay(company.id, source)
         if batch:
             saved = await service.save_companies_batch(db, batch, search.id, start_position=position_cursor)
+            saved_count += len(saved)
             for company in saved:
                 await service.publish_progress_event(
                     search.id, "company",
@@ -97,11 +106,12 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> int
                 parse_company_reviews.delay(company.id, source)
     except CaptchaWallError as e:
         logger.warning("parse_map_search source=%s captcha wall: %s", source, e)
-        # дальше по другим источникам идём
+        completed = False
     except RateLimitError as e:
         logger.warning("parse_map_search source=%s rate-limit: %s", source, e)
+        completed = False
 
-    return yielded
+    return saved_count, completed
 
 
 async def _parse_map_search_async(search_id: int) -> None:
@@ -122,9 +132,12 @@ async def _parse_map_search_async(search_id: int) -> None:
                 if await service.check_cache(db, search.niche, search.city, source):
                     logger.info("parse_map_search: cache hit for %s/%s/%s", search.niche, search.city, source)
                     continue
-                count = await _parse_companies_for_source(db, search, source)
+                count, completed = await _parse_companies_for_source(db, search, source)
                 total_found += count
-                if count > 0:
+                # Кэш пишем только при полном успехе. Если парсинг прервался
+                # (капча, рейтлимит) — лучше не писать кэш, чтобы следующий
+                # запрос мог нормально перепарсить.
+                if completed and count > 0:
                     await service.upsert_cache_entry(
                         db, search.niche, search.city, source,
                         companies_count=count, reviews_count=0,
