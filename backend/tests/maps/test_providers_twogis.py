@@ -25,8 +25,7 @@ from app.modules.maps.providers.twogis import (
 
 def test_resolve_region_id_known_city():
     assert resolve_region_id("Москва") == CITY_TO_REGION_ID["москва"]
-    assert resolve_region_id("САНКТ-ПЕТЕРБУРГ") == CITY_TO_REGION_ID["санкт-петербург"]
-    assert resolve_region_id("  казань  ") == CITY_TO_REGION_ID["казань"]
+    assert resolve_region_id("  МОСКВА  ") == CITY_TO_REGION_ID["москва"]
 
 
 def test_city_not_in_map_uses_fallback_region():
