@@ -362,3 +362,42 @@ async def test_copy_results_filters_by_source_for_multi_source_previous_search()
             db, niche=niche, city=city, source="2gis", new_search_id=new_search.id,
         )
         assert copied == 2  # только две 2gis-компании, yandex_maps не копируется
+
+
+@pytest.mark.asyncio
+async def test_list_search_companies_missing_reviews_returns_only_empty_ones():
+    """list_search_companies_missing_reviews отдаёт только компании с
+    reviews_count == 0; компания с отзывами не попадает в список."""
+    niche = _unique_id("miss")
+    city = _unique_id("city")
+    async with AsyncSessionLocal() as db:
+        user_id = await _make_user_id(db)
+        search = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("a"), name="A", niche=niche, city=city),
+            CompanyRaw(source="2gis", external_id=_unique_id("b"), name="B", niche=niche, city=city),
+            CompanyRaw(source="2gis", external_id=_unique_id("c"), name="C", niche=niche, city=city),
+        ], search.id)
+
+        # одной компании докинем отзыв и обновим агрегаты — она должна выпасть из missing
+        companies = (await db.execute(
+            select(Company)
+            .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+            .where(MapSearchResult.map_search_id == search.id)
+            .order_by(Company.name)
+        )).scalars().all()
+        a_id = companies[0].id
+        await service.save_reviews_batch(db, a_id, [
+            ReviewRaw(source="2gis", rating=5, raw_text=f"u-{uuid.uuid4()}"),
+        ])
+        await service.update_company_aggregates(db, a_id)
+
+        missing = await service.list_search_companies_missing_reviews(db, search.id)
+        ids = {c[0] for c in missing}
+        # A с отзывом не должна быть в списке; B и C — должны
+        assert a_id not in ids
+        assert {companies[1].id, companies[2].id}.issubset(ids)
+        # source отдаётся корректно
+        assert all(src == "2gis" for _, src in missing)

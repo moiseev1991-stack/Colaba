@@ -112,6 +112,21 @@ async def create_map_search(
         # ставим задачу только если кэш не отработал; импорт локальный — иначе circular
         from app.modules.maps.tasks import parse_map_search as parse_task
         parse_task.delay(search.id)
+    elif search.status == "from_cache":
+        # Кэш отработал и скопировал карточки, но у части компаний может не
+        # быть отзывов — в прошлый раз parse_company_reviews для них мог
+        # упасть на rate-limit / capche или быть потерян при перезапуске
+        # Celery. Перепоставим задачи: те, у кого reviews_count > 0, не лезут
+        # сюда; для остальных воркер сходит в 2GIS widget API ещё раз.
+        missing = await service.list_search_companies_missing_reviews(db, search.id)
+        if missing:
+            from app.modules.maps.tasks import parse_company_reviews
+            for company_id, source in missing:
+                parse_company_reviews.delay(company_id, source)
+            logger.info(
+                "create_map_search #%d from_cache: enqueued %d parse_company_reviews tasks",
+                search.id, len(missing),
+            )
 
     return search
 

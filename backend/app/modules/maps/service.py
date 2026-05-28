@@ -444,6 +444,29 @@ async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
 # ---------------------------------------------------------------------------
 
 
+async def list_search_companies_missing_reviews(
+    db: AsyncSession,
+    search_id: int,
+) -> list[tuple[int, str]]:
+    """Возвращает [(company_id, source), …] компаний этого поиска, у которых
+    reviews_count == 0.
+
+    Используется при cache hit: если прошлый прогон сохранил карточки, но
+    parse_company_reviews для большинства компаний упал/не дошёл (rate-limit
+    у 2GIS public widget, упавший Celery после ребута и т.п.) — нужно
+    допарсить отзывы, иначе UI показывает «0 отзывов» у всех."""
+    q = (
+        select(Company.id, Company.source)
+        .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+        .where(
+            MapSearchResult.map_search_id == search_id,
+            Company.reviews_count == 0,
+        )
+    )
+    rows = (await db.execute(q)).all()
+    return [(int(cid), src) for cid, src in rows]
+
+
 async def get_search_results(
     db: AsyncSession,
     search_id: int,

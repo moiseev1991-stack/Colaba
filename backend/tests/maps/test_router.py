@@ -291,3 +291,59 @@ async def test_stream_endpoint_returns_200_text_event_stream():
             assert r.status_code == 200
             ctype = r.headers.get("content-type", "")
             assert "text/event-stream" in ctype
+
+
+@pytest.mark.asyncio
+async def test_create_search_from_cache_enqueues_reviews_for_empty_companies(monkeypatch):
+    """При cache hit роутер должен перепоставить parse_company_reviews
+    для компаний, у которых нет отзывов — иначе скопированные из прошлого
+    поиска карточки останутся «пустыми» в UI."""
+    from datetime import datetime, timezone
+    from app.modules.maps import tasks as maps_tasks
+
+    # parse_map_search.delay не должен вызываться (это not pending case)
+    map_calls: list[int] = []
+    monkeypatch.setattr(
+        maps_tasks.parse_map_search, "delay", lambda sid: map_calls.append(sid)
+    )
+    # parse_company_reviews.delay — должен быть вызван по числу пустых компаний
+    review_calls: list[tuple[int, str]] = []
+    monkeypatch.setattr(
+        maps_tasks.parse_company_reviews, "delay",
+        lambda cid, src: review_calls.append((cid, src)),
+    )
+
+    niche = _unique_id("frc")
+    city = _unique_id("city")
+    user_id, headers = await _create_user()
+
+    # сидим прошлый успешный поиск с 3 компаниями (без отзывов) + кэш
+    async with AsyncSessionLocal() as db:
+        prev = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("e1"), name="Empty1", niche=niche, city=city),
+            CompanyRaw(source="2gis", external_id=_unique_id("e2"), name="Empty2", niche=niche, city=city),
+            CompanyRaw(source="2gis", external_id=_unique_id("e3"), name="Empty3", niche=niche, city=city),
+        ], prev.id)
+        prev.status = "completed"
+        prev.finished_at = datetime.now(timezone.utc)
+        await db.commit()
+        await service.upsert_cache_entry(db, niche, city, "2gis", companies_count=3, reviews_count=0)
+
+    async with _client() as c:
+        r = await c.post(
+            "/api/v1/maps/search",
+            headers=headers,
+            json={"niche": niche, "city": city, "sources": ["2gis"]},
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["status"] == "from_cache"
+
+    # parse_map_search для from_cache не должен вызываться
+    assert map_calls == []
+    # для каждой из 3 пустых компаний — таск на отзывы
+    assert len(review_calls) == 3
+    assert {src for _, src in review_calls} == {"2gis"}
