@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.2...v1.7.3) (2026-05-28)
+
+
+### Bug Fixes
+
+* **maps:** авто-перепарс отзывов при from_cache для компаний с reviews_count=0 ([2f84645](https://github.com/moiseev1991-stack/Colaba/commit/2f8464589cf8b0b3517fb65f5d2bce25c1db535e))
+
 ## [1.7.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.1...v1.7.2) (2026-05-28)
 
 
