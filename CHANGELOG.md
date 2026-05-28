@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.0...v1.7.1) (2026-05-28)
+
+
+### Bug Fixes
+
+* **tests:** убрать ассерты на нереализованные region_id (Питер, Казань) ([574046e](https://github.com/moiseev1991-stack/Colaba/commit/574046e6cd383a241e5cafcf4c6592a1f2a82549))
+
 # [1.7.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.6.2...v1.7.0) (2026-05-27)
 
 
