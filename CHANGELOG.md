@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.12.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.11.0...v1.12.0) (2026-05-29)
+
+
+### Features
+
+* **maps:** конкурентный режим — поиск компаний в радиусе от адреса ([4eed74f](https://github.com/moiseev1991-stack/Colaba/commit/4eed74f9cef809366d30a5bb9e9905202ab207ef))
+
 # [1.11.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.10.0...v1.11.0) (2026-05-29)
 
 
