@@ -132,7 +132,7 @@ class Settings(BaseSettings):
 
     # === Maps module ===
     TWOGIS_API_KEY: str = Field(default="", description="2GIS Catalog API key (dev.2gis.com, free 1000 req/day)")
-    TWOGIS_RATE_LIMIT_DELAY: float = Field(default=1.1, description="Delay (sec) between 2GIS requests, anti-throttle")
+    TWOGIS_RATE_LIMIT_DELAY: float = Field(default=0.4, description="Delay (sec) between 2GIS requests, anti-throttle. На free-плане лимит 1000 req/day, поэтому 0.4с между запросами безопасно (≤150 req/min).")
     TWOGIS_REVIEWS_PUBLIC_API_ENABLED: bool = Field(default=True, description="Fallback на public-api.reviews.2gis.com (widget API, без платного ключа). False = только Catalog reviews/list (платно).")
     TWOGIS_REVIEWS_PUBLIC_API_KEY: str = Field(default="", description="Optional widget key для public-api.reviews.2gis.com. Пусто = пробуем без ключа (часто достаточно).")
     YANDEX_MAPS_RATE_LIMIT_DELAY: float = Field(default=3.5, description="Base delay (sec) between Yandex Maps requests; jittered ±1s in code")

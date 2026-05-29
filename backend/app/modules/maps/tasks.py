@@ -39,7 +39,11 @@ PROVIDERS_REGISTRY = {
     "yandex_maps": YandexMapsProvider,
 }
 
-COMPANIES_BATCH_SIZE = 20
+# 5 вместо 20 — на multi-query expansion с 4 синонимами и дедупом по
+# external_id первые 20 уникальных набираются медленно (особенно для региональных
+# поисков, где 2GIS отвечает 5-10с на страницу). При 5 компаний flush —
+# первые карточки появляются в UI уже через 5-15 секунд после старта.
+COMPANIES_BATCH_SIZE = 5
 REVIEWS_BATCH_SIZE = 20
 
 
@@ -105,44 +109,47 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
     saved_count = 0
     position_cursor = 0
     completed = True
+    completed_flag = [True]  # mutable wrapper для замыкания внутри _consume_query
+
+    # Семафор для упорядоченного flush — провайдеры могут давать компании
+    # в любом порядке, но save_companies_batch должен идти последовательно,
+    # чтобы не было race на position_cursor.
+    flush_lock = asyncio.Lock()
 
     async def flush_batch() -> None:
         """Сохраняет batch, ставит downstream-таски и шлёт SSE-events."""
         nonlocal batch, saved_count, position_cursor
         if not batch:
             return
-        saved = await service.save_companies_batch(
-            db, batch, search.id, start_position=position_cursor,
-        )
-        position_cursor += len(batch)
-        saved_count += len(saved)
-        for company in saved:
-            await service.publish_progress_event(
-                search.id, "company",
-                {"company_id": company.id, "name": company.name, "position": position_cursor},
+        async with flush_lock:
+            to_save = batch
+            batch = []
+            saved = await service.save_companies_batch(
+                db, to_save, search.id, start_position=position_cursor,
             )
-            parse_company_reviews.delay(company.id, source)
-            _maybe_enrich_contacts(company)
-        batch = []
+            position_cursor += len(to_save)
+            saved_count += len(saved)
+            for company in saved:
+                await service.publish_progress_event(
+                    search.id, "company",
+                    {"company_id": company.id, "name": company.name, "position": position_cursor},
+                )
+                parse_company_reviews.delay(company.id, source)
+                _maybe_enrich_contacts(company)
 
-    for q_idx, query in enumerate(queries):
-        if saved_count >= limit:
-            logger.info("parse_map_search: достигнут общий лимит %d, прекращаем синонимы", limit)
-            break
+    async def _consume_query(q_idx: int, query: str) -> None:
+        """Стримит один синоним, дедупит и кладёт в общий batch."""
+        nonlocal batch, saved_count
         try:
             async for company_raw in provider.search_companies(query, search.city, limit=limit):
-                # Дедуп между синонимами по external_id (одна и та же компания
-                # часто всплывает в нескольких запросах — берём первую копию).
+                if saved_count >= limit:
+                    return
                 ext_id = company_raw.external_id
                 if ext_id in seen_external_ids:
                     continue
                 seen_external_ids.add(ext_id)
-
-                # Нормализация: пользователь искал «юридические услуги», в БД у
-                # компании niche должно быть это же значение, а не "юристы" из
-                # конкретного запроса. Иначе сломается фильтрация по нише в pain_tags.
+                # Нормализуем нишу под search.niche (а не текущий синоним).
                 company_raw.niche = search.niche
-
                 batch.append(company_raw)
                 if len(batch) >= COMPANIES_BATCH_SIZE:
                     await flush_batch()
@@ -154,26 +161,29 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                             "queries_total": len(queries), "queries_done": q_idx,
                         },
                     )
-
-                if saved_count + len(batch) >= limit:
-                    break
         except CaptchaWallError as e:
             logger.warning("parse_map_search source=%s captcha wall on q=%r: %s", source, query, e)
-            completed = False
-            break
+            completed_flag[0] = False
         except RateLimitError as e:
             logger.warning("parse_map_search source=%s rate-limit on q=%r: %s", source, query, e)
-            completed = False
-            break
+            completed_flag[0] = False
         except RuntimeError as e:
-            # Логическая ошибка одного синонима не должна валить остальные.
-            # Например, «юр.услуги» может вернуть meta.code=400, а «адвокаты» — компании.
-            # 2GIS-провайдер сам возвращает пустоту на 400, но страхуемся для других провайдеров.
             logger.warning(
-                "parse_map_search source=%s runtime error on q=%r: %s — продолжаем со следующим синонимом",
+                "parse_map_search source=%s runtime error on q=%r: %s — синоним пропущен",
                 source, query, e,
             )
-            continue
+        except Exception as e:
+            logger.exception("parse_map_search: неожиданная ошибка в синониме %r: %s", query, e)
+
+    # Параллельный multi-query через asyncio.gather. Раньше синонимы шли
+    # последовательно — на 4 синонима × 5 страниц × 1.1с rate_limit получалось
+    # 25-40 секунд до первой видимой партии. Сейчас все синонимы стартуют
+    # одновременно, общее время — как самого медленного (~5-10с).
+    await asyncio.gather(
+        *(_consume_query(i, q) for i, q in enumerate(queries)),
+        return_exceptions=True,
+    )
+    completed = completed_flag[0]
 
     # хвост последнего батча
     try:
