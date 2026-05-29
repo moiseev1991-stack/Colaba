@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.3...v1.9.4) (2026-05-29)
+
+
+### Performance Improvements
+
+* **maps:** первые карточки появляются за 5-15с (batch=5, parallel queries, rate=0.4) ([617010f](https://github.com/moiseev1991-stack/Colaba/commit/617010ff2f11396e13b1e635f2094921ce219a26))
+
 ## [1.9.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.2...v1.9.3) (2026-05-29)
 
 
