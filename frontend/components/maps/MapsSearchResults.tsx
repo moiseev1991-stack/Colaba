@@ -220,27 +220,38 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <div className="font-medium">Поиск завершился ошибкой</div>
             <div className="mt-1 text-red-700">
-              {search.error_type === 'ConnectTimeout' || search.error_type === 'MissingAPIKeyError' ? (
-                search.error_type === 'ConnectTimeout' ? (
-                  <>
-                    2GIS API не отвечает с этой машины (TLS-таймаут). Чаще всего это сеть провайдера или
-                    SNI-фильтрация 2GIS — после деплоя на сервер с РФ-IP должно заработать.
-                  </>
-                ) : (
-                  <>
-                    Не настроен <code>TWOGIS_API_KEY</code> в <code>.env</code>. Получи демо-ключ на{' '}
-                    <a href="https://dev.2gis.com" className="underline" target="_blank" rel="noopener noreferrer">
-                      dev.2gis.com
-                    </a>{' '}
-                    и положи в env.
-                  </>
-                )
+              {search.error_type === 'ConnectTimeout' ? (
+                <>
+                  2GIS API не отвечает с этой машины (TLS-таймаут). Чаще всего это сеть провайдера
+                  или SNI-фильтрация 2GIS — после деплоя на сервер с РФ-IP должно заработать.
+                </>
+              ) : search.error_type === 'MissingAPIKeyError' ? (
+                <>
+                  Не настроен <code>TWOGIS_API_KEY</code> в <code>.env</code>. Получи демо-ключ
+                  на{' '}
+                  <a href="https://dev.2gis.com" className="underline" target="_blank" rel="noopener noreferrer">
+                    dev.2gis.com
+                  </a>{' '}
+                  и положи в env.
+                </>
               ) : (
-                <>{search.error_type ?? 'Неизвестная ошибка'}. Подробности в логах celery-worker.</>
+                <>
+                  {search.error ||
+                    `${search.error_type ?? 'Неизвестная ошибка'}. Подробности в логах celery-worker.`}
+                </>
               )}
             </div>
           </div>
         )}
+
+        {search.status === 'completed' &&
+          search.error_type === 'EmptyResult' &&
+          renderTotal === 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="font-medium">Ничего не нашлось</div>
+              <div className="mt-1 text-amber-700">{search.error}</div>
+            </div>
+          )}
 
         {isLoading && renderList.length === 0 && search.status !== 'failed' && (
           <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">

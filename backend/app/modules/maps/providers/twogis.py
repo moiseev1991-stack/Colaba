@@ -269,16 +269,31 @@ class TwoGisProvider(MapProvider):
             resp.raise_for_status()
             data = resp.json()
             # 2GIS отдаёт HTTP 200 + meta.code != 200 при логических ошибках
-            # (например, page_size вне диапазона). Без этой проверки items=[] и парсер
-            # тихо завершается с yielded=0 — приходится лезть в логи 2GIS вручную.
+            # (page_size вне диапазона, ничего не найдено по запросу, неподдерживаемая
+            # категория, нечитаемая ниша вроде опечаток). Без этой проверки items=[]
+            # и парсер тихо завершается с yielded=0 — приходится лезть в логи 2GIS вручную.
             meta = data.get("meta") or {}
             meta_code = meta.get("code")
             if isinstance(meta_code, int) and meta_code >= 400:
                 err = (meta.get("error") or {}).get("message") or str(meta.get("error"))
-                logger.error("2gis API logical error %s on %s: %s (params=%s)", meta_code, url, err, params)
                 if meta_code in (401, 403):
+                    logger.error(
+                        "2gis API auth error %s on %s: %s (params=%s)", meta_code, url, err, params,
+                    )
                     raise MissingAPIKeyError(f"2GIS meta.code={meta_code}: {err}")
-                raise RuntimeError(f"2GIS API error (meta.code={meta_code}): {err}")
+                # Любые другие meta.code (400 «ничего не найдено» / «параметр X неверен» /
+                # 404 «Method not found» на reviews/list) — это НЕ повод валить весь
+                # search-таск. Логируем warning и возвращаем пустую структуру, чтобы
+                # caller завершился с yielded=0 и search получил status='completed'
+                # без companies. RuntimeError бросаем только на reviews/list — там
+                # caller (fetch_reviews_catalog) ловит и fallback'ит на public API.
+                logger.warning(
+                    "2gis API logical %s on %s: %s (params=%s) — возвращаем пусто",
+                    meta_code, url, err, params,
+                )
+                if "/reviews/list" in url:
+                    raise RuntimeError(f"2GIS API error (meta.code={meta_code}): {err}")
+                return {"meta": meta, "result": {"items": [], "total": 0}}
             return data
 
         if last_exc:

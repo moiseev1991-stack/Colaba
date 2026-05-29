@@ -126,6 +126,15 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
     except RateLimitError as e:
         logger.warning("parse_map_search source=%s rate-limit: %s", source, e)
         completed = False
+    except RuntimeError as e:
+        # Страховка: если провайдер всё-таки бросит RuntimeError (которая обычно
+        # покрывает «логическую» ошибку API на странных запросах) — НЕ валим
+        # весь поиск, просто считаем что для этого source ничего не нашли.
+        # 2GIS-провайдер для search/items сейчас уже сам возвращает пусто на
+        # meta.code=400, но оставляем катч как защиту от регрессий и от других
+        # источников (Я.Карты).
+        logger.warning("parse_map_search source=%s runtime error: %s", source, e)
+        completed = False
 
     return saved_count, completed
 
@@ -162,6 +171,16 @@ async def _parse_map_search_async(search_id: int) -> None:
             search.companies_found = total_found
             search.status = "completed"
             search.finished_at = datetime.now(timezone.utc)
+            if total_found == 0:
+                # Полезный сигнал для UI: успешно завершили, но 0 компаний.
+                # Самые частые причины — опечатка в нише, узкий запрос, недоступная
+                # категория. Чтобы не оставлять юзера в догадках, пишем подсказку
+                # в .error (UI решит — показывать как warning, или как hint).
+                search.error = (
+                    "По этому запросу 2GIS ничего не вернул. "
+                    "Попробуй переформулировать нишу или сменить город."
+                )
+                search.error_type = "EmptyResult"
             await db.commit()
             await service.publish_progress_event(
                 search.id, "done",
