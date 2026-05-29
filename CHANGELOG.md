@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.8.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.3...v1.8.0) (2026-05-29)
+
+
+### Features
+
+* **db:** миграция 018 + ORM для контактов компании, top_quote, lead_lists ([b6e0952](https://github.com/moiseev1991-stack/Colaba/commit/b6e0952d49dc388eca736c6b6e9151a9b77ee6d3))
+* **lead-lists:** новый модуль — списки лидов + конвертация в EmailCampaign ([42bb7bc](https://github.com/moiseev1991-stack/Colaba/commit/42bb7bccf269cce614cde1733e6473ba404f1b2d))
+* **maps-ui,lead-lists-ui:** кнопки [список][письмо], цитаты, /lists, /demo, быстрый старт ([c502de7](https://github.com/moiseev1991-stack/Colaba/commit/c502de730b2b4a61e5b2a7ad3894a35d78ad6c52))
+* **maps,reviews-ai:** обогащение контактов, цитата под болью, LLM-драфт письма, progress в SSE ([5d61596](https://github.com/moiseev1991-stack/Colaba/commit/5d6159634c9ab80a45c3504b31aa937836ef54d1))
+
 ## [1.7.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.2...v1.7.3) (2026-05-28)
 
 
