@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.2...v1.9.3) (2026-05-29)
+
+
+### Bug Fixes
+
+* **lead-lists:** _to_detail использовал CompanyOut до его импорта ([ba4d5ff](https://github.com/moiseev1991-stack/Colaba/commit/ba4d5ff36df7b9732c7863370f90ae6968696c98))
+
 ## [1.9.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.1...v1.9.2) (2026-05-29)
 
 
