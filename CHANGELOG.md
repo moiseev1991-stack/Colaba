@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.8.1...v1.8.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* **maps:** 2GIS meta.code=400 больше не валит весь поиск ([ae21313](https://github.com/moiseev1991-stack/Colaba/commit/ae213137759cf81643e5c851b7dbd1a70420b867))
+
 ## [1.8.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.8.0...v1.8.1) (2026-05-29)
 
 
