@@ -78,6 +78,15 @@ export interface PainTagOut {
   status: string;
 }
 
+export interface CompanyPainOut {
+  pain_tag_id: number;
+  label: string;
+  description?: string | null;
+  mention_count: number;
+  top_quote?: string | null;
+  top_quote_similarity?: number | null;
+}
+
 export interface CompanyOut {
   id: number;
   name: string;
@@ -96,6 +105,18 @@ export interface CompanyOut {
   last_review_at?: string | null;
   source: string;
   pain_tags: PainTagShort[];
+  emails?: string[] | null;
+  contacts_extra?: Record<string, unknown> | null;
+  top_pains?: CompanyPainOut[];
+}
+
+export interface OutreachDraftOut {
+  company_id: number;
+  company_name: string;
+  subject: string;
+  body: string;
+  used_pains: CompanyPainOut[];
+  suggested_to_emails: string[];
 }
 
 export interface ReviewOut {
@@ -256,6 +277,15 @@ export async function nicheSuggestions(q = ''): Promise<string[]> {
 
 export async function getProvidersHealth(): Promise<ProvidersHealthOut> {
   const response = await apiClient.get<ProvidersHealthOut>('/maps/health/providers');
+  return response.data;
+}
+
+/** POST /maps/companies/{id}/draft-email — LLM-генерация драфта холодного письма. */
+export async function draftEmailForCompany(companyId: number): Promise<OutreachDraftOut> {
+  const response = await apiClient.post<OutreachDraftOut>(
+    `/maps/companies/${companyId}/draft-email`,
+    {}
+  );
   return response.data;
 }
 

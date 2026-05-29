@@ -8,6 +8,8 @@
  * Tabs без shadcn — простые кнопки на Tailwind (shadcn в проекте не установлен).
  */
 
+import { ListPlus } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 import LegacyLeadsPanel from './_components/LegacyLeadsPanel';
@@ -17,17 +19,17 @@ import { cn } from '@/lib/utils';
 type Tab = 'sites' | 'maps';
 
 const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'sites', label: 'По сайтам' },
   { id: 'maps', label: 'По картам' },
+  { id: 'sites', label: 'По сайтам' },
 ];
 
 export default function LeadsPage() {
-  const [tab, setTab] = useState<Tab>('sites');
+  const [tab, setTab] = useState<Tab>('maps');
 
   return (
     <div className="space-y-4">
       <div className="mx-auto max-w-[1200px] px-6 pt-6">
-        <div className="border-b border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200">
           <nav className="-mb-px flex gap-4">
             {TABS.map((t) => (
               <button
@@ -45,6 +47,13 @@ export default function LeadsPage() {
               </button>
             ))}
           </nav>
+          <Link
+            href="/app/leads/lists"
+            className="mb-1 inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <ListPlus className="h-4 w-4" />
+            Мои списки
+          </Link>
         </div>
       </div>
 

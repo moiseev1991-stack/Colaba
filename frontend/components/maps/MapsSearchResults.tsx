@@ -13,17 +13,21 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { AddToListModal } from '@/components/maps/AddToListModal';
+import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
+  draftEmailForCompany,
   exportSearchCsvUrl,
   getMapSearch,
   listMapCompanies,
   type CompanyOut,
   type MapSearchFilter,
   type MapSearchOut,
+  type OutreachDraftOut,
 } from '@/src/services/api/maps';
 
 interface Props {
@@ -41,6 +45,37 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   const [filter, setFilter] = useState<MapSearchFilter>(DEFAULT_FILTER);
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
+  const [addToListCompanyId, setAddToListCompanyId] = useState<number | null>(null);
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftLoadingCompanyId, setDraftLoadingCompanyId] = useState<number | null>(null);
+  const [draftData, setDraftData] = useState<OutreachDraftOut | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const onAddToList = useCallback((c: any) => {
+    const id = c.id ?? c.company_id;
+    if (id != null) setAddToListCompanyId(id);
+  }, []);
+
+  const onDraftEmail = useCallback(async (c: any) => {
+    const id = c.id ?? c.company_id;
+    if (id == null) return;
+    setDraftOpen(true);
+    setDraftLoading(true);
+    setDraftLoadingCompanyId(id);
+    setDraftData(null);
+    setDraftError(null);
+    try {
+      const draft = await draftEmailForCompany(id);
+      setDraftData(draft);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || e?.message || 'Не удалось сгенерировать письмо';
+      setDraftError(typeof detail === 'string' ? detail : JSON.stringify(detail));
+    } finally {
+      setDraftLoading(false);
+      setDraftLoadingCompanyId(null);
+    }
+  }, []);
 
   const stream = useSearchStream(
     initialMode === 'searching' && !TERMINAL_STATUSES.has(initialSearch.status)
@@ -138,9 +173,20 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
             <p className="text-sm text-slate-500">
               Источники: {search.sources}. Статус: {search.status}.{' '}
               {stream.progress &&
-                `Парсим: ${stream.progress.companies_processed ?? stream.progress.processed ?? 0}` +
-                  (stream.progress.companies_total ?? stream.progress.total
-                    ? ` / ${stream.progress.companies_total ?? stream.progress.total}`
+                `Парсим: ${
+                  stream.progress.companies_processed ??
+                  stream.progress.processed ??
+                  stream.progress.saved ??
+                  0
+                }` +
+                  (stream.progress.companies_total ??
+                  stream.progress.total ??
+                  stream.progress.expected
+                    ? ` / ${
+                        stream.progress.companies_total ??
+                        stream.progress.total ??
+                        stream.progress.expected
+                      }`
                     : '') +
                   '. '}
               Найдено компаний: {search.companies_found ?? renderTotal}.
@@ -213,6 +259,9 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
                   key={id}
                   company={c}
                   onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
+                  onAddToList={id != null ? onAddToList : undefined}
+                  onDraftEmail={id != null ? onDraftEmail : undefined}
+                  draftEmailLoading={draftLoadingCompanyId === id}
                 />
               );
             })}
@@ -223,6 +272,21 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
       <MapsCompanyDetailDrawer
         companyId={drawerCompanyId}
         onClose={() => setDrawerCompanyId(null)}
+      />
+
+      <AddToListModal
+        open={addToListCompanyId != null}
+        companyIds={addToListCompanyId != null ? [addToListCompanyId] : []}
+        defaultListName={`${search.niche} — ${search.city}`}
+        onClose={() => setAddToListCompanyId(null)}
+      />
+
+      <DraftEmailModal
+        open={draftOpen}
+        draft={draftData}
+        loading={draftLoading}
+        error={draftError}
+        onClose={() => setDraftOpen(false)}
       />
     </div>
   );

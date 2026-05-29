@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 
-const PUBLIC_PATHS = new Set<string>(['/auth/login', '/auth/register']);
+const PUBLIC_PATHS = new Set<string>(['/auth/login', '/auth/register', '/demo']);
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname);

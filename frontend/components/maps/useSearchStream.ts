@@ -18,10 +18,14 @@ import type { CompanyOut } from '@/src/services/api/maps';
 
 export interface StreamProgress {
   stage?: string;
+  source?: string;
   companies_processed?: number;
   companies_total?: number;
   processed?: number;
   total?: number;
+  // Бэкенд (maps/tasks.py) шлёт saved/expected — фронт обрабатывает все варианты.
+  saved?: number;
+  expected?: number;
 }
 
 export interface StreamState {

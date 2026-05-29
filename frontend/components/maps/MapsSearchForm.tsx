@@ -45,6 +45,35 @@ const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
   { label: 'строительные компании', cat: 'B2B' },
 ];
 
+// «Быстрый старт»: ниша + город сразу, один клик — поиск запущен.
+// Для onboarding'а: новый пользователь не должен думать, что вбить.
+const QUICK_PRESETS: Array<{ niche: string; city: string; title: string; hint: string }> = [
+  {
+    niche: 'стоматология',
+    city: 'Москва',
+    title: 'Стоматологии Москвы',
+    hint: '~50 компаний с отзывами клиентов',
+  },
+  {
+    niche: 'автосервис',
+    city: 'Санкт-Петербург',
+    title: 'Автосервисы СПб',
+    hint: 'жалобы на сроки и цены',
+  },
+  {
+    niche: 'фитнес клуб',
+    city: 'Москва',
+    title: 'Фитнес-клубы Москвы',
+    hint: 'отзывы про инструкторов',
+  },
+  {
+    niche: 'рестораны',
+    city: 'Казань',
+    title: 'Рестораны Казани',
+    hint: 'жалобы на обслуживание',
+  },
+];
+
 // Поля FilterBuilder для отзывов. Backend поддерживает только text/contains+not_contains.
 // Остальные операторы (equals/starts_with) бессмысленны для отзывов и не передаются.
 const REVIEW_FILTER_FIELDS: FieldDef[] = [
@@ -130,11 +159,60 @@ export function MapsSearchForm({ onStarted }: Props) {
     }
   }
 
+  async function runQuickPreset(preset: { niche: string; city: string }) {
+    setNiche(preset.niche);
+    setCity(preset.city);
+    setError(null);
+    setIsLoading(true);
+    try {
+      const search = await createMapSearch({
+        niche: preset.niche,
+        city: preset.city,
+        sources: ['2gis'],
+      });
+      onStarted(search);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
+        (err as { message?: string })?.message ||
+        'Не удалось запустить пресет';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const isReady = niche.trim().length >= 2 && sources.length > 0;
   const displayedPresets = showAllPresets ? NICHE_PRESETS : NICHE_PRESETS.slice(0, 6);
 
   return (
     <div className="mx-auto max-w-[1200px] px-6 py-10 relative z-10">
+      {/* === QUICK START PRESETS === */}
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
+            быстрый старт — один клик
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          {QUICK_PRESETS.map((p) => (
+            <button
+              key={`${p.niche}-${p.city}`}
+              type="button"
+              onClick={() => runQuickPreset(p)}
+              disabled={isLoading}
+              className="group flex flex-col items-start gap-1 rounded-md border border-slate-200 bg-white p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <span className="text-sm font-semibold text-slate-900">{p.title}</span>
+              <span className="text-[12px] text-slate-500">{p.hint}</span>
+              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 group-hover:text-slate-900">
+                Запустить <ArrowRight className="h-3 w-3" />
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* === HERO === */}
       <section className="mb-8 app-reveal">
         <div className="flex items-center gap-3 mb-5">
