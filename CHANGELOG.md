@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.0...v1.9.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* **maps:** третий слой защиты от RuntimeError + СПб в hardcoded + лог region/search ([53ef6af](https://github.com/moiseev1991-stack/Colaba/commit/53ef6af4f73dd11906978fb4402b477b55fac284))
+
 # [1.9.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.8.2...v1.9.0) (2026-05-29)
 
 
