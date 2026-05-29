@@ -197,19 +197,20 @@ export function MapsCompanyCard({
           {onDraftEmail && (
             <button
               type="button"
-              disabled={draftEmailLoading || topPains.length === 0}
+              disabled={draftEmailLoading}
               onClick={(e) => {
                 e.stopPropagation();
                 onDraftEmail(company);
               }}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium',
-                topPains.length === 0
-                  ? 'cursor-not-allowed bg-slate-100 text-slate-400'
-                  : 'bg-slate-900 text-white hover:bg-slate-800',
+                'inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-slate-800',
                 draftEmailLoading && 'opacity-70'
               )}
-              title={topPains.length === 0 ? 'Нужны pain_tags — запусти AI-анализ отзывов' : ''}
+              title={
+                topPains.length === 0
+                  ? 'Нет AI-болей у компании — попробуй, бэк подскажет что сделать'
+                  : ''
+              }
             >
               <Mail className="h-3.5 w-3.5" />
               {draftEmailLoading ? 'Генерирую…' : 'Письмо'}

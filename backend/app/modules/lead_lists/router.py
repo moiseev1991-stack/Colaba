@@ -20,6 +20,15 @@ from app.modules.lead_lists.schemas import (
     LeadListOut,
     LeadListUpdate,
 )
+
+
+def _to_detail(ll, items: list[CompanyOut]) -> LeadListDetailOut:
+    """LeadListDetailOut.model_validate(ll) пытается auto-fill items из
+    ll.items, а это relationship с lazy='raise' — бросает в async-контексте.
+    Поэтому собираем DetailOut руками поверх LeadListOut.
+    """
+    base = LeadListOut.model_validate(ll)
+    return LeadListDetailOut(**base.model_dump(), items=items)
 from app.modules.maps.schemas import CompanyOut, CompanyPainOut
 from app.modules.maps import service as maps_service
 
@@ -72,14 +81,12 @@ async def get_list(
         raise HTTPException(status_code=404, detail="Lead list not found")
     items = await service.list_items_with_companies(db, list_id=list_id, limit=limit, offset=offset)
     pains_map = await maps_service.get_top_pains_for_companies(db, [c.id for c in items], limit_per_company=3)
-    detail = LeadListDetailOut.model_validate(ll)
     out_items: list[CompanyOut] = []
     for c in items:
         out = CompanyOut.model_validate(c)
         out.top_pains = [CompanyPainOut(**p) for p in pains_map.get(c.id, [])]
         out_items.append(out)
-    detail.items = out_items
-    return detail
+    return _to_detail(ll, out_items)
 
 
 @router.patch("/{list_id}", response_model=LeadListOut)
