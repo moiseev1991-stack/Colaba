@@ -39,6 +39,17 @@ interface Props {
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
 const DEFAULT_FILTER: MapSearchFilter = { sort_by: 'rating_desc' };
 
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'pending': return 'в очереди';
+    case 'running': return 'парсим…';
+    case 'completed': return 'готово';
+    case 'failed': return 'ошибка';
+    case 'from_cache': return 'из кэша';
+    default: return status;
+  }
+}
+
 // Шаблоны сообщений из backend, которые означают «2GIS просто ничего не нашёл»
 // (не баг, не сетевой сбой) — показываем как мягкий EmptyResult, не как failed.
 // Нужно для backwards-compat: ранее backend бросал RuntimeError с этими текстами,
@@ -112,9 +123,10 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
     })();
   }, [stream.done, search.id]);
 
-  // Polling статуса каждые 3с, пока не terminal. SSE через Next.js proxy буферизует
-  // (см. docs/maps-module-guide.md §7.3) — без polling юзер не увидит смену
-  // pending→running→completed/failed до перезагрузки страницы.
+  // Polling статуса + компаний каждые 3с, пока не terminal. SSE через
+  // Next.js proxy буферизует (см. docs/maps-module-guide.md §7.3) —
+  // без polling юзер не увидит смену pending→running→completed/failed
+  // И не увидит карточки, которые celery успел сохранить.
   useEffect(() => {
     if (TERMINAL_STATUSES.has(search.status)) return;
     const timer = setInterval(async () => {
@@ -123,12 +135,20 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
         if (updated.status !== search.status || updated.companies_found !== search.companies_found) {
           setSearch(updated);
         }
+        // Пока парсер работает — параллельно дёргаем список компаний,
+        // чтобы UI наполнялся карточками в реальном времени, а не ждал
+        // terminal-статус. Без этого юзер видит пустоту и думает что
+        // «ничего не происходит».
+        const data = await listMapCompanies(search.id, DEFAULT_FILTER, 100, 0);
+        if (data.items.length > companies.length) {
+          setCompanies(data.items);
+        }
       } catch {
         /* keep current */
       }
     }, 3000);
     return () => clearInterval(timer);
-  }, [search.id, search.status, search.companies_found]);
+  }, [search.id, search.status, search.companies_found, companies.length]);
 
   // Перезагрузка списка с фильтрами: только после terminal-статуса, с debounce 300мс
   const refreshCompanies = useCallback(
@@ -186,26 +206,21 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
               {search.niche} — {search.city}
             </h2>
             <p className="text-sm text-slate-500">
-              Источники: {search.sources}. Статус: {search.status}.{' '}
-              {stream.progress &&
-                `Парсим: ${
-                  stream.progress.companies_processed ??
-                  stream.progress.processed ??
-                  stream.progress.saved ??
-                  0
-                }` +
-                  (stream.progress.companies_total ??
-                  stream.progress.total ??
-                  stream.progress.expected
-                    ? ` / ${
-                        stream.progress.companies_total ??
-                        stream.progress.total ??
-                        stream.progress.expected
-                      }`
-                    : '') +
-                  '. '}
-              Найдено компаний: {search.companies_found ?? renderTotal}.
+              Источники: {search.sources}. Статус: {statusLabel(search.status)}.{' '}
+              {isTerminal
+                ? `Найдено компаний: ${search.companies_found ?? renderTotal}.`
+                : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
             </p>
+            {!isTerminal && (
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full w-1/3 animate-pulse bg-emerald-500" />
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  карточки появляются по мере парсинга
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             {isTerminal && companies.length > 0 && (
