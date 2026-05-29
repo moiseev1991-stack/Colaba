@@ -92,6 +92,7 @@ interface Props {
 export function MapsSearchForm({ onStarted }: Props) {
   const [niche, setNiche] = useState('');
   const [city, setCity] = useState('Москва');
+  const [reviewWord, setReviewWord] = useState('');
   const [sources, setSources] = useState<MapSource[]>(['2gis']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -113,16 +114,21 @@ export function MapsSearchForm({ onStarted }: Props) {
   // Если у пользователя несколько contains / not_contains — берём первое каждого,
   // потому что бэкенд принимает по одной подстроке. (Сложный AND/OR-граф потом,
   // если правда понадобится — сейчас не нужно.)
+  //
+  // Источник подстроки contains: либо первоклассное поле reviewWord (сразу под city),
+  // либо FilterBuilder в «расширенных настройках». Поле reviewWord приоритетнее.
   function buildFilters(): MapSearchFilter | null {
-    const contains = filterSpec.conditions.find(
+    const containsFromBuilder = filterSpec.conditions.find(
       (c) => c.field === 'review_text' && c.op === 'contains' && c.value.trim()
     );
     const notContains = filterSpec.conditions.find(
       (c) => c.field === 'review_text' && c.op === 'not_contains' && c.value.trim()
     );
-    if (!contains && !notContains) return null;
+    const containsValue =
+      reviewWord.trim() || containsFromBuilder?.value.trim() || null;
+    if (!containsValue && !notContains) return null;
     return {
-      review_text_contains: contains?.value.trim() ?? null,
+      review_text_contains: containsValue,
       review_text_excludes: notContains?.value.trim() ?? null,
     };
   }
@@ -291,6 +297,24 @@ export function MapsSearchForm({ onStarted }: Props) {
                 className="w-full"
                 placeholder="Выберите город"
               />
+            </div>
+            <div className="md:col-span-12">
+              <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
+                слово в отзыве — необязательно
+              </label>
+              <Input
+                type="text"
+                placeholder="Например: ДТП, грязно, долго ждал, навязали"
+                value={reviewWord}
+                onChange={(e) => setReviewWord(e.target.value)}
+                disabled={isLoading}
+                className="w-full h-11 text-[15px]"
+              />
+              <p className="mt-1.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                Если задано — в выдаче останутся только компании, у которых
+                в отзывах встречается это слово. Пример: ниша «юр.услуги», слово
+                «ДТП» → автоюристы.
+              </p>
             </div>
           </div>
 

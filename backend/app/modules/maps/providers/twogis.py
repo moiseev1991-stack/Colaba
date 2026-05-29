@@ -98,9 +98,58 @@ REVIEWS_PUBLIC_PAGE_SIZE = 50  # widget-API без проблем держит l
 
 
 def resolve_region_id(city: str) -> int:
-    """Вернёт region_id по названию города или TWOGIS_FALLBACK_REGION_ID."""
+    """Sync-резолвер: только хардкод-словарь, без API. Для тестов и совместимости.
+
+    Production-код использует TwoGisProvider._get_region_id_async (async), который
+    плюс к этому ходит в /region/search для городов, которых нет в CITY_TO_REGION_ID,
+    и кэширует результат в _DYNAMIC_REGION_CACHE на время жизни процесса.
+    """
     key = (city or "").strip().lower()
     return CITY_TO_REGION_ID.get(key, TWOGIS_FALLBACK_REGION_ID)
+
+
+# In-memory кэш для динамически разрешённых region_id. Заполняется при первом
+# обращении к городу, которого нет в CITY_TO_REGION_ID. Живёт пока жив процесс
+# celery-воркера / backend'а — достаточно, перезапуски редкие.
+_DYNAMIC_REGION_CACHE: dict[str, int] = {}
+
+
+async def _resolve_region_id_via_api(city: str, api_key: str) -> int | None:
+    """Дёргает 2GIS /region/search для точного region_id города.
+
+    Возвращает int если найдено, None при любой ошибке/пустом ответе. Caller
+    должен сам fallback'нуться на TWOGIS_FALLBACK_REGION_ID, если None.
+    """
+    if not city or not api_key:
+        return None
+    url = f"{BASE_URL_2}/region/search"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, params={"q": city, "key": api_key})
+            if resp.status_code != 200:
+                logger.warning(
+                    "2gis region/search http %d for %r: %s",
+                    resp.status_code, city, (resp.text or "")[:200],
+                )
+                return None
+            data = resp.json()
+            meta = data.get("meta") or {}
+            if isinstance(meta.get("code"), int) and meta["code"] >= 400:
+                logger.warning(
+                    "2gis region/search meta.code=%s for %r: %s",
+                    meta["code"], city, meta.get("error"),
+                )
+                return None
+            items = (data.get("result") or {}).get("items") or []
+            if not items:
+                return None
+            rid = items[0].get("id")
+            if rid is None:
+                return None
+            return int(rid)
+    except Exception as e:
+        logger.warning("2gis region/search exception for %r: %s", city, e)
+        return None
 
 
 def _extract_phone(item: dict[str, Any]) -> str | None:
@@ -300,6 +349,31 @@ class TwoGisProvider(MapProvider):
             raise last_exc
         raise RateLimitError(f"2GIS rate limit/server error не отпустил после 3 ретраев: {url}")
 
+    async def _get_region_id(self, city: str) -> int:
+        """Резолвит region_id для города: сначала хардкод-словарь, затем
+        динамический кэш процесса, затем /region/search API, иначе fallback.
+
+        После первого успешного API-резолва результат кэшируется в
+        _DYNAMIC_REGION_CACHE — повторные поиски в этом городе уже не дёргают сеть.
+        """
+        key = (city or "").strip().lower()
+        if not key:
+            return TWOGIS_FALLBACK_REGION_ID
+        if key in CITY_TO_REGION_ID:
+            return CITY_TO_REGION_ID[key]
+        if key in _DYNAMIC_REGION_CACHE:
+            return _DYNAMIC_REGION_CACHE[key]
+        rid = await _resolve_region_id_via_api(city, self._api_key)
+        if rid is not None:
+            _DYNAMIC_REGION_CACHE[key] = rid
+            logger.info("2gis region resolved via API: %r → region_id=%d", city, rid)
+            return rid
+        logger.info(
+            "2gis region fallback for %r → region_id=%d (Россия, фильтрация по адресу)",
+            city, TWOGIS_FALLBACK_REGION_ID,
+        )
+        return TWOGIS_FALLBACK_REGION_ID
+
     async def search_companies(
         self,
         niche: str,
@@ -307,7 +381,7 @@ class TwoGisProvider(MapProvider):
         limit: int = 100,
     ) -> AsyncIterator[CompanyRaw]:
         """Стримит компании по нише в городе. Пагинация по page=1..N до limit."""
-        region_id = resolve_region_id(city)
+        region_id = await self._get_region_id(city)
         url = f"{BASE_URL_3}/items"
         common = {
             "q": niche,

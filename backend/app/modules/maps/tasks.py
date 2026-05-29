@@ -62,6 +62,10 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
     """Прогоняет provider.search_companies через batch-сейв.
     После каждой партии ставит parse_company_reviews.delay.
 
+    Multi-query expansion: для популярных ниш (см. modules/maps/synonyms.py) гоняет
+    несколько поисковых запросов-синонимов с дедупом по external_id. На free-плане
+    2GIS отдаёт max 50 компаний на запрос, 4 синонима = до 200 уникальных.
+
     Возвращает (count, completed):
       - count: сколько компаний реально сохранено и привязано к поиску
         (пропущенный хвост батча при exception не учитывается).
@@ -76,65 +80,114 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
         return 0, False
 
     from app.core.config import settings
+    from app.modules.maps.synonyms import get_search_queries
     limit = settings.MAPS_MAX_COMPANIES_PER_SEARCH
+
+    queries = get_search_queries(search.niche)
+    if not queries:
+        return 0, True
+    logger.info(
+        "parse_map_search source=%s niche=%r expanded to %d queries: %r",
+        source, search.niche, len(queries), queries,
+    )
 
     await service.publish_progress_event(
         search.id, "progress",
-        {"stage": "parsing", "source": source, "saved": 0, "expected": limit},
+        {
+            "stage": "parsing", "source": source,
+            "saved": 0, "expected": limit,
+            "queries_total": len(queries), "queries_done": 0,
+        },
     )
 
+    seen_external_ids: set[str] = set()
     batch: list[CompanyRaw] = []
     saved_count = 0
     position_cursor = 0
     completed = True
-    try:
-        async for company_raw in provider.search_companies(search.niche, search.city, limit=limit):
-            batch.append(company_raw)
-            if len(batch) >= COMPANIES_BATCH_SIZE:
-                saved = await service.save_companies_batch(db, batch, search.id, start_position=position_cursor)
-                position_cursor += len(batch)
-                saved_count += len(saved)
-                batch = []
-                for company in saved:
-                    await service.publish_progress_event(
-                        search.id, "company",
-                        {"company_id": company.id, "name": company.name, "position": position_cursor},
-                    )
-                    parse_company_reviews.delay(company.id, source)
-                    _maybe_enrich_contacts(company)
-                await service.publish_progress_event(
-                    search.id, "progress",
-                    {"stage": "parsing", "source": source, "saved": saved_count, "expected": limit},
-                )
-        if batch:
-            saved = await service.save_companies_batch(db, batch, search.id, start_position=position_cursor)
-            saved_count += len(saved)
-            for company in saved:
-                await service.publish_progress_event(
-                    search.id, "company",
-                    {"company_id": company.id, "name": company.name, "position": position_cursor},
-                )
-                parse_company_reviews.delay(company.id, source)
-                _maybe_enrich_contacts(company)
+
+    async def flush_batch() -> None:
+        """Сохраняет batch, ставит downstream-таски и шлёт SSE-events."""
+        nonlocal batch, saved_count, position_cursor
+        if not batch:
+            return
+        saved = await service.save_companies_batch(
+            db, batch, search.id, start_position=position_cursor,
+        )
+        position_cursor += len(batch)
+        saved_count += len(saved)
+        for company in saved:
             await service.publish_progress_event(
-                search.id, "progress",
-                {"stage": "parsing", "source": source, "saved": saved_count, "expected": limit},
+                search.id, "company",
+                {"company_id": company.id, "name": company.name, "position": position_cursor},
             )
-    except CaptchaWallError as e:
-        logger.warning("parse_map_search source=%s captcha wall: %s", source, e)
-        completed = False
-    except RateLimitError as e:
-        logger.warning("parse_map_search source=%s rate-limit: %s", source, e)
-        completed = False
-    except RuntimeError as e:
-        # Страховка: если провайдер всё-таки бросит RuntimeError (которая обычно
-        # покрывает «логическую» ошибку API на странных запросах) — НЕ валим
-        # весь поиск, просто считаем что для этого source ничего не нашли.
-        # 2GIS-провайдер для search/items сейчас уже сам возвращает пусто на
-        # meta.code=400, но оставляем катч как защиту от регрессий и от других
-        # источников (Я.Карты).
-        logger.warning("parse_map_search source=%s runtime error: %s", source, e)
-        completed = False
+            parse_company_reviews.delay(company.id, source)
+            _maybe_enrich_contacts(company)
+        batch = []
+
+    for q_idx, query in enumerate(queries):
+        if saved_count >= limit:
+            logger.info("parse_map_search: достигнут общий лимит %d, прекращаем синонимы", limit)
+            break
+        try:
+            async for company_raw in provider.search_companies(query, search.city, limit=limit):
+                # Дедуп между синонимами по external_id (одна и та же компания
+                # часто всплывает в нескольких запросах — берём первую копию).
+                ext_id = company_raw.external_id
+                if ext_id in seen_external_ids:
+                    continue
+                seen_external_ids.add(ext_id)
+
+                # Нормализация: пользователь искал «юридические услуги», в БД у
+                # компании niche должно быть это же значение, а не "юристы" из
+                # конкретного запроса. Иначе сломается фильтрация по нише в pain_tags.
+                company_raw.niche = search.niche
+
+                batch.append(company_raw)
+                if len(batch) >= COMPANIES_BATCH_SIZE:
+                    await flush_batch()
+                    await service.publish_progress_event(
+                        search.id, "progress",
+                        {
+                            "stage": "parsing", "source": source,
+                            "saved": saved_count, "expected": limit,
+                            "queries_total": len(queries), "queries_done": q_idx,
+                        },
+                    )
+
+                if saved_count + len(batch) >= limit:
+                    break
+        except CaptchaWallError as e:
+            logger.warning("parse_map_search source=%s captcha wall on q=%r: %s", source, query, e)
+            completed = False
+            break
+        except RateLimitError as e:
+            logger.warning("parse_map_search source=%s rate-limit on q=%r: %s", source, query, e)
+            completed = False
+            break
+        except RuntimeError as e:
+            # Логическая ошибка одного синонима не должна валить остальные.
+            # Например, «юр.услуги» может вернуть meta.code=400, а «адвокаты» — компании.
+            # 2GIS-провайдер сам возвращает пустоту на 400, но страхуемся для других провайдеров.
+            logger.warning(
+                "parse_map_search source=%s runtime error on q=%r: %s — продолжаем со следующим синонимом",
+                source, query, e,
+            )
+            continue
+
+    # хвост последнего батча
+    try:
+        await flush_batch()
+        await service.publish_progress_event(
+            search.id, "progress",
+            {
+                "stage": "parsing", "source": source,
+                "saved": saved_count, "expected": limit,
+                "queries_total": len(queries), "queries_done": len(queries),
+            },
+        )
+    except Exception as e:
+        logger.warning("parse_map_search source=%s flush tail failed: %s", source, e)
 
     return saved_count, completed
 
