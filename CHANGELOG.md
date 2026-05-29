@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.1...v1.9.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* **maps-ui,maps:** мягкий вывод старых «Results not found» + регионы топ-10 городов ([2db4b4e](https://github.com/moiseev1991-stack/Colaba/commit/2db4b4e71e24bb5df218f17e2a61a56ed4a84258))
+
 ## [1.9.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.0...v1.9.1) (2026-05-29)
 
 
