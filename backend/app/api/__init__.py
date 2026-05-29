@@ -37,6 +37,7 @@ from app.modules.email.campaigns_router import router as email_campaigns_router
 from app.modules.email.replies_router import router as email_replies_router
 from app.modules.email.settings_router import router as email_settings_router
 from app.modules.maps.router import router as maps_router
+from app.modules.lead_lists.router import router as lead_lists_router
 
 api_router.include_router(auth_router)
 api_router.include_router(dashboard_router)
@@ -57,3 +58,4 @@ api_router.include_router(email_campaigns_router)
 api_router.include_router(email_replies_router)
 api_router.include_router(email_settings_router)
 api_router.include_router(maps_router)
+api_router.include_router(lead_lists_router)
