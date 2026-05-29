@@ -20,6 +20,8 @@ from app.modules.lead_lists.schemas import (
     LeadListOut,
     LeadListUpdate,
 )
+from app.modules.maps.schemas import CompanyOut, CompanyPainOut
+from app.modules.maps import service as maps_service
 
 
 def _to_detail(ll, items: list[CompanyOut]) -> LeadListDetailOut:
@@ -29,8 +31,6 @@ def _to_detail(ll, items: list[CompanyOut]) -> LeadListDetailOut:
     """
     base = LeadListOut.model_validate(ll)
     return LeadListDetailOut(**base.model_dump(), items=items)
-from app.modules.maps.schemas import CompanyOut, CompanyPainOut
-from app.modules.maps import service as maps_service
 
 logger = logging.getLogger(__name__)
 
