@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.11.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.10.0...v1.11.0) (2026-05-29)
+
+
+### Features
+
+* **maps,lead-lists:** дайджест отзывов в drawer + bulk-генерация драфтов ([1092fcb](https://github.com/moiseev1991-stack/Colaba/commit/1092fcbe3e5eb6f949507a7245fa5916c37cd379))
+
 # [1.10.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.4...v1.10.0) (2026-05-29)
 
 
