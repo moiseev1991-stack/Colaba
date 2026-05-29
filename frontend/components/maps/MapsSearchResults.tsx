@@ -39,6 +39,21 @@ interface Props {
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
 const DEFAULT_FILTER: MapSearchFilter = { sort_by: 'rating_desc' };
 
+// Шаблоны сообщений из backend, которые означают «2GIS просто ничего не нашёл»
+// (не баг, не сетевой сбой) — показываем как мягкий EmptyResult, не как failed.
+// Нужно для backwards-compat: ранее backend бросал RuntimeError с этими текстами,
+// и в БД могут оставаться поиски с error_type='RuntimeError' и таким error.
+function isSoftEmptyError(errorText: string | null | undefined): boolean {
+  if (!errorText) return false;
+  const e = errorText.toLowerCase();
+  return (
+    e.includes('results not found') ||
+    e.includes('meta.code=404') ||
+    e.includes('nothing found') ||
+    e.includes('по этому запросу 2gis ничего не вернул')
+  );
+}
+
 export function MapsSearchResults({ search: initialSearch, initialMode, onNewSearch }: Props) {
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
@@ -210,13 +225,23 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
           </div>
         </div>
 
-        {stream.error && (
+        {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
           <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             Ошибка стрима: {stream.error}
           </div>
         )}
 
-        {search.status === 'failed' && (
+        {search.status === 'failed' && isSoftEmptyError(search.error) && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="font-medium">Ничего не нашлось</div>
+            <div className="mt-1 text-amber-700">
+              По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу
+              или сменить город.
+            </div>
+          </div>
+        )}
+
+        {search.status === 'failed' && !isSoftEmptyError(search.error) && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <div className="font-medium">Поиск завершился ошибкой</div>
             <div className="mt-1 text-red-700">
