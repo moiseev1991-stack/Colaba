@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.10.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.4...v1.10.0) (2026-05-29)
+
+
+### Features
+
+* **maps-ui:** live-прогресс через polling — карточки появляются по мере парсинга ([e76a5ba](https://github.com/moiseev1991-stack/Colaba/commit/e76a5ba00beefdbc3589a01bcd794c115631cf84))
+
 ## [1.9.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.9.3...v1.9.4) (2026-05-29)
 
 
