@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.9.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.8.2...v1.9.0) (2026-05-29)
+
+
+### Features
+
+* **maps:** multi-query expansion, lazy region_id, фильтр-по-слову в форме ([5e09b85](https://github.com/moiseev1991-stack/Colaba/commit/5e09b85748e8a104fe05bcbb9ca9ed85d6f0a5a0))
+
 ## [1.8.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.8.1...v1.8.2) (2026-05-29)
 
 
