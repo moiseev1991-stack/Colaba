@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from sqlalchemy import select, update, text
+from sqlalchemy import case, func, select, update, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -152,9 +152,12 @@ async def match_reviews_to_pain_tags(
         return {}
     threshold = threshold if threshold is not None else settings.REVIEWS_AI_PAIN_MATCH_THRESHOLD
 
-    # Берём reviews с embedding + niche/city компании
+    # Берём reviews с embedding + niche/city компании + raw_text (для top_quote)
     rows = list((await db.execute(
-        select(Review.id, Review.company_id, Review.embedding, Company.niche, Company.city)
+        select(
+            Review.id, Review.company_id, Review.embedding, Review.raw_text,
+            Company.niche, Company.city,
+        )
         .join(Company, Company.id == Review.company_id)
         .where(Review.id.in_(review_ids), Review.embedding.isnot(None))
     )).all())
@@ -164,7 +167,7 @@ async def match_reviews_to_pain_tags(
     # Группируем по (niche, city) чтобы один раз достать pain_tags на пару
     by_niche_city: dict[tuple[str, str | None], list[tuple]] = defaultdict(list)
     for r in rows:
-        by_niche_city[(r[3], r[4])].append(r)
+        by_niche_city[(r[4], r[5])].append(r)
 
     assigned: dict[int, list[int]] = {}
     now = datetime.now(timezone.utc)
@@ -179,7 +182,7 @@ async def match_reviews_to_pain_tags(
         if not tags_with_c:
             continue
 
-        for rid, company_id, embedding, _, _ in bucket:
+        for rid, company_id, embedding, raw_text, _, _ in bucket:
             vec = np.asarray(list(embedding), dtype=np.float64)
             v_norm = float(np.linalg.norm(vec))
             if v_norm == 0:
@@ -195,29 +198,63 @@ async def match_reviews_to_pain_tags(
             if not matched:
                 continue
 
+            # Цитата: первые 280 символов raw_text (хватает на «фрагмент»).
+            # Длинный отзыв в карточке UI обрезается, цитата не должна весить
+            # больше предложения-двух.
+            quote_text = (raw_text or "").strip()
+            if len(quote_text) > 280:
+                quote_text = quote_text[:277].rstrip() + "..."
+
             for tag_id, sim in matched:
+                sim_rounded = round(sim, 3)
                 # review_pain_tags upsert
                 ins = pg_insert(ReviewPainTag).values(
                     review_id=int(rid), pain_tag_id=int(tag_id),
-                    similarity=round(sim, 3),
+                    similarity=sim_rounded,
                 ).on_conflict_do_update(
                     index_elements=["review_id", "pain_tag_id"],
-                    set_={"similarity": round(sim, 3)},
+                    set_={"similarity": sim_rounded},
                 )
                 await db.execute(ins)
 
-                # company_pain_scores: инкремент mention_count + last_mention_at
+                # company_pain_scores: инкремент mention_count + last_mention_at.
+                # Также сохраняем top_quote: текущий отзыв становится топом, если
+                # либо top_quote ещё не было, либо новый sim > старого.
+                # COALESCE-обёртка на CompanyPainScore.top_quote_similarity нужна
+                # потому что Numeric(4,3) сравнивается напрямую: NULL > X = NULL.
+                table = CompanyPainScore.__table__
                 cps_ins = pg_insert(CompanyPainScore).values(
                     company_id=int(company_id), pain_tag_id=int(tag_id),
                     mention_count=1,
                     first_mention_at=now,
                     last_mention_at=now,
-                ).on_conflict_do_update(
+                    top_quote=quote_text or None,
+                    top_quote_review_id=int(rid) if quote_text else None,
+                    top_quote_similarity=sim_rounded if quote_text else None,
+                )
+                set_clause = {
+                    "mention_count": table.c.mention_count + 1,
+                    "last_mention_at": now,
+                }
+                if quote_text:
+                    # CASE WHEN excluded.sim > coalesce(current.sim, 0) THEN excluded.* ELSE current.* END
+                    cur_sim = func.coalesce(table.c.top_quote_similarity, 0)
+                    is_better = cps_ins.excluded.top_quote_similarity > cur_sim
+                    set_clause["top_quote"] = case(
+                        (is_better, cps_ins.excluded.top_quote),
+                        else_=table.c.top_quote,
+                    )
+                    set_clause["top_quote_review_id"] = case(
+                        (is_better, cps_ins.excluded.top_quote_review_id),
+                        else_=table.c.top_quote_review_id,
+                    )
+                    set_clause["top_quote_similarity"] = case(
+                        (is_better, cps_ins.excluded.top_quote_similarity),
+                        else_=table.c.top_quote_similarity,
+                    )
+                cps_ins = cps_ins.on_conflict_do_update(
                     index_elements=["company_id", "pain_tag_id"],
-                    set_={
-                        "mention_count": CompanyPainScore.__table__.c.mention_count + 1,
-                        "last_mention_at": now,
-                    },
+                    set_=set_clause,
                 )
                 await db.execute(cps_ins)
 

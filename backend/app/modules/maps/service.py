@@ -493,6 +493,67 @@ async def get_search_results(
 
 
 # ---------------------------------------------------------------------------
+# Top pains per company (для карточки + draft-email)
+# ---------------------------------------------------------------------------
+
+
+async def get_top_pains_for_companies(
+    db: AsyncSession,
+    company_ids: list[int],
+    limit_per_company: int = 3,
+) -> dict[int, list[dict[str, Any]]]:
+    """Для каждой компании возвращает топ-N её болей с цитатами.
+
+    Используется и в карточке-выдаче (рядом с тегом — цитата клиента), и в
+    drafte письма (передаём LLM «вот реальные жалобы, перифразируй»).
+
+    Реализация: PARTITION BY company_id ORDER BY mention_count DESC, поверх
+    JOIN с pain_tags для label/description. Так быстрее чем дергать по
+    каждой компании отдельно.
+    """
+    if not company_ids:
+        return {}
+    sql = text(
+        """
+        SELECT company_id, pain_tag_id, label, description, mention_count,
+               top_quote, top_quote_similarity
+        FROM (
+            SELECT
+                cps.company_id,
+                cps.pain_tag_id,
+                pt.label,
+                pt.description,
+                cps.mention_count,
+                cps.top_quote,
+                cps.top_quote_similarity,
+                ROW_NUMBER() OVER (
+                    PARTITION BY cps.company_id
+                    ORDER BY cps.mention_count DESC, cps.last_mention_at DESC NULLS LAST
+                ) AS rn
+            FROM company_pain_scores cps
+            JOIN pain_tags pt ON pt.id = cps.pain_tag_id AND pt.status = 'active'
+            WHERE cps.company_id = ANY(:ids)
+        ) ranked
+        WHERE rn <= :limit
+        """
+    )
+    rows = list(
+        (await db.execute(sql, {"ids": list(company_ids), "limit": int(limit_per_company)})).mappings().all()
+    )
+    by_company: dict[int, list[dict[str, Any]]] = {}
+    for r in rows:
+        by_company.setdefault(int(r["company_id"]), []).append({
+            "pain_tag_id": int(r["pain_tag_id"]),
+            "label": r["label"],
+            "description": r["description"],
+            "mention_count": int(r["mention_count"] or 0),
+            "top_quote": r["top_quote"],
+            "top_quote_similarity": float(r["top_quote_similarity"]) if r["top_quote_similarity"] is not None else None,
+        })
+    return by_company
+
+
+# ---------------------------------------------------------------------------
 # Progress events (SSE) — stub, реальная реализация в ШАГе 12
 # ---------------------------------------------------------------------------
 

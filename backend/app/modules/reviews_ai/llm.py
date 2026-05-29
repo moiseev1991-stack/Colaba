@@ -24,11 +24,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.ai_assistant import AiAssistant
 from app.modules.ai_assistants.client import chat
-from app.modules.reviews_ai.prompts import CLUSTER_NAMING_PROMPT, SENTIMENT_PROMPT
+from app.modules.reviews_ai.prompts import (
+    CLUSTER_NAMING_PROMPT,
+    OUTREACH_DRAFT_PROMPT,
+    SENTIMENT_PROMPT,
+)
 
 logger = logging.getLogger(__name__)
 
-AssistantKind = Literal["sentiment", "naming"]
+AssistantKind = Literal["sentiment", "naming", "outreach_draft"]
 
 
 # ---------------------------------------------------------------------------
@@ -38,22 +42,25 @@ AssistantKind = Literal["sentiment", "naming"]
 
 # Подсказки для auto-pick: какие имена модели предпочесть.
 _KIND_HINTS: dict[AssistantKind, list[str]] = {
-    "sentiment": ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
-    "naming":    ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
+    "sentiment":      ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
+    "naming":         ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
+    "outreach_draft": ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback на mini
 }
 
 
 async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None:
     """Возвращает id ai_assistant, подходящего для kind. Алгоритм:
 
-    1. Если задан env REVIEWS_AI_SENTIMENT_ASSISTANT_NAME / _NAMING_ — ищем по name.
+    1. Если задан env REVIEWS_AI_SENTIMENT_ASSISTANT_NAME / _NAMING_ / _OUTREACH_DRAFT_ — ищем по name.
     2. Иначе — берём первый ассистент, у которого в model встречается одна из подсказок.
     3. Иначе — None (AI отключается gracefully).
     """
     if kind == "sentiment":
         explicit = (settings.REVIEWS_AI_SENTIMENT_ASSISTANT_NAME or "").strip()
-    else:
+    elif kind == "naming":
         explicit = (settings.REVIEWS_AI_NAMING_ASSISTANT_NAME or "").strip()
+    else:  # outreach_draft
+        explicit = (settings.REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME or "").strip()
 
     if explicit:
         row = (await db.execute(
@@ -201,6 +208,64 @@ async def call_llm_cluster_naming(
     if not label:
         return None
     return {"label": label[:200], "description": desc}
+
+
+# ---------------------------------------------------------------------------
+# Outreach draft
+# ---------------------------------------------------------------------------
+
+
+async def call_llm_outreach_draft(
+    db: AsyncSession,
+    *,
+    company_name: str,
+    niche: str,
+    city: str,
+    source: str,
+    pains: list[dict[str, Any]],
+) -> dict[str, str] | None:
+    """Возвращает {"subject": "...", "body": "..."} или None.
+
+    pains — список вида [{"label": "Грязно", "quote": "...."}, ...] длиной 1-3.
+    """
+    if not pains:
+        return None
+    assistant_id = await pick_assistant_id(db, "outreach_draft")
+    if assistant_id is None:
+        logger.info("call_llm_outreach_draft: no assistant available")
+        return None
+
+    pains_block = "\n".join(
+        f"- {p.get('label', '').strip() or 'без названия'}: «{(p.get('quote') or '').strip()}»"
+        for p in pains[:3]
+    )
+    prompt = OUTREACH_DRAFT_PROMPT.format(
+        company_name=company_name or "—",
+        niche=niche or "—",
+        city=city or "—",
+        source=source or "карты",
+        pains_block=pains_block,
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt}],
+            db=db,
+            max_tokens=800,
+            temperature=0.6,
+        )
+    except Exception as e:
+        logger.warning("call_llm_outreach_draft: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, dict):
+        return None
+    subject = (data.get("subject") or "").strip()
+    body = (data.get("body") or "").strip()
+    if not subject or not body:
+        return None
+    return {"subject": subject[:500], "body": body}
 
 
 # ---------------------------------------------------------------------------

@@ -16,11 +16,12 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 
 from app.core.database import AsyncSessionLocal
 from app.models.maps import Company, MapSearch
 from app.modules.maps import service
+from app.modules.maps.enrich import fetch_and_extract
 from app.modules.maps.providers.base import (
     CaptchaWallError,
     MissingAPIKeyError,
@@ -77,6 +78,11 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
     from app.core.config import settings
     limit = settings.MAPS_MAX_COMPANIES_PER_SEARCH
 
+    await service.publish_progress_event(
+        search.id, "progress",
+        {"stage": "parsing", "source": source, "saved": 0, "expected": limit},
+    )
+
     batch: list[CompanyRaw] = []
     saved_count = 0
     position_cursor = 0
@@ -95,6 +101,11 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                         {"company_id": company.id, "name": company.name, "position": position_cursor},
                     )
                     parse_company_reviews.delay(company.id, source)
+                    _maybe_enrich_contacts(company)
+                await service.publish_progress_event(
+                    search.id, "progress",
+                    {"stage": "parsing", "source": source, "saved": saved_count, "expected": limit},
+                )
         if batch:
             saved = await service.save_companies_batch(db, batch, search.id, start_position=position_cursor)
             saved_count += len(saved)
@@ -104,6 +115,11 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                     {"company_id": company.id, "name": company.name, "position": position_cursor},
                 )
                 parse_company_reviews.delay(company.id, source)
+                _maybe_enrich_contacts(company)
+            await service.publish_progress_event(
+                search.id, "progress",
+                {"stage": "parsing", "source": source, "saved": saved_count, "expected": limit},
+            )
     except CaptchaWallError as e:
         logger.warning("parse_map_search source=%s captcha wall: %s", source, e)
         completed = False
@@ -230,6 +246,88 @@ def parse_company_reviews(self, company_id: int, source: str, limit: int | None 
     except Exception as exc:
         logger.warning("parse_company_reviews retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=2)
+
+
+# ---------------------------------------------------------------------------
+# enrich_company_contacts
+# ---------------------------------------------------------------------------
+
+
+def _maybe_enrich_contacts(company: Company) -> None:
+    """Хелпер: ставит enrich_company_contacts.delay, если есть сайт и ещё не
+    обогащали. Тихо проглатывает любые ошибки постановки таска."""
+    try:
+        if company.website and company.contacts_enriched_at is None:
+            enrich_company_contacts.delay(company.id)
+    except Exception as e:
+        logger.warning("_maybe_enrich_contacts: cannot enqueue for #%d: %s", company.id, e)
+
+
+async def _enrich_company_contacts_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        company = await db.get(Company, company_id)
+        if company is None:
+            logger.warning("enrich_company_contacts: Company #%d not found", company_id)
+            return {"status": "not_found"}
+        if not company.website:
+            # Помечаем чтобы не пытались снова, но без emails — нечего обогащать
+            await db.execute(
+                update(Company)
+                .where(Company.id == company_id)
+                .values(contacts_enriched_at=datetime.now(timezone.utc))
+            )
+            await db.commit()
+            return {"status": "no_website"}
+
+        result = await fetch_and_extract(company.website)
+
+        extra: dict[str, list[str]] = {}
+        if result.phones:
+            extra["phones"] = result.phones
+        if result.telegrams:
+            extra["telegrams"] = result.telegrams
+        if result.vks:
+            extra["vks"] = result.vks
+        if result.whatsapps:
+            extra["whatsapps"] = result.whatsapps
+        if result.fetched_url:
+            extra["fetched_url"] = result.fetched_url
+        if result.error:
+            extra["error"] = result.error
+
+        await db.execute(
+            update(Company)
+            .where(Company.id == company_id)
+            .values(
+                emails=result.emails or None,
+                contacts_extra=extra or None,
+                contacts_enriched_at=datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
+        return {
+            "status": "ok",
+            "emails": len(result.emails),
+            "phones": len(result.phones),
+            "telegrams": len(result.telegrams),
+            "vks": len(result.vks),
+            "whatsapps": len(result.whatsapps),
+            "error": result.error,
+        }
+
+
+@celery_app.task(name="enrich_company_contacts", queue="maps", bind=True, max_retries=1)
+def enrich_company_contacts(self, company_id: int):
+    """Качает сайт компании и достаёт из HTML email/телефоны/мессенджеры.
+
+    Один retry — на случай флапа сети. Дальше — фиксируем contacts_enriched_at
+    с пустым emails, чтобы не дёргать сайт повторно при каждом поиске.
+    """
+    try:
+        return asyncio.run(_enrich_company_contacts_async(company_id))
+    except Exception as exc:
+        logger.warning("enrich_company_contacts retrying company=%d: %s", company_id, exc)
+        raise self.retry(exc=exc, countdown=20, max_retries=1)
 
 
 # ---------------------------------------------------------------------------

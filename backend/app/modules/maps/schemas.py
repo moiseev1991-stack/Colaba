@@ -115,6 +115,23 @@ class PainTagShort(BaseModel):
     similarity: float | None = None
 
 
+class CompanyPainOut(BaseModel):
+    """Боль с привязкой к конкретной компании: + mention_count + цитата.
+
+    Используется в карточке компании, чтобы под каждой болью показать
+    «доказательство» — короткий фрагмент отзыва клиента.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    pain_tag_id: int
+    label: str
+    description: str | None = None
+    mention_count: int = 0
+    top_quote: str | None = None
+    top_quote_similarity: float | None = None
+
+
 class PainTagOut(BaseModel):
     """Полная карточка тега боли для облака тегов / API."""
 
@@ -153,6 +170,13 @@ class CompanyOut(BaseModel):
     last_review_at: datetime | None = None
     source: str
     pain_tags: list[PainTagShort] = Field(default_factory=list)
+    # Обогащённые контакты (миграция 018). Заполняются Celery-таском
+    # enrich_company_contacts асинхронно — могут быть None на свежей компании.
+    emails: list[str] | None = None
+    contacts_extra: dict[str, Any] | None = None
+    # Топ-боли с цитатами клиентов под каждой. Заполняется опционально
+    # сервисом (attach_top_pains_for_companies) для маршрутов, где это нужно.
+    top_pains: list[CompanyPainOut] = Field(default_factory=list)
 
 
 class ReviewOut(BaseModel):
@@ -209,3 +233,16 @@ class ReviewsListOut(BaseModel):
 class ProvidersHealthOut(BaseModel):
     twogis: str
     yandex_maps: str
+
+
+class OutreachDraftOut(BaseModel):
+    """Ответ POST /maps/companies/{id}/draft-email."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    company_id: int
+    company_name: str
+    subject: str
+    body: str
+    used_pains: list[CompanyPainOut] = Field(default_factory=list)
+    suggested_to_emails: list[str] = Field(default_factory=list)

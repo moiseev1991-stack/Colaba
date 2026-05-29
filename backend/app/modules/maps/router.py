@@ -44,9 +44,11 @@ from app.modules.maps.schemas import (
     CompaniesListOut,
     CompanyDetailOut,
     CompanyOut,
+    CompanyPainOut,
     MapSearchCreate,
     MapSearchFilter,
     MapSearchOut,
+    OutreachDraftOut,
     PainTagOut,
     ProvidersHealthOut,
     ReviewOut,
@@ -202,8 +204,15 @@ async def list_search_companies(
         review_text_excludes=review_text_excludes,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
+    # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
+    pains_by_company = await service.get_top_pains_for_companies(db, [c.id for c in items], limit_per_company=3)
+    out_items: list[CompanyOut] = []
+    for c in items:
+        out = CompanyOut.model_validate(c)
+        out.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(c.id, [])]
+        out_items.append(out)
     return CompaniesListOut(
-        items=[CompanyOut.model_validate(c) for c in items],
+        items=out_items,
         total=total,
         limit=limit,
         offset=offset,
@@ -329,6 +338,8 @@ async def get_company(
     )
     detail = CompanyDetailOut.model_validate(company)
     detail.recent_reviews = [ReviewOut.model_validate(r) for r in recent]
+    pains_by_company = await service.get_top_pains_for_companies(db, [company.id], limit_per_company=5)
+    detail.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(company.id, [])]
     return detail
 
 
@@ -370,6 +381,75 @@ async def list_company_reviews(
         total=int(total),
         limit=limit,
         offset=offset,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Outreach draft (LLM)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/companies/{company_id}/draft-email", response_model=OutreachDraftOut)
+@limiter.limit("20/minute")
+async def draft_email_for_company(
+    request: Request,
+    company_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Генерирует драфт холодного письма на основе компании + её топ-болей.
+
+    Если для компании ещё нет pain_tags (анализ не прогонялся / ниша без
+    реклассированных тегов) — возвращает 409 с человеческим объяснением,
+    что нужно сначала прогнать reviews_ai.
+
+    Если LLM-ассистент не настроен — 503.
+    """
+    company = await _get_company_or_404(db, company_id)
+
+    pains_by_company = await service.get_top_pains_for_companies(db, [company.id], limit_per_company=3)
+    pains = pains_by_company.get(company.id, [])
+    pains_with_quote = [p for p in pains if p.get("top_quote")]
+    if not pains_with_quote:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Для этой компании ещё нет болей с цитатами. "
+                "Запусти AI-анализ отзывов и попробуй снова."
+            ),
+        )
+
+    from app.modules.reviews_ai.llm import call_llm_outreach_draft
+
+    draft = await call_llm_outreach_draft(
+        db,
+        company_name=company.name or "",
+        niche=company.niche or "",
+        city=company.city or "",
+        source=company.source or "карты",
+        pains=[
+            {"label": p["label"], "quote": p.get("top_quote") or ""}
+            for p in pains_with_quote
+        ],
+    )
+    if draft is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "LLM-ассистент для генерации письма не настроен или временно недоступен. "
+                "Проверь OPENAI_API_KEY / OPENAI_BASE_URL и наличие ассистента "
+                "reviews_ai_outreach_draft в БД."
+            ),
+        )
+
+    emails = company.emails if isinstance(company.emails, list) else []
+    return OutreachDraftOut(
+        company_id=company.id,
+        company_name=company.name or "",
+        subject=draft["subject"],
+        body=draft["body"],
+        used_pains=[CompanyPainOut(**p) for p in pains_with_quote],
+        suggested_to_emails=list(emails)[:5],
     )
 
 
