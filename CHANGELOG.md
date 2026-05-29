@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.8.0...v1.8.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* **lead-lists,maps-ui:** 400 на /lead-lists/{id} + кнопка [Письмо] всегда активна ([5d888c5](https://github.com/moiseev1991-stack/Colaba/commit/5d888c585c2b17b899847dbd14320f037b5d185b))
+
 # [1.8.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.7.3...v1.8.0) (2026-05-29)
 
 
