@@ -145,6 +145,7 @@ class Settings(BaseSettings):
     REVIEWS_AI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-small", description="OpenAI model name")
     REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для sentiment; пусто = auto-pick по подсказке 'haiku'")
     REVIEWS_AI_NAMING_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для naming кластеров; пусто = auto-pick по подсказке 'sonnet'")
+    REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для генерации драфта холодного письма; пусто = auto-pick")
     REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(default=0.78, description="Cosine similarity threshold для матчинга review→pain_tag")
     REVIEWS_AI_MIN_CLUSTER_SIZE: int = Field(default=8, description="HDBSCAN min_cluster_size")
 

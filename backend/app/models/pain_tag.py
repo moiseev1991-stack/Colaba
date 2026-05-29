@@ -74,7 +74,12 @@ class ReviewPainTag(Base):
 
 class CompanyPainScore(Base):
     """Денормализация: сколько раз тег боли упомянут в отзывах компании.
-    Используется для фильтрации компаний по болям без многократного JOIN reviews."""
+    Используется для фильтрации компаний по болям без многократного JOIN reviews.
+
+    top_quote — самая яркая цитата клиента (по cosine similarity к centroid'у
+    тега) среди отзывов этой компании. Заполняется во время match_reviews_to_pain_tags.
+    Это «доказательство» под тегом боли в UI карточки компании.
+    """
 
     __tablename__ = "company_pain_scores"
 
@@ -83,6 +88,10 @@ class CompanyPainScore(Base):
     mention_count = Column(Integer, nullable=False, default=0)
     first_mention_at = Column(DateTime(timezone=True))
     last_mention_at = Column(DateTime(timezone=True))
+
+    top_quote = Column(Text)
+    top_quote_review_id = Column(BigInteger, ForeignKey("reviews.id", ondelete="SET NULL"))
+    top_quote_similarity = Column(Numeric(4, 3))
 
     def __repr__(self) -> str:
         return f"<CompanyPainScore company={self.company_id} tag={self.pain_tag_id} count={self.mention_count}>"

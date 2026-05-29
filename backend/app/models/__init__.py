@@ -32,6 +32,7 @@ from app.models.pain_tag import (
     ReviewPainTag,
     CompanyPainScore,
 )
+from app.models.lead_list import LeadList, LeadListItem
 
 __all__ = [
     "User",
@@ -67,4 +68,6 @@ __all__ = [
     "PainTag",
     "ReviewPainTag",
     "CompanyPainScore",
+    "LeadList",
+    "LeadListItem",
 ]

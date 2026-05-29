@@ -63,6 +63,16 @@ class Company(Base):
     last_review_at = Column(DateTime(timezone=True))
     raw_data = Column(JSONB)
 
+    # Контакты, обогащённые краулером сайта компании (миграция 018).
+    # emails — список email-адресов, найденных на сайте.
+    # contacts_extra — доп. телефоны / vk / telegram / whatsapp (если найдены).
+    # contacts_enriched_at — когда обогащение прогонялось последний раз
+    # (NULL = не обогащали; ставится даже при пустом результате, чтобы
+    # не дёргать сайт повторно при каждом поиске).
+    emails = Column(JSONB)
+    contacts_extra = Column(JSONB)
+    contacts_enriched_at = Column(DateTime(timezone=True))
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
