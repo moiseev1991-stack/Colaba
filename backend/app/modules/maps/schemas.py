@@ -98,15 +98,28 @@ class MapSearchFilter(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+SearchMode = Literal["city", "radius"]
+
+
 class MapSearchCreate(BaseModel):
-    """Тело POST /api/v1/maps/search."""
+    """Тело POST /api/v1/maps/search.
+
+    Режимы:
+    - mode='city' (default): обязательны niche + city. Старое поведение.
+    - mode='radius': обязательны niche + address + radius_meters. city будет
+      автоматически выставлен из геокодинга адреса (для pain_tags).
+    """
 
     model_config = ConfigDict(extra="ignore")
 
     niche: str = Field(..., min_length=2, max_length=100)
-    city: str = Field(..., min_length=2, max_length=100)
+    city: str = Field(default="", max_length=100)
     sources: list[Source] = Field(default_factory=lambda: ["2gis"])
     filters: MapSearchFilter | None = None
+
+    mode: SearchMode = "city"
+    address: str | None = Field(default=None, max_length=500)
+    radius_meters: int | None = Field(default=None, ge=200, le=20000)
 
 
 class PainTagShort(BaseModel):
@@ -214,6 +227,12 @@ class MapSearchOut(BaseModel):
     created_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    # radius-режим (миграция 019)
+    mode: str = "city"
+    address: str | None = None
+    point_lat: float | None = None
+    point_lng: float | None = None
+    radius_meters: int | None = None
 
 
 class CompaniesListOut(BaseModel):

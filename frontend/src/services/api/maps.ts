@@ -37,11 +37,16 @@ export interface MapSearchFilter {
   review_text_excludes?: string | null;
 }
 
+export type SearchMode = 'city' | 'radius';
+
 export interface MapSearchCreate {
   niche: string;
   city: string;
   sources?: MapSource[];
   filters?: MapSearchFilter | null;
+  mode?: SearchMode;
+  address?: string | null;
+  radius_meters?: number | null;
 }
 
 export interface MapSearchOut {
@@ -58,6 +63,11 @@ export interface MapSearchOut {
   created_at: string;
   started_at?: string | null;
   finished_at?: string | null;
+  mode?: string;
+  address?: string | null;
+  point_lat?: number | null;
+  point_lng?: number | null;
+  radius_meters?: number | null;
 }
 
 export interface PainTagShort {

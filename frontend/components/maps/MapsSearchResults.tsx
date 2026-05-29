@@ -203,7 +203,10 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              {search.niche} — {search.city}
+              {search.niche} —{' '}
+              {search.mode === 'radius' && search.address
+                ? `${search.address} · радиус ${((search.radius_meters ?? 0) / 1000).toFixed(1)} км`
+                : search.city}
             </h2>
             <p className="text-sm text-slate-500">
               Источники: {search.sources}. Статус: {statusLabel(search.status)}.{' '}

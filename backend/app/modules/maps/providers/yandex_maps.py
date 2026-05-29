@@ -222,8 +222,17 @@ class YandexMapsProvider(MapProvider):
         niche: str,
         city: str,
         limit: int = 100,
+        *,
+        point: tuple[float, float] | None = None,
+        radius_meters: int | None = None,
     ) -> AsyncIterator[CompanyRaw]:
-        """Ищет компании по нише в городе через HTML главной выдачи + JSON-LD."""
+        """Ищет компании по нише в городе через HTML главной выдачи + JSON-LD.
+
+        Radius-режим (point + radius_meters) Я.Карты пока не поддерживают —
+        провайдер тихо игнорирует эти параметры и работает как раньше.
+        Реальный конкурентный режим работает только через 2GIS.
+        """
+        _ = point, radius_meters  # резерв для будущего
         query = f"{niche} {city}".strip()
         url = f"{YANDEX_MAPS_URL}?text={quote_plus(query)}&display-text={quote_plus(niche)}"
 

@@ -137,11 +137,28 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                 parse_company_reviews.delay(company.id, source)
                 _maybe_enrich_contacts(company)
 
+    # В режиме radius — передаём point + radius_meters в провайдер вместо region_id.
+    # MapSearch.mode='radius' выставляется при создании поиска (см. service).
+    use_radius = (
+        getattr(search, "mode", "city") == "radius"
+        and search.point_lat is not None
+        and search.point_lng is not None
+        and search.radius_meters
+    )
+    radius_kwargs: dict = {}
+    if use_radius:
+        radius_kwargs = {
+            "point": (float(search.point_lat), float(search.point_lng)),
+            "radius_meters": int(search.radius_meters),
+        }
+
     async def _consume_query(q_idx: int, query: str) -> None:
         """Стримит один синоним, дедупит и кладёт в общий batch."""
         nonlocal batch, saved_count
         try:
-            async for company_raw in provider.search_companies(query, search.city, limit=limit):
+            async for company_raw in provider.search_companies(
+                query, search.city, limit=limit, **radius_kwargs,
+            ):
                 if saved_count >= limit:
                     return
                 ext_id = company_raw.external_id

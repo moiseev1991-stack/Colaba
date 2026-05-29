@@ -32,8 +32,16 @@ class MapProvider(ABC):
         niche: str,
         city: str,
         limit: int = 100,
+        *,
+        point: tuple[float, float] | None = None,
+        radius_meters: int | None = None,
     ) -> AsyncIterator[CompanyRaw]:
-        """Стримит компании по нише в городе.
+        """Стримит компании по нише.
+
+        Режимы:
+        - city: использует city, ищет по region_id (если поддерживается).
+        - radius: point=(lat,lng) + radius_meters > 0 — конкурентный режим,
+          ищет компании в радиусе вокруг точки.
 
         Реализуется через `async def ... yield`. Может уйти спать между батчами
         для соблюдения rate limit — это нормально.

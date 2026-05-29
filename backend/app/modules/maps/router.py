@@ -100,15 +100,56 @@ async def create_map_search(
 ):
     """Создаёт поиск + ставит Celery-задачу parse_map_search.
 
+    Режимы:
+    - mode='city' (default): обязательны niche + city.
+    - mode='radius': обязательны niche + address + radius_meters. Адрес
+      геокодим через 2GIS API, координаты сохраняем в point_lat/lng.
+      city подставляется из ответа геокода — для pain_tags по (niche, city).
+
     Если для всех sources уже свежий кэш — status='from_cache', Celery не ставим.
+    Radius-режим не кэшируется.
     """
+    # Радиус-режим: геокодим адрес через 2GIS и подставляем координаты + город.
+    point_lat = None
+    point_lng = None
+    resolved_city = payload.city.strip()
+    radius_address = None
+    if payload.mode == "radius":
+        if not payload.address or not payload.address.strip():
+            raise HTTPException(status_code=400, detail="Для режима radius укажи address")
+        if not payload.radius_meters:
+            raise HTTPException(status_code=400, detail="Для режима radius укажи radius_meters")
+        from app.modules.maps.providers.twogis import TwoGisProvider
+
+        try:
+            provider = TwoGisProvider()
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"2GIS API ключ не настроен: {e}")
+        geo = await provider.geocode(payload.address.strip())
+        if geo is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Не удалось найти адрес «{payload.address}» в 2GIS. Попробуй другой формат.",
+            )
+        point_lat = geo["lat"]
+        point_lng = geo["lng"]
+        resolved_city = geo.get("city") or payload.city.strip() or "—"
+        radius_address = geo.get("matched") or payload.address.strip()
+    elif not resolved_city or len(resolved_city) < 2:
+        raise HTTPException(status_code=400, detail="city слишком короткий")
+
     search = await service.create_map_search(
         db,
         user_id=user_id,
         niche=payload.niche.strip(),
-        city=payload.city.strip(),
+        city=resolved_city,
         sources=list(payload.sources),
         filters=payload.filters,
+        mode=payload.mode,
+        address=radius_address,
+        point_lat=point_lat,
+        point_lng=point_lng,
+        radius_meters=payload.radius_meters,
     )
 
     if search.status == "pending":

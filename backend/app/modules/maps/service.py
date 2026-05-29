@@ -201,6 +201,12 @@ async def create_map_search(
     sources: list[str],
     organization_id: int | None = None,
     filters: MapSearchFilter | None = None,
+    *,
+    mode: str = "city",
+    address: str | None = None,
+    point_lat: float | None = None,
+    point_lng: float | None = None,
+    radius_meters: int | None = None,
 ) -> MapSearch:
     """Создаёт запись MapSearch и решает: брать из кэша или ставить парсинг.
 
@@ -227,10 +233,19 @@ async def create_map_search(
         sources=",".join(sources),
         status="pending",  # переопределим ниже, когда узнаем итог по кэшу
         filters=filters.model_dump(exclude_none=True) if filters else None,
+        mode=mode,
+        address=address,
+        point_lat=point_lat,
+        point_lng=point_lng,
+        radius_meters=radius_meters,
     )
     db.add(search)
     await db.commit()
     await db.refresh(search)
+
+    # Радиус-режим не кэшируется (точка уникальна для каждого поиска), сразу pending.
+    if mode == "radius":
+        return search
 
     cached_sources: list[str] = []
     total_copied = 0

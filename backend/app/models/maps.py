@@ -152,6 +152,14 @@ class MapSearch(Base):
     status = Column(String(20), nullable=False, index=True)  # pending|running|completed|failed|from_cache
     filters = Column(JSONB)
 
+    # Режим поиска (миграция 019). 'city' — старый, по region_id;
+    # 'radius' — конкурентный режим, поиск в радиусе от точки.
+    mode = Column(String(20), nullable=False, default="city")
+    address = Column(String(500))               # исходный адрес юзера (для UI)
+    point_lat = Column(Numeric(9, 6))           # геокодированные координаты центра
+    point_lng = Column(Numeric(9, 6))
+    radius_meters = Column(Integer)             # 500..15000
+
     companies_found = Column(Integer, nullable=False, default=0)
     reviews_found = Column(Integer, nullable=False, default=0)
     ai_progress = Column(String(20), nullable=False, default="pending")  # pending|running|done|skipped

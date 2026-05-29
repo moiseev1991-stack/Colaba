@@ -405,22 +405,91 @@ class TwoGisProvider(MapProvider):
         )
         return TWOGIS_FALLBACK_REGION_ID
 
+    async def geocode(self, address: str) -> dict | None:
+        """Геокодирование адреса через 2GIS.
+
+        Возвращает {"lat": ..., "lng": ..., "city": ..., "matched": "..."} или None.
+        Используется в режиме «поиск по радиусу» — юзер вводит адрес, мы получаем
+        точку и потом ищем компании вокруг.
+
+        Под капотом — обычный /3.0/items?q={address}&type=adm_div.settlement,attraction,building
+        — 2GIS отдаёт первый match.
+        """
+        if not address or not address.strip():
+            return None
+        url = f"{BASE_URL_3}/items/geocode"
+        params = {
+            "q": address.strip(),
+            "key": self._api_key,
+            "fields": "items.point,items.adm_div,items.full_address_name",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code != 200:
+                    logger.warning("2gis geocode http %d for %r", resp.status_code, address)
+                    return None
+                data = resp.json()
+                meta = data.get("meta") or {}
+                if isinstance(meta.get("code"), int) and meta["code"] >= 400:
+                    logger.warning("2gis geocode meta.code=%s for %r", meta["code"], address)
+                    return None
+                items = (data.get("result") or {}).get("items") or []
+                if not items:
+                    return None
+                item = items[0]
+                point = item.get("point") or {}
+                lat = point.get("lat")
+                lng = point.get("lon")
+                if lat is None or lng is None:
+                    return None
+                # Город из adm_div: ищем элемент с type='city' или 'settlement'
+                city = None
+                for adm in item.get("adm_div") or []:
+                    if (adm.get("type") or "").lower() in ("city", "settlement"):
+                        city = adm.get("name")
+                        if city:
+                            break
+                return {
+                    "lat": float(lat),
+                    "lng": float(lng),
+                    "city": city,
+                    "matched": item.get("full_address_name") or item.get("name"),
+                }
+        except Exception as e:
+            logger.warning("2gis geocode exception for %r: %s", address, e)
+            return None
+
     async def search_companies(
         self,
         niche: str,
         city: str,
         limit: int = 100,
+        *,
+        point: tuple[float, float] | None = None,
+        radius_meters: int | None = None,
     ) -> AsyncIterator[CompanyRaw]:
-        """Стримит компании по нише в городе. Пагинация по page=1..N до limit."""
-        region_id = await self._get_region_id(city)
+        """Стримит компании по нише.
+
+        Режимы:
+        - city (point=None): используется region_id, поиск по всему городу.
+        - radius (point=(lat,lng), radius_meters>0): конкурентный режим,
+          ищет компании в радиусе вокруг точки. region_id не передаётся —
+          2GIS сам определяет регион по координатам.
+        """
         url = f"{BASE_URL_3}/items"
-        common = {
+        common: dict[str, Any] = {
             "q": niche,
-            "region_id": region_id,
             "key": self._api_key,
             "fields": "items.point,items.contact_groups,items.reviews,items.rubrics,items.full_address_name",
             "page_size": PAGE_SIZE,
         }
+        if point is not None and radius_meters and radius_meters > 0:
+            common["point"] = f"{point[1]},{point[0]}"  # 2GIS: lon,lat
+            common["radius"] = int(radius_meters)
+        else:
+            region_id = await self._get_region_id(city)
+            common["region_id"] = region_id
 
         yielded = 0
         page = 1

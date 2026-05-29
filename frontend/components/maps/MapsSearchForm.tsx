@@ -89,9 +89,14 @@ interface Props {
   onStarted: (search: MapSearchOut) => void;
 }
 
+type SearchModeTab = 'city' | 'radius';
+
 export function MapsSearchForm({ onStarted }: Props) {
+  const [mode, setMode] = useState<SearchModeTab>('city');
   const [niche, setNiche] = useState('');
   const [city, setCity] = useState('Москва');
+  const [address, setAddress] = useState('');
+  const [radiusKm, setRadiusKm] = useState(2);
   const [reviewWord, setReviewWord] = useState('');
   const [sources, setSources] = useState<MapSource[]>(['2gis']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
@@ -144,15 +149,37 @@ export function MapsSearchForm({ onStarted }: Props) {
       setError('Выбери хотя бы один источник');
       return;
     }
+    if (mode === 'radius') {
+      if (address.trim().length < 3) {
+        setError('Введи адрес для радиуса (минимум 3 символа)');
+        return;
+      }
+      if (sources[0] !== '2gis' || sources.length > 1) {
+        setError('Конкурентный режим (радиус) пока работает только для 2GIS');
+        return;
+      }
+    }
     setIsLoading(true);
     try {
       const filters = buildFilters();
-      const search = await createMapSearch({
-        niche: niche.trim(),
-        city: city.trim() || 'Москва',
-        sources,
-        ...(filters ? { filters } : {}),
-      });
+      const payload =
+        mode === 'radius'
+          ? {
+              niche: niche.trim(),
+              city: '',
+              sources,
+              mode: 'radius' as const,
+              address: address.trim(),
+              radius_meters: Math.round(radiusKm * 1000),
+              ...(filters ? { filters } : {}),
+            }
+          : {
+              niche: niche.trim(),
+              city: city.trim() || 'Москва',
+              sources,
+              ...(filters ? { filters } : {}),
+            };
+      const search = await createMapSearch(payload);
       onStarted(search);
     } catch (err: unknown) {
       const msg =
@@ -264,6 +291,37 @@ export function MapsSearchForm({ onStarted }: Props) {
             </span>
           </div>
 
+          {/* Mode switcher */}
+          <div className="mb-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMode('city')}
+              disabled={isLoading}
+              className={cn(
+                'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                mode === 'city'
+                  ? 'border-slate-900 bg-slate-900 text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              )}
+            >
+              По городу
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('radius')}
+              disabled={isLoading}
+              className={cn(
+                'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                mode === 'radius'
+                  ? 'border-slate-900 bg-slate-900 text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              )}
+              title="Конкурентный режим: компании в радиусе X км от заданного адреса"
+            >
+              По радиусу <span className="ml-1 rounded-sm bg-amber-200 px-1.5 text-[10px] text-amber-900">new</span>
+            </button>
+          </div>
+
           {/* Form row */}
           <div className="grid gap-4 md:grid-cols-12 mb-5">
             <div className="md:col-span-6">
@@ -286,18 +344,56 @@ export function MapsSearchForm({ onStarted }: Props) {
                 }}
               />
             </div>
-            <div className="md:col-span-6">
-              <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
-                город
-              </label>
-              <CityCombobox
-                city={city}
-                onCityChange={(c) => setCity(c)}
-                disabled={isLoading}
-                className="w-full"
-                placeholder="Выберите город"
-              />
-            </div>
+            {mode === 'city' ? (
+              <div className="md:col-span-6">
+                <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
+                  город
+                </label>
+                <CityCombobox
+                  city={city}
+                  onCityChange={(c) => setCity(c)}
+                  disabled={isLoading}
+                  className="w-full"
+                  placeholder="Выберите город"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="md:col-span-6">
+                  <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
+                    адрес центра поиска
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Например: Москва, ул. Тверская, 1"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full h-11 text-[15px]"
+                  />
+                </div>
+                <div className="md:col-span-12">
+                  <label className="block app-mono-label mb-2 flex items-center justify-between" style={{ color: 'hsl(var(--muted))' }}>
+                    <span>радиус поиска</span>
+                    <span style={{ color: 'hsl(var(--text))' }}>{radiusKm.toFixed(1)} км</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={10}
+                    step={0.5}
+                    value={radiusKm}
+                    onChange={(e) => setRadiusKm(parseFloat(e.target.value))}
+                    disabled={isLoading}
+                    className="w-full"
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                    Найдём компании в радиусе {radiusKm.toFixed(1)} км от точки. Удобно для
+                    конкурентной разведки — «что у моих соседей по району».
+                  </p>
+                </div>
+              </>
+            )}
             <div className="md:col-span-12">
               <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
                 слово в отзыве — необязательно
