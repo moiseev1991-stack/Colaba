@@ -43,6 +43,7 @@ from app.modules.maps.providers.twogis import CITY_TO_REGION_ID, KNOWN_CITIES_FO
 from app.modules.maps.schemas import (
     CompaniesListOut,
     CompanyDetailOut,
+    CompanyDigestOut,
     CompanyOut,
     CompanyPainOut,
     MapSearchCreate,
@@ -381,6 +382,66 @@ async def list_company_reviews(
         total=int(total),
         limit=limit,
         offset=offset,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Company digest (агрегат отзывов за период)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/companies/{company_id}/digest", response_model=CompanyDigestOut)
+@limiter.limit("60/minute")
+async def get_company_digest(
+    request: Request,
+    company_id: int,
+    days: int = Query(default=30, ge=1, le=365),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сводка отзывов компании за N дней: счёт по sentiment, средний рейтинг,
+    доля ответов владельца, топ-боли с цитатами.
+
+    Используется в drawer'е компании, чтобы юзер одним взглядом понял
+    «как сейчас себя чувствует» эта компания — нужно ли её включать в outreach,
+    стоит ли использовать конкретную боль в письме.
+    """
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from sqlalchemy import func as _func
+
+    company = await _get_company_or_404(db, company_id)
+    since = _dt.now(_tz.utc) - _td(days=days)
+
+    # Агрегаты по sentiment / rating / owner_reply одним запросом
+    aggregate_row = (await db.execute(
+        select(
+            _func.count(Review.id),
+            _func.sum(_func.case((Review.sentiment == "positive", 1), else_=0)),
+            _func.sum(_func.case((Review.sentiment == "negative", 1), else_=0)),
+            _func.sum(_func.case((Review.sentiment == "neutral", 1), else_=0)),
+            _func.avg(Review.rating),
+            _func.sum(_func.case((Review.has_owner_reply.is_(True), 1), else_=0)),
+        )
+        .where(Review.company_id == company_id, Review.posted_at >= since)
+    )).one()
+    total, pos, neg, neu, avg_r, owner_r = aggregate_row
+
+    total_int = int(total or 0)
+    owner_rate = (float(owner_r or 0) / total_int) if total_int else None
+
+    pains_map = await service.get_top_pains_for_companies(db, [company_id], limit_per_company=5)
+    pains = [CompanyPainOut(**p) for p in pains_map.get(company_id, [])]
+
+    return CompanyDigestOut(
+        company_id=company.id,
+        days=days,
+        total_reviews=total_int,
+        positive_count=int(pos or 0),
+        negative_count=int(neg or 0),
+        neutral_count=int(neu or 0),
+        avg_rating=float(avg_r) if avg_r is not None else None,
+        owner_reply_rate=owner_rate,
+        top_pains=pains,
     )
 
 

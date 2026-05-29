@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Search as SearchIcon, X, Star } from 'lucide-react';
 
+import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -147,6 +148,9 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               value={detail.has_owner_replies ? `да (${detail.owner_replies_count})` : 'нет'}
             />
           </div>
+
+          {/* Дайджест за 30 дней — лента метрик + топ-боли с цитатами */}
+          <CompanyDigestBlock companyId={detail.id} days={30} />
 
           {Array.isArray(detail.pain_tags) && detail.pain_tags.length > 0 && (
             <div>

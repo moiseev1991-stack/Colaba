@@ -110,3 +110,32 @@ export async function createCampaignFromList(
   );
   return response.data;
 }
+
+export interface BulkDraftItem {
+  company_id: number;
+  company_name: string;
+  subject: string;
+  body: string;
+  used_pain_label?: string | null;
+  used_pain_quote?: string | null;
+  suggested_to_emails: string[];
+}
+
+export interface BulkDraftsOut {
+  list_id: number;
+  total_companies: number;
+  drafts: BulkDraftItem[];
+  skipped_no_pains: number;
+  skipped_llm_error: number;
+}
+
+/** POST /lead-lists/{id}/bulk-drafts — параллельная LLM-генерация драфтов
+ *  для всех компаний списка. Может занять 10-30с на 25 компаний. */
+export async function bulkDraftEmails(id: number): Promise<BulkDraftsOut> {
+  const response = await apiClient.post<BulkDraftsOut>(
+    `/lead-lists/${id}/bulk-drafts`,
+    {},
+    { timeout: 120000 } // 2 мин — LLM может быть медленным
+  );
+  return response.data;
+}

@@ -289,6 +289,29 @@ export async function draftEmailForCompany(companyId: number): Promise<OutreachD
   return response.data;
 }
 
+export interface CompanyDigestOut {
+  company_id: number;
+  days: number;
+  total_reviews: number;
+  positive_count: number;
+  negative_count: number;
+  neutral_count: number;
+  avg_rating: number | null;
+  owner_reply_rate: number | null;
+  top_pains: CompanyPainOut[];
+}
+
+/** GET /maps/companies/{id}/digest — сводка отзывов за N дней. */
+export async function getCompanyDigest(
+  companyId: number,
+  days: number = 30
+): Promise<CompanyDigestOut> {
+  const response = await apiClient.get<CompanyDigestOut>(
+    `/maps/companies/${companyId}/digest?days=${days}`
+  );
+  return response.data;
+}
+
 /** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку. */
 export function exportSearchCsvUrl(searchId: number, filter: MapSearchFilter = {}): string {
   const params = new URLSearchParams();

@@ -246,3 +246,24 @@ class OutreachDraftOut(BaseModel):
     body: str
     used_pains: list[CompanyPainOut] = Field(default_factory=list)
     suggested_to_emails: list[str] = Field(default_factory=list)
+
+
+class CompanyDigestOut(BaseModel):
+    """Краткая сводка отзывов компании за N дней.
+
+    Для drawer'а — даёт юзеру одним взглядом понять «как сейчас себя
+    чувствует компания»: упал ли рейтинг, что чаще всего критикуют,
+    отвечает ли владелец.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    company_id: int
+    days: int = 30
+    total_reviews: int = 0
+    positive_count: int = 0
+    negative_count: int = 0
+    neutral_count: int = 0
+    avg_rating: float | None = None
+    owner_reply_rate: float | None = None  # 0..1, доля отзывов с ответом владельца
+    top_pains: list[CompanyPainOut] = Field(default_factory=list)

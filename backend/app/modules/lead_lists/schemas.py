@@ -88,3 +88,29 @@ class CreateCampaignFromListOut(BaseModel):
     campaign_id: int
     total_recipients: int
     skipped_no_email: int
+
+
+class BulkDraftItem(BaseModel):
+    """Один драфт в bulk-результате."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    company_id: int
+    company_name: str
+    subject: str
+    body: str
+    used_pain_label: str | None = None
+    used_pain_quote: str | None = None
+    suggested_to_emails: list[str] = []
+
+
+class BulkDraftsOut(BaseModel):
+    """Ответ POST /lead-lists/{id}/bulk-drafts."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    list_id: int
+    total_companies: int
+    drafts: list[BulkDraftItem] = []
+    skipped_no_pains: int = 0
+    skipped_llm_error: int = 0

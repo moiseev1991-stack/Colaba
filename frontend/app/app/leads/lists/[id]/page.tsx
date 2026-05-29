@@ -7,11 +7,12 @@
  * списка доступна кнопка «Создать кампанию» (CreateCampaignFromListModal).
  */
 
-import { ArrowLeft, Mail, Trash2 } from 'lucide-react';
+import { ArrowLeft, Mail, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { BulkDraftsModal } from '@/components/maps/BulkDraftsModal';
 import { CreateCampaignFromListModal } from '@/components/maps/CreateCampaignFromListModal';
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
@@ -35,6 +36,7 @@ export default function LeadListDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [campaignOpen, setCampaignOpen] = useState(false);
+  const [bulkDraftsOpen, setBulkDraftsOpen] = useState(false);
 
   const [draftOpen, setDraftOpen] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -134,14 +136,25 @@ export default function LeadListDetailPage() {
             {data.description ? ` · ${data.description}` : ''}
           </p>
         </div>
-        <button
-          onClick={() => setCampaignOpen(true)}
-          disabled={data.items_count === 0}
-          className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          <Mail className="h-4 w-4" />
-          Создать кампанию
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setBulkDraftsOpen(true)}
+            disabled={data.items_count === 0}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            title="Сгенерить драфт письма для каждой компании списка"
+          >
+            <Sparkles className="h-4 w-4" />
+            Сгенерить все письма
+          </button>
+          <button
+            onClick={() => setCampaignOpen(true)}
+            disabled={data.items_count === 0}
+            className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            <Mail className="h-4 w-4" />
+            Создать кампанию
+          </button>
+        </div>
       </div>
 
       {data.items.length === 0 ? (
@@ -179,6 +192,14 @@ export default function LeadListDetailPage() {
         listName={data.name}
         itemsCount={data.items_count}
         onClose={() => setCampaignOpen(false)}
+      />
+
+      <BulkDraftsModal
+        open={bulkDraftsOpen}
+        listId={data.id}
+        listName={data.name}
+        itemsCount={data.items_count}
+        onClose={() => setBulkDraftsOpen(false)}
       />
 
       <DraftEmailModal

@@ -11,6 +11,8 @@ from app.core.dependencies import get_current_user_id
 from app.core.rate_limit import limiter
 from app.modules.lead_lists import service
 from app.modules.lead_lists.schemas import (
+    BulkDraftItem,
+    BulkDraftsOut,
     CreateCampaignFromListIn,
     CreateCampaignFromListOut,
     LeadListCreate,
@@ -153,6 +155,93 @@ async def remove_item(
     ok = await service.remove_company(db, list_id=list_id, company_id=company_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Item not found in list")
+
+
+@router.post("/{list_id}/bulk-drafts", response_model=BulkDraftsOut)
+@limiter.limit("3/minute")
+async def bulk_draft_emails(
+    request: Request,
+    list_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """LLM-генерация драфтов писем для всех компаний списка параллельно.
+
+    Для каждой компании с pain_tags+цитатами берётся топ-1 боль и идёт в
+    промпт. Параллельность ограничена asyncio.Semaphore(5), чтобы не задушить
+    ProxyAPI. Типичное время: ~10-30с на список из 25 компаний.
+
+    Возвращает массив драфтов + счётчики компаний, у которых драфт не вышел
+    (no_pains / llm_error). UI показывает это пачкой, юзер может пройтись
+    глазами и скопировать каждый.
+    """
+    import asyncio
+
+    ll = await service.get_owned(db, list_id=list_id, user_id=user_id)
+    if ll is None:
+        raise HTTPException(status_code=404, detail="Lead list not found")
+    items = await service.list_items_with_companies(db, list_id=list_id, limit=200)
+    if not items:
+        return BulkDraftsOut(list_id=list_id, total_companies=0)
+
+    pains_map = await maps_service.get_top_pains_for_companies(
+        db, [c.id for c in items], limit_per_company=2,
+    )
+
+    from app.modules.reviews_ai.llm import call_llm_outreach_draft
+
+    sem = asyncio.Semaphore(5)
+    skipped_no_pains = 0
+    skipped_llm_error = 0
+    drafts: list[BulkDraftItem] = []
+    lock = asyncio.Lock()
+
+    async def gen_for(company) -> None:
+        nonlocal skipped_no_pains, skipped_llm_error
+        pains = pains_map.get(company.id, [])
+        pains_with_quote = [p for p in pains if p.get("top_quote")]
+        if not pains_with_quote:
+            async with lock:
+                skipped_no_pains += 1
+            return
+        async with sem:
+            draft = await call_llm_outreach_draft(
+                db,
+                company_name=company.name or "",
+                niche=company.niche or "",
+                city=company.city or "",
+                source=company.source or "карты",
+                pains=[
+                    {"label": p["label"], "quote": p.get("top_quote") or ""}
+                    for p in pains_with_quote
+                ],
+            )
+        if draft is None:
+            async with lock:
+                skipped_llm_error += 1
+            return
+        emails = company.emails if isinstance(company.emails, list) else []
+        top_p = pains_with_quote[0]
+        async with lock:
+            drafts.append(BulkDraftItem(
+                company_id=company.id,
+                company_name=company.name or "",
+                subject=draft["subject"],
+                body=draft["body"],
+                used_pain_label=top_p.get("label"),
+                used_pain_quote=top_p.get("top_quote"),
+                suggested_to_emails=list(emails)[:3],
+            ))
+
+    await asyncio.gather(*(gen_for(c) for c in items), return_exceptions=True)
+
+    return BulkDraftsOut(
+        list_id=list_id,
+        total_companies=len(items),
+        drafts=drafts,
+        skipped_no_pains=skipped_no_pains,
+        skipped_llm_error=skipped_llm_error,
+    )
 
 
 @router.post("/{list_id}/create-campaign", response_model=CreateCampaignFromListOut)
