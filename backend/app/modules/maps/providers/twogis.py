@@ -43,7 +43,12 @@ logger = logging.getLogger(__name__)
 # Города без правильного ID лучше переводить на fallback (Россия) — поиск всё равно вернёт
 # что-то, чем тихо отдавать данные не того региона.
 CITY_TO_REGION_ID: dict[str, int] = {
-    "москва": 32,  # verified via region/search 2026-05-23
+    # Верифицировано вручную через GET /2.0/region/search?q={город}.
+    # Москва = 32 подтверждена 2026-05-23. СПб = 38 — общеизвестное значение
+    # из публичных 2GIS-гайдов. Остальные города резолвятся динамически через
+    # TwoGisProvider._get_region_id → /region/search, с кэшем в процессе.
+    "москва": 32,
+    "санкт-петербург": 38,
 }
 
 # Для UI: список известных городов (для дропдауна). Они НЕ обязательно имеют
@@ -142,10 +147,26 @@ async def _resolve_region_id_via_api(city: str, api_key: str) -> int | None:
                 return None
             items = (data.get("result") or {}).get("items") or []
             if not items:
+                logger.info("2gis region/search %r: пустой result.items", city)
                 return None
+            # Приоритет: type=city (главный город) над административными
+            # единицами (region/district), которые могут оказаться первыми.
+            for item in items:
+                if (item.get("type") or "").lower() == "city":
+                    rid = item.get("id")
+                    if rid is not None:
+                        logger.info(
+                            "2gis region/search %r → id=%s (type=city, name=%r)",
+                            city, rid, item.get("name"),
+                        )
+                        return int(rid)
             rid = items[0].get("id")
             if rid is None:
                 return None
+            logger.info(
+                "2gis region/search %r → id=%s (первый item, type=%r, name=%r)",
+                city, rid, items[0].get("type"), items[0].get("name"),
+            )
             return int(rid)
     except Exception as e:
         logger.warning("2gis region/search exception for %r: %s", city, e)

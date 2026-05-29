@@ -210,7 +210,18 @@ async def _parse_map_search_async(search_id: int) -> None:
                 if await service.check_cache(db, search.niche, search.city, source):
                     logger.info("parse_map_search: cache hit for %s/%s/%s", search.niche, search.city, source)
                     continue
-                count, completed = await _parse_companies_for_source(db, search, source)
+                try:
+                    count, completed = await _parse_companies_for_source(db, search, source)
+                except RuntimeError as e:
+                    # Третий слой защиты: если что-то прорвалось через все catch'и
+                    # внутри _parse_companies_for_source (например, новая логическая
+                    # ошибка провайдера) — НЕ валим весь поиск, просто считаем что
+                    # этот source ничего не дал. Юзер увидит EmptyResult, не failed.
+                    logger.warning(
+                        "parse_map_search: source=%s бросил RuntimeError на верхнем уровне: %s",
+                        source, e,
+                    )
+                    count, completed = 0, False
                 total_found += count
                 # Кэш пишем только при полном успехе. Если парсинг прервался
                 # (капча, рейтлимит) — лучше не писать кэш, чтобы следующий
