@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.15.1...v1.15.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* **maps-ui:** пресет «Хаос в работе» — массив специфичных слов + индикатор ([753f6cf](https://github.com/moiseev1991-stack/Colaba/commit/753f6cf2ae5be5865a15b03192a8177d8a21b821))
+
 ## [1.15.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.15.0...v1.15.1) (2026-05-30)
 
 
