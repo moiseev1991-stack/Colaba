@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.21.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.20.2...v1.21.0) (2026-05-30)
+
+
+### Features
+
+* **maps,reviews-ai:** AI-промпт в пресетах — кастомная оценка компаний через LLM ([e42e485](https://github.com/moiseev1991-stack/Colaba/commit/e42e4859a604fd89e6a186fb789dd148eee2ad67))
+
 ## [1.20.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.20.1...v1.20.2) (2026-05-30)
 
 
