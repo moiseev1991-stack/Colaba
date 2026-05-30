@@ -118,7 +118,9 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
       ) : (
         <div className="space-y-4">
           {/* === Шапка компании === */}
-          <div className="text-sm text-slate-600">{detail.address || '—'}</div>
+          <div className="text-sm text-slate-600">
+            {formatAddressWithCity(detail.address, detail.city) || '—'}
+          </div>
 
           <div className="flex flex-wrap gap-3 text-sm">
             {detail.phone && (
@@ -248,7 +250,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               </div>
             ) : (
               <>
-                {hasActiveFilters && (
+                {hasActiveFilters && !isLoading && (
                   <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-400">
                     показано {reviews.length}
                     {textQuery ? ` · по запросу «${debouncedText}»` : ''}
@@ -387,6 +389,19 @@ function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'n
       {cfg.label}
     </span>
   );
+}
+
+function formatAddressWithCity(
+  address: string | null | undefined,
+  city: string | null | undefined
+): string | null {
+  const a = (address ?? '').trim();
+  const c = (city ?? '').trim();
+  if (!a && !c) return null;
+  if (!a) return c;
+  if (!c) return a;
+  if (a.toLowerCase().includes(c.toLowerCase())) return a;
+  return `${c}, ${a}`;
 }
 
 function HighlightedText({ text, needle }: { text: string; needle: string }) {

@@ -77,6 +77,11 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   const [draftLoadingCompanyId, setDraftLoadingCompanyId] = useState<number | null>(null);
   const [draftData, setDraftData] = useState<OutreachDraftOut | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
+  // True после первого успешного listMapCompanies. Нужно, чтобы фильтр,
+  // который вернул 0 компаний, не подменялся тихо на live-ленту (без
+  // фильтра) — раньше юзер выбирал «Стабильный» и видел все 80 карточек
+  // вместо «0 компаний под фильтр».
+  const [companiesEverLoaded, setCompaniesEverLoaded] = useState(false);
 
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
@@ -157,6 +162,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
       try {
         const data = await listMapCompanies(search.id, f, 100, 0);
         setCompanies(data.items);
+        setCompaniesEverLoaded(true);
       } finally {
         setIsLoading(false);
       }
@@ -172,11 +178,15 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
     return () => clearTimeout(timer);
   }, [filter, isTerminal, refreshCompanies]);
 
-  // Список для отображения: финальный (из API) приоритетнее live-стрима
+  // Список для отображения: после того, как companies хотя бы раз были
+  // загружены через listMapCompanies, ВСЕГДА используем их (даже если 0).
+  // Иначе фильтр, отдавший 0 компаний, тихо подменялся бы на нефильтрованную
+  // live-ленту и юзер думал бы, что фильтр не работает.
+  // Live-стрим используется только пока companies ещё ни разу не приходили
+  // (первоначальная загрузка — пока парсер ещё не дошёл до terminal-статуса).
   const liveCompanies = stream.companies;
-  const hasFinal = companies.length > 0;
-  const renderList: any[] = hasFinal ? companies : liveCompanies;
-  const renderTotal = hasFinal ? companies.length : liveCompanies.length;
+  const renderList: any[] = companiesEverLoaded ? companies : liveCompanies;
+  const renderTotal = companiesEverLoaded ? companies.length : liveCompanies.length;
 
   function handleExport() {
     const url = exportSearchCsvUrl(search.id, filter);
@@ -301,6 +311,16 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
             {isTerminal
               ? 'Загружаем компании по выбранным фильтрам…'
               : 'Парсер ищет компании. Карточки появятся по мере готовности.'}
+          </div>
+        )}
+
+        {!isLoading && companiesEverLoaded && renderList.length === 0 && search.status !== 'failed' && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
+            <div className="mt-1 text-amber-700">
+              Ослабь критерии в панели слева (например, убери минимум рейтинга
+              или отключи «Только с сайтом») или сбрось пресет.
+            </div>
           </div>
         )}
 
