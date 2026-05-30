@@ -14,9 +14,10 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Loader2, Sparkles, ArrowRight, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { BookmarkPlus, Loader2, Sparkles, ArrowRight, ChevronDown, ChevronRight, X } from 'lucide-react';
 
 import { BUILTIN_PRESETS } from '@/components/maps/builtinPresets';
+import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
 import { CityCombobox } from '@/components/CityCombobox';
 import {
   FilterBuilder,
@@ -111,6 +112,7 @@ export function MapsSearchForm({ onStarted }: Props) {
   const [presetFilter, setPresetFilter] = useState<MapSearchFilter | null>(null);
   const [presetLabel, setPresetLabel] = useState<string | null>(null);
   const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -539,19 +541,29 @@ export function MapsSearchForm({ onStarted }: Props) {
 
           {/* Filter presets — встроенные + мои */}
           <div className="mb-6">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between gap-2">
               <p className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
                 пресет фильтров (необязательно)
               </p>
-              {presetLabel && (
+              <div className="flex items-center gap-2">
+                {presetLabel && (
+                  <button
+                    type="button"
+                    onClick={clearPreset}
+                    className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800"
+                  >
+                    <X className="h-3 w-3" /> убрать
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={clearPreset}
-                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800"
+                  onClick={() => setSaveModalOpen(true)}
+                  title="Сохранить текущие фильтры как пресет"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50"
                 >
-                  <X className="h-3 w-3" /> убрать пресет
+                  <BookmarkPlus className="h-3 w-3" /> сохранить
                 </button>
-              )}
+              </div>
             </div>
             {presetLabel && (
               <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[12px] text-emerald-800">
@@ -772,6 +784,13 @@ export function MapsSearchForm({ onStarted }: Props) {
           </div>
         </form>
       </section>
+
+      <SaveFilterPresetModal
+        open={saveModalOpen}
+        filter={buildFilters() ?? {}}
+        onClose={() => setSaveModalOpen(false)}
+        onSaved={(p) => setUserPresets((prev) => [p, ...prev])}
+      />
     </div>
   );
 }
