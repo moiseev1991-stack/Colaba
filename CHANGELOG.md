@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.19.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.18.0...v1.19.0) (2026-05-30)
+
+
+### Features
+
+* **maps:** пресеты на форме поиска + вкладка «Скрытые» в моих пресетах ([e421637](https://github.com/moiseev1991-stack/Colaba/commit/e421637fed2ae9c2ef9edff6f6641d654fc59eb8))
+
 # [1.18.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.17.0...v1.18.0) (2026-05-30)
 
 
