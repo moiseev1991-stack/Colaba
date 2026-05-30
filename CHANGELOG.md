@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.16.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.15.2...v1.16.0) (2026-05-30)
+
+
+### Features
+
+* **maps-ui:** подписи под кнопками пресетов — видно ICP без наведения ([e75982b](https://github.com/moiseev1991-stack/Colaba/commit/e75982b0efde31809a5878441f576415d4b26656))
+
 ## [1.15.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.15.1...v1.15.2) (2026-05-30)
 
 
