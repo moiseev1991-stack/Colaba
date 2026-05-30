@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.20.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.20.1...v1.20.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* **maps:** AI-анализ не запускался для существующих компаний ([7ab0e05](https://github.com/moiseev1991-stack/Colaba/commit/7ab0e051e489bf8a7dd7132a3c896ec45a562402))
+
 ## [1.20.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.20.0...v1.20.1) (2026-05-30)
 
 
