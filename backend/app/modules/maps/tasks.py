@@ -231,10 +231,14 @@ async def _parse_map_search_async(search_id: int) -> None:
         await db.commit()
 
         total_found = 0
+        # В radius-режиме точка/радиус уникальны — нельзя переиспользовать city-кэш.
+        # Иначе после первого city-поиска по (ниша, город) любой radius-поиск в этом
+        # городе ловит cache hit, пропускает парсинг и возвращает 0 компаний.
+        radius_mode = getattr(search, "mode", "city") == "radius"
         try:
             sources = [s.strip() for s in (search.sources or "").split(",") if s.strip()]
             for source in sources:
-                if await service.check_cache(db, search.niche, search.city, source):
+                if not radius_mode and await service.check_cache(db, search.niche, search.city, source):
                     logger.info("parse_map_search: cache hit for %s/%s/%s", search.niche, search.city, source)
                     continue
                 try:
@@ -253,7 +257,10 @@ async def _parse_map_search_async(search_id: int) -> None:
                 # Кэш пишем только при полном успехе. Если парсинг прервался
                 # (капча, рейтлимит) — лучше не писать кэш, чтобы следующий
                 # запрос мог нормально перепарсить.
-                if completed and count > 0:
+                # В radius-режиме кэш по (niche, city) не пишем — иначе он
+                # сломает обычный city-поиск (cache hit подсунет только компании
+                # из радиуса вместо полной выдачи по городу).
+                if completed and count > 0 and not radius_mode:
                     await service.upsert_cache_entry(
                         db, search.niche, search.city, source,
                         companies_count=count, reviews_count=0,
