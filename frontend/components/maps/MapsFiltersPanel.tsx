@@ -49,8 +49,19 @@ const PRESETS: Preset[] = [
     id: 'chaos',
     label: 'Хаос в работе',
     description:
-      'Для CRM/POS-вендоров и автоматизаторов: клиенты в отзывах жалуются на «долгое» (ожидание, ответ, доставку) — компании нужна автоматизация процессов',
-    filter: { review_text_contains: 'долго', sort_by: 'negative_desc' },
+      'Для CRM/POS-вендоров и автоматизаторов: клиенты в отзывах жалуются на сбои процессов — «не дозвонился», «не перезвонили», «забыли про запись», «не подтвердили». Сигнал «нужна автоматизация».',
+    filter: {
+      review_text_contains_any: [
+        'не дозвон',
+        'не перезвон',
+        'не ответ',
+        'забыли',
+        'не подтвердил',
+        'не пришл',
+      ],
+      min_negative: 3,
+      sort_by: 'negative_desc',
+    },
   },
   {
     id: 'stable',
@@ -232,6 +243,56 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
           <option value="no">Только без сайта</option>
         </Select>
       </div>
+
+      {(value.review_text_contains_any?.length ||
+        value.review_text_excludes_any?.length ||
+        value.review_text_contains ||
+        value.review_text_excludes) && (
+        <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-amber-700">
+            Слова в отзывах
+          </div>
+          {(value.review_text_contains_any?.length || value.review_text_contains) && (
+            <div className="mb-1 text-[12px] text-slate-700">
+              <span className="text-amber-700">содержит:</span>{' '}
+              {[
+                value.review_text_contains,
+                ...(value.review_text_contains_any ?? []),
+              ]
+                .filter(Boolean)
+                .map((w) => `«${w}»`)
+                .join(' / ')}
+            </div>
+          )}
+          {(value.review_text_excludes_any?.length || value.review_text_excludes) && (
+            <div className="mb-1 text-[12px] text-slate-700">
+              <span className="text-amber-700">не содержит:</span>{' '}
+              {[
+                value.review_text_excludes,
+                ...(value.review_text_excludes_any ?? []),
+              ]
+                .filter(Boolean)
+                .map((w) => `«${w}»`)
+                .join(' / ')}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                ...value,
+                review_text_contains: null,
+                review_text_excludes: null,
+                review_text_contains_any: null,
+                review_text_excludes_any: null,
+              })
+            }
+            className="mt-1 text-[11px] text-amber-700 underline hover:text-amber-900"
+          >
+            убрать
+          </button>
+        </div>
+      )}
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">Сортировка</label>
