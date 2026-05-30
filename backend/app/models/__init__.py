@@ -33,6 +33,7 @@ from app.models.pain_tag import (
     CompanyPainScore,
 )
 from app.models.lead_list import LeadList, LeadListItem
+from app.models.user_filter_preset import UserFilterPreset
 
 __all__ = [
     "User",
@@ -70,4 +71,5 @@ __all__ = [
     "CompanyPainScore",
     "LeadList",
     "LeadListItem",
+    "UserFilterPreset",
 ]

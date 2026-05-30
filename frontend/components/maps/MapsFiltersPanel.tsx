@@ -8,13 +8,20 @@
  * «Стабильный».
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { BookmarkPlus, X } from 'lucide-react';
 
 import { PainTagsCloud } from '@/components/maps/PainTagsCloud';
+import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { MapSearchFilter, SortBy } from '@/src/services/api/maps';
+import {
+  deleteUserPreset,
+  listUserPresets,
+  type UserPresetOut,
+} from '@/src/services/api/user-presets';
 
 type Preset = {
   id: string;
@@ -94,6 +101,46 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
   const [localMinReviews, setLocalMinReviews] = useState<string>(value.min_reviews?.toString() ?? '');
   const [localMinNegative, setLocalMinNegative] = useState<string>(value.min_negative?.toString() ?? '');
 
+  // Пользовательские пресеты — грузим один раз при монтировании панели,
+  // обновляем локально при создании/удалении. Не дёргаем сеть на каждый
+  // клик фильтра.
+  const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await listUserPresets('maps');
+        if (!cancelled) setUserPresets(list);
+      } catch {
+        // Если 401 / network — не валим панель, просто работаем без пользовательских пресетов
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleDeleteUserPreset = useCallback(async (preset: UserPresetOut) => {
+    if (!window.confirm(`Удалить пресет «${preset.name}»?`)) return;
+    try {
+      await deleteUserPreset(preset.id);
+      setUserPresets((prev) => prev.filter((p) => p.id !== preset.id));
+    } catch (e) {
+      window.alert('Не удалось удалить пресет');
+    }
+  }, []);
+
+  const handlePresetSaved = useCallback((preset: UserPresetOut) => {
+    setUserPresets((prev) => [preset, ...prev]);
+  }, []);
+
+  function applyUserPreset(p: UserPresetOut) {
+    onChange({
+      ...(p.filter as MapSearchFilter),
+      pain_tag_ids: value.pain_tag_ids,
+    });
+  }
+
   // При внешнем изменении value (например, клик по пресету) — синкаем локальные
   useEffect(() => {
     setLocalMinRating(value.min_rating?.toString() ?? '');
@@ -125,23 +172,93 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
 
   return (
     <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4">
-      <div className="grid grid-cols-2 gap-2">
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => applyPreset(p)}
-            title={p.description}
-            className={cn(
-              'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
-              'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
-            )}
-          >
-            <span className="text-xs font-medium text-slate-800">{p.label}</span>
-            <span className="text-[10px] leading-tight text-slate-500">{p.shortHint}</span>
-          </button>
-        ))}
+      <div>
+        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          Готовые пресеты
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => applyPreset(p)}
+              title={p.description}
+              className={cn(
+                'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
+                'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
+              )}
+            >
+              <span className="text-xs font-medium text-slate-800">{p.label}</span>
+              <span className="text-[10px] leading-tight text-slate-500">{p.shortHint}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            Мои пресеты
+            {userPresets.length > 0 && (
+              <span className="ml-1 text-slate-400">· {userPresets.length}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSaveModalOpen(true)}
+            title="Сохранить текущие фильтры как пресет"
+            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50"
+          >
+            <BookmarkPlus className="h-3 w-3" /> сохранить
+          </button>
+        </div>
+        {userPresets.length === 0 ? (
+          <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500">
+            Настрой фильтры, нажми «сохранить» — пресет появится здесь и
+            будет доступен в один клик при следующих поисках.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {userPresets.map((p) => (
+              <div
+                key={p.id}
+                className="group relative flex flex-col items-start gap-0.5 rounded-md border border-emerald-200 bg-emerald-50/40 px-3 py-2 pr-7 text-left transition-colors hover:border-emerald-400"
+              >
+                <button
+                  type="button"
+                  onClick={() => applyUserPreset(p)}
+                  title={p.description ?? 'мой пресет'}
+                  className="block w-full text-left"
+                >
+                  <span className="block text-xs font-medium text-slate-800">{p.name}</span>
+                  <span className="block text-[10px] leading-tight text-emerald-700/80">
+                    мой
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleDeleteUserPreset(p);
+                  }}
+                  title="Удалить пресет"
+                  aria-label={`Удалить пресет ${p.name}`}
+                  className="absolute right-1 top-1 rounded p-0.5 text-slate-400 opacity-0 transition-opacity hover:bg-emerald-100 hover:text-red-600 group-hover:opacity-100"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <SaveFilterPresetModal
+        open={saveModalOpen}
+        filter={value}
+        onClose={() => setSaveModalOpen(false)}
+        onSaved={handlePresetSaved}
+      />
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">Рейтинг</label>
