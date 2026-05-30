@@ -159,6 +159,52 @@ async def test_search_companies_city_not_in_map_uses_fallback(monkeypatch, twogi
     assert rec.calls[0][1]["region_id"] == TWOGIS_FALLBACK_REGION_ID
 
 
+@pytest.mark.asyncio
+async def test_search_companies_radius_mode(monkeypatch, twogis_search_page1):
+    """Конкурентный режим: point + radius_meters заменяют region_id.
+
+    Регрессия: на момент 1.11.0 в search_companies внутри цикла стоял
+    logger.info(..., region_id, ...), но в radius-ветке region_id не
+    инициализировался → UnboundLocalError при первой же итерации, и
+    запрос тихо возвращал 0 компаний.
+    """
+    provider, rec = _make_provider_with_responses(monkeypatch, [twogis_search_page1])
+
+    companies = []
+    async for c in provider.search_companies(
+        "ремонт квартир", "Москва", limit=10,
+        point=(55.751244, 37.618423), radius_meters=3000,
+    ):
+        companies.append(c)
+
+    # Все 3 компании из фикстуры дошли до caller — значит цикл не упал.
+    assert len(companies) == 3
+    assert len(rec.calls) == 1
+    _, params = rec.calls[0]
+    # point передаётся как "lon,lat" (порядок именно такой по docs 2GIS),
+    # radius — в метрах.
+    assert params["point"] == "37.618423,55.751244"
+    assert params["radius"] == 3000
+    # В radius-режиме region_id вообще не должен передаваться — 2GIS
+    # сам определяет регион по координатам.
+    assert "region_id" not in params
+
+
+@pytest.mark.asyncio
+async def test_search_companies_radius_ignored_if_meters_zero(monkeypatch, twogis_search_page1):
+    """point передан, но radius_meters=0 — фолбекаемся в city-режим."""
+    provider, rec = _make_provider_with_responses(monkeypatch, [twogis_search_page1])
+    async for _ in provider.search_companies(
+        "ремонт", "Москва", limit=10,
+        point=(55.7, 37.6), radius_meters=0,
+    ):
+        pass
+    _, params = rec.calls[0]
+    assert "point" not in params
+    assert "radius" not in params
+    assert params["region_id"] == CITY_TO_REGION_ID["москва"]
+
+
 # ---------------------------------------------------------------------------
 # fetch_reviews tests
 # ---------------------------------------------------------------------------

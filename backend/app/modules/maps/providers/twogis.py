@@ -484,6 +484,7 @@ class TwoGisProvider(MapProvider):
             "fields": "items.point,items.contact_groups,items.reviews,items.rubrics,items.full_address_name",
             "page_size": PAGE_SIZE,
         }
+        region_id: int | None = None
         if point is not None and radius_meters and radius_meters > 0:
             common["point"] = f"{point[1]},{point[0]}"  # 2GIS: lon,lat
             common["radius"] = int(radius_meters)
@@ -497,8 +498,10 @@ class TwoGisProvider(MapProvider):
             while yielded < limit:
                 params = {**common, "page": page}
                 logger.info(
-                    "2gis search: niche=%r city=%r region_id=%d page=%d yielded=%d",
-                    niche, city, region_id, page, yielded,
+                    "2gis search: niche=%r city=%r region_id=%s point=%s radius=%s page=%d yielded=%d",
+                    niche, city, region_id,
+                    common.get("point"), common.get("radius"),
+                    page, yielded,
                 )
                 data = await self._request(client, url, params)
 
