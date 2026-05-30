@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.12.1...v1.12.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* **maps:** radius-режим не должен делить кэш с city-поиском ([f4a68b7](https://github.com/moiseev1991-stack/Colaba/commit/f4a68b74f1961d339485ea07ae172781f93293f7))
+
 ## [1.12.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.12.0...v1.12.1) (2026-05-30)
 
 
