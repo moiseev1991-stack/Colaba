@@ -19,7 +19,10 @@ import type { MapSearchFilter, SortBy } from '@/src/services/api/maps';
 type Preset = {
   id: string;
   label: string;
+  /** Полное описание — показывается в tooltip при наведении. */
   description: string;
+  /** Короткая видимая подпись под названием — для быстрого скана глазами. */
+  shortHint: string;
   filter: MapSearchFilter;
 };
 
@@ -27,6 +30,7 @@ const PRESETS: Preset[] = [
   {
     id: 'crisis',
     label: 'Кризис репутации',
+    shortHint: 'для SMM / репутационщиков',
     description:
       'Для SMM-агентств и репутационщиков: много негатива, владелец не отвечает — компания «горит», ей нужно «спасти лицо»',
     filter: { min_negative: 10, has_owner_replies: false, sort_by: 'negative_desc' },
@@ -34,6 +38,7 @@ const PRESETS: Preset[] = [
   {
     id: 'falling',
     label: 'Падение рейтинга',
+    shortHint: 'для SMM / SERM',
     description:
       'Для SMM/SERM: низкий рейтинг при достаточном числе отзывов — компания недавно «просела»',
     filter: { max_rating: 3.5, min_reviews: 10, sort_by: 'rating_asc' },
@@ -41,6 +46,7 @@ const PRESETS: Preset[] = [
   {
     id: 'need_website',
     label: 'Нужен сайт',
+    shortHint: 'для веб-студий',
     description:
       'Для веб-студий и фрилансеров: компания живая (рейтинг ≥ 3.5, есть отзывы) — но сайта нет',
     filter: { has_website: false, min_rating: 3.5, min_reviews: 5, sort_by: 'reviews_desc' },
@@ -48,6 +54,7 @@ const PRESETS: Preset[] = [
   {
     id: 'chaos',
     label: 'Хаос в работе',
+    shortHint: 'для CRM / автоматизаторов',
     description:
       'Для CRM/POS-вендоров и автоматизаторов: клиенты в отзывах жалуются на сбои процессов — «не дозвонился», «не перезвонили», «забыли про запись», «не подтвердили». Сигнал «нужна автоматизация».',
     filter: {
@@ -66,6 +73,7 @@ const PRESETS: Preset[] = [
   {
     id: 'stable',
     label: 'Стабильный',
+    shortHint: 'для cross-sell / upsell',
     description: 'Высокий рейтинг, владелец отвечает — потенциально лояльные клиенты для cross-sell',
     filter: { min_rating: 4.3, min_reviews: 20, has_owner_replies: true, sort_by: 'rating_desc' },
   },
@@ -117,7 +125,7 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
 
   return (
     <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {PRESETS.map((p) => (
           <button
             key={p.id}
@@ -125,11 +133,12 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
             onClick={() => applyPreset(p)}
             title={p.description}
             className={cn(
-              'rounded-md border px-3 py-2 text-xs font-medium transition-colors',
-              'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
+              'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
+              'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
             )}
           >
-            {p.label}
+            <span className="text-xs font-medium text-slate-800">{p.label}</span>
+            <span className="text-[10px] leading-tight text-slate-500">{p.shortHint}</span>
           </button>
         ))}
       </div>
