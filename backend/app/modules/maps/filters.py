@@ -12,12 +12,31 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import Select, exists, select
+from sqlalchemy import Select, exists, or_, select
 
 from app.models.maps import Company, Review
 from app.modules.maps.schemas import MapSearchFilter
 
 logger = logging.getLogger(__name__)
+
+
+def _collect_terms(single: str | None, many: list[str] | None) -> list[str]:
+    """Объединяет legacy single-строку и новый массив в один dedup-список
+    непустых term'ов. Пустые элементы и whitespace-only отбрасываются."""
+    out: list[str] = []
+    seen: set[str] = set()
+    if single:
+        t = single.strip()
+        if t and t.lower() not in seen:
+            seen.add(t.lower())
+            out.append(t)
+    if many:
+        for raw in many:
+            t = (raw or "").strip()
+            if t and t.lower() not in seen:
+                seen.add(t.lower())
+                out.append(t)
+    return out
 
 
 def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
@@ -35,34 +54,39 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
     if filters.has_owner_replies is not None:
         query = query.where(Company.has_owner_replies == filters.has_owner_replies)
     if filters.has_website is not None:
-        # Пустая строка тоже считается «нет сайта» — 2GIS иногда отдаёт "".
+        # 2GIS иногда отдаёт "", " " или строку только из пробелов —
+        # фронт-индикатор такие считает «нет сайта», SQL-фильтр должен
+        # вести себя так же, иначе фильтр и pill расходятся.
+        from sqlalchemy import func
+        trimmed = func.btrim(func.coalesce(Company.website, ""))
         if filters.has_website:
-            query = query.where(Company.website.isnot(None), Company.website != "")
+            query = query.where(trimmed != "")
         else:
-            query = query.where((Company.website.is_(None)) | (Company.website == ""))
+            query = query.where(trimmed == "")
 
     # ---- WHERE: тексты отзывов (EXISTS-подзапрос на reviews)
-    # Каждое условие — независимый EXISTS, чтобы AND работал как «есть и тот
-    # и тот отзыв» (а не «один отзыв удовлетворяет обоим»). NOT contains —
-    # тоже корректно: запрещаем наличие хотя бы одного matching отзыва.
-    if filters.review_text_contains:
-        pattern = f"%{filters.review_text_contains.strip()}%"
-        if pattern.strip("%"):
-            query = query.where(
-                exists(
-                    select(Review.id)
-                    .where(Review.company_id == Company.id, Review.raw_text.ilike(pattern))
-                )
+    # Объединяем legacy single-форму и новую *_any-форму в один список.
+    # contains: компания пройдёт, если у неё ЕСТЬ отзыв с ЛЮБЫМ из слов (OR).
+    # excludes: компания пройдёт, если у неё НЕТ отзыва ни с ОДНИМ из слов.
+    contains_terms = _collect_terms(filters.review_text_contains, filters.review_text_contains_any)
+    excludes_terms = _collect_terms(filters.review_text_excludes, filters.review_text_excludes_any)
+
+    if contains_terms:
+        conds = [Review.raw_text.ilike(f"%{t}%") for t in contains_terms]
+        query = query.where(
+            exists(
+                select(Review.id)
+                .where(Review.company_id == Company.id, or_(*conds))
             )
-    if filters.review_text_excludes:
-        pattern = f"%{filters.review_text_excludes.strip()}%"
-        if pattern.strip("%"):
-            query = query.where(
-                ~exists(
-                    select(Review.id)
-                    .where(Review.company_id == Company.id, Review.raw_text.ilike(pattern))
-                )
+        )
+    if excludes_terms:
+        conds = [Review.raw_text.ilike(f"%{t}%") for t in excludes_terms]
+        query = query.where(
+            ~exists(
+                select(Review.id)
+                .where(Review.company_id == Company.id, or_(*conds))
             )
+        )
 
     # ---- WHERE: pain tags (требует таблиц из миграции 016)
     pain_sort_active = filters.sort_by == "pain_desc"

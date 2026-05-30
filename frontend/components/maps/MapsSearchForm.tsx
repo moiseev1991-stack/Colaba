@@ -98,6 +98,8 @@ export function MapsSearchForm({ onStarted }: Props) {
   const [address, setAddress] = useState('');
   const [radiusKm, setRadiusKm] = useState(2);
   const [reviewWord, setReviewWord] = useState('');
+  // 'contains' — должно быть в отзыве; 'excludes' — должно отсутствовать.
+  const [reviewMode, setReviewMode] = useState<'contains' | 'excludes'>('contains');
   const [sources, setSources] = useState<MapSource[]>(['2gis']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -115,26 +117,34 @@ export function MapsSearchForm({ onStarted }: Props) {
     setNiche(label);
   }
 
-  // Превращаем FilterSpec в MapSearchFilter (только текстовые условия для отзывов).
-  // Если у пользователя несколько contains / not_contains — берём первое каждого,
-  // потому что бэкенд принимает по одной подстроке. (Сложный AND/OR-граф потом,
-  // если правда понадобится — сейчас не нужно.)
-  //
-  // Источник подстроки contains: либо первоклассное поле reviewWord (сразу под city),
-  // либо FilterBuilder в «расширенных настройках». Поле reviewWord приоритетнее.
+  // Превращаем форму в MapSearchFilter.
+  // reviewWord — поле под city/адресом, парсится по запятой → массив; режим
+  // (contains/excludes) задан reviewMode. Дополнительно FilterBuilder из
+  // «расширенных настроек» может добавить condition (берётся first of each).
   function buildFilters(): MapSearchFilter | null {
+    const words = reviewWord
+      .split(/[,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     const containsFromBuilder = filterSpec.conditions.find(
       (c) => c.field === 'review_text' && c.op === 'contains' && c.value.trim()
     );
     const notContains = filterSpec.conditions.find(
       (c) => c.field === 'review_text' && c.op === 'not_contains' && c.value.trim()
     );
-    const containsValue =
-      reviewWord.trim() || containsFromBuilder?.value.trim() || null;
-    if (!containsValue && !notContains) return null;
+
+    const containsAny: string[] = [];
+    const excludesAny: string[] = [];
+    if (reviewMode === 'contains') containsAny.push(...words);
+    else excludesAny.push(...words);
+    if (containsFromBuilder?.value.trim()) containsAny.push(containsFromBuilder.value.trim());
+    if (notContains?.value.trim()) excludesAny.push(notContains.value.trim());
+
+    if (!containsAny.length && !excludesAny.length) return null;
     return {
-      review_text_contains: containsValue,
-      review_text_excludes: notContains?.value.trim() ?? null,
+      review_text_contains_any: containsAny.length ? containsAny : null,
+      review_text_excludes_any: excludesAny.length ? excludesAny : null,
     };
   }
 
@@ -396,20 +406,61 @@ export function MapsSearchForm({ onStarted }: Props) {
             )}
             <div className="md:col-span-12">
               <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
-                слово в отзыве — необязательно
+                слова в отзывах — необязательно
               </label>
+              <div className="mb-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewMode('contains')}
+                  disabled={isLoading}
+                  className={cn(
+                    'rounded-md border px-3 py-1 text-[12px] font-medium transition-colors',
+                    reviewMode === 'contains'
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  )}
+                >
+                  Содержит
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewMode('excludes')}
+                  disabled={isLoading}
+                  className={cn(
+                    'rounded-md border px-3 py-1 text-[12px] font-medium transition-colors',
+                    reviewMode === 'excludes'
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  )}
+                >
+                  Не содержит
+                </button>
+              </div>
               <Input
                 type="text"
-                placeholder="Например: ДТП, грязно, долго ждал, навязали"
+                placeholder={
+                  reviewMode === 'contains'
+                    ? 'Например: долго ждал, грязно, не дозвонился'
+                    : 'Например: отлично, рекомендую, превосходно'
+                }
                 value={reviewWord}
                 onChange={(e) => setReviewWord(e.target.value)}
                 disabled={isLoading}
                 className="w-full h-11 text-[15px]"
               />
               <p className="mt-1.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
-                Если задано — в выдаче останутся только компании, у которых
-                в отзывах встречается это слово. Пример: ниша «юр.услуги», слово
-                «ДТП» → автоюристы.
+                Несколько слов через запятую — между ними <strong>ИЛИ</strong>.
+                {reviewMode === 'contains' ? (
+                  <>
+                    {' '}В выдаче останутся компании, у которых есть отзыв с любым из этих
+                    слов. Пример: «ДТП» в нише «юр.услуги» → автоюристы.
+                  </>
+                ) : (
+                  <>
+                    {' '}В выдаче пропадут компании, у которых хоть один отзыв содержит
+                    любое из этих слов. Пример: исключить «реклама», «спам».
+                  </>
+                )}
               </p>
             </div>
           </div>

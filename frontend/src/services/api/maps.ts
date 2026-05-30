@@ -37,6 +37,12 @@ export interface MapSearchFilter {
   /** Обратное условие — компания пройдёт фильтр, если у неё НЕТ ни одного
    *  отзыва, содержащего эту подстроку. */
   review_text_excludes?: string | null;
+  /** Массив-форма: ИЛИ — компания пройдёт фильтр, если у неё есть отзыв с
+   *  ЛЮБЫМ из слов. Объединяется с single-формой. */
+  review_text_contains_any?: string[] | null;
+  /** Массив-форма: компания не пройдёт, если у неё есть отзыв хотя бы с
+   *  ОДНИМ из слов. */
+  review_text_excludes_any?: string[] | null;
 }
 
 export type SearchMode = 'city' | 'radius';
@@ -210,6 +216,10 @@ export async function listMapCompanies(
     params.set('review_text_contains', filter.review_text_contains);
   if (filter.review_text_excludes)
     params.set('review_text_excludes', filter.review_text_excludes);
+  if (filter.review_text_contains_any?.length)
+    for (const t of filter.review_text_contains_any) params.append('review_text_contains_any', t);
+  if (filter.review_text_excludes_any?.length)
+    for (const t of filter.review_text_excludes_any) params.append('review_text_excludes_any', t);
   params.set('sort_by', filter.sort_by ?? 'rating_desc');
   params.set('limit', String(limit));
   params.set('offset', String(offset));

@@ -48,6 +48,11 @@ export function MapsCompanyCard({
   const ratingBadgeClass = ratingClass(company.rating);
   const emails = Array.isArray(company.emails) ? company.emails : [];
   const topPains = Array.isArray(company.top_pains) ? company.top_pains : [];
+  const fullAddress = formatAddressWithCity(company.address, company.city);
+  // website считаем валидным только если непустая строка после trim.
+  // 2GIS иногда отдаёт " " или "" — без trim фронт показывал «есть сайт» там,
+  // где на самом деле сайта нет (и бэк-фильтр has_website=true их пропускал).
+  const hasWebsite = typeof company.website === 'string' && company.website.trim().length > 0;
   const fallbackTags =
     topPains.length === 0 && Array.isArray(company.pain_tags) ? company.pain_tags : [];
 
@@ -65,8 +70,8 @@ export function MapsCompanyCard({
       >
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-slate-900">{company.name || '—'}</div>
-          {company.address && (
-            <div className="mt-0.5 truncate text-xs text-slate-500">{company.address}</div>
+          {fullAddress && (
+            <div className="mt-0.5 truncate text-xs text-slate-500">{fullAddress}</div>
           )}
         </div>
         {company.rating != null && (
@@ -87,7 +92,7 @@ export function MapsCompanyCard({
         ) : ownerReplies === false && reviewsTotal > 0 ? (
           <MetricPill label="не отвечает" tone="danger" />
         ) : null}
-        {company.website ? (
+        {hasWebsite ? (
           <MetricPill label="есть сайт" tone="neutral" />
         ) : (
           <MetricPill label="нет сайта" tone="warn" />
@@ -111,17 +116,17 @@ export function MapsCompanyCard({
               </a>
             </span>
           )}
-          {company.website && (
+          {hasWebsite && (
             <span className="inline-flex items-center gap-1">
               <Globe className="h-3 w-3 text-slate-400" />
               <a
-                href={normalizeUrl(company.website)}
+                href={normalizeUrl(company.website!.trim())}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="max-w-[180px] truncate hover:underline"
               >
-                {stripScheme(company.website)}
+                {stripScheme(company.website!.trim())}
               </a>
             </span>
           )}
@@ -267,4 +272,18 @@ function normalizeUrl(url: string): string {
 
 function stripScheme(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+}
+
+function formatAddressWithCity(
+  address: string | null | undefined,
+  city: string | null | undefined
+): string | null {
+  const a = (address ?? '').trim();
+  const c = (city ?? '').trim();
+  if (!a && !c) return null;
+  if (!a) return c;
+  if (!c) return a;
+  // Если город уже в адресе (нечувствительно к регистру) — не дублируем.
+  if (a.toLowerCase().includes(c.toLowerCase())) return a;
+  return `${c}, ${a}`;
 }

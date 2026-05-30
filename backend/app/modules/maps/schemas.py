@@ -92,8 +92,14 @@ class MapSearchFilter(BaseModel):
 
     # Текстовые фильтры по отзывам: компания включается в выдачу, только если
     # у неё есть хотя бы один отзыв, который ILIKE %contains% / NOT ILIKE %excludes%.
+    # Single-форма (legacy) и массив-форма работают совместно: при поиске
+    # contains_any список объединяется OR-ом (любое из слов даёт мэтч).
+    # excludes_any — компанию выкидываем, если хоть один отзыв содержит
+    # ХОТЬ ОДНО из exclude-слов.
     review_text_contains: str | None = None
     review_text_excludes: str | None = None
+    review_text_contains_any: list[str] | None = None
+    review_text_excludes_any: list[str] | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -227,6 +227,8 @@ async def list_search_companies(
     sort_by: SortBy = Query(default="rating_desc"),
     review_text_contains: Optional[str] = Query(default=None, max_length=200),
     review_text_excludes: Optional[str] = Query(default=None, max_length=200),
+    review_text_contains_any: Optional[list[str]] = Query(default=None),
+    review_text_excludes_any: Optional[list[str]] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -246,6 +248,8 @@ async def list_search_companies(
         sort_by=sort_by,
         review_text_contains=review_text_contains,
         review_text_excludes=review_text_excludes,
+        review_text_contains_any=review_text_contains_any or None,
+        review_text_excludes_any=review_text_excludes_any or None,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
@@ -278,6 +282,8 @@ async def export_search_csv(
     sort_by: SortBy = Query(default="rating_desc"),
     review_text_contains: Optional[str] = Query(default=None, max_length=200),
     review_text_excludes: Optional[str] = Query(default=None, max_length=200),
+    review_text_contains_any: Optional[list[str]] = Query(default=None),
+    review_text_excludes_any: Optional[list[str]] = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -292,6 +298,8 @@ async def export_search_csv(
         sort_by=sort_by,
         review_text_contains=review_text_contains,
         review_text_excludes=review_text_excludes,
+        review_text_contains_any=review_text_contains_any or None,
+        review_text_excludes_any=review_text_excludes_any or None,
     )
     items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
