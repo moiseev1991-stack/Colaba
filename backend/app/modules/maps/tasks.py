@@ -342,14 +342,19 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
 
         await service.update_company_aggregates(db, company.id)
 
-    # После закрытия сессии — ставим AI-пайплайн (если есть, что обрабатывать).
-    # Импорт локальный — иначе circular между maps.tasks и reviews_ai.tasks.
-    if total_inserted > 0:
-        try:
-            from app.modules.reviews_ai.tasks import analyze_reviews_for_company
-            analyze_reviews_for_company.delay(company_id)
-        except Exception as e:
-            logger.warning("parse_company_reviews: не смог поставить analyze_reviews_for_company: %s", e)
+    # AI-пайплайн ставим ВСЕГДА после успешного парсинга — даже когда
+    # total_inserted=0 (все отзывы уже были в БД с прошлого парсинга).
+    # Раньше тут было `if total_inserted > 0:` — но это значило, что компании,
+    # которые парсились ДО подключения reviews_ai, навсегда оставались без
+    # AI-анализа: повторный парсинг не вставляет новых отзывов, и таска не
+    # запускается. analyze_reviews_for_company сама проверяет какие отзывы
+    # имеют ai_processed_at IS NULL и no-op если всё обработано — поэтому
+    # ставить всегда безопасно и идемпотентно.
+    try:
+        from app.modules.reviews_ai.tasks import analyze_reviews_for_company
+        analyze_reviews_for_company.delay(company_id)
+    except Exception as e:
+        logger.warning("parse_company_reviews: не смог поставить analyze_reviews_for_company: %s", e)
     return total_inserted
 
 
