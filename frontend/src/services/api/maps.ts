@@ -26,6 +26,8 @@ export interface MapSearchFilter {
   min_reviews?: number | null;
   min_negative?: number | null;
   has_owner_replies?: boolean | null;
+  /** true — только компании с сайтом, false — только без сайта, null — не важно. */
+  has_website?: boolean | null;
   pain_tag_ids?: number[] | null;
   min_pain_mentions?: number;
   sort_by?: SortBy;
@@ -197,6 +199,8 @@ export async function listMapCompanies(
     params.set('min_negative', String(filter.min_negative));
   if (filter.has_owner_replies !== undefined && filter.has_owner_replies !== null)
     params.set('has_owner_replies', String(filter.has_owner_replies));
+  if (filter.has_website !== undefined && filter.has_website !== null)
+    params.set('has_website', String(filter.has_website));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length) {
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
   }
@@ -335,6 +339,8 @@ export function exportSearchCsvUrl(searchId: number, filter: MapSearchFilter = {
     params.set('min_negative', String(filter.min_negative));
   if (filter.has_owner_replies !== undefined && filter.has_owner_replies !== null)
     params.set('has_owner_replies', String(filter.has_owner_replies));
+  if (filter.has_website !== undefined && filter.has_website !== null)
+    params.set('has_website', String(filter.has_website));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length)
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
   params.set('sort_by', filter.sort_by ?? 'rating_desc');

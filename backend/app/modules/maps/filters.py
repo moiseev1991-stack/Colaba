@@ -34,6 +34,12 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         query = query.where(Company.reviews_negative_count >= filters.min_negative)
     if filters.has_owner_replies is not None:
         query = query.where(Company.has_owner_replies == filters.has_owner_replies)
+    if filters.has_website is not None:
+        # Пустая строка тоже считается «нет сайта» — 2GIS иногда отдаёт "".
+        if filters.has_website:
+            query = query.where(Company.website.isnot(None), Company.website != "")
+        else:
+            query = query.where((Company.website.is_(None)) | (Company.website == ""))
 
     # ---- WHERE: тексты отзывов (EXISTS-подзапрос на reviews)
     # Каждое условие — независимый EXISTS, чтобы AND работал как «есть и тот

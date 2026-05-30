@@ -192,6 +192,32 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
       </div>
 
       <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600">
+          Сайт
+        </label>
+        <Select
+          value={
+            value.has_website === true
+              ? 'yes'
+              : value.has_website === false
+                ? 'no'
+                : 'any'
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange({
+              ...value,
+              has_website: v === 'yes' ? true : v === 'no' ? false : null,
+            });
+          }}
+        >
+          <option value="any">Не важно</option>
+          <option value="yes">Только с сайтом</option>
+          <option value="no">Только без сайта</option>
+        </Select>
+      </div>
+
+      <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">Сортировка</label>
         <Select
           value={value.sort_by ?? 'rating_desc'}

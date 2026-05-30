@@ -87,6 +87,11 @@ export function MapsCompanyCard({
         ) : ownerReplies === false && reviewsTotal > 0 ? (
           <MetricPill label="не отвечает" tone="danger" />
         ) : null}
+        {company.website ? (
+          <MetricPill label="есть сайт" tone="neutral" />
+        ) : (
+          <MetricPill label="нет сайта" tone="warn" />
+        )}
         {company.source && (
           <span className="ml-auto text-[11px] text-slate-400">{sourceLabel(company.source)}</span>
         )}

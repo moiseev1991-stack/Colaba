@@ -83,6 +83,9 @@ class MapSearchFilter(BaseModel):
     min_reviews: int | None = None
     min_negative: int | None = None
     has_owner_replies: bool | None = None
+    # True — только компании с непустым website. False — только без сайта.
+    # Полезно для веб-студий (без сайта = потенциальный клиент).
+    has_website: bool | None = None
     pain_tag_ids: list[int] | None = None
     min_pain_mentions: int = 1
     sort_by: SortBy = "rating_desc"
