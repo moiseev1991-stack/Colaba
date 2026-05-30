@@ -236,6 +236,10 @@ class MapSearchOut(BaseModel):
     created_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    # Сохранённые фильтры из payload createMapSearch — нужны, чтобы при
+    # открытии страницы результатов сразу применить пресет, который юзер
+    # выбрал на форме поиска.
+    filters: dict[str, Any] | None = None
     # radius-режим (миграция 019)
     mode: str = "city"
     address: str | None = None

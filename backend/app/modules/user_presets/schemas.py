@@ -32,6 +32,9 @@ class UserPresetUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=1000)
     filter: dict[str, Any] | None = None
+    # Скрытие/восстановление: True — скрыть, False — вернуть в активные.
+    # Передаётся отдельно от других полей, можно патчить только это.
+    hidden: bool | None = None
 
 
 class UserPresetOut(BaseModel):
@@ -45,5 +48,6 @@ class UserPresetOut(BaseModel):
     name: str
     description: str | None = None
     filter: dict[str, Any]
+    hidden: bool = False
     created_at: datetime
     updated_at: datetime

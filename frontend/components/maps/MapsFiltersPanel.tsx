@@ -9,8 +9,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { BookmarkPlus, X } from 'lucide-react';
+import { BookmarkPlus, EyeOff, RotateCcw, X } from 'lucide-react';
 
+import { BUILTIN_PRESETS, type BuiltinPreset } from '@/components/maps/builtinPresets';
 import { PainTagsCloud } from '@/components/maps/PainTagsCloud';
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
 import { Input } from '@/components/ui/input';
@@ -20,71 +21,13 @@ import type { MapSearchFilter, SortBy } from '@/src/services/api/maps';
 import {
   deleteUserPreset,
   listUserPresets,
+  updateUserPreset,
   type UserPresetOut,
 } from '@/src/services/api/user-presets';
 
-type Preset = {
-  id: string;
-  label: string;
-  /** Полное описание — показывается в tooltip при наведении. */
-  description: string;
-  /** Короткая видимая подпись под названием — для быстрого скана глазами. */
-  shortHint: string;
-  filter: MapSearchFilter;
-};
-
-const PRESETS: Preset[] = [
-  {
-    id: 'crisis',
-    label: 'Кризис репутации',
-    shortHint: 'для SMM / репутационщиков',
-    description:
-      'Для SMM-агентств и репутационщиков: много негатива, владелец не отвечает — компания «горит», ей нужно «спасти лицо»',
-    filter: { min_negative: 10, has_owner_replies: false, sort_by: 'negative_desc' },
-  },
-  {
-    id: 'falling',
-    label: 'Падение рейтинга',
-    shortHint: 'для SMM / SERM',
-    description:
-      'Для SMM/SERM: низкий рейтинг при достаточном числе отзывов — компания недавно «просела»',
-    filter: { max_rating: 3.5, min_reviews: 10, sort_by: 'rating_asc' },
-  },
-  {
-    id: 'need_website',
-    label: 'Нужен сайт',
-    shortHint: 'для веб-студий',
-    description:
-      'Для веб-студий и фрилансеров: компания живая (рейтинг ≥ 3.5, есть отзывы) — но сайта нет',
-    filter: { has_website: false, min_rating: 3.5, min_reviews: 5, sort_by: 'reviews_desc' },
-  },
-  {
-    id: 'chaos',
-    label: 'Хаос в работе',
-    shortHint: 'для CRM / автоматизаторов',
-    description:
-      'Для CRM/POS-вендоров и автоматизаторов: клиенты в отзывах жалуются на сбои процессов — «не дозвонился», «не перезвонили», «забыли про запись», «не подтвердили». Сигнал «нужна автоматизация».',
-    filter: {
-      review_text_contains_any: [
-        'не дозвон',
-        'не перезвон',
-        'не ответ',
-        'забыли',
-        'не подтвердил',
-        'не пришл',
-      ],
-      min_negative: 3,
-      sort_by: 'negative_desc',
-    },
-  },
-  {
-    id: 'stable',
-    label: 'Стабильный',
-    shortHint: 'для cross-sell / upsell',
-    description: 'Высокий рейтинг, владелец отвечает — потенциально лояльные клиенты для cross-sell',
-    filter: { min_rating: 4.3, min_reviews: 20, has_owner_replies: true, sort_by: 'rating_desc' },
-  },
-];
+// Встроенные пресеты — в общем файле, переиспользуются в MapsSearchForm.
+const PRESETS = BUILTIN_PRESETS;
+type Preset = BuiltinPreset;
 
 interface Props {
   niche: string;
@@ -109,18 +52,24 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
     joinWords(value.review_text_excludes, value.review_text_excludes_any),
   );
 
-  // Пользовательские пресеты — грузим один раз при монтировании панели,
-  // обновляем локально при создании/удалении. Не дёргаем сеть на каждый
-  // клик фильтра.
-  const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
+  // Пользовательские пресеты — две вкладки: активные и скрытые. Грузим все
+  // (hidden=null) одним запросом и фильтруем локально, чтобы переключение
+  // вкладок было мгновенным без round-trip.
+  const [allUserPresets, setAllUserPresets] = useState<UserPresetOut[]>([]);
+  const [userPresetsTab, setUserPresetsTab] = useState<'active' | 'hidden'>('active');
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+
+  const activeUserPresets = allUserPresets.filter((p) => !p.hidden);
+  const hiddenUserPresets = allUserPresets.filter((p) => p.hidden);
+  const visibleUserPresets =
+    userPresetsTab === 'active' ? activeUserPresets : hiddenUserPresets;
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const list = await listUserPresets('maps');
-        if (!cancelled) setUserPresets(list);
+        const list = await listUserPresets('maps', null); // null = все, и активные и скрытые
+        if (!cancelled) setAllUserPresets(list);
       } catch {
         // Если 401 / network — не валим панель, просто работаем без пользовательских пресетов
       }
@@ -129,17 +78,28 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
   }, []);
 
   const handleDeleteUserPreset = useCallback(async (preset: UserPresetOut) => {
-    if (!window.confirm(`Удалить пресет «${preset.name}»?`)) return;
+    if (!window.confirm(`Удалить пресет «${preset.name}» навсегда? Чтобы временно убрать с глаз, используй кнопку «скрыть» вместо удаления.`)) return;
     try {
       await deleteUserPreset(preset.id);
-      setUserPresets((prev) => prev.filter((p) => p.id !== preset.id));
+      setAllUserPresets((prev) => prev.filter((p) => p.id !== preset.id));
     } catch (e) {
       window.alert('Не удалось удалить пресет');
     }
   }, []);
 
+  const handleToggleHidden = useCallback(async (preset: UserPresetOut, hidden: boolean) => {
+    try {
+      const updated = await updateUserPreset(preset.id, { hidden });
+      setAllUserPresets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    } catch (e) {
+      window.alert('Не удалось изменить статус пресета');
+    }
+  }, []);
+
   const handlePresetSaved = useCallback((preset: UserPresetOut) => {
-    setUserPresets((prev) => [preset, ...prev]);
+    setAllUserPresets((prev) => [preset, ...prev]);
+    // При сохранении переключаемся на «активные» — чтобы юзер сразу увидел новый.
+    setUserPresetsTab('active');
   }, []);
 
   function applyUserPreset(p: UserPresetOut) {
@@ -226,11 +186,39 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
       </div>
 
       <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-            Мои пресеты
-            {userPresets.length > 0 && (
-              <span className="ml-1 text-slate-400">· {userPresets.length}</span>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setUserPresetsTab('active')}
+              className={cn(
+                'text-[11px] font-medium uppercase tracking-wide transition-colors',
+                userPresetsTab === 'active'
+                  ? 'text-slate-700'
+                  : 'text-slate-400 hover:text-slate-600'
+              )}
+            >
+              Мои пресеты
+              {activeUserPresets.length > 0 && (
+                <span className="ml-1 text-slate-400">· {activeUserPresets.length}</span>
+              )}
+            </button>
+            {hiddenUserPresets.length > 0 && (
+              <>
+                <span className="text-slate-300">/</span>
+                <button
+                  type="button"
+                  onClick={() => setUserPresetsTab('hidden')}
+                  className={cn(
+                    'text-[11px] font-medium uppercase tracking-wide transition-colors',
+                    userPresetsTab === 'hidden'
+                      ? 'text-slate-700'
+                      : 'text-slate-400 hover:text-slate-600'
+                  )}
+                >
+                  Скрытые <span className="text-slate-400">· {hiddenUserPresets.length}</span>
+                </button>
+              </>
             )}
           </div>
           <button
@@ -242,17 +230,27 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
             <BookmarkPlus className="h-3 w-3" /> сохранить
           </button>
         </div>
-        {userPresets.length === 0 ? (
+        {visibleUserPresets.length === 0 ? (
           <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500">
-            Настрой фильтры, нажми «сохранить» — пресет появится здесь и
-            будет доступен в один клик при следующих поисках.
+            {userPresetsTab === 'active' ? (
+              <>Настрой фильтры, нажми «сохранить» — пресет появится здесь и
+              будет доступен в один клик при следующих поисках.</>
+            ) : (
+              <>Скрытых пресетов нет. Скрыть пресет можно из вкладки «Мои пресеты»
+              — он не удалится, просто уберётся с глаз.</>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {userPresets.map((p) => (
+            {visibleUserPresets.map((p) => (
               <div
                 key={p.id}
-                className="group relative flex flex-col items-start gap-0.5 rounded-md border border-emerald-200 bg-emerald-50/40 px-3 py-2 pr-7 text-left transition-colors hover:border-emerald-400"
+                className={cn(
+                  'group relative flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 pr-7 text-left transition-colors',
+                  p.hidden
+                    ? 'border-slate-200 bg-slate-50/60 hover:border-slate-400'
+                    : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
+                )}
               >
                 <button
                   type="button"
@@ -261,22 +259,54 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
                   className="block w-full text-left"
                 >
                   <span className="block text-xs font-medium text-slate-800">{p.name}</span>
-                  <span className="block text-[10px] leading-tight text-emerald-700/80">
-                    мой
+                  <span className={cn(
+                    'block text-[10px] leading-tight',
+                    p.hidden ? 'text-slate-500' : 'text-emerald-700/80'
+                  )}>
+                    {p.hidden ? 'скрыт' : 'мой'}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleDeleteUserPreset(p);
-                  }}
-                  title="Удалить пресет"
-                  aria-label={`Удалить пресет ${p.name}`}
-                  className="absolute right-1 top-1 rounded p-0.5 text-slate-400 opacity-0 transition-opacity hover:bg-emerald-100 hover:text-red-600 group-hover:opacity-100"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                <div className="absolute right-1 top-1 flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  {p.hidden ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleToggleHidden(p, false);
+                      }}
+                      title="Вернуть в активные"
+                      aria-label={`Вернуть пресет ${p.name}`}
+                      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-600"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleToggleHidden(p, true);
+                      }}
+                      title="Скрыть (можно вернуть из вкладки «Скрытые»)"
+                      aria-label={`Скрыть пресет ${p.name}`}
+                      className="rounded p-0.5 text-slate-400 hover:bg-emerald-100 hover:text-slate-700"
+                    >
+                      <EyeOff className="h-3 w-3" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteUserPreset(p);
+                    }}
+                    title="Удалить навсегда"
+                    aria-label={`Удалить пресет ${p.name}`}
+                    className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

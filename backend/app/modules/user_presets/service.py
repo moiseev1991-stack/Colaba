@@ -16,14 +16,23 @@ from app.models.user_filter_preset import UserFilterPreset
 
 
 async def list_for_user(
-    db: AsyncSession, user_id: int, module: str = "maps",
+    db: AsyncSession,
+    user_id: int,
+    module: str = "maps",
+    hidden: bool | None = False,
 ) -> list[UserFilterPreset]:
-    """Возвращает пресеты пользователя для указанного модуля, новые сверху."""
+    """Возвращает пресеты пользователя для указанного модуля, новые сверху.
+
+    hidden=False (default) — только активные, hidden=True — только скрытые,
+    hidden=None — все.
+    """
     stmt = (
         select(UserFilterPreset)
         .where(UserFilterPreset.user_id == user_id, UserFilterPreset.module == module)
-        .order_by(UserFilterPreset.created_at.desc())
     )
+    if hidden is not None:
+        stmt = stmt.where(UserFilterPreset.hidden == hidden)
+    stmt = stmt.order_by(UserFilterPreset.created_at.desc())
     rows = (await db.execute(stmt)).scalars().all()
     return list(rows)
 
@@ -72,6 +81,7 @@ async def update(
     name: str | None = None,
     description: str | None = None,
     filter: dict[str, Any] | None = None,
+    hidden: bool | None = None,
 ) -> UserFilterPreset:
     """Частичное обновление: применяются только non-None поля."""
     if name is not None:
@@ -80,6 +90,8 @@ async def update(
         preset.description = description.strip() or None
     if filter is not None:
         preset.filter = filter
+    if hidden is not None:
+        preset.hidden = hidden
     await db.commit()
     await db.refresh(preset)
     return preset

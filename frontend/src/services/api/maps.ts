@@ -71,6 +71,9 @@ export interface MapSearchOut {
   created_at: string;
   started_at?: string | null;
   finished_at?: string | null;
+  /** Сохранённые при создании фильтры — нужны чтобы применить
+   *  выбранный на форме поиска пресет к первой загрузке выдачи. */
+  filters?: MapSearchFilter | null;
   mode?: string;
   address?: string | null;
   point_lat?: number | null;

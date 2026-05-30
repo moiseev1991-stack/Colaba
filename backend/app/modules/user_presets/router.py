@@ -31,10 +31,12 @@ router = APIRouter(prefix="/user-presets", tags=["user-presets"])
 async def list_my_presets(
     request: Request,
     module: str = Query(default="maps", max_length=20),
+    # hidden=false → активные (default), true → скрытые, не передан → все
+    hidden: Optional[bool] = Query(default=False),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    rows = await service.list_for_user(db, user_id=user_id, module=module)
+    rows = await service.list_for_user(db, user_id=user_id, module=module, hidden=hidden)
     return [UserPresetOut.model_validate(r) for r in rows]
 
 
@@ -87,6 +89,7 @@ async def update_preset(
             name=payload.name,
             description=payload.description,
             filter=payload.filter,
+            hidden=payload.hidden,
         )
     except IntegrityError:
         await db.rollback()

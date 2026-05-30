@@ -19,6 +19,7 @@ export interface UserPresetOut {
   name: string;
   description: string | null;
   filter: Record<string, unknown>;
+  hidden: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -34,11 +35,21 @@ export interface UserPresetUpdate {
   name?: string;
   description?: string | null;
   filter?: Record<string, unknown>;
+  hidden?: boolean;
 }
 
-export async function listUserPresets(module: PresetModule = 'maps'): Promise<UserPresetOut[]> {
+/**
+ * @param hidden false (default) — только активные, true — только скрытые,
+ *               null — все.
+ */
+export async function listUserPresets(
+  module: PresetModule = 'maps',
+  hidden: boolean | null = false,
+): Promise<UserPresetOut[]> {
+  const params = new URLSearchParams({ module });
+  if (hidden !== null) params.set('hidden', String(hidden));
   const response = await apiClient.get<UserPresetOut[]>(
-    `/user-presets?module=${module}`,
+    `/user-presets?${params.toString()}`,
   );
   return response.data;
 }

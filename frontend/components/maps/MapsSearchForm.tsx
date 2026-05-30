@@ -13,9 +13,10 @@
  * (equals, starts_with) для отзывов не имеют смысла и не пробрасываются.
  */
 
-import { useState } from 'react';
-import { Loader2, Sparkles, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Loader2, Sparkles, ArrowRight, ChevronDown, ChevronRight, X } from 'lucide-react';
 
+import { BUILTIN_PRESETS } from '@/components/maps/builtinPresets';
 import { CityCombobox } from '@/components/CityCombobox';
 import {
   FilterBuilder,
@@ -31,6 +32,10 @@ import {
   type MapSearchOut,
   type MapSource,
 } from '@/src/services/api/maps';
+import {
+  listUserPresets,
+  type UserPresetOut,
+} from '@/src/services/api/user-presets';
 
 const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
   { label: 'стоматология', cat: 'медицина' },
@@ -100,6 +105,40 @@ export function MapsSearchForm({ onStarted }: Props) {
   const [reviewWord, setReviewWord] = useState('');
   // 'contains' — должно быть в отзыве; 'excludes' — должно отсутствовать.
   const [reviewMode, setReviewMode] = useState<'contains' | 'excludes'>('contains');
+  // Применённый пресет фильтров — летит в payload createMapSearch как filters,
+  // дальше виден на странице результатов как сразу применённый фильтр.
+  // null = пресет не выбран, дефолтный поиск без фильтрации.
+  const [presetFilter, setPresetFilter] = useState<MapSearchFilter | null>(null);
+  const [presetLabel, setPresetLabel] = useState<string | null>(null);
+  const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await listUserPresets('maps', false); // только активные
+        if (!cancelled) setUserPresets(list);
+      } catch {
+        // ignore — если не залогинен или сеть, форма должна работать без пресетов
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  function applyBuiltinPreset(p: typeof BUILTIN_PRESETS[number]) {
+    setPresetFilter(p.filter);
+    setPresetLabel(p.label);
+  }
+
+  function applyUserPreset(p: UserPresetOut) {
+    setPresetFilter(p.filter as MapSearchFilter);
+    setPresetLabel(p.name);
+  }
+
+  function clearPreset() {
+    setPresetFilter(null);
+    setPresetLabel(null);
+  }
   const [sources, setSources] = useState<MapSource[]>(['2gis']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -118,9 +157,13 @@ export function MapsSearchForm({ onStarted }: Props) {
   }
 
   // Превращаем форму в MapSearchFilter.
-  // reviewWord — поле под city/адресом, парсится по запятой → массив; режим
-  // (contains/excludes) задан reviewMode. Дополнительно FilterBuilder из
-  // «расширенных настроек» может добавить condition (берётся first of each).
+  // Источники полей:
+  //  1) presetFilter — если юзер кликнул пресет (готовый или свой)
+  //  2) reviewWord + reviewMode — поле через запятую под нишей/адресом
+  //  3) FilterBuilder из «расширенных настроек»
+  // Все три источника МЕРЖАТСЯ. Слова из пресета и из reviewWord складываются
+  // (если оба заданы и в одном режиме). Числовые/булевы поля из пресета
+  // имеют приоритет — юзер их видит только косвенно («применён пресет: X»).
   function buildFilters(): MapSearchFilter | null {
     const words = reviewWord
       .split(/[,\n]/)
@@ -140,12 +183,41 @@ export function MapsSearchForm({ onStarted }: Props) {
     else excludesAny.push(...words);
     if (containsFromBuilder?.value.trim()) containsAny.push(containsFromBuilder.value.trim());
     if (notContains?.value.trim()) excludesAny.push(notContains.value.trim());
+    // Дополняем словами из пресета (если есть)
+    if (presetFilter?.review_text_contains_any?.length) {
+      containsAny.push(...presetFilter.review_text_contains_any);
+    }
+    if (presetFilter?.review_text_contains) {
+      containsAny.push(presetFilter.review_text_contains);
+    }
+    if (presetFilter?.review_text_excludes_any?.length) {
+      excludesAny.push(...presetFilter.review_text_excludes_any);
+    }
+    if (presetFilter?.review_text_excludes) {
+      excludesAny.push(presetFilter.review_text_excludes);
+    }
 
-    if (!containsAny.length && !excludesAny.length) return null;
-    return {
-      review_text_contains_any: containsAny.length ? containsAny : null,
-      review_text_excludes_any: excludesAny.length ? excludesAny : null,
+    // Числовые/булевы фильтры — только из пресета (форма поиска их не
+    // редактирует напрямую).
+    const merged: MapSearchFilter = {
+      ...(presetFilter ?? {}),
+      review_text_contains: null,
+      review_text_excludes: null,
+      review_text_contains_any: containsAny.length ? Array.from(new Set(containsAny)) : null,
+      review_text_excludes_any: excludesAny.length ? Array.from(new Set(excludesAny)) : null,
     };
+
+    const hasAny =
+      merged.min_rating != null ||
+      merged.max_rating != null ||
+      merged.min_reviews != null ||
+      merged.min_negative != null ||
+      merged.has_owner_replies != null ||
+      merged.has_website != null ||
+      (merged.review_text_contains_any?.length ?? 0) > 0 ||
+      (merged.review_text_excludes_any?.length ?? 0) > 0 ||
+      !!merged.sort_by;
+    return hasAny ? merged : null;
   }
 
   async function handleSubmit(e?: React.FormEvent) {
@@ -462,6 +534,71 @@ export function MapsSearchForm({ onStarted }: Props) {
                   </>
                 )}
               </p>
+            </div>
+          </div>
+
+          {/* Filter presets — встроенные + мои */}
+          <div className="mb-6">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
+                пресет фильтров (необязательно)
+              </p>
+              {presetLabel && (
+                <button
+                  type="button"
+                  onClick={clearPreset}
+                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800"
+                >
+                  <X className="h-3 w-3" /> убрать пресет
+                </button>
+              )}
+            </div>
+            {presetLabel && (
+              <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[12px] text-emerald-800">
+                Применён: <strong>{presetLabel}</strong> — применится к выдаче сразу после поиска.
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {BUILTIN_PRESETS.map((p) => {
+                const active = presetLabel === p.label;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyBuiltinPreset(p)}
+                    title={p.description}
+                    className={cn(
+                      'flex flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                      active
+                        ? 'border-emerald-500 bg-emerald-50'
+                        : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
+                    )}
+                  >
+                    <span className="text-[12px] font-medium text-slate-800">{p.label}</span>
+                    <span className="text-[10px] leading-tight text-slate-500">{p.shortHint}</span>
+                  </button>
+                );
+              })}
+              {userPresets.map((p) => {
+                const active = presetLabel === p.name;
+                return (
+                  <button
+                    key={`u-${p.id}`}
+                    type="button"
+                    onClick={() => applyUserPreset(p)}
+                    title={p.description ?? 'мой пресет'}
+                    className={cn(
+                      'flex flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                      active
+                        ? 'border-emerald-500 bg-emerald-50'
+                        : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
+                    )}
+                  >
+                    <span className="text-[12px] font-medium text-slate-800">{p.name}</span>
+                    <span className="text-[10px] leading-tight text-emerald-700/80">мой</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -39,6 +39,16 @@ interface Props {
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
 const DEFAULT_FILTER: MapSearchFilter = { sort_by: 'rating_desc' };
 
+function initialFilter(search: MapSearchOut): MapSearchFilter {
+  // Если на форме поиска юзер выбрал пресет, его фильтры сохранились в
+  // MapSearch.filters. Применяем их сразу — иначе юзер кликнул «Нужен сайт»
+  // на форме, а после загрузки видит выдачу без фильтра.
+  if (search.filters && Object.keys(search.filters).length > 0) {
+    return { sort_by: 'rating_desc', ...search.filters };
+  }
+  return DEFAULT_FILTER;
+}
+
 function statusLabel(status: string): string {
   switch (status) {
     case 'pending': return 'в очереди';
@@ -68,7 +78,7 @@ function isSoftEmptyError(errorText: string | null | undefined): boolean {
 export function MapsSearchResults({ search: initialSearch, initialMode, onNewSearch }: Props) {
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
-  const [filter, setFilter] = useState<MapSearchFilter>(DEFAULT_FILTER);
+  const [filter, setFilter] = useState<MapSearchFilter>(() => initialFilter(initialSearch));
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
   const [addToListCompanyId, setAddToListCompanyId] = useState<number | null>(null);

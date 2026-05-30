@@ -13,6 +13,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -61,6 +62,11 @@ class UserFilterPreset(Base):
     # Сохраняем только заполненные поля — exclude_none при сериализации
     # на API-слое.
     filter = Column(JSONB, nullable=False)
+
+    # Скрытые пресеты не показываются в основной панели — только на вкладке
+    # «Скрытые». Удобно убрать с глаз неактуальные сейчас, но не удалять
+    # окончательно. Миграция 021.
+    hidden = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(
