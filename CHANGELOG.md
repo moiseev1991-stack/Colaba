@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.13.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.12.2...v1.13.0) (2026-05-30)
+
+
+### Features
+
+* **maps:** фильтр и индикатор «есть/нет сайта» у компании ([dea3f4a](https://github.com/moiseev1991-stack/Colaba/commit/dea3f4adaab5b8d844241d4607ea5b3f75848867))
+
 ## [1.12.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.12.1...v1.12.2) (2026-05-30)
 
 
