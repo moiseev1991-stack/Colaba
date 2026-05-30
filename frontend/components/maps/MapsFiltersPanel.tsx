@@ -27,19 +27,35 @@ const PRESETS: Preset[] = [
   {
     id: 'crisis',
     label: 'Кризис репутации',
-    description: 'много негатива, отвечают редко — лидам нужно «спасти лицо»',
+    description:
+      'Для SMM-агентств и репутационщиков: много негатива, владелец не отвечает — компания «горит», ей нужно «спасти лицо»',
     filter: { min_negative: 10, has_owner_replies: false, sort_by: 'negative_desc' },
   },
   {
     id: 'falling',
     label: 'Падение рейтинга',
-    description: 'низкий рейтинг при достаточном числе отзывов',
+    description:
+      'Для SMM/SERM: низкий рейтинг при достаточном числе отзывов — компания недавно «просела»',
     filter: { max_rating: 3.5, min_reviews: 10, sort_by: 'rating_asc' },
+  },
+  {
+    id: 'need_website',
+    label: 'Нужен сайт',
+    description:
+      'Для веб-студий и фрилансеров: компания живая (рейтинг ≥ 3.5, есть отзывы) — но сайта нет',
+    filter: { has_website: false, min_rating: 3.5, min_reviews: 5, sort_by: 'reviews_desc' },
+  },
+  {
+    id: 'chaos',
+    label: 'Хаос в работе',
+    description:
+      'Для CRM/POS-вендоров и автоматизаторов: клиенты в отзывах жалуются на «долгое» (ожидание, ответ, доставку) — компании нужна автоматизация процессов',
+    filter: { review_text_contains: 'долго', sort_by: 'negative_desc' },
   },
   {
     id: 'stable',
     label: 'Стабильный',
-    description: 'высокий рейтинг, владелец отвечает — потенциально лояльные клиенты',
+    description: 'Высокий рейтинг, владелец отвечает — потенциально лояльные клиенты для cross-sell',
     filter: { min_rating: 4.3, min_reviews: 20, has_owner_replies: true, sort_by: 'rating_desc' },
   },
 ];
