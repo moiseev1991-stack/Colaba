@@ -32,7 +32,7 @@ from app.modules.reviews_ai.prompts import (
 
 logger = logging.getLogger(__name__)
 
-AssistantKind = Literal["sentiment", "naming", "outreach_draft"]
+AssistantKind = Literal["sentiment", "naming", "outreach_draft", "custom_analysis"]
 
 
 # ---------------------------------------------------------------------------
@@ -42,9 +42,10 @@ AssistantKind = Literal["sentiment", "naming", "outreach_draft"]
 
 # Подсказки для auto-pick: какие имена модели предпочесть.
 _KIND_HINTS: dict[AssistantKind, list[str]] = {
-    "sentiment":      ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
-    "naming":         ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
-    "outreach_draft": ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback на mini
+    "sentiment":        ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
+    "naming":           ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
+    "outreach_draft":   ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback на mini
+    "custom_analysis":  ["gpt-4o-mini", "haiku", "lite"],     # лёгкая модель — много запросов
 }
 
 
@@ -59,8 +60,10 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
         explicit = (settings.REVIEWS_AI_SENTIMENT_ASSISTANT_NAME or "").strip()
     elif kind == "naming":
         explicit = (settings.REVIEWS_AI_NAMING_ASSISTANT_NAME or "").strip()
-    else:  # outreach_draft
+    elif kind == "outreach_draft":
         explicit = (settings.REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME or "").strip()
+    else:  # custom_analysis — нет отдельной env, всегда auto-pick
+        explicit = ""
 
     if explicit:
         row = (await db.execute(
@@ -318,3 +321,87 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
                 if isinstance(vec, list):
                     results.append(vec)
     return results
+
+
+# ---------------------------------------------------------------------------
+# Custom analysis (user-defined prompt from a preset)
+# ---------------------------------------------------------------------------
+
+
+async def call_llm_custom_analysis(
+    db: AsyncSession,
+    *,
+    user_prompt: str,
+    company_name: str,
+    niche: str,
+    city: str,
+    rating: float | None,
+    reviews_count: int,
+    negative_count: int,
+    has_owner_replies: bool,
+    sample_reviews: list[str],
+) -> dict[str, Any] | None:
+    """Применяет пользовательский промпт к компании. Возвращает {score, comment} или None.
+
+    Промпт от юзера обрамляется системными инструкциями: контекст компании
+    (имя, ниша, город, рейтинг, отзывы) и требование вернуть строгий JSON
+    {"score": 0-10, "comment": "..."}. Если LLM не вернул число — score=None,
+    но comment может быть полезным сам по себе.
+    """
+    user_prompt = (user_prompt or "").strip()
+    if not user_prompt:
+        return None
+    assistant_id = await pick_assistant_id(db, "custom_analysis")
+    if assistant_id is None:
+        logger.info("call_llm_custom_analysis: no assistant available")
+        return None
+
+    sample_block = "\n".join(
+        f"- «{(t or '').strip()[:400]}»"
+        for t in sample_reviews[:5]
+        if t
+    ) or "(нет текстов отзывов)"
+
+    full_prompt = (
+        "Ты — аналитик B2B-лидов. Тебе дан критерий от пользователя и данные о "
+        "компании. Оцени, насколько компания подходит под критерий по шкале 0-10 "
+        "и кратко (1-2 предложения) обоснуй.\n\n"
+        f"Критерий пользователя:\n«{user_prompt}»\n\n"
+        f"Компания: {company_name or '—'}\n"
+        f"Ниша: {niche or '—'}\n"
+        f"Город: {city or '—'}\n"
+        f"Рейтинг: {rating if rating is not None else '—'}\n"
+        f"Всего отзывов: {reviews_count}\n"
+        f"Негативных: {negative_count}\n"
+        f"Владелец отвечает на отзывы: {'да' if has_owner_replies else 'нет'}\n\n"
+        f"Примеры отзывов клиентов (до 5):\n{sample_block}\n\n"
+        "Верни СТРОГО JSON одной строкой, без markdown-обёртки:\n"
+        '{"score": <0-10 integer>, "comment": "<1-2 предложения>"}\n'
+        "Если критерий не применим к компании — score=0 и в comment объясни почему."
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": full_prompt}],
+            db=db,
+            max_tokens=200,
+            temperature=0.3,
+        )
+    except Exception as e:
+        logger.warning("call_llm_custom_analysis: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, dict):
+        return None
+    score_raw = data.get("score")
+    try:
+        score = int(score_raw) if score_raw is not None else None
+        if score is not None:
+            score = max(0, min(10, score))
+    except (TypeError, ValueError):
+        score = None
+    comment = (data.get("comment") or "").strip()[:1000]
+    if score is None and not comment:
+        return None
+    return {"score": score, "comment": comment or None}

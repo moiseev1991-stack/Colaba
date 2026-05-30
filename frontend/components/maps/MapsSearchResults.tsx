@@ -11,7 +11,8 @@
  * MapsCompanyDetailDrawer и экспорт — шаг 16.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
@@ -29,6 +30,12 @@ import {
   type MapSearchOut,
   type OutreachDraftOut,
 } from '@/src/services/api/maps';
+import {
+  getCompanyAnalyses,
+  runPresetAnalysis,
+  type CompanyAnalysisOut,
+} from '@/src/services/api/reviews-ai';
+import type { UserPresetOut } from '@/src/services/api/user-presets';
 
 interface Props {
   search: MapSearchOut;
@@ -92,6 +99,16 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   // фильтра) — раньше юзер выбирал «Стабильный» и видел все 80 карточек
   // вместо «0 компаний под фильтр».
   const [companiesEverLoaded, setCompaniesEverLoaded] = useState(false);
+  // AI-анализ под кастомный промпт пресета (фича из пресета.ai_prompt).
+  // activeAiPreset выставляется когда юзер кликает user-preset с непустым
+  // ai_prompt. После этого появляется CTA «Запустить AI-анализ» в шапке.
+  const [activeAiPreset, setActiveAiPreset] = useState<UserPresetOut | null>(null);
+  const [aiAnalyses, setAiAnalyses] = useState<Map<number, CompanyAnalysisOut>>(new Map());
+  const [aiTriggering, setAiTriggering] = useState(false);
+  const [aiLastRun, setAiLastRun] = useState<{
+    queued: number; cached: number; over_limit: number; limit_remaining: number;
+  } | null>(null);
+  const aiPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
@@ -198,6 +215,71 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   const renderList: any[] = companiesEverLoaded ? companies : liveCompanies;
   const renderTotal = companiesEverLoaded ? companies.length : liveCompanies.length;
 
+  // ----------- AI-анализ под кастомный промпт пресета -----------
+  const visibleCompanyIds = renderList
+    .map((c: any) => c.id ?? c.company_id)
+    .filter((x: unknown): x is number => typeof x === 'number');
+
+  const stopAiPolling = useCallback(() => {
+    if (aiPollTimer.current) {
+      clearInterval(aiPollTimer.current);
+      aiPollTimer.current = null;
+    }
+  }, []);
+
+  const fetchAnalyses = useCallback(async () => {
+    if (activeAiPreset == null || visibleCompanyIds.length === 0) return;
+    try {
+      const items = await getCompanyAnalyses(activeAiPreset.id, visibleCompanyIds);
+      setAiAnalyses((prev) => {
+        const next = new Map(prev);
+        for (const it of items) next.set(it.company_id, it);
+        return next;
+      });
+      // Если ни одной pending — останавливаем поллинг
+      const pendingCount = items.filter((x) => x.status === 'pending').length;
+      if (pendingCount === 0) stopAiPolling();
+    } catch {
+      // silent
+    }
+  }, [activeAiPreset, visibleCompanyIds, stopAiPolling]);
+
+  const onUserPresetWithAi = useCallback((preset: UserPresetOut) => {
+    setActiveAiPreset(preset);
+    setAiAnalyses(new Map());
+    setAiLastRun(null);
+    stopAiPolling();
+  }, [stopAiPolling]);
+
+  const handleTriggerAi = useCallback(async () => {
+    if (!activeAiPreset || visibleCompanyIds.length === 0 || aiTriggering) return;
+    setAiTriggering(true);
+    try {
+      const result = await runPresetAnalysis(activeAiPreset.id, visibleCompanyIds);
+      setAiLastRun(result);
+      // Сразу подтянем кэшированные результаты (cached>0)
+      await fetchAnalyses();
+      // Если ушли pending — начинаем поллинг каждые 3 сек
+      if (result.queued > 0) {
+        stopAiPolling();
+        aiPollTimer.current = setInterval(() => { void fetchAnalyses(); }, 3000);
+      }
+    } catch (e) {
+      // показать ошибку как-то — alert минимально
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        || 'Не удалось запустить AI-анализ';
+      window.alert(typeof msg === 'string' ? msg : 'Не удалось запустить AI-анализ');
+    } finally {
+      setAiTriggering(false);
+    }
+  }, [activeAiPreset, visibleCompanyIds, aiTriggering, fetchAnalyses, stopAiPolling]);
+
+  // Останавливаем поллинг при размонтировании
+  useEffect(() => stopAiPolling, [stopAiPolling]);
+
+  const aiDoneCount = Array.from(aiAnalyses.values()).filter((x) => x.status === 'done').length;
+  const aiPendingCount = Array.from(aiAnalyses.values()).filter((x) => x.status === 'pending').length;
+
   function handleExport() {
     const url = exportSearchCsvUrl(search.id, filter);
     // Простой способ для same-origin прокси: используем тег <a download>
@@ -217,6 +299,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
         searchId={search.id}
         value={filter}
         onChange={setFilter}
+        onUserPresetWithAiSelected={onUserPresetWithAi}
       />
 
       <div className="space-y-4">
@@ -243,6 +326,38 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
             {search.filters && Object.keys(search.filters).length > 0 && (
               <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
+              </div>
+            )}
+            {activeAiPreset && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px]">
+                <span className="inline-flex items-center gap-1 font-medium text-violet-900">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI-пресет «{activeAiPreset.name}»
+                </span>
+                <span className="text-violet-800/80">
+                  {aiDoneCount > 0 || aiPendingCount > 0
+                    ? `Готово ${aiDoneCount} · в работе ${aiPendingCount}`
+                    : 'нажми «Запустить AI-анализ» — для каждой видимой компании посчитается score 0-10'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleTriggerAi()}
+                  disabled={aiTriggering || visibleCompanyIds.length === 0}
+                  className="ml-auto rounded-md bg-violet-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                >
+                  {aiTriggering ? 'Запускаю…' : `Запустить AI-анализ (${visibleCompanyIds.length})`}
+                </button>
+                {aiLastRun && (
+                  <div className="basis-full text-[11px] text-violet-700">
+                    Поставлено: {aiLastRun.queued}, из кэша: {aiLastRun.cached}
+                    {aiLastRun.over_limit > 0 && (
+                      <span className="ml-1 text-rose-700">
+                        · {aiLastRun.over_limit} не уехало (дневной лимит исчерпан)
+                      </span>
+                    )}
+                    {' · '}остаток лимита на сутки: {aiLastRun.limit_remaining}
+                  </div>
+                )}
               </div>
             )}
             {!isTerminal && (
@@ -349,6 +464,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
           <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
             {renderList.map((c: any) => {
               const id = c.id ?? c.company_id;
+              const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;
               return (
                 <MapsCompanyCard
                   key={id}
@@ -357,6 +473,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
                   onAddToList={id != null ? onAddToList : undefined}
                   onDraftEmail={id != null ? onDraftEmail : undefined}
                   draftEmailLoading={draftLoadingCompanyId === id}
+                  aiAnalysis={aiAnalysis}
                 />
               );
             })}

@@ -20,6 +20,7 @@ export interface UserPresetOut {
   description: string | null;
   filter: Record<string, unknown>;
   hidden: boolean;
+  ai_prompt: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export interface UserPresetCreate {
   description?: string | null;
   module?: PresetModule;
   filter: Record<string, unknown>;
+  ai_prompt?: string | null;
 }
 
 export interface UserPresetUpdate {
@@ -36,6 +38,7 @@ export interface UserPresetUpdate {
   description?: string | null;
   filter?: Record<string, unknown>;
   hidden?: boolean;
+  ai_prompt?: string | null;
 }
 
 /**

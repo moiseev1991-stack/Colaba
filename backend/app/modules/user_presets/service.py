@@ -57,6 +57,7 @@ async def create(
     name: str,
     description: str | None,
     filter: dict[str, Any],
+    ai_prompt: str | None = None,
 ) -> UserFilterPreset:
     """Создаёт пресет. Конфликт (user_id, module, name) — IntegrityError,
     обрабатывается caller."""
@@ -67,6 +68,7 @@ async def create(
         name=name.strip(),
         description=(description or "").strip() or None,
         filter=filter,
+        ai_prompt=(ai_prompt or "").strip() or None,
     )
     db.add(preset)
     await db.commit()
@@ -82,6 +84,7 @@ async def update(
     description: str | None = None,
     filter: dict[str, Any] | None = None,
     hidden: bool | None = None,
+    ai_prompt: str | None = None,
 ) -> UserFilterPreset:
     """Частичное обновление: применяются только non-None поля."""
     if name is not None:
@@ -92,6 +95,8 @@ async def update(
         preset.filter = filter
     if hidden is not None:
         preset.hidden = hidden
+    if ai_prompt is not None:
+        preset.ai_prompt = ai_prompt.strip() or None
     await db.commit()
     await db.refresh(preset)
     return preset

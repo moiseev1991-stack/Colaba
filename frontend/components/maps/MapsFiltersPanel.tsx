@@ -36,9 +36,14 @@ interface Props {
   searchId?: number;
   value: MapSearchFilter;
   onChange: (v: MapSearchFilter) => void;
+  /** Колбэк при выборе user-пресета с непустым ai_prompt — родитель может
+   *  предложить юзеру запустить AI-анализ. */
+  onUserPresetWithAiSelected?: (preset: UserPresetOut) => void;
 }
 
-export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Props) {
+export function MapsFiltersPanel({
+  niche, city, searchId, value, onChange, onUserPresetWithAiSelected,
+}: Props) {
   // локальный state для текстовых полей — чтобы при наборе цифр не дёргать debounce каждый ключевой удар
   const [localMinRating, setLocalMinRating] = useState<string>(value.min_rating?.toString() ?? '');
   const [localMaxRating, setLocalMaxRating] = useState<string>(value.max_rating?.toString() ?? '');
@@ -124,6 +129,9 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
       ...(p.filter as MapSearchFilter),
       pain_tag_ids: value.pain_tag_ids,
     });
+    if (p.ai_prompt && p.ai_prompt.trim()) {
+      onUserPresetWithAiSelected?.(p);
+    }
   }
 
   // При внешнем изменении value (например, клик по пресету) — синкаем локальные
@@ -275,7 +283,17 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
                   title={p.description ?? 'мой пресет'}
                   className="block w-full text-left"
                 >
-                  <span className="block text-xs font-medium text-slate-800">{p.name}</span>
+                  <span className="block text-xs font-medium text-slate-800">
+                    {p.name}
+                    {p.ai_prompt && p.ai_prompt.trim() && (
+                      <span
+                        title="С AI-анализом: при применении посчитает score 0-10 для каждой компании"
+                        className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-[9px] font-semibold text-violet-800"
+                      >
+                        AI
+                      </span>
+                    )}
+                  </span>
                   <span className={cn(
                     'block text-[10px] leading-tight',
                     p.hidden ? 'text-slate-500' : 'text-emerald-700/80'

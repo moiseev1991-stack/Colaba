@@ -11,10 +11,11 @@
  *  - кнопки [В список] [Письмо] — обработка через коллбэки родителя
  */
 
-import { Mail, ListPlus, Phone, Globe, MessageSquareQuote } from 'lucide-react';
+import { Mail, ListPlus, Phone, Globe, MessageSquareQuote, Sparkles } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { CompanyOut, CompanyPainOut, PainTagShort } from '@/src/services/api/maps';
+import type { CompanyAnalysisOut } from '@/src/services/api/reviews-ai';
 
 type CardCompany = Partial<CompanyOut> & {
   id?: number;
@@ -31,6 +32,9 @@ interface Props {
   onDraftEmail?: (company: CardCompany) => void;
   draftEmailLoading?: boolean;
   hideActions?: boolean;
+  /** Результат AI-анализа компании под активный пресет (если применён
+   *  пресет с ai_prompt). */
+  aiAnalysis?: CompanyAnalysisOut | null;
 }
 
 export function MapsCompanyCard({
@@ -40,6 +44,7 @@ export function MapsCompanyCard({
   onDraftEmail,
   draftEmailLoading,
   hideActions,
+  aiAnalysis,
 }: Props) {
   const id = company.id ?? company.company_id;
   const reviewsTotal = company.reviews_count ?? 0;
@@ -80,6 +85,38 @@ export function MapsCompanyCard({
           </span>
         )}
       </div>
+
+      {aiAnalysis && (
+        <div
+          className={cn(
+            'mt-1.5 inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-[11px]',
+            aiAnalysis.status === 'done' && aiAnalysis.score != null
+              ? aiAnalysis.score >= 7
+                ? 'border border-emerald-200 bg-emerald-50 text-emerald-900'
+                : aiAnalysis.score >= 4
+                  ? 'border border-amber-200 bg-amber-50 text-amber-900'
+                  : 'border border-slate-200 bg-slate-50 text-slate-700'
+              : aiAnalysis.status === 'pending'
+                ? 'border border-violet-200 bg-violet-50 text-violet-800 animate-pulse'
+                : 'border border-rose-200 bg-rose-50 text-rose-800'
+          )}
+          title={aiAnalysis.comment ?? aiAnalysis.error ?? ''}
+        >
+          <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
+          {aiAnalysis.status === 'pending' ? (
+            <span>AI: считаю…</span>
+          ) : aiAnalysis.status === 'failed' ? (
+            <span>AI: ошибка</span>
+          ) : (
+            <>
+              <span className="font-semibold">AI: {aiAnalysis.score ?? '—'}/10</span>
+              {aiAnalysis.comment && (
+                <span className="line-clamp-2 italic">{aiAnalysis.comment}</span>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5" onClick={onClick}>
         <MetricPill label={`${reviewsTotal} отзывов`} tone="neutral" />

@@ -25,6 +25,7 @@ interface Props {
 export function SaveFilterPresetModal({ open, filter, onClose, onSaved }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,13 +35,17 @@ export function SaveFilterPresetModal({ open, filter, onClose, onSaved }: Props)
     if (open) {
       setName('');
       setDescription('');
+      setAiPrompt('');
       setError(null);
       setIsSaving(false);
     }
   }, [open]);
 
   const summary = describeFilter(filter);
-  const isEmpty = summary.length === 0;
+  // С AI-промптом можно сохранить даже без фильтров — пресет работает как
+  // «AI-критерий» для оценки выдачи. Без промпта и без фильтров — нечего
+  // сохранять.
+  const isEmpty = summary.length === 0 && !aiPrompt.trim();
   const canSave = name.trim().length > 0 && !isSaving && !isEmpty;
 
   async function handleSave() {
@@ -53,6 +58,7 @@ export function SaveFilterPresetModal({ open, filter, onClose, onSaved }: Props)
         description: description.trim() || null,
         module: 'maps',
         filter: filter as unknown as Record<string, unknown>,
+        ai_prompt: aiPrompt.trim() || null,
       });
       onSaved(preset);
       onClose();
@@ -72,58 +78,80 @@ export function SaveFilterPresetModal({ open, filter, onClose, onSaved }: Props)
       <div className="space-y-4 p-6">
         {isEmpty ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Сначала настройте хотя бы один фильтр в панели слева — пустой
+            Настройте фильтры в панели слева или задайте AI-промпт ниже — пустой
             пресет сохранять не имеет смысла.
           </div>
-        ) : (
-          <>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Название
-              </label>
-              <Input
-                type="text"
-                placeholder="Например: «Барбершопы без сайта»"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isSaving}
-                autoFocus
-                maxLength={100}
-              />
-            </div>
+        ) : null}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">
+            Название
+          </label>
+          <Input
+            type="text"
+            placeholder="Например: «Барбершопы без сайта»"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={isSaving}
+            autoFocus
+            maxLength={100}
+          />
+        </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Описание <span className="text-slate-400">(необязательно)</span>
-              </label>
-              <textarea
-                placeholder="Кому продаём, как искать… — показывается в tooltip над кнопкой"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={isSaving}
-                maxLength={1000}
-                rows={2}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              />
-            </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">
+            Описание <span className="text-slate-400">(необязательно)</span>
+          </label>
+          <textarea
+            placeholder="Кому продаём, как искать… — показывается в tooltip над кнопкой"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={isSaving}
+            maxLength={1000}
+            rows={2}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+        </div>
 
-            <div>
-              <div className="mb-1 text-xs font-medium text-slate-600">
-                Будет сохранено:
-              </div>
-              <ul className="space-y-0.5 rounded-md bg-slate-50 p-2 text-xs text-slate-700">
-                {summary.map((line, i) => (
-                  <li key={i}>• {line}</li>
-                ))}
-              </ul>
-            </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">
+            AI-промпт <span className="text-slate-400">(необязательно — оценит каждую компанию)</span>
+          </label>
+          <textarea
+            placeholder={
+              'Например: «Оцени готовность компании купить SMM-услуги ' +
+              'по шкале 0-10 на основе данных и отзывов»'
+            }
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            disabled={isSaving}
+            maxLength={4000}
+            rows={3}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+          <p className="mt-1 text-[11px] text-slate-500">
+            Когда применишь этот пресет — для каждой компании выдачи LLM (gpt-4o-mini
+            через ProxyAPI) посчитает score 0-10 + краткий комментарий. Лимит — 100
+            анализов в сутки. Кэшируется по тексту промпта (повторно не платишь).
+          </p>
+        </div>
 
-            {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                {error}
-              </div>
-            )}
-          </>
+        {summary.length > 0 && (
+          <div>
+            <div className="mb-1 text-xs font-medium text-slate-600">
+              Будет сохранено:
+            </div>
+            <ul className="space-y-0.5 rounded-md bg-slate-50 p-2 text-xs text-slate-700">
+              {summary.map((line, i) => (
+                <li key={i}>• {line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {error}
+          </div>
         )}
 
         <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">

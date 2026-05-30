@@ -57,6 +57,7 @@ async def create_preset(
             name=payload.name,
             description=payload.description,
             filter=payload.filter,
+            ai_prompt=payload.ai_prompt,
         )
     except IntegrityError as e:
         await db.rollback()
@@ -90,6 +91,7 @@ async def update_preset(
             description=payload.description,
             filter=payload.filter,
             hidden=payload.hidden,
+            ai_prompt=payload.ai_prompt,
         )
     except IntegrityError:
         await db.rollback()

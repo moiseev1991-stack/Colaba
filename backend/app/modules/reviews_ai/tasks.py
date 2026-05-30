@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import desc, func, select
 
@@ -113,3 +113,67 @@ def recluster_popular_niches():
     for niche, city in pairs:
         recluster_pains_for_niche_task.delay(niche, city)
     return len(pairs)
+
+
+# ---------------------------------------------------------------------------
+# analyze_company_with_prompt — кастомный AI-анализ из пресета
+# ---------------------------------------------------------------------------
+
+
+async def _analyze_company_with_prompt_async(
+    user_id: int, company_id: int, prompt: str, prompt_hash_value: str,
+) -> dict[str, Any]:
+    from app.modules.reviews_ai import llm
+    from app.modules.reviews_ai import preset_analysis_service as svc
+
+    async with AsyncSessionLocal() as db:
+        ctx = await svc.gather_company_context(db, company_id)
+        if ctx is None:
+            await svc.write_result(
+                db, user_id=user_id, company_id=company_id,
+                prompt_hash_value=prompt_hash_value,
+                score=None, comment=None,
+                status="failed", error="company not found",
+            )
+            return {"status": "failed", "reason": "company_not_found"}
+
+        result = await llm.call_llm_custom_analysis(
+            db,
+            user_prompt=prompt,
+            **ctx,
+        )
+        if result is None:
+            await svc.write_result(
+                db, user_id=user_id, company_id=company_id,
+                prompt_hash_value=prompt_hash_value,
+                score=None, comment=None,
+                status="failed", error="llm returned no result",
+            )
+            return {"status": "failed", "reason": "llm_failed"}
+
+        await svc.write_result(
+            db, user_id=user_id, company_id=company_id,
+            prompt_hash_value=prompt_hash_value,
+            score=result.get("score"),
+            comment=result.get("comment"),
+            status="done",
+        )
+        return {"status": "done", "score": result.get("score")}
+
+
+@celery_app.task(name="analyze_company_with_prompt", queue="maps_ai", bind=True, max_retries=1)
+def analyze_company_with_prompt(
+    self, user_id: int, company_id: int, prompt: str, prompt_hash_value: str,
+):
+    """Применяет кастомный промпт к компании, пишет результат в company_ai_analyses.
+    Строка со status='pending' должна быть создана ДО постановки таски (из
+    preset_analysis_service.ensure_pending_row) — таска только update'ит её.
+    """
+    try:
+        return asyncio.run(
+            _analyze_company_with_prompt_async(user_id, company_id, prompt, prompt_hash_value)
+        )
+    except Exception as exc:
+        logger.warning("analyze_company_with_prompt retrying user=%d company=%d: %s",
+                       user_id, company_id, exc)
+        raise self.retry(exc=exc, countdown=30, max_retries=1)

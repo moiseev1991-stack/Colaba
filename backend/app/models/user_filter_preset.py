@@ -68,6 +68,13 @@ class UserFilterPreset(Base):
     # окончательно. Миграция 021.
     hidden = Column(Boolean, nullable=False, default=False)
 
+    # Опциональный LLM-промпт для AI-анализа компаний под этот пресет.
+    # При применении пресета с непустым ai_prompt — для каждой компании
+    # выдачи запускается analyze_company_with_prompt, результат показывается
+    # как бейдж «AI: N/10» в карточке. Кэшируется по hash промпта в
+    # company_ai_analyses (миграция 022).
+    ai_prompt = Column(Text)
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
