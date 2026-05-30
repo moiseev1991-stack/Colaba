@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.20.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.19.0...v1.20.0) (2026-05-30)
+
+
+### Features
+
+* **maps-ui:** кнопка «сохранить пресет» на форме создания поиска ([649f829](https://github.com/moiseev1991-stack/Colaba/commit/649f8290e6437ea33649cb72e7376f3bd0c04a2f))
+
 # [1.19.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.18.0...v1.19.0) (2026-05-30)
 
 
