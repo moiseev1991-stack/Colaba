@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.17.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.16.0...v1.17.0) (2026-05-30)
+
+
+### Features
+
+* **maps:** пользовательские пресеты фильтров — сохранение/удаление per-user ([c1c256e](https://github.com/moiseev1991-stack/Colaba/commit/c1c256ea11d17a136b21a5d24e50b4d683eb775c))
+
 # [1.16.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.15.2...v1.16.0) (2026-05-30)
 
 
