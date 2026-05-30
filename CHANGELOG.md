@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.14.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.13.0...v1.14.0) (2026-05-30)
+
+
+### Features
+
+* **maps-ui:** пресеты «Нужен сайт» и «Хаос в работе» под ICP ([a3bd840](https://github.com/moiseev1991-stack/Colaba/commit/a3bd8401906f0ad80a20a7d47e5f46da04501cab))
+
 # [1.13.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.12.2...v1.13.0) (2026-05-30)
 
 
