@@ -14,6 +14,7 @@ import { BookmarkPlus, EyeOff, RotateCcw, X } from 'lucide-react';
 import { BUILTIN_PRESETS, type BuiltinPreset } from '@/components/maps/builtinPresets';
 import { PainTagsCloud } from '@/components/maps/PainTagsCloud';
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,10 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
   const [allUserPresets, setAllUserPresets] = useState<UserPresetOut[]>([]);
   const [userPresetsTab, setUserPresetsTab] = useState<'active' | 'hidden'>('active');
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  // Подтверждение удаления через свою модалку. window.confirm на проде
+  // вешал страницу на 30 секунд (CDP-блокер) — заменили на Dialog.
+  const [confirmDelete, setConfirmDelete] = useState<UserPresetOut | null>(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   const activeUserPresets = allUserPresets.filter((p) => !p.hidden);
   const hiddenUserPresets = allUserPresets.filter((p) => p.hidden);
@@ -77,15 +82,27 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
     return () => { cancelled = true; };
   }, []);
 
-  const handleDeleteUserPreset = useCallback(async (preset: UserPresetOut) => {
-    if (!window.confirm(`Удалить пресет «${preset.name}» навсегда? Чтобы временно убрать с глаз, используй кнопку «скрыть» вместо удаления.`)) return;
-    try {
-      await deleteUserPreset(preset.id);
-      setAllUserPresets((prev) => prev.filter((p) => p.id !== preset.id));
-    } catch (e) {
-      window.alert('Не удалось удалить пресет');
-    }
+  const handleDeleteUserPreset = useCallback((preset: UserPresetOut) => {
+    // Открываем свою модалку подтверждения — на проде native window.confirm
+    // блокировал страницу.
+    setConfirmDelete(preset);
   }, []);
+
+  const confirmDeleteNow = useCallback(async () => {
+    if (!confirmDelete) return;
+    setDeleteInProgress(true);
+    try {
+      await deleteUserPreset(confirmDelete.id);
+      setAllUserPresets((prev) => prev.filter((p) => p.id !== confirmDelete.id));
+      setConfirmDelete(null);
+    } catch (e) {
+      // оставляем модалку открытой, показываем ошибку через alert
+      // (можно потом добавить inline-error в самом Dialog)
+      window.alert('Не удалось удалить пресет');
+    } finally {
+      setDeleteInProgress(false);
+    }
+  }, [confirmDelete]);
 
   const handleToggleHidden = useCallback(async (preset: UserPresetOut, hidden: boolean) => {
     try {
@@ -237,7 +254,7 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
               будет доступен в один клик при следующих поисках.</>
             ) : (
               <>Скрытых пресетов нет. Скрыть пресет можно из вкладки «Мои пресеты»
-              — он не удалится, просто уберётся с глаз.</>
+              — он не удалится, просто уберётся из вида.</>
             )}
           </div>
         ) : (
@@ -319,6 +336,40 @@ export function MapsFiltersPanel({ niche, city, searchId, value, onChange }: Pro
         onClose={() => setSaveModalOpen(false)}
         onSaved={handlePresetSaved}
       />
+
+      <Dialog
+        open={confirmDelete !== null}
+        onClose={() => !deleteInProgress && setConfirmDelete(null)}
+        title="Удалить пресет?"
+      >
+        <div className="space-y-4 p-6">
+          <div className="text-sm text-slate-700">
+            Удалить пресет <strong>«{confirmDelete?.name}»</strong> навсегда?
+          </div>
+          <div className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-[12px] text-amber-800">
+            Если хочешь временно убрать с глаз — лучше нажми «скрыть» (иконка глаза).
+            Пресет уедет во вкладку «Скрытые», откуда его легко вернуть.
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(null)}
+              disabled={deleteInProgress}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmDeleteNow()}
+              disabled={deleteInProgress}
+              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleteInProgress ? 'Удаляю…' : 'Удалить'}
+            </button>
+          </div>
+        </div>
+      </Dialog>
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">Рейтинг</label>

@@ -53,12 +53,16 @@ const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
 
 // «Быстрый старт»: ниша + город сразу, один клик — поиск запущен.
 // Для onboarding'а: новый пользователь не должен думать, что вбить.
+// Подписи в hint — без обещаний по числу компаний (2GIS отдаёт от 10 до ~200
+// в зависимости от ниши/города/времени). Прошлый «~50 компаний» оказался
+// враньём — реальность отдавала 24, и доверие к продукту падало с первого
+// клика. Лучше честно про тематику, чем точно про количество.
 const QUICK_PRESETS: Array<{ niche: string; city: string; title: string; hint: string }> = [
   {
     niche: 'стоматология',
     city: 'Москва',
     title: 'Стоматологии Москвы',
-    hint: '~50 компаний с отзывами клиентов',
+    hint: 'клиники с реальными отзывами клиентов',
   },
   {
     niche: 'автосервис',
@@ -771,13 +775,31 @@ export function MapsSearchForm({ onStarted }: Props) {
                   <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
                     →
                   </span>{' '}
-                  Спарсим <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{niche.trim()}</span> в{' '}
-                  <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{city || 'Москве'}</span> через{' '}
-                  {sources.map((s) => (s === '2gis' ? '2GIS' : 'Яндекс.Карты')).join(' + ')}
+                  Спарсим <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{niche.trim()}</span>
+                  {mode === 'radius' ? (
+                    <>
+                      {' '}в радиусе{' '}
+                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{radiusKm.toFixed(1)} км</span>
+                      {address.trim() && (
+                        <>
+                          {' '}от{' '}
+                          <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{address.trim()}</span>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {' '}в{' '}
+                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{city || 'Москве'}</span>
+                    </>
+                  )}{' '}
+                  через {sources.map((s) => (s === '2gis' ? '2GIS' : 'Яндекс.Карты')).join(' + ')}
                 </>
               ) : (
                 <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-                  введите нишу — минимум 2 символа
+                  {mode === 'radius'
+                    ? 'введите нишу и адрес центра'
+                    : 'введите нишу — минимум 2 символа'}
                 </span>
               )}
             </div>

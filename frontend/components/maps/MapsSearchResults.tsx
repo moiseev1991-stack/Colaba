@@ -231,9 +231,20 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
             <p className="text-sm text-slate-500">
               Источники: {search.sources}. Статус: {statusLabel(search.status)}.{' '}
               {isTerminal
-                ? `Найдено компаний: ${search.companies_found ?? renderTotal}.`
+                ? // Если фильтр сузил выдачу — показываем оба числа: «под фильтр / всего».
+                  // Раньше счётчик «всего» оставался без изменений и врал юзеру.
+                  companiesEverLoaded &&
+                    typeof search.companies_found === 'number' &&
+                    renderTotal !== search.companies_found
+                  ? `Под фильтр: ${renderTotal} из ${search.companies_found}.`
+                  : `Найдено компаний: ${search.companies_found ?? renderTotal}.`
                 : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
             </p>
+            {search.filters && Object.keys(search.filters).length > 0 && (
+              <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800">
+                Применён пресет с формы поиска — фильтры выставлены в панели слева
+              </div>
+            )}
             {!isTerminal && (
               <div className="mt-1 flex items-center gap-2">
                 <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200">
