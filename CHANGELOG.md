@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.12.0...v1.12.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **maps:** UnboundLocalError в radius-режиме 2GIS — поиск возвращал 0 компаний ([c0235c1](https://github.com/moiseev1991-stack/Colaba/commit/c0235c17126cafa987173831a0f6cdd62609479b))
+
 # [1.12.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.11.0...v1.12.0) (2026-05-29)
 
 
