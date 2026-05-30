@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.15.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.14.0...v1.15.0) (2026-05-30)
+
+
+### Features
+
+* **maps:** город в карточке, мультислова через запятую, фикс индикатора сайта ([bfcf7e0](https://github.com/moiseev1991-stack/Colaba/commit/bfcf7e0266006d2662f6dc0e074f129a7d858520))
+
 # [1.14.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.13.0...v1.14.0) (2026-05-30)
 
 
