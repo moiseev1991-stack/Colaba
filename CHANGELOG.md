@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.18.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.17.0...v1.18.0) (2026-05-30)
+
+
+### Features
+
+* **maps-ui:** редактируемое поле «Слова в отзывах» в панели фильтров ([66e393e](https://github.com/moiseev1991-stack/Colaba/commit/66e393e069499275378f1987036f280649e4d890))
+
 # [1.17.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.16.0...v1.17.0) (2026-05-30)
 
 
