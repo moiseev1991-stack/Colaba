@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.15.0...v1.15.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **maps-ui:** фильтры пресетов не применялись + drawer без города + счётчик отзывов ([d9c2a5a](https://github.com/moiseev1991-stack/Colaba/commit/d9c2a5a06922a3a29cd34c60a11a9757e929ef9a))
+
 # [1.15.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.14.0...v1.15.0) (2026-05-30)
 
 
