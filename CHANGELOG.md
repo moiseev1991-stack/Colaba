@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.23.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.22.0...v1.23.0) (2026-05-31)
+
+
+### Features
+
+* **maps:** больше ниш, AI-промпты во встроенных пресетах, side-drawer карточки, fallback контактов на 2GIS ([7922482](https://github.com/moiseev1991-stack/Colaba/commit/7922482e1d67020d5a3ff615d3275297a2a34ac3))
+
 # [1.22.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.21.0...v1.22.0) (2026-05-31)
 
 
