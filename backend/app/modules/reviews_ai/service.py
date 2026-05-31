@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from sqlalchemy import case, func, select, update, text
+from sqlalchemy import case, func, or_, select, update, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -152,14 +152,29 @@ async def match_reviews_to_pain_tags(
         return {}
     threshold = threshold if threshold is not None else settings.REVIEWS_AI_PAIN_MATCH_THRESHOLD
 
-    # Берём reviews с embedding + niche/city компании + raw_text (для top_quote)
+    # Берём reviews с embedding + niche/city компании + raw_text (для top_quote).
+    #
+    # ВАЖНО: пропускаем positive-отзывы. Pain-теги — это «боли клиентов», и
+    # позитивные отзывы туда привязываться не должны: cosine-similarity по
+    # embedding'у легко даёт высокий sim между pain-тегом «Качество еды и
+    # сервиса» и позитивным «Очень вкусная кухня, вежливый персонал», и тогда
+    # такой positive-отзыв становится top_quote pain-тега → в UI карточки
+    # под красным «негатив 19» висит благодарственная цитата. Аудит ловил.
+    #
+    # Условие `sentiment != 'positive'` — а не `IN ('negative','neutral')`,
+    # потому что у части старых отзывов sentiment ещё NULL (AI-пайплайн не
+    # прогонял), и их terять нельзя — пусть проходят как раньше.
     rows = list((await db.execute(
         select(
             Review.id, Review.company_id, Review.embedding, Review.raw_text,
             Company.niche, Company.city,
         )
         .join(Company, Company.id == Review.company_id)
-        .where(Review.id.in_(review_ids), Review.embedding.isnot(None))
+        .where(
+            Review.id.in_(review_ids),
+            Review.embedding.isnot(None),
+            or_(Review.sentiment.is_(None), Review.sentiment != "positive"),
+        )
     )).all())
     if not rows:
         return {}
