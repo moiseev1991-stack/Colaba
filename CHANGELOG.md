@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.22.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.21.0...v1.22.0) (2026-05-31)
+
+
+### Bug Fixes
+
+* **maps-ui:** фиксы из аудита Claude in Chrome — mobile тач-таргеты + UX-полировка ([33b5a72](https://github.com/moiseev1991-stack/Colaba/commit/33b5a72a0cd6d6c20d3f46a098e19749ddf530b4))
+* **reviews-ai:** не привязывать positive-отзывы к pain-тегам — top_quote перестанет «врать» ([46fbdee](https://github.com/moiseev1991-stack/Colaba/commit/46fbdee210116b25b2beb67427c16b4b2180c0df))
+
+
+### Features
+
+* **maps:** «Мои пресеты», контакты в карточке, карта Leaflet, авто-AI ([305e51b](https://github.com/moiseev1991-stack/Colaba/commit/305e51bc79ae7dd1fe0e57b24060c902d1548379))
+
 # [1.21.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.20.2...v1.21.0) (2026-05-30)
 
 
