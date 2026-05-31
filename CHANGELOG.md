@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.25.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.24.2...v1.25.0) (2026-05-31)
+
+
+### Features
+
+* **maps:** HTML-парсер 2gis.ru/firm/{id} + краулер /contacts + соцсети, всё бесплатно ([7ac56fc](https://github.com/moiseev1991-stack/Colaba/commit/7ac56fc4c737c0a0bc1d1f80a4558c913409cad0))
+
 ## [1.24.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.24.1...v1.24.2) (2026-05-31)
 
 
