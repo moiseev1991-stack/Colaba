@@ -39,10 +39,13 @@ interface Props {
   /** Колбэк при выборе user-пресета с непустым ai_prompt — родитель может
    *  предложить юзеру запустить AI-анализ. */
   onUserPresetWithAiSelected?: (preset: UserPresetOut) => void;
+  /** Активен ли AI-анализ (пресет с ai_prompt выбран). Если да — в Select
+   *  сортировки показываем дополнительные опции «AI: score ↓/↑». */
+  aiActive?: boolean;
 }
 
 export function MapsFiltersPanel({
-  niche, city, searchId, value, onChange, onUserPresetWithAiSelected,
+  niche, city, searchId, value, onChange, onUserPresetWithAiSelected, aiActive,
 }: Props) {
   // локальный state для текстовых полей — чтобы при наборе цифр не дёргать debounce каждый ключевой удар
   const [localMinRating, setLocalMinRating] = useState<string>(value.min_rating?.toString() ?? '');
@@ -576,7 +579,18 @@ export function MapsFiltersPanel({
           <option value="reviews_desc">Больше отзывов</option>
           <option value="negative_desc">Больше негатива</option>
           <option value="pain_desc">По упоминаниям болей</option>
+          {aiActive && (
+            <>
+              <option value="ai_score_desc">AI score ↓ (готовые сверху)</option>
+              <option value="ai_score_asc">AI score ↑ (низкие сверху)</option>
+            </>
+          )}
         </Select>
+        {aiActive && (
+          <p className="mt-1 text-[11px] text-violet-700/80">
+            Компании без AI-оценки — в конце списка.
+          </p>
+        )}
       </div>
 
       <div>

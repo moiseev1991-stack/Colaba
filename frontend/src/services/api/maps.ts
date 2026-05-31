@@ -18,7 +18,23 @@ export type SortBy =
   | 'rating_desc'
   | 'reviews_desc'
   | 'negative_desc'
-  | 'pain_desc';
+  | 'pain_desc'
+  // UI-only сортировки. Бэк про них не знает (sort_by там Literal-enum),
+  // поэтому в запросах подменяем на rating_desc и сортируем результат на
+  // клиенте по aiAnalyses[company_id].score.
+  | 'ai_score_desc'
+  | 'ai_score_asc';
+
+/** Сортировки, которые бэк не поддерживает — их фронт обрабатывает локально. */
+export function isClientOnlySort(s: SortBy | undefined | null): boolean {
+  return s === 'ai_score_desc' || s === 'ai_score_asc';
+}
+
+/** Нормализует sort_by для запроса к бэку: client-only превращаются в rating_desc. */
+function backendSortBy(s: SortBy | undefined | null): SortBy {
+  if (isClientOnlySort(s)) return 'rating_desc';
+  return s ?? 'rating_desc';
+}
 
 export interface MapSearchFilter {
   min_rating?: number | null;
@@ -114,6 +130,10 @@ export interface CompanyOut {
   niche?: string | null;
   city?: string | null;
   address?: string | null;
+  /** Координаты для UI-карты (см. MapsCompaniesMap). Старые компании
+   *  могут не иметь координат — на карте просто не показываются. */
+  lat?: number | null;
+  lng?: number | null;
   phone?: string | null;
   website?: string | null;
   rating?: number | null;
@@ -223,7 +243,7 @@ export async function listMapCompanies(
     for (const t of filter.review_text_contains_any) params.append('review_text_contains_any', t);
   if (filter.review_text_excludes_any?.length)
     for (const t of filter.review_text_excludes_any) params.append('review_text_excludes_any', t);
-  params.set('sort_by', filter.sort_by ?? 'rating_desc');
+  params.set('sort_by', backendSortBy(filter.sort_by));
   params.set('limit', String(limit));
   params.set('offset', String(offset));
 
@@ -356,6 +376,6 @@ export function exportSearchCsvUrl(searchId: number, filter: MapSearchFilter = {
     params.set('has_website', String(filter.has_website));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length)
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
-  params.set('sort_by', filter.sort_by ?? 'rating_desc');
+  params.set('sort_by', backendSortBy(filter.sort_by));
   return `/api/v1/maps/search/${searchId}/export?${params.toString()}`;
 }

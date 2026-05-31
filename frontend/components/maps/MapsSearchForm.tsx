@@ -96,7 +96,10 @@ const REVIEW_FILTER_FIELDS: FieldDef[] = [
 ];
 
 interface Props {
-  onStarted: (search: MapSearchOut) => void;
+  /** aiPreset !== null означает: юзер выбрал свой пресет с непустым ai_prompt —
+   *  Results-страница должна сразу активировать AI-плашку и автозапустить анализ
+   *  как только выдача будет загружена. */
+  onStarted: (search: MapSearchOut, aiPreset?: UserPresetOut | null) => void;
 }
 
 type SearchModeTab = 'city' | 'radius';
@@ -115,6 +118,10 @@ export function MapsSearchForm({ onStarted }: Props) {
   // null = пресет не выбран, дефолтный поиск без фильтрации.
   const [presetFilter, setPresetFilter] = useState<MapSearchFilter | null>(null);
   const [presetLabel, setPresetLabel] = useState<string | null>(null);
+  // Если выбран user-пресет с непустым ai_prompt — храним его целиком, чтобы
+  // прокинуть в onStarted и активировать AI-плашку сразу на странице результатов
+  // (раньше юзеру приходилось второй раз кликать пресет в боковой панели).
+  const [aiPreset, setAiPreset] = useState<UserPresetOut | null>(null);
   const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -134,16 +141,20 @@ export function MapsSearchForm({ onStarted }: Props) {
   function applyBuiltinPreset(p: typeof BUILTIN_PRESETS[number]) {
     setPresetFilter(p.filter);
     setPresetLabel(p.label);
+    // Встроенные пресеты пока не носят ai_prompt — сбрасываем AI-выбор.
+    setAiPreset(null);
   }
 
   function applyUserPreset(p: UserPresetOut) {
     setPresetFilter(p.filter as MapSearchFilter);
     setPresetLabel(p.name);
+    setAiPreset(p.ai_prompt && p.ai_prompt.trim() ? p : null);
   }
 
   function clearPreset() {
     setPresetFilter(null);
     setPresetLabel(null);
+    setAiPreset(null);
   }
   const [sources, setSources] = useState<MapSource[]>(['2gis']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
@@ -268,7 +279,7 @@ export function MapsSearchForm({ onStarted }: Props) {
               ...(filters ? { filters } : {}),
             };
       const search = await createMapSearch(payload);
-      onStarted(search);
+      onStarted(search, aiPreset);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
@@ -291,7 +302,8 @@ export function MapsSearchForm({ onStarted }: Props) {
         city: preset.city,
         sources: ['2gis'],
       });
-      onStarted(search);
+      // Quick-presets — это просто ниша+город, без фильтров и AI.
+      onStarted(search, null);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
@@ -572,6 +584,11 @@ export function MapsSearchForm({ onStarted }: Props) {
             {presetLabel && (
               <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[12px] text-emerald-800">
                 Применён: <strong>{presetLabel}</strong> — применится к выдаче сразу после поиска.
+                {aiPreset && (
+                  <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-[11px] font-semibold text-violet-800">
+                    <Sparkles className="h-3 w-3" /> AI-анализ запустится автоматически
+                  </span>
+                )}
               </div>
             )}
             <div className="flex flex-wrap gap-2">
@@ -597,12 +614,13 @@ export function MapsSearchForm({ onStarted }: Props) {
               })}
               {userPresets.map((p) => {
                 const active = presetLabel === p.name;
+                const hasAi = !!(p.ai_prompt && p.ai_prompt.trim());
                 return (
                   <button
                     key={`u-${p.id}`}
                     type="button"
                     onClick={() => applyUserPreset(p)}
-                    title={p.description ?? 'мой пресет'}
+                    title={p.description ?? (hasAi ? 'мой пресет с AI-анализом' : 'мой пресет')}
                     className={cn(
                       'flex flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors',
                       active
@@ -610,7 +628,14 @@ export function MapsSearchForm({ onStarted }: Props) {
                         : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
                     )}
                   >
-                    <span className="text-[12px] font-medium text-slate-800">{p.name}</span>
+                    <span className="text-[12px] font-medium text-slate-800">
+                      {p.name}
+                      {hasAi && (
+                        <span className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-[9px] font-semibold text-violet-800">
+                          AI
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] leading-tight text-emerald-700/80">мой</span>
                   </button>
                 );

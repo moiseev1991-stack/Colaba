@@ -180,6 +180,10 @@ class CompanyOut(BaseModel):
     niche: str | None = None
     city: str | None = None
     address: str | None = None
+    # Координаты от 2GIS/Я.Карт. Нужны UI-карте на странице результатов
+    # (Leaflet-маркеры). У старых записей могут быть None.
+    lat: float | None = None
+    lng: float | None = None
     phone: str | None = None
     website: str | None = None
     rating: float | None = None

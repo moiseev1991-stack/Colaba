@@ -16,7 +16,16 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Search as SearchIcon, X, Star } from 'lucide-react';
+import {
+  Globe,
+  Mail,
+  MessageCircle,
+  Phone,
+  Search as SearchIcon,
+  Send,
+  Star,
+  X,
+} from 'lucide-react';
 
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
 import { Dialog } from '@/components/ui/dialog';
@@ -122,23 +131,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             {formatAddressWithCity(detail.address, detail.city) || '—'}
           </div>
 
-          <div className="flex flex-wrap gap-3 text-sm">
-            {detail.phone && (
-              <a className="text-slate-700 underline" href={`tel:${detail.phone}`}>
-                {detail.phone}
-              </a>
-            )}
-            {detail.website && (
-              <a
-                className="text-slate-700 underline"
-                href={detail.website}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {detail.website}
-              </a>
-            )}
-          </div>
+          <ContactsBlock detail={detail} />
 
           <div className="flex flex-wrap gap-3 text-xs">
             <Metric label="Рейтинг" value={detail.rating?.toFixed(1) ?? '—'} />
@@ -268,6 +261,178 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
       )}
     </Dialog>
   );
+}
+
+// ---------------------------------------------------------------------------
+// ContactsBlock — телефоны / email / соцсети / сайт.
+//
+// Источники:
+//   - detail.phone — основной телефон от 2GIS
+//   - detail.website — сайт от 2GIS
+//   - detail.emails — список email от enrich_company_contacts (краулер сайта)
+//   - detail.contacts_extra — { phones[], telegrams[], vks[], whatsapps[] }
+//     тоже от краулера. fetched_url/error — служебные, не показываем.
+//
+// Дубли телефона из 2GIS и из contacts_extra.phones схлопываем.
+// Если ни одного контакта нет — показываем подсказку, что обогащение
+// контактов работает только когда у компании есть website.
+// ---------------------------------------------------------------------------
+
+interface ContactsExtra {
+  phones?: string[];
+  telegrams?: string[];
+  vks?: string[];
+  whatsapps?: string[];
+  // прочие ключи (fetched_url, error) — игнорим
+}
+
+function normalizePhone(p: string): string {
+  // Для дедупа: оставляем только цифры. +7 (495) 123-45-67 → 74951234567
+  return p.replace(/\D+/g, '');
+}
+
+function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
+  const extra: ContactsExtra = (detail.contacts_extra ?? {}) as ContactsExtra;
+  const emails: string[] = Array.isArray(detail.emails) ? detail.emails : [];
+
+  // Телефоны: основной + extra.phones, без дублей по нормализованной форме.
+  const phoneSet = new Map<string, string>();
+  if (detail.phone) phoneSet.set(normalizePhone(detail.phone), detail.phone);
+  for (const p of extra.phones ?? []) {
+    const key = normalizePhone(p);
+    if (key && !phoneSet.has(key)) phoneSet.set(key, p);
+  }
+  const phones = Array.from(phoneSet.values());
+
+  const telegrams = (extra.telegrams ?? []).filter(Boolean);
+  const vks = (extra.vks ?? []).filter(Boolean);
+  const whatsapps = (extra.whatsapps ?? []).filter(Boolean);
+
+  const hasAny =
+    phones.length > 0 ||
+    emails.length > 0 ||
+    telegrams.length > 0 ||
+    vks.length > 0 ||
+    whatsapps.length > 0 ||
+    !!detail.website;
+
+  if (!hasAny) {
+    return (
+      <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-[12px] text-slate-500">
+        Контактов пока нет. Email-ы и соцсети подтягиваются с сайта компании —
+        у этой компании сайт не указан в 2GIS.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3">
+      <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        Контакты
+      </div>
+      <div className="flex flex-col gap-1.5 text-[13px]">
+        {phones.map((p) => (
+          <ContactRow key={`tel-${p}`} icon={<Phone className="h-3.5 w-3.5" />} href={`tel:${normalizePhone(p)}`}>
+            {p}
+          </ContactRow>
+        ))}
+        {emails.map((e) => (
+          <ContactRow key={`mail-${e}`} icon={<Mail className="h-3.5 w-3.5" />} href={`mailto:${e}`}>
+            {e}
+          </ContactRow>
+        ))}
+        {detail.website && (
+          <ContactRow
+            icon={<Globe className="h-3.5 w-3.5" />}
+            href={detail.website}
+            external
+          >
+            {prettifyUrl(detail.website)}
+          </ContactRow>
+        )}
+        {telegrams.map((t) => {
+          const handle = t.startsWith('@') ? t.slice(1) : t;
+          return (
+            <ContactRow
+              key={`tg-${t}`}
+              icon={<Send className="h-3.5 w-3.5" />}
+              href={`https://t.me/${handle}`}
+              external
+              label="Telegram"
+            >
+              @{handle}
+            </ContactRow>
+          );
+        })}
+        {vks.map((v) => (
+          <ContactRow
+            key={`vk-${v}`}
+            icon={<MessageCircle className="h-3.5 w-3.5" />}
+            href={v.startsWith('http') ? v : `https://vk.com/${v.replace(/^@/, '')}`}
+            external
+            label="ВКонтакте"
+          >
+            {prettifyUrl(v)}
+          </ContactRow>
+        ))}
+        {whatsapps.map((w) => {
+          // w может быть номером или wa.me ссылкой
+          const digits = normalizePhone(w);
+          const href = w.startsWith('http') ? w : `https://wa.me/${digits}`;
+          return (
+            <ContactRow
+              key={`wa-${w}`}
+              icon={<MessageCircle className="h-3.5 w-3.5" />}
+              href={href}
+              external
+              label="WhatsApp"
+            >
+              {digits ? `+${digits}` : w}
+            </ContactRow>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({
+  icon,
+  href,
+  external,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  href: string;
+  external?: boolean;
+  label?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-slate-400" aria-hidden>
+        {icon}
+      </span>
+      <a
+        href={href}
+        target={external ? '_blank' : undefined}
+        rel={external ? 'noopener noreferrer' : undefined}
+        className="text-slate-700 underline hover:text-slate-900"
+      >
+        {children}
+      </a>
+      {label && (
+        <span className="text-[10px] uppercase tracking-wide text-slate-400">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function prettifyUrl(u: string): string {
+  return u.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
 function Metric({

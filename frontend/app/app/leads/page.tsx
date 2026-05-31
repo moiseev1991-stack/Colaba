@@ -8,7 +8,7 @@
  * Tabs без shadcn — простые кнопки на Tailwind (shadcn в проекте не установлен).
  */
 
-import { ListPlus } from 'lucide-react';
+import { Bookmark, ListPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -47,13 +47,22 @@ export default function LeadsPage() {
               </button>
             ))}
           </nav>
-          <Link
-            href="/app/leads/lists"
-            className="mb-1 inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <ListPlus className="h-4 w-4" />
-            Мои списки
-          </Link>
+          <div className="mb-1 flex gap-2">
+            <Link
+              href="/app/leads/presets"
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Bookmark className="h-4 w-4" />
+              Мои пресеты
+            </Link>
+            <Link
+              href="/app/leads/lists"
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <ListPlus className="h-4 w-4" />
+              Мои списки
+            </Link>
+          </div>
         </div>
       </div>
 

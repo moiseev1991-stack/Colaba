@@ -12,7 +12,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { List, Map as MapIcon, Sparkles } from 'lucide-react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
@@ -37,9 +38,25 @@ import {
 } from '@/src/services/api/reviews-ai';
 import type { UserPresetOut } from '@/src/services/api/user-presets';
 
+// Leaflet трогает window — выключаем SSR. ssr: false внутри 'use client'
+// поддерживается в Next.js 14, см. https://nextjs.org/docs/app/building-your-application/optimizing/lazy-loading
+const MapsCompaniesMap = dynamic(() => import('@/components/maps/MapsCompaniesMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-sm text-slate-500">
+      Загружаю карту…
+    </div>
+  ),
+});
+
 interface Props {
   search: MapSearchOut;
   initialMode: 'searching' | 'results';
+  /** Если на форме поиска юзер выбрал свой пресет с непустым ai_prompt —
+   *  активируем AI-плашку сразу и автозапускаем анализ как только выдача
+   *  загрузится. Без этого юзеру пришлось бы заново кликать тот же пресет
+   *  в боковой панели результатов. */
+  initialAiPreset?: UserPresetOut | null;
   onNewSearch: () => void;
 }
 
@@ -82,7 +99,12 @@ function isSoftEmptyError(errorText: string | null | undefined): boolean {
   );
 }
 
-export function MapsSearchResults({ search: initialSearch, initialMode, onNewSearch }: Props) {
+export function MapsSearchResults({
+  search: initialSearch,
+  initialMode,
+  initialAiPreset,
+  onNewSearch,
+}: Props) {
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
   const [filter, setFilter] = useState<MapSearchFilter>(() => initialFilter(initialSearch));
@@ -102,13 +124,23 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   // AI-анализ под кастомный промпт пресета (фича из пресета.ai_prompt).
   // activeAiPreset выставляется когда юзер кликает user-preset с непустым
   // ai_prompt. После этого появляется CTA «Запустить AI-анализ» в шапке.
-  const [activeAiPreset, setActiveAiPreset] = useState<UserPresetOut | null>(null);
+  // initialAiPreset !== null означает: пресет был выбран ещё на форме поиска —
+  // активируем сразу и автозапускаем анализ как только выдача загрузится.
+  const [activeAiPreset, setActiveAiPreset] = useState<UserPresetOut | null>(
+    initialAiPreset ?? null,
+  );
   const [aiAnalyses, setAiAnalyses] = useState<Map<number, CompanyAnalysisOut>>(new Map());
   const [aiTriggering, setAiTriggering] = useState(false);
   const [aiLastRun, setAiLastRun] = useState<{
     queued: number; cached: number; over_limit: number; limit_remaining: number;
   } | null>(null);
   const aiPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Защита от повторного автозапуска: эффект ниже триггерит handleTriggerAi
+  // ровно один раз — иначе на каждом useEffect re-run он бы дёргал /run-preset-analysis.
+  const autoTriggeredRef = useRef(false);
+  // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
+  // загружается ленива через dynamic(), требует координат у компаний.
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
@@ -212,11 +244,11 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   // Live-стрим используется только пока companies ещё ни разу не приходили
   // (первоначальная загрузка — пока парсер ещё не дошёл до terminal-статуса).
   const liveCompanies = stream.companies;
-  const renderList: any[] = companiesEverLoaded ? companies : liveCompanies;
+  const baseList: any[] = companiesEverLoaded ? companies : liveCompanies;
   const renderTotal = companiesEverLoaded ? companies.length : liveCompanies.length;
 
   // ----------- AI-анализ под кастомный промпт пресета -----------
-  const visibleCompanyIds = renderList
+  const visibleCompanyIds = baseList
     .map((c: any) => c.id ?? c.company_id)
     .filter((x: unknown): x is number => typeof x === 'number');
 
@@ -277,8 +309,56 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
   // Останавливаем поллинг при размонтировании
   useEffect(() => stopAiPolling, [stopAiPolling]);
 
+  // Автозапуск анализа, если пресет выбрали ещё на форме поиска (initialAiPreset).
+  // Условия: пресет активен, парсинг завершён, есть видимые компании, ещё не
+  // запускали (ref-флаг + aiLastRun null), сейчас не триггерим.
+  useEffect(() => {
+    if (!activeAiPreset) return;
+    if (autoTriggeredRef.current) return;
+    if (!isTerminal) return;
+    if (visibleCompanyIds.length === 0) return;
+    if (aiTriggering || aiLastRun) return;
+    autoTriggeredRef.current = true;
+    void handleTriggerAi();
+  }, [activeAiPreset, isTerminal, visibleCompanyIds.length, aiTriggering, aiLastRun, handleTriggerAi]);
+
+  // Если юзер вручную выбрал другой AI-пресет (через MapsFiltersPanel) —
+  // разрешаем автозапуск снова. onUserPresetWithAi сбрасывает aiLastRun,
+  // используем это как сигнал.
+  useEffect(() => {
+    if (!aiLastRun) autoTriggeredRef.current = false;
+  }, [aiLastRun]);
+
   const aiDoneCount = Array.from(aiAnalyses.values()).filter((x) => x.status === 'done').length;
   const aiPendingCount = Array.from(aiAnalyses.values()).filter((x) => x.status === 'pending').length;
+
+  // UI-only сортировка по AI score: бэк про неё не знает (sort_by Literal-enum),
+  // делаем на клиенте поверх baseList. Компании без AI-score (или с failed) —
+  // в конец, независимо от направления, чтобы сверху всегда был содержательный
+  // результат, а не пустые карточки.
+  const renderList: any[] = (() => {
+    if (filter.sort_by !== 'ai_score_desc' && filter.sort_by !== 'ai_score_asc') {
+      return baseList;
+    }
+    const direction = filter.sort_by === 'ai_score_asc' ? 1 : -1;
+    const withScore = baseList
+      .map((c) => {
+        const id = (c.id ?? c.company_id) as number | undefined;
+        const a = typeof id === 'number' ? aiAnalyses.get(id) : undefined;
+        const score = a?.status === 'done' ? (a.score ?? null) : null;
+        return { c, score };
+      });
+    return withScore
+      .slice()
+      .sort((x, y) => {
+        // null/без оценки → в конец
+        if (x.score == null && y.score == null) return 0;
+        if (x.score == null) return 1;
+        if (y.score == null) return -1;
+        return (x.score - y.score) * direction;
+      })
+      .map((it) => it.c);
+  })();
 
   function handleExport() {
     const url = exportSearchCsvUrl(search.id, filter);
@@ -300,6 +380,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
         value={filter}
         onChange={setFilter}
         onUserPresetWithAiSelected={onUserPresetWithAi}
+        aiActive={activeAiPreset != null}
       />
 
       <div className="space-y-4">
@@ -371,7 +452,39 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View toggle: список vs карта. Прячем пока не подгружены
+                компании — нечего показывать на карте. */}
+            {renderTotal > 0 && (
+              <div className="inline-flex overflow-hidden rounded-md border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  aria-pressed={viewMode === 'list'}
+                  className={
+                    'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
+                    (viewMode === 'list'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white text-slate-700 hover:bg-slate-50')
+                  }
+                >
+                  <List className="h-3.5 w-3.5" /> Список
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('map')}
+                  aria-pressed={viewMode === 'map'}
+                  className={
+                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium ' +
+                    (viewMode === 'map'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white text-slate-700 hover:bg-slate-50')
+                  }
+                >
+                  <MapIcon className="h-3.5 w-3.5" /> Карта
+                </button>
+              </div>
+            )}
             {isTerminal && companies.length > 0 && (
               <button
                 onClick={handleExport}
@@ -460,7 +573,7 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
           </div>
         )}
 
-        {renderList.length > 0 && (
+        {renderList.length > 0 && viewMode === 'list' && (
           <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
             {renderList.map((c: any) => {
               const id = c.id ?? c.company_id;
@@ -478,6 +591,14 @@ export function MapsSearchResults({ search: initialSearch, initialMode, onNewSea
               );
             })}
           </ul>
+        )}
+
+        {renderList.length > 0 && viewMode === 'map' && (
+          <MapsCompaniesMap
+            companies={renderList as CompanyOut[]}
+            aiAnalyses={aiAnalyses}
+            onOpenCompany={(id) => setDrawerCompanyId(id)}
+          />
         )}
       </div>
 
