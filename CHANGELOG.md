@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.24.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.24.1...v1.24.2) (2026-05-31)
+
+
+### Bug Fixes
+
+* **maps-ui:** тёмная тема + контакты с кнопкой «2GIS» в превью карточки ([14eddb1](https://github.com/moiseev1991-stack/Colaba/commit/14eddb187b0eaa37c4d0db126b586206bc1c2cdf))
+
 ## [1.24.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.24.0...v1.24.1) (2026-05-31)
 
 
