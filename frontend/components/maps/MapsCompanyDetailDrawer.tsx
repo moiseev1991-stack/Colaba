@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ExternalLink,
   Globe,
   Mail,
   MessageCircle,
@@ -121,7 +122,12 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   const hasActiveFilters = tab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
 
   return (
-    <Dialog open={open} onClose={onClose} title={detail?.name ?? 'Загрузка…'}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={detail?.name ?? 'Загрузка…'}
+      position="right"
+    >
       {!detail ? (
         <div className="py-6 text-sm text-slate-500">Загружаем карточку…</div>
       ) : (
@@ -316,11 +322,30 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
     whatsapps.length > 0 ||
     !!detail.website;
 
+  // Deeplink в карточку источника — фолбэк когда контактов нет совсем.
+  // 2GIS: https://2gis.ru/firm/{external_id} — открывает реальную карточку
+  // с телефонами/мессенджерами (которые их Catalog API не отдал на нашем плане).
+  const sourceUrl = buildSourceUrl(detail.source, detail.external_id);
+
   if (!hasAny) {
     return (
-      <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-[12px] text-slate-500">
-        Контактов пока нет. Email-ы и соцсети подтягиваются с сайта компании —
-        у этой компании сайт не указан в 2GIS.
+      <div className="space-y-2">
+        <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-[12px] text-slate-500">
+          Контактов от провайдера нет. 2GIS на нашем плане Catalog API не всегда
+          отдаёт телефоны и не отдаёт мессенджеры — открой исходную карточку,
+          там обычно всё есть.
+        </div>
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Открыть в {sourceLabel(detail.source)}
+          </a>
+        )}
       </div>
     );
   }
@@ -391,9 +416,32 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
             </ContactRow>
           );
         })}
+        {sourceUrl && (
+          <ContactRow
+            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            href={sourceUrl}
+            external
+            label={sourceLabel(detail.source)}
+          >
+            открыть исходную карточку
+          </ContactRow>
+        )}
       </div>
     </div>
   );
+}
+
+function buildSourceUrl(source: string, externalId: string | null | undefined): string | null {
+  if (!externalId) return null;
+  if (source === '2gis') return `https://2gis.ru/firm/${externalId}`;
+  if (source === 'yandex_maps') return `https://yandex.ru/maps/org/${externalId}`;
+  return null;
+}
+
+function sourceLabel(source: string): string {
+  if (source === '2gis') return '2GIS';
+  if (source === 'yandex_maps') return 'Я.Картах';
+  return source;
 }
 
 function ContactRow({

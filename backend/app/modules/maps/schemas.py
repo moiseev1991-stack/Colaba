@@ -195,6 +195,11 @@ class CompanyOut(BaseModel):
     owner_replies_count: int = 0
     last_review_at: datetime | None = None
     source: str
+    # external_id 2GIS/Я.Карт — нужен для deeplink в их карточки из
+    # UI (например, https://2gis.ru/firm/{external_id}). Не nullable
+    # в БД, но мы оставляем optional для бэк-совместимости со старыми
+    # тестами/моками.
+    external_id: str | None = None
     pain_tags: list[PainTagShort] = Field(default_factory=list)
     # Обогащённые контакты (миграция 018). Заполняются Celery-таском
     # enrich_company_contacts асинхронно — могут быть None на свежей компании.

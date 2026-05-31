@@ -15,8 +15,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, EyeOff, Pencil, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, EyeOff, Pencil, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
 
+import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
 import { Dialog } from '@/components/ui/dialog';
 import type { MapSearchFilter } from '@/src/services/api/maps';
 import {
@@ -35,6 +36,11 @@ export default function MyPresetsPage() {
   const [editing, setEditing] = useState<UserPresetOut | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<UserPresetOut | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  // Создание пресета прямо с этой страницы. Открываем SaveFilterPresetModal
+  // с пустым фильтром — юзер сможет сохранить чистый AI-пресет (название +
+  // AI-промпт без фильтров). Для пресета с фильтрами лучше идти на форму
+  // поиска — оттуда виден актуальный набор.
+  const [createOpen, setCreateOpen] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -109,12 +115,21 @@ export default function MyPresetsPage() {
             AI-промпт, скрываешь или удаляешь.
           </p>
         </div>
-        <Link
-          href="/app/leads"
-          className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <ArrowLeft className="h-4 w-4" /> К поиску
-        </Link>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            <Plus className="h-4 w-4" /> Создать пресет
+          </button>
+          <Link
+            href="/app/leads"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <ArrowLeft className="h-4 w-4" /> К поиску
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -221,6 +236,17 @@ export default function MyPresetsPage() {
           saving={busyId === editing.id}
         />
       )}
+
+      <SaveFilterPresetModal
+        open={createOpen}
+        filter={{}}
+        onClose={() => setCreateOpen(false)}
+        onSaved={(p) => {
+          setPresets((prev) => [p, ...prev]);
+          setTab('active');
+          setCreateOpen(false);
+        }}
+      />
 
       <Dialog
         open={confirmDelete !== null}

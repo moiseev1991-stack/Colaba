@@ -39,16 +39,48 @@ import {
 } from '@/src/services/api/user-presets';
 
 const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
+  // медицина / здоровье
   { label: 'стоматология', cat: 'медицина' },
+  { label: 'косметология', cat: 'медицина' },
+  { label: 'ветеринарная клиника', cat: 'медицина' },
+  { label: 'фитнес клуб', cat: 'health' },
+  { label: 'массажный салон', cat: 'health' },
+  // авто
   { label: 'автосервис', cat: 'авто' },
+  { label: 'шиномонтаж', cat: 'авто' },
+  // строй / ремонт
   { label: 'ремонт квартир', cat: 'строй' },
+  { label: 'натяжные потолки', cat: 'строй' },
+  { label: 'окна пластиковые', cat: 'строй' },
+  { label: 'строительные компании', cat: 'строй' },
+  // услуги / быт
+  { label: 'клининговая компания', cat: 'услуги' },
+  { label: 'химчистка', cat: 'услуги' },
+  { label: 'мастерская ключей', cat: 'услуги' },
+  { label: 'грузоперевозки', cat: 'услуги' },
+  { label: 'упаковка подарков', cat: 'услуги' },
+  // красота
+  { label: 'парикмахерская', cat: 'красота' },
+  { label: 'барбершоп', cat: 'красота' },
+  { label: 'маникюр', cat: 'красота' },
+  { label: 'салон красоты', cat: 'красота' },
+  // еда
+  { label: 'доставка еды', cat: 'food' },
+  { label: 'шаверма', cat: 'food' },
+  { label: 'пиццерия', cat: 'food' },
+  { label: 'кофейня', cat: 'food' },
+  { label: 'суши доставка', cat: 'food' },
+  // ритейл
+  { label: 'доставка цветов', cat: 'ритейл' },
+  { label: 'магазин подарков', cat: 'ритейл' },
+  // B2B / профессиональные услуги
   { label: 'юридические услуги', cat: 'услуги' },
   { label: 'бухгалтерские услуги', cat: 'B2B' },
-  { label: 'клининговая компания', cat: 'услуги' },
-  { label: 'фитнес клуб', cat: 'health' },
-  { label: 'доставка еды', cat: 'food' },
   { label: 'рекламное агентство', cat: 'B2B' },
-  { label: 'строительные компании', cat: 'B2B' },
+  { label: 'веб-студия', cat: 'B2B' },
+  // образование
+  { label: 'школа английского', cat: 'обр.' },
+  { label: 'детский центр', cat: 'обр.' },
 ];
 
 // «Быстрый старт»: ниша + город сразу, один клик — поиск запущен.
@@ -122,8 +154,15 @@ export function MapsSearchForm({ onStarted }: Props) {
   // прокинуть в onStarted и активировать AI-плашку сразу на странице результатов
   // (раньше юзеру приходилось второй раз кликать пресет в боковой панели).
   const [aiPreset, setAiPreset] = useState<UserPresetOut | null>(null);
+  // Когда юзер выбрал встроенный пресет с готовым ai_prompt — храним промпт и
+  // имя, чтобы предложить «сохранить как мой пресет с AI» одним кликом.
+  // Сам встроенный preset_id'а не имеет → запустить AI-анализ напрямую нельзя.
+  const [builtinAiPrompt, setBuiltinAiPrompt] = useState<{ name: string; prompt: string } | null>(null);
   const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  // Для модалки «копировать встроенный с AI» — открываем её отдельно с
+  // пред-заполненными default-полями.
+  const [copyBuiltinModalOpen, setCopyBuiltinModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,20 +180,29 @@ export function MapsSearchForm({ onStarted }: Props) {
   function applyBuiltinPreset(p: typeof BUILTIN_PRESETS[number]) {
     setPresetFilter(p.filter);
     setPresetLabel(p.label);
-    // Встроенные пресеты пока не носят ai_prompt — сбрасываем AI-выбор.
+    // Встроенный пресет сам по себе не имеет preset_id и не может триггерить
+    // AI-анализ напрямую. Но у некоторых встроенных есть рекомендованный
+    // ai_prompt — показываем юзеру предложение «сохранить как мой пресет с AI».
     setAiPreset(null);
+    setBuiltinAiPrompt(
+      p.ai_prompt && p.ai_prompt.trim()
+        ? { name: `${p.label} + AI`, prompt: p.ai_prompt }
+        : null,
+    );
   }
 
   function applyUserPreset(p: UserPresetOut) {
     setPresetFilter(p.filter as MapSearchFilter);
     setPresetLabel(p.name);
     setAiPreset(p.ai_prompt && p.ai_prompt.trim() ? p : null);
+    setBuiltinAiPrompt(null);
   }
 
   function clearPreset() {
     setPresetFilter(null);
     setPresetLabel(null);
     setAiPreset(null);
+    setBuiltinAiPrompt(null);
   }
   const [sources, setSources] = useState<MapSource[]>(['2gis']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
@@ -591,6 +639,21 @@ export function MapsSearchForm({ onStarted }: Props) {
                 )}
               </div>
             )}
+            {builtinAiPrompt && (
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-[12px] text-violet-900">
+                <span className="inline-flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  У этого пресета есть готовый AI-промпт — сохрани как свой, чтобы запустить анализ
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCopyBuiltinModalOpen(true)}
+                  className="rounded-md bg-violet-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-violet-700"
+                >
+                  Сохранить как мой пресет с AI
+                </button>
+              </div>
+            )}
             {/* На mobile (<sm) — горизонтальный скролл одним рядом, чипы не
                 переносятся (иначе занимают пол-экрана). На sm+ — обычный wrap. */}
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0">
@@ -840,6 +903,23 @@ export function MapsSearchForm({ onStarted }: Props) {
         onClose={() => setSaveModalOpen(false)}
         onSaved={(p) => setUserPresets((prev) => [p, ...prev])}
       />
+
+      {builtinAiPrompt && (
+        <SaveFilterPresetModal
+          open={copyBuiltinModalOpen}
+          filter={presetFilter ?? {}}
+          defaultName={builtinAiPrompt.name}
+          defaultAiPrompt={builtinAiPrompt.prompt}
+          onClose={() => setCopyBuiltinModalOpen(false)}
+          onSaved={(p) => {
+            setUserPresets((prev) => [p, ...prev]);
+            // Сразу применяем созданный пресет к форме — AI-плашка
+            // активируется на странице результатов.
+            applyUserPreset(p);
+            setCopyBuiltinModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

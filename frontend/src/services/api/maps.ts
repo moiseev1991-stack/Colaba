@@ -145,6 +145,9 @@ export interface CompanyOut {
   owner_replies_count: number;
   last_review_at?: string | null;
   source: string;
+  /** ID компании во внешнем источнике (2GIS / Я.Карты). Используется для
+   *  deeplink в drawer-карточке: «открыть в 2GIS». */
+  external_id?: string | null;
   pain_tags: PainTagShort[];
   emails?: string[] | null;
   contacts_extra?: Record<string, unknown> | null;

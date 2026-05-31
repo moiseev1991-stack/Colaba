@@ -10,10 +10,57 @@ interface DialogProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Позиция диалога:
+   *   - 'center' (по умолчанию) — модалка по центру экрана.
+   *   - 'right' — slide-in панель справа, фикс. ширина max-w-xl, full
+   *     height. Backdrop полупрозрачный — содержимое слева (карта,
+   *     выдача) остаётся видимым. На mobile (<sm) разворачивается
+   *     по полной ширине, как обычный full-screen drawer.
+   */
+  position?: 'center' | 'right';
 }
 
-export function Dialog({ open, onClose, title, children, className }: DialogProps) {
+export function Dialog({ open, onClose, title, children, className, position = 'center' }: DialogProps) {
   if (!open) return null;
+
+  if (position === 'right') {
+    return (
+      <div className="fixed inset-0 z-50">
+        {/* Backdrop — менее тёмный чем у центрального, чтобы карта/список
+            под ним оставались читаемыми. Клик закрывает. */}
+        <div
+          className="fixed inset-0 bg-black/25"
+          onClick={onClose}
+        />
+        <div
+          className={cn(
+            'absolute right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-gray-800',
+            'border-l border-gray-200 dark:border-gray-700',
+            // safe-area для iOS — снизу не обрезается
+            'pb-[env(safe-area-inset-bottom)]',
+            className,
+          )}
+        >
+          {title && (
+            <div className="flex shrink-0 items-start justify-between border-b border-gray-100 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {title}
+              </h2>
+              <button
+                onClick={onClose}
+                className="ml-3 shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                aria-label="Закрыть"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -26,6 +73,8 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
       <div
         className={cn(
           'relative z-50 mx-4 flex w-full max-w-md max-h-[85vh] flex-col bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 shadow-lg',
+          // safe-area для iOS — снизу не обрезается на телефонах с нотчем
+          'pb-[env(safe-area-inset-bottom)]',
           className
         )}
       >

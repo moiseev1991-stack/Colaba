@@ -20,9 +20,16 @@ interface Props {
   filter: MapSearchFilter;
   onClose: () => void;
   onSaved: (preset: UserPresetOut) => void;
+  /** Опциональные пред-заполненные поля. Используется когда юзер кликает
+   *  встроенный пресет с готовым AI-промптом и хочет «копировать его в
+   *  свой пресет» одним кликом. */
+  defaultName?: string;
+  defaultAiPrompt?: string;
 }
 
-export function SaveFilterPresetModal({ open, filter, onClose, onSaved }: Props) {
+export function SaveFilterPresetModal({
+  open, filter, onClose, onSaved, defaultName, defaultAiPrompt,
+}: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
@@ -31,15 +38,16 @@ export function SaveFilterPresetModal({ open, filter, onClose, onSaved }: Props)
 
   // Reset state каждый раз при открытии — иначе после закрытия с ошибкой
   // повторное открытие показало бы старое значение и старую ошибку.
+  // Префиксы из defaultName/defaultAiPrompt подхватываются именно здесь.
   useEffect(() => {
     if (open) {
-      setName('');
+      setName(defaultName ?? '');
       setDescription('');
-      setAiPrompt('');
+      setAiPrompt(defaultAiPrompt ?? '');
       setError(null);
       setIsSaving(false);
     }
-  }, [open]);
+  }, [open, defaultName, defaultAiPrompt]);
 
   const summary = describeFilter(filter);
   // С AI-промптом можно сохранить даже без фильтров — пресет работает как
