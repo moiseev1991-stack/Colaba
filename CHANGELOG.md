@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.24.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.24.0...v1.24.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* **ui:** drawer ниже навбара, Escape закрывает модалки, расширенный hit-area крестика, hint про авто-AI ([bb3522d](https://github.com/moiseev1991-stack/Colaba/commit/bb3522d329b35e01cfd4449a016886f65d98160e))
+
 # [1.24.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.23.0...v1.24.0) (2026-05-31)
 
 
