@@ -1,22 +1,26 @@
 """Обогащение карточки компании контактами с её сайта.
 
 Минимальный extractor: GET сайт компании → regex по HTML → email/телефоны/мессенджеры.
+Дополнительно проходим по /contacts, /kontakty, /contact, /about — там у SMB
+обычно лежит полная подборка контактов, главная страница нередко содержит
+только email + телефон.
 
 Принципы:
 - Не валим таск из-за сетевых/HTML-ошибок: возвращаем пустой результат.
 - Лимит размера тела ответа, чтобы не забить память на гигантских HTML.
-- Один заход (homepage). /contacts, /kontakty и прочие — расширение позже,
-  если окажется что homepage даёт мало контактов в реале.
+- Лимит количества контактных страниц (до 3 после homepage) — иначе тяжёлый
+  сайт может съесть 10+ секунд.
 - ContentEnrichResult — структурированный результат, который сервис кладёт
   в `companies.emails` и `companies.contacts_extra`.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -34,6 +38,26 @@ _TEL_HREF_RE = re.compile(r'href=["\']tel:([^"\']+)["\']', re.IGNORECASE)
 _TG_RE = re.compile(r'(?:t\.me|telegram\.me)/([A-Za-z0-9_]{3,})', re.IGNORECASE)
 _VK_RE = re.compile(r'vk\.com/([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
 _WA_RE = re.compile(r'(?:wa\.me|api\.whatsapp\.com/send\?phone=)/?\+?(\d{7,15})', re.IGNORECASE)
+# Доп. соц.сети — ловим в footers/headers практически всех сайтов.
+_INSTA_RE = re.compile(r'instagram\.com/([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
+_FB_RE = re.compile(r'facebook\.com/([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
+_OK_RE = re.compile(r'ok\.ru/(?:profile/)?([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
+_YT_RE = re.compile(r'youtube\.com/(?:c/|channel/|user/|@)([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
+
+# Ссылки на типовые «контактные» страницы у российских и не-российских сайтов.
+# Порядок важен: первые с большей вероятностью имеют полный набор контактов.
+_CONTACT_PATHS = (
+    "/contacts", "/contact", "/kontakty", "/kontakti",
+    "/about", "/o-nas", "/o-kompanii",
+)
+# Сколько доп. страниц мы пробуем (после homepage).
+_MAX_EXTRA_PAGES = 3
+# Чёрный список handles для соцсетей — путаются с share-кнопками.
+_SOCIAL_HANDLE_BLOCKLIST = {
+    "share", "sharer", "joinchat", "video", "audio", "doc",
+    "tr", "pages", "groups", "plugins", "dialog", "intent",
+    "explore", "p", "reel", "reels", "stories", "watch",
+}
 
 # Игнор-домены для emails: типовые «шумные» адреса систем/паблишеров, попадают
 # в HTML рандомно, контактом компании не являются.
@@ -60,12 +84,32 @@ class ContactEnrichResult:
     telegrams: list[str] = field(default_factory=list)
     vks: list[str] = field(default_factory=list)
     whatsapps: list[str] = field(default_factory=list)
+    instagrams: list[str] = field(default_factory=list)
+    facebooks: list[str] = field(default_factory=list)
+    oks: list[str] = field(default_factory=list)
+    youtubes: list[str] = field(default_factory=list)
     fetched_url: str | None = None
     error: str | None = None
 
     @property
     def is_empty(self) -> bool:
-        return not (self.emails or self.phones or self.telegrams or self.vks or self.whatsapps)
+        return not (
+            self.emails or self.phones or self.telegrams or self.vks or self.whatsapps
+            or self.instagrams or self.facebooks or self.oks or self.youtubes
+        )
+
+    def merge(self, other: "ContactEnrichResult") -> None:
+        """Слить контакты из other в self (для контента нескольких страниц).
+        Дедуп по value, сохраняем порядок первого вхождения.
+        """
+        for attr in ("emails", "phones", "telegrams", "vks", "whatsapps",
+                     "instagrams", "facebooks", "oks", "youtubes"):
+            existing = getattr(self, attr)
+            existing_set = set(existing)
+            for item in getattr(other, attr):
+                if item not in existing_set:
+                    existing.append(item)
+                    existing_set.add(item)
 
 
 def _normalize_phone(raw: str) -> str | None:
@@ -141,14 +185,59 @@ def _extract_from_html(html: str) -> ContactEnrichResult:
         if len(result.whatsapps) >= 5:
             break
 
+    # Доп. соцсети — instagram/facebook/ok/youtube. Все одинаково: regex по
+    # ссылкам в HTML, фильтр служебных handles. По 3 на каждую категорию —
+    # больше не нужно, обычно одна-две на компанию.
+    for regex, bucket in (
+        (_INSTA_RE, result.instagrams),
+        (_FB_RE, result.facebooks),
+        (_OK_RE, result.oks),
+        (_YT_RE, result.youtubes),
+    ):
+        for m in regex.finditer(html):
+            handle = m.group(1).lower().rstrip("/")
+            if handle in _SOCIAL_HANDLE_BLOCKLIST or handle in bucket:
+                continue
+            bucket.append(handle)
+            if len(bucket) >= 3:
+                break
+
     return result
 
 
+async def _fetch_html(client: httpx.AsyncClient, url: str) -> tuple[str | None, str | None, str | None]:
+    """Один GET с фильтром по content-type. Возвращает (html, final_url, error)."""
+    try:
+        resp = await client.get(url)
+    except httpx.TimeoutException:
+        return None, None, "timeout"
+    except httpx.HTTPError as e:
+        return None, None, f"http error: {type(e).__name__}"
+    except Exception as e:
+        logger.debug("_fetch_html: unexpected error for %r: %s", url, e)
+        return None, None, f"unexpected: {type(e).__name__}"
+
+    if resp.status_code >= 400:
+        return None, str(resp.url), f"http {resp.status_code}"
+    body = resp.content[:_MAX_BYTES]
+    ctype = (resp.headers.get("content-type") or "").lower()
+    if "html" not in ctype and "text" not in ctype:
+        return None, str(resp.url), f"content-type {ctype!r}"
+    try:
+        html = body.decode(resp.encoding or "utf-8", errors="ignore")
+    except (LookupError, TypeError):
+        html = body.decode("utf-8", errors="ignore")
+    return html, str(resp.url), None
+
+
 async def fetch_and_extract(website: str, *, timeout: float = _DEFAULT_TIMEOUT) -> ContactEnrichResult:
-    """Главная функция: GET сайт → extract.
+    """Главная функция: GET homepage + до 3 «контактных» страниц → extract → merge.
 
     Никогда не бросает: при ошибке сети/HTML возвращает result с `error` и
-    остальное пустое.
+    остальное пустое. Если homepage упал — расширенные страницы не пробуем
+    (скорее всего сайт лежит / DNS).
+
+    Между запросами небольшая asyncio.sleep(0.5) — не агрессивно для сайта SMB.
     """
     if not website:
         return ContactEnrichResult(error="empty website")
@@ -170,6 +259,10 @@ async def fetch_and_extract(website: str, *, timeout: float = _DEFAULT_TIMEOUT) 
         "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
     }
 
+    merged = ContactEnrichResult()
+    base_url: str | None = None
+    homepage_error: str | None = None
+
     try:
         async with httpx.AsyncClient(
             timeout=timeout,
@@ -177,33 +270,41 @@ async def fetch_and_extract(website: str, *, timeout: float = _DEFAULT_TIMEOUT) 
             max_redirects=_MAX_REDIRECTS,
             headers=headers,
         ) as client:
-            resp = await client.get(url)
-            if resp.status_code >= 400:
-                return ContactEnrichResult(
-                    error=f"http {resp.status_code}", fetched_url=str(resp.url)
-                )
-            # Ограничиваем размер тела
-            body = resp.content[:_MAX_BYTES]
-            ctype = (resp.headers.get("content-type") or "").lower()
-            if "html" not in ctype and "text" not in ctype:
-                # PDF, бинарь и пр. — обрабатывать нет смысла
-                return ContactEnrichResult(
-                    error=f"content-type {ctype!r}", fetched_url=str(resp.url)
-                )
+            # Homepage — обязательный шаг.
+            html, final_url, err = await _fetch_html(client, url)
+            if err is not None:
+                # Сайт совсем не отдаёт ничего — возвращаем error, не лезем
+                # на /contacts (всё равно 404/timeout)
+                merged.error = err
+                merged.fetched_url = final_url
+                return merged
+            base_url = final_url or url
+            merged.merge(_extract_from_html(html or ""))
+            merged.fetched_url = base_url
 
-            # decode безопасно
-            try:
-                html = body.decode(resp.encoding or "utf-8", errors="ignore")
-            except (LookupError, TypeError):
-                html = body.decode("utf-8", errors="ignore")
+            # Доп. страницы — best-effort. Если по факту это react-app и
+            # homepage уже отдал нужное (нашли email/phone) — экономим, не
+            # ходим дальше. Иначе пробуем contact-страницы.
+            need_more = not merged.emails or not merged.phones
+            if need_more:
+                pages_tried = 0
+                for path in _CONTACT_PATHS:
+                    if pages_tried >= _MAX_EXTRA_PAGES:
+                        break
+                    extra_url = urljoin(base_url, path)
+                    await asyncio.sleep(0.5)
+                    sub_html, _, sub_err = await _fetch_html(client, extra_url)
+                    if sub_err is not None or not sub_html:
+                        continue
+                    pages_tried += 1
+                    merged.merge(_extract_from_html(sub_html))
+                    # Если уже набрали и email и phone — хватит, не тратим запросы
+                    if merged.emails and merged.phones:
+                        break
 
-            result = _extract_from_html(html)
-            result.fetched_url = str(resp.url)
-            return result
-    except httpx.TimeoutException:
-        return ContactEnrichResult(error="timeout")
-    except httpx.HTTPError as e:
-        return ContactEnrichResult(error=f"http error: {type(e).__name__}")
+            if homepage_error:
+                merged.error = homepage_error
+            return merged
     except Exception as e:
         logger.debug("fetch_and_extract: unexpected error for %r: %s", website, e)
         return ContactEnrichResult(error=f"unexpected: {type(e).__name__}")

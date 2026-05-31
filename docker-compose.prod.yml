@@ -161,9 +161,11 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    # Тяжёлые HTTP-парсеры (поиск + карты + отзывы). Низкий prefetch + concurrency=2,
-    # чтобы каждая задача забирала только себя и не висла на сетевых таймаутах соседа.
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews
+    # Тяжёлые HTTP-парсеры (поиск + карты + отзывы + HTML-парсер 2gis.ru/firm).
+    # Низкий prefetch + concurrency=2 (для HTML-парсера 2GIS отдельный rate_limit
+    # на самом таске — 20/m). Без отдельной очереди maps_2gis_html таски бы
+    # копились в celery default-кью с большим concurrency и долбили 2GIS.
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews,maps_2gis_html
 
   frontend:
     image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}

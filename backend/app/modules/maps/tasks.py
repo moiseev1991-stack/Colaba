@@ -376,13 +376,30 @@ def parse_company_reviews(self, company_id: int, source: str, limit: int | None 
 
 
 def _maybe_enrich_contacts(company: Company) -> None:
-    """Хелпер: ставит enrich_company_contacts.delay, если есть сайт и ещё не
-    обогащали. Тихо проглатывает любые ошибки постановки таска."""
+    """Хелпер: ставит таски обогащения контактов после сохранения компании.
+
+    Два независимых пути:
+      - enrich_company_contacts: краулер сайта компании. Триггерим если есть
+        website и contacts_enriched_at IS NULL.
+      - enrich_company_from_2gis_html: HTML-парсер карточки 2GIS. Триггерим
+        для source='2gis' компаний у которых нет phone (значит Catalog API
+        не отдал contact_groups — пробуем выдрать со страницы сайта).
+
+    Тихо проглатывает любые ошибки постановки тасков — само-rate-limit
+    у Celery, никакой массовой долбёжки 2GIS быть не должно (queue с
+    rate_limit=20/m + concurrency=1).
+    """
     try:
         if company.website and company.contacts_enriched_at is None:
             enrich_company_contacts.delay(company.id)
     except Exception as e:
-        logger.warning("_maybe_enrich_contacts: cannot enqueue for #%d: %s", company.id, e)
+        logger.warning("_maybe_enrich_contacts: cannot enqueue site-crawler for #%d: %s", company.id, e)
+
+    try:
+        if company.source == "2gis" and company.external_id and not company.phone:
+            enrich_company_from_2gis_html.delay(company.id)
+    except Exception as e:
+        logger.warning("_maybe_enrich_contacts: cannot enqueue 2gis_html for #%d: %s", company.id, e)
 
 
 async def _enrich_company_contacts_async(company_id: int) -> dict:
@@ -403,7 +420,7 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
 
         result = await fetch_and_extract(company.website)
 
-        extra: dict[str, list[str]] = {}
+        extra: dict[str, list[str] | str] = {}
         if result.phones:
             extra["phones"] = result.phones
         if result.telegrams:
@@ -412,6 +429,14 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
             extra["vks"] = result.vks
         if result.whatsapps:
             extra["whatsapps"] = result.whatsapps
+        if result.instagrams:
+            extra["instagrams"] = result.instagrams
+        if result.facebooks:
+            extra["facebooks"] = result.facebooks
+        if result.oks:
+            extra["oks"] = result.oks
+        if result.youtubes:
+            extra["youtubes"] = result.youtubes
         if result.fetched_url:
             extra["fetched_url"] = result.fetched_url
         if result.error:
@@ -450,6 +475,201 @@ def enrich_company_contacts(self, company_id: int):
     except Exception as exc:
         logger.warning("enrich_company_contacts retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=20, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# enrich_company_from_2gis_html — HTML-парсер карточки 2gis.ru/firm/{id}
+# ---------------------------------------------------------------------------
+
+
+async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
+    """Качает 2gis.ru/firm/{external_id}, мерджит контакты в БД.
+
+    Срабатывает только для source='2gis' компаний с external_id. Использует
+    COALESCE-merge с уже накопленными контактами (Catalog API + краулер
+    сайта) — пустые поля не затирают.
+    """
+    from app.modules.maps.enrich_2gis import fetch_and_extract_2gis_firm
+
+    async with AsyncSessionLocal() as db:
+        company = await db.get(Company, company_id)
+        if company is None:
+            return {"status": "not_found"}
+        if company.source != "2gis" or not company.external_id:
+            return {"status": "skip_not_2gis"}
+
+        result = await fetch_and_extract_2gis_firm(company.external_id)
+
+        # Берём существующие contacts_extra и доливаем новые ключи. Это критично:
+        # краулер сайта мог уже положить telegrams=[...], а 2GIS HTML ничего не
+        # отдал — мы не должны затереть.
+        existing_extra: dict = dict(company.contacts_extra or {})
+        new_extra: dict = {}
+
+        def merge_list(key: str, new_vals: list[str]) -> None:
+            if not new_vals:
+                return
+            cur = existing_extra.get(key) or []
+            cur_set = set(cur)
+            merged = list(cur)
+            for v in new_vals:
+                if v not in cur_set:
+                    merged.append(v)
+                    cur_set.add(v)
+            new_extra[key] = merged
+
+        merge_list("phones", result.phones)
+        merge_list("telegrams", result.telegrams)
+        merge_list("vks", result.vks)
+        merge_list("whatsapps", result.whatsapps)
+        merge_list("instagrams", result.instagrams)
+        merge_list("facebooks", result.facebooks)
+        merge_list("oks", result.oks)
+        merge_list("youtubes", result.youtubes)
+        if result.fetched_url:
+            new_extra["fetched_2gis_url"] = result.fetched_url
+        if result.error:
+            new_extra["error_2gis"] = result.error
+
+        # emails — таким же образом merge
+        existing_emails = list(company.emails or [])
+        merged_emails = list(existing_emails)
+        for e in result.emails:
+            if e not in merged_emails:
+                merged_emails.append(e)
+
+        # phone (основной) — если в БД пусто, а из HTML пришло хоть что-то,
+        # подставим первый. Иначе не трогаем — Catalog API/прошлые данные
+        # авторитетнее.
+        new_phone = company.phone
+        if not new_phone and result.phones:
+            new_phone = result.phones[0]
+
+        full_extra = {**existing_extra, **new_extra} if new_extra else (existing_extra or None)
+
+        await db.execute(
+            update(Company)
+            .where(Company.id == company_id)
+            .values(
+                phone=new_phone,
+                emails=merged_emails or None,
+                contacts_extra=full_extra,
+                # contacts_enriched_at оставляем тот что был; помечать тут не
+                # надо — он отвечает за «краулер сайта прошёл», не за нас.
+            )
+        )
+        await db.commit()
+        return {
+            "status": "ok",
+            "phones_found": len(result.phones),
+            "emails_found": len(result.emails),
+            "telegrams_found": len(result.telegrams),
+            "vks_found": len(result.vks),
+            "whatsapps_found": len(result.whatsapps),
+            "error": result.error,
+        }
+
+
+@celery_app.task(
+    name="enrich_company_from_2gis_html",
+    queue="maps_2gis_html",
+    bind=True,
+    max_retries=1,
+    rate_limit="20/m",  # не агрессивим к 2GIS — 20 запросов/минуту максимум
+)
+def enrich_company_from_2gis_html(self, company_id: int):
+    """Качает 2gis.ru/firm/{external_id} и доливает контакты в БД.
+
+    Отдельная очередь maps_2gis_html — чтобы можно было пускать worker с
+    --concurrency=1 и rate_limit, иначе 2GIS быстро отдаст 429/captcha.
+    """
+    try:
+        return asyncio.run(_enrich_company_from_2gis_html_async(company_id))
+    except Exception as exc:
+        logger.warning("enrich_company_from_2gis_html retrying company=%d: %s", company_id, exc)
+        raise self.retry(exc=exc, countdown=60, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# bulk re-enrich — для разового прогона существующих компаний на проде
+# ---------------------------------------------------------------------------
+
+
+async def _bulk_enqueue_async(
+    *, source_filter: str | None, missing_phone: bool, limit: int
+) -> int:
+    """SELECT компании под условие → ставит таски в очереди.
+
+    Идёмпотентно: можно перезапускать, дубль-таски сожрутся ON CONFLICT в БД
+    при merge'е (никаких side-effects).
+    """
+    async with AsyncSessionLocal() as db:
+        conditions = []
+        if source_filter:
+            conditions.append("source = :src")
+        if missing_phone:
+            conditions.append("(phone IS NULL OR phone = '')")
+        where_sql = " AND ".join(conditions) if conditions else "TRUE"
+        sql = text(
+            f"SELECT id, source, external_id, website FROM companies "
+            f"WHERE {where_sql} ORDER BY id DESC LIMIT :lim"
+        )
+        params: dict = {"lim": int(limit)}
+        if source_filter:
+            params["src"] = source_filter
+        rows = list((await db.execute(sql, params)).mappings().all())
+
+    queued = 0
+    for r in rows:
+        # 2GIS HTML — только для 2gis-компаний с external_id
+        if r["source"] == "2gis" and r["external_id"]:
+            try:
+                enrich_company_from_2gis_html.delay(int(r["id"]))
+                queued += 1
+            except Exception as e:
+                logger.warning("bulk: cannot enqueue 2gis_html for #%s: %s", r["id"], e)
+        # Краулер сайта — для любого источника с website
+        if r["website"]:
+            try:
+                # Сбрасываем contacts_enriched_at чтобы таск не вышел no-op-ом
+                async with AsyncSessionLocal() as db2:
+                    await db2.execute(
+                        update(Company)
+                        .where(Company.id == int(r["id"]))
+                        .values(contacts_enriched_at=None)
+                    )
+                    await db2.commit()
+                enrich_company_contacts.delay(int(r["id"]))
+            except Exception as e:
+                logger.warning("bulk: cannot enqueue website-enrich for #%s: %s", r["id"], e)
+    return queued
+
+
+@celery_app.task(name="bulk_enrich_contacts", queue="maps")
+def bulk_enrich_contacts(
+    source_filter: str | None = "2gis",
+    missing_phone: bool = True,
+    limit: int = 100,
+):
+    """Разовый прогон: SELECT компании под условие, ставим enrichment-таски.
+
+    Defaults подобраны под безопасный first run — только 100 компаний и только
+    тех, у кого phone пустой. Можно вызывать повторно с большим limit.
+
+    Запуск:
+        docker compose ... exec -T backend python -c \\
+          "from app.queue.celery_app import celery_app; \\
+           celery_app.send_task('bulk_enrich_contacts', kwargs={'limit': 100})"
+    """
+    queued = asyncio.run(
+        _bulk_enqueue_async(
+            source_filter=source_filter,
+            missing_phone=missing_phone,
+            limit=limit,
+        )
+    )
+    logger.info("bulk_enrich_contacts: enqueued %d company tasks", queued)
+    return {"queued": queued, "limit": limit}
 
 
 # ---------------------------------------------------------------------------
