@@ -129,11 +129,11 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
       position="right"
     >
       {!detail ? (
-        <div className="py-6 text-sm text-slate-500">Загружаем карточку…</div>
+        <div className="py-6 text-sm text-slate-500 dark:text-slate-400">Загружаем карточку…</div>
       ) : (
         <div className="space-y-4">
           {/* === Шапка компании === */}
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-slate-600 dark:text-slate-300">
             {formatAddressWithCity(detail.address, detail.city) || '—'}
           </div>
 
@@ -155,12 +155,12 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
 
           {Array.isArray(detail.pain_tags) && detail.pain_tags.length > 0 && (
             <div>
-              <div className="mb-1 text-xs font-medium text-slate-500">Боли клиентов:</div>
+              <div className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Боли клиентов:</div>
               <div className="flex flex-wrap gap-1">
                 {detail.pain_tags.map((t) => (
                   <span
                     key={t.id}
-                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200"
                   >
                     {t.label}
                   </span>
@@ -171,7 +171,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
 
           {/* === Tabs sentiment === */}
           <div>
-            <div className="mb-2 flex gap-2 border-b border-slate-200">
+            <div className="mb-2 flex gap-2 border-b border-slate-200 dark:border-slate-700">
               {(['all', 'negative', 'positive'] as Tab[]).map((t) => (
                 <button
                   key={t}
@@ -180,8 +180,8 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                   className={cn(
                     'border-b-2 px-2 py-1 text-xs font-medium transition-colors',
                     tab === t
-                      ? 'border-slate-900 text-slate-900'
-                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                      ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                   )}
                 >
                   {t === 'all'
@@ -196,7 +196,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             {/* === Drawer filter row: text search + has_owner_reply === */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   type="text"
                   placeholder="Поиск в тексте отзыва…"
@@ -209,13 +209,13 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                     type="button"
                     onClick={() => setTextQuery('')}
                     aria-label="Очистить поиск"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] text-slate-600">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] text-slate-600 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={onlyWithOwnerReply}
@@ -232,7 +232,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                     setTextQuery('');
                     setOnlyWithOwnerReply(false);
                   }}
-                  className="text-[12px] text-slate-500 underline hover:text-slate-800"
+                  className="text-[12px] text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   сбросить
                 </button>
@@ -240,9 +240,9 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             </div>
 
             {isLoading && reviews.length === 0 ? (
-              <div className="text-sm text-slate-500">Загружаем отзывы…</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">Загружаем отзывы…</div>
             ) : reviews.length === 0 ? (
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
                 {hasActiveFilters
                   ? 'Отзывов под текущие фильтры не найдено.'
                   : 'Отзывов нет.'}
@@ -250,7 +250,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             ) : (
               <>
                 {hasActiveFilters && !isLoading && (
-                  <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-400">
+                  <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     показано {reviews.length}
                     {textQuery ? ` · по запросу «${debouncedText}»` : ''}
                   </div>
@@ -330,7 +330,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   if (!hasAny) {
     return (
       <div className="space-y-2">
-        <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-[12px] text-slate-500">
+        <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-[12px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
           Контактов от провайдера нет. 2GIS на нашем плане Catalog API не всегда
           отдаёт телефоны и не отдаёт мессенджеры — открой исходную карточку,
           там обычно всё есть.
@@ -340,7 +340,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Открыть в {sourceLabel(detail.source)}
@@ -351,8 +351,8 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   }
 
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3">
-      <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Контакты
       </div>
       <div className="flex flex-col gap-1.5 text-[13px]">
@@ -459,19 +459,19 @@ function ContactRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-slate-400" aria-hidden>
+      <span className="text-slate-400 dark:text-slate-500" aria-hidden>
         {icon}
       </span>
       <a
         href={href}
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
-        className="text-slate-700 underline hover:text-slate-900"
+        className="text-slate-700 underline hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
       >
         {children}
       </a>
       {label && (
-        <span className="text-[10px] uppercase tracking-wide text-slate-400">
+        <span className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
           {label}
         </span>
       )}
@@ -495,12 +495,12 @@ function Metric({
   green?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 px-2 py-1">
-      <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
+    <div className="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">
+      <div className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</div>
       <div
         className={cn(
           'text-sm font-medium',
-          red ? 'text-red-700' : green ? 'text-emerald-700' : 'text-slate-900'
+          red ? 'text-red-700 dark:text-red-400' : green ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'
         )}
       >
         {value}
@@ -517,15 +517,15 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
   const sentiment = review.sentiment as 'positive' | 'negative' | 'neutral' | null;
   const accent =
     sentiment === 'negative'
-      ? 'border-l-red-400 bg-red-50/40'
+      ? 'border-l-red-400 bg-red-50/40 dark:bg-red-900/20'
       : sentiment === 'positive'
-        ? 'border-l-emerald-400 bg-emerald-50/30'
-        : 'border-l-slate-300 bg-white';
+        ? 'border-l-emerald-400 bg-emerald-50/30 dark:bg-emerald-900/20'
+        : 'border-l-slate-300 bg-white dark:border-l-slate-600 dark:bg-slate-900';
 
   return (
-    <li className={cn('rounded-md border border-slate-200 border-l-4 p-3', accent)}>
-      <div className="mb-1.5 flex items-center gap-2 text-xs text-slate-500 flex-wrap">
-        <span className="font-medium text-slate-700">
+    <li className={cn('rounded-md border border-slate-200 border-l-4 p-3 dark:border-slate-700', accent)}>
+      <div className="mb-1.5 flex items-center gap-2 text-xs text-slate-500 flex-wrap dark:text-slate-400">
+        <span className="font-medium text-slate-700 dark:text-slate-200">
           {review.author_masked || 'Аноним'}
         </span>
         {review.rating != null && <StarRating value={review.rating} />}
@@ -534,13 +534,13 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
         )}
         {sentiment && <SentimentBadge sentiment={sentiment} />}
         {review.has_owner_reply && (
-          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800">
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
             ответ владельца
           </span>
         )}
       </div>
       {review.raw_text == null ? (
-        <div className="text-sm text-slate-400">
+        <div className="text-sm text-slate-400 dark:text-slate-500">
           Текст удалён по политике хранения.{' '}
           {review.source_url && (
             <a
@@ -554,7 +554,7 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
           )}
         </div>
       ) : (
-        <div className="whitespace-pre-wrap text-sm text-slate-700">
+        <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
           {highlight ? <HighlightedText text={review.raw_text} needle={highlight} /> : review.raw_text}
         </div>
       )}
@@ -563,7 +563,7 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
           {review.pain_tags.map((t) => (
             <span
               key={t.id}
-              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700"
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 dark:bg-slate-700 dark:text-slate-200"
             >
               {t.label}
             </span>
@@ -593,9 +593,9 @@ function StarRating({ value }: { value: number }) {
 
 function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'neutral' }) {
   const cfg = {
-    positive: { label: 'позитив', cls: 'bg-emerald-100 text-emerald-800' },
-    negative: { label: 'негатив', cls: 'bg-red-100 text-red-800' },
-    neutral: { label: 'нейтр.', cls: 'bg-slate-100 text-slate-700' },
+    positive: { label: 'позитив', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' },
+    negative: { label: 'негатив', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
+    neutral: { label: 'нейтр.', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200' },
   }[sentiment];
   return (
     <span className={cn('rounded px-1.5 py-0.5 text-[11px] font-medium', cfg.cls)}>
@@ -628,7 +628,7 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === needle.toLowerCase() ? (
-          <mark key={i} className="rounded bg-amber-200/70 px-0.5 text-slate-900">
+          <mark key={i} className="rounded bg-amber-200/70 px-0.5 text-slate-900 dark:bg-amber-500/40 dark:text-amber-100">
             {part}
           </mark>
         ) : (

@@ -630,17 +630,17 @@ export function MapsSearchForm({ onStarted }: Props) {
               </div>
             </div>
             {presetLabel && (
-              <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[12px] text-emerald-800">
+              <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[12px] text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-300">
                 Применён: <strong>{presetLabel}</strong> — применится к выдаче сразу после поиска.
                 {aiPreset && (
-                  <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-[11px] font-semibold text-violet-800">
+                  <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-[11px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
                     <Sparkles className="h-3 w-3" /> AI-анализ запустится автоматически
                   </span>
                 )}
               </div>
             )}
             {builtinAiPrompt && (
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-[12px] text-violet-900">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-[12px] text-violet-900 dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200">
                 <span className="inline-flex items-center gap-1">
                   <Sparkles className="h-3.5 w-3.5" />
                   У этого пресета есть готовый AI-промпт — сохрани как свой, чтобы запустить анализ
@@ -668,8 +668,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                     className={cn(
                       'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
-                        ? 'border-emerald-500 bg-emerald-50'
-                        : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                        : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700'
                     )}
                   >
                     <span className="text-[12px] font-medium text-slate-800">{p.label}</span>

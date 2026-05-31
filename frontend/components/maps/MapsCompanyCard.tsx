@@ -11,7 +11,7 @@
  *  - кнопки [В список] [Письмо] — обработка через коллбэки родителя
  */
 
-import { Mail, ListPlus, Phone, Globe, MessageSquareQuote, Sparkles } from 'lucide-react';
+import { ExternalLink, Globe, ListPlus, Mail, MessageSquareQuote, Phone, Sparkles } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { CompanyOut, CompanyPainOut, PainTagShort } from '@/src/services/api/maps';
@@ -61,10 +61,16 @@ export function MapsCompanyCard({
   const fallbackTags =
     topPains.length === 0 && Array.isArray(company.pain_tags) ? company.pain_tags : [];
 
+  // Deeplink в карточку источника — кнопка «2GIS» / «Я.Карты» прямо в превью.
+  // Юзер просил видеть контакты сразу: на нашем тарифе 2GIS Catalog API
+  // contact_groups не всегда отдаёт, но из своей же карточки 2GIS юзер их
+  // увидит за один клик.
+  const sourceUrl = buildSourceUrl(company.source, company.external_id);
+
   return (
     <li
       className={cn(
-        'px-4 py-3 text-sm transition-colors hover:bg-slate-50',
+        'px-4 py-3 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
         onClick ? 'cursor-pointer' : 'cursor-default'
       )}
     >
@@ -74,9 +80,9 @@ export function MapsCompanyCard({
         role={onClick ? 'button' : undefined}
       >
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-slate-900">{company.name || '—'}</div>
+          <div className="truncate font-medium text-slate-900 dark:text-slate-100">{company.name || '—'}</div>
           {fullAddress && (
-            <div className="mt-0.5 truncate text-xs text-slate-500">{fullAddress}</div>
+            <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{fullAddress}</div>
           )}
         </div>
         {company.rating != null && (
@@ -92,13 +98,13 @@ export function MapsCompanyCard({
             'mt-1.5 inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-[11px]',
             aiAnalysis.status === 'done' && aiAnalysis.score != null
               ? aiAnalysis.score >= 7
-                ? 'border border-emerald-200 bg-emerald-50 text-emerald-900'
+                ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200'
                 : aiAnalysis.score >= 4
-                  ? 'border border-amber-200 bg-amber-50 text-amber-900'
-                  : 'border border-slate-200 bg-slate-50 text-slate-700'
+                  ? 'border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200'
+                  : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
               : aiAnalysis.status === 'pending'
-                ? 'border border-violet-200 bg-violet-50 text-violet-800 animate-pulse'
-                : 'border border-rose-200 bg-rose-50 text-rose-800'
+                ? 'border border-violet-200 bg-violet-50 text-violet-800 animate-pulse dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200'
+                : 'border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-900/30 dark:text-rose-200'
           )}
           title={aiAnalysis.comment ?? aiAnalysis.error ?? ''}
         >
@@ -139,71 +145,85 @@ export function MapsCompanyCard({
         )}
       </div>
 
-      {(company.phone || company.website || emails.length > 0) && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-slate-600">
-          {company.phone && (
-            <span className="inline-flex items-center gap-1">
-              <Phone className="h-3 w-3 text-slate-400" />
-              <a
-                href={`tel:${company.phone}`}
-                onClick={(e) => e.stopPropagation()}
-                className="hover:underline"
-              >
-                {company.phone}
-              </a>
-            </span>
-          )}
-          {hasWebsite && (
-            <span className="inline-flex items-center gap-1">
-              <Globe className="h-3 w-3 text-slate-400" />
-              <a
-                href={normalizeUrl(company.website!.trim())}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="max-w-[180px] truncate hover:underline"
-              >
-                {stripScheme(company.website!.trim())}
-              </a>
-            </span>
-          )}
-          {emails.length > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <Mail className="h-3 w-3 text-emerald-500" />
-              <a
-                href={`mailto:${emails[0]}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-emerald-700 hover:underline"
-              >
-                {emails[0]}
-              </a>
-              {emails.length > 1 && (
-                <span className="text-[11px] text-slate-400">+{emails.length - 1}</span>
-              )}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Контакты в превью. Если ничего нет от провайдера — всё равно
+          показываем ссылку «открыть в 2GIS» как минимальный contact-fallback,
+          чтобы юзер мог за один клик увидеть телефон/мессенджеры в источнике. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-600 dark:text-slate-300">
+        {company.phone && (
+          <span className="inline-flex items-center gap-1">
+            <Phone className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+            <a
+              href={`tel:${company.phone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline"
+            >
+              {company.phone}
+            </a>
+          </span>
+        )}
+        {hasWebsite && (
+          <span className="inline-flex items-center gap-1">
+            <Globe className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+            <a
+              href={normalizeUrl(company.website!.trim())}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-[180px] truncate hover:underline"
+            >
+              {stripScheme(company.website!.trim())}
+            </a>
+          </span>
+        )}
+        {emails.length > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <Mail className="h-3 w-3 text-emerald-500" />
+            <a
+              href={`mailto:${emails[0]}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-emerald-700 dark:text-emerald-400 hover:underline"
+            >
+              {emails[0]}
+            </a>
+            {emails.length > 1 && (
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">+{emails.length - 1}</span>
+            )}
+          </span>
+        )}
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+            title={`Открыть карточку в ${sourceLabel(company.source)}`}
+          >
+            <ExternalLink className="h-3 w-3" />
+            {sourceLabel(company.source)}
+          </a>
+        )}
+      </div>
 
       {topPains.length > 0 ? (
         <div className="mt-2 space-y-1.5">
           {topPains.slice(0, 3).map((p) => (
             <div
               key={p.pain_tag_id}
-              className="rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5"
+              className="rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5 dark:border-amber-700/50 dark:bg-amber-900/20"
             >
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-700/40 dark:text-amber-200">
                   {p.label}
                 </span>
                 {p.mention_count > 0 && (
-                  <span className="text-[11px] text-amber-700/80">
+                  <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
                     × {p.mention_count}
                   </span>
                 )}
               </div>
               {p.top_quote && (
-                <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700">
+                <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
                   <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
                   <span className="line-clamp-2 italic">«{p.top_quote}»</span>
                 </div>
@@ -217,7 +237,7 @@ export function MapsCompanyCard({
             {fallbackTags.slice(0, 5).map((t: PainTagShort) => (
               <span
                 key={t.id}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700"
+                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 dark:bg-slate-700 dark:text-slate-200"
               >
                 {t.label}
               </span>
@@ -237,7 +257,7 @@ export function MapsCompanyCard({
               }}
               // min-h-9 (36px) = разумный тач-таргет на mobile. На sm+ возвращаем
               // плотную высоту, чтобы карточка не разъезжалась.
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:px-2.5 sm:py-1"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:min-h-0 sm:px-2.5 sm:py-1"
             >
               <ListPlus className="h-3.5 w-3.5" />
               В список
@@ -252,7 +272,7 @@ export function MapsCompanyCard({
                 onDraftEmail(company);
               }}
               className={cn(
-                'inline-flex min-h-9 items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-slate-800 sm:min-h-0 sm:px-2.5 sm:py-1',
+                'inline-flex min-h-9 items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white sm:min-h-0 sm:px-2.5 sm:py-1',
                 draftEmailLoading && 'opacity-70'
               )}
               title={
@@ -281,10 +301,10 @@ function MetricPill({
   tone: 'neutral' | 'success' | 'warn' | 'danger';
 }) {
   const styles = {
-    neutral: 'bg-slate-100 text-slate-700',
-    success: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
-    warn: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
-    danger: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+    neutral: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+    success: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700/50',
+    warn: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-700/50',
+    danger: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 dark:bg-red-900/30 dark:text-red-300 dark:ring-red-700/50',
   }[tone];
   return (
     <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-medium', styles)}>{label}</span>
@@ -298,10 +318,17 @@ function ratingClass(rating: number | null | undefined): string {
   return 'app-badge-accent';
 }
 
-function sourceLabel(source: string): string {
+function sourceLabel(source: string | null | undefined): string {
   if (source === '2gis') return '2GIS';
   if (source === 'yandex_maps') return 'Я.Карты';
-  return source;
+  return source ?? '';
+}
+
+function buildSourceUrl(source: string | null | undefined, externalId: string | null | undefined): string | null {
+  if (!externalId || !source) return null;
+  if (source === '2gis') return `https://2gis.ru/firm/${externalId}`;
+  if (source === 'yandex_maps') return `https://yandex.ru/maps/org/${externalId}`;
+  return null;
 }
 
 function normalizeUrl(url: string): string {

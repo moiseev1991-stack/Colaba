@@ -395,13 +395,13 @@ export function MapsSearchResults({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {search.niche} —{' '}
               {search.mode === 'radius' && search.address
                 ? `${search.address} · радиус ${((search.radius_meters ?? 0) / 1000).toFixed(1)} км`
                 : search.city}
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Источники: {search.sources}. Статус: {statusLabel(search.status)}.{' '}
               {isTerminal
                 ? // Если фильтр сузил выдачу — показываем оба числа: «под фильтр / всего».
@@ -414,17 +414,17 @@ export function MapsSearchResults({
                 : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
             </p>
             {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
-              <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800">
+              <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-300">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
               </div>
             )}
             {activeAiPreset && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px]">
-                <span className="inline-flex items-center gap-1 font-medium text-violet-900">
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
+                <span className="inline-flex items-center gap-1 font-medium text-violet-900 dark:text-violet-200">
                   <Sparkles className="h-3.5 w-3.5" />
                   AI-пресет «{activeAiPreset.name}»
                 </span>
-                <span className="text-violet-800/80">
+                <span className="text-violet-800/80 dark:text-violet-300">
                   {aiDoneCount > 0 || aiPendingCount > 0
                     ? `Готово ${aiDoneCount} · в работе ${aiPendingCount}`
                     : !isTerminal
@@ -442,10 +442,10 @@ export function MapsSearchResults({
                   {aiTriggering ? 'Запускаю…' : `Запустить AI-анализ (${visibleCompanyIds.length})`}
                 </button>
                 {aiLastRun && (
-                  <div className="basis-full text-[11px] text-violet-700">
+                  <div className="basis-full text-[11px] text-violet-700 dark:text-violet-300">
                     Поставлено: {aiLastRun.queued}, из кэша: {aiLastRun.cached}
                     {aiLastRun.over_limit > 0 && (
-                      <span className="ml-1 text-rose-700">
+                      <span className="ml-1 text-rose-700 dark:text-rose-400">
                         · {aiLastRun.over_limit} не уехало (дневной лимит исчерпан)
                       </span>
                     )}
@@ -456,10 +456,10 @@ export function MapsSearchResults({
             )}
             {!isTerminal && (
               <div className="mt-1 flex items-center gap-2">
-                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200">
+                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                   <div className="h-full w-1/3 animate-pulse bg-emerald-500" />
                 </div>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   карточки появляются по мере парсинга
                 </span>
               </div>
@@ -469,7 +469,7 @@ export function MapsSearchResults({
             {/* View toggle: список vs карта. Прячем пока не подгружены
                 компании — нечего показывать на карте. */}
             {renderTotal > 0 && (
-              <div className="inline-flex overflow-hidden rounded-md border border-slate-300">
+              <div className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600">
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
@@ -477,8 +477,8 @@ export function MapsSearchResults({
                   className={
                     'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
                     (viewMode === 'list'
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white text-slate-700 hover:bg-slate-50')
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
                   }
                 >
                   <List className="h-3.5 w-3.5" /> Список
@@ -488,10 +488,10 @@ export function MapsSearchResults({
                   onClick={() => setViewMode('map')}
                   aria-pressed={viewMode === 'map'}
                   className={
-                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium ' +
+                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium dark:border-slate-600 ' +
                     (viewMode === 'map'
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white text-slate-700 hover:bg-slate-50')
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
                   }
                 >
                   <MapIcon className="h-3.5 w-3.5" /> Карта
@@ -501,14 +501,14 @@ export function MapsSearchResults({
             {isTerminal && companies.length > 0 && (
               <button
                 onClick={handleExport}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 Экспорт CSV
               </button>
             )}
             <button
               onClick={onNewSearch}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Новый поиск
             </button>
@@ -516,15 +516,15 @@ export function MapsSearchResults({
         </div>
 
         {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
             Ошибка стрима: {stream.error}
           </div>
         )}
 
         {search.status === 'failed' && isSoftEmptyError(search.error) && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200">
             <div className="font-medium">Ничего не нашлось</div>
-            <div className="mt-1 text-amber-700">
+            <div className="mt-1 text-amber-700 dark:text-amber-300">
               По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу
               или сменить город.
             </div>
@@ -532,9 +532,9 @@ export function MapsSearchResults({
         )}
 
         {search.status === 'failed' && !isSoftEmptyError(search.error) && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200">
             <div className="font-medium">Поиск завершился ошибкой</div>
-            <div className="mt-1 text-red-700">
+            <div className="mt-1 text-red-700 dark:text-red-300">
               {search.error_type === 'ConnectTimeout' ? (
                 <>
                   2GIS API не отвечает с этой машины (TLS-таймаут). Чаще всего это сеть провайдера
@@ -562,14 +562,14 @@ export function MapsSearchResults({
         {search.status === 'completed' &&
           search.error_type === 'EmptyResult' &&
           renderTotal === 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200">
               <div className="font-medium">Ничего не нашлось</div>
-              <div className="mt-1 text-amber-700">{search.error}</div>
+              <div className="mt-1 text-amber-700 dark:text-amber-300">{search.error}</div>
             </div>
           )}
 
         {isLoading && renderList.length === 0 && search.status !== 'failed' && (
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
             {isTerminal
               ? 'Загружаем компании по выбранным фильтрам…'
               : 'Парсер ищет компании. Карточки появятся по мере готовности.'}
@@ -577,9 +577,9 @@ export function MapsSearchResults({
         )}
 
         {!isLoading && companiesEverLoaded && renderList.length === 0 && search.status !== 'failed' && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200">
             <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
-            <div className="mt-1 text-amber-700">
+            <div className="mt-1 text-amber-700 dark:text-amber-300">
               Ослабь критерии в панели слева (например, убери минимум рейтинга
               или отключи «Только с сайтом») или сбрось пресет.
             </div>
@@ -587,7 +587,7 @@ export function MapsSearchResults({
         )}
 
         {renderList.length > 0 && viewMode === 'list' && (
-          <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
+          <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
             {renderList.map((c: any) => {
               const id = c.id ?? c.company_id;
               const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;

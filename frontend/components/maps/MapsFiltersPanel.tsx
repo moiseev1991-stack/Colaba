@@ -189,9 +189,9 @@ export function MapsFiltersPanel({
   }
 
   return (
-    <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4">
+    <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <div>
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Готовые пресеты
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -203,11 +203,11 @@ export function MapsFiltersPanel({
               title={p.description}
               className={cn(
                 'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
-                'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
+                'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-400 dark:hover:bg-slate-700'
               )}
             >
-              <span className="text-xs font-medium text-slate-800">{p.label}</span>
-              <span className="text-[10px] leading-tight text-slate-500">{p.shortHint}</span>
+              <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{p.label}</span>
+              <span className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">{p.shortHint}</span>
             </button>
           ))}
         </div>
@@ -222,29 +222,29 @@ export function MapsFiltersPanel({
               className={cn(
                 'text-[11px] font-medium uppercase tracking-wide transition-colors',
                 userPresetsTab === 'active'
-                  ? 'text-slate-700'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-slate-700 dark:text-slate-200'
+                  : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
               )}
             >
               Мои пресеты
               {activeUserPresets.length > 0 && (
-                <span className="ml-1 text-slate-400">· {activeUserPresets.length}</span>
+                <span className="ml-1 text-slate-400 dark:text-slate-500">· {activeUserPresets.length}</span>
               )}
             </button>
             {hiddenUserPresets.length > 0 && (
               <>
-                <span className="text-slate-300">/</span>
+                <span className="text-slate-300 dark:text-slate-600">/</span>
                 <button
                   type="button"
                   onClick={() => setUserPresetsTab('hidden')}
                   className={cn(
                     'text-[11px] font-medium uppercase tracking-wide transition-colors',
                     userPresetsTab === 'hidden'
-                      ? 'text-slate-700'
-                      : 'text-slate-400 hover:text-slate-600'
+                      ? 'text-slate-700 dark:text-slate-200'
+                      : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
                   )}
                 >
-                  Скрытые <span className="text-slate-400">· {hiddenUserPresets.length}</span>
+                  Скрытые <span className="text-slate-400 dark:text-slate-500">· {hiddenUserPresets.length}</span>
                 </button>
               </>
             )}
@@ -253,13 +253,13 @@ export function MapsFiltersPanel({
             type="button"
             onClick={() => setSaveModalOpen(true)}
             title="Сохранить текущие фильтры как пресет"
-            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <BookmarkPlus className="h-3 w-3" /> сохранить
           </button>
         </div>
         {visibleUserPresets.length === 0 ? (
-          <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500">
+          <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
             {userPresetsTab === 'active' ? (
               <>Настрой фильтры, нажми «сохранить» — пресет появится здесь и
               будет доступен в один клик при следующих поисках.</>
@@ -276,8 +276,8 @@ export function MapsFiltersPanel({
                 className={cn(
                   'group relative flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 pr-7 text-left transition-colors',
                   p.hidden
-                    ? 'border-slate-200 bg-slate-50/60 hover:border-slate-400'
-                    : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
+                    ? 'border-slate-200 bg-slate-50/60 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-500'
+                    : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:hover:border-emerald-500/60'
                 )}
               >
                 <button
@@ -286,12 +286,12 @@ export function MapsFiltersPanel({
                   title={p.description ?? 'мой пресет'}
                   className="block w-full text-left"
                 >
-                  <span className="block text-xs font-medium text-slate-800">
+                  <span className="block text-xs font-medium text-slate-800 dark:text-slate-200">
                     {p.name}
                     {p.ai_prompt && p.ai_prompt.trim() && (
                       <span
                         title="С AI-анализом: при применении посчитает score 0-10 для каждой компании"
-                        className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-[9px] font-semibold text-violet-800"
+                        className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-[9px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
                       >
                         AI
                       </span>
@@ -299,7 +299,7 @@ export function MapsFiltersPanel({
                   </span>
                   <span className={cn(
                     'block text-[10px] leading-tight',
-                    p.hidden ? 'text-slate-500' : 'text-emerald-700/80'
+                    p.hidden ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-700/80 dark:text-emerald-400/80'
                   )}>
                     {p.hidden ? 'скрыт' : 'мой'}
                   </span>
@@ -393,7 +393,7 @@ export function MapsFiltersPanel({
       </Dialog>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Рейтинг</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Рейтинг</label>
         <div className="flex items-center gap-2">
           <Input
             type="number"
@@ -421,7 +421,7 @@ export function MapsFiltersPanel({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
+          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
             Минимум отзывов
           </label>
           <Input
@@ -435,7 +435,7 @@ export function MapsFiltersPanel({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
+          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
             Негативных от
           </label>
           <Input
@@ -451,7 +451,7 @@ export function MapsFiltersPanel({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
           Ответы владельца
         </label>
         <Select
@@ -477,7 +477,7 @@ export function MapsFiltersPanel({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
           Сайт
         </label>
         <Select
@@ -502,12 +502,12 @@ export function MapsFiltersPanel({
         </Select>
       </div>
 
-      <div className="rounded-md border border-slate-200 bg-slate-50/40 p-2">
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-600">
+      <div className="rounded-md border border-slate-200 bg-slate-50/40 p-2 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
           Слова в отзывах
         </div>
         <div className="mb-2">
-          <label className="mb-0.5 block text-[11px] text-emerald-700">
+          <label className="mb-0.5 block text-[11px] text-emerald-700 dark:text-emerald-400">
             содержит (через запятую) — компании с любым из слов
           </label>
           <Input
@@ -526,7 +526,7 @@ export function MapsFiltersPanel({
           />
         </div>
         <div>
-          <label className="mb-0.5 block text-[11px] text-rose-700">
+          <label className="mb-0.5 block text-[11px] text-rose-700 dark:text-rose-400">
             не содержит (через запятую) — выкинуть компании с этими словами
           </label>
           <Input
@@ -561,7 +561,7 @@ export function MapsFiltersPanel({
                 review_text_excludes_any: null,
               });
             }}
-            className="mt-2 text-[11px] text-slate-500 underline hover:text-slate-800"
+            className="mt-2 text-[11px] text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
           >
             очистить слова
           </button>
@@ -569,7 +569,7 @@ export function MapsFiltersPanel({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Сортировка</label>
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Сортировка</label>
         <Select
           value={value.sort_by ?? 'rating_desc'}
           onChange={(e) => onChange({ ...value, sort_by: e.target.value as SortBy })}
@@ -587,7 +587,7 @@ export function MapsFiltersPanel({
           )}
         </Select>
         {aiActive && (
-          <p className="mt-1 text-[11px] text-violet-700/80">
+          <p className="mt-1 text-[11px] text-violet-700/80 dark:text-violet-300/80">
             Компании без AI-оценки — в конце списка.
           </p>
         )}
