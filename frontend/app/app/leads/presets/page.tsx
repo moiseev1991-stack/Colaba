@@ -66,6 +66,7 @@ export default function MyPresetsPage() {
 
   async function toggleHidden(p: UserPresetOut, value: boolean) {
     setBusyId(p.id);
+    setError(null);
     try {
       const upd = await updateUserPreset(p.id, { hidden: value });
       setPresets((prev) => prev.map((x) => (x.id === upd.id ? upd : x)));
@@ -79,6 +80,7 @@ export default function MyPresetsPage() {
   async function doDelete() {
     if (!confirmDelete) return;
     setBusyId(confirmDelete.id);
+    setError(null);
     try {
       await deleteUserPreset(confirmDelete.id);
       setPresets((prev) => prev.filter((p) => p.id !== confirmDelete.id));
@@ -93,6 +95,7 @@ export default function MyPresetsPage() {
   async function saveEdit(patch: UserPresetUpdate) {
     if (!editing) return;
     setBusyId(editing.id);
+    setError(null);
     try {
       const upd = await updateUserPreset(editing.id, patch);
       setPresets((prev) => prev.map((x) => (x.id === upd.id ? upd : x)));
@@ -133,8 +136,16 @@ export default function MyPresetsPage() {
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
+        <div className="flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            aria-label="Скрыть ошибку"
+            className="-m-1 rounded p-1 text-red-500 hover:bg-red-100 hover:text-red-700"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -335,7 +346,9 @@ function IconButton({
       onClick={onClick}
       disabled={disabled}
       className={
-        'rounded-md border bg-white p-1.5 text-slate-600 disabled:opacity-50 ' +
+        // min-h-9 min-w-9 = 36px тач-таргет на mobile, на sm+ компактная p-1.5
+        // (видимая иконка 14px, общая зона 36px) — аудит ловил 27×27 на мобиле.
+        'inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border bg-white p-1.5 text-slate-600 disabled:opacity-50 sm:min-h-0 sm:min-w-0 ' +
         (danger
           ? 'border-slate-300 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
           : 'border-slate-300 hover:bg-slate-50 hover:text-slate-900')

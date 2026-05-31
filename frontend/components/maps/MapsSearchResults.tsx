@@ -427,7 +427,11 @@ export function MapsSearchResults({
                 <span className="text-violet-800/80">
                   {aiDoneCount > 0 || aiPendingCount > 0
                     ? `Готово ${aiDoneCount} · в работе ${aiPendingCount}`
-                    : 'нажми «Запустить AI-анализ» — для каждой видимой компании посчитается score 0-10'}
+                    : !isTerminal
+                      ? 'AI-анализ запустится автоматически, как только парсер завершит сбор компаний'
+                      : aiTriggering
+                        ? 'Запускаю AI-анализ для всех видимых компаний…'
+                        : 'AI-анализ запустится автоматически. Можешь нажать кнопку справа чтобы запустить вручную.'}
                 </span>
                 <button
                   type="button"
