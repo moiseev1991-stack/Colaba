@@ -284,7 +284,14 @@ async def create_map_search(
 
 
 def _company_row_from_raw(c: CompanyRaw) -> dict[str, Any]:
-    """Маппинг CompanyRaw → dict для INSERT."""
+    """Маппинг CompanyRaw → dict для INSERT.
+
+    emails/contacts_extra — если провайдер карты сразу отдал (2GIS contact_groups),
+    кладём с пометкой contacts_enriched_at=now(), чтобы краулер сайта не
+    переписал их пустыми. Если позже краулер найдёт ещё что-то, он сольёт
+    в contacts_extra (он upsert-друже).
+    """
+    has_provider_contacts = bool(c.emails) or bool(c.contacts_extra)
     return {
         "source": c.source,
         "external_id": c.external_id,
@@ -298,6 +305,9 @@ def _company_row_from_raw(c: CompanyRaw) -> dict[str, Any]:
         "website": c.website,
         "rating": c.rating,
         "reviews_count": c.reviews_count,
+        "emails": c.emails or None,
+        "contacts_extra": c.contacts_extra or None,
+        "contacts_enriched_at": datetime.now(timezone.utc) if has_provider_contacts else None,
         "raw_data": c.raw_data,
     }
 
@@ -325,6 +335,10 @@ async def save_companies_batch(
         ins = pg_insert(Company).values(**values)
         # On conflict — обновляем только то, что могло измениться (рейтинг, телефон, и т.п.).
         # external_id+source + name не трогаем.
+        # emails/contacts_extra/contacts_enriched_at — COALESCE-merge: новое
+        # значение перетирает старое только когда провайдер карты что-то отдал
+        # (иначе повторный поиск без contact_groups затёр бы то, что краулер
+        # сайта уже накопил).
         ins = ins.on_conflict_do_update(
             index_elements=["source", "external_id"],
             set_={
@@ -335,6 +349,14 @@ async def save_companies_batch(
                 "website": ins.excluded.website,
                 "rating": ins.excluded.rating,
                 "reviews_count": ins.excluded.reviews_count,
+                "emails": func.coalesce(ins.excluded.emails, Company.__table__.c.emails),
+                "contacts_extra": func.coalesce(
+                    ins.excluded.contacts_extra, Company.__table__.c.contacts_extra
+                ),
+                "contacts_enriched_at": func.coalesce(
+                    ins.excluded.contacts_enriched_at,
+                    Company.__table__.c.contacts_enriched_at,
+                ),
                 "raw_data": ins.excluded.raw_data,
                 "updated_at": func.now(),
             },

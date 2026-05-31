@@ -206,6 +206,62 @@ def _extract_website(item: dict[str, Any]) -> str | None:
     return None
 
 
+def _extract_emails_and_extra(item: dict[str, Any]) -> tuple[list[str], dict[str, list[str]]]:
+    """Достаёт все email-ы и мессенджеры/соцсети из contact_groups.
+
+    2GIS Catalog API в contact_groups[].contacts[] кладёт type: email, jabber,
+    icq, skype, telegram, whatsapp, viber, vkontakte (или vk), instagram,
+    facebook, twitter и др. Раньше мы их игнорировали и сохраняли только
+    phone+website — отсюда у юзера «контактов нет» в drawer даже когда
+    в карточке 2GIS они видны.
+
+    Дополнительные телефоны (со 2-го) тоже попадают в extra.phones — основной
+    остаётся в Company.phone, остальные дублируются в JSONB.
+    """
+    emails: list[str] = []
+    extra: dict[str, list[str]] = {}
+
+    # Маппинг 2GIS-type → ключ в contacts_extra (соответствует ContactsBlock
+    # на фронте: phones, telegrams, vks, whatsapps).
+    extra_keys = {
+        "telegram": "telegrams",
+        "whatsapp": "whatsapps",
+        "viber": "vibers",
+        "vkontakte": "vks",
+        "vk": "vks",
+        "instagram": "instagrams",
+        "facebook": "facebooks",
+        "youtube": "youtubes",
+    }
+
+    main_phone_seen = False
+    for group in item.get("contact_groups") or []:
+        for contact in group.get("contacts") or []:
+            ctype = (contact.get("type") or "").lower()
+            value = contact.get("value")
+            if not value:
+                continue
+            value = str(value).strip()
+            if not value:
+                continue
+
+            if ctype == "email":
+                if value not in emails:
+                    emails.append(value)
+            elif ctype == "phone":
+                if not main_phone_seen:
+                    main_phone_seen = True
+                    continue  # основной телефон сохранится через _extract_phone
+                extra.setdefault("phones", []).append(value)
+            elif ctype in extra_keys:
+                bucket = extra_keys[ctype]
+                lst = extra.setdefault(bucket, [])
+                if value not in lst:
+                    lst.append(value)
+
+    return emails, extra
+
+
 def _parse_iso_or_none(s: str | None) -> datetime | None:
     """Парсит ISO-дату 2GIS (например, '2024-09-15T12:30:00+03:00') в datetime с tz."""
     if not s:
@@ -227,6 +283,8 @@ def _map_item_to_company_raw(item: dict[str, Any]) -> CompanyRaw | None:
     point = item.get("point") or {}
     reviews = item.get("reviews") or {}
 
+    emails, contacts_extra = _extract_emails_and_extra(item)
+
     return CompanyRaw(
         source="2gis",
         external_id=str(item_id),
@@ -238,6 +296,8 @@ def _map_item_to_company_raw(item: dict[str, Any]) -> CompanyRaw | None:
         website=_extract_website(item),
         rating=(float(reviews["general_rating"]) if reviews.get("general_rating") is not None else None),
         reviews_count=int(reviews.get("general_review_count") or 0),
+        emails=emails or None,
+        contacts_extra=contacts_extra or None,
         raw_data=item,
     )
 

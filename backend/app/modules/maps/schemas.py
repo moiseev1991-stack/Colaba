@@ -41,6 +41,13 @@ class CompanyRaw(BaseModel):
     rating: float | None = None
     reviews_count: int = 0
 
+    # Контакты, которые провайдер карты отдал сразу в response (без отдельного
+    # обогащения через краулинг сайта). Совпадают по семантике с Company.emails
+    # и Company.contacts_extra — если провайдер отдал, сохраняем сразу;
+    # enrich_company_contacts (краулинг website) дозальёт остальное.
+    emails: list[str] | None = None
+    contacts_extra: dict[str, Any] | None = None
+
     raw_data: dict[str, Any] | None = Field(default=None, description="Полный ответ источника")
 
 
