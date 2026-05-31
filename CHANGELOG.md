@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.24.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.23.0...v1.24.0) (2026-05-31)
+
+
+### Features
+
+* **maps:** тащим из 2GIS contact_groups email/telegram/vk/whatsapp + пресет «Готовы к автоматизации» ([08d218c](https://github.com/moiseev1991-stack/Colaba/commit/08d218c9fdeb223a5b9cb13d19e8f85b906caaa4))
+
 # [1.23.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.22.0...v1.23.0) (2026-05-31)
 
 
