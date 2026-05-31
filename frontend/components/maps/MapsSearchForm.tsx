@@ -591,7 +591,9 @@ export function MapsSearchForm({ onStarted }: Props) {
                 )}
               </div>
             )}
-            <div className="flex flex-wrap gap-2">
+            {/* На mobile (<sm) — горизонтальный скролл одним рядом, чипы не
+                переносятся (иначе занимают пол-экрана). На sm+ — обычный wrap. */}
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0">
               {BUILTIN_PRESETS.map((p) => {
                 const active = presetLabel === p.label;
                 return (
@@ -601,7 +603,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     onClick={() => applyBuiltinPreset(p)}
                     title={p.description}
                     className={cn(
-                      'flex flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                      'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
                         ? 'border-emerald-500 bg-emerald-50'
                         : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50'
@@ -622,7 +624,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     onClick={() => applyUserPreset(p)}
                     title={p.description ?? (hasAi ? 'мой пресет с AI-анализом' : 'мой пресет')}
                     className={cn(
-                      'flex flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                      'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
                         ? 'border-emerald-500 bg-emerald-50'
                         : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
@@ -653,7 +655,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 {showAllPresets ? NICHE_PRESETS.length : Math.min(6, NICHE_PRESETS.length)} / {NICHE_PRESETS.length}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0">
               {displayedPresets.map((p) => {
                 const active = niche === p.label;
                 return (
@@ -661,7 +663,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     key={p.label}
                     type="button"
                     onClick={() => handlePreset(p.label)}
-                    className={cn('app-chip group', active && 'app-chip-active')}
+                    className={cn('app-chip group shrink-0 sm:shrink', active && 'app-chip-active')}
                   >
                     <span>{p.label}</span>
                     <span

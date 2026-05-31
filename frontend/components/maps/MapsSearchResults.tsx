@@ -141,6 +141,15 @@ export function MapsSearchResults({
   // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
   // загружается ленива через dynamic(), требует координат у компаний.
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  // Был ли filter тронут юзером в боковой панели после загрузки страницы.
+  // Используется чтобы скрыть зелёный баннер «Применён пресет с формы поиска»
+  // как только юзер начал крутить фильтры (иначе баннер «застрял» и врал).
+  const [filterDirty, setFilterDirty] = useState(false);
+
+  const handleFilterChange = useCallback((next: MapSearchFilter) => {
+    setFilter(next);
+    setFilterDirty(true);
+  }, []);
 
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
@@ -378,7 +387,7 @@ export function MapsSearchResults({
         city={search.city}
         searchId={search.id}
         value={filter}
-        onChange={setFilter}
+        onChange={handleFilterChange}
         onUserPresetWithAiSelected={onUserPresetWithAi}
         aiActive={activeAiPreset != null}
       />
@@ -404,7 +413,7 @@ export function MapsSearchResults({
                   : `Найдено компаний: ${search.companies_found ?? renderTotal}.`
                 : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
             </p>
-            {search.filters && Object.keys(search.filters).length > 0 && (
+            {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
               <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
               </div>

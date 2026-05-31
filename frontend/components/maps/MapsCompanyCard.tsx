@@ -235,7 +235,9 @@ export function MapsCompanyCard({
                 e.stopPropagation();
                 onAddToList(company);
               }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-medium text-slate-700 hover:bg-slate-50"
+              // min-h-9 (36px) = разумный тач-таргет на mobile. На sm+ возвращаем
+              // плотную высоту, чтобы карточка не разъезжалась.
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:px-2.5 sm:py-1"
             >
               <ListPlus className="h-3.5 w-3.5" />
               В список
@@ -250,7 +252,7 @@ export function MapsCompanyCard({
                 onDraftEmail(company);
               }}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-slate-800',
+                'inline-flex min-h-9 items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-slate-800 sm:min-h-0 sm:px-2.5 sm:py-1',
                 draftEmailLoading && 'opacity-70'
               )}
               title={
