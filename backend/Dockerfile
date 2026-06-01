@@ -15,6 +15,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Playwright Chromium для HTML-парсера 2GIS (2gis.ru/firm/{id} — SPA).
+# --with-deps ставит системные библиотеки Chromium через apt (≈500MB).
+# Кладём браузер в /ms-playwright (стандартный путь) — runtime найдёт его сам.
+RUN python -m playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/* /root/.cache
+
 COPY . .
 
 EXPOSE 8000

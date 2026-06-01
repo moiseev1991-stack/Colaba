@@ -1,34 +1,35 @@
-"""HTML-парсер карточки 2GIS — fallback когда Catalog API не отдал contact_groups.
+"""HTML-парсер карточки 2GIS через headless Chromium (Playwright).
 
-На нашем тарифе 2GIS Catalog API contact_groups приходят пустыми для большинства
-компаний (только реклама/проверенные карточки). HTML-страница 2gis.ru/firm/{id}
-доступна всем и обычно содержит телефоны, мессенджеры, ссылки на соцсети.
+2gis.ru/firm/{id} — это SPA (Single-Page Application). Прямой `httpx.get`
+возвращает 11kB HTML-shell без контента — все данные грузятся JavaScript-ом
+на клиенте. Поэтому контакты можно вытащить ТОЛЬКО через настоящий браузер.
 
-Стратегия извлечения:
-  1) Пробуем найти JSON в <script>window.__INITIAL_STATE__ = {...}</script> —
-     это SSR-нагрузка React-приложения 2GIS. Парсим контакты структурно.
-  2) Если __INITIAL_STATE__ нет / парсинг JSON упал — фолбэк на regex по тексту
-     HTML (tel:, mailto:, t.me/, vk.com/, wa.me/ и пр. — те же regex что в
-     enrich.py для сайтов компаний).
+Стратегия:
+  1) Запускаем headless Chromium через Playwright, открываем страницу.
+  2) Перехватываем XHR-ответы от `catalog.api.2gis.com` и `webapi.2gis.com` —
+     именно туда SPA шлёт запрос за `contact_groups` с phone/email/мессенджерами.
+     Эти ответы — структурный JSON, парсим точечно.
+  3) Кликаем по кнопке «Показать телефон» если она есть — открывает скрытые
+     номера. Молча игнорируем если не найдена.
+  4) После рендера берём `document.body.innerText` и `page.content()` —
+     гоним regex (tel:, mailto:, t.me, vk.com, wa.me, instagram, facebook,
+     ok.ru, youtube) поверх. Это второй слой защиты на случай если XHR
+     ответы перехватили не полностью.
 
-Принципы:
-- Никогда не бросает исключений: при любой ошибке возвращает ContactEnrichResult
-  с error и остальное пустое.
-- Лимит размера тела (1.5 МБ), как и у краулера сайтов.
-- НЕ использует прокси по умолчанию (env-флаг TWOGIS_HTML_USE_PROXY можно
-  включить позже, когда упрёмся в капчу/429).
-- Rate-limit оставляем на Celery-уровне (только одна задача в момент времени
-  по очереди `maps_2gis_html`).
+Ограничения:
+- Один таск ≈ 5-10 секунд (старт браузера + загрузка + ожидание сети).
+- Один Chromium-процесс ≈ 200-400MB RAM. Запускается per-task, после
+  закрытия память отдаётся ОС. На VPS 3.8GB при concurrency=1 безопасно.
+- Никогда не бросает исключений: при любой ошибке (timeout, OOM, отсутствие
+  Chromium в системе) возвращает ContactEnrichResult с error.
 """
 
 from __future__ import annotations
 
-import json
+import asyncio
 import logging
 import re
 from typing import Any
-
-import httpx
 
 from app.modules.maps.enrich import (
     ContactEnrichResult,
@@ -41,59 +42,40 @@ logger = logging.getLogger(__name__)
 
 _FIRM_URL = "https://2gis.ru/firm/{external_id}"
 
-_TIMEOUT = 12.0
-_MAX_BYTES = 1_500_000
-_MAX_REDIRECTS = 3
+_PAGE_TIMEOUT_MS = 20_000        # навигация + первичный рендер
+_NETWORK_IDLE_TIMEOUT_MS = 8_000  # пауза в сети после первичного рендера
+_SHOW_PHONE_TIMEOUT_MS = 2_000    # клик по «Показать телефон» — не блокируем если нет
+
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
-# Поиск __INITIAL_STATE__ в HTML. У 2GIS бывает несколько вариантов:
-#   window.__INITIAL_STATE__ = {...};
-#   window['__INITIAL_STATE__'] = {...};
-# Берём максимально лояльный regex с lazy matching до закрывающей `;</script>`.
-# multiline + dotall чтобы JSON с переносами строк поймать.
-_INITIAL_STATE_RE = re.compile(
-    r"window\.__INITIAL_STATE__\s*=\s*(\{.*?\})\s*;\s*</script>",
-    re.DOTALL,
-)
-
-# Captcha/anti-bot страница 2GIS — короткое тело, в нём фраза «not a robot»
-# или ссылка на captcha. Без точной разметки на руках детектим эвристикой
-# по размеру + ключевым словам.
-_CAPTCHA_MARKERS = ("captcha", "not_a_robot", "Доступ временно ограничен")
+# XHR-эндпоинты 2GIS, которые SPA-карточка дёргает за контактами.
+# `catalog.api.2gis.com/3.0/items/byid` — главный, отдаёт contact_groups
+# в том же формате что наш TwoGisProvider использует для search.
+# `webapi.2gis.com` — иногда тоже релевантен (внутренние proxy-эндпоинты).
+_API_HOSTS = ("catalog.api.2gis.com", "webapi.2gis.com")
 
 
 def _walk_json_for_contacts(node: Any, result: ContactEnrichResult) -> None:
-    """Рекурсивно обходит JSON 2GIS __INITIAL_STATE__ и собирает контакты.
+    """Рекурсивно обходит JSON-ответ 2GIS Catalog API и собирает контакты.
 
-    Структура 2GIS-карточки нам точно не известна (она может меняться от
-    версии к версии), поэтому ищем универсально:
-      - dict с ключом "type" в {phone, website, email, telegram, whatsapp,
-        viber, vkontakte, instagram, facebook} и ключом "value" — это
-        contact-объект.
-      - dict с ключами "url"/"href" + value, содержащим t.me/vk.com/etc —
-        захватываем как ссылку.
-
-    Глубина рекурсии не ограничена, но JSON 2GIS не циклический — обычная
-    SSR-нагрузка ~100-500 КБ. Если случайно попадётся цикл — RecursionError
-    отлавливается outer-блоком и мы фолбэкнемся на regex.
+    Структура 2GIS contact_groups: список объектов с полем `contacts`, каждый
+    элемент которого имеет `type` (phone/email/website/telegram/whatsapp/
+    viber/vkontakte/instagram/facebook) и `value`. Обходим универсально:
+    любой dict с парой type+value (или type+text) — кандидат на контакт.
     """
     if isinstance(node, dict):
-        ctype = (node.get("type") or "").lower() if isinstance(node.get("type"), str) else ""
-        value = node.get("value")
+        ctype_raw = node.get("type")
+        ctype = ctype_raw.lower() if isinstance(ctype_raw, str) else ""
+        value = node.get("value") or node.get("text") or node.get("url")
         if ctype and isinstance(value, str):
             v = value.strip()
             if ctype == "phone":
                 n = _normalize_phone(v)
                 if n and n not in result.phones and len(result.phones) < 5:
                     result.phones.append(n)
-            elif ctype in ("website", "url") and v:
-                # сайт компании — складываем в phones-как-fetched_url? Нет,
-                # для website отдельной строки в ContactEnrichResult нет;
-                # её отдают в companies.website через основной upsert.
-                pass
             elif ctype == "email":
                 el = v.lower()
                 if _accept_email(el) and el not in result.emails and len(result.emails) < 10:
@@ -128,113 +110,135 @@ def _walk_json_for_contacts(node: Any, result: ContactEnrichResult) -> None:
             _walk_json_for_contacts(item, result)
 
 
-def _extract_from_initial_state(html: str) -> ContactEnrichResult | None:
-    """Пытается найти и распарсить __INITIAL_STATE__. None если не нашли."""
-    m = _INITIAL_STATE_RE.search(html)
-    if not m:
-        return None
-    raw = m.group(1)
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.debug("2gis __INITIAL_STATE__ JSON decode failed: %s", e)
-        return None
-    result = ContactEnrichResult()
-    try:
-        _walk_json_for_contacts(data, result)
-    except RecursionError:
-        logger.warning("2gis __INITIAL_STATE__ walk hit RecursionError")
-        return None
-    return result
-
-
-def _looks_like_captcha(html: str) -> bool:
-    """Эвристика: 2GIS вернул нам страницу-заглушку анти-бота."""
-    if len(html) < 5000 and any(marker.lower() in html.lower() for marker in _CAPTCHA_MARKERS):
-        return True
-    return False
-
-
 async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
-    """Главная функция: GET 2gis.ru/firm/{id} → extract контактов.
+    """Headless Chromium → перехват XHR + regex по rendered innerText.
 
-    Не использует прокси по умолчанию. Если упрёмся в капчу — будем смотреть,
-    включать ли TWOGIS_HTML_USE_PROXY (env-флаг, добавим позже при
-    необходимости).
+    Возвращает ContactEnrichResult с найденными контактами. При любой ошибке
+    (timeout, отсутствие Chromium, навигация упала) — возвращает результат
+    с заполненным `error` и пустыми списками.
     """
     if not external_id:
         return ContactEnrichResult(error="empty external_id")
 
+    # Импорт внутри функции — если в окружении нет playwright (dev-машина без
+    # установленного браузера), таск просто отдаст error="playwright missing",
+    # а не упадёт при старте Celery-воркера.
+    try:
+        from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+    except ImportError:
+        return ContactEnrichResult(error="playwright not installed")
+
     url = _FIRM_URL.format(external_id=external_id)
-    headers = {
-        "User-Agent": _UA,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
-        # Referer тоже похож на 2gis-карточку — снижает шанс блока.
-        "Referer": "https://2gis.ru/",
-    }
+    result = ContactEnrichResult()
+    captured_jsons: list[Any] = []
+
+    async def _on_response(response):
+        """Перехватываем JSON-ответы от 2GIS Catalog API."""
+        try:
+            host = response.url.split("/", 3)[2] if "://" in response.url else ""
+            if not any(api in host for api in _API_HOSTS):
+                return
+            ctype = (response.headers.get("content-type") or "").lower()
+            if "json" not in ctype:
+                return
+            data = await response.json()
+            captured_jsons.append(data)
+        except Exception:
+            # Не валим страницу из-за одного плохого ответа.
+            pass
 
     try:
-        async with httpx.AsyncClient(
-            timeout=_TIMEOUT,
-            follow_redirects=True,
-            max_redirects=_MAX_REDIRECTS,
-            headers=headers,
-        ) as client:
-            resp = await client.get(url)
-            if resp.status_code == 404:
-                return ContactEnrichResult(
-                    error="firm 404 (карточка недоступна)",
-                    fetched_url=str(resp.url),
-                )
-            if resp.status_code == 429:
-                return ContactEnrichResult(
-                    error="2gis rate-limit (429)",
-                    fetched_url=str(resp.url),
-                )
-            if resp.status_code >= 400:
-                return ContactEnrichResult(
-                    error=f"http {resp.status_code}",
-                    fetched_url=str(resp.url),
-                )
-
-            body = resp.content[:_MAX_BYTES]
-            ctype = (resp.headers.get("content-type") or "").lower()
-            if "html" not in ctype:
-                return ContactEnrichResult(
-                    error=f"content-type {ctype!r}",
-                    fetched_url=str(resp.url),
-                )
-
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
             try:
-                html = body.decode(resp.encoding or "utf-8", errors="ignore")
-            except (LookupError, TypeError):
-                html = body.decode("utf-8", errors="ignore")
-
-            if _looks_like_captcha(html):
-                return ContactEnrichResult(
-                    error="2gis captcha",
-                    fetched_url=str(resp.url),
+                context = await browser.new_context(
+                    user_agent=_UA,
+                    locale="ru-RU",
+                    viewport={"width": 1280, "height": 800},
+                    extra_http_headers={"Referer": "https://2gis.ru/"},
                 )
+                page = await context.new_page()
+                page.on("response", _on_response)
 
-            # Сначала пробуем структурный JSON
-            result = _extract_from_initial_state(html)
-            if result is None:
-                # Фолбэк: regex по тексту HTML
-                result = _extract_from_html(html)
-            else:
-                # __INITIAL_STATE__ дало структурные данные — но HTML может
-                # ещё содержать ссылки на соцсети, которые в JSON не лежат.
-                # Сливаем оба.
-                regex_result = _extract_from_html(html)
-                result.merge(regex_result)
+                try:
+                    await page.goto(url, wait_until="domcontentloaded", timeout=_PAGE_TIMEOUT_MS)
+                except PlaywrightTimeout:
+                    result.error = "navigation timeout"
+                    return result
 
-            result.fetched_url = str(resp.url)
-            return result
-    except httpx.TimeoutException:
-        return ContactEnrichResult(error="timeout")
-    except httpx.HTTPError as e:
-        return ContactEnrichResult(error=f"http error: {type(e).__name__}")
+                # Ждём пока сеть утихнет (большинство XHR долетят к этому моменту).
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=_NETWORK_IDLE_TIMEOUT_MS)
+                except PlaywrightTimeout:
+                    # Не критично — продолжаем с тем что успели поймать.
+                    pass
+
+                # Часть телефонов 2GIS прячет за кнопкой «Показать телефон» —
+                # пробуем кликнуть. Селектор пытается покрыть несколько вариантов
+                # верстки (текстовый узел / aria-label / data-attribute).
+                for selector in (
+                    'button:has-text("Показать телефон")',
+                    'button:has-text("Показать номер")',
+                    '[aria-label*="Показать телефон"]',
+                    'a:has-text("Показать телефон")',
+                ):
+                    try:
+                        await page.click(selector, timeout=_SHOW_PHONE_TIMEOUT_MS)
+                        # Подождём чтобы XHR за расшифровкой телефона долетел
+                        await page.wait_for_timeout(500)
+                        break
+                    except Exception:
+                        continue
+
+                # Снимаем rendered text — после JS-рендера тут уже видны
+                # реальные номера, ссылки на мессенджеры, email-ы.
+                try:
+                    body_text = await page.evaluate("document.body && document.body.innerText || ''")
+                except Exception:
+                    body_text = ""
+                try:
+                    html = await page.content()
+                except Exception:
+                    html = ""
+
+                final_url = page.url
+            finally:
+                try:
+                    await browser.close()
+                except Exception:
+                    pass
+    except asyncio.CancelledError:
+        raise
     except Exception as e:
-        logger.debug("fetch_and_extract_2gis_firm: unexpected error for %r: %s", external_id, e)
-        return ContactEnrichResult(error=f"unexpected: {type(e).__name__}")
+        logger.debug("fetch_and_extract_2gis_firm: playwright failure for %r: %s", external_id, e)
+        return ContactEnrichResult(error=f"playwright: {type(e).__name__}: {str(e)[:200]}")
+
+    # Слой 1: разбираем перехваченные XHR JSON-ответы — самый чистый источник.
+    for blob in captured_jsons:
+        try:
+            _walk_json_for_contacts(blob, result)
+        except RecursionError:
+            logger.warning("2gis XHR JSON walk hit RecursionError for %s", external_id)
+
+    # Слой 2: regex по innerText после рендера. Покрывает соцсети из футера,
+    # «вшитые» номера, fallback если XHR прошёл мимо.
+    if body_text:
+        text_result = _extract_from_html(body_text)
+        result.merge(text_result)
+
+    # Слой 3: regex по rendered HTML (для атрибутов href="tel:..." которые в
+    # innerText не попадают, и для ссылок которые JS отрендерил как `<a>`).
+    if html:
+        html_result = _extract_from_html(html)
+        result.merge(html_result)
+
+    result.fetched_url = final_url if 'final_url' in locals() else url
+    return result
