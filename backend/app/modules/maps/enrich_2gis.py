@@ -42,14 +42,28 @@ logger = logging.getLogger(__name__)
 
 _FIRM_URL = "https://2gis.ru/firm/{external_id}"
 
-_PAGE_TIMEOUT_MS = 20_000        # навигация + первичный рендер
-_NETWORK_IDLE_TIMEOUT_MS = 8_000  # пауза в сети после первичного рендера
+_PAGE_TIMEOUT_MS = 25_000        # навигация + первичный рендер
+_NETWORK_IDLE_TIMEOUT_MS = 12_000  # 2GIS грузит десятки JS-чанков, нужно больше времени
 _SHOW_PHONE_TIMEOUT_MS = 2_000    # клик по «Показать телефон» — не блокируем если нет
+_POST_RENDER_WAIT_MS = 1_500      # доп. пауза после networkidle — даём XHR контактов долететь
 
+# UA Chrome 148 — соответствует реальной версии нашего chromium-headless-shell
+# (chromium-headless-shell v1223 = Chrome 148.0.7778). Со старым UA Chrome 124
+# 2GIS перенаправлял на /museum («У вас не самый новый браузер») и реальные
+# контакты не отдавались.
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 )
+
+# Client Hints: без них 2GIS видит дефолтный sec-ch-ua headless-shell
+# (`HeadlessChrome`) и также может детектить как бот. Подделываем как
+# обычный Chrome 148.
+_SEC_CH_UA_HEADERS = {
+    "Sec-Ch-Ua": '"Chromium";v="148", "Not.A/Brand";v="24", "Google Chrome";v="148"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+}
 
 # XHR-эндпоинты 2GIS, которые SPA-карточка дёргает за контактами.
 # `catalog.api.2gis.com/3.0/items/byid` — главный, отдаёт contact_groups
@@ -163,7 +177,10 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
                     user_agent=_UA,
                     locale="ru-RU",
                     viewport={"width": 1280, "height": 800},
-                    extra_http_headers={"Referer": "https://2gis.ru/"},
+                    extra_http_headers={
+                        "Referer": "https://2gis.ru/",
+                        **_SEC_CH_UA_HEADERS,
+                    },
                 )
                 page = await context.new_page()
                 page.on("response", _on_response)
@@ -174,11 +191,40 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
                     result.error = "navigation timeout"
                     return result
 
+                # Защита: если 2GIS всё-таки перенаправил на /museum (например,
+                # обновил детект headless), пробуем кликнуть «Пропустить
+                # обновление браузера и перейти в 2ГИС».
+                if "/museum" in page.url:
+                    for sel in (
+                        'a:has-text("Пропустить обновление")',
+                        'a:has-text("перейти в 2ГИС")',
+                        f'a[href*="firm/{external_id}"]',
+                    ):
+                        try:
+                            el = await page.query_selector(sel)
+                            if el:
+                                await el.click(timeout=3_000)
+                                await page.wait_for_load_state(
+                                    "domcontentloaded", timeout=_PAGE_TIMEOUT_MS,
+                                )
+                                break
+                        except Exception:
+                            continue
+
                 # Ждём пока сеть утихнет (большинство XHR долетят к этому моменту).
+                # 2GIS грузит ~90 чанков, поэтому даём больше времени.
                 try:
                     await page.wait_for_load_state("networkidle", timeout=_NETWORK_IDLE_TIMEOUT_MS)
                 except PlaywrightTimeout:
                     # Не критично — продолжаем с тем что успели поймать.
+                    pass
+
+                # Доп. пауза — на проде увидели что innerText заполняется после
+                # того как все основные XHR долетели; networkidle одного раза
+                # бывает мало.
+                try:
+                    await page.wait_for_timeout(_POST_RENDER_WAIT_MS)
+                except Exception:
                     pass
 
                 # Часть телефонов 2GIS прячет за кнопкой «Показать телефон» —
