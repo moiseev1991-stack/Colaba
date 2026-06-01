@@ -273,6 +273,23 @@ def _parse_iso_or_none(s: str | None) -> datetime | None:
         return None
 
 
+def _extract_real_city(item: dict[str, Any]) -> str | None:
+    """Достаёт name города из adm_div ответа 2GIS Catalog API.
+
+    adm_div — массив админ-делений: [{"type":"city","name":"Балашиха"}, ...].
+    Возвращаем первый элемент с type='city' или 'settlement'. Если ни одного —
+    None (caller должен фолбэкнуться на текстовую проверку address или
+    оставить запрошенное значение).
+    """
+    for adm in item.get("adm_div") or []:
+        adm_type = (adm.get("type") or "").lower()
+        if adm_type in ("city", "settlement"):
+            name = adm.get("name")
+            if name:
+                return str(name)
+    return None
+
+
 def _map_item_to_company_raw(item: dict[str, Any]) -> CompanyRaw | None:
     """Маппинг ответа 2GIS items → CompanyRaw. None если базовых полей нет."""
     item_id = item.get("id")
@@ -541,16 +558,38 @@ class TwoGisProvider(MapProvider):
         common: dict[str, Any] = {
             "q": niche,
             "key": self._api_key,
-            "fields": "items.point,items.contact_groups,items.reviews,items.rubrics,items.full_address_name",
+            # adm_div нужен чтобы достать реальный город компании (a не наш
+            # запрошенный) — критично для городов-сателлитов вроде Балашихи,
+            # которые 2GIS относит к region_id=32 (Москва).
+            "fields": "items.point,items.contact_groups,items.reviews,items.rubrics,items.full_address_name,items.adm_div",
             "page_size": PAGE_SIZE,
         }
         region_id: int | None = None
+        # Города-сателлиты: для Балашихи/Химок/Мытищ/etc API region/search
+        # отдаёт region_id=32 (вся Москва). Чтобы не получить московские
+        # компании вместо нужного города:
+        #   1) добавляем название города в `q` — 2GIS приоритизирует фирмы в
+        #      нём;
+        #   2) после выдачи отсеиваем те, у которых реальный город из adm_div
+        #      не совпадает с запрошенным.
+        # Главный город региона определяем как ключ в CITY_TO_REGION_ID,
+        # значение которого == region_id. Балашиха в словарь не входит, но
+        # её region_id (32) — у Москвы, → она не «главный город», → фильтр.
+        city_norm = (city or "").strip().lower()
+        is_satellite_city = False
         if point is not None and radius_meters and radius_meters > 0:
             common["point"] = f"{point[1]},{point[0]}"  # 2GIS: lon,lat
             common["radius"] = int(radius_meters)
         else:
             region_id = await self._get_region_id(city)
             common["region_id"] = region_id
+            main_city_of_region = next(
+                (k for k, v in CITY_TO_REGION_ID.items() if v == region_id),
+                None,
+            )
+            if main_city_of_region and main_city_of_region != city_norm:
+                is_satellite_city = True
+                common["q"] = f"{niche} {city}"
 
         yielded = 0
         page = 1
@@ -575,11 +614,30 @@ class TwoGisProvider(MapProvider):
                 for item in items:
                     if yielded >= limit:
                         break
+                    # Для города-сателлита (Балашиха в region_id=32 Москвы)
+                    # фильтруем: оставляем только компании, у которых реальный
+                    # adm_div.type=city.name совпадает с нашим запросом. Если
+                    # adm_div не пришёл — фолбэк на проверку full_address_name.
+                    if is_satellite_city:
+                        real_city = _extract_real_city(item)
+                        full_addr = (item.get("full_address_name") or "").lower()
+                        match = False
+                        if real_city and real_city.lower() == city_norm:
+                            match = True
+                        elif not real_city and city_norm in full_addr:
+                            match = True
+                        if not match:
+                            continue
+
                     company = _map_item_to_company_raw(item)
                     if company is None:
                         continue
                     company.niche = niche
-                    company.city = city
+                    # city берём из реального адреса 2GIS, не из нашего запроса —
+                    # иначе при region_id=32 все компании окажутся помечены как
+                    # Москва (или, наоборот, как Балашиха, если юзер искал её).
+                    real_city = _extract_real_city(item)
+                    company.city = real_city or city
                     yield company
                     yielded += 1
 
