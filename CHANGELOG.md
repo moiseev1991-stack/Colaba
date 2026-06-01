@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.26.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.25.0...v1.26.0) (2026-06-01)
+
+
+### Bug Fixes
+
+* **maps:** догонять enrichment при cache hit + убрать «not phone» для 2GIS HTML ([e2bda77](https://github.com/moiseev1991-stack/Colaba/commit/e2bda775a7e58203a73ef700bad15cc29531566e))
+
+
+### Features
+
+* **maps:** 2GIS HTML-парсер через headless Chromium (Playwright) ([bfc5d05](https://github.com/moiseev1991-stack/Colaba/commit/bfc5d0565d90c97fde74201b9a417d895f5dc057))
+
 # [1.25.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.24.2...v1.25.0) (2026-05-31)
 
 
