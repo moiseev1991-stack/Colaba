@@ -17,9 +17,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Playwright Chromium для HTML-парсера 2GIS (2gis.ru/firm/{id} — SPA).
 # --with-deps ставит системные библиотеки Chromium через apt (≈500MB).
-# Кладём браузер в /ms-playwright (стандартный путь) — runtime найдёт его сам.
-RUN python -m playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/* /root/.cache
+# С Playwright 1.40+ `chromium.launch(headless=True)` дефолтно использует
+# отдельный лёгкий бинарь `chromium-headless-shell` — без него launch падает
+# с «Executable doesn't exist». Ставим ОБА: chromium как fallback и
+# chromium-headless-shell как фактический рантайм headless-запусков.
+RUN python -m playwright install --with-deps chromium chromium-headless-shell && \
+    rm -rf /var/lib/apt/lists/* /root/.cache/pip
 
 COPY . .
 
