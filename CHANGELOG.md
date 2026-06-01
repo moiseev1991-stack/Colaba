@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.26.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.2...v1.26.3) (2026-06-01)
+
+
+### Bug Fixes
+
+* **maps:** фильтр сателлитов — Балашиха ловила всю Москву ([887ea6b](https://github.com/moiseev1991-stack/Colaba/commit/887ea6bfb5f57c7f2d6be77d376dbf259d5ab34f))
+
 ## [1.26.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.1...v1.26.2) (2026-06-01)
 
 
