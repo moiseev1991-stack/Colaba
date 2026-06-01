@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.26.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.0...v1.26.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **maps:** ставим chromium-headless-shell для Playwright 1.60+ ([6bcc1b5](https://github.com/moiseev1991-stack/Colaba/commit/6bcc1b53aa1ae7d77f6ab117ae329cfd5dd942a8))
+
 # [1.26.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.25.0...v1.26.0) (2026-06-01)
 
 
