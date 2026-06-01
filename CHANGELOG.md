@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.27.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.3...v1.27.0) (2026-06-01)
+
+
+### Features
+
+* **maps-ui:** пресет «Есть сайт» + подсветка активного пресета в фильтр-панели ([546b823](https://github.com/moiseev1991-stack/Colaba/commit/546b82370d68dd9eb7764ca0cf17d2f2b8aaa072))
+
 ## [1.26.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.2...v1.26.3) (2026-06-01)
 
 
