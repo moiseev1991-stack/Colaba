@@ -240,6 +240,23 @@ async def _parse_map_search_async(search_id: int) -> None:
             for source in sources:
                 if not radius_mode and await service.check_cache(db, search.niche, search.city, source):
                     logger.info("parse_map_search: cache hit for %s/%s/%s", search.niche, search.city, source)
+                    # На cache hit повторно парсить компании не нужно — они
+                    # уже в БД. Но enrichment мог не отработать (фича добавлена
+                    # позже, или для компании Catalog API отдал phone и старое
+                    # условие `not phone` пропустило 2GIS HTML). Догоняем тут,
+                    # идемпотентно — повторно не ставим таск для компаний с
+                    # contacts_extra.fetched_2gis_url / error_2gis.
+                    try:
+                        queued = await _reenrich_cached_companies_async(
+                            db, search.niche, search.city, source
+                        )
+                        if queued:
+                            logger.info(
+                                "parse_map_search: re-enqueued enrichment for %d cached companies (%s/%s/%s)",
+                                queued, search.niche, search.city, source,
+                            )
+                    except Exception as e:
+                        logger.warning("parse_map_search: cache-hit re-enrich failed: %s", e)
                     continue
                 try:
                     count, completed = await _parse_companies_for_source(db, search, source)
@@ -382,8 +399,11 @@ def _maybe_enrich_contacts(company: Company) -> None:
       - enrich_company_contacts: краулер сайта компании. Триггерим если есть
         website и contacts_enriched_at IS NULL.
       - enrich_company_from_2gis_html: HTML-парсер карточки 2GIS. Триггерим
-        для source='2gis' компаний у которых нет phone (значит Catalog API
-        не отдал contact_groups — пробуем выдрать со страницы сайта).
+        для source='2gis' с external_id, по которым мы ещё не ходили на
+        2gis.ru/firm/{id} (отмечается ключами fetched_2gis_url / error_2gis
+        в contacts_extra). Раньше тут было условие `not company.phone` — но
+        оно пропускало все компании, у которых Catalog API отдал хотя бы
+        один телефон, и до мессенджеров/email/доп.телефонов мы не доходили.
 
     Тихо проглатывает любые ошибки постановки тасков — само-rate-limit
     у Celery, никакой массовой долбёжки 2GIS быть не должно (queue с
@@ -396,10 +416,63 @@ def _maybe_enrich_contacts(company: Company) -> None:
         logger.warning("_maybe_enrich_contacts: cannot enqueue site-crawler for #%d: %s", company.id, e)
 
     try:
-        if company.source == "2gis" and company.external_id and not company.phone:
+        extra = company.contacts_extra or {}
+        already_tried_2gis_html = "fetched_2gis_url" in extra or "error_2gis" in extra
+        if (
+            company.source == "2gis"
+            and company.external_id
+            and not already_tried_2gis_html
+        ):
             enrich_company_from_2gis_html.delay(company.id)
     except Exception as e:
         logger.warning("_maybe_enrich_contacts: cannot enqueue 2gis_html for #%d: %s", company.id, e)
+
+
+async def _reenrich_cached_companies_async(
+    db, niche: str, city: str, source: str, limit: int = 300
+) -> int:
+    """При cache hit — догнать enrichment для уже сохранённых компаний.
+
+    Берём компании из БД по (niche, city, source) и для каждой решаем,
+    нужен ли HTML-парсер 2GIS / краулер сайта. Условия — те же что в
+    `_maybe_enrich_contacts`, поэтому идемпотентно: компании, по которым
+    уже ходили, повторно не ставятся в очередь.
+
+    Используется только из главного оркестратора (cache hit ветка). Возвращает
+    количество поставленных в очередь тасков (для логов).
+    """
+    sql = text(
+        "SELECT id, source, external_id, website, phone, contacts_extra, "
+        "contacts_enriched_at FROM companies "
+        "WHERE niche = :niche AND city = :city AND source = :source "
+        "ORDER BY id DESC LIMIT :lim"
+    )
+    rows = list(
+        (await db.execute(sql, {"niche": niche, "city": city, "source": source, "lim": int(limit)}))
+        .mappings()
+        .all()
+    )
+    queued = 0
+    for r in rows:
+        # Краулер сайта — только если ещё не ходили на сайт.
+        if r["website"] and r["contacts_enriched_at"] is None:
+            try:
+                enrich_company_contacts.delay(int(r["id"]))
+                queued += 1
+            except Exception as e:
+                logger.warning("_reenrich: cannot enqueue site-crawler #%s: %s", r["id"], e)
+
+        # 2GIS HTML — только для 2gis-компаний с external_id, по которым
+        # мы ещё не ходили (нет fetched_2gis_url / error_2gis в extra).
+        if r["source"] == "2gis" and r["external_id"]:
+            extra = r["contacts_extra"] or {}
+            if "fetched_2gis_url" not in extra and "error_2gis" not in extra:
+                try:
+                    enrich_company_from_2gis_html.delay(int(r["id"]))
+                    queued += 1
+                except Exception as e:
+                    logger.warning("_reenrich: cannot enqueue 2gis_html #%s: %s", r["id"], e)
+    return queued
 
 
 async def _enrich_company_contacts_async(company_id: int) -> dict:
