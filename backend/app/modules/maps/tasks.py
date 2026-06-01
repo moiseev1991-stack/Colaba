@@ -618,6 +618,14 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
         if not new_phone and result.phones:
             new_phone = result.phones[0]
 
+        # website — на нашем плане 2GIS Catalog API contact_groups часто пустые,
+        # из-за чего у всех компаний website=NULL и пресет «Есть сайт» отдаёт
+        # 0 компаний. Если Playwright вытащил website из реальной карточки
+        # 2GIS — пишем его в company.website (только если в БД было пусто).
+        new_website = company.website
+        if not new_website and result.website:
+            new_website = result.website
+
         full_extra = {**existing_extra, **new_extra} if new_extra else (existing_extra or None)
 
         await db.execute(
@@ -625,6 +633,7 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
             .where(Company.id == company_id)
             .values(
                 phone=new_phone,
+                website=new_website,
                 emails=merged_emails or None,
                 contacts_extra=full_extra,
                 # contacts_enriched_at оставляем тот что был; помечать тут не
@@ -639,6 +648,7 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
             "telegrams_found": len(result.telegrams),
             "vks_found": len(result.vks),
             "whatsapps_found": len(result.whatsapps),
+            "website_found": bool(result.website),
             "error": result.error,
         }
 

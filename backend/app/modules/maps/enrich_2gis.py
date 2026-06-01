@@ -30,6 +30,7 @@ import asyncio
 import logging
 import re
 from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
 
 from app.modules.maps.enrich import (
     ContactEnrichResult,
@@ -72,6 +73,41 @@ _SEC_CH_UA_HEADERS = {
 _API_HOSTS = ("catalog.api.2gis.com", "webapi.2gis.com")
 
 
+def _normalize_2gis_url(raw: str) -> str | None:
+    """Достаёт настоящий URL из 2GIS-трекинговых ссылок.
+
+    2GIS оборачивает внешние сайты в трекер `link.2gis.ru/.../?url=...`
+    (UTM и redirect). Если входной URL — такая обёртка, забираем оригинал
+    из query `url`. Если просто http(s)-ссылка — возвращаем как есть. Если
+    относительный/мусор — None.
+    """
+    if not raw:
+        return None
+    s = raw.strip()
+    # Бывают значения типа "ya.ru" без схемы — добавим https:// на этапе
+    # сохранения. Здесь только базовая валидация.
+    try:
+        # link.2gis.ru/...?url=...
+        if "link.2gis.ru" in s or "/url?" in s:
+            parsed = urlparse(s)
+            qs = parse_qs(parsed.query)
+            for key in ("url", "u"):
+                if key in qs and qs[key]:
+                    inner = unquote(qs[key][0])
+                    if inner.startswith("http"):
+                        return inner
+            # ничего не нашли — отбрасываем (внутренний редирект без url=)
+            return None
+        if s.startswith(("http://", "https://")):
+            return s
+        # без схемы — допускаем «example.ru/...», добавим https://
+        if "." in s and " " not in s and len(s) < 300:
+            return "https://" + s.lstrip("/")
+    except Exception:
+        return None
+    return None
+
+
 def _walk_json_for_contacts(node: Any, result: ContactEnrichResult) -> None:
     """Рекурсивно обходит JSON-ответ 2GIS Catalog API и собирает контакты.
 
@@ -90,6 +126,14 @@ def _walk_json_for_contacts(node: Any, result: ContactEnrichResult) -> None:
                 n = _normalize_phone(v)
                 if n and n not in result.phones and len(result.phones) < 5:
                     result.phones.append(n)
+            elif ctype in ("website", "url") and v:
+                # Нормализуем 2GIS-редиректы вида:
+                #   https://link.2gis.ru/.../?url=https%3A//real-site.ru/
+                # — выкусываем настоящий URL из query `url=`.
+                normalized = _normalize_2gis_url(v)
+                # Берём первый непустой website; повторно не перезаписываем.
+                if normalized and not result.website:
+                    result.website = normalized
             elif ctype == "email":
                 el = v.lower()
                 if _accept_email(el) and el not in result.emails and len(result.emails) < 10:

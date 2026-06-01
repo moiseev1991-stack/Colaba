@@ -88,6 +88,12 @@ class ContactEnrichResult:
     facebooks: list[str] = field(default_factory=list)
     oks: list[str] = field(default_factory=list)
     youtubes: list[str] = field(default_factory=list)
+    # website компании (если нашли в XHR Catalog API карточки 2GIS — type='website',
+    # или в текстовом содержимом ссылок с link.2gis.ru/url?...). На нашем плане
+    # 2GIS Catalog API contact_groups часто пустые → website NULL, что ломает
+    # пресет «Есть сайт» (он отдаёт 0 компаний). Поэтому Playwright должен
+    # доставать website тоже и пробрасывать в companies.website.
+    website: str | None = None
     fetched_url: str | None = None
     error: str | None = None
 
@@ -96,6 +102,7 @@ class ContactEnrichResult:
         return not (
             self.emails or self.phones or self.telegrams or self.vks or self.whatsapps
             or self.instagrams or self.facebooks or self.oks or self.youtubes
+            or self.website
         )
 
     def merge(self, other: "ContactEnrichResult") -> None:
@@ -110,6 +117,11 @@ class ContactEnrichResult:
                 if item not in existing_set:
                     existing.append(item)
                     existing_set.add(item)
+        # website — первый непустой выигрывает (источники могут отдавать
+        # разные UTM/redirect-формы одного и того же URL — оставляем первый
+        # нашедшийся, его уже нормализуем дальше).
+        if not self.website and other.website:
+            self.website = other.website
 
 
 def _normalize_phone(raw: str) -> str | None:
