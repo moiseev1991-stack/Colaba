@@ -137,6 +137,23 @@ export function MapsFiltersPanel({
     }
   }
 
+  /** Точное совпадение фильтра пользовательского пресета с текущим. Та же
+   *  логика что у isPresetActive — null/undefined эквивалентны, массивы как
+   *  отсортированный JSON. */
+  function isUserPresetActive(p: UserPresetOut): boolean {
+    const norm = (v: unknown): string => {
+      if (v == null) return 'null';
+      if (Array.isArray(v)) return JSON.stringify([...v].sort());
+      return JSON.stringify(v);
+    };
+    const f = (p.filter ?? {}) as Record<string, unknown>;
+    for (const [k, expected] of Object.entries(f)) {
+      const actual = (value as Record<string, unknown>)[k];
+      if (norm(expected) !== norm(actual)) return false;
+    }
+    return true;
+  }
+
   // При внешнем изменении value (например, клик по пресету) — синкаем локальные
   useEffect(() => {
     setLocalMinRating(value.min_rating?.toString() ?? '');
@@ -188,6 +205,22 @@ export function MapsFiltersPanel({
     onChange({ ...p.filter, pain_tag_ids: value.pain_tag_ids });
   }
 
+  /** Активен ли пресет — точное совпадение всех его значений в текущем фильтре.
+   *  Сравниваем сериализацией: null/undefined считаем эквивалентными (важно
+   *  для полей, которых нет в пресете). Массивы сравниваем как JSON. */
+  function isPresetActive(p: Preset): boolean {
+    const norm = (v: unknown): string => {
+      if (v == null) return 'null';
+      if (Array.isArray(v)) return JSON.stringify([...v].sort());
+      return JSON.stringify(v);
+    };
+    for (const [k, expected] of Object.entries(p.filter)) {
+      const actual = (value as Record<string, unknown>)[k];
+      if (norm(expected) !== norm(actual)) return false;
+    }
+    return true;
+  }
+
   return (
     <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <div>
@@ -195,21 +228,44 @@ export function MapsFiltersPanel({
           Готовые пресеты
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => applyPreset(p)}
-              title={p.description}
-              className={cn(
-                'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
-                'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-400 dark:hover:bg-slate-700'
-              )}
-            >
-              <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{p.label}</span>
-              <span className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">{p.shortHint}</span>
-            </button>
-          ))}
+          {PRESETS.map((p) => {
+            const active = isPresetActive(p);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p)}
+                title={p.description}
+                className={cn(
+                  'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
+                  active
+                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-300 dark:border-emerald-400 dark:bg-emerald-900/30 dark:ring-emerald-700/50'
+                    : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-400 dark:hover:bg-slate-700'
+                )}
+              >
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    active
+                      ? 'text-emerald-900 dark:text-emerald-100'
+                      : 'text-slate-800 dark:text-slate-200'
+                  )}
+                >
+                  {p.label}
+                </span>
+                <span
+                  className={cn(
+                    'text-[10px] leading-tight',
+                    active
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : 'text-slate-500 dark:text-slate-400'
+                  )}
+                >
+                  {p.shortHint}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -270,12 +326,16 @@ export function MapsFiltersPanel({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {visibleUserPresets.map((p) => (
+            {visibleUserPresets.map((p) => {
+              const active = !p.hidden && isUserPresetActive(p);
+              return (
               <div
                 key={p.id}
                 className={cn(
                   'group relative flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 pr-7 text-left transition-colors',
-                  p.hidden
+                  active
+                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-300 dark:border-emerald-400 dark:bg-emerald-900/30 dark:ring-emerald-700/50'
+                    : p.hidden
                     ? 'border-slate-200 bg-slate-50/60 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-500'
                     : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:hover:border-emerald-500/60'
                 )}
@@ -346,7 +406,8 @@ export function MapsFiltersPanel({
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
