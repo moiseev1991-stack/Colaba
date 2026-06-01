@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.26.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.1...v1.26.2) (2026-06-01)
+
+
+### Bug Fixes
+
+* **maps:** UA Chrome 148 + Sec-Ch-Ua headers против /museum-редиректа ([32da407](https://github.com/moiseev1991-stack/Colaba/commit/32da40765c53be1609a13e8c32669621e5b6b72f))
+
 ## [1.26.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.0...v1.26.1) (2026-06-01)
 
 
