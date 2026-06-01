@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.27.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.0...v1.27.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **maps:** Playwright тащит website из 2GIS, пресет «Есть сайт» не отдаёт 0 ([5cd1c62](https://github.com/moiseev1991-stack/Colaba/commit/5cd1c6252fe9a9b2eec846f2020cedbffbceb25f))
+
 # [1.27.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.26.3...v1.27.0) (2026-06-01)
 
 
