@@ -26,7 +26,10 @@ from app.models.ai_assistant import AiAssistant
 from app.modules.ai_assistants.client import chat
 from app.modules.reviews_ai.prompts import (
     CLUSTER_NAMING_PROMPT,
+    OUTREACH_ANGLE_HINTS,
     OUTREACH_DRAFT_PROMPT,
+    OUTREACH_LANGUAGE_HINTS,
+    OUTREACH_TONE_HINTS,
     SENTIMENT_PROMPT,
 )
 
@@ -226,28 +229,80 @@ async def call_llm_outreach_draft(
     city: str,
     source: str,
     pains: list[dict[str, Any]],
+    angle: str = "website",
+    tone: str = "friendly",
+    language: str = "ru",
+    has_website: bool = False,
+    has_email: bool = False,
+    rating: float | None = None,
+    reviews_count: int | None = None,
 ) -> dict[str, str] | None:
     """Возвращает {"subject": "...", "body": "..."} или None.
 
-    pains — список вида [{"label": "Грязно", "quote": "...."}, ...] длиной 1-3.
+    pains — список вида [{"label": "Грязно", "quote": "...."}, ...] длиной 0-3.
+    Если pains пуст — письмо строится только по angle/нише/городу (полезно
+    для website-угла, где «нет отзывов» — нормально, главный аргумент сам
+    angle).
+
+    angle: один из ключей OUTREACH_ANGLE_HINTS (website/reputation/automation/seo).
+    Неизвестный angle → fallback 'website'.
     """
-    if not pains:
-        return None
     assistant_id = await pick_assistant_id(db, "outreach_draft")
     if assistant_id is None:
         logger.info("call_llm_outreach_draft: no assistant available")
         return None
 
-    pains_block = "\n".join(
-        f"- {p.get('label', '').strip() or 'без названия'}: «{(p.get('quote') or '').strip()}»"
-        for p in pains[:3]
+    if angle not in OUTREACH_ANGLE_HINTS:
+        angle = "website"
+
+    if pains:
+        pains_section = (
+            "Из отзывов клиентов этой компании за последние месяцы видны "
+            "такие повторяющиеся проблемы:\n"
+            + "\n".join(
+                f"- {p.get('label', '').strip() or 'без названия'}: "
+                f"«{(p.get('quote') or '').strip()}»"
+                for p in pains[:3]
+            )
+        )
+    else:
+        pains_section = (
+            "Конкретных болей из отзывов нет (мало отзывов или они "
+            "нейтральные). Опирайся на угол услуги и общий контекст."
+        )
+
+    company_context_parts = []
+    if rating is not None:
+        company_context_parts.append(f"рейтинг {rating:.1f}")
+    if reviews_count is not None:
+        company_context_parts.append(f"отзывов {reviews_count}")
+    company_context_parts.append(
+        "сайта нет" if not has_website else "сайт есть"
     )
+    company_context_parts.append(
+        "email есть" if has_email else "email пока не найден"
+    )
+    company_context = ", ".join(company_context_parts)
+
+    angle_labels = {
+        "website": "создание сайта",
+        "reputation": "работа с репутацией / отзывами",
+        "automation": "автоматизация контакта с клиентами",
+        "seo": "SEO-продвижение",
+    }
     prompt = OUTREACH_DRAFT_PROMPT.format(
         company_name=company_name or "—",
         niche=niche or "—",
         city=city or "—",
         source=source or "карты",
-        pains_block=pains_block,
+        pains_section=pains_section,
+        angle_label=angle_labels.get(angle, angle),
+        angle_hint=OUTREACH_ANGLE_HINTS[angle],
+        company_context=company_context,
+        tone_label=OUTREACH_TONE_HINTS.get(tone, OUTREACH_TONE_HINTS["friendly"]),
+        language_label=OUTREACH_LANGUAGE_HINTS.get(
+            language, OUTREACH_LANGUAGE_HINTS["ru"]
+        ),
     )
     try:
         raw = await chat(

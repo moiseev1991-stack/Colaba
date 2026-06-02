@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
+import { OutreachDraftBlock } from '@/components/maps/OutreachDraftBlock';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -138,6 +139,12 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
           </div>
 
           <ContactsBlock detail={detail} />
+
+          {/* Aha-moment блок 1: драфт холодного письма по компании */}
+          <OutreachDraftBlock
+            companyId={detail.id}
+            companyEmails={detail.emails ?? []}
+          />
 
           <div className="flex flex-wrap gap-3 text-xs">
             <Metric label="Рейтинг" value={detail.rating?.toFixed(1) ?? '—'} />

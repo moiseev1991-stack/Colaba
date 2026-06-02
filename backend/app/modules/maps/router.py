@@ -49,7 +49,9 @@ from app.modules.maps.schemas import (
     MapSearchCreate,
     MapSearchFilter,
     MapSearchOut,
+    OutreachDraftCachedOut,
     OutreachDraftOut,
+    OutreachDraftRequest,
     PainTagOut,
     ProvidersHealthOut,
     ReviewOut,
@@ -564,6 +566,74 @@ async def draft_email_for_company(
         body=draft["body"],
         used_pains=[CompanyPainOut(**p) for p in pains_with_quote],
         suggested_to_emails=list(emails)[:5],
+    )
+
+
+@router.post(
+    "/companies/{company_id}/outreach-draft",
+    response_model=OutreachDraftCachedOut,
+)
+@limiter.limit("20/minute")
+async def outreach_draft_for_company(
+    request: Request,
+    company_id: int,
+    payload: OutreachDraftRequest | None = None,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aha-moment блок 1: драфт письма с угольной логикой + кэш.
+
+    В отличие от старого /draft-email, этот endpoint:
+      - принимает угол услуги (website/reputation/automation/seo/auto);
+      - может работать даже когда у компании нет pain-тегов
+        (генерит письмо чисто под угол — особенно полезно для website-угла);
+      - кэширует результат в company_outreach_drafts по (company_id, angle);
+        повторный вызов без regenerate отдаёт кэш и не жжёт токены LLM;
+      - возвращает angle_used (для auto — конкретный выбранный угол) и
+        pains_used (какие боли пошли в промпт).
+    """
+    company = await _get_company_or_404(db, company_id)
+    req = payload or OutreachDraftRequest()
+
+    from app.modules.maps.outreach_drafts import generate_or_get_draft
+
+    result, error = await generate_or_get_draft(
+        db,
+        company,
+        angle=req.angle,
+        tone=req.tone,
+        language=req.language,
+        regenerate=req.regenerate,
+    )
+    if error is not None or result is None:
+        # Если фейл LLM/ассистент — 503, чтобы UI мог показать «попробуй позже».
+        raise HTTPException(
+            status_code=503,
+            detail=error or "Не удалось сгенерировать письмо",
+        )
+
+    emails = company.emails if isinstance(company.emails, list) else []
+    return OutreachDraftCachedOut(
+        company_id=company.id,
+        company_name=company.name or "",
+        subject=result.subject,
+        body=result.body,
+        angle_used=result.angle_used,
+        tone=result.tone,
+        language=result.language,
+        pains_used=[
+            CompanyPainOut(
+                pain_tag_id=p.get("pain_tag_id") or 0,
+                label=p.get("label") or "",
+                mention_count=0,
+                top_quote=p.get("top_quote"),
+                top_quote_similarity=p.get("top_quote_similarity"),
+            )
+            for p in (result.pains_used or [])
+            if p.get("pain_tag_id")
+        ],
+        suggested_to_emails=list(emails)[:5],
+        cached=result.cached,
     )
 
 

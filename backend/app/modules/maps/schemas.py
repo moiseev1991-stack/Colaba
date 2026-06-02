@@ -296,6 +296,56 @@ class OutreachDraftOut(BaseModel):
     suggested_to_emails: list[str] = Field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# Aha-moment / blok 1: outreach-draft с угольной логикой + кэшем
+# ---------------------------------------------------------------------------
+
+
+OutreachAngle = Literal["website", "reputation", "automation", "seo", "auto"]
+OutreachTone = Literal["friendly", "official"]
+OutreachLanguage = Literal["ru", "en"]
+
+
+class OutreachDraftRequest(BaseModel):
+    """Тело POST /maps/companies/{id}/outreach-draft.
+
+    Все поля опциональны. По умолчанию: angle='auto' (сервер сам выбирает по
+    сигналам), tone='friendly', language='ru', regenerate=False (если в
+    кэше уже есть драфт под этим углом — отдаём кэш без вызова LLM).
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    angle: OutreachAngle = "auto"
+    tone: OutreachTone = "friendly"
+    language: OutreachLanguage = "ru"
+    regenerate: bool = False
+
+
+class OutreachDraftCachedOut(BaseModel):
+    """Ответ POST /maps/companies/{id}/outreach-draft.
+
+    angle_used — конкретный угол, который сервер реально использовал
+    (если запрашивали 'auto' — будет, например, 'website').
+    pains_used — какие pain-теги пошли в промпт; пусто = генерили без
+    болей (по углу).
+    cached — true если ответ отдан из company_outreach_drafts без вызова LLM.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    company_id: int
+    company_name: str
+    subject: str
+    body: str
+    angle_used: str
+    tone: str
+    language: str
+    pains_used: list[CompanyPainOut] = Field(default_factory=list)
+    suggested_to_emails: list[str] = Field(default_factory=list)
+    cached: bool = False
+
+
 class CompanyDigestOut(BaseModel):
     """Краткая сводка отзывов компании за N дней.
 

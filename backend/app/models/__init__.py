@@ -35,6 +35,7 @@ from app.models.pain_tag import (
 from app.models.lead_list import LeadList, LeadListItem
 from app.models.user_filter_preset import UserFilterPreset
 from app.models.company_ai_analysis import CompanyAiAnalysis
+from app.models.company_outreach_draft import CompanyOutreachDraft
 
 __all__ = [
     "User",
@@ -74,4 +75,5 @@ __all__ = [
     "LeadListItem",
     "UserFilterPreset",
     "CompanyAiAnalysis",
+    "CompanyOutreachDraft",
 ]

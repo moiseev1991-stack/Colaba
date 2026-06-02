@@ -163,6 +163,32 @@ export interface OutreachDraftOut {
   suggested_to_emails: string[];
 }
 
+export type OutreachAngle = 'website' | 'reputation' | 'automation' | 'seo' | 'auto';
+export type OutreachTone = 'friendly' | 'official';
+export type OutreachLanguage = 'ru' | 'en';
+
+export interface OutreachDraftRequest {
+  angle?: OutreachAngle;
+  tone?: OutreachTone;
+  language?: OutreachLanguage;
+  regenerate?: boolean;
+}
+
+export interface OutreachDraftCachedOut {
+  company_id: number;
+  company_name: string;
+  subject: string;
+  body: string;
+  /** Конкретный угол, который сервер использовал (auto уже резолвнут). */
+  angle_used: string;
+  tone: string;
+  language: string;
+  pains_used: CompanyPainOut[];
+  suggested_to_emails: string[];
+  /** true — ответ отдан из кэша, без вызова LLM. */
+  cached: boolean;
+}
+
 export interface ReviewOut {
   id: number;
   author_masked?: string | null;
@@ -335,6 +361,23 @@ export async function draftEmailForCompany(companyId: number): Promise<OutreachD
   const response = await apiClient.post<OutreachDraftOut>(
     `/maps/companies/${companyId}/draft-email`,
     {}
+  );
+  return response.data;
+}
+
+/** POST /maps/companies/{id}/outreach-draft — Aha-moment блок 1.
+ *
+ * Поддерживает угол услуги (website/reputation/automation/seo/auto), кэш
+ * по (company_id, angle), regenerate=true для перезаписи. Работает даже
+ * когда у компании нет pain-тегов (полезно для website-угла).
+ */
+export async function generateOutreachDraft(
+  companyId: number,
+  payload: OutreachDraftRequest = {}
+): Promise<OutreachDraftCachedOut> {
+  const response = await apiClient.post<OutreachDraftCachedOut>(
+    `/maps/companies/${companyId}/outreach-draft`,
+    payload
   );
   return response.data;
 }
