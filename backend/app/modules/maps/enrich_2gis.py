@@ -74,13 +74,76 @@ _API_HOSTS = ("catalog.api.2gis.com", "webapi.2gis.com")
 
 # 2GIS оборачивает внешние сайты в трекер вида
 #   https://link.2gis.ru/<id>?url=https%3A%2F%2Freal-site.ru%2F
-# который рендерится прямо в HTML карточки. Это надёжный сигнал —
-# 2GIS использует этот трекер только для сайтов компаний, других целей
-# у него на firm-странице нет.
+# (старый формат — мы его поддерживаем как fallback). В новом формате
+# (2026+) полезной нагрузки в query нет, payload base64-encoded в path:
+#   https://link.2gis.ru/4.2/<id>/<base64>
+# Поэтому надёжнее искать ПРЯМЫЕ ссылки `<a href="https://realsite.ru">`
+# в HTML карточки — на firm-странице их обычно 0-2, и они и есть сайт
+# компании. Соцсети/сервисные домены отфильтровываем по списку.
 _WEBSITE_2GIS_LINK_RE = re.compile(
     r'https?://link\.2gis\.ru/[^"\s\'<>]*[?&]url=([^"\s\'<>&]+)',
     re.IGNORECASE,
 )
+
+# Прямые href в HTML 2gis-карточки. Извлекаем все http(s) ссылки —
+# фильтр на 2gis/соцсети/служебные домены делаем в _pick_external_website.
+_HREF_HTTP_RE = re.compile(r'href="(https?://[^"]+)"', re.IGNORECASE)
+
+# Домены, которые НЕ являются сайтом компании: соцсети, мессенджеры,
+# сам 2gis, маркеры аналитики и трекеры, общие сервисы.
+_WEBSITE_EXCLUDE_HOSTS = (
+    "2gis.",
+    "2gis.com",
+    "2gis.ru",
+    "t.me",
+    "telegram.me",
+    "telegram.org",
+    "wa.me",
+    "whatsapp.com",
+    "vk.com",
+    "vk.ru",
+    "vkontakte.ru",
+    "instagram.com",
+    "facebook.com",
+    "fb.com",
+    "ok.ru",
+    "odnoklassniki.ru",
+    "youtube.com",
+    "youtu.be",
+    "twitter.com",
+    "x.com",
+    "google.com",
+    "googleapis.com",
+    "gstatic.com",
+    "yandex.ru",
+    "ya.ru",
+    "mc.yandex",
+    "googletagmanager",
+    "google-analytics",
+    "doubleclick",
+    "checkscan.ru",  # 2gis-трекер визитов
+)
+
+
+def _pick_external_website(html: str) -> str | None:
+    """Ищет в HTML 2gis-карточки прямую ссылку на сайт компании.
+
+    Берёт все `href="https?://..."`, отбрасывает 2gis-домены, соцсети,
+    трекеры и сервисные домены, возвращает первую оставшуюся.
+    """
+    if not html:
+        return None
+    for raw in _HREF_HTTP_RE.findall(html):
+        try:
+            host = urlparse(raw).netloc.lower()
+        except Exception:
+            continue
+        if not host:
+            continue
+        if any(bad in host for bad in _WEBSITE_EXCLUDE_HOSTS):
+            continue
+        return raw
+    return None
 
 
 def _normalize_2gis_url(raw: str) -> str | None:
@@ -340,10 +403,8 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
         html_result = _extract_from_html(html)
         result.merge(html_result)
 
-    # Слой 4: website из HTML через 2GIS-трекер link.2gis.ru/?url=<encoded>.
-    # На нашем плане Catalog API contact_groups часто пустые, и type='website'
-    # в XHR не приходит — но трекерная ссылка всё равно рендерится в DOM
-    # карточки firm. Достаём оригинал из query `url=`.
+    # Слой 4: website из HTML через 2GIS-трекер link.2gis.ru/?url=<encoded>
+    # (старый формат query-обёртки — fallback для старых страниц).
     if not result.website and html:
         m = _WEBSITE_2GIS_LINK_RE.search(html)
         if m:
@@ -354,6 +415,15 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
             normalized = _normalize_2gis_url(raw)
             if normalized:
                 result.website = normalized
+
+    # Слой 5: прямая ссылка `<a href="https://realsite.ru">` в HTML.
+    # В новой версии 2GIS (2026+) внешний сайт рендерится напрямую, без
+    # обёртки link.2gis.ru/?url=. На firm-странице внешних non-2gis/non-
+    # social hrefs обычно 0-2 штук, и первая из них — сайт компании.
+    if not result.website and html:
+        direct = _pick_external_website(html)
+        if direct:
+            result.website = direct
 
     result.fetched_url = final_url if 'final_url' in locals() else url
     return result
