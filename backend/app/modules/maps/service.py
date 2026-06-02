@@ -547,7 +547,13 @@ async def get_search_results(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[Company], int]:
-    """Возвращает (компании, total). Сортировка и фильтрация — через filters.apply_filters."""
+    """Возвращает (компании, total). Сортировка и фильтрация — через filters.apply_filters.
+
+    Дополнительно: «утечка городов» (roadmap 2026-06-02). Если у поиска
+    есть city, а у компании в БД city отличается — отбрасываем (Чайка
+    в Кунцево не должна попадать в выдачу «Балашиха»). Старые записи
+    в БД иногда имеют ошибочный city из-за провайдер-фильтра до фикса.
+    """
     flt = filters or MapSearchFilter()
 
     base_q = (
@@ -555,6 +561,22 @@ async def get_search_results(
         .join(MapSearchResult, MapSearchResult.company_id == Company.id)
         .where(MapSearchResult.map_search_id == search_id)
     )
+
+    # Фильтр утечки городов: для поиска по городу (mode='city') требуем
+    # точное совпадение Company.city с MapSearch.city. Старые компании
+    # в БД с ошибочным city (Чайка в Кунцево с city='Балашиха') теперь
+    # отфильтровываются на выдаче. Для mode='radius' фильтр не нужен —
+    # там критерий = радиус, а не city.
+    from app.models.maps import MapSearch
+    search_obj = await db.get(MapSearch, search_id)
+    if search_obj and (getattr(search_obj, "mode", "city") or "city") == "city":
+        search_city = (search_obj.city or "").strip().lower()
+        if search_city:
+            base_q = base_q.where(
+                (Company.city.is_(None))
+                | (func.lower(func.trim(Company.city)) == search_city)
+            )
+
     base_q = apply_filters(base_q, flt)
 
     count_q = select(func.count()).select_from(base_q.subquery())
