@@ -72,6 +72,11 @@ class Company(Base):
     # создания сайтов (блок 4 ТЗ 2026-06-02). NULL у компаний с активным
     # собственным сайтом (они не website-лиды). Сортировка NULLS LAST.
     website_lead_score = Column(SmallInteger)
+    # AI-описание компании (блок 4C ТЗ 2026-06-02). 1-2 предложения для
+    # hero/SEO будущего сайта. Генерируется в фоне Celery-таском по
+    # запросу при экспорте Excel; нулл — ещё не генерировалось.
+    ai_description = Column(Text)
+    ai_description_generated_at = Column(DateTime(timezone=True))
 
     # Контакты, обогащённые краулером сайта компании (миграция 018).
     # emails — список email-адресов, найденных на сайте.

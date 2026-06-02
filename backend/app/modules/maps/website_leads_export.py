@@ -366,11 +366,37 @@ async def build_website_leads_xlsx(
     drafts = await _load_drafts(db, ids)
     quotes_map = await _load_top_positive_quotes(db, ids, limit_per_company=3)
 
+    # Блок 4C: автотриггер — для компаний без ai_description ставим
+    # Celery-таски в фоне. Excel юзеру отдаём сразу с тем что есть;
+    # повторный экспорт через 2-3 минуты получит заполненные описания.
+    try:
+        from app.modules.maps.company_description import (
+            find_company_ids_without_description,
+        )
+        missing = await find_company_ids_without_description(db, ids)
+        if missing:
+            from app.modules.maps.tasks import generate_company_description
+            for cid in missing[:200]:  # ограничиваем чтобы не закидать очередь
+                try:
+                    generate_company_description.delay(cid)
+                except Exception as e:
+                    logger.warning(
+                        "build_website_leads_xlsx: cannot enqueue desc for #%d: %s",
+                        cid, e,
+                    )
+            logger.info(
+                "build_website_leads_xlsx: enqueued %d description tasks",
+                min(len(missing), 200),
+            )
+    except Exception:
+        logger.exception("description auto-enqueue failed (non-fatal)")
+
     rows: list[tuple[Company, dict]] = []
     for c in companies:
         ctx = {
             "draft": drafts.get(c.id),
             "quotes": quotes_map.get(c.id, []),
+            "ai_description": c.ai_description or "",
         }
         rows.append((c, ctx))
 

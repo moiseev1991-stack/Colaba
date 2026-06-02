@@ -638,6 +638,54 @@ async def outreach_draft_for_company(
 
 
 # ---------------------------------------------------------------------------
+# Admin: queue AI-descriptions for website leads (блок 4C ТЗ 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/admin/queue-descriptions")
+@limiter.limit("5/minute")
+async def admin_queue_company_descriptions(
+    request: Request,
+    search_id: int | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=2000),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ставит Celery-таски на генерацию ai_description для website-лидов.
+
+    Параметры:
+      - search_id (опционально): только компании из конкретного поиска;
+        без него — глобально (любые website-лиды без описания).
+      - limit: сколько тасков поставить за один вызов.
+
+    Полезно для разового прогрева перед первым экспортом Excel.
+    """
+    from app.modules.maps.tasks import generate_company_description
+
+    stmt = (
+        select(Company.id)
+        .where(Company.ai_description.is_(None))
+        .where(Company.website_lead_score.isnot(None))
+        .limit(limit)
+    )
+    if search_id is not None:
+        from app.models.maps import MapSearchResult
+        stmt = stmt.join(
+            MapSearchResult, MapSearchResult.company_id == Company.id
+        ).where(MapSearchResult.map_search_id == search_id)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    queued = 0
+    for cid in rows:
+        try:
+            generate_company_description.delay(int(cid))
+            queued += 1
+        except Exception as e:
+            logger.warning("queue desc enqueue failed for #%s: %s", cid, e)
+    return {"queued": queued}
+
+
+# ---------------------------------------------------------------------------
 # Website leads Excel export (блок 4 ТЗ 2026-06-02)
 # ---------------------------------------------------------------------------
 

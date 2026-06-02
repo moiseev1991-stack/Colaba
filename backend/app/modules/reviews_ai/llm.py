@@ -26,6 +26,7 @@ from app.models.ai_assistant import AiAssistant
 from app.modules.ai_assistants.client import chat
 from app.modules.reviews_ai.prompts import (
     CLUSTER_NAMING_PROMPT,
+    COMPANY_DESCRIPTION_PROMPT,
     OUTREACH_ANGLE_HINTS,
     OUTREACH_DRAFT_PROMPT,
     OUTREACH_LANGUAGE_HINTS,
@@ -35,7 +36,9 @@ from app.modules.reviews_ai.prompts import (
 
 logger = logging.getLogger(__name__)
 
-AssistantKind = Literal["sentiment", "naming", "outreach_draft", "custom_analysis"]
+AssistantKind = Literal[
+    "sentiment", "naming", "outreach_draft", "custom_analysis", "company_description"
+]
 
 
 # ---------------------------------------------------------------------------
@@ -45,10 +48,11 @@ AssistantKind = Literal["sentiment", "naming", "outreach_draft", "custom_analysi
 
 # Подсказки для auto-pick: какие имена модели предпочесть.
 _KIND_HINTS: dict[AssistantKind, list[str]] = {
-    "sentiment":        ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
-    "naming":           ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
-    "outreach_draft":   ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback на mini
-    "custom_analysis":  ["gpt-4o-mini", "haiku", "lite"],     # лёгкая модель — много запросов
+    "sentiment":           ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
+    "naming":              ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
+    "outreach_draft":      ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback
+    "custom_analysis":     ["gpt-4o-mini", "haiku", "lite"],     # лёгкая модель
+    "company_description": ["gpt-4o-mini", "haiku", "lite"],     # короткий текст — дёшево
 }
 
 
@@ -65,6 +69,11 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
         explicit = (settings.REVIEWS_AI_NAMING_ASSISTANT_NAME or "").strip()
     elif kind == "outreach_draft":
         explicit = (settings.REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME or "").strip()
+    elif kind == "company_description":
+        explicit = getattr(
+            settings, "REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME", ""
+        )
+        explicit = (explicit or "reviews_ai_company_description").strip()
     else:  # custom_analysis — нет отдельной env, всегда auto-pick
         explicit = ""
 
@@ -324,6 +333,62 @@ async def call_llm_outreach_draft(
     if not subject or not body:
         return None
     return {"subject": subject[:500], "body": body}
+
+
+async def call_llm_company_description(
+    db: AsyncSession,
+    *,
+    company_name: str,
+    niche: str,
+    city: str,
+    rating: float | None,
+    reviews_count: int | None,
+    positive_quotes: list[str],
+) -> str | None:
+    """Возвращает короткое описание компании (1-2 предложения, до 220 chars)
+    для hero/SEO нового сайта. None — если ассистент недоступен или LLM
+    отдал пустоту/невалидный JSON.
+
+    positive_quotes — 2-5 коротких позитивных отзывов клиентов.
+    """
+    assistant_id = await pick_assistant_id(db, "company_description")
+    if assistant_id is None:
+        logger.info("call_llm_company_description: no assistant available")
+        return None
+
+    quotes_block = (
+        "\n".join(f"- «{q.strip()}»" for q in positive_quotes[:5] if q and q.strip())
+        or "(нет позитивных цитат — опирайся только на рубрику)"
+    )
+
+    prompt = COMPANY_DESCRIPTION_PROMPT.format(
+        company_name=company_name or "—",
+        niche=niche or "—",
+        city=city or "—",
+        rating=f"{rating:.1f}" if rating is not None else "—",
+        reviews_count=int(reviews_count or 0),
+        positive_quotes=quotes_block,
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt}],
+            db=db,
+            max_tokens=300,
+            temperature=0.5,
+        )
+    except Exception as e:
+        logger.warning("call_llm_company_description: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, dict):
+        return None
+    desc = (data.get("description") or "").strip()
+    if not desc:
+        return None
+    # Hard-cap 280 chars — модель иногда промахивается.
+    return desc[:280]
 
 
 # ---------------------------------------------------------------------------

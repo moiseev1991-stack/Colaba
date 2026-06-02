@@ -706,6 +706,46 @@ def enrich_company_from_2gis_html(self, company_id: int):
 
 
 # ---------------------------------------------------------------------------
+# AI-описание компании (блок 4C ТЗ 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+async def _generate_company_description_async(company_id: int) -> dict:
+    """Wrapper для Celery: тянет компанию + цитаты, дёргает LLM, пишет в БД."""
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.company_description import generate_for_company
+        desc = await generate_for_company(db, company_id, force=False)
+        return {
+            "company_id": company_id,
+            "status": "ok" if desc else "skip_or_failed",
+            "length": len(desc) if desc else 0,
+        }
+
+
+@celery_app.task(
+    name="generate_company_description",
+    queue="maps",  # Используем существующую очередь, не плодим новые (worker
+                   # стартует с явным -Q maps,maps_2gis_html,maps_reviews,...).
+    bind=True,
+    max_retries=1,
+    rate_limit="60/m",  # ProxyAPI обычно держит, но без агрессии
+)
+def generate_company_description(self, company_id: int):
+    """Генерирует ai_description для одной компании. См. company_description.py.
+
+    Используется автотриггером при экспорте Excel (для website-лидов без
+    описания) и admin endpoint /maps/admin/queue-descriptions.
+    """
+    try:
+        return asyncio.run(_generate_company_description_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "generate_company_description retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
 # bulk re-enrich — для разового прогона существующих компаний на проде
 # ---------------------------------------------------------------------------
 
