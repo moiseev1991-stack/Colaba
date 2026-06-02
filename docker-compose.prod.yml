@@ -64,6 +64,9 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
       REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
+      # Блок 2 ТЗ 2026-06-02: юр.данные через DaData (free tier 10k/день).
+      DADATA_API_KEY: ${DADATA_API_KEY:-}
+      DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       YANDEX_XML_FOLDER_ID: ${YANDEX_XML_FOLDER_ID}
@@ -119,6 +122,9 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
       REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
+      # Блок 2 ТЗ 2026-06-02: юр.данные через DaData (free tier 10k/день).
+      DADATA_API_KEY: ${DADATA_API_KEY:-}
+      DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -151,6 +157,12 @@ services:
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
+      # Блок 2 ТЗ 2026-06-02: DaData (для enrich_company_legal-таски).
+      DADATA_API_KEY: ${DADATA_API_KEY:-}
+      DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
+      # LLM для reviews_ai в search-worker (sentiment может дёргаться отсюда).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
     depends_on:
       postgres:
         condition: service_healthy
