@@ -638,6 +638,34 @@ async def outreach_draft_for_company(
 
 
 # ---------------------------------------------------------------------------
+# Heatmap (блок 5 ТЗ 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/heatmap")
+@limiter.limit("60/minute")
+async def get_heatmap(
+    request: Request,
+    search_id: int = Query(...),
+    layer: str = Query(default="density"),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает массив точек {lat, lng, weight} для Leaflet.heat.
+
+    layer — один из density / pain / website / rating / wealth. Подробнее
+    см. docstring app/modules/maps/heatmap.py.
+    """
+    if layer not in ("density", "pain", "website", "rating", "wealth"):
+        raise HTTPException(status_code=400, detail=f"unknown layer: {layer}")
+
+    from app.modules.maps.heatmap import build_points
+
+    points = await build_points(db, search_id, layer)  # type: ignore[arg-type]
+    return {"layer": layer, "points": points, "count": len(points)}
+
+
+# ---------------------------------------------------------------------------
 # Admin: queue AI-descriptions for website leads (блок 4C ТЗ 2026-06-02)
 # ---------------------------------------------------------------------------
 
