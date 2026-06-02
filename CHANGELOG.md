@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.35.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.1...v1.35.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** утечка городов — Чайка в Кунцево не попадает в Балашиху ([3cd4ece](https://github.com/moiseev1991-stack/Colaba/commit/3cd4ece93b191a59bd32a8f5a1a7d4d69325059b))
+
 ## [1.35.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.0...v1.35.1) (2026-06-02)
 
 
