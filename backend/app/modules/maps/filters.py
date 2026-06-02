@@ -113,6 +113,8 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         query = query.order_by(Company.reviews_count.desc())
     elif sort_by == "negative_desc":
         query = query.order_by(Company.reviews_negative_count.desc())
+    elif sort_by == "temperature_desc":
+        query = query.order_by(Company.lead_temperature.desc().nullslast())
     elif sort_by == "pain_desc" and pain_sort_active:
         # Сортировка по сумме mention_count через подзапрос — корректно
         # отрабатывает даже если у компании несколько тегов из фильтра.

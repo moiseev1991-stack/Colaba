@@ -19,6 +19,7 @@ export type SortBy =
   | 'reviews_desc'
   | 'negative_desc'
   | 'pain_desc'
+  | 'temperature_desc'
   // UI-only сортировки. Бэк про них не знает (sort_by там Literal-enum),
   // поэтому в запросах подменяем на rating_desc и сортируем результат на
   // клиенте по aiAnalyses[company_id].score.
@@ -152,6 +153,8 @@ export interface CompanyOut {
   emails?: string[] | null;
   contacts_extra?: Record<string, unknown> | null;
   top_pains?: CompanyPainOut[];
+  /** Lead temperature (0..100). null = пересчёт ещё не прогонялся. */
+  lead_temperature?: number | null;
 }
 
 export interface OutreachDraftOut {

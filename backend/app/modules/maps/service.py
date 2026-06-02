@@ -381,6 +381,18 @@ async def save_companies_batch(
         if company is not None:
             saved.append(company)
 
+    # Lead temperature (блок 3 ТЗ 2026-06-02). Пересчитываем сразу после
+    # upsert — на этом этапе rating/reviews_count/контакты уже актуальные.
+    # Реальные значения last_review_at и owner_replies могут уточниться
+    # после save_reviews_batch — там вызывается отдельный recompute.
+    if saved:
+        from app.modules.maps.lead_temperature import recompute_for_companies
+        try:
+            await recompute_for_companies(db, [c.id for c in saved])
+        except Exception:
+            # Скоринг не должен ломать save — логируем и идём дальше.
+            logger.exception("lead_temperature recompute failed for batch")
+
     await db.commit()
     return saved
 
@@ -474,6 +486,18 @@ async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
         {"cid": company_id},
     )
     await db.commit()
+
+    # Lead temperature зависит от last_review_at / reviews_count /
+    # has_owner_replies — все только что обновлены. Пересчитываем сейчас.
+    try:
+        from app.modules.maps.lead_temperature import recompute_for_company
+        await recompute_for_company(db, company_id)
+        await db.commit()
+    except Exception:
+        logger.exception(
+            "lead_temperature recompute failed for company_id=%s after aggregates",
+            company_id,
+        )
 
 
 # ---------------------------------------------------------------------------

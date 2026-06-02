@@ -640,6 +640,7 @@ export function MapsFiltersPanel({
           <option value="reviews_desc">Больше отзывов</option>
           <option value="negative_desc">Больше негатива</option>
           <option value="pain_desc">По упоминаниям болей</option>
+          <option value="temperature_desc">🔥 Температура лида ↓</option>
           {aiActive && (
             <>
               <option value="ai_score_desc">AI score ↓ (готовые сверху)</option>

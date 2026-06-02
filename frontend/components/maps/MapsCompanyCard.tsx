@@ -105,11 +105,26 @@ export function MapsCompanyCard({
             <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{fullAddress}</div>
           )}
         </div>
-        {company.rating != null && (
-          <span className={cn('app-badge shrink-0', ratingBadgeClass)}>
-            ★ {Number(company.rating).toFixed(1)}
-          </span>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {company.rating != null && (
+            <span className={cn('app-badge', ratingBadgeClass)}>
+              ★ {Number(company.rating).toFixed(1)}
+            </span>
+          )}
+          {/* Бейдж lead_temperature (блок 3 ТЗ). Показываем только когда
+              значение посчитано (после первого пересчёта). Цвет — по диапазону. */}
+          {typeof company.lead_temperature === 'number' && (
+            <span
+              className={cn(
+                'rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
+                temperatureClass(company.lead_temperature)
+              )}
+              title="Температура лида: связка рейтинг + отзывы + свежесть + контакты"
+            >
+              🔥 {company.lead_temperature}
+            </span>
+          )}
+        </div>
       </div>
 
       {aiAnalysis && (
@@ -336,6 +351,19 @@ function ratingClass(rating: number | null | undefined): string {
   if (rating >= 4.3) return 'app-badge-success';
   if (rating <= 3.5) return 'app-badge-danger';
   return 'app-badge-accent';
+}
+
+/** Цвет бейджа температуры лида 0-100.
+ *  70+ — горячий (красный), 40-69 — тёплый (жёлтый), 0-39 — холодный (серый).
+ *  Шкала из ТЗ блока 3 (2026-06-02). */
+function temperatureClass(t: number): string {
+  if (t >= 70) {
+    return 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:ring-rose-700/50';
+  }
+  if (t >= 40) {
+    return 'bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-700/50';
+  }
+  return 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700';
 }
 
 function sourceLabel(source: string | null | undefined): string {

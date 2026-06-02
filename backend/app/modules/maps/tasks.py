@@ -525,6 +525,20 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
             )
         )
         await db.commit()
+
+        # Lead temperature (блок 3 ТЗ 2026-06-02). После обогащения контактов
+        # компонент has_phone / has_email_or_messenger мог измениться —
+        # перешитываем кэш скоринга.
+        try:
+            from app.modules.maps.lead_temperature import recompute_for_company
+            await recompute_for_company(db, company_id)
+            await db.commit()
+        except Exception:
+            logger.exception(
+                "lead_temperature recompute failed after enrich_company_contacts (#%d)",
+                company_id,
+            )
+
         return {
             "status": "ok",
             "emails": len(result.emails),
@@ -641,6 +655,19 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
             )
         )
         await db.commit()
+
+        # Lead temperature (блок 3 ТЗ 2026-06-02). После 2GIS-обогащения
+        # phone/website/мессенджеры могли появиться — пересчитываем кэш.
+        try:
+            from app.modules.maps.lead_temperature import recompute_for_company
+            await recompute_for_company(db, company_id)
+            await db.commit()
+        except Exception:
+            logger.exception(
+                "lead_temperature recompute failed after enrich_company_from_2gis_html (#%d)",
+                company_id,
+            )
+
         return {
             "status": "ok",
             "phones_found": len(result.phones),

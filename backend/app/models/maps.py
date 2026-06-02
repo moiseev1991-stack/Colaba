@@ -63,6 +63,12 @@ class Company(Base):
     last_review_at = Column(DateTime(timezone=True))
     raw_data = Column(JSONB)
 
+    # Lead temperature (0-100) — кэш скоринга «горячести» лида.
+    # Пересчитывается lead_temperature.recompute_for_company после изменений
+    # карточки (новые отзывы / новые контакты / новый рейтинг). nullable
+    # для свеже-спарсенных компаний; в выдаче сортируем NULLS LAST.
+    lead_temperature = Column(SmallInteger)
+
     # Контакты, обогащённые краулером сайта компании (миграция 018).
     # emails — список email-адресов, найденных на сайте.
     # contacts_extra — доп. телефоны / vk / telegram / whatsapp (если найдены).

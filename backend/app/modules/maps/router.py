@@ -638,6 +638,53 @@ async def outreach_draft_for_company(
 
 
 # ---------------------------------------------------------------------------
+# Admin: lead temperature recompute
+# ---------------------------------------------------------------------------
+
+
+@router.post("/admin/recompute-temperature")
+@limiter.limit("2/minute")
+async def admin_recompute_lead_temperature(
+    request: Request,
+    only_null: bool = Query(default=True),
+    limit: int = Query(default=2000, ge=1, le=10000),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Одноразовый пересчёт lead_temperature для пачки компаний.
+
+    Используется после миграции 024 чтобы прогреть кэш у уже спарсенных
+    компаний (новые компании заполняются автоматически в save_companies_batch
+    и в enrich-тасках).
+
+    only_null=true — только компании с NULL (дефолт, не трогает уже
+    посчитанные). limit ограничивает размер партии — повторяй несколько
+    раз если компаний много.
+    """
+    from sqlalchemy import select as sa_select
+
+    from app.modules.maps.lead_temperature import recompute_for_companies
+
+    stmt = sa_select(Company.id)
+    if only_null:
+        stmt = stmt.where(Company.lead_temperature.is_(None))
+    stmt = stmt.limit(limit)
+    rows = (await db.execute(stmt)).scalars().all()
+    if not rows:
+        return {"processed": 0, "remaining_estimate": 0}
+
+    processed = await recompute_for_companies(db, list(rows))
+    await db.commit()
+
+    # Грубая оценка остатка для удобства повторных вызовов из UI/curl.
+    remaining_stmt = sa_select(sa_func.count(Company.id))
+    if only_null:
+        remaining_stmt = remaining_stmt.where(Company.lead_temperature.is_(None))
+    remaining = (await db.execute(remaining_stmt)).scalar() or 0
+    return {"processed": processed, "remaining_estimate": int(remaining)}
+
+
+# ---------------------------------------------------------------------------
 # Metadata
 # ---------------------------------------------------------------------------
 

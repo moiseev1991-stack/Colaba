@@ -72,6 +72,9 @@ SortBy = Literal[
     "reviews_desc",
     "negative_desc",
     "pain_desc",
+    # Блок 3 ТЗ 2026-06-02: сортировка по кэшированному lead_temperature
+    # (companies.lead_temperature). NULL-значения уходят в конец.
+    "temperature_desc",
 ]
 
 
@@ -202,6 +205,10 @@ class CompanyOut(BaseModel):
     owner_replies_count: int = 0
     last_review_at: datetime | None = None
     source: str
+    # Lead temperature 0-100 — кэшированный скор «горячести» лида.
+    # NULL = пересчёт ещё не прогонялся (например свеже-спарсенная компания
+    # до завершения reviews/contacts).
+    lead_temperature: int | None = None
     # external_id 2GIS/Я.Карт — нужен для deeplink в их карточки из
     # UI (например, https://2gis.ru/firm/{external_id}). Не nullable
     # в БД, но мы оставляем optional для бэк-совместимости со старыми
