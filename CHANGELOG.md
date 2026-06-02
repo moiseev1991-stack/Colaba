@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.28.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.4...v1.28.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** блок 1 — драфт письма с углами + кэш (aha-moment) ([d5b0fd7](https://github.com/moiseev1991-stack/Colaba/commit/d5b0fd7bd86a60f678151a8bb6fe18c797c2b769))
+
 ## [1.27.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.3...v1.27.4) (2026-06-02)
 
 
