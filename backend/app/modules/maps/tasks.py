@@ -526,16 +526,18 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
         )
         await db.commit()
 
-        # Lead temperature (блок 3 ТЗ 2026-06-02). После обогащения контактов
-        # компонент has_phone / has_email_or_messenger мог измениться —
-        # перешитываем кэш скоринга.
+        # Lead temperature (блок 3) + website_lead_score (блок 4). После
+        # обогащения контактов phone/email/мессенджеры могли появиться —
+        # оба скора пересчитываются.
         try:
-            from app.modules.maps.lead_temperature import recompute_for_company
-            await recompute_for_company(db, company_id)
+            from app.modules.maps.lead_temperature import recompute_for_company as _rt
+            from app.modules.maps.website_lead_score import recompute_for_company as _rw
+            await _rt(db, company_id)
+            await _rw(db, company_id)
             await db.commit()
         except Exception:
             logger.exception(
-                "lead_temperature recompute failed after enrich_company_contacts (#%d)",
+                "scores recompute failed after enrich_company_contacts (#%d)",
                 company_id,
             )
 
@@ -656,15 +658,18 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
         )
         await db.commit()
 
-        # Lead temperature (блок 3 ТЗ 2026-06-02). После 2GIS-обогащения
-        # phone/website/мессенджеры могли появиться — пересчитываем кэш.
+        # Lead temperature (блок 3) + website_lead_score (блок 4). После
+        # 2GIS-обогащения phone/website/мессенджеры могли появиться. Особенно
+        # важно для website_score: появление website → score становится NULL.
         try:
-            from app.modules.maps.lead_temperature import recompute_for_company
-            await recompute_for_company(db, company_id)
+            from app.modules.maps.lead_temperature import recompute_for_company as _rt
+            from app.modules.maps.website_lead_score import recompute_for_company as _rw
+            await _rt(db, company_id)
+            await _rw(db, company_id)
             await db.commit()
         except Exception:
             logger.exception(
-                "lead_temperature recompute failed after enrich_company_from_2gis_html (#%d)",
+                "scores recompute failed after enrich_company_from_2gis_html (#%d)",
                 company_id,
             )
 

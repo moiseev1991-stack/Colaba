@@ -638,6 +638,61 @@ async def outreach_draft_for_company(
 
 
 # ---------------------------------------------------------------------------
+# Website leads Excel export (блок 4 ТЗ 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/website-leads/export")
+@limiter.limit("10/minute")
+async def export_website_leads_xlsx(
+    request: Request,
+    search_id: int = Query(...),
+    only_website_leads: bool = Query(default=True),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Скачивание .xlsx с двумя вкладками: «Лиды» + «Производство сайта».
+
+    - only_website_leads=true (дефолт): только компании без собственного
+      сайта (website_lead_score IS NOT NULL).
+    - only_website_leads=false: все компании поиска (общий экспорт).
+
+    Файл собирается серверно openpyxl'ом, отдаётся как поток.
+    """
+    from fastapi.responses import Response
+    from urllib.parse import quote
+
+    from app.models.maps import MapSearch
+    from app.modules.maps.website_leads_export import (
+        build_filename,
+        build_website_leads_xlsx,
+    )
+
+    # Проверяем что поиск существует — иначе 404.
+    search_obj = await db.get(MapSearch, search_id)
+    if search_obj is None:
+        raise HTTPException(status_code=404, detail="search not found")
+
+    blob = await build_website_leads_xlsx(
+        db, search_id, only_website_leads=only_website_leads
+    )
+    filename = build_filename(search_obj)
+    return Response(
+        content=blob,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            # RFC 5987 для кириллицы в имени.
+            "Content-Disposition": (
+                f"attachment; filename*=UTF-8''{quote(filename)}"
+            ),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Admin: lead temperature recompute
 # ---------------------------------------------------------------------------
 
@@ -680,6 +735,45 @@ async def admin_recompute_lead_temperature(
     remaining_stmt = sa_select(sa_func.count(Company.id))
     if only_null:
         remaining_stmt = remaining_stmt.where(Company.lead_temperature.is_(None))
+    remaining = (await db.execute(remaining_stmt)).scalar() or 0
+    return {"processed": processed, "remaining_estimate": int(remaining)}
+
+
+@router.post("/admin/recompute-website-score")
+@limiter.limit("2/minute")
+async def admin_recompute_website_score(
+    request: Request,
+    only_null: bool = Query(default=True),
+    limit: int = Query(default=2000, ge=1, le=10000),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Одноразовый пересчёт website_lead_score (блок 4).
+
+    Логика та же что recompute-temperature, но для website_lead_score.
+    NB: only_null=true тут означает «компании, которым ещё не вычислили
+    score». Помни что для компаний С активным сайтом score = NULL по
+    дизайну (они не website-лиды) — в only_null режиме они каждый раз
+    будут пересчитываться (и каждый раз получать NULL), это нормально.
+    """
+    from sqlalchemy import select as sa_select
+
+    from app.modules.maps.website_lead_score import recompute_for_companies
+
+    stmt = sa_select(Company.id)
+    if only_null:
+        stmt = stmt.where(Company.website_lead_score.is_(None))
+    stmt = stmt.limit(limit)
+    rows = (await db.execute(stmt)).scalars().all()
+    if not rows:
+        return {"processed": 0, "remaining_estimate": 0}
+
+    processed = await recompute_for_companies(db, list(rows))
+    await db.commit()
+
+    remaining_stmt = sa_select(sa_func.count(Company.id))
+    if only_null:
+        remaining_stmt = remaining_stmt.where(Company.website_lead_score.is_(None))
     remaining = (await db.execute(remaining_stmt)).scalar() or 0
     return {"processed": processed, "remaining_estimate": int(remaining)}
 

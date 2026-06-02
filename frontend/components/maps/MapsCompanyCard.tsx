@@ -124,6 +124,20 @@ export function MapsCompanyCard({
               🔥 {company.lead_temperature}
             </span>
           )}
+          {/* Бейдж website_lead_score (блок 4 ТЗ). Показываем когда есть
+              значение (NULL = компания с собственным сайтом, ей продавать
+              сайт нечего — бейдж не показываем). */}
+          {typeof company.website_lead_score === 'number' && (
+            <span
+              className={cn(
+                'rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
+                temperatureClass(company.website_lead_score)
+              )}
+              title="Website-lead score: «нет сайта + бизнес живой» — кандидат на продажу сайта"
+            >
+              💼 {company.website_lead_score}
+            </span>
+          )}
         </div>
       </div>
 

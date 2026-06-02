@@ -381,17 +381,26 @@ async def save_companies_batch(
         if company is not None:
             saved.append(company)
 
-    # Lead temperature (блок 3 ТЗ 2026-06-02). Пересчитываем сразу после
-    # upsert — на этом этапе rating/reviews_count/контакты уже актуальные.
-    # Реальные значения last_review_at и owner_replies могут уточниться
-    # после save_reviews_batch — там вызывается отдельный recompute.
+    # Lead temperature (блок 3) + website_lead_score (блок 4). Пересчитываем
+    # сразу после upsert — на этом этапе rating/reviews_count/контакты уже
+    # актуальные. last_review_at/owner_replies могут уточниться после
+    # save_reviews_batch → там вызывается отдельный recompute.
     if saved:
-        from app.modules.maps.lead_temperature import recompute_for_companies
+        from app.modules.maps.lead_temperature import (
+            recompute_for_companies as recompute_temperature,
+        )
+        from app.modules.maps.website_lead_score import (
+            recompute_for_companies as recompute_website_score,
+        )
+        ids = [c.id for c in saved]
         try:
-            await recompute_for_companies(db, [c.id for c in saved])
+            await recompute_temperature(db, ids)
         except Exception:
-            # Скоринг не должен ломать save — логируем и идём дальше.
             logger.exception("lead_temperature recompute failed for batch")
+        try:
+            await recompute_website_score(db, ids)
+        except Exception:
+            logger.exception("website_lead_score recompute failed for batch")
 
     await db.commit()
     return saved
@@ -487,15 +496,18 @@ async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
     )
     await db.commit()
 
-    # Lead temperature зависит от last_review_at / reviews_count /
-    # has_owner_replies — все только что обновлены. Пересчитываем сейчас.
+    # Lead temperature (блок 3) и website_lead_score (блок 4) зависят от
+    # last_review_at / reviews_count / has_owner_replies — все только что
+    # обновлены. Пересчитываем оба.
     try:
-        from app.modules.maps.lead_temperature import recompute_for_company
-        await recompute_for_company(db, company_id)
+        from app.modules.maps.lead_temperature import recompute_for_company as _rt
+        from app.modules.maps.website_lead_score import recompute_for_company as _rw
+        await _rt(db, company_id)
+        await _rw(db, company_id)
         await db.commit()
     except Exception:
         logger.exception(
-            "lead_temperature recompute failed for company_id=%s after aggregates",
+            "temperature/website_score recompute failed for company_id=%s after aggregates",
             company_id,
         )
 

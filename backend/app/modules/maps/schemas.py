@@ -75,6 +75,9 @@ SortBy = Literal[
     # Блок 3 ТЗ 2026-06-02: сортировка по кэшированному lead_temperature
     # (companies.lead_temperature). NULL-значения уходят в конец.
     "temperature_desc",
+    # Блок 4 ТЗ 2026-06-02: сортировка по website_lead_score. NULL =
+    # у компании есть свой сайт (она не website-лид), уходит в конец.
+    "website_score_desc",
 ]
 
 
@@ -209,6 +212,9 @@ class CompanyOut(BaseModel):
     # NULL = пересчёт ещё не прогонялся (например свеже-спарсенная компания
     # до завершения reviews/contacts).
     lead_temperature: int | None = None
+    # Website lead score 0-100 — скор под продажу создания сайта.
+    # NULL = у компании есть собственный активный сайт (не website-лид).
+    website_lead_score: int | None = None
     # external_id 2GIS/Я.Карт — нужен для deeplink в их карточки из
     # UI (например, https://2gis.ru/firm/{external_id}). Не nullable
     # в БД, но мы оставляем optional для бэк-совместимости со старыми

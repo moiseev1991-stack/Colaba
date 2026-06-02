@@ -1,0 +1,395 @@
+"""Excel-экспорт website-лидов (блок 4 ТЗ 2026-06-02).
+
+Генерирует .xlsx с двумя вкладками:
+- «Лиды» — для отдела продаж: контакты + ИНН + website-score + драфт письма.
+- «Производство сайта» — для верстальщика/генератора сайтов: AI-описание,
+  адрес/координаты, часы работы, фото URLs, логотип URL, топ-цитаты, etc.
+
+Использует openpyxl (см. requirements.txt). Если ассистент AI-описания
+ещё не подключён — соответствующая колонка остаётся пустой (TODO в части C).
+
+Возвращает байты .xlsx-файла; вызывающий endpoint оборачивает в
+StreamingResponse с правильным Content-Disposition.
+"""
+
+from __future__ import annotations
+
+import io
+import logging
+from datetime import datetime
+from typing import Any
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.lead_list import LeadList  # noqa: F401  (для будущего расширения)
+from app.models.maps import Company, MapSearch, MapSearchResult, Review
+from app.models.company_outreach_draft import CompanyOutreachDraft
+from app.modules.maps import service as maps_service
+
+
+logger = logging.getLogger(__name__)
+
+
+_HEADER_FONT = Font(bold=True, color="FFFFFF")
+_HEADER_FILL = PatternFill("solid", fgColor="334155")  # slate-700
+_SCORE_HOT_FILL = PatternFill("solid", fgColor="DC2626")    # red-600
+_SCORE_WARM_FILL = PatternFill("solid", fgColor="F59E0B")   # amber-500
+_SCORE_COLD_FILL = PatternFill("solid", fgColor="94A3B8")   # slate-400
+
+
+# Колонки вкладки «Лиды». (header, getter-callable, width, formatter)
+def _build_leads_columns():
+    return [
+        ("Название", "name", 36, None),
+        ("Город", "city", 18, None),
+        ("Рубрика", "niche", 22, None),
+        ("Телефон", "phone", 16, None),
+        ("Email", "email_first", 28, None),
+        ("Мессенджеры", "messengers", 22, None),
+        ("Рейтинг", "rating", 8, None),
+        ("Отзывов", "reviews_count", 9, None),
+        ("Негатив", "reviews_negative_count", 9, None),
+        ("Отвечает", "has_owner_replies", 10, None),
+        ("Адрес", "address", 36, None),
+        ("ИНН", "legal_inn", 14, None),
+        ("Юр.название", "legal_name", 32, None),
+        ("Оборот", "legal_revenue", 14, None),
+        ("Возраст (лет)", "legal_age", 12, None),
+        ("Website-score", "website_lead_score", 12, "score"),
+        ("Температура", "lead_temperature", 12, "score"),
+        ("Ссылка на 2GIS/Я.Карты", "source_url", 40, None),
+        ("Тема письма", "draft_subject", 40, None),
+        ("Тело письма", "draft_body", 60, "wrap"),
+    ]
+
+
+def _build_production_columns():
+    return [
+        ("Название", "name", 36, None),
+        ("Рубрика", "niche", 22, None),
+        ("AI-описание (для hero/SEO)", "ai_description", 60, "wrap"),
+        ("Город", "city", 18, None),
+        ("Адрес", "address", 40, None),
+        ("Lat", "lat", 12, None),
+        ("Lng", "lng", 12, None),
+        ("Часы работы", "working_hours", 32, "wrap"),
+        ("Телефон", "phone", 16, None),
+        ("Email", "email_first", 28, None),
+        ("Мессенджеры", "messengers", 22, None),
+        ("Рейтинг", "rating", 8, None),
+        ("Отзывов", "reviews_count", 9, None),
+        ("Цитата 1", "quote_1", 60, "wrap"),
+        ("Цитата 2", "quote_2", 60, "wrap"),
+        ("Цитата 3", "quote_3", 60, "wrap"),
+        ("Фото URLs", "photos", 60, "wrap"),
+        ("Логотип URL", "logo_url", 60, None),
+        ("Ссылка на источник", "source_url", 40, None),
+    ]
+
+
+def _score_fill(value: Any):
+    if not isinstance(value, (int, float)):
+        return None
+    if value >= 70:
+        return _SCORE_HOT_FILL
+    if value >= 40:
+        return _SCORE_WARM_FILL
+    return _SCORE_COLD_FILL
+
+
+def _build_source_deeplink(company: Company) -> str:
+    src = (company.source or "").lower()
+    ext = company.external_id or ""
+    if not ext:
+        return ""
+    if src == "2gis":
+        return f"https://2gis.ru/firm/{ext}"
+    if src == "yandex_maps":
+        return f"https://yandex.ru/maps/org/{ext}"
+    return ""
+
+
+def _extract_working_hours(c: Company) -> str:
+    """Часы работы из raw_data провайдера (2GIS отдаёт schedule)."""
+    raw = c.raw_data if isinstance(c.raw_data, dict) else None
+    if not raw:
+        return ""
+    # 2GIS: items[].schedule
+    sched = raw.get("schedule")
+    if isinstance(sched, dict):
+        parts = []
+        for day, val in sched.items():
+            if isinstance(val, dict):
+                hours = val.get("working_hours") or val.get("hours")
+                if isinstance(hours, list) and hours:
+                    parts.append(f"{day}: " + ", ".join(
+                        f"{h.get('from','?')}–{h.get('to','?')}" for h in hours
+                    ))
+        if parts:
+            return "\n".join(parts)
+    return ""
+
+
+def _extract_photos(c: Company) -> list[str]:
+    """Список URLs фото из raw_data (2GIS отдаёт photos.items)."""
+    raw = c.raw_data if isinstance(c.raw_data, dict) else None
+    if not raw:
+        return []
+    urls: list[str] = []
+    photos = raw.get("photos") or raw.get("external_content")
+    # 2GIS: photos.items[].main_photo_url
+    if isinstance(photos, dict):
+        items = photos.get("items") or photos.get("data") or []
+        if isinstance(items, list):
+            for it in items[:20]:
+                if isinstance(it, dict):
+                    url = (
+                        it.get("main_photo_url")
+                        or it.get("photo_url")
+                        or it.get("url")
+                    )
+                    if isinstance(url, str) and url.startswith("http"):
+                        urls.append(url)
+    return urls
+
+
+def _extract_logo_url(c: Company) -> str:
+    """Лого: 2GIS отдаёт logo в external_content. Если нет — пусто."""
+    raw = c.raw_data if isinstance(c.raw_data, dict) else None
+    if not isinstance(raw, dict):
+        return ""
+    for key in ("logo", "logo_url", "icon"):
+        v = raw.get(key)
+        if isinstance(v, str) and v.startswith("http"):
+            return v
+    # Иногда логотип хранится в external_content.brand
+    ec = raw.get("external_content")
+    if isinstance(ec, dict):
+        brand = ec.get("brand")
+        if isinstance(brand, dict):
+            url = brand.get("logo_url") or brand.get("url")
+            if isinstance(url, str) and url.startswith("http"):
+                return url
+    return ""
+
+
+async def _load_companies_for_search(
+    db: AsyncSession, search_id: int, only_website_leads: bool
+) -> list[Company]:
+    """Тянет все компании поиска. only_website_leads=True — только те, у
+    кого website_lead_score IS NOT NULL (то есть нет собственного сайта)."""
+    stmt = (
+        select(Company)
+        .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+        .where(MapSearchResult.map_search_id == search_id)
+        .order_by(MapSearchResult.position.asc())
+    )
+    if only_website_leads:
+        stmt = stmt.where(Company.website_lead_score.isnot(None))
+    res = await db.execute(stmt)
+    return list(res.scalars().all())
+
+
+async def _load_drafts(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, CompanyOutreachDraft]:
+    """Кэшированные drafts писем по компаниям (любой angle, берём свежее)."""
+    if not company_ids:
+        return {}
+    stmt = (
+        select(CompanyOutreachDraft)
+        .where(CompanyOutreachDraft.company_id.in_(company_ids))
+        .order_by(
+            CompanyOutreachDraft.company_id.asc(),
+            CompanyOutreachDraft.updated_at.desc(),
+        )
+    )
+    res = await db.execute(stmt)
+    drafts: dict[int, CompanyOutreachDraft] = {}
+    for d in res.scalars().all():
+        if d.company_id not in drafts:
+            drafts[d.company_id] = d
+    return drafts
+
+
+async def _load_top_positive_quotes(
+    db: AsyncSession, company_ids: list[int], limit_per_company: int = 3
+) -> dict[int, list[str]]:
+    """Топ позитивных цитат по компаниям — для блока «Отзывы» на сайте.
+
+    Берём positive-отзывы с непустым raw_text, по убыванию длины (но не
+    >280 chars), уникальные.
+    """
+    if not company_ids:
+        return {}
+    out: dict[int, list[str]] = {}
+    for cid in company_ids:
+        stmt = (
+            select(Review.raw_text)
+            .where(Review.company_id == cid)
+            .where(Review.sentiment == "positive")
+            .where(Review.raw_text.isnot(None))
+            .order_by(Review.posted_at.desc().nullslast())
+            .limit(20)
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+        clean: list[str] = []
+        seen: set[str] = set()
+        for r in rows:
+            t = (r or "").strip().replace("\n", " ")
+            if not t or len(t) < 20:
+                continue
+            t = t[:280]
+            if t in seen:
+                continue
+            seen.add(t)
+            clean.append(t)
+            if len(clean) >= limit_per_company:
+                break
+        if clean:
+            out[cid] = clean
+    return out
+
+
+def _row_value(field: str, c: Company, ctx: dict) -> Any:
+    """Достаёт значение для колонки. ctx содержит дополнительные данные
+    (draft / quotes / legal_*), которые нельзя прочесть из самой Company."""
+    if field == "email_first":
+        emails = c.emails if isinstance(c.emails, list) else []
+        return emails[0] if emails else ""
+    if field == "messengers":
+        extra = c.contacts_extra if isinstance(c.contacts_extra, dict) else {}
+        parts = []
+        for key, prefix in (
+            ("telegrams", "tg"),
+            ("whatsapps", "wa"),
+            ("vks", "vk"),
+        ):
+            v = extra.get(key) if isinstance(extra, dict) else None
+            if isinstance(v, list) and v:
+                parts.append(f"{prefix}:{v[0]}")
+        return ", ".join(parts)
+    if field == "has_owner_replies":
+        return "да" if c.has_owner_replies else "нет"
+    if field == "rating":
+        return float(c.rating) if c.rating is not None else None
+    if field == "lat":
+        return float(c.lat) if c.lat is not None else None
+    if field == "lng":
+        return float(c.lng) if c.lng is not None else None
+    if field == "source_url":
+        return _build_source_deeplink(c)
+    if field == "working_hours":
+        return _extract_working_hours(c)
+    if field == "photos":
+        urls = _extract_photos(c)
+        return "\n".join(urls)
+    if field == "logo_url":
+        return _extract_logo_url(c)
+    if field == "draft_subject":
+        d = ctx.get("draft")
+        return d.subject if d else ""
+    if field == "draft_body":
+        d = ctx.get("draft")
+        return d.body if d else ""
+    if field == "ai_description":
+        # Часть C ТЗ блока 4: AI-описание компании. Пока заглушка —
+        # будет реализована в отдельном LLM-ассистенте.
+        return ctx.get("ai_description") or ""
+    if field in ("quote_1", "quote_2", "quote_3"):
+        idx = int(field.split("_")[-1]) - 1
+        quotes = ctx.get("quotes") or []
+        return quotes[idx] if idx < len(quotes) else ""
+    if field in ("legal_inn", "legal_name", "legal_revenue", "legal_age"):
+        # Блок 2 ТЗ (DaData). Пока legal-таблицы нет — все поля пустые.
+        return ""
+    return getattr(c, field, "") or ""
+
+
+def _write_sheet(ws, columns: list[tuple], rows: list[tuple[Company, dict]]):
+    """Пишет заголовки + строки в один лист с типичным форматированием."""
+    for col_idx, (header, _field, width, _fmt) in enumerate(columns, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = _HEADER_FONT
+        cell.fill = _HEADER_FILL
+        cell.alignment = Alignment(vertical="center", horizontal="center")
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+    ws.row_dimensions[1].height = 22
+    ws.freeze_panes = "A2"
+
+    for row_idx, (company, ctx) in enumerate(rows, start=2):
+        for col_idx, (_header, field, _width, fmt) in enumerate(columns, start=1):
+            value = _row_value(field, company, ctx)
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            if fmt == "wrap":
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+            if fmt == "score":
+                fill = _score_fill(value)
+                if fill is not None:
+                    cell.fill = fill
+                    cell.font = Font(bold=True, color="FFFFFF")
+                    cell.alignment = Alignment(
+                        vertical="center", horizontal="center"
+                    )
+
+
+async def build_website_leads_xlsx(
+    db: AsyncSession,
+    search_id: int,
+    *,
+    only_website_leads: bool = True,
+) -> bytes:
+    """Главная entry-point: тянет компании, drafts, цитаты и собирает xlsx.
+
+    only_website_leads=True (дефолт) — только те, у кого score IS NOT NULL.
+    False — все компании поиска (для общего экспорта без фокуса на website).
+    """
+    companies = await _load_companies_for_search(db, search_id, only_website_leads)
+    if not companies:
+        # Возвращаем пустую книгу с заголовками — фронт получит файл, но
+        # юзер увидит пустоту и поймёт что фильтр пустой.
+        wb = Workbook()
+        wb.active.title = "Лиды"
+        ws_l = wb.active
+        ws_p = wb.create_sheet("Производство сайта")
+        _write_sheet(ws_l, _build_leads_columns(), [])
+        _write_sheet(ws_p, _build_production_columns(), [])
+        buf = io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    ids = [c.id for c in companies]
+    drafts = await _load_drafts(db, ids)
+    quotes_map = await _load_top_positive_quotes(db, ids, limit_per_company=3)
+
+    rows: list[tuple[Company, dict]] = []
+    for c in companies:
+        ctx = {
+            "draft": drafts.get(c.id),
+            "quotes": quotes_map.get(c.id, []),
+        }
+        rows.append((c, ctx))
+
+    wb = Workbook()
+    ws_l = wb.active
+    ws_l.title = "Лиды"
+    ws_p = wb.create_sheet("Производство сайта")
+    _write_sheet(ws_l, _build_leads_columns(), rows)
+    _write_sheet(ws_p, _build_production_columns(), rows)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def build_filename(search: MapSearch) -> str:
+    niche = (search.niche or "leads").replace(" ", "-")
+    city = (search.city or "").replace(" ", "-")
+    date = datetime.utcnow().strftime("%Y-%m-%d")
+    if city:
+        return f"website-leads_{niche}_{city}_{date}.xlsx"
+    return f"website-leads_{niche}_{date}.xlsx"
