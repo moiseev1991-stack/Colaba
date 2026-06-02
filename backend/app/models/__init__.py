@@ -36,6 +36,7 @@ from app.models.lead_list import LeadList, LeadListItem
 from app.models.user_filter_preset import UserFilterPreset
 from app.models.company_ai_analysis import CompanyAiAnalysis
 from app.models.company_outreach_draft import CompanyOutreachDraft
+from app.models.company_legal import CompanyLegal
 
 __all__ = [
     "User",
@@ -76,4 +77,5 @@ __all__ = [
     "UserFilterPreset",
     "CompanyAiAnalysis",
     "CompanyOutreachDraft",
+    "CompanyLegal",
 ]

@@ -42,6 +42,23 @@ def _collect_terms(single: str | None, many: list[str] | None) -> list[str]:
 def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
     """Накладывает фильтры и сортировку на Select(Company)."""
 
+    # ---- WHERE: legal (блок 2 ТЗ 2026-06-02) — добавляется JOIN
+    if filters.min_revenue is not None or filters.min_age_years is not None:
+        try:
+            from app.models.company_legal import CompanyLegal
+            from datetime import date, timedelta
+        except ImportError:
+            CompanyLegal = None  # type: ignore
+        if CompanyLegal is not None:
+            query = query.join(
+                CompanyLegal, CompanyLegal.company_id == Company.id
+            ).where(CompanyLegal.status == "ok")
+            if filters.min_revenue is not None:
+                query = query.where(CompanyLegal.revenue >= filters.min_revenue)
+            if filters.min_age_years is not None:
+                cutoff = date.today() - timedelta(days=int(filters.min_age_years * 365.25))
+                query = query.where(CompanyLegal.registration_date <= cutoff)
+
     # ---- WHERE: scalar filters
     if filters.min_rating is not None:
         query = query.where(Company.rating >= filters.min_rating)

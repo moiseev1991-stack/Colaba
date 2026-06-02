@@ -146,8 +146,18 @@ class Settings(BaseSettings):
     REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для sentiment; пусто = auto-pick по подсказке 'haiku'")
     REVIEWS_AI_NAMING_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для naming кластеров; пусто = auto-pick по подсказке 'sonnet'")
     REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для генерации драфта холодного письма; пусто = auto-pick")
+    REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для AI-описания компании (блок 4C); пусто = reviews_ai_company_description")
     REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(default=0.78, description="Cosine similarity threshold для матчинга review→pain_tag")
     REVIEWS_AI_MIN_CLUSTER_SIZE: int = Field(default=8, description="HDBSCAN min_cluster_size")
+
+    # DaData (блок 2 ТЗ 2026-06-02). Бесплатный тариф 10k запросов/день.
+    # Получить ключи: https://dadata.ru/ → личный кабинет → API.
+    DADATA_API_KEY: str = Field(default="", description="DaData API key (Authorization: Token ...)")
+    DADATA_SECRET_KEY: str = Field(default="", description="DaData Secret key (X-Secret: ...)")
+    DADATA_BASE_URL: str = Field(
+        default="https://suggestions.dadata.ru/suggestions/api/4_1/rs",
+        description="DaData base URL",
+    )
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")

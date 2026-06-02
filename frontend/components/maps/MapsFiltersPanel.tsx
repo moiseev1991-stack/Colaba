@@ -563,6 +563,55 @@ export function MapsFiltersPanel({
         </Select>
       </div>
 
+      {/* Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal */}
+      <div className="rounded-md border border-blue-200 bg-blue-50/40 p-2 dark:border-blue-700 dark:bg-blue-900/20">
+        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
+          Платёжеспособные (DaData)
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="mb-0.5 block text-[11px] text-slate-600 dark:text-slate-400">
+              Оборот от ₽
+            </label>
+            <Input
+              type="number"
+              placeholder="напр.: 5000000"
+              value={value.min_revenue ?? ''}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                onChange({
+                  ...value,
+                  min_revenue: v === '' ? null : Number(v),
+                });
+              }}
+              className="text-[12px]"
+            />
+          </div>
+          <div>
+            <label className="mb-0.5 block text-[11px] text-slate-600 dark:text-slate-400">
+              Возраст, лет
+            </label>
+            <Input
+              type="number"
+              placeholder="напр.: 2"
+              value={value.min_age_years ?? ''}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                onChange({
+                  ...value,
+                  min_age_years: v === '' ? null : Number(v),
+                });
+              }}
+              className="text-[12px]"
+            />
+          </div>
+        </div>
+        <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+          Применит JOIN company_legal — покажет только компании с
+          подтянутыми юр.данными.
+        </div>
+      </div>
+
       <div className="rounded-md border border-slate-200 bg-slate-50/40 p-2 dark:border-slate-700 dark:bg-slate-800/40">
         <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
           Слова в отзывах

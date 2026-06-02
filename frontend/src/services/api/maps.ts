@@ -61,6 +61,11 @@ export interface MapSearchFilter {
   /** Массив-форма: компания не пройдёт, если у неё есть отзыв хотя бы с
    *  ОДНИМ из слов. */
   review_text_excludes_any?: string[] | null;
+  /** Блок 2 ТЗ 2026-06-02: «Платёжеспособные». Оборот в рублях из
+   *  company_legal (DaData). Включает JOIN company_legal status='ok'. */
+  min_revenue?: number | null;
+  /** Возраст компании в полных годах от registration_date. */
+  min_age_years?: number | null;
 }
 
 export type SearchMode = 'city' | 'radius';
@@ -159,6 +164,25 @@ export interface CompanyOut {
   /** Website lead score (0..100). null = у компании есть свой сайт
    *  (она не website-лид). */
   website_lead_score?: number | null;
+  /** Юр.данные из DaData (блок 2). null если не обогащались или
+   *  matched_by=null. */
+  legal?: CompanyLegalShort | null;
+}
+
+export interface CompanyLegalShort {
+  inn?: string | null;
+  ogrn?: string | null;
+  legal_name?: string | null;
+  legal_short_name?: string | null;
+  registration_date?: string | null;
+  revenue?: number | null;
+  employee_count?: number | null;
+  legal_status?: string | null;
+  okved?: string | null;
+  okved_name?: string | null;
+  age_years?: number | null;
+  match_confidence?: number | null;
+  matched_by?: string | null;
 }
 
 export interface OutreachDraftOut {

@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.lead_list import LeadList  # noqa: F401  (для будущего расширения)
 from app.models.maps import Company, MapSearch, MapSearchResult, Review
 from app.models.company_outreach_draft import CompanyOutreachDraft
+from app.models.company_legal import CompanyLegal
 from app.modules.maps import service as maps_service
 
 
@@ -216,6 +217,20 @@ async def _load_drafts(
     return drafts
 
 
+async def _load_legal(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, CompanyLegal]:
+    """Юр.данные по компаниям (блок 2 ТЗ)."""
+    if not company_ids:
+        return {}
+    stmt = select(CompanyLegal).where(CompanyLegal.company_id.in_(company_ids))
+    res = await db.execute(stmt)
+    out: dict[int, CompanyLegal] = {}
+    for row in res.scalars().all():
+        out[int(row.company_id)] = row
+    return out
+
+
 async def _load_top_positive_quotes(
     db: AsyncSession, company_ids: list[int], limit_per_company: int = 3
 ) -> dict[int, list[str]]:
@@ -305,8 +320,17 @@ def _row_value(field: str, c: Company, ctx: dict) -> Any:
         quotes = ctx.get("quotes") or []
         return quotes[idx] if idx < len(quotes) else ""
     if field in ("legal_inn", "legal_name", "legal_revenue", "legal_age"):
-        # Блок 2 ТЗ (DaData). Пока legal-таблицы нет — все поля пустые.
-        return ""
+        legal = ctx.get("legal")
+        if legal is None or legal.status != "ok":
+            return ""
+        if field == "legal_inn":
+            return legal.inn or ""
+        if field == "legal_name":
+            return legal.legal_short_name or legal.legal_name or ""
+        if field == "legal_revenue":
+            return float(legal.revenue) if legal.revenue is not None else ""
+        if field == "legal_age":
+            return legal.age_years if legal.age_years is not None else ""
     return getattr(c, field, "") or ""
 
 
@@ -365,6 +389,7 @@ async def build_website_leads_xlsx(
     ids = [c.id for c in companies]
     drafts = await _load_drafts(db, ids)
     quotes_map = await _load_top_positive_quotes(db, ids, limit_per_company=3)
+    legal_map = await _load_legal(db, ids)
 
     # Блок 4C: автотриггер — для компаний без ai_description ставим
     # Celery-таски в фоне. Excel юзеру отдаём сразу с тем что есть;
@@ -393,10 +418,12 @@ async def build_website_leads_xlsx(
 
     rows: list[tuple[Company, dict]] = []
     for c in companies:
+        legal = legal_map.get(c.id)
         ctx = {
             "draft": drafts.get(c.id),
             "quotes": quotes_map.get(c.id, []),
             "ai_description": c.ai_description or "",
+            "legal": legal,
         }
         rows.append((c, ctx))
 

@@ -138,6 +138,20 @@ export function MapsCompanyCard({
               💼 {company.website_lead_score}
             </span>
           )}
+          {/* Юр.данные из DaData (блок 2 ТЗ). Показываем оборот + возраст
+              если есть. Признак платёжеспособности. */}
+          {company.legal && (typeof company.legal.revenue === 'number' || typeof company.legal.age_years === 'number') && (
+            <span
+              className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-800 ring-1 ring-inset ring-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:ring-blue-700/50"
+              title={`ИНН: ${company.legal.inn ?? '—'} · ${company.legal.legal_short_name ?? company.legal.legal_name ?? ''}`}
+            >
+              {typeof company.legal.revenue === 'number' && company.legal.revenue > 0
+                ? `₽ ${(company.legal.revenue / 1_000_000).toFixed(1)}М`
+                : ''}
+              {typeof company.legal.revenue === 'number' && company.legal.revenue > 0 && typeof company.legal.age_years === 'number' ? ' · ' : ''}
+              {typeof company.legal.age_years === 'number' ? `${company.legal.age_years}л` : ''}
+            </span>
+          )}
         </div>
       </div>
 

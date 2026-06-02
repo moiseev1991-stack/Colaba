@@ -114,6 +114,13 @@ class MapSearchFilter(BaseModel):
     review_text_contains_any: list[str] | None = None
     review_text_excludes_any: list[str] | None = None
 
+    # Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal.
+    # min_revenue в рублях, min_age_years — полных лет с регистрации.
+    # Если включены, компания должна иметь связанную CompanyLegal со
+    # status='ok' и удовлетворять обоим (когда оба заданы).
+    min_revenue: float | None = None
+    min_age_years: int | None = None
+
 
 # ---------------------------------------------------------------------------
 # API request/response schemas
@@ -215,6 +222,9 @@ class CompanyOut(BaseModel):
     # Website lead score 0-100 — скор под продажу создания сайта.
     # NULL = у компании есть собственный активный сайт (не website-лид).
     website_lead_score: int | None = None
+    # Юр.данные из DaData (блок 2 ТЗ 2026-06-02). null если не обогащались
+    # или не нашлось матча.
+    legal: "CompanyLegalOut | None" = None
     # external_id 2GIS/Я.Карт — нужен для deeplink в их карточки из
     # UI (например, https://2gis.ru/firm/{external_id}). Не nullable
     # в БД, но мы оставляем optional для бэк-совместимости со старыми
@@ -294,6 +304,26 @@ class ReviewsListOut(BaseModel):
 class ProvidersHealthOut(BaseModel):
     twogis: str
     yandex_maps: str
+
+
+class CompanyLegalOut(BaseModel):
+    """Юр.данные компании из DaData (блок 2 ТЗ 2026-06-02)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    inn: str | None = None
+    ogrn: str | None = None
+    legal_name: str | None = None
+    legal_short_name: str | None = None
+    registration_date: str | None = None
+    revenue: float | None = None
+    employee_count: int | None = None
+    legal_status: str | None = None
+    okved: str | None = None
+    okved_name: str | None = None
+    age_years: int | None = None
+    match_confidence: float | None = None
+    matched_by: str | None = None
 
 
 class OutreachDraftOut(BaseModel):

@@ -415,6 +415,18 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning("_maybe_enrich_contacts: cannot enqueue site-crawler for #%d: %s", company.id, e)
 
+    # Блок 2 ТЗ 2026-06-02: юр.данные через DaData. Триггерим только если
+    # компания ещё не была обогащена (legal-таска сама пропустит дубль).
+    try:
+        from app.core.config import settings as _s
+        if (_s.DADATA_API_KEY or "").strip():
+            enrich_company_legal.delay(company.id)
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue legal for #%d: %s",
+            company.id, e,
+        )
+
     try:
         extra = company.contacts_extra or {}
         already_tried_2gis_html = "fetched_2gis_url" in extra or "error_2gis" in extra
@@ -741,6 +753,36 @@ def generate_company_description(self, company_id: int):
     except Exception as exc:
         logger.warning(
             "generate_company_description retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# Legal enrichment via DaData (блок 2 ТЗ 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+async def _enrich_company_legal_async(company_id: int) -> dict:
+    """Wrapper для Celery: дёргает DaData и сохраняет в company_legal."""
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.legal_enrich import enrich_company
+        return await enrich_company(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_company_legal",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    rate_limit="60/m",  # DaData бесплатный 10k/день; не агрессим
+)
+def enrich_company_legal(self, company_id: int):
+    """Обогащает компанию юр.данными из DaData. См. legal_enrich.py."""
+    try:
+        return asyncio.run(_enrich_company_legal_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_company_legal retrying company=%d: %s", company_id, exc
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 

@@ -44,6 +44,7 @@ from app.modules.maps.schemas import (
     CompaniesListOut,
     CompanyDetailOut,
     CompanyDigestOut,
+    CompanyLegalOut,
     CompanyOut,
     CompanyPainOut,
     MapSearchCreate,
@@ -256,10 +257,36 @@ async def list_search_companies(
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
     pains_by_company = await service.get_top_pains_for_companies(db, [c.id for c in items], limit_per_company=3)
+    # Блок 2 ТЗ: юр.данные из DaData одним запросом на страницу.
+    from app.models.company_legal import CompanyLegal
+    legal_map: dict[int, CompanyLegal] = {}
+    if items:
+        ids = [c.id for c in items]
+        legals = (await db.execute(
+            select(CompanyLegal).where(CompanyLegal.company_id.in_(ids))
+        )).scalars().all()
+        legal_map = {int(l.company_id): l for l in legals}
     out_items: list[CompanyOut] = []
     for c in items:
         out = CompanyOut.model_validate(c)
         out.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(c.id, [])]
+        legal = legal_map.get(c.id)
+        if legal and legal.status == "ok":
+            out.legal = CompanyLegalOut(
+                inn=legal.inn,
+                ogrn=legal.ogrn,
+                legal_name=legal.legal_name,
+                legal_short_name=legal.legal_short_name,
+                registration_date=legal.registration_date.isoformat() if legal.registration_date else None,
+                revenue=float(legal.revenue) if legal.revenue is not None else None,
+                employee_count=legal.employee_count,
+                legal_status=legal.legal_status,
+                okved=legal.okved,
+                okved_name=legal.okved_name,
+                age_years=legal.age_years,
+                match_confidence=float(legal.match_confidence) if legal.match_confidence is not None else None,
+                matched_by=legal.matched_by,
+            )
         out_items.append(out)
     return CompaniesListOut(
         items=out_items,
@@ -663,6 +690,55 @@ async def get_heatmap(
 
     points = await build_points(db, search_id, layer)  # type: ignore[arg-type]
     return {"layer": layer, "points": points, "count": len(points)}
+
+
+# ---------------------------------------------------------------------------
+# Admin: queue legal-enrichment (блок 2 ТЗ 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/admin/queue-legal")
+@limiter.limit("5/minute")
+async def admin_queue_legal_enrichment(
+    request: Request,
+    search_id: int | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=2000),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ставит Celery-таски на обогащение юр.данными из DaData.
+
+    - search_id: только компании из конкретного поиска (опц.).
+    - limit: размер партии.
+
+    Skip компаний, у которых уже есть запись в company_legal (любого
+    статуса) — повторы делают вручную.
+    """
+    from app.models.company_legal import CompanyLegal
+    from app.modules.maps.tasks import enrich_company_legal
+
+    # company_id, у которых НЕТ записи в company_legal.
+    sub = select(CompanyLegal.company_id)
+    stmt = (
+        select(Company.id)
+        .where(Company.id.not_in(sub))
+        .limit(limit)
+    )
+    if search_id is not None:
+        from app.models.maps import MapSearchResult
+        stmt = stmt.join(
+            MapSearchResult, MapSearchResult.company_id == Company.id
+        ).where(MapSearchResult.map_search_id == search_id)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    queued = 0
+    for cid in rows:
+        try:
+            enrich_company_legal.delay(int(cid))
+            queued += 1
+        except Exception as e:
+            logger.warning("queue legal enqueue failed for #%s: %s", cid, e)
+    return {"queued": queued}
 
 
 # ---------------------------------------------------------------------------
