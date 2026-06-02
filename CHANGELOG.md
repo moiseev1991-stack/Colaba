@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.31.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.30.0...v1.31.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** блок 4 A+B — website-lead score + Excel-экспорт ([d28fffd](https://github.com/moiseev1991-stack/Colaba/commit/d28fffdb1a60cda09a07828868e58ccea6625ddd))
+
 # [1.30.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.29.0...v1.30.0) (2026-06-02)
 
 
