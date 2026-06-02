@@ -65,6 +65,18 @@ _EMAIL_DOMAIN_BLOCKLIST = {
     "sentry.io", "wixpress.com", "wordpress.com", "godaddy.com",
     "tilda.cc", "tildacdn.com", "tinkoff.ru",
     "example.com", "test.com", "domain.com",
+    # 2gis.ru попадает как help@2gis.ru — служебный email самого 2GIS,
+    # не контакт компании. Из roadmap session_pending_2026-06-02.
+    "2gis.ru", "2gis.com",
+}
+
+# Точные email-адреса в блоклисте (помимо доменов): помогает когда домен
+# мог бы быть полезен для других компаний, но конкретный адрес — мусор.
+_EMAIL_EXACT_BLOCKLIST = {
+    "help@2gis.ru",        # плейсхолдер 2GIS
+    "info@2gis.com",
+    "support@2gis.ru",
+    "noreply@2gis.ru",
 }
 
 # Лимиты
@@ -143,6 +155,8 @@ def _accept_email(email: str) -> bool:
     if not email or len(email) > 100:
         return False
     if "@" not in email:
+        return False
+    if email.lower() in _EMAIL_EXACT_BLOCKLIST:
         return False
     domain = email.rsplit("@", 1)[1].lower()
     if domain in _EMAIL_DOMAIN_BLOCKLIST:
