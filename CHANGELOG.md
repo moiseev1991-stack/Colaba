@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.38.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.37.0...v1.38.0) (2026-06-02)
+
+
+### Features
+
+* **ui:** redesign v2 — токены, шрифты, базовые компоненты, карточка лида ([f26328f](https://github.com/moiseev1991-stack/Colaba/commit/f26328f837f7bc81f60f336d32f0c1aa395fc609))
+
 # [1.37.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.36.0...v1.37.0) (2026-06-02)
 
 
