@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.36.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.4...v1.36.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** блок «Юр.данные (DaData)» в drawer карточки ([d09daf4](https://github.com/moiseev1991-stack/Colaba/commit/d09daf403661236dfcb711ae5708af40d5f3a3df))
+
 ## [1.35.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.3...v1.35.4) (2026-06-02)
 
 
