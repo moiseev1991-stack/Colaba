@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.32.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.31.0...v1.32.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** блок 4C — AI-описание компании для блока «Производство сайта» ([1734d3d](https://github.com/moiseev1991-stack/Colaba/commit/1734d3dde7b26f0030bc4ae5e83111e20caad12a))
+
 # [1.31.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.30.0...v1.31.0) (2026-06-02)
 
 
