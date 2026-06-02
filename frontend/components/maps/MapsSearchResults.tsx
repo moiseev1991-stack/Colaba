@@ -111,6 +111,11 @@ export function MapsSearchResults({
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
   const [addToListCompanyId, setAddToListCompanyId] = useState<number | null>(null);
+  // Bulk-выбор: множество выбранных company_id для массового добавления в
+  // список лидов. AddToListModal уже умеет принимать массив; нам нужен только
+  // toolbar и чекбоксы в карточках. Очищается при смене search.id.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftLoadingCompanyId, setDraftLoadingCompanyId] = useState<number | null>(null);
@@ -154,6 +159,19 @@ export function MapsSearchResults({
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
     if (id != null) setAddToListCompanyId(id);
+  }, []);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
   }, []);
 
   const onDraftEmail = useCallback(async (c: any) => {
@@ -587,23 +605,82 @@ export function MapsSearchResults({
         )}
 
         {renderList.length > 0 && viewMode === 'list' && (
-          <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
-            {renderList.map((c: any) => {
-              const id = c.id ?? c.company_id;
-              const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;
-              return (
-                <MapsCompanyCard
-                  key={id}
-                  company={c}
-                  onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
-                  onAddToList={id != null ? onAddToList : undefined}
-                  onDraftEmail={id != null ? onDraftEmail : undefined}
-                  draftEmailLoading={draftLoadingCompanyId === id}
-                  aiAnalysis={aiAnalysis}
-                />
-              );
-            })}
-          </ul>
+          <>
+            {/* Bulk-toolbar — появляется когда выбрана хотя бы одна компания.
+                «Выбрать все на странице» работает всегда (отметить весь
+                renderList разом, удобно для пакетной отгрузки). */}
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  const visibleIds = renderList
+                    .map((c: any) => (c.id ?? c.company_id) as number | undefined)
+                    .filter((x): x is number => typeof x === 'number');
+                  const allSelected = visibleIds.every((id) => selectedIds.has(id));
+                  setSelectedIds((prev) => {
+                    const next = new Set(prev);
+                    if (allSelected) {
+                      visibleIds.forEach((id) => next.delete(id));
+                    } else {
+                      visibleIds.forEach((id) => next.add(id));
+                    }
+                    return next;
+                  });
+                }}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {(() => {
+                  const visibleIds = renderList
+                    .map((c: any) => (c.id ?? c.company_id) as number | undefined)
+                    .filter((x): x is number => typeof x === 'number');
+                  const allSelected =
+                    visibleIds.length > 0 &&
+                    visibleIds.every((id) => selectedIds.has(id));
+                  return allSelected ? 'Снять выбор со всех' : 'Выбрать все на странице';
+                })()}
+              </button>
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    Выбрано: {selectedIds.size}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBulkAddOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1 font-medium text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                  >
+                    Добавить выбранные в список
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Очистить
+                  </button>
+                </>
+              )}
+            </div>
+            <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
+              {renderList.map((c: any) => {
+                const id = c.id ?? c.company_id;
+                const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;
+                return (
+                  <MapsCompanyCard
+                    key={id}
+                    company={c}
+                    onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
+                    onAddToList={id != null ? onAddToList : undefined}
+                    onDraftEmail={id != null ? onDraftEmail : undefined}
+                    draftEmailLoading={draftLoadingCompanyId === id}
+                    aiAnalysis={aiAnalysis}
+                    selected={typeof id === 'number' && selectedIds.has(id)}
+                    onToggleSelect={typeof id === 'number' ? toggleSelect : undefined}
+                  />
+                );
+              })}
+            </ul>
+          </>
         )}
 
         {renderList.length > 0 && viewMode === 'map' && (
@@ -625,6 +702,20 @@ export function MapsSearchResults({
         companyIds={addToListCompanyId != null ? [addToListCompanyId] : []}
         defaultListName={`${search.niche} — ${search.city}`}
         onClose={() => setAddToListCompanyId(null)}
+      />
+
+      {/* Bulk-добавление: тот же AddToListModal, но c массивом из чекбоксов. */}
+      <AddToListModal
+        open={bulkAddOpen}
+        companyIds={Array.from(selectedIds)}
+        defaultListName={`${search.niche} — ${search.city}`}
+        onClose={() => setBulkAddOpen(false)}
+        onDone={() => {
+          // После добавления — закрываем модал и снимаем выбор, чтобы
+          // юзер не отгрузил тех же лидов случайно второй раз.
+          setBulkAddOpen(false);
+          clearSelection();
+        }}
       />
 
       <DraftEmailModal

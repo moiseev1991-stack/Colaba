@@ -35,6 +35,10 @@ interface Props {
   /** Результат AI-анализа компании под активный пресет (если применён
    *  пресет с ai_prompt). */
   aiAnalysis?: CompanyAnalysisOut | null;
+  /** Bulk-выбор: показать чекбокс и состояние selected. Передаётся из
+   *  MapsSearchResults, если включён режим массового выбора. */
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
 }
 
 export function MapsCompanyCard({
@@ -45,6 +49,8 @@ export function MapsCompanyCard({
   draftEmailLoading,
   hideActions,
   aiAnalysis,
+  selected,
+  onToggleSelect,
 }: Props) {
   const id = company.id ?? company.company_id;
   const reviewsTotal = company.reviews_count ?? 0;
@@ -70,10 +76,24 @@ export function MapsCompanyCard({
   return (
     <li
       className={cn(
-        'px-4 py-3 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
-        onClick ? 'cursor-pointer' : 'cursor-default'
+        'relative px-4 py-3 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
+        selected && 'bg-emerald-50/60 dark:bg-emerald-900/20',
+        onClick ? 'cursor-pointer' : 'cursor-default',
+        onToggleSelect && id != null && 'pl-9'
       )}
     >
+      {/* Чекбокс bulk-выбора абсолютно позиционирован — не ломает внутреннюю
+          структуру карточки. Кликом не открываем drawer (stopPropagation). */}
+      {onToggleSelect && id != null && (
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={() => onToggleSelect(id)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Выбрать компанию"
+          className="absolute left-3 top-3.5 h-4 w-4 cursor-pointer accent-emerald-600"
+        />
+      )}
       <div
         className="flex items-start justify-between gap-3"
         onClick={onClick}
