@@ -215,26 +215,44 @@ async def find_legal_for_company(company: Company) -> LegalMatch | None:
                 )
 
         # 2. По названию + городу.
-        name_norm = re.sub(r"[«»\"']", " ", (company.name or "")).strip()
-        if not name_norm:
+        # Чистим имя: 2GIS часто отдаёт "Зимверк, металлообработка" —
+        # суффикс после запятой/тире путает DaData. Берём только первую
+        # часть до разделителя.
+        raw_name = (company.name or "").strip()
+        # Отрезаем по запятой / тире / двоеточию (берём первую группу).
+        first = re.split(r"[,—\-:|/\\]", raw_name, maxsplit=1)[0].strip()
+        # Убираем кавычки и лишние пробелы.
+        name_norm = re.sub(r"[«»\"']", " ", first).strip()
+        # Совсем короткий — мусор, пропускаем.
+        if not name_norm or len(name_norm) < 3:
             return None
         city_part = (company.city or "").strip()
-        query = f"{name_norm} {city_part}".strip()
-        sug = await _suggest(client, query, count=5)
+
+        # Попытка 1: имя + город.
+        sug = await _suggest(client, f"{name_norm} {city_part}".strip(), count=5)
+
+        # Попытка 2: только имя (полезно если в DaData нет точного
+        # совпадения по городу — компания зарегистрирована в одном
+        # регионе, работает в другом).
+        if not sug:
+            sug = await _suggest(client, name_norm, count=5)
         if not sug:
             return None
 
-        # Если top-1 имеет адрес с тем же городом и имя содержит запрос —
-        # считаем уверенно. Иначе — низкий confidence.
-        top = sug[0]
-        data = top.get("data") or {}
-        address_value = (
-            (data.get("address") or {}).get("value")
-            or top.get("value", "")
-        )
-        confidence = 0.7 if city_part and city_part.lower() in (address_value or "").lower() else 0.4
+        # Ищем кандидата, у которого город совпадает с city. Если такой
+        # есть — confidence=0.7. Если нет — top-1 с confidence=0.4.
+        if city_part:
+            city_low = city_part.lower()
+            for cand in sug:
+                addr = ((cand.get("data") or {}).get("address") or {}).get("value") or ""
+                if city_low in addr.lower():
+                    return _build_match_from_suggestion(
+                        cand, confidence=0.7, matched_by="name_address"
+                    )
+        # Fallback — топ-1 с низким confidence (юзер видит match_confidence,
+        # сможет отфильтровать вручную).
         return _build_match_from_suggestion(
-            top, confidence=confidence, matched_by="name_address"
+            sug[0], confidence=0.4, matched_by="name_address"
         )
 
 

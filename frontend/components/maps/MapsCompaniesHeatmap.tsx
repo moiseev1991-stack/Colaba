@@ -1,5 +1,9 @@
 'use client';
 
+// Build trigger: блок 5 + блок 2 UI (бейдж DaData + фильтр Платёжеспособные)
+// должны попасть в CI build после rebase. Compose-only коммит не пересобрал
+// frontend образ.
+
 /**
  * Leaflet-карта с тепловым слоем (блок 5 ТЗ 2026-06-02).
  *
