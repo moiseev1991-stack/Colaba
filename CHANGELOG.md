@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.27.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.2...v1.27.3) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** website как первая прямая http-ссылка в HTML (слой 5) ([24c0a92](https://github.com/moiseev1991-stack/Colaba/commit/24c0a92f3eab59ca9286a3a0d6b0c136fe190000))
+
 ## [1.27.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.1...v1.27.2) (2026-06-02)
 
 
