@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.29.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.28.0...v1.29.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** bulk-чекбоксы — массовый выбор компаний и отгрузка в список ([dc84591](https://github.com/moiseev1991-stack/Colaba/commit/dc8459156c1588715c7c9101b672d2d2a9a19d37))
+
 # [1.28.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.4...v1.28.0) (2026-06-02)
 
 
