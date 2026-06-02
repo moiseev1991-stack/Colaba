@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.35.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.34.1...v1.35.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** website discovery — угадывание сайта по telegram/email handle ([8f426c8](https://github.com/moiseev1991-stack/Colaba/commit/8f426c82e1e50d5a0eaaf40885a8ea354f3de1ee))
+
 ## [1.34.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.34.0...v1.34.1) (2026-06-02)
 
 
