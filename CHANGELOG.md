@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.34.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.33.0...v1.34.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** toggle пресетов — клик по активному снимает фильтры ([4bc11a4](https://github.com/moiseev1991-stack/Colaba/commit/4bc11a47b8053d6a05def32669a3c7643db297f3))
+
 # [1.33.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.32.0...v1.33.0) (2026-06-02)
 
 
