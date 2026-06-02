@@ -137,6 +137,25 @@ export function MapsFiltersPanel({
     }
   }
 
+  /** Toggle для пользовательских пресетов — как togglePreset, но для UserPresetOut. */
+  function toggleUserPreset(p: UserPresetOut) {
+    if (!p.hidden && isUserPresetActive(p)) {
+      const f = (p.filter ?? {}) as Record<string, unknown>;
+      const cleared: Record<string, unknown> = { ...value };
+      for (const k of Object.keys(f)) {
+        if (k === 'pain_tag_ids') continue;
+        if (k === 'sort_by') {
+          cleared[k] = 'rating_desc';
+          continue;
+        }
+        cleared[k] = null;
+      }
+      onChange(cleared as MapSearchFilter);
+    } else {
+      applyUserPreset(p);
+    }
+  }
+
   /** Точное совпадение фильтра пользовательского пресета с текущим. Та же
    *  логика что у isPresetActive — null/undefined эквивалентны, массивы как
    *  отсортированный JSON. */
@@ -205,6 +224,31 @@ export function MapsFiltersPanel({
     onChange({ ...p.filter, pain_tag_ids: value.pain_tag_ids });
   }
 
+  /** Toggle-логика: клик по активному пресету его ОТКЛЮЧАЕТ
+   *  (сбрасывает все поля пресета в null), клик по неактивному —
+   *  применяет. Юзер часто хочет «снять фильтр и увидеть больше
+   *  компаний» — раньше для этого приходилось вручную сбрасывать каждое
+   *  поле, теперь достаточно повторного клика. */
+  function togglePreset(p: Preset) {
+    if (isPresetActive(p)) {
+      const cleared: Record<string, unknown> = { ...value };
+      for (const k of Object.keys(p.filter)) {
+        // pain_tag_ids ходит сам по себе (управляется облаком тегов).
+        if (k === 'pain_tag_ids') continue;
+        // sort_by при деактивации возвращаем к дефолту, чтобы выдача
+        // не осталась с «По упоминаниям болей» когда сам пресет ушёл.
+        if (k === 'sort_by') {
+          cleared[k] = 'rating_desc';
+          continue;
+        }
+        cleared[k] = null;
+      }
+      onChange(cleared as MapSearchFilter);
+    } else {
+      applyPreset(p);
+    }
+  }
+
   /** Активен ли пресет — точное совпадение всех его значений в текущем фильтре.
    *  Сравниваем сериализацией: null/undefined считаем эквивалентными (важно
    *  для полей, которых нет в пресете). Массивы сравниваем как JSON. */
@@ -234,8 +278,12 @@ export function MapsFiltersPanel({
               <button
                 key={p.id}
                 type="button"
-                onClick={() => applyPreset(p)}
-                title={p.description}
+                onClick={() => togglePreset(p)}
+                title={
+                  active
+                    ? `Активен — клик ещё раз, чтобы снять фильтры. ${p.description ?? ''}`
+                    : p.description
+                }
                 className={cn(
                   'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
                   active
@@ -342,8 +390,12 @@ export function MapsFiltersPanel({
               >
                 <button
                   type="button"
-                  onClick={() => applyUserPreset(p)}
-                  title={p.description ?? 'мой пресет'}
+                  onClick={() => toggleUserPreset(p)}
+                  title={
+                    active
+                      ? `Активен — клик ещё раз, чтобы снять фильтры. ${p.description ?? ''}`
+                      : p.description ?? 'мой пресет'
+                  }
                   className="block w-full text-left"
                 >
                   <span className="block text-xs font-medium text-slate-800 dark:text-slate-200">
