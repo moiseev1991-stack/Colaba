@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.37.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.36.0...v1.37.0) (2026-06-02)
+
+
+### Features
+
+* **maps-ui:** цитаты негативных отзывов в карточке + легенда бейджей/теплокарты ([218786d](https://github.com/moiseev1991-stack/Colaba/commit/218786d18ddea1077d9762c576156319f2b4f823))
+
 # [1.36.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.4...v1.36.0) (2026-06-02)
 
 
