@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.33.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.32.0...v1.33.0) (2026-06-02)
+
+
+### Bug Fixes
+
+* **frontend:** leaflet.heat через CDN, не npm — чиню CI ([2aabc53](https://github.com/moiseev1991-stack/Colaba/commit/2aabc532ead89c47eda5cc27292993f9e64f9745)), closes [#256](https://github.com/moiseev1991-stack/Colaba/issues/256)
+* **maps:** улучшаю DaData-матчинг — режу имя по запятой/тире, 2-я попытка без города ([60c3586](https://github.com/moiseev1991-stack/Colaba/commit/60c358673123e1d2c320668d9c7e8c6691f93634))
+
+
+### Features
+
+* **maps:** блок 2 — юр.данные через DaData (ИНН/оборот/возраст) ([bdf1041](https://github.com/moiseev1991-stack/Colaba/commit/bdf1041f59d8395d7e2044c024abe2105fb4e3a6))
+* **maps:** блок 5 — тепловые карты по нишам (5 слоёв) ([ee7bd29](https://github.com/moiseev1991-stack/Colaba/commit/ee7bd294439a300020205b41141f6f33673c005b))
+* **prod:** пробрасываем DADATA_API_KEY/SECRET_KEY + OPENAI на celery-worker-search ([3c9e33f](https://github.com/moiseev1991-stack/Colaba/commit/3c9e33f56c7debd2d91dd45d72f90d326b773660))
+
 # [1.32.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.31.0...v1.32.0) (2026-06-02)
 
 
