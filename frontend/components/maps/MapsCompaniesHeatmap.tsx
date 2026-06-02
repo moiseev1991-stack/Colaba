@@ -28,7 +28,9 @@ import 'leaflet/dist/leaflet.css';
 
 
 // Глобальный кэш для script-loader: leaflet.heat подцепляется как
-// L.heatLayer. Гарантируем что грузим один раз.
+// L.heatLayer. Плагин ищет global window.L (классический Leaflet-плагин
+// не понимает ES-импорты), поэтому ПЕРЕД загрузкой скрипта ставим
+// window.L = L — иначе плагин не подвяжет heatLayer.
 let _heatLoadPromise: Promise<void> | null = null;
 
 function ensureLeafletHeatLoaded(): Promise<void> {
@@ -38,17 +40,38 @@ function ensureLeafletHeatLoaded(): Promise<void> {
       reject(new Error('window undefined'));
       return;
     }
+    // Critical: плагин leaflet.heat — vanilla JS, ищет global L.
+    // Без этого L.heatLayer остаётся undefined даже после загрузки.
+    (window as unknown as { L: typeof L }).L = L;
     // @ts-expect-error — heatLayer добавляется как side-effect
     if (typeof L.heatLayer === 'function') {
       resolve();
       return;
     }
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('leaflet.heat CDN load failed'));
-    document.head.appendChild(script);
+    const tryLoad = (urls: string[]) => {
+      if (urls.length === 0) {
+        reject(new Error('leaflet.heat: all CDNs failed'));
+        return;
+      }
+      const [url, ...rest] = urls;
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = true;
+      script.onload = () => {
+        // @ts-expect-error — heatLayer добавляется как side-effect
+        if (typeof L.heatLayer === 'function') {
+          resolve();
+        } else {
+          tryLoad(rest);
+        }
+      };
+      script.onerror = () => tryLoad(rest);
+      document.head.appendChild(script);
+    };
+    tryLoad([
+      'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js',
+      'https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js',
+    ]);
   });
   return _heatLoadPromise;
 }
