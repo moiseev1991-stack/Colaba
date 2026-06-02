@@ -23,6 +23,7 @@ type CardCompany = Partial<CompanyOut> & {
   name?: string;
   pain_tags?: PainTagShort[];
   top_pains?: CompanyPainOut[];
+  negative_snippets?: string[];
 };
 
 interface Props {
@@ -59,6 +60,7 @@ export function MapsCompanyCard({
   const ratingBadgeClass = ratingClass(company.rating);
   const emails = Array.isArray(company.emails) ? company.emails : [];
   const topPains = Array.isArray(company.top_pains) ? company.top_pains : [];
+  const negativeSnippets = Array.isArray(company.negative_snippets) ? company.negative_snippets : [];
   const fullAddress = formatAddressWithCity(company.address, company.city);
   // website считаем валидным только если непустая строка после trim.
   // 2GIS иногда отдаёт " " или "" — без trim фронт показывал «есть сайт» там,
@@ -291,6 +293,24 @@ export function MapsCompanyCard({
                   <span className="line-clamp-2 italic">«{p.top_quote}»</span>
                 </div>
               )}
+            </div>
+          ))}
+        </div>
+      ) : negativeSnippets.length > 0 ? (
+        // Fallback: AI ещё не разобрал боли, но у компании есть негативы —
+        // показываем 1-2 куска отзыва напрямую, чтобы юзер сразу видел причину
+        // негатива. Иначе карточка выглядит «пустой» с цифрой «негатив 8» без сути.
+        <div className="mt-2 space-y-1.5">
+          {negativeSnippets.slice(0, 2).map((quote, idx) => (
+            <div
+              key={idx}
+              className="rounded-md border border-rose-200 bg-rose-50/60 px-2 py-1.5 dark:border-rose-700/50 dark:bg-rose-900/20"
+              title="AI ещё не разобрал боли клиентов — показан кусок негативного отзыва как есть"
+            >
+              <div className="flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
+                <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                <span className="line-clamp-2 italic">«{quote}»</span>
+              </div>
             </div>
           ))}
         </div>

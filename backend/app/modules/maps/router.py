@@ -257,6 +257,15 @@ async def list_search_companies(
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
     pains_by_company = await service.get_top_pains_for_companies(db, [c.id for c in items], limit_per_company=3)
+    # Fallback для карточек без AI-pain-анализа: 1-2 куска негативных отзывов.
+    # Дёргаем только для тех, у кого top_pains пуст И есть негативы (иначе
+    # лишняя SQL-нагрузка).
+    snippets_targets = [c.id for c in items if not pains_by_company.get(c.id) and (c.reviews_negative_count or 0) > 0]
+    negative_snippets_map = (
+        await service.get_negative_snippets_for_companies(db, snippets_targets, limit_per_company=2)
+        if snippets_targets
+        else {}
+    )
     # Блок 2 ТЗ: юр.данные из DaData одним запросом на страницу.
     from app.models.company_legal import CompanyLegal
     legal_map: dict[int, CompanyLegal] = {}
@@ -270,6 +279,8 @@ async def list_search_companies(
     for c in items:
         out = CompanyOut.model_validate(c)
         out.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(c.id, [])]
+        if not out.top_pains:
+            out.negative_snippets = negative_snippets_map.get(c.id, [])
         legal = legal_map.get(c.id)
         if legal and legal.status == "ok":
             out.legal = CompanyLegalOut(

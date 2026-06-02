@@ -238,6 +238,10 @@ class CompanyOut(BaseModel):
     # Топ-боли с цитатами клиентов под каждой. Заполняется опционально
     # сервисом (attach_top_pains_for_companies) для маршрутов, где это нужно.
     top_pains: list[CompanyPainOut] = Field(default_factory=list)
+    # Fallback-цитаты: 1-2 куска негативных отзывов когда AI ещё не разобрал
+    # компанию на pain_tags (или вообще не нашёл match с тегами ниши).
+    # Юзер видит «о чём негатив» сразу, без ожидания reviews_ai пайплайна.
+    negative_snippets: list[str] = Field(default_factory=list)
 
 
 class ReviewOut(BaseModel):

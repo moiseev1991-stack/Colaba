@@ -648,6 +648,69 @@ async def get_top_pains_for_companies(
     return by_company
 
 
+async def get_negative_snippets_for_companies(
+    db: AsyncSession,
+    company_ids: list[int],
+    limit_per_company: int = 2,
+    max_len: int = 180,
+) -> dict[int, list[str]]:
+    """Fallback-цитаты для карточки: если AI ещё не разобрал боли —
+    показываем «голые» куски негативных отзывов, чтобы юзер сразу увидел,
+    о чём негатив (Рефлекс: 36 отзывов / 8 негатив, но top_pains пуст —
+    карточка раньше показывала нолики; теперь покажет 1-2 фразы из 1★/2★/3★).
+
+    Берём отзывы с rating<=3 ИЛИ sentiment='negative' (одно из условий —
+    т.к. sentiment у нас заполняется AI и тоже может быть пустым на свежей
+    компании). raw_text обрезается до max_len символов.
+    """
+    if not company_ids:
+        return {}
+    sql = text(
+        """
+        SELECT company_id, raw_text
+        FROM (
+            SELECT
+                r.company_id,
+                r.raw_text,
+                ROW_NUMBER() OVER (
+                    PARTITION BY r.company_id
+                    ORDER BY
+                        COALESCE(r.rating, 5) ASC,
+                        r.posted_at DESC NULLS LAST,
+                        r.id DESC
+                ) AS rn
+            FROM reviews r
+            WHERE r.company_id = ANY(:ids)
+              AND r.raw_text IS NOT NULL
+              AND length(r.raw_text) >= 20
+              AND (
+                    COALESCE(r.rating, 5) <= 3
+                    OR r.sentiment = 'negative'
+              )
+        ) ranked
+        WHERE rn <= :limit
+        """
+    )
+    rows = list(
+        (await db.execute(sql, {"ids": list(company_ids), "limit": int(limit_per_company)})).mappings().all()
+    )
+    by_company: dict[int, list[str]] = {}
+    for r in rows:
+        cid = int(r["company_id"])
+        txt = (r["raw_text"] or "").strip()
+        if not txt:
+            continue
+        if len(txt) > max_len:
+            # Обрезаем на ближайшем пробеле, чтобы не рвать слова.
+            cut = txt[:max_len]
+            sp = cut.rfind(" ")
+            if sp > max_len * 0.6:
+                cut = cut[:sp]
+            txt = cut.rstrip(",.;:!?-—") + "…"
+        by_company.setdefault(cid, []).append(txt)
+    return by_company
+
+
 # ---------------------------------------------------------------------------
 # Progress events (SSE) — stub, реальная реализация в ШАГе 12
 # ---------------------------------------------------------------------------

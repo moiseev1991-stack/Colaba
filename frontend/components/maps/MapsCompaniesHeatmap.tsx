@@ -88,12 +88,37 @@ interface Props {
   fallbackCenter?: { lat: number; lng: number };
 }
 
-const LAYER_LABELS: { value: HeatmapLayer; label: string; hint: string }[] = [
-  { value: 'density', label: 'Плотность',  hint: 'где густо/пусто (компаний ниши)' },
-  { value: 'pain',    label: 'Боль',       hint: 'где много жалоб клиентов' },
-  { value: 'website', label: 'Нужен сайт', hint: 'где пакетно продавать сайты' },
-  { value: 'rating',  label: 'Слабый сервис', hint: 'где низкий рейтинг' },
-  { value: 'wealth',  label: 'Платёжеспособные', hint: 'где «живые» бизнесы' },
+const LAYER_LABELS: { value: HeatmapLayer; label: string; hint: string; long: string }[] = [
+  {
+    value: 'density',
+    label: 'Плотность',
+    hint: 'где густо/пусто (компаний ниши)',
+    long: 'Красные пятна — кварталы, где много компаний ниши (конкуренция, нужен сильный оффер). Синие — там почти никого (можно занять рынок).',
+  },
+  {
+    value: 'pain',
+    label: 'Боль',
+    hint: 'где много жалоб клиентов',
+    long: 'Сумма упоминаний болей по отзывам всех компаний района. Красное — район, где клиенты регулярно жалуются. Эти компании горячие лиды для SERM / автоматизации / новой команды.',
+  },
+  {
+    value: 'website',
+    label: 'Нужен сайт',
+    hint: 'где пакетно продавать сайты',
+    long: 'Где сидят компании БЕЗ сайта, но при этом «живые» (отзывы, рейтинг, телефон). Красное — район для веб-студии: можно за день обойти 5-10 компаний.',
+  },
+  {
+    value: 'rating',
+    label: 'Слабый сервис',
+    hint: 'где низкий рейтинг',
+    long: 'Концентрация компаний с рейтингом <4. Красное — район, где сервис плохой. Эти компании сами знают что у них проблема — горячие лиды для репутации / обучения / CRM.',
+  },
+  {
+    value: 'wealth',
+    label: 'Платёжеспособные',
+    hint: 'где «живые» бизнесы',
+    long: 'Прокси «у бизнеса есть деньги» — через температуру лида (рейтинг × отзывы × свежесть × контакты). Красное — район «живых» бизнесов с бюджетом. Когда подключим юр.данные DaData, заменим на реальный оборот.',
+  },
 ];
 
 
@@ -257,10 +282,33 @@ export default function MapsCompaniesHeatmap({ searchId, fallbackCenter }: Props
         </MapContainer>
       </div>
 
-      {/* Легенда: что означает выбранный слой */}
-      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
-        {LAYER_LABELS.find((o) => o.value === layer)?.hint ?? ''} ·
-        холодный (синий) → горячий (красный).
+      {/* Легенда: что означает выбранный слой + градиентная шкала.
+          Юзер регулярно путался «что красное значит» — теперь есть
+          и подпись слоя, и визуальная шкала цвета. */}
+      <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
+        <div>
+          <span className="font-medium">
+            {LAYER_LABELS.find((o) => o.value === layer)?.label}:
+          </span>{' '}
+          <span className="text-slate-600 dark:text-slate-300">
+            {LAYER_LABELS.find((o) => o.value === layer)?.long}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">Шкала:</span>
+          <div
+            className="h-2 flex-1 rounded-full"
+            style={{
+              background:
+                'linear-gradient(to right, #3b82f6 0%, #fbbf24 45%, #f97316 70%, #dc2626 100%)',
+            }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+          <span>холодный · мало / нет</span>
+          <span>тёплый · средне</span>
+          <span>горячий · много</span>
+        </div>
       </div>
     </div>
   );

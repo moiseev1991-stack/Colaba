@@ -159,6 +159,9 @@ export interface CompanyOut {
   emails?: string[] | null;
   contacts_extra?: Record<string, unknown> | null;
   top_pains?: CompanyPainOut[];
+  /** Fallback-цитаты негативных отзывов когда top_pains пуст (AI ещё не
+   *  разобрал). 1-2 короткие фразы из отзывов с rating<=3 / sentiment=negative. */
+  negative_snippets?: string[];
   /** Lead temperature (0..100). null = пересчёт ещё не прогонялся. */
   lead_temperature?: number | null;
   /** Website lead score (0..100). null = у компании есть свой сайт

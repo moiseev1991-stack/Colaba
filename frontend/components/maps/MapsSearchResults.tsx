@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { List, Map as MapIcon, Sparkles } from 'lucide-react';
+import { HelpCircle, List, Map as MapIcon, Sparkles } from 'lucide-react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
@@ -156,6 +156,9 @@ export function MapsSearchResults({
   // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
   // загружается ленива через dynamic(), требует координат у компаний.
   const [viewMode, setViewMode] = useState<'list' | 'map' | 'heatmap'>('list');
+  // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
+  // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
+  const [showBadgeLegend, setShowBadgeLegend] = useState(false);
   // Был ли filter тронут юзером в боковой панели после загрузки страницы.
   // Используется чтобы скрыть зелёный баннер «Применён пресет с формы поиска»
   // как только юзер начал крутить фильтры (иначе баннер «застрял» и врал).
@@ -451,7 +454,50 @@ export function MapsSearchResults({
                   ? `Под фильтр: ${renderTotal} из ${search.companies_found}.`
                   : `Найдено компаний: ${search.companies_found ?? renderTotal}.`
                 : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
+              <button
+                type="button"
+                onClick={() => setShowBadgeLegend((s) => !s)}
+                className="ml-2 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                aria-expanded={showBadgeLegend}
+                title="Что значат бейджи 🔥 / 💼 / Nл в карточке?"
+              >
+                <HelpCircle className="h-3 w-3" /> что значат бейджи?
+              </button>
             </p>
+            {showBadgeLegend && (
+              <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
+                <div className="mb-1.5 font-medium">Бейджи на карточке справа сверху:</div>
+                <ul className="space-y-1">
+                  <li>
+                    <span className="mr-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">🔥 70+</span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      <b>Температура лида</b> 0–100. Связка рейтинг × кол-во отзывов × свежесть × контакты × ответы владельца. <b>70+</b> — горячий лид (звонить сразу), 40–69 — тёплый, &lt;40 — холодный.
+                    </span>
+                  </li>
+                  <li>
+                    <span className="mr-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">💼 70+</span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      <b>Website-score</b> — «нужен сайт, а его нет». Чем выше, тем больше шансов продать сайт. Если бейджа <b>нет совсем</b> — у компании уже есть свой работающий сайт.
+                    </span>
+                  </li>
+                  <li>
+                    <span className="mr-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-800 ring-1 ring-inset ring-blue-200">5л · ₽ 1.2М</span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      <b>Юр.данные (DaData)</b>: возраст компании в годах и оборот за последний год (если DaData отдала). Клик по карточке → блок «Юр.данные».
+                    </span>
+                  </li>
+                  <li>
+                    <span className="mr-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-700 ring-1 ring-inset ring-amber-200">пилюли</span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      Жёлтый блок = боль клиентов (AI разобрал отзывы), розовый блок = кусок негативного отзыва (AI ещё не классифицировал боль).
+                    </span>
+                  </li>
+                </ul>
+                <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  Цвет шкалы 🔥/💼: <span className="text-slate-500">серый</span> (&lt;40) → <span className="text-amber-700">жёлтый</span> (40–69) → <span className="text-rose-700 font-semibold">красный</span> (70+).
+                </div>
+              </div>
+            )}
             {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
               <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-300">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
