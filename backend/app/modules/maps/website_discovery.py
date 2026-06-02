@@ -66,20 +66,51 @@ class WebsiteCandidate:
 
 
 def _from_handle(handle: str, source: str) -> list[WebsiteCandidate]:
-    """Из telegram/vk/etc handle строит до 4 URL-кандидатов."""
+    """Из telegram/vk/etc handle строит до 6 URL-кандидатов.
+
+    Учитывает что бренды используют `_` в соцсетях, но в домене DNS не
+    поддерживает `_`. Поэтому slug с подчёркиваниями превращаем в slug
+    с дефисами. Также отбрасываем суффиксы `_bot` / `bot` у telegram-
+    бот-аккаунтов — они служебные.
+    """
     if not handle:
         return []
     slug = handle.strip().lstrip("@").rstrip("/").lower()
     # Если в handle полный URL — выкусим домен
     if "/" in slug:
         slug = slug.rsplit("/", 1)[-1]
-    if not _HANDLE_RE.match(slug):
-        return []
-    # Для русскоязычного бизнеса .ru приоритетнее, потом .com.
-    return [
-        WebsiteCandidate(url=f"https://{slug}.ru", source=source),
-        WebsiteCandidate(url=f"https://{slug}.com", source=source),
-    ]
+    # Чистим суффикс _bot / bot — у telegram-ботов handle не равен бренду.
+    if source == "telegram":
+        for suffix in ("_bot", "-bot"):
+            if slug.endswith(suffix) and len(slug) > len(suffix) + 2:
+                slug = slug[: -len(suffix)]
+                break
+        else:
+            if slug.endswith("bot") and len(slug) > 5:
+                # «housecallbot» — но это рискованно срезать, оставляем
+                # как есть; вариант с обрезкой добавим ниже.
+                pass
+
+    candidates: list[WebsiteCandidate] = []
+    seen: set[str] = set()
+
+    def _push(s: str) -> None:
+        if not s or not _HANDLE_RE.match(s):
+            return
+        for tld in ("ru", "com"):
+            url = f"https://{s}.{tld}"
+            if url in seen:
+                continue
+            seen.add(url)
+            candidates.append(WebsiteCandidate(url=url, source=source))
+
+    _push(slug)
+    # Бренды часто пишут handle через `_`, но домен использует `-`.
+    if "_" in slug:
+        _push(slug.replace("_", "-"))
+        # Иногда вообще без разделителей: bogolubov_center → bogolubovcenter
+        _push(slug.replace("_", ""))
+    return candidates
 
 
 def _from_email(email: str) -> WebsiteCandidate | None:

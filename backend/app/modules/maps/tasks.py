@@ -793,9 +793,10 @@ async def _discover_company_website_async(company_id: int) -> dict:
         company = await db.get(Company, company_id)
         if company is None:
             return {"status": "not_found"}
-        # Не трогаем компании где website уже есть — даже если он
-        # «псевдо» (vk.com и т.п.), пусть юзер сам решит через UI.
-        if company.website and company.website.strip():
+        # Если website уже выглядит как «настоящий» (не псевдо vk/2gis/etc) —
+        # не трогаем. Если псевдо (vk.com/t.me) — пробуем угадать настоящий.
+        from app.modules.maps.lead_temperature import _has_active_website
+        if _has_active_website(company):
             return {"status": "skip_has_website"}
 
         cand = await discover_website(company)
