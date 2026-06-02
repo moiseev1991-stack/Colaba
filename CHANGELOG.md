@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.27.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.1...v1.27.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** достаём website из HTML через link.2gis.ru-трекер (слой 4) ([9bfeed1](https://github.com/moiseev1991-stack/Colaba/commit/9bfeed10d538c6f009c5e220883776e4b84eb9bd))
+
 ## [1.27.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.0...v1.27.1) (2026-06-01)
 
 
