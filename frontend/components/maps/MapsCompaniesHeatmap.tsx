@@ -1,9 +1,5 @@
 'use client';
 
-// Build trigger: блок 5 + блок 2 UI (бейдж DaData + фильтр Платёжеспособные)
-// должны попасть в CI build после rebase. Compose-only коммит не пересобрал
-// frontend образ.
-
 /**
  * Leaflet-карта с тепловым слоем (блок 5 ТЗ 2026-06-02).
  *
@@ -15,17 +11,47 @@
  *   rating  — где слабый сервис (низкий рейтинг)
  *   wealth  — платёжеспособность (через temperature, до Блока 2/legal)
  *
+ * leaflet.heat подгружается с CDN (unpkg) в useEffect, чтобы не
+ * требовать npm-зависимости — иначе CI ломается на `npm ci` из-за
+ * рассинхрона package-lock.json (см. PR с CI fail 256).
+ *
  * dynamic import без SSR (Leaflet трогает window).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import 'leaflet.heat';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 
 import { apiClient } from '@/client';
 
 import 'leaflet/dist/leaflet.css';
+
+
+// Глобальный кэш для script-loader: leaflet.heat подцепляется как
+// L.heatLayer. Гарантируем что грузим один раз.
+let _heatLoadPromise: Promise<void> | null = null;
+
+function ensureLeafletHeatLoaded(): Promise<void> {
+  if (_heatLoadPromise) return _heatLoadPromise;
+  _heatLoadPromise = new Promise<void>((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('window undefined'));
+      return;
+    }
+    // @ts-expect-error — heatLayer добавляется как side-effect
+    if (typeof L.heatLayer === 'function') {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('leaflet.heat CDN load failed'));
+    document.head.appendChild(script);
+  });
+  return _heatLoadPromise;
+}
 
 export type HeatmapLayer =
   | 'density'
@@ -64,8 +90,24 @@ const LAYER_LABELS: { value: HeatmapLayer; label: string; hint: string }[] = [
 function HeatLayer({ points }: { points: HeatmapPoint[] }) {
   const map = useMap();
   const layerRef = useRef<L.Layer | null>(null);
+  const [heatReady, setHeatReady] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    ensureLeafletHeatLoaded()
+      .then(() => {
+        if (!cancelled) setHeatReady(true);
+      })
+      .catch(() => {
+        /* CDN unreachable — UI покажет точки только на TileLayer без heat. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!heatReady) return;
     if (layerRef.current) {
       map.removeLayer(layerRef.current);
       layerRef.current = null;
@@ -79,7 +121,7 @@ function HeatLayer({ points }: { points: HeatmapPoint[] }) {
       Math.max(0, Math.min(1, p.weight)),
     ]);
 
-    // @ts-expect-error — типы leaflet.heat не идеальны, но рантайм-API есть.
+    // @ts-expect-error — heatLayer добавляется CDN-скриптом в рантайме.
     const heat = L.heatLayer(data, {
       radius: 30,
       blur: 25,
@@ -106,7 +148,7 @@ function HeatLayer({ points }: { points: HeatmapPoint[] }) {
         layerRef.current = null;
       }
     };
-  }, [map, points]);
+  }, [map, points, heatReady]);
 
   return null;
 }
