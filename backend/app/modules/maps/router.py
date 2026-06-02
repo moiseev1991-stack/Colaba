@@ -423,6 +423,28 @@ async def get_company(
     detail.recent_reviews = [ReviewOut.model_validate(r) for r in recent]
     pains_by_company = await service.get_top_pains_for_companies(db, [company.id], limit_per_company=5)
     detail.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(company.id, [])]
+
+    # Блок 2 ТЗ: юр.данные из company_legal (DaData) — для блока в drawer.
+    from app.models.company_legal import CompanyLegal
+    legal = (await db.execute(
+        select(CompanyLegal).where(CompanyLegal.company_id == company.id)
+    )).scalar_one_or_none()
+    if legal and legal.status == "ok":
+        detail.legal = CompanyLegalOut(
+            inn=legal.inn,
+            ogrn=legal.ogrn,
+            legal_name=legal.legal_name,
+            legal_short_name=legal.legal_short_name,
+            registration_date=legal.registration_date.isoformat() if legal.registration_date else None,
+            revenue=float(legal.revenue) if legal.revenue is not None else None,
+            employee_count=legal.employee_count,
+            legal_status=legal.legal_status,
+            okved=legal.okved,
+            okved_name=legal.okved_name,
+            age_years=legal.age_years,
+            match_confidence=float(legal.match_confidence) if legal.match_confidence is not None else None,
+            matched_by=legal.matched_by,
+        )
     return detail
 
 

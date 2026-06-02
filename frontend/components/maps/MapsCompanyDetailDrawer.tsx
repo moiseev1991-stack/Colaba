@@ -15,7 +15,7 @@
  *  - подсветка совпадений с поисковой подстрокой
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ExternalLink,
   Globe,
@@ -139,6 +139,9 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
           </div>
 
           <ContactsBlock detail={detail} />
+
+          {/* Юр.данные из DaData (блок 2 ТЗ). Показываем только если матч найден. */}
+          <LegalBlock legal={detail.legal} />
 
           {/* Aha-moment блок 1: драфт холодного письма по компании */}
           <OutreachDraftBlock
@@ -303,6 +306,89 @@ function normalizePhone(p: string): string {
   // Для дедупа: оставляем только цифры. +7 (495) 123-45-67 → 74951234567
   return p.replace(/\D+/g, '');
 }
+
+function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
+  // Блок 2 ТЗ 2026-06-02 — юр.данные из DaData. Показываем только если
+  // матч нашёлся (legal != null). На free-тарифе DaData revenue и
+  // employee_count всегда null — для них фолбэк «нет данных».
+  if (!legal) return null;
+
+  const items: { label: string; value: React.ReactNode; mono?: boolean }[] = [];
+  if (legal.inn) items.push({ label: 'ИНН', value: legal.inn, mono: true });
+  if (legal.ogrn) items.push({ label: 'ОГРН', value: legal.ogrn, mono: true });
+  if (legal.legal_short_name || legal.legal_name) {
+    items.push({
+      label: 'Юр.лицо',
+      value: legal.legal_short_name || legal.legal_name || '—',
+    });
+  }
+  if (typeof legal.age_years === 'number') {
+    items.push({ label: 'Возраст', value: `${legal.age_years} лет` });
+  }
+  if (legal.registration_date) {
+    items.push({ label: 'Зарегистрирована', value: legal.registration_date });
+  }
+  if (typeof legal.revenue === 'number' && legal.revenue > 0) {
+    items.push({
+      label: 'Оборот',
+      value: `${(legal.revenue / 1_000_000).toFixed(1)} млн ₽`,
+    });
+  }
+  if (typeof legal.employee_count === 'number' && legal.employee_count > 0) {
+    items.push({ label: 'Сотрудников', value: legal.employee_count });
+  }
+  if (legal.legal_status) {
+    items.push({
+      label: 'Статус',
+      value:
+        legal.legal_status === 'active'
+          ? 'действующая'
+          : legal.legal_status,
+    });
+  }
+  if (legal.okved_name) {
+    items.push({
+      label: 'ОКВЭД',
+      value: `${legal.okved ?? ''} ${legal.okved_name}`.trim(),
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-700/50 dark:bg-blue-900/20">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[12px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+          Юр.данные (DaData)
+        </div>
+        {typeof legal.match_confidence === 'number' && (
+          <div
+            className="text-[10px] text-blue-600 dark:text-blue-400"
+            title={`Уверенность матча: ${(legal.match_confidence * 100).toFixed(0)}%, способ: ${legal.matched_by ?? '—'}`}
+          >
+            {(legal.match_confidence * 100).toFixed(0)}%
+          </div>
+        )}
+      </div>
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-[12px]">
+        {items.map((it) => (
+          <React.Fragment key={it.label}>
+            <dt className="text-slate-500 dark:text-slate-400">{it.label}:</dt>
+            <dd
+              className={cn(
+                'min-w-0 break-words text-slate-800 dark:text-slate-200',
+                it.mono && 'font-mono'
+              )}
+            >
+              {it.value}
+            </dd>
+          </React.Fragment>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 
 function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   const extra: ContactsExtra = (detail.contacts_extra ?? {}) as ContactsExtra;
