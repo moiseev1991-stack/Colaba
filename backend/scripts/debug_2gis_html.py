@@ -2,10 +2,11 @@
 показываем где в нём ссылка на website компании.
 
 Использование (внутри docker exec colaba-celery-worker-search-1):
-    python /app/scripts/debug_2gis_html.py [external_id]
+    python /app/scripts/debug_2gis_html.py <external_id>
 
-Если external_id не передан — берёт первую 2gis-компанию с fetched_2gis_url
-из БД. Дамп HTML кладёт в /tmp/2gis-dump-{ext_id}.html.
+external_id — обязательный аргумент. Возьми любую 2gis-компанию из БД:
+    docker exec colaba-postgres-1 psql -U leadgen_user -d leadgen_db -tA \\
+      -c "SELECT external_id FROM companies WHERE source='2gis' LIMIT 1;"
 
 Показывает:
   - длину HTML
@@ -22,28 +23,11 @@ import re
 import sys
 
 
-async def _pick_external_id() -> str | None:
-    """Возвращает первый external_id 2gis с fetched_2gis_url из БД."""
-    from sqlalchemy import select
-    from app.database import async_session_factory
-    from app.modules.maps.models import Company
-
-    async with async_session_factory() as session:
-        q = (
-            select(Company.external_id)
-            .where(Company.source == "2gis")
-            .where(Company.contacts_extra["fetched_2gis_url"].as_string().isnot(None))
-            .limit(1)
-        )
-        row = await session.execute(q)
-        return row.scalar_one_or_none()
-
-
 async def main() -> None:
-    ext_id = sys.argv[1] if len(sys.argv) > 1 else await _pick_external_id()
-    if not ext_id:
-        print("no external_id provided and no 2gis company with fetched_2gis_url found")
-        return
+    if len(sys.argv) < 2:
+        print("usage: python debug_2gis_html.py <external_id>")
+        sys.exit(2)
+    ext_id = sys.argv[1]
 
     print(f"external_id = {ext_id}")
     url = f"https://2gis.ru/firm/{ext_id}"
