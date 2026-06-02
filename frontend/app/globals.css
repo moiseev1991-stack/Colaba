@@ -1,4 +1,70 @@
-/* SpinLid Design Tokens — theme variables (must load before Tailwind) */
+/* ============================================================
+   SpinLid Design Tokens v2 — редизайн 2026-06-03 (ТЗ §1)
+   Эти токены — единый источник правды. Старые токены ниже
+   оставлены для обратной совместимости со старыми экранами,
+   которые ещё не переехали на новый язык. Не удалять —
+   удаление сломает legacy-экраны (модули, dashboard).
+   ============================================================ */
+:root {
+  /* === Бренд-доминанта v2 (углублённый emerald → cyan) === */
+  --brand-50:  #ecfdf5;
+  --brand-100: #d1fae5;
+  --brand-200: #a7f3d0;
+  --brand-400: #34d399;
+  --brand-500: #10b981;
+  --brand-600: #059669;
+  --brand-700: #047857;
+  --brand-gradient: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+
+  /* === Акцент — ТОЛЬКО для главного CTA на экране === */
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  /* === Сигнальная шкала данных (температура/статусы) — единая === */
+  --signal-hot: #ef4444;   /* горячий лид / негатив / критично */
+  --signal-warm: #f59e0b;  /* внимание */
+  --signal-cool: #3b82f6;  /* инфо / нейтрально */
+  --signal-good: #10b981;  /* успех */
+  --signal-muted: #94a3b8; /* нет данных */
+
+  /* Полупрозрачные фоны для signal-pill (использовать с .bg) */
+  --signal-hot-bg:  rgba(239, 68, 68, 0.12);
+  --signal-warm-bg: rgba(245, 158, 11, 0.13);
+  --signal-cool-bg: rgba(59, 130, 246, 0.12);
+  --signal-good-bg: rgba(16, 185, 129, 0.13);
+  --signal-muted-bg: rgba(148, 163, 184, 0.14);
+
+  /* === Радиусы v2 (мягче, премиальнее) === */
+  --radius-sm-v2: 10px;
+  --radius-v2: 14px;
+  --radius-lg-v2: 20px;
+  --radius-pill: 999px;
+
+  /* === Тени v2 — цветная бренд-тень на hover === */
+  --shadow-v2-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-v2: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-v2-hover: 0 12px 32px rgba(16, 185, 129, 0.16);
+
+  /* === Переходы v2 === */
+  --transition-v2: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  /* В тёмной теме бренд чуть ярче, тень рассеянная синеватая */
+  --brand-500: #10b981;
+  --brand-600: #34d399;
+  --shadow-v2-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-v2: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-v2-hover: 0 12px 32px rgba(16, 185, 129, 0.22);
+  --signal-hot-bg:  rgba(239, 68, 68, 0.18);
+  --signal-warm-bg: rgba(245, 158, 11, 0.18);
+  --signal-cool-bg: rgba(59, 130, 246, 0.18);
+  --signal-good-bg: rgba(16, 185, 129, 0.20);
+  --signal-muted-bg: rgba(148, 163, 184, 0.18);
+}
+
+/* ============================================================
+   Legacy tokens (используются старыми экранами — НЕ УДАЛЯТЬ)
+   ============================================================ */
 :root {
   /* === Core radius tokens — sharper, more architectural feel === */
   --radius-xs: 3px;
@@ -1278,3 +1344,112 @@
 }
 .app-bracket-tag::before { content: '['; opacity: 0.6; }
 .app-bracket-tag::after { content: ']'; opacity: 0.6; }
+
+/* ============================================================
+   §1.5 Анимации v2 — page-load reveal + hover-lift + brand-glow
+   prefers-reduced-motion полностью гасит анимации.
+   ============================================================ */
+@keyframes reveal-up-v2 {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer-v2 {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Staggered reveal — родитель .reveal-stack даёт детям задержку.
+   Использовать: <div class="reveal-stack">{children with .reveal-item}</div>.
+   Каждый .reveal-item получает delay = index * 50ms (через nth-child). */
+.reveal-item {
+  animation: reveal-up-v2 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.reveal-stack > .reveal-item:nth-child(1)  { animation-delay: 0ms;   }
+.reveal-stack > .reveal-item:nth-child(2)  { animation-delay: 40ms;  }
+.reveal-stack > .reveal-item:nth-child(3)  { animation-delay: 80ms;  }
+.reveal-stack > .reveal-item:nth-child(4)  { animation-delay: 120ms; }
+.reveal-stack > .reveal-item:nth-child(5)  { animation-delay: 160ms; }
+.reveal-stack > .reveal-item:nth-child(6)  { animation-delay: 200ms; }
+.reveal-stack > .reveal-item:nth-child(7)  { animation-delay: 240ms; }
+.reveal-stack > .reveal-item:nth-child(8)  { animation-delay: 280ms; }
+.reveal-stack > .reveal-item:nth-child(9)  { animation-delay: 320ms; }
+.reveal-stack > .reveal-item:nth-child(10) { animation-delay: 360ms; }
+.reveal-stack > .reveal-item:nth-child(n+11) { animation-delay: 400ms; }
+
+/* Hover-lift для карточек: подъём + цветная бренд-тень. */
+.lift-v2 {
+  transition: transform var(--transition-v2), box-shadow var(--transition-v2);
+}
+.lift-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-v2-hover);
+}
+.lift-v2:active {
+  transform: scale(0.985);
+  transition-duration: 0.08s;
+}
+
+/* Skeleton shimmer */
+.skel-v2 {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--surface-2)) 0%,
+    hsl(var(--surface)) 50%,
+    hsl(var(--surface-2)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-v2 1.6s infinite linear;
+  border-radius: var(--radius-sm-v2);
+}
+
+/* Brand-gradient text для акцентных слов в заголовках. */
+.text-gradient-brand {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Мягкий мешевой фон для лендинг-блоков (§1.4). */
+.bg-mesh-brand {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
+}
+.dark .bg-mesh-brand {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.10) 0%, transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(99, 102, 241, 0.06) 0%, transparent 50%);
+}
+
+/* Chip-ряд с горизонтальным скроллом и масками по краям. */
+.chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+  padding: 4px 16px;
+  margin: 0 -16px;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-row > * { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* Safe-area для мобильного таб-бара */
+.safe-pb {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-item,
+  .skel-v2,
+  .lift-v2 {
+    animation: none !important;
+    transition: none !important;
+  }
+  .lift-v2:hover { transform: none; box-shadow: var(--shadow-v2); }
+}

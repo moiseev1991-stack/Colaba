@@ -8,7 +8,31 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // §1.2 редизайн 2026-06-03 — display и body через next/font.
+        // var(--font-display) = Unbounded, var(--font-body) = Manrope.
+        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+        body: ['var(--font-body)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
+      },
       colors: {
+        // === §1.1 редизайн 2026-06-03 — единая бренд-шкала ===
+        brand: {
+          50: 'var(--brand-50)',
+          100: 'var(--brand-100)',
+          200: 'var(--brand-200)',
+          400: 'var(--brand-400)',
+          500: 'var(--brand-500)',
+          600: 'var(--brand-600)',
+          700: 'var(--brand-700)',
+        },
+        signal: {
+          hot:   'var(--signal-hot)',
+          warm:  'var(--signal-warm)',
+          cool:  'var(--signal-cool)',
+          good:  'var(--signal-good)',
+          muted: 'var(--signal-muted)',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -70,6 +94,20 @@ module.exports = {
         lg: "var(--radius-lg)",
         md: "var(--radius-md)",
         sm: "var(--radius-sm)",
+        // §1.3 редизайн 2026-06-03 — премиальные радиусы для нового языка
+        'v2-sm': 'var(--radius-sm-v2)',
+        'v2':    'var(--radius-v2)',
+        'v2-lg': 'var(--radius-lg-v2)',
+        pill:    'var(--radius-pill)',
+      },
+      boxShadow: {
+        'v2-sm':    'var(--shadow-v2-sm)',
+        'v2':       'var(--shadow-v2)',
+        'v2-hover': 'var(--shadow-v2-hover)',
+      },
+      backgroundImage: {
+        'brand-gradient':  'var(--brand-gradient)',
+        'accent-gradient': 'var(--accent-gradient)',
       },
     },
   },

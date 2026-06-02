@@ -13,8 +13,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { HelpCircle, List, Map as MapIcon, Sparkles } from 'lucide-react';
+import { HelpCircle, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
 
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
@@ -159,6 +161,10 @@ export function MapsSearchResults({
   // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
   // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
   const [showBadgeLegend, setShowBadgeLegend] = useState(false);
+  // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
+  // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
+  // и съедала экран ещё до того как юзер увидел компании).
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // Был ли filter тронут юзером в боковой панели после загрузки страницы.
   // Используется чтобы скрыть зелёный баннер «Применён пресет с формы поиска»
   // как только юзер начал крутить фильтры (иначе баннер «застрял» и врал).
@@ -424,15 +430,51 @@ export function MapsSearchResults({
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <MapsFiltersPanel
-        niche={search.niche}
-        city={search.city}
-        searchId={search.id}
-        value={filter}
-        onChange={handleFilterChange}
-        onUserPresetWithAiSelected={onUserPresetWithAi}
-        aiActive={activeAiPreset != null}
-      />
+      {/* Десктоп: фильтр-панель слева. Мобайл — открывается из BottomSheet ниже. */}
+      <div className="hidden lg:block">
+        <MapsFiltersPanel
+          niche={search.niche}
+          city={search.city}
+          searchId={search.id}
+          value={filter}
+          onChange={handleFilterChange}
+          onUserPresetWithAiSelected={onUserPresetWithAi}
+          aiActive={activeAiPreset != null}
+        />
+      </div>
+
+      {/* Мобайл: BottomSheet с той же панелью внутри. */}
+      <BottomSheet
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        title="Фильтры и пресеты"
+        maxHeight="92vh"
+      >
+        <MapsFiltersPanel
+          niche={search.niche}
+          city={search.city}
+          searchId={search.id}
+          value={filter}
+          onChange={(next) => {
+            handleFilterChange(next);
+          }}
+          onUserPresetWithAiSelected={(p) => {
+            onUserPresetWithAi(p);
+            setMobileFiltersOpen(false);
+          }}
+          aiActive={activeAiPreset != null}
+        />
+        <div className="sticky bottom-0 mt-3 -mx-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3">
+          <ButtonV2
+            variant="primary"
+            size="lg"
+            onClick={() => setMobileFiltersOpen(false)}
+            className="w-full"
+          >
+            Применить
+          </ButtonV2>
+        </div>
+      </BottomSheet>
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -551,6 +593,16 @@ export function MapsSearchResults({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* §4.1 редизайн: мобильная кнопка «Фильтры» открывает BottomSheet.
+                На lg+ панель уже видна слева, поэтому кнопка скрыта. */}
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(true)}
+              className="lg:hidden inline-flex min-h-[44px] items-center gap-1.5 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-1.5 text-[13px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
+            >
+              <Sliders className="h-4 w-4" />
+              Фильтры
+            </button>
             {/* View toggle: список vs карта. Прячем пока не подгружены
                 компании — нечего показывать на карте. */}
             {renderTotal > 0 && (
@@ -751,7 +803,7 @@ export function MapsSearchResults({
                 </>
               )}
             </div>
-            <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
+            <ul className="reveal-stack space-y-2.5">
               {renderList.map((c: any) => {
                 const id = c.id ?? c.company_id;
                 const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;

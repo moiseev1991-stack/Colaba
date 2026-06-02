@@ -1,21 +1,32 @@
 'use client';
 
 /**
- * Карточка компании в списке результатов. Используется в MapsCompaniesList и
- * при live-стриме (рендерим частичные данные если приходит только {company_id, name, ...}).
+ * MapsCompanyCard v2 — карточка компании в новом дизайн-языке.
+ * §4.1 ТЗ редизайна 2026-06-03.
  *
- * Что показываем:
- *  - название, адрес, рейтинг, кол-во отзывов/негатива, owner_replies
- *  - контакты: phone, website, emails (если краулер обогатил)
- *  - топ-3 болей с короткой цитатой клиента под каждой (CompanyPainOut)
- *  - кнопки [В список] [Письмо] — обработка через коллбэки родителя
+ * Новая иерархия:
+ *   1. Название (display-шрифт, крупно) + рейтинг-пилюля справа
+ *   2. Адрес (text-subtle, мельче)
+ *   3. SignalPill-ряд: «нет сайта» как accent (горячий сигнал), «отвечает
+ *      владелец» good, «негатив N» hot/warm, «не отвечает» warm
+ *   4. Зона «диагноза» — pain-теги с иконкой-пульс ИЛИ розовый блок
+ *      с цитатой негативного отзыва (когда AI ещё не разобрал)
+ *   5. Контакты (phone/email/2GIS-deeplink)
+ *   6. Действия — «В список» secondary, «Письмо» primary (бренд-градиент)
+ *      Мобайл — min-h-11 (44px тач-таргет)
+ *
+ * Бейджи 🔥/💼/Nл (lead_temperature, website_lead_score, age_years)
+ * сохранены — без них исчезает «фишка диагноза». Подписаны через title.
  */
 
-import { ExternalLink, Globe, ListPlus, Mail, MessageSquareQuote, Phone, Sparkles } from 'lucide-react';
+import { ExternalLink, ListPlus, Mail, MessageSquareQuote, Sparkles, Activity, Phone, Globe } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { CompanyOut, CompanyPainOut, PainTagShort } from '@/src/services/api/maps';
 import type { CompanyAnalysisOut } from '@/src/services/api/reviews-ai';
+import { SignalPill } from '@/components/ui/SignalPill';
+import { CardV2 } from '@/components/ui/CardV2';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 
 type CardCompany = Partial<CompanyOut> & {
   id?: number;
@@ -33,11 +44,7 @@ interface Props {
   onDraftEmail?: (company: CardCompany) => void;
   draftEmailLoading?: boolean;
   hideActions?: boolean;
-  /** Результат AI-анализа компании под активный пресет (если применён
-   *  пресет с ai_prompt). */
   aiAnalysis?: CompanyAnalysisOut | null;
-  /** Bulk-выбор: показать чекбокс и состояние selected. Передаётся из
-   *  MapsSearchResults, если включён режим массового выбора. */
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
 }
@@ -57,35 +64,31 @@ export function MapsCompanyCard({
   const reviewsTotal = company.reviews_count ?? 0;
   const reviewsNeg = company.reviews_negative_count ?? 0;
   const ownerReplies = company.has_owner_replies;
-  const ratingBadgeClass = ratingClass(company.rating);
   const emails = Array.isArray(company.emails) ? company.emails : [];
   const topPains = Array.isArray(company.top_pains) ? company.top_pains : [];
   const negativeSnippets = Array.isArray(company.negative_snippets) ? company.negative_snippets : [];
   const fullAddress = formatAddressWithCity(company.address, company.city);
-  // website считаем валидным только если непустая строка после trim.
-  // 2GIS иногда отдаёт " " или "" — без trim фронт показывал «есть сайт» там,
-  // где на самом деле сайта нет (и бэк-фильтр has_website=true их пропускал).
   const hasWebsite = typeof company.website === 'string' && company.website.trim().length > 0;
   const fallbackTags =
     topPains.length === 0 && Array.isArray(company.pain_tags) ? company.pain_tags : [];
 
-  // Deeplink в карточку источника — кнопка «2GIS» / «Я.Карты» прямо в превью.
-  // Юзер просил видеть контакты сразу: на нашем тарифе 2GIS Catalog API
-  // contact_groups не всегда отдаёт, но из своей же карточки 2GIS юзер их
-  // увидит за один клик.
   const sourceUrl = buildSourceUrl(company.source, company.external_id);
+  const sourceTitle = sourceLabel(company.source);
 
   return (
-    <li
+    <CardV2
+      as="li"
+      reveal
+      interactive={!!onClick}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
       className={cn(
-        'relative px-4 py-3 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
-        selected && 'bg-emerald-50/60 dark:bg-emerald-900/20',
-        onClick ? 'cursor-pointer' : 'cursor-default',
-        onToggleSelect && id != null && 'pl-9'
+        'relative p-4',
+        selected && 'ring-2 ring-brand-500/60',
+        onToggleSelect && id != null && 'pl-10'
       )}
     >
-      {/* Чекбокс bulk-выбора абсолютно позиционирован — не ломает внутреннюю
-          структуру карточки. Кликом не открываем drawer (stopPropagation). */}
+      {/* Bulk-чекбокс — абсолютно позиционирован, не ломает структуру */}
       {onToggleSelect && id != null && (
         <input
           type="checkbox"
@@ -93,58 +96,48 @@ export function MapsCompanyCard({
           onChange={() => onToggleSelect(id)}
           onClick={(e) => e.stopPropagation()}
           aria-label="Выбрать компанию"
-          className="absolute left-3 top-3.5 h-4 w-4 cursor-pointer accent-emerald-600"
+          className="absolute left-3 top-4 h-4 w-4 cursor-pointer accent-emerald-600"
         />
       )}
-      <div
-        className="flex items-start justify-between gap-3"
-        onClick={onClick}
-        role={onClick ? 'button' : undefined}
-      >
+
+      {/* Шапка: название (display) + рейтинг */}
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-slate-900 dark:text-slate-100">{company.name || '—'}</div>
+          <h3 className="font-display text-[15px] sm:text-[16px] font-semibold leading-snug tracking-tight text-[hsl(var(--text))] truncate">
+            {company.name || '—'}
+          </h3>
           {fullAddress && (
-            <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{fullAddress}</div>
+            <div className="mt-0.5 truncate text-[12px] text-[hsl(var(--muted))]">
+              {fullAddress}
+            </div>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {company.rating != null && (
-            <span className={cn('app-badge', ratingBadgeClass)}>
-              ★ {Number(company.rating).toFixed(1)}
-            </span>
+            <RatingPill rating={Number(company.rating)} />
           )}
-          {/* Бейдж lead_temperature (блок 3 ТЗ). Показываем только когда
-              значение посчитано (после первого пересчёта). Цвет — по диапазону. */}
           {typeof company.lead_temperature === 'number' && (
-            <span
-              className={cn(
-                'rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
-                temperatureClass(company.lead_temperature)
-              )}
-              title="Температура лида: связка рейтинг + отзывы + свежесть + контакты"
+            <SignalPill
+              size="sm"
+              tone={tempTone(company.lead_temperature)}
+              title="Температура лида: рейтинг × отзывы × свежесть × контакты"
             >
               🔥 {company.lead_temperature}
-            </span>
+            </SignalPill>
           )}
-          {/* Бейдж website_lead_score (блок 4 ТЗ). Показываем когда есть
-              значение (NULL = компания с собственным сайтом, ей продавать
-              сайт нечего — бейдж не показываем). */}
           {typeof company.website_lead_score === 'number' && (
-            <span
-              className={cn(
-                'rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
-                temperatureClass(company.website_lead_score)
-              )}
-              title="Website-lead score: «нет сайта + бизнес живой» — кандидат на продажу сайта"
+            <SignalPill
+              size="sm"
+              tone={tempTone(company.website_lead_score)}
+              title="Website-score: «нужен сайт, а его нет» — кандидат на продажу сайта"
             >
               💼 {company.website_lead_score}
-            </span>
+            </SignalPill>
           )}
-          {/* Юр.данные из DaData (блок 2 ТЗ). Показываем оборот + возраст
-              если есть. Признак платёжеспособности. */}
           {company.legal && (typeof company.legal.revenue === 'number' || typeof company.legal.age_years === 'number') && (
-            <span
-              className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-800 ring-1 ring-inset ring-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:ring-blue-700/50"
+            <SignalPill
+              size="sm"
+              tone="cool"
               title={`ИНН: ${company.legal.inn ?? '—'} · ${company.legal.legal_short_name ?? company.legal.legal_name ?? ''}`}
             >
               {typeof company.legal.revenue === 'number' && company.legal.revenue > 0
@@ -152,75 +145,70 @@ export function MapsCompanyCard({
                 : ''}
               {typeof company.legal.revenue === 'number' && company.legal.revenue > 0 && typeof company.legal.age_years === 'number' ? ' · ' : ''}
               {typeof company.legal.age_years === 'number' ? `${company.legal.age_years}л` : ''}
-            </span>
+            </SignalPill>
           )}
         </div>
       </div>
 
-      {aiAnalysis && (
-        <div
-          className={cn(
-            'mt-1.5 inline-flex items-start gap-1.5 rounded-md px-2 py-1 text-[11px]',
-            aiAnalysis.status === 'done' && aiAnalysis.score != null
-              ? aiAnalysis.score >= 7
-                ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200'
-                : aiAnalysis.score >= 4
-                  ? 'border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200'
-                  : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-              : aiAnalysis.status === 'pending'
-                ? 'border border-violet-200 bg-violet-50 text-violet-800 animate-pulse dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200'
-                : 'border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-900/30 dark:text-rose-200'
-          )}
-          title={aiAnalysis.comment ?? aiAnalysis.error ?? ''}
-        >
-          <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
-          {aiAnalysis.status === 'pending' ? (
-            <span>AI: считаю…</span>
-          ) : aiAnalysis.status === 'failed' ? (
-            <span>AI: ошибка</span>
-          ) : (
-            <>
-              <span className="font-semibold">AI: {aiAnalysis.score ?? '—'}/10</span>
-              {aiAnalysis.comment && (
-                <span className="line-clamp-2 italic">{aiAnalysis.comment}</span>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {/* AI-анализ под выбранный пресет */}
+      {aiAnalysis && <AiAnalysisRow analysis={aiAnalysis} />}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5" onClick={onClick}>
-        <MetricPill label={`${reviewsTotal} отзывов`} tone="neutral" />
-        <MetricPill
-          label={`негатив ${reviewsNeg}`}
-          tone={reviewsNeg >= 5 ? 'danger' : reviewsNeg > 0 ? 'warn' : 'neutral'}
-        />
+      {/* SignalPill-ряд: единая шкала, «нет сайта» как accent */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <SignalPill tone="muted">{reviewsTotal} отзывов</SignalPill>
+        {reviewsNeg > 0 && (
+          <SignalPill tone={reviewsNeg >= 5 ? 'hot' : 'warm'}>
+            негатив {reviewsNeg}
+          </SignalPill>
+        )}
         {ownerReplies === true ? (
-          <MetricPill label="отвечает владелец" tone="success" />
+          <SignalPill tone="good">отвечает владелец</SignalPill>
         ) : ownerReplies === false && reviewsTotal > 0 ? (
-          <MetricPill label="не отвечает" tone="danger" />
+          <SignalPill tone="warm">не отвечает</SignalPill>
         ) : null}
         {hasWebsite ? (
-          <MetricPill label="есть сайт" tone="neutral" />
+          <SignalPill tone="muted">есть сайт</SignalPill>
         ) : (
-          <MetricPill label="нет сайта" tone="warn" />
+          <SignalPill tone="accent" title="Нет сайта — горячий сигнал для продажи сайта">
+            нужен сайт
+          </SignalPill>
         )}
         {company.source && (
-          <span className="ml-auto text-[11px] text-slate-400">{sourceLabel(company.source)}</span>
+          <span className="ml-auto text-[11px] text-[hsl(var(--muted))]">
+            {sourceTitle}
+          </span>
         )}
       </div>
 
-      {/* Контакты в превью. Если ничего нет от провайдера — всё равно
-          показываем ссылку «открыть в 2GIS» как минимальный contact-fallback,
-          чтобы юзер мог за один клик увидеть телефон/мессенджеры в источнике. */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-600 dark:text-slate-300">
+      {/* Зона «диагноза»: pain-теги или fallback-цитаты негатива */}
+      {topPains.length > 0 ? (
+        <PainBlock pains={topPains} />
+      ) : negativeSnippets.length > 0 ? (
+        <NegativeSnippetsBlock snippets={negativeSnippets} />
+      ) : (
+        fallbackTags.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1">
+            {fallbackTags.slice(0, 5).map((t: PainTagShort) => (
+              <span
+                key={t.id}
+                className="rounded-pill bg-[hsl(var(--surface-2))] px-2 py-0.5 text-[11px] text-[hsl(var(--text))]"
+              >
+                {t.label}
+              </span>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Контакты */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[hsl(var(--muted))]">
         {company.phone && (
           <span className="inline-flex items-center gap-1">
-            <Phone className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+            <Phone className="h-3 w-3 text-[hsl(var(--muted))]" />
             <a
               href={`tel:${company.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className="hover:underline"
+              className="hover:text-brand-600 hover:underline"
             >
               {company.phone}
             </a>
@@ -228,13 +216,13 @@ export function MapsCompanyCard({
         )}
         {hasWebsite && (
           <span className="inline-flex items-center gap-1">
-            <Globe className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+            <Globe className="h-3 w-3 text-[hsl(var(--muted))]" />
             <a
               href={normalizeUrl(company.website!.trim())}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="max-w-[180px] truncate hover:underline"
+              className="max-w-[180px] truncate hover:text-brand-600 hover:underline"
             >
               {stripScheme(company.website!.trim())}
             </a>
@@ -242,16 +230,16 @@ export function MapsCompanyCard({
         )}
         {emails.length > 0 && (
           <span className="inline-flex items-center gap-1">
-            <Mail className="h-3 w-3 text-emerald-500" />
+            <Mail className="h-3 w-3 text-[color:var(--signal-good)]" />
             <a
               href={`mailto:${emails[0]}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-emerald-700 dark:text-emerald-400 hover:underline"
+              className="text-[color:var(--signal-good)] hover:underline"
             >
               {emails[0]}
             </a>
             {emails.length > 1 && (
-              <span className="text-[11px] text-slate-400 dark:text-slate-500">+{emails.length - 1}</span>
+              <span className="text-[11px] text-[hsl(var(--muted))]">+{emails.length - 1}</span>
             )}
           </span>
         )}
@@ -261,157 +249,154 @@ export function MapsCompanyCard({
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="ml-auto inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
-            title={`Открыть карточку в ${sourceLabel(company.source)}`}
+            className="ml-auto inline-flex items-center gap-1 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
+            title={`Открыть карточку в ${sourceTitle}`}
           >
             <ExternalLink className="h-3 w-3" />
-            {sourceLabel(company.source)}
+            {sourceTitle}
           </a>
         )}
       </div>
 
-      {topPains.length > 0 ? (
-        <div className="mt-2 space-y-1.5">
-          {topPains.slice(0, 3).map((p) => (
-            <div
-              key={p.pain_tag_id}
-              className="rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5 dark:border-amber-700/50 dark:bg-amber-900/20"
-            >
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-700/40 dark:text-amber-200">
-                  {p.label}
-                </span>
-                {p.mention_count > 0 && (
-                  <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
-                    × {p.mention_count}
-                  </span>
-                )}
-              </div>
-              {p.top_quote && (
-                <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
-                  <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                  <span className="line-clamp-2 italic">«{p.top_quote}»</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : negativeSnippets.length > 0 ? (
-        // Fallback: AI ещё не разобрал боли, но у компании есть негативы —
-        // показываем 1-2 куска отзыва напрямую, чтобы юзер сразу видел причину
-        // негатива. Иначе карточка выглядит «пустой» с цифрой «негатив 8» без сути.
-        <div className="mt-2 space-y-1.5">
-          {negativeSnippets.slice(0, 2).map((quote, idx) => (
-            <div
-              key={idx}
-              className="rounded-md border border-rose-200 bg-rose-50/60 px-2 py-1.5 dark:border-rose-700/50 dark:bg-rose-900/20"
-              title="AI ещё не разобрал боли клиентов — показан кусок негативного отзыва как есть"
-            >
-              <div className="flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
-                <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
-                <span className="line-clamp-2 italic">«{quote}»</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        fallbackTags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {fallbackTags.slice(0, 5).map((t: PainTagShort) => (
-              <span
-                key={t.id}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-              >
-                {t.label}
-              </span>
-            ))}
-          </div>
-        )
-      )}
-
+      {/* Действия — primary бренд-градиент, secondary surface */}
       {!hideActions && (onAddToList || onDraftEmail) && (
         <div className="mt-3 flex flex-wrap gap-2">
           {onAddToList && (
-            <button
-              type="button"
+            <ButtonV2
+              variant="secondary"
+              size="md"
+              iconLeft={<ListPlus />}
               onClick={(e) => {
                 e.stopPropagation();
                 onAddToList(company);
               }}
-              // min-h-9 (36px) = разумный тач-таргет на mobile. На sm+ возвращаем
-              // плотную высоту, чтобы карточка не разъезжалась.
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:min-h-0 sm:px-2.5 sm:py-1"
             >
-              <ListPlus className="h-3.5 w-3.5" />
               В список
-            </button>
+            </ButtonV2>
           )}
           {onDraftEmail && (
-            <button
-              type="button"
-              disabled={draftEmailLoading}
+            <ButtonV2
+              variant="primary"
+              size="md"
+              loading={draftEmailLoading}
+              iconLeft={<Mail />}
               onClick={(e) => {
                 e.stopPropagation();
                 onDraftEmail(company);
               }}
-              className={cn(
-                'inline-flex min-h-9 items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white sm:min-h-0 sm:px-2.5 sm:py-1',
-                draftEmailLoading && 'opacity-70'
-              )}
               title={
                 topPains.length === 0
-                  ? 'AI ещё не подсчитал боли клиентов из отзывов — драфт получится общий, без цитат. Попробуй позже когда придёт анализ.'
+                  ? 'AI ещё не подсчитал боли — драфт будет общий'
                   : ''
               }
             >
-              <Mail className="h-3.5 w-3.5" />
-              {draftEmailLoading ? 'Генерирую…' : 'Письмо'}
-            </button>
+              Письмо
+            </ButtonV2>
           )}
         </div>
       )}
 
       {id == null && <span className="hidden">{/* unused */}</span>}
-    </li>
+    </CardV2>
   );
 }
 
-function MetricPill({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: 'neutral' | 'success' | 'warn' | 'danger';
-}) {
-  const styles = {
-    neutral: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
-    success: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700/50',
-    warn: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-700/50',
-    danger: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 dark:bg-red-900/30 dark:text-red-300 dark:ring-red-700/50',
-  }[tone];
+/* ===== Сабкомпоненты ===== */
+
+function RatingPill({ rating }: { rating: number }) {
+  const tone: 'good' | 'warm' | 'hot' | 'muted' =
+    rating >= 4.3 ? 'good' : rating <= 3.5 ? 'hot' : 'warm';
   return (
-    <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-medium', styles)}>{label}</span>
+    <SignalPill tone={tone} size="sm">
+      <span className="font-semibold">★ {rating.toFixed(1)}</span>
+    </SignalPill>
   );
 }
 
-function ratingClass(rating: number | null | undefined): string {
-  if (rating == null) return 'app-badge-accent';
-  if (rating >= 4.3) return 'app-badge-success';
-  if (rating <= 3.5) return 'app-badge-danger';
-  return 'app-badge-accent';
+function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
+  return (
+    <div className="mt-2.5 space-y-1.5">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+        <Activity className="h-3 w-3 text-[color:var(--signal-warm)]" />
+        Диагноз по отзывам
+      </div>
+      {pains.slice(0, 3).map((p) => (
+        <div
+          key={p.pain_tag_id}
+          className="rounded-v2-sm border border-amber-200/60 bg-amber-50/70 px-2.5 py-1.5 dark:border-amber-500/30 dark:bg-amber-500/10"
+        >
+          <div className="flex items-center gap-2">
+            <span className="rounded-pill bg-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-500/30 dark:text-amber-200">
+              {p.label}
+            </span>
+            {p.mention_count > 0 && (
+              <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
+                × {p.mention_count}
+              </span>
+            )}
+          </div>
+          {p.top_quote && (
+            <div className="mt-1 flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
+              <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+              <span className="line-clamp-2 italic">«{p.top_quote}»</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-/** Цвет бейджа температуры лида 0-100.
- *  70+ — горячий (красный), 40-69 — тёплый (жёлтый), 0-39 — холодный (серый).
- *  Шкала из ТЗ блока 3 (2026-06-02). */
-function temperatureClass(t: number): string {
-  if (t >= 70) {
-    return 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:ring-rose-700/50';
-  }
-  if (t >= 40) {
-    return 'bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-700/50';
-  }
-  return 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700';
+function NegativeSnippetsBlock({ snippets }: { snippets: string[] }) {
+  return (
+    <div className="mt-2.5 space-y-1.5">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[color:var(--signal-hot)]">
+        <Activity className="h-3 w-3" />
+        Жалобы клиентов
+      </div>
+      {snippets.slice(0, 2).map((quote, idx) => (
+        <div
+          key={idx}
+          className="rounded-v2-sm border border-red-200/60 bg-red-50/70 px-2.5 py-1.5 dark:border-red-500/30 dark:bg-red-500/10"
+          title="AI ещё не разобрал боли — показан кусок негативного отзыва"
+        >
+          <div className="flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
+            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-hot)]" />
+            <span className="line-clamp-2 italic">«{quote}»</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AiAnalysisRow({ analysis }: { analysis: CompanyAnalysisOut }) {
+  const tone: 'good' | 'warm' | 'muted' | 'hot' =
+    analysis.status === 'pending' ? 'muted' :
+    analysis.status === 'failed' ? 'hot' :
+    (analysis.score ?? 0) >= 7 ? 'good' :
+    (analysis.score ?? 0) >= 4 ? 'warm' : 'muted';
+
+  return (
+    <SignalPill
+      tone={tone}
+      className="mt-1.5"
+      icon={<Sparkles />}
+      title={analysis.comment ?? analysis.error ?? ''}
+    >
+      {analysis.status === 'pending' ? 'AI: считаю…' :
+       analysis.status === 'failed' ? 'AI: ошибка' :
+       <>AI: {analysis.score ?? '—'}/10{analysis.comment ? ` · ${analysis.comment.slice(0, 60)}` : ''}</>}
+    </SignalPill>
+  );
+}
+
+/* ===== Утилиты ===== */
+
+function tempTone(t: number): 'hot' | 'warm' | 'muted' {
+  if (t >= 70) return 'hot';
+  if (t >= 40) return 'warm';
+  return 'muted';
 }
 
 function sourceLabel(source: string | null | undefined): string {
@@ -445,7 +430,6 @@ function formatAddressWithCity(
   if (!a && !c) return null;
   if (!a) return c;
   if (!c) return a;
-  // Если город уже в адресе (нечувствительно к регистру) — не дублируем.
   if (a.toLowerCase().includes(c.toLowerCase())) return a;
   return `${c}, ${a}`;
 }

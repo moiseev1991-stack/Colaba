@@ -405,12 +405,15 @@ export function MapsSearchForm({ onStarted }: Props) {
             2GIS · Яндекс.Карты
           </span>
         </div>
-        <h1 className="text-[40px] md:text-[56px] font-extrabold leading-[0.98] tracking-[-2px] mb-5">
-          Компании с <span className="app-hero-gradient">«болями» клиентов</span>
+        <h1
+          className="font-display font-semibold leading-[1.02] tracking-tight mb-5"
+          style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: 'hsl(var(--text))' }}
+        >
+          Компании с <span className="text-gradient-brand">«болями» клиентов</span>
           <br className="hidden md:block" />
           <span className="md:inline"> </span>из отзывов на картах.
         </h1>
-        <p className="text-[16px] md:text-[17px] max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
+        <p className="text-[15px] md:text-[17px] max-w-[640px] leading-relaxed" style={{ color: 'hsl(var(--muted))' }}>
           Введите нишу и город — модуль найдёт компании в 2GIS / Яндекс.Картах,
           подтянет отзывы и выделит «боли» клиентов, чтобы было о чём писать в холодную рассылку.
         </p>

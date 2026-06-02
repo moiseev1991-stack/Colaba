@@ -3,6 +3,7 @@
 import { ModuleProvider, useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
 import { Sidebar } from './Sidebar';
 import { AppHeader } from './AppHeader';
+import { MobileTabBar } from './MobileTabBar';
 
 function MobileModuleTabs() {
   const { module, setModule } = useModule();
@@ -64,7 +65,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="flex flex-1 min-w-0 overflow-hidden relative z-10">
           <Sidebar />
-          <main className="app-main flex-1 min-w-0 overflow-auto">
+          {/* pb-20 на мобайле — чтоб содержимое не уезжало под MobileTabBar (56px + safe-area). */}
+          <main className="app-main flex-1 min-w-0 overflow-auto pb-20 md:pb-0">
             {children}
           </main>
         </div>
@@ -79,6 +81,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         >
           © SpinLid
         </footer>
+
+        {/* §2.3 — мобильная нижняя навигация. Только md-, на десктопе — sidebar. */}
+        <MobileTabBar />
       </div>
     </ModuleProvider>
   );
