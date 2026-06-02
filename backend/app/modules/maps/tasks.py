@@ -685,6 +685,21 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
                 company_id,
             )
 
+        # Website discovery (roadmap baseline 2026-06-02). Контакты только
+        # что обогатились (telegram/vk/email handles собраны) — пробуем
+        # угадать сайт. Если найдём — companies.website обновится и
+        # website_lead_score станет NULL (компания уйдёт из website-лидов).
+        # Триггерим только когда у компании ещё нет своего website.
+        try:
+            company_after = await db.get(Company, company_id)
+            if company_after and not (company_after.website or "").strip():
+                discover_company_website.delay(company_id)
+        except Exception as e:
+            logger.warning(
+                "discover_company_website enqueue failed for #%d: %s",
+                company_id, e,
+            )
+
         return {
             "status": "ok",
             "phones_found": len(result.phones),
@@ -755,6 +770,75 @@ def generate_company_description(self, company_id: int):
             "generate_company_description retrying company=%d: %s", company_id, exc
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# Website discovery (угадывание по handle, см. website_discovery.py)
+# ---------------------------------------------------------------------------
+
+
+async def _discover_company_website_async(company_id: int) -> dict:
+    """Wrapper: пытается угадать сайт по telegram/vk/email handle.
+
+    При успехе пишет в companies.website + пересчитывает website_lead_score
+    (она становится NULL — компания уходит из списка website-лидов, мы
+    больше не предлагаем продать ей сайт).
+    """
+    async with AsyncSessionLocal() as db:
+        from sqlalchemy import update as sa_update
+        from app.modules.maps.website_discovery import discover_website
+        from app.modules.maps.lead_temperature import recompute_for_company as _rt
+        from app.modules.maps.website_lead_score import recompute_for_company as _rw
+
+        company = await db.get(Company, company_id)
+        if company is None:
+            return {"status": "not_found"}
+        # Не трогаем компании где website уже есть — даже если он
+        # «псевдо» (vk.com и т.п.), пусть юзер сам решит через UI.
+        if company.website and company.website.strip():
+            return {"status": "skip_has_website"}
+
+        cand = await discover_website(company)
+        if cand is None:
+            return {"status": "not_found"}
+
+        await db.execute(
+            sa_update(Company)
+            .where(Company.id == company_id)
+            .values(website=cand.url)
+        )
+        await db.commit()
+
+        # Пересчёт скоров — website_lead_score теперь NULL, что
+        # автоматически уберёт компанию из website-лидов в выдаче.
+        try:
+            await _rt(db, company_id)
+            await _rw(db, company_id)
+            await db.commit()
+        except Exception:
+            logger.exception(
+                "scores recompute failed after discover_website (#%d)", company_id
+            )
+
+        return {"status": "ok", "url": cand.url, "source": cand.source}
+
+
+@celery_app.task(
+    name="discover_company_website",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    rate_limit="120/m",
+)
+def discover_company_website(self, company_id: int):
+    """Celery-обёртка для website discovery."""
+    try:
+        return asyncio.run(_discover_company_website_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "discover_company_website retrying #%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=20, max_retries=1)
 
 
 # ---------------------------------------------------------------------------

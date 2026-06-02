@@ -693,6 +693,51 @@ async def get_heatmap(
 
 
 # ---------------------------------------------------------------------------
+# Admin: discover websites by handle (roadmap 2026-06-02)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/admin/discover-websites")
+@limiter.limit("5/minute")
+async def admin_discover_websites(
+    request: Request,
+    search_id: int | None = Query(default=None),
+    limit: int = Query(default=500, ge=1, le=5000),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk-постановка discover_company_website по website-лидам без website.
+
+    Применяет ко всем (или к компаниям конкретного search_id) website-лидам
+    у которых website пустой. После прогона часть компаний получит
+    реальный сайт (m23clinic.ru и т.п.) и уйдёт из website-лидов.
+    """
+    from app.modules.maps.tasks import discover_company_website
+
+    stmt = (
+        select(Company.id)
+        .where(Company.website_lead_score.isnot(None))
+        .where((Company.website.is_(None)) | (Company.website == ""))
+        .limit(limit)
+    )
+    if search_id is not None:
+        from app.models.maps import MapSearchResult
+        stmt = stmt.join(
+            MapSearchResult, MapSearchResult.company_id == Company.id
+        ).where(MapSearchResult.map_search_id == search_id)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    queued = 0
+    for cid in rows:
+        try:
+            discover_company_website.delay(int(cid))
+            queued += 1
+        except Exception as e:
+            logger.warning("discover_websites enqueue failed for #%s: %s", cid, e)
+    return {"queued": queued}
+
+
+# ---------------------------------------------------------------------------
 # Admin: queue legal-enrichment (блок 2 ТЗ 2026-06-02)
 # ---------------------------------------------------------------------------
 
