@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.35.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.0...v1.35.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** website discovery — поддержка handle с _ (домены DNS не имеют _) ([ee617c3](https://github.com/moiseev1991-stack/Colaba/commit/ee617c393dfdadf214dd22ce00e9de989e64b0ad))
+
 # [1.35.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.34.1...v1.35.0) (2026-06-02)
 
 
