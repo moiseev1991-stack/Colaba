@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.30.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.29.0...v1.30.0) (2026-06-02)
+
+
+### Features
+
+* **maps:** блок 3 — lead temperature scoring + бейдж + сортировка ([956cbdd](https://github.com/moiseev1991-stack/Colaba/commit/956cbdd12b8a3d745e623ebd8e0e38333d2b963b))
+
 # [1.29.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.28.0...v1.29.0) (2026-06-02)
 
 
