@@ -416,14 +416,16 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
             if normalized:
                 result.website = normalized
 
-    # Слой 5: прямая ссылка `<a href="https://realsite.ru">` в HTML.
-    # В новой версии 2GIS (2026+) внешний сайт рендерится напрямую, без
-    # обёртки link.2gis.ru/?url=. На firm-странице внешних non-2gis/non-
-    # social hrefs обычно 0-2 штук, и первая из них — сайт компании.
-    if not result.website and html:
-        direct = _pick_external_website(html)
-        if direct:
-            result.website = direct
+    # Слой 5 ОТКЛЮЧЁН: проверка на проде показала что 2GIS Владимира на
+    # ВСЕХ карточках firm рендерит общий рекламный/партнёрский баннер
+    # (https://otello.ru/) первым внешним href. Логика "первая non-2gis
+    # ссылка = сайт компании" забивает 100% компаний этой рекламой.
+    # Нужно искать ссылку рядом с DOM-меткой «Сайт»/«Веб-сайт» или внутри
+    # специфичного класса карточки контактов — это TODO следующего раунда.
+    # if not result.website and html:
+    #     direct = _pick_external_website(html)
+    #     if direct:
+    #         result.website = direct
 
     result.fetched_url = final_url if 'final_url' in locals() else url
     return result
