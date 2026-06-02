@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.27.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.3...v1.27.4) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** отключаю слой 5 — на проде ловит рекламный баннер 2GIS ([9df20e8](https://github.com/moiseev1991-stack/Colaba/commit/9df20e8f48da0dd7ef375781036587b615406c66))
+
 ## [1.27.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.27.2...v1.27.3) (2026-06-02)
 
 
