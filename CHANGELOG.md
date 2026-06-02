@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.39.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.38.0...v1.39.0) (2026-06-02)
+
+
+### Features
+
+* **ui:** redesign v2 phase B-1 — дашборд + история на новый язык ([759f888](https://github.com/moiseev1991-stack/Colaba/commit/759f888ff0593233811e0d717953adcd72b77160))
+
 # [1.38.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.37.0...v1.38.0) (2026-06-02)
 
 
