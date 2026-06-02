@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.35.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.3...v1.35.4) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** тепловая карта — leaflet.heat теперь self-hosted в /public ([843bea9](https://github.com/moiseev1991-stack/Colaba/commit/843bea96ba8f60d7212865fdde36fb1aceae8049))
+
 ## [1.35.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.2...v1.35.3) (2026-06-02)
 
 
