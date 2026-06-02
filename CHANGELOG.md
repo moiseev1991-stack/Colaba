@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.34.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.34.0...v1.34.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** фильтр help@2gis.ru и других плейсхолдеров 2GIS из email ([daa2794](https://github.com/moiseev1991-stack/Colaba/commit/daa27948ab9886936a7e04b74efb26e194e4af88))
+
 # [1.34.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.33.0...v1.34.0) (2026-06-02)
 
 
