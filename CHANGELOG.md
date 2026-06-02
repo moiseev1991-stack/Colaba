@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.35.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.2...v1.35.3) (2026-06-02)
+
+
+### Bug Fixes
+
+* **maps:** тепловая карта — window.L=L + jsdelivr CDN fallback ([9bc9bc6](https://github.com/moiseev1991-stack/Colaba/commit/9bc9bc6fa59963c8cfd94c3e577f5ffe912b5f71))
+
 ## [1.35.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.35.1...v1.35.2) (2026-06-02)
 
 
