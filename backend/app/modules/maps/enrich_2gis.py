@@ -72,6 +72,16 @@ _SEC_CH_UA_HEADERS = {
 # `webapi.2gis.com` — иногда тоже релевантен (внутренние proxy-эндпоинты).
 _API_HOSTS = ("catalog.api.2gis.com", "webapi.2gis.com")
 
+# 2GIS оборачивает внешние сайты в трекер вида
+#   https://link.2gis.ru/<id>?url=https%3A%2F%2Freal-site.ru%2F
+# который рендерится прямо в HTML карточки. Это надёжный сигнал —
+# 2GIS использует этот трекер только для сайтов компаний, других целей
+# у него на firm-странице нет.
+_WEBSITE_2GIS_LINK_RE = re.compile(
+    r'https?://link\.2gis\.ru/[^"\s\'<>]*[?&]url=([^"\s\'<>&]+)',
+    re.IGNORECASE,
+)
+
 
 def _normalize_2gis_url(raw: str) -> str | None:
     """Достаёт настоящий URL из 2GIS-трекинговых ссылок.
@@ -329,6 +339,21 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
     if html:
         html_result = _extract_from_html(html)
         result.merge(html_result)
+
+    # Слой 4: website из HTML через 2GIS-трекер link.2gis.ru/?url=<encoded>.
+    # На нашем плане Catalog API contact_groups часто пустые, и type='website'
+    # в XHR не приходит — но трекерная ссылка всё равно рендерится в DOM
+    # карточки firm. Достаём оригинал из query `url=`.
+    if not result.website and html:
+        m = _WEBSITE_2GIS_LINK_RE.search(html)
+        if m:
+            try:
+                raw = unquote(m.group(1))
+            except Exception:
+                raw = m.group(1)
+            normalized = _normalize_2gis_url(raw)
+            if normalized:
+                result.website = normalized
 
     result.fetched_url = final_url if 'final_url' in locals() else url
     return result
