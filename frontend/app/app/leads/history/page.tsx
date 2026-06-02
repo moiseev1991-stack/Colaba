@@ -1,10 +1,22 @@
 'use client';
 
+/**
+ * §4.3 ТЗ редизайна 2026-06-03 — История поисков.
+ * Карточки на CardV2 с hover-lift, display-шрифт на запросе,
+ * SignalPill для статуса, reveal-stack для появления.
+ * max-w-7xl чтобы убрать пустоту по бокам на десктопе.
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { listSearches, deleteSearch } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
 import { Eye, Trash2, Download, Loader2, MoreVertical } from 'lucide-react';
+
+import { CardV2 } from '@/components/ui/CardV2';
+import { SignalPill } from '@/components/ui/SignalPill';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -18,11 +30,11 @@ function statusLabel(s: string): string {
   return 'Ожидание';
 }
 
-function statusBadgeClass(s: string): string {
-  if (s === 'completed') return 'app-badge app-badge-success';
-  if (s === 'failed') return 'app-badge app-badge-danger';
-  if (s === 'processing' || s === 'running' || s === 'pending') return 'app-badge app-badge-warning';
-  return 'app-badge app-badge-accent';
+function statusTone(s: string): 'good' | 'hot' | 'warm' | 'muted' {
+  if (s === 'completed') return 'good';
+  if (s === 'failed') return 'hot';
+  if (s === 'processing' || s === 'running' || s === 'pending') return 'warm';
+  return 'muted';
 }
 
 export default function LeadsHistoryPage() {
@@ -32,7 +44,7 @@ export default function LeadsHistoryPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
   const PAGE_SIZE = 20;
 
   const load = useCallback(async (p: number) => {
@@ -71,149 +83,121 @@ export default function LeadsHistoryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1100px] px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>История поисков лидов</h1>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="font-display font-semibold tracking-tight"
+            style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}>
+          История поисков лидов
+        </h1>
       </div>
 
-      {/* Card list — same style as /app/leads "Последние запуски" */}
       {loading ? (
         <div className="space-y-2">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-[64px] app-skeleton" style={{ borderRadius: 4 }} />
-          ))}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[72px]" rounded="lg" />)}
         </div>
       ) : runs.length === 0 ? (
-        <div
-          className="p-12 text-center rounded-[8px] border"
-          style={{
-            background: 'hsl(var(--surface))',
-            border: '1px dashed hsl(var(--border))',
-          }}
-        >
-          <p className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
-            История пустая — запустите первый поиск
-          </p>
-        </div>
+        <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+          История пустая — запустите первый поиск
+        </CardV2>
       ) : (
-        <div className="space-y-1.5" ref={menuRef}>
+        <ul className="reveal-stack space-y-2" ref={menuRef}>
           {runs.map((r, idx) => (
-            <div
-              key={r.id}
-              className="app-run-card cursor-pointer"
-              role="button"
-              tabIndex={0}
-              onClick={() => router.push(`/runs/${r.id}`)}
-              onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/runs/${r.id}`); }}
-            >
-              <span className="app-mono-label shrink-0 w-10 text-center" style={{ color: 'hsl(var(--muted))' }}>
-                #{String(page * PAGE_SIZE + idx + 1).padStart(2, '0')}
-              </span>
-              <div className="min-w-0">
-                <div className="text-[14px] font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={r.query}>
-                  {r.query}
+            <li key={r.id}>
+              <CardV2
+                interactive
+                reveal
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/runs/${r.id}`)}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') router.push(`/runs/${r.id}`); }}
+                className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
+              >
+                <span className="hidden w-10 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+                  #{String(page * PAGE_SIZE + idx + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]" title={r.query}>
+                    {r.query}
+                  </div>
+                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                    {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0} {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
+                  </div>
                 </div>
-                <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
-                  {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0} {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
-                </div>
-              </div>
-              <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
-              <div className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/runs/${r.id}`)}
-                  className="inline-flex items-center gap-1 text-[13px] font-semibold transition-opacity hover:opacity-80"
-                  style={{ color: 'hsl(var(--accent))' }}
-                >
-                  <Eye className="h-4 w-4" />
-                  <span className="hidden sm:inline">Открыть</span>
-                </button>
-                <div className="relative">
+                <SignalPill tone={statusTone(r.status)} size="sm">{statusLabel(r.status)}</SignalPill>
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
-                    onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded-[8px] transition-colors"
-                    style={{ color: 'hsl(var(--muted))' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                    onClick={() => router.push(`/runs/${r.id}`)}
+                    className="hidden min-h-9 items-center gap-1 px-2 text-[13px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
+                    Открыть
                   </button>
-                  {openMenuId === r.id && (
-                    <div
-                      className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-[8px] border shadow-lg py-1"
-                      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
+                      className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
+                      aria-label="Меню"
                     >
-                      {r.status === 'completed' && (
-                        <a
-                          href={`/api/v1/searches/${r.id}/results/export/csv`}
-                          download
-                          onClick={() => setOpenMenuId(null)}
-                          className="flex items-center gap-2 px-3 py-2 text-sm transition-colors"
-                          style={{ color: 'hsl(var(--text))' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = '')}
-                        >
-                          <Download className="h-4 w-4" /> Скачать CSV
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => { setOpenMenuId(null); handleDelete(r.id); }}
-                        disabled={deletingId === r.id}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors disabled:opacity-40"
-                        style={{ color: 'hsl(var(--danger))' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    {openMenuId === r.id && (
+                      <div
+                        className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-v2 border bg-[hsl(var(--surface))] py-1 shadow-v2"
+                        style={{ borderColor: 'hsl(var(--border))' }}
                       >
-                        {deletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        Удалить
-                      </button>
-                    </div>
-                  )}
+                        {r.status === 'completed' && (
+                          <a
+                            href={`/api/v1/searches/${r.id}/results/export/csv`}
+                            download
+                            onClick={() => setOpenMenuId(null)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--text))] hover:bg-[hsl(var(--surface-2))]"
+                          >
+                            <Download className="h-4 w-4" /> Скачать CSV
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setOpenMenuId(null); handleDelete(r.id); }}
+                          disabled={deletingId === r.id}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[color:var(--signal-hot)] hover:bg-[var(--signal-hot-bg)] disabled:opacity-40"
+                        >
+                          {deletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          Удалить
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardV2>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* Пагинация */}
       {!loading && runs.length > 0 && (
-        <div
-          className="mt-4 px-4 py-3 flex items-center justify-between text-sm rounded-[8px] border"
-          style={{
-            background: 'hsl(var(--surface))',
-            borderColor: 'hsl(var(--border))',
-            color: 'hsl(var(--muted))',
-          }}
-        >
+        <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
           <span>Страница {page + 1}</span>
           <div className="flex gap-2">
-            <button
-              type="button"
+            <ButtonV2
+              variant="secondary"
+              size="sm"
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="px-3 py-1 rounded border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-              onMouseEnter={(e) => { if (page !== 0) e.currentTarget.style.background = 'hsl(var(--accent-weak))'; }}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '')}
             >
               ← Назад
-            </button>
-            <button
-              type="button"
+            </ButtonV2>
+            <ButtonV2
+              variant="secondary"
+              size="sm"
               onClick={() => setPage(p => p + 1)}
               disabled={runs.length < PAGE_SIZE}
-              className="px-3 py-1 rounded border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-              onMouseEnter={(e) => { if (runs.length >= PAGE_SIZE) e.currentTarget.style.background = 'hsl(var(--accent-weak))'; }}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '')}
             >
               Вперёд →
-            </button>
+            </ButtonV2>
           </div>
-        </div>
+        </CardV2>
       )}
     </div>
   );

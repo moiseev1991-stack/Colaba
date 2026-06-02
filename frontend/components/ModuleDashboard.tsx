@@ -3,21 +3,35 @@
 /**
  * Shared real-data dashboard component used by SEO, Leads and Tenders module pages.
  * Replaces the old hardcoded MOCK dashboards.
+ *
+ * §4.2 ТЗ редизайна 2026-06-03 — переписано на новый язык:
+ *   - MetricCard вместо KpiCard (display-шрифт, иконка, единый стиль)
+ *   - max-w-7xl (1280px) чтоб убрать пустоту по бокам
+ *   - CardV2 для chart-блока и recent-runs (hover-lift)
+ *   - bg-brand-gradient на столбцах графика
+ *   - Skeleton v2 (shimmer) вместо app-skeleton
+ *   - reveal-stack для staggered появления карточек
+ *   - title в font-display
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, Eye } from 'lucide-react';
+import { Activity, AlertTriangle, Calendar, CheckCircle2, Clock, Eye, Percent, Target } from 'lucide-react';
 import { getDashboard, type DashboardResponse, type DashboardPeriod, type DashboardModule } from '@/src/services/api/dashboard';
 
-const CHART_HEIGHT = 160;
+import { MetricCard } from '@/components/ui/MetricCard';
+import { CardV2 } from '@/components/ui/CardV2';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { SignalPill } from '@/components/ui/SignalPill';
+
+const CHART_HEIGHT = 200;
 
 type Period = DashboardPeriod;
 
 interface Props {
   module: Exclude<DashboardModule, 'all'>;
   title: string;
-  runBaseUrl?: string; // base URL to open a run, default /runs
+  runBaseUrl?: string;
 }
 
 function formatDuration(sec: number | null): string {
@@ -32,32 +46,11 @@ function formatDateTime(iso: string): string {
   return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function KpiCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div
-      className="rounded-[8px] border p-4"
-      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
-    >
-      <div className="text-[12px] font-medium" style={{ color: 'hsl(var(--muted))' }}>{label}</div>
-      <div className="mt-1 text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>{value}</div>
-    </div>
-  );
-}
-
-function SkeletonCard() {
-  return (
-    <div
-      className="rounded-[8px] border h-[72px] app-skeleton"
-      style={{ borderColor: 'hsl(var(--border))' }}
-    />
-  );
-}
-
-function statusBadgeClass(s: string): string {
-  if (s === 'completed') return 'app-badge app-badge-success';
-  if (s === 'failed') return 'app-badge app-badge-danger';
-  if (s === 'processing' || s === 'running' || s === 'pending') return 'app-badge app-badge-warning';
-  return 'app-badge app-badge-accent';
+function statusTone(s: string): 'good' | 'hot' | 'warm' | 'muted' {
+  if (s === 'completed') return 'good';
+  if (s === 'failed') return 'hot';
+  if (s === 'processing' || s === 'running' || s === 'pending') return 'warm';
+  return 'muted';
 }
 
 function statusLabel(s: string): string {
@@ -93,17 +86,23 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
   const chartPoints = data?.runs_by_day ?? [];
   const maxTotal = Math.max(...chartPoints.map(d => d.total), 1);
 
+  // Успешность с учётом goodDirection — для метрики «ошибки» рост = плохо.
+  const successRate = kpi && kpi.total > 0 ? Math.round((kpi.success / kpi.total) * 100) : null;
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <h1 className="text-[24px] font-semibold" style={{ color: 'hsl(var(--text))' }}>{title}</h1>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display font-semibold tracking-tight"
+            style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', color: 'hsl(var(--text))' }}>
+          {title}
+        </h1>
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" style={{ color: 'hsl(var(--muted))' }} />
+          <Calendar className="h-4 w-4 text-[hsl(var(--muted))]" />
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as Period)}
-            className="rounded-[6px] border px-3 py-2 text-[14px]"
+            className="rounded-v2-sm border px-3 py-2 text-[13px]"
             style={{
               background: 'hsl(var(--surface))',
               borderColor: 'hsl(var(--border))',
@@ -119,7 +118,7 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
 
       {error && (
         <div
-          className="mb-6 rounded-[8px] border px-4 py-3 text-sm"
+          className="mb-6 rounded-v2-sm border px-4 py-3 text-sm"
           style={{
             background: 'hsl(var(--danger) / 0.1)',
             borderColor: 'hsl(var(--danger) / 0.3)',
@@ -130,100 +129,97 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-8">
+      {/* KPI Cards — адаптивный грид 2 / 3 / 6 (см. §4.2 ТЗ) */}
+      <div className="reveal-stack mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {loading ? (
-          Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+          Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-[112px]" rounded="lg" />
+          ))
         ) : (
           <>
-            <KpiCard label="Запросы" value={kpi?.total ?? 0} />
-            <KpiCard label="Успешные" value={kpi?.success ?? 0} />
-            <KpiCard label="Ошибки" value={kpi?.errors ?? 0} />
-            <KpiCard label="Ср. время" value={formatDuration(kpi?.avg_time_sec ?? null)} />
-            <KpiCard label="Результаты" value={kpi?.results ?? 0} />
-            <KpiCard
-              label="Успешность"
-              value={kpi && kpi.total > 0 ? `${Math.round((kpi.success / kpi.total) * 100)}%` : '—'}
-            />
+            <div className="reveal-item"><MetricCard label="Запросы"    value={kpi?.total ?? 0}                          icon={<Activity />} /></div>
+            <div className="reveal-item"><MetricCard label="Успешные"   value={kpi?.success ?? 0}                        icon={<CheckCircle2 />} /></div>
+            <div className="reveal-item"><MetricCard label="Ошибки"     value={kpi?.errors ?? 0}                         icon={<AlertTriangle />} goodDirection="down" /></div>
+            <div className="reveal-item"><MetricCard label="Ср. время"  value={formatDuration(kpi?.avg_time_sec ?? null)} icon={<Clock />} /></div>
+            <div className="reveal-item"><MetricCard label="Результаты" value={kpi?.results ?? 0}                        icon={<Target />} /></div>
+            <div className="reveal-item"><MetricCard label="Успешность" value={successRate != null ? `${successRate}%` : '—'} icon={<Percent />} /></div>
           </>
         )}
       </div>
 
-      {/* Chart */}
-      <div
-        className="rounded-[8px] border p-5 mb-8"
-        style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
-      >
-        <h3 className="text-[14px] font-medium mb-4" style={{ color: 'hsl(var(--muted))' }}>Запросы по дням</h3>
+      {/* Chart — широкая, выше, brand-gradient столбцы */}
+      <CardV2 className="mb-8 p-5 reveal-item">
+        <h3 className="mb-4 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+          Запросы по дням
+        </h3>
         {loading ? (
-          <div className="h-[160px] rounded app-skeleton" />
+          <Skeleton className="h-[200px]" rounded="md" />
         ) : chartPoints.length === 0 ? (
-          <div className="h-[160px] flex items-center justify-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
+          <div className="flex h-[200px] items-center justify-center text-sm text-[hsl(var(--muted))]">
             Нет данных за период
           </div>
         ) : (
-          <div className="flex items-end gap-1" style={{ height: CHART_HEIGHT }}>
+          <div className="flex items-end gap-1.5" style={{ height: CHART_HEIGHT }}>
             {chartPoints.map((d) => {
-              const h = maxTotal > 0 ? ((d.total / maxTotal) * (CHART_HEIGHT - 24)) : 0;
+              const h = maxTotal > 0 ? ((d.total / maxTotal) * (CHART_HEIGHT - 28)) : 0;
               return (
-                <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${d.date}: ${d.total} запр.`}>
-                  <div className="w-full flex flex-col justify-end" style={{ height: CHART_HEIGHT - 24 }}>
+                <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1.5" title={`${d.date}: ${d.total} запр.`}>
+                  <div className="flex w-full flex-col justify-end" style={{ height: CHART_HEIGHT - 28 }}>
                     <div
-                      className="w-full rounded-t-[4px] min-h-[4px] transition-all"
-                      style={{ height: `${Math.max(h, 4)}px`, backgroundColor: 'hsl(var(--accent))' }}
+                      className="w-full rounded-t-v2-sm bg-brand-gradient transition-all duration-300 hover:opacity-90"
+                      style={{ height: `${Math.max(h, 4)}px`, minHeight: 4 }}
                     />
                   </div>
-                  <span className="text-[10px] truncate max-w-full" style={{ color: 'hsl(var(--muted))' }}>{d.date.slice(5)}</span>
+                  <span className="max-w-full truncate text-[10px] text-[hsl(var(--muted))]">{d.date.slice(5)}</span>
                 </div>
               );
             })}
           </div>
         )}
-      </div>
+      </CardV2>
 
-      {/* Recent runs — card style matching /app/leads */}
+      {/* Recent runs — карточки на всю ширину (§4.2 + §4.3) */}
       <section>
-        <h2 className="text-[16px] font-semibold mb-4" style={{ color: 'hsl(var(--text))' }}>Последние запуски</h2>
+        <h2 className="mb-4 font-display text-[18px] font-semibold tracking-tight text-[hsl(var(--text))]">
+          Последние запуски
+        </h2>
         {loading ? (
           <div className="space-y-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-[64px] app-skeleton" style={{ borderRadius: 4 }} />
-            ))}
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-[68px]" rounded="lg" />)}
           </div>
         ) : recentRuns.length === 0 ? (
-          <div
-            className="py-10 text-center text-sm rounded-[8px] border"
-            style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
-          >
+          <CardV2 className="px-6 py-10 text-center text-sm text-[hsl(var(--muted))]">
             Запусков пока нет
-          </div>
+          </CardV2>
         ) : (
-          <div className="space-y-1.5">
+          <ul className="reveal-stack space-y-2">
             {recentRuns.map((r, idx) => (
-              <Link
-                key={r.id}
-                href={`${runBaseUrl}/${r.id}`}
-                className="app-run-card w-full text-left"
-              >
-                <span className="app-mono-label shrink-0 w-10 text-center" style={{ color: 'hsl(var(--muted))' }}>
-                  #{String(idx + 1).padStart(2, '0')}
-                </span>
-                <div className="min-w-0">
-                  <div className="text-[14px] font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={r.query}>
-                    {r.query}
-                  </div>
-                  <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
-                    {formatDateTime(r.created_at)} · {r.results} {r.results === 1 ? 'лид' : 'лидов'}
-                  </div>
-                </div>
-                <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
-                <div className="inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>
-                  <Eye className="h-4 w-4" />
-                  <span className="hidden sm:inline">Открыть</span>
-                </div>
-              </Link>
+              <li key={r.id}>
+                <Link
+                  href={`${runBaseUrl}/${r.id}`}
+                  className="block"
+                >
+                  <CardV2 interactive reveal className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+                    <span className="hidden w-10 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+                      #{String(idx + 1).padStart(2, '0')}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]" title={r.query}>
+                        {r.query}
+                      </div>
+                      <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                        {formatDateTime(r.created_at)} · {r.results} {r.results === 1 ? 'лид' : 'лидов'}
+                      </div>
+                    </div>
+                    <SignalPill tone={statusTone(r.status)} size="sm">{statusLabel(r.status)}</SignalPill>
+                    <span className="hidden items-center gap-1 text-[13px] font-medium text-brand-600 dark:text-brand-400 sm:inline-flex">
+                      <Eye className="h-4 w-4" /> Открыть
+                    </span>
+                  </CardV2>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
     </div>
