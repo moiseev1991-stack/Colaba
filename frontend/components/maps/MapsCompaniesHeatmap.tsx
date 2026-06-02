@@ -27,10 +27,10 @@ import { apiClient } from '@/client';
 import 'leaflet/dist/leaflet.css';
 
 
-// Глобальный кэш для script-loader: leaflet.heat подцепляется как
-// L.heatLayer. Плагин ищет global window.L (классический Leaflet-плагин
-// не понимает ES-импорты), поэтому ПЕРЕД загрузкой скрипта ставим
-// window.L = L — иначе плагин не подвяжет heatLayer.
+// leaflet.heat — статика frontend/public/leaflet-heat.js (vendored).
+// Грузим с same-origin /leaflet-heat.js — не зависим от CDN (unpkg/jsdelivr
+// иногда блокируются в РФ-сетях). Плагин ищет global window.L —
+// поэтому перед загрузкой скрипта явно ставим window.L = L.
 let _heatLoadPromise: Promise<void> | null = null;
 
 function ensureLeafletHeatLoaded(): Promise<void> {
@@ -40,38 +40,25 @@ function ensureLeafletHeatLoaded(): Promise<void> {
       reject(new Error('window undefined'));
       return;
     }
-    // Critical: плагин leaflet.heat — vanilla JS, ищет global L.
-    // Без этого L.heatLayer остаётся undefined даже после загрузки.
     (window as unknown as { L: typeof L }).L = L;
     // @ts-expect-error — heatLayer добавляется как side-effect
     if (typeof L.heatLayer === 'function') {
       resolve();
       return;
     }
-    const tryLoad = (urls: string[]) => {
-      if (urls.length === 0) {
-        reject(new Error('leaflet.heat: all CDNs failed'));
-        return;
+    const script = document.createElement('script');
+    script.src = '/leaflet-heat.js';
+    script.async = true;
+    script.onload = () => {
+      // @ts-expect-error — heatLayer добавляется как side-effect
+      if (typeof L.heatLayer === 'function') {
+        resolve();
+      } else {
+        reject(new Error('leaflet.heat loaded but L.heatLayer missing'));
       }
-      const [url, ...rest] = urls;
-      const script = document.createElement('script');
-      script.src = url;
-      script.async = true;
-      script.onload = () => {
-        // @ts-expect-error — heatLayer добавляется как side-effect
-        if (typeof L.heatLayer === 'function') {
-          resolve();
-        } else {
-          tryLoad(rest);
-        }
-      };
-      script.onerror = () => tryLoad(rest);
-      document.head.appendChild(script);
     };
-    tryLoad([
-      'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js',
-      'https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js',
-    ]);
+    script.onerror = () => reject(new Error('leaflet.heat /leaflet-heat.js load failed'));
+    document.head.appendChild(script);
   });
   return _heatLoadPromise;
 }
