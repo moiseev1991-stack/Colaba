@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.42.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.41.0...v1.42.0) (2026-06-03)
+
+
+### Features
+
+* **ui:** redesign v2 phase B-3 — сайдбар и mobile-tabs на бренд-градиент ([12b4239](https://github.com/moiseev1991-stack/Colaba/commit/12b42396a66a1f063c6e1c3a5f3034cb21c18bd7))
+
 # [1.41.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.40.0...v1.41.0) (2026-06-03)
 
 
