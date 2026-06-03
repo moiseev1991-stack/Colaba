@@ -509,7 +509,10 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   return (
     <div className="space-y-4 w-full min-w-0 max-w-full overflow-x-hidden" ref={tableRef} key={blacklistVersion}>
       {/* Filters, Actions and View Mode */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-[12px] border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div
+        className="rounded-v2-lg border overflow-hidden"
+        style={{ background: 'hsl(var(--surface-2))', borderColor: 'hsl(var(--border))' }}
+      >
         {/* Desktop Toolbar */}
         <div className="hidden md:flex flex-wrap items-center justify-between gap-3 px-3 py-2">
           <div className="flex items-center gap-4">
@@ -518,25 +521,27 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                 type="checkbox"
                 checked={filterPhoneOnly}
                 onChange={(e) => setFilterPhoneOnly(e.target.checked)}
-                className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                className="w-4 h-4 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Только с телефоном</span>
+              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Только с телефоном</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={filterErrors}
                 onChange={(e) => setFilterErrors(e.target.checked)}
-                className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                className="w-4 h-4 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Ошибки</span>
+              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Ошибки</span>
             </label>
           </div>
           
           <div className="flex items-center gap-4">
             {selectedIds.size > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
                   Выбрано: <span className="font-medium">{selectedIds.size}</span>
                 </span>
                 <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 text-xs">
@@ -547,12 +552,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                 </Button>
               </div>
             )}
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
               Показано: <span className="font-medium">{paginatedResults.length}</span> из{' '}
               <span className="font-medium">{totalResults}</span>
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700 dark:text-gray-300">Показывать по:</span>
+              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Показывать по:</span>
               <Select
                 value={pageSize.toString()}
                 onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
@@ -618,18 +623,20 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                 type="checkbox"
                 checked={filterPhoneOnly}
                 onChange={(e) => setFilterPhoneOnly(e.target.checked)}
-                className="w-3.5 h-3.5 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                className="w-3.5 h-3.5 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
               />
-              <span className="text-xs text-gray-700 dark:text-gray-300">Только с телефоном</span>
+              <span className="text-xs" style={{ color: 'hsl(var(--text))' }}>Только с телефоном</span>
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={filterErrors}
                 onChange={(e) => setFilterErrors(e.target.checked)}
-                className="w-3.5 h-3.5 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                className="w-3.5 h-3.5 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
               />
-              <span className="text-xs text-gray-700 dark:text-gray-300">Ошибки</span>
+              <span className="text-xs" style={{ color: 'hsl(var(--text))' }}>Ошибки</span>
             </label>
           </div>
           
@@ -637,16 +644,16 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           <div className="flex items-center gap-2 flex-wrap">
             {selectedIds.size > 0 && (
               <>
-                <span className="text-xs text-gray-700 dark:text-gray-300">Выбрано: <span className="font-medium">{selectedIds.size}</span></span>
-                <button type="button" onClick={clearSelection} className="text-xs text-saas-primary hover:underline">Снять</button>
+                <span className="text-xs" style={{ color: 'hsl(var(--text))' }}>Выбрано: <span className="font-medium">{selectedIds.size}</span></span>
+                <button type="button" onClick={clearSelection} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Снять</button>
               </>
             )}
-            <span className="text-xs text-gray-700 dark:text-gray-300">
+            <span className="text-xs td-default">
               Показано: <span className="font-medium">{paginatedResults.length}</span> из{' '}
               <span className="font-medium">{totalResults}</span>
             </span>
             <div className="flex items-center gap-2 flex-1 min-w-[160px]">
-              <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">По:</span>
+              <span className="text-xs td-default whitespace-nowrap flex-shrink-0">По:</span>
               <Select
                 value={pageSize.toString()}
                 onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
@@ -670,14 +677,17 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                 <MoreVertical className="h-4 w-4" />
               </Button>
               {showMobileActions && (
-                <div className="absolute right-0 top-full mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[12px] shadow-lg z-50 min-w-[160px]">
+                <div
+                  className="absolute right-0 top-full mt-1.5 rounded-v2-sm border shadow-v2 z-50 min-w-[160px]"
+                  style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+                >
                   {selectedIds.size > 0 && (
                     <button
                       onClick={() => {
                         setBulkSendModalOpen(true);
                         setShowMobileActions(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
                     >
                       <Send className="h-4 w-4" />
                       Отправить КП ({selectedIds.size})
@@ -688,7 +698,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       handleExportCSV();
                       setShowMobileActions(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
                   >
                     <Download className="h-4 w-4" />
                     Скачать CSV
@@ -698,7 +708,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       handleCopyAll();
                       setShowMobileActions(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
                   >
                     <Copy className="h-4 w-4" />
                     Копировать всё
@@ -711,25 +721,29 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden md:block bg-white dark:bg-gray-800 rounded-[12px] border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm w-full min-w-0 max-w-full">
+      <div
+        className="hidden md:block rounded-v2-lg border overflow-hidden shadow-v2-sm w-full min-w-0 max-w-full"
+        style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+      >
         <div className="overflow-x-auto w-full min-w-0">
           <table className="w-full table-fixed min-w-0" style={{ tableLayout: 'fixed' }}>
-            <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+            <thead style={{ background: 'hsl(var(--surface-2))', borderBottom: '1px solid hsl(var(--border))' }}>
               <tr>
                 {viewMode === 'compact' ? (
                   <>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider w-10 shrink-0">
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-10 shrink-0">
                       <input
                         type="checkbox"
                         checked={paginatedResults.length > 0 && paginatedResults.every((r) => selectedIds.has(r.id))}
                         onChange={selectAllOnPage}
-                        className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                        className="w-4 h-4 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
                         title="Выбрать все на странице"
                         aria-label="Выбрать все на странице"
                       />
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider w-[180px] max-w-[220px]">
-                      <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none min-w-0" onClick={() => handleSort('domain')}>
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-[180px] max-w-[220px]">
+                      <div className="flex items-center gap-1 cursor-pointer hover:bg-[hsl(var(--surface-2))] select-none min-w-0" onClick={() => handleSort('domain')}>
                         Domain
                         {sortField === 'domain' ? (
                           sortOrder === 'asc' ? (
@@ -742,8 +756,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         )}
                       </div>
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-12">
-                      <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => handleSort('score')}>
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-12">
+                      <div className="flex items-center gap-1 cursor-pointer hover:bg-[hsl(var(--surface-2))] select-none" onClick={() => handleSort('score')}>
                         Score
                         {sortField === 'score' ? (
                           sortOrder === 'asc' ? (
@@ -756,49 +770,50 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         )}
                       </div>
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider" style={{ width: '10%' }}>
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted" style={{ width: '10%' }}>
                       Tech
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-16">
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-16">
                       Контакты
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider" style={{ width: '28%', maxWidth: 480 }}>
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted" style={{ width: '28%', maxWidth: 480 }}>
                       Meta
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-14">
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-14">
                       Pages
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-[110px] shrink-0">
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-[110px] shrink-0">
                       Status
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-[140px] shrink-0">
+                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-[140px] shrink-0">
                       Actions
                     </th>
                   </>
                 ) : (
                   <>
-                    <th className="text-left px-2 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-10 shrink-0">
+                    <th className="text-left px-2 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-10 shrink-0">
                       <input
                         type="checkbox"
                         checked={paginatedResults.length > 0 && paginatedResults.every((r) => selectedIds.has(r.id))}
                         onChange={selectAllOnPage}
-                        className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                        className="w-4 h-4 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
                         title="Выбрать все на странице"
                         aria-label="Выбрать все на странице"
                       />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-48">Domain</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-40">Phone</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-48">Email</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-16">Score</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">Robots</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">Sitemap</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-32">Meta Title</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-32">Meta Desc</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-28">H1</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-24">Pages Crawled</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">Status</th>
-                    <th className="text-left px-3 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-28">Actions</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-48">Domain</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-40">Phone</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-48">Email</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-16">Score</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-20">Robots</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-20">Sitemap</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-32">Meta Title</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-32">Meta Desc</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-28">H1</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-24">Pages Crawled</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-20">Status</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider th-muted w-28">Actions</th>
                   </>
                 )}
               </tr>
@@ -806,7 +821,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {paginatedResults.length === 0 ? (
                 <tr>
-                  <td colSpan={viewMode === 'compact' ? 9 : 13} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={viewMode === 'compact' ? 9 : 13} className="px-4 py-8 text-center td-muted">
                     Ничего не найдено
                   </td>
                 </tr>
@@ -823,10 +838,10 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         key={row.id}
                         className={`h-[44px] transition-colors ${
                           selectedIds.has(row.id)
-                            ? 'bg-blue-50/80 dark:bg-blue-950/30'
+                            ? 'bg-brand-50/80 dark:bg-brand-500/15'
                             : actionRowState[row.id]?.state === 'loading'
-                              ? 'bg-blue-50/50 dark:bg-blue-950/20'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                              ? 'bg-brand-50/50 dark:bg-brand-500/10'
+                              : 'hover:bg-[hsl(var(--surface-2))]'
                         }`}
                       >
                         {viewMode === 'compact' ? (
@@ -836,25 +851,26 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                 type="checkbox"
                                 checked={selectedIds.has(row.id)}
                                 onChange={() => toggleSelect(row.id)}
-                                className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                                className="w-4 h-4 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
                                 title="Выбрать для выгрузки"
                                 aria-label="Выбрать домен"
                               />
                             </td>
                             <td 
-                              className="px-2 py-2 text-sm font-medium text-gray-900 dark:text-white cursor-pointer align-middle min-w-0 max-w-[220px]"
+                              className="px-2 py-2 text-sm font-medium td-default cursor-pointer align-middle min-w-0 max-w-[220px]"
                               onClick={() => toggleRowDetails(row.id)}
                             >
                               <div className="flex items-center gap-1.5 min-w-0">
                                 {isExpanded ? (
-                                  <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <ChevronUp className="h-4 w-4 flex-shrink-0 td-muted" />
                                 ) : (
-                                  <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <ChevronDown className="h-4 w-4 flex-shrink-0 td-muted" />
                                 )}
                                 <span className="block truncate min-w-0" title={row.domain}>{row.domain}</span>
                               </div>
                             </td>
-                            <td className="px-2 py-2 text-sm font-medium text-gray-900 dark:text-white text-center align-middle">
+                            <td className="px-2 py-2 text-sm font-medium td-default text-center align-middle">
                               {row.score}
                             </td>
                             <td className="px-2 py-2 align-middle min-w-0">
@@ -865,11 +881,11 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                   ) : (
                                     <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
                                   )) : (
-                                    <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                                    <ChevronsUpDown className="h-3.5 w-3.5 flex-shrink-0 td-muted" />
                                   )}
                                   <span className="text-xs truncate block min-w-0">
-                                    <span className="text-gray-500 dark:text-gray-400">R:</span>{' '}
-                                    <span className="text-gray-700 dark:text-gray-300">{seo?.robots || '-'}</span>
+                                    <span className="td-muted">R:</span>{' '}
+                                    <span className="td-default">{seo?.robots || '-'}</span>
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
@@ -878,11 +894,11 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                   ) : (
                                     <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
                                   )) : (
-                                    <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                                    <ChevronsUpDown className="h-3.5 w-3.5 flex-shrink-0 td-muted" />
                                   )}
                                   <span className="text-xs truncate block min-w-0">
-                                    <span className="text-gray-500 dark:text-gray-400">S:</span>{' '}
-                                    <span className="text-gray-700 dark:text-gray-300">{seo?.sitemap || '-'}</span>
+                                    <span className="td-muted">S:</span>{' '}
+                                    <span className="td-default">{seo?.sitemap || '-'}</span>
                                   </span>
                                 </div>
                               </div>
@@ -924,30 +940,30 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                     aria-label="Отправить outreach"
                                     className="cursor-pointer hover:opacity-80 transition-opacity"
                                   >
-                                    <Send className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                                    <Send className="h-4 w-4 text-brand-600 dark:text-brand-400" />
                                   </button>
                                 )}
                               </div>
                             </td>
                             <td className="px-2 py-2 align-middle min-w-0 max-w-[480px]">
                               <p 
-                                className="text-xs text-gray-600 dark:text-gray-400 truncate w-full max-w-full"
+                                className="text-xs td-muted truncate w-full max-w-full"
                                 title={metaSummary}
                               >
                                 {metaSummary}
                               </p>
                             </td>
-                            <td className="px-2 py-2 text-sm text-gray-700 dark:text-gray-300 text-center align-middle">
+                            <td className="px-2 py-2 text-sm td-default text-center align-middle">
                               {seo?.pagesCrawled || '-'}
                             </td>
                             <td className="px-2 py-2 align-middle w-[110px] shrink-0 overflow-hidden">
                               <span
                                 className={`inline-flex items-center justify-center min-w-0 max-w-full rounded-full h-6 px-2 text-[12px] font-medium whitespace-nowrap overflow-hidden text-ellipsis ${
                                   row.status === 'error'
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                    ? 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'
                                     : row.status === 'processing'
-                                      ? 'bg-amber-100/90 text-amber-800 dark:bg-amber-900/25 dark:text-amber-200/90'
-                                      : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                      ? 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)]'
+                                      : 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]'
                                 }`}
                                 title={row.status === 'error' ? 'Ошибка' : row.status === 'processing' ? 'Обработка' : 'OK'}
                               >
@@ -957,8 +973,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                             <td className="px-2 py-2 align-middle w-[140px] shrink-0 relative z-[1]">
                               <div className="flex items-center justify-end gap-1.5 flex-shrink-0">
                                 {actionRowState[row.id]?.state === 'loading' ? (
-                                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400" title="Идёт аудит…">
-                                    <Loader2 className="h-4 w-4 animate-spin text-saas-primary shrink-0" />
+                                  <span className="inline-flex items-center gap-1.5 text-xs td-muted" title="Идёт аудит…">
+                                    <Loader2 className="h-4 w-4 animate-spin text-brand-600 dark:text-brand-400 shrink-0" />
                                     <span className="hidden sm:inline">В работе</span>
                                   </span>
                                 ) : actionRowState[row.id]?.state === 'error' ? (
@@ -1001,7 +1017,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); handleAddToBlacklist(row.domain); }}
-                                        className="h-9 w-9 min-w-[36px] text-gray-500 hover:text-saas-danger"
+                                        className="h-9 w-9 min-w-[36px] td-muted hover:text-[color:var(--signal-hot)]"
                                         title="Blacklist"
                                       >
                                         <Ban className="h-3.5 w-3.5" />
@@ -1044,7 +1060,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); handleAddToBlacklist(row.domain); }}
-                                        className="h-9 w-9 min-w-[36px] text-gray-500 hover:text-saas-danger"
+                                        className="h-9 w-9 min-w-[36px] td-muted hover:text-[color:var(--signal-hot)]"
                                         title="Blacklist"
                                       >
                                         <Ban className="h-3.5 w-3.5" />
@@ -1062,47 +1078,48 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                 type="checkbox"
                                 checked={selectedIds.has(row.id)}
                                 onChange={() => toggleSelect(row.id)}
-                                className="w-4 h-4 rounded-[4px] border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary"
+                                className="w-4 h-4 rounded-[4px] text-brand-600 focus:ring-brand-500 border"
+                style={{ borderColor: 'hsl(var(--border))' }}
                                 title="Выбрать для выгрузки"
                                 aria-label="Выбрать домен"
                               />
                             </td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                            <td className="px-4 py-3 text-sm font-medium td-default">
                               {row.domain}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            <td className="px-4 py-3 text-sm td-default">
                               {row.phone || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            <td className="px-4 py-3 text-sm td-default">
                               {row.email || '-'}
                             </td>
-                            <td className="px-3 py-3 text-sm font-medium text-gray-900 dark:text-white text-center">
+                            <td className="px-3 py-3 text-sm font-medium td-default text-center">
                               {row.score}
                             </td>
-                            <td className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-3 text-sm td-default">
                               {seo ? (
                                 <span className={seo.robots === 'OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                                   {seo.robots}
                                 </span>
                               ) : '-'}
                             </td>
-                            <td className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-3 text-sm td-default">
                               {seo ? (
                                 <span className={seo.sitemap === 'OK' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                                   {seo.sitemap}
                                 </span>
                               ) : '-'}
                             </td>
-                            <td className="px-3 py-3 text-xs text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-3 text-xs td-default">
                               {seo?.metaTitle || '-'}
                             </td>
-                            <td className="px-3 py-3 text-xs text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-3 text-xs td-default">
                               {seo?.metaDesc || '-'}
                             </td>
-                            <td className="px-3 py-3 text-xs text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-3 text-xs td-default">
                               {seo?.h1 || '-'}
                             </td>
-                            <td className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300 text-center">
+                            <td className="px-3 py-3 text-sm td-default text-center">
                               {seo?.pagesCrawled || '-'}
                             </td>
                             <td className="px-3 py-3">
@@ -1119,8 +1136,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-1">
                                 {actionRowState[row.id]?.state === 'loading' ? (
-                                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400" title="Идёт аудит…">
-                                    <Loader2 className="h-4 w-4 animate-spin text-saas-primary shrink-0" />
+                                  <span className="inline-flex items-center gap-1.5 text-xs td-muted" title="Идёт аудит…">
+                                    <Loader2 className="h-4 w-4 animate-spin text-brand-600 dark:text-brand-400 shrink-0" />
                                     В работе
                                   </span>
                                 ) : actionRowState[row.id]?.state === 'error' ? (
@@ -1138,7 +1155,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                       <RefreshCw className="h-3.5 w-3.5" />
                                     </Button>
                                     {!blacklisted && (
-                                      <Button variant="ghost" size="icon" onClick={() => handleAddToBlacklist(row.domain)} className="h-7 w-7 text-gray-500 hover:text-red-600 dark:hover:text-red-400" title="Blacklist">
+                                      <Button variant="ghost" size="icon" onClick={() => handleAddToBlacklist(row.domain)} className="h-7 w-7 td-muted hover:text-[color:var(--signal-hot)]" title="Blacklist">
                                         <Ban className="h-3.5 w-3.5" />
                                       </Button>
                                     )}
@@ -1157,7 +1174,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                       </Button>
                                     )}
                                     {!blacklisted && (
-                                      <Button variant="ghost" size="icon" onClick={() => handleAddToBlacklist(row.domain)} className="h-7 w-7 text-gray-500 hover:text-red-600 dark:hover:text-red-400" title="Blacklist">
+                                      <Button variant="ghost" size="icon" onClick={() => handleAddToBlacklist(row.domain)} className="h-7 w-7 td-muted hover:text-[color:var(--signal-hot)]" title="Blacklist">
                                         <Ban className="h-3.5 w-3.5" />
                                       </Button>
                                     )}
@@ -1200,13 +1217,14 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           return (
             <div
               key={row.id}
-              className={`rounded-lg border px-2.5 py-2 transition-colors ${
+              className={`rounded-v2-sm border px-2.5 py-2 transition-colors ${
                 selectedIds.has(row.id)
-                  ? 'ring-2 ring-blue-400/50 dark:ring-blue-500/40 bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                  ? 'ring-2 ring-brand-400/50 dark:ring-brand-500/40 bg-brand-50/70 dark:bg-brand-500/15 border-brand-200 dark:border-brand-500/40'
                   : actionRowState[row.id]?.state === 'loading'
-                    ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-900/50'
-                    : 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'
+                    ? 'bg-brand-50/40 dark:bg-brand-500/10 border-brand-200/50 dark:border-brand-500/30'
+                    : 'bg-[hsl(var(--surface))]'
               }`}
+              style={!selectedIds.has(row.id) && actionRowState[row.id]?.state !== 'loading' ? { borderColor: 'hsl(var(--border))' } : undefined}
             >
               {/* Строка 1: checkbox + domain + chevron + status + icons */}
               <div className="flex items-center gap-2 min-w-0">
@@ -1215,7 +1233,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   checked={selectedIds.has(row.id)}
                   onChange={(e) => { e.stopPropagation(); toggleSelect(row.id); }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-saas-primary focus:ring-saas-primary shrink-0"
+                  className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 shrink-0 border"
+                  style={{ borderColor: 'hsl(var(--border))' }}
                   title="Выбрать"
                   aria-label="Выбрать домен"
                 />
@@ -1224,19 +1243,19 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   onClick={() => toggleRowDetails(row.id)}
                 >
                   {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-gray-500 shrink-0" />
+                    <ChevronUp className="h-4 w-4 shrink-0 td-muted" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
+                    <ChevronDown className="h-4 w-4 shrink-0 td-muted" />
                   )}
-                  <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  <span className="text-[13px] font-semibold td-default truncate">
                     {row.domain}
                   </span>
                 </div>
                 <span
                   className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-medium ${
                     row.status === 'error'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      ? 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'
+                      : 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]'
                   }`}
                 >
                   {row.status === 'error' ? 'Ошибка' : 'OK'}
@@ -1248,7 +1267,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     disabled={!hasPhone(row.phone)}
                     className={`p-1 rounded ${!hasPhone(row.phone) ? 'opacity-40' : ''}`}
                   >
-                    <Phone className={`h-4 w-4 ${hasPhone(row.phone) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`} />
+                    <Phone className={`h-4 w-4 ${hasPhone(row.phone) ? 'text-emerald-600 dark:text-emerald-400' : 'td-muted'}`} />
                   </button>
                   <button
                     onClick={(e) => handleCopyEmail(e, row.email)}
@@ -1256,36 +1275,36 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     disabled={!hasEmail(row.email)}
                     className={`p-1 rounded ${!hasEmail(row.email) ? 'opacity-40' : ''}`}
                   >
-                    <Mail className={`h-4 w-4 ${hasEmail(row.email) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} />
+                    <Mail className={`h-4 w-4 ${hasEmail(row.email) ? 'text-brand-600 dark:text-brand-400' : 'td-muted'}`} />
                   </button>
                 </div>
               </div>
 
               {/* Строка 2: Score, Pages, R/S badges, meta preview */}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Score <span className="font-semibold text-gray-700 dark:text-gray-300">{row.score}</span>
+                <span className="text-[11px] td-muted">
+                  Score <span className="font-semibold td-default">{row.score}</span>
                   <span className="mx-1">·</span>
-                  Pages <span className="font-semibold text-gray-700 dark:text-gray-300">{seo?.pagesCrawled ?? '—'}</span>
+                  Pages <span className="font-semibold td-default">{seo?.pagesCrawled ?? '—'}</span>
                 </span>
-                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.robots === 'OK' ? 'bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300'}`}>
+                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.robots === 'OK' ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' : 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'}`}>
                   R
                 </span>
-                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.sitemap === 'OK' ? 'bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300'}`}>
+                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.sitemap === 'OK' ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' : 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'}`}>
                   S
                 </span>
                 {metaSummary && metaSummary !== '-' && (
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                  <span className="text-[11px] td-muted truncate max-w-[140px]">
                     {metaSummary}
                   </span>
                 )}
               </div>
 
               {/* Actions — компактные иконки */}
-              <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
                 {actionRowState[row.id]?.state === 'loading' ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-                    <Loader2 className="h-3 w-3 animate-spin text-saas-primary" />
+                  <span className="inline-flex items-center gap-1 text-[11px] td-muted">
+                    <Loader2 className="h-3 w-3 animate-spin text-brand-600 dark:text-brand-400" />
                     В работе
                   </span>
                 ) : (
@@ -1293,7 +1312,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     <button
                       type="button"
                       onClick={() => handleCopy(row)}
-                      className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      className="p-1.5 rounded-v2-sm border td-muted hover:bg-[hsl(var(--surface-2))]"
                       title={copiedId === row.id ? 'Скопировано' : 'Копировать'}
                     >
                       {copiedId === row.id ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
@@ -1301,7 +1320,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     <button
                       type="button"
                       onClick={() => window.open(`https://${row.domain}`, '_blank')}
-                      className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      className="p-1.5 rounded-v2-sm border td-muted hover:bg-[hsl(var(--surface-2))]"
                       title="Открыть"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -1315,7 +1334,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       <button
                         type="button"
                         onClick={() => handleRunAudit(row)}
-                        className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        className="p-1.5 rounded-v2-sm border td-muted hover:bg-[hsl(var(--surface-2))]"
                         title="Повторить"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
@@ -1325,7 +1344,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                       <button
                         type="button"
                         onClick={() => handleRunAudit(row)}
-                        className="p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        className="p-1.5 rounded-v2-sm border td-muted hover:bg-[hsl(var(--surface-2))]"
                         title="SEO-аудит"
                       >
                         <FileSearch className="h-3.5 w-3.5" />
@@ -1334,7 +1353,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     <button
                       type="button"
                       onClick={() => toggleRowDetails(row.id)}
-                      className="ml-auto p-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-[11px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      className="ml-auto p-1.5 rounded-v2-sm border text-[11px] font-medium td-muted hover:bg-[hsl(var(--surface-2))]"
                     >
                       {isExpanded ? 'Скрыть' : 'Подробнее'}
                     </button>
@@ -1366,15 +1385,19 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             role="region"
             aria-label="Действия с выбранными строками"
           >
-            <div className="w-full max-w-2xl rounded-t-xl border border-b-0 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-[0_-4px_24px_rgba(0,0,0,0.15)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-3 py-2.5 sm:px-4 sm:py-3">
+            <div
+              className="w-full max-w-2xl rounded-t-v2 border border-b-0 shadow-[0_-4px_24px_rgba(0,0,0,0.15)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-3 py-2.5 sm:px-4 sm:py-3"
+              style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+            >
               <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
-                <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 shrink-0">
+                <span className="text-xs sm:text-sm shrink-0 td-default">
                   Выбрано: <span className="font-semibold">{selectedIds.size}</span>
                 </span>
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <Link
                     href="/app/seo/templates"
-                    className="inline-flex items-center justify-center gap-1 h-8 sm:h-9 px-2 sm:px-2.5 rounded-lg text-xs sm:text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shrink-0"
+                    className="inline-flex items-center justify-center gap-1 h-8 sm:h-9 px-2 sm:px-2.5 rounded-v2-sm text-xs sm:text-sm font-medium border bg-[hsl(var(--surface))] td-default hover:bg-[hsl(var(--surface-2))] transition-colors shrink-0"
+                    style={{ borderColor: 'hsl(var(--border))' }}
                     aria-label="Выбрать шаблон КП"
                   >
                     <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1417,10 +1440,13 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="bg-white dark:bg-gray-800 rounded-[12px] border border-gray-200 dark:border-gray-700 px-4 py-3">
+        <div
+          className="rounded-v2-lg border px-4 py-3"
+          style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+        >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Page Info */}
-            <div className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="text-sm td-default">
               Страница <span className="font-semibold">{currentPage}</span> из <span className="font-semibold">{totalPages}</span>
               {' '}(показано {startIndex + 1}-{Math.min(endIndex, totalResults)} из {totalResults})
             </div>
@@ -1444,7 +1470,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                 {getPageNumbers().map((page, index) => {
                   if (page === '...') {
                     return (
-                      <span key={`ellipsis-${index}`} className="px-2 text-gray-500 dark:text-gray-400">
+                      <span key={`ellipsis-${index}`} className="px-2 td-muted">
                         ...
                       </span>
                     );
@@ -1490,7 +1516,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
           role="dialog"
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-[12px] shadow-xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col"
+            className="rounded-v2-lg shadow-v2 max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col"
+            style={{ background: 'hsl(var(--surface))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
@@ -1500,7 +1527,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               <button
                 type="button"
                 onClick={() => !bulkSendLoading && setBulkSendModalOpen(false)}
-                className="p-1 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                className="p-1 rounded td-muted hover:text-[hsl(var(--text))]"
                 aria-label="Закрыть"
               >
                 <X className="h-5 w-5" />
@@ -1509,18 +1536,18 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {selectedWithEmail.length > 0 && (
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="text-sm td-muted mb-2">
                     Будет отправлено на {selectedWithEmail.length} адрес(ов):
                   </p>
                   <ul className="space-y-1.5 text-sm">
                     {selectedWithEmail.slice(0, 10).map((r) => (
                       <li key={r.id} className="flex justify-between gap-2">
                         <span className="truncate font-medium" style={{ color: 'hsl(var(--text))' }}>{r.domain}</span>
-                        <span className="text-gray-500 dark:text-gray-400 truncate">{r.email}</span>
+                        <span className="td-muted truncate">{r.email}</span>
                       </li>
                     ))}
                     {selectedWithEmail.length > 10 && (
-                      <li className="text-gray-500 dark:text-gray-400">… и ещё {selectedWithEmail.length - 10}</li>
+                      <li className="td-muted">… и ещё {selectedWithEmail.length - 10}</li>
                     )}
                   </ul>
                 </div>
@@ -1531,7 +1558,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                 </p>
               )}
               {selectedWithEmail.length === 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm td-muted">
                   Нет выбранных получателей с email и текстом outreach. Добавьте email и сгенерируйте текст в таблице.
                 </p>
               )}

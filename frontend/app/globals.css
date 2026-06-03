@@ -1444,6 +1444,16 @@
   padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
+/* Унифицированный th-цвет в таблицах v2 (заменяет text-gray-700 dark:text-gray-300
+   и text-gray-800 dark:text-gray-200 в шапках таблиц — экранов слишком много,
+   чтобы для каждой шапки городить inline-style). */
+.th-muted { color: hsl(var(--muted)); }
+/* Базовый цвет td/строк в таблицах v2 (заменяет text-gray-700 dark:text-gray-300,
+   text-gray-900 dark:text-white, text-gray-900 dark:text-gray-100 — все «основной текст»). */
+.td-default { color: hsl(var(--text)); }
+/* Muted-цвет ячейки (заменяет text-gray-500/600 dark:text-gray-400). */
+.td-muted { color: hsl(var(--muted)); }
+
 @media (prefers-reduced-motion: reduce) {
   .reveal-item,
   .skel-v2,

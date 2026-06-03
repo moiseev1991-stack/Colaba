@@ -3,7 +3,12 @@
 import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
+import { AlertCircle } from 'lucide-react';
 import { apiClient, tokenStorage } from '@/client';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+
+// §4.11 ТЗ редизайна 2026-06-03 (Phase C batch 3): экран регистрации на v2.
+// Первое впечатление — h2 в display-шрифте, gradient-акцент, чистые токены.
 
 function RegisterForm() {
   const router = useRouter();
@@ -23,7 +28,6 @@ function RegisterForm() {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (password.length < 8) {
       setError('Пароль должен содержать минимум 8 символов');
       return;
@@ -37,23 +41,9 @@ function RegisterForm() {
     setLoading(true);
 
     try {
-      // Register user
-      await apiClient.post('/auth/register', {
-        email,
-        password,
-      });
-
-      // Auto login after registration
-      await apiClient.post('/auth/login', {
-        email,
-        password,
-      });
-
-      // Tokens are set as httpOnly cookies by the server-side proxy.
+      await apiClient.post('/auth/register', { email, password });
+      await apiClient.post('/auth/login', { email, password });
       tokenStorage.setTokens('', '');
-
-      // Redirect back (if user was bounced by middleware)
-      // Use full navigation to ensure Next middleware sees fresh cookies.
       window.location.href = getNextPath();
     } catch (err: any) {
       const msg = err.response?.data?.detail
@@ -65,18 +55,32 @@ function RegisterForm() {
     }
   };
 
+  const inputCls =
+    'block w-full h-10 px-3 py-2 text-sm rounded-v2-sm border focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:z-10 transition-colors';
+  const inputStyle = {
+    background: 'hsl(var(--surface))',
+    borderColor: 'hsl(var(--border))',
+    color: 'hsl(var(--text))',
+  } as const;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand"
+      style={{ background: 'hsl(var(--bg))' }}
+    >
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Регистрация
+          <h2
+            className="mt-6 text-center font-display font-semibold tracking-tight"
+            style={{ fontSize: 'clamp(1.75rem, 4vw, 2.25rem)', color: 'hsl(var(--text))' }}
+          >
+            Регистрация в <span className="text-gradient-brand">SpinLid</span>
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
             Или{' '}
             <button
               onClick={() => router.push('/auth/login')}
-              className="font-medium text-saas-primary hover:opacity-80"
+              className="font-medium text-brand-600 dark:text-brand-400 hover:underline"
             >
               войдите в существующий аккаунт
             </button>
@@ -84,15 +88,21 @@ function RegisterForm() {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="rounded-[10px] bg-red-50 dark:bg-red-900/20 p-4">
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            <div
+              className="rounded-v2-sm border p-4 flex items-start gap-2 text-sm"
+              style={{
+                background: 'var(--signal-hot-bg)',
+                borderColor: 'rgb(239 68 68 / 0.3)',
+                color: 'var(--signal-hot)',
+              }}
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>{error}</p>
             </div>
           )}
-          <div className="rounded-[10px] shadow-sm -space-y-px">
+          <div className="space-y-3">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
+              <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
                 name="email"
@@ -101,14 +111,13 @@ function RegisterForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full h-9 px-3 py-2.5 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-t-[10px] focus:outline-none focus:ring-2 focus:ring-saas-primary focus:border-saas-primary focus:ring-offset-1 focus:z-10 sm:text-sm"
+                className={inputCls}
+                style={inputStyle}
                 placeholder="Email адрес"
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Пароль
-              </label>
+              <label htmlFor="password" className="sr-only">Пароль</label>
               <input
                 id="password"
                 name="password"
@@ -118,14 +127,13 @@ function RegisterForm() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full h-9 px-3 py-2.5 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-saas-primary focus:border-saas-primary focus:ring-offset-1 focus:z-10 sm:text-sm"
+                className={inputCls}
+                style={inputStyle}
                 placeholder="Пароль (минимум 8 символов)"
               />
             </div>
             <div>
-              <label htmlFor="confirmPassword" className="sr-only">
-                Подтвердите пароль
-              </label>
+              <label htmlFor="confirmPassword" className="sr-only">Подтвердите пароль</label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -134,21 +142,22 @@ function RegisterForm() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="appearance-none relative block w-full h-9 px-3 py-2.5 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-b-[10px] focus:outline-none focus:ring-2 focus:ring-saas-primary focus:border-saas-primary focus:ring-offset-1 focus:z-10 sm:text-sm"
+                className={inputCls}
+                style={inputStyle}
                 placeholder="Подтвердите пароль"
               />
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center h-9 py-2 px-4 border border-transparent text-sm font-medium rounded-[10px] text-white bg-saas-primary hover:bg-saas-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-saas-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer min-w-[120px]"
-            >
-              {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-            </button>
-          </div>
+          <ButtonV2
+            type="submit"
+            variant="primary"
+            size="lg"
+            loading={loading}
+            className="w-full"
+          >
+            Зарегистрироваться
+          </ButtonV2>
         </form>
       </div>
     </div>
@@ -157,7 +166,16 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Загрузка...</div>}>
+    <Suspense
+      fallback={
+        <div
+          className="min-h-screen flex items-center justify-center"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          Загрузка...
+        </div>
+      }
+    >
       <RegisterForm />
     </Suspense>
   );
