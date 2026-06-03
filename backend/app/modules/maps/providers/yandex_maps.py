@@ -1,20 +1,26 @@
 """Яндекс.Карты — провайдер для поиска компаний и отзывов.
 
-В отличие от 2GIS, у Я.Карт нет публичного Catalog API. Парсим:
-- HTML главной выдачи /maps/?text=... → JSON-LD блок со списком организаций
-- (fallback) JSON-API /maps/api/search/?text=...&type=business
-- JSON-API /maps/api/business/fetchReviews?businessId=...
+Я.Карты — это SPA на yandex.com/maps (yandex.ru/maps редиректит на .com).
+Server-side HTML содержит только метаданные сайта (WebSite, BreadcrumbList),
+сами карточки компаний рендерятся client-side через JS. Поэтому `search_companies`
+работает через headless-Chromium (Playwright), а не httpx + JSON-LD.
+
+`fetch_reviews` остался на httpx — внутренний AJAX /maps/api/business/fetchReviews
+отдаёт чистый JSON и не требует браузера.
 
 Особенности:
-- Часто прилетает капча (Yandex SmartCaptcha) → пробуем solve_yandex_smartcaptcha.
-  Три подряд капчи → CaptchaWallError.
+- Я.Карты редиректят на yandex.com/maps/213/moscow/search/... — это нормально.
 - Прокси обязателен в проде (USE_PROXY=true + PROXY_LIST в Settings).
-  Без прокси на dev-машине Я.Карты быстро банят IP.
-- User-Agent ротация уже встроена в fetch_with_retry.
+  Без прокси Я.Карты быстро банят IP (особенно с серверных диапазонов).
+- При капче (SmartCaptcha) пробуем solve_yandex_smartcaptcha. Три подряд → CaptchaWallError.
 
 Зависимости:
-- backend/app/modules/searches/providers/common.py — fetch_with_retry, detect_blocking, get_proxy_config
+- playwright (chromium-headless-shell установлен в Docker-образе backend)
+- backend/app/modules/searches/providers/common.py — get_proxy_config (для прокси), fetch_with_retry (для reviews)
 - backend/app/modules/captcha/solver.py — solve_yandex_smartcaptcha(html, url, db)
+
+Legacy: helper-функции `_extract_companies_from_html`, `_ld_to_company_raw`
+оставлены для обратной совместимости с тестами — сам поиск их больше не использует.
 """
 
 from __future__ import annotations
@@ -57,6 +63,25 @@ REVIEWS_PAGE_SIZE = 50
 
 # Максимум капч подряд, после которых сдаёмся. Из ТЗ §3.3.
 MAX_CAPTCHA_ATTEMPTS = 3
+
+# UA Chrome 148 — соответствует реальной версии chromium-headless-shell в Docker.
+# С дефолтным UA HeadlessChrome Я.Карты быстрее показывают капчу.
+_PLAYWRIGHT_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+)
+_PLAYWRIGHT_HEADERS = {
+    "Accept-Language": "ru-RU,ru;q=0.9",
+    "Sec-Ch-Ua": '"Chromium";v="148", "Not.A/Brand";v="24", "Google Chrome";v="148"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+}
+
+_PAGE_TIMEOUT_MS = 30_000        # навигация
+_LIST_TIMEOUT_MS = 15_000        # ждём появления первой карточки
+_SCROLL_MAX_ITERATIONS = 20      # сколько раз пытаемся скроллить
+_SCROLL_STEP_PX = 1200
+_SCROLL_WAIT_MS = 1200           # пауза между скроллами для подгрузки
 
 
 # ID организации Я.Карт — длинная цифра в URL после slug:
@@ -137,6 +162,97 @@ def _ld_to_company_raw(ld: dict[str, Any]) -> CompanyRaw | None:
         reviews_count=(_safe_int(aggregate.get("reviewCount")) if isinstance(aggregate, dict) else None) or 0,
         raw_data=ld,
     )
+
+
+def _playwright_proxy_from_url(proxy_url: str | None) -> dict[str, str] | None:
+    """Конвертирует строку прокси (http://user:pass@host:port) в формат Playwright.
+
+    Playwright принимает proxy={"server": "...", "username": "...", "password": "..."}.
+    """
+    if not proxy_url:
+        return None
+    from urllib.parse import urlparse
+    p = urlparse(proxy_url)
+    if not p.hostname or not p.port:
+        return None
+    scheme = p.scheme or "http"
+    out: dict[str, str] = {"server": f"{scheme}://{p.hostname}:{p.port}"}
+    if p.username:
+        out["username"] = p.username
+    if p.password:
+        out["password"] = p.password
+    return out
+
+
+def _parse_search_cards_from_html(html: str) -> list[CompanyRaw]:
+    """Парсит выдачу Я.Карт из отрендеренного HTML.
+
+    Ожидает контейнеры `.search-business-snippet-view`. Из каждой карточки тянет:
+      - name из `.search-business-snippet-view__title`
+      - external_id из любой ссылки `/maps/org/<slug>/<id>` внутри карточки
+      - rating из `.business-rating-badge-view__rating-text` (формат "4,8")
+      - reviews_count из `.business-rating-with-text-view__count [aria-hidden="true"]`
+        (формат "(868)")
+      - address из `.search-business-snippet-view__address`
+
+    Phone/website на странице выдачи Я.Карт не отдают — за ними нужна отдельная
+    карточка `/maps/org/<id>/`. Сейчас не делаем — оставлено на enrich-таск.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    out: list[CompanyRaw] = []
+    seen_ids: set[str] = set()
+    for card in soup.select(".search-business-snippet-view"):
+        title_el = card.select_one(".search-business-snippet-view__title")
+        if not title_el:
+            continue
+        # Имя — берём прямой текст, отбрасывая дочерние span'ы (verified badge и т.п.)
+        name_parts = [s for s in title_el.find_all(text=True, recursive=False)]
+        name = " ".join(p.strip() for p in name_parts if p.strip())
+        if not name:
+            name = title_el.get_text(strip=True)
+        if not name:
+            continue
+
+        external_id: str | None = None
+        for a in card.select('a[href*="/maps/org/"]'):
+            href = a.get("href") or ""
+            extracted = extract_org_id_from_url(href)
+            if extracted:
+                external_id = extracted
+                break
+        if not external_id or external_id in seen_ids:
+            continue
+        seen_ids.add(external_id)
+
+        rating: float | None = None
+        rating_el = card.select_one(".business-rating-badge-view__rating-text")
+        if rating_el:
+            rating = _safe_float(rating_el.get_text(strip=True).replace(",", "."))
+
+        reviews_count = 0
+        count_el = card.select_one('.business-rating-with-text-view__count [aria-hidden="true"]')
+        if count_el:
+            txt = count_el.get_text(strip=True).strip("()").replace("\xa0", "").replace(" ", "")
+            parsed = _safe_int(txt)
+            if parsed is not None:
+                reviews_count = parsed
+
+        address: str | None = None
+        addr_el = card.select_one(".search-business-snippet-view__address")
+        if addr_el:
+            address = addr_el.get_text(" ", strip=True) or None
+
+        out.append(
+            CompanyRaw(
+                source="yandex_maps",
+                external_id=external_id,
+                name=name,
+                address=address,
+                rating=rating,
+                reviews_count=reviews_count,
+            )
+        )
+    return out
 
 
 def _extract_companies_from_html(html: str) -> list[CompanyRaw]:
@@ -226,62 +342,125 @@ class YandexMapsProvider(MapProvider):
         point: tuple[float, float] | None = None,
         radius_meters: int | None = None,
     ) -> AsyncIterator[CompanyRaw]:
-        """Ищет компании по нише в городе через HTML главной выдачи + JSON-LD.
+        """Поиск компаний через headless-Chromium (Playwright).
 
-        Radius-режим (point + radius_meters) Я.Карты пока не поддерживают —
-        провайдер тихо игнорирует эти параметры и работает как раньше.
-        Реальный конкурентный режим работает только через 2GIS.
+        Я.Карты — SPA, выдача рендерится JS-ом, в server-side HTML её нет.
+        Открываем страницу в реальном браузере, скроллим список до набора `limit`
+        компаний (или потолка скроллов), парсим карточки `.search-business-snippet-view`.
+
+        Radius-режим (point + radius_meters) пока не поддерживается — игнорируется.
         """
-        _ = point, radius_meters  # резерв для будущего
+        _ = point, radius_meters
         query = f"{niche} {city}".strip()
-        url = f"{YANDEX_MAPS_URL}?text={quote_plus(query)}&display-text={quote_plus(niche)}"
+        url = f"{YANDEX_MAPS_URL}?text={quote_plus(query)}"
 
-        captcha_attempts = 0
-        cookies: dict[str, str] = {}
+        proxy_url = get_proxy_config() if self._use_proxy else None
+        proxy_arg = _playwright_proxy_from_url(proxy_url)
 
-        while True:
-            response = await fetch_with_retry(
-                url,
-                referer="https://yandex.ru/",
-                use_proxy=self._use_proxy,
-                cookies=cookies or None,
-            )
-            if response is None:
-                logger.warning("yandex_maps: fetch_with_retry вернул None для %s", url)
-                return
+        from playwright.async_api import async_playwright, TimeoutError as PWTimeout
 
-            html = response.text
-            blocking = detect_blocking(response, html_content=html)
-            if blocking.get("block_type") == "captcha":
-                captcha_attempts += 1
-                token = await self._solve_captcha_or_raise(html, url, captcha_attempts)
-                if not token:
-                    # solver не справился — пробуем ещё один прокси-ретрай через fetch_with_retry
-                    if captcha_attempts >= MAX_CAPTCHA_ATTEMPTS:
-                        raise CaptchaWallError("Yandex Maps: solver не справился с капчей")
-                    continue
-                # подставляем токен в cookies; точное имя зависит от формы капчи.
-                # SmartCaptcha обычно проверяет smart-token в hidden-поле; для GET-запросов
-                # это эквивалент cookie 'smart-token'.
-                cookies["smart-token"] = token
-                continue
+        collected: dict[str, CompanyRaw] = {}
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(
+                    headless=True,
+                    proxy=proxy_arg,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                    ],
+                )
+                try:
+                    ctx = await browser.new_context(
+                        user_agent=_PLAYWRIGHT_UA,
+                        locale="ru-RU",
+                        viewport={"width": 1366, "height": 900},
+                        extra_http_headers=_PLAYWRIGHT_HEADERS,
+                    )
+                    page = await ctx.new_page()
+                    try:
+                        await page.goto(url, wait_until="domcontentloaded", timeout=_PAGE_TIMEOUT_MS)
+                    except PWTimeout:
+                        logger.warning("yandex_maps: page.goto timeout for %s", url)
+                        return
 
-            # Успех — парсим
-            yielded = 0
-            for company in _extract_companies_from_html(html):
-                if yielded >= limit:
-                    return
-                # niche/city проставляем сами — в JSON-LD их нет
-                company.niche = niche
-                company.city = city
-                yield company
-                yielded += 1
+                    # Если редирект на /showcaptcha — это капча. SmartCaptcha solver работает
+                    # с HTML (через data-sitekey), нам нужен HTML страницы капчи.
+                    if "/showcaptcha" in page.url.lower() or "/checkcaptcha" in page.url.lower():
+                        captcha_html = await page.content()
+                        await self._solve_captcha_or_raise(captcha_html, page.url, 1)
+                        # token получили, но в Playwright его не применить простым cookie —
+                        # это требует отдельной формы submit. Пока — отступаем.
+                        raise CaptchaWallError("Yandex Maps: капча, solver-flow в Playwright не реализован")
 
-            if yielded == 0:
-                # JSON-LD пустой — пробуем fallback API
-                async for c in self._search_via_api(query, niche, city, limit):
-                    yield c
+                    try:
+                        await page.wait_for_selector(".search-business-snippet-view", timeout=_LIST_TIMEOUT_MS)
+                    except PWTimeout:
+                        # Карточек не появилось — либо пустая выдача, либо капча, либо изменилась вёрстка
+                        html_check = await page.content()
+                        if any(k in html_check.lower() for k in ("showcaptcha", "smartcaptcha", "checkcaptcha")):
+                            raise CaptchaWallError("Yandex Maps: SmartCaptcha на странице выдачи")
+                        logger.info("yandex_maps: карточки .search-business-snippet-view не появились (пустая выдача?)")
+                        return
+
+                    # Я.Карты используют ВИРТУАЛИЗИРОВАННЫЙ скролл: в DOM лежат только видимые
+                    # карточки. Поэтому накапливаем инкрементально — парсим текущий HTML
+                    # после каждого скролла, дедуплицируем по external_id, и так до потолка.
+                    no_growth_iters = 0
+                    for _ in range(_SCROLL_MAX_ITERATIONS):
+                        page_html = await page.content()
+                        for company in _parse_search_cards_from_html(page_html):
+                            if company.external_id and company.external_id not in collected:
+                                collected[company.external_id] = company
+                        if len(collected) >= limit:
+                            break
+
+                        prev = len(collected)
+                        # Скроллим именно сайдбар выдачи, не window. Селектор контейнера
+                        # выдачи менялся за релизы — пробуем несколько fallback'ов.
+                        await page.evaluate(
+                            f"""() => {{
+                                const candidates = [
+                                    '.scroll__container',
+                                    '.search-list-view__list',
+                                    '[class*="search-list-view"]',
+                                    '.business-segments-list-view',
+                                ];
+                                for (const sel of candidates) {{
+                                    const el = document.querySelector(sel);
+                                    if (el && el.scrollHeight > el.clientHeight + 10) {{
+                                        el.scrollBy(0, {_SCROLL_STEP_PX});
+                                        return sel;
+                                    }}
+                                }}
+                                window.scrollBy(0, {_SCROLL_STEP_PX});
+                                return 'window';
+                            }}"""
+                        )
+                        await page.wait_for_timeout(_SCROLL_WAIT_MS)
+                        if len(collected) == prev:
+                            no_growth_iters += 1
+                            if no_growth_iters >= 3:
+                                break  # три скролла подряд без новых компаний — потолок
+                        else:
+                            no_growth_iters = 0
+                finally:
+                    await browser.close()
+        except CaptchaWallError:
+            raise
+        except Exception as e:
+            logger.warning("yandex_maps: Playwright error: %s", e)
             return
+
+        yielded = 0
+        for company in collected.values():
+            if yielded >= limit:
+                return
+            company.niche = niche
+            company.city = city
+            yield company
+            yielded += 1
 
     async def _search_via_api(
         self,
