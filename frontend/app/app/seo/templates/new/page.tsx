@@ -3,15 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, FileText, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
 import { ToastContainer, type Toast } from '@/components/Toast';
 import {
   createOutreachTemplate,
   PLACEHOLDERS,
   type OutreachTemplateCreate,
 } from '@/src/services/api/outreachTemplates';
+
+// §4.9 ТЗ редизайна 2026-06-03 (Phase C batch 2): new template на v2.
+const LABEL_CLS = 'block text-sm font-medium mb-1';
 
 export default function NewTemplatePage() {
   const router = useRouter();
@@ -54,23 +58,28 @@ export default function NewTemplatePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[700px] min-w-0 px-6 py-8 overflow-x-hidden">
+    <div className="mx-auto w-full max-w-[760px] min-w-0 px-4 py-6 sm:px-6 sm:py-8 overflow-x-hidden">
       <Link
         href="/app/seo/templates"
-        className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-6"
+        className="inline-flex items-center gap-2 text-sm mb-6 transition-colors hover:text-[hsl(var(--text))]"
+        style={{ color: 'hsl(var(--muted))' }}
       >
         <ArrowLeft className="h-4 w-4" />
         К списку шаблонов
       </Link>
 
-      <h1 className="text-[20px] font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
+      <h1
+        className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
+        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+      >
+        <FileText className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Новый шаблон КП
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="app-card-enhanced p-6 space-y-4">
+        <CardV2 className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
               Название шаблона
             </label>
             <Input
@@ -81,7 +90,7 @@ export default function NewTemplatePage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
               Тема письма
             </label>
             <Input
@@ -92,7 +101,7 @@ export default function NewTemplatePage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
               Текст письма
             </label>
             <textarea
@@ -100,33 +109,54 @@ export default function NewTemplatePage() {
               onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
               placeholder="Здравствуйте!&#10;&#10;Я проанализировал {{domain}}..."
               rows={10}
-              className="w-full rounded-[10px] border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saas-primary"
+              className="w-full rounded-v2-sm border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
+              style={{
+                background: 'hsl(var(--surface))',
+                borderColor: 'hsl(var(--border))',
+                color: 'hsl(var(--text))',
+              }}
             />
           </div>
-          <div className="rounded-[10px] bg-gray-50 dark:bg-gray-800/50 p-3 text-[12px]">
-            <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">Доступные плейсхолдеры:</p>
+          <div
+            className="rounded-v2-sm p-3 text-[12px]"
+            style={{ background: 'hsl(var(--surface-2))' }}
+          >
+            <p className="font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>
+              Доступные плейсхолдеры:
+            </p>
             <div className="flex flex-wrap gap-2">
               {PLACEHOLDERS.map(({ key, desc }) => (
                 <span
                   key={key}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-v2-sm border"
+                  style={{
+                    background: 'hsl(var(--surface))',
+                    borderColor: 'hsl(var(--border))',
+                    color: 'hsl(var(--text))',
+                  }}
                   title={desc}
                 >
-                  <code>{key}</code>
+                  <code className="font-mono">{key}</code>
                 </span>
               ))}
             </div>
           </div>
-        </div>
+        </CardV2>
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Создание…' : 'Создать шаблон'}
-          </Button>
-          <Link href="/app/seo/templates">
-            <Button type="button" variant="outline">
+          <ButtonV2
+            type="submit"
+            variant="primary"
+            size="md"
+            iconLeft={<Save />}
+            loading={submitting}
+          >
+            Создать шаблон
+          </ButtonV2>
+          <Link href="/app/seo/templates" className="contents">
+            <ButtonV2 type="button" variant="secondary" size="md">
               Отмена
-            </Button>
+            </ButtonV2>
           </Link>
         </div>
       </form>

@@ -11,8 +11,9 @@ import { getOutreachTemplates } from '@/src/services/api/outreachTemplates';
 import type { OutreachTemplate } from '@/src/services/api/outreachTemplates';
 import { getSeoAdvancedSettings, setSeoAdvancedSettings, type SeoAdvancedSettings } from '@/lib/storage';
 import { getBlacklist } from '@/lib/storage';
-import { Loader2, ChevronDown, ChevronRight, Eye, Download, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, ChevronDown, ChevronRight, Eye, Download, X, Search as SearchIcon } from 'lucide-react';
+import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { LeadsTable } from '@/components/LeadsTable';
 import { CityCombobox } from '@/components/CityCombobox';
 import type { LeadRow } from '@/lib/types';
@@ -58,6 +59,14 @@ function statusLabel(s: string): string {
   if (s === 'failed') return 'Ошибка';
   if (s === 'processing' || s === 'running') return 'В работе';
   return 'Ожидание';
+}
+
+// §4.9 ТЗ редизайна 2026-06-03 (Phase C batch 2): статус запуска → SignalPill.
+function statusTone(s: string): SignalTone {
+  if (s === 'completed') return 'good';
+  if (s === 'failed') return 'hot';
+  if (s === 'processing' || s === 'running' || s === 'pending') return 'warm';
+  return 'muted';
 }
 
 export default function SeoPage() {
@@ -319,7 +328,11 @@ export default function SeoPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1250px] min-w-0 px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-8 overflow-x-hidden">
-      <h1 className="text-lg sm:text-[18px] md:text-[20px] font-semibold mb-4 sm:mb-6" style={{ color: 'hsl(var(--text))' }}>
+      <h1
+        className="flex items-center gap-2 mb-4 sm:mb-6 font-display font-semibold tracking-tight"
+        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+      >
+        <SearchIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Поиск / SEO-аудит
       </h1>
 
@@ -328,7 +341,7 @@ export default function SeoPage() {
         <div className="flex gap-2 flex-wrap">
           <button
             type="button"
-            className="flex items-center h-8 px-2.5 rounded-[10px] text-sm font-medium bg-saas-primary-weak text-saas-primary"
+            className="flex items-center h-8 px-2.5 rounded-v2-sm text-sm font-medium bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400"
           >
             SEO
           </button>
@@ -336,31 +349,33 @@ export default function SeoPage() {
             type="button"
             disabled
             title="Скоро будет доступно"
-            className="flex items-center h-8 px-2.5 rounded-[10px] text-sm font-medium opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400"
+            className="flex items-center h-8 px-2.5 rounded-v2-sm text-sm font-medium opacity-50 cursor-not-allowed"
+            style={{ color: 'hsl(var(--muted))' }}
           >
             Контакты
-            <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-[6px]">Скоро</span>
+            <span className="ml-2"><SignalPill tone="muted" size="sm">Скоро</SignalPill></span>
           </button>
           <button
             type="button"
             disabled
             title="Скоро будет доступно"
-            className="flex items-center h-8 px-2.5 rounded-[10px] text-sm font-medium opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400"
+            className="flex items-center h-8 px-2.5 rounded-v2-sm text-sm font-medium opacity-50 cursor-not-allowed"
+            style={{ color: 'hsl(var(--muted))' }}
           >
             Мониторинг цен
-            <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-[6px]">Скоро</span>
+            <span className="ml-2"><SignalPill tone="muted" size="sm">Скоро</SignalPill></span>
           </button>
         </div>
 
         {/* Form */}
         <div className="app-card-enhanced p-4 sm:p-5 md:p-6">
-          <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
+          <p className="text-[13px] mb-4" style={{ color: 'hsl(var(--muted))' }}>
             Укажите ключевое слово, провайдер и город. Результат: домены, SEO-оценка, контакты.
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-wrap gap-3 items-end">
               <div className="flex-1 min-w-0 w-full sm:min-w-[200px]">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ключевое слово</label>
+                <label className="block text-xs sm:text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>Ключевое слово</label>
                 <Input
                   id="seo-keyword-input"
                   type="text"
@@ -372,7 +387,7 @@ export default function SeoPage() {
                 />
               </div>
               <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Город</label>
+                <label className="block text-xs sm:text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>Город</label>
                 <CityCombobox
                   city={city}
                   onCityChange={(c, id) => { setCity(c); if (id !== undefined) setYandexRegionId(id); }}
@@ -381,7 +396,7 @@ export default function SeoPage() {
                 />
               </div>
               <div className="w-full sm:w-[220px] min-w-0">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Провайдер</label>
+                <label className="block text-xs sm:text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>Провайдер</label>
                 <Select value={searchProvider} onChange={(e) => setSearchProvider(e.target.value)} disabled={isLoading} className="w-full">
                   <option value="yandex_xml">Яндекс XML (ключи)</option>
                   <option value="yandex_html">Яндекс HTML (бесплатно)</option>
@@ -390,7 +405,7 @@ export default function SeoPage() {
                 </Select>
               </div>
               <div className="w-full sm:w-[240px] min-w-0">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Шаблон КП</label>
+                <label className="block text-xs sm:text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>Шаблон КП</label>
                 <Select
                   value={templateId == null ? '' : String(templateId)}
                   onChange={(e) => setTemplateId(e.target.value ? Number(e.target.value) : null)}
@@ -416,31 +431,31 @@ export default function SeoPage() {
         <div className="app-card-enhanced px-3 py-3 sm:px-4 sm:py-3.5 md:px-5 md:py-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <span className="text-[13px] font-semibold shrink-0" style={{ color: 'hsl(var(--text))' }}>Сводка запуска</span>
-            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 shrink-0 hidden sm:block" />
+            <div className="h-4 w-px shrink-0 hidden sm:block" style={{ background: 'hsl(var(--border))' }} />
             <div className="flex items-center gap-x-5 flex-1 min-w-0 overflow-hidden">
               <div className="flex items-center gap-1.5 text-[13px] shrink-0">
-                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Запрос:</span>
+                <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Запрос:</span>
                 <span className="font-medium truncate max-w-[160px]" title={query || '—'} style={{ color: 'hsl(var(--text))' }}>{query || '—'}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[13px] shrink-0">
-                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Провайдер:</span>
+                <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Провайдер:</span>
                 <span className="font-medium truncate max-w-[200px]" title={PROVIDERS[searchProvider] || searchProvider} style={{ color: 'hsl(var(--text))' }}>{PROVIDERS[searchProvider] || searchProvider}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[13px] shrink-0">
-                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Город:</span>
+                <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Город:</span>
                 <span className="font-medium truncate max-w-[120px]" title={city || '—'} style={{ color: 'hsl(var(--text))' }}>{city || '—'}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[13px] shrink-0">
-                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Глубина:</span>
+                <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Глубина:</span>
                 <span className="font-medium whitespace-nowrap" style={{ color: 'hsl(var(--text))' }}>Top {advanced.depth}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[13px] shrink-0">
-                <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Фильтры:</span>
+                <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Фильтры:</span>
                 <span className="font-medium truncate max-w-[120px]" title={filtersLabel} style={{ color: 'hsl(var(--text))' }}>{filtersLabel}</span>
               </div>
               {templates.length > 0 && (
                 <div className="flex items-center gap-1.5 text-[13px] shrink-0">
-                  <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap">Шаблон КП:</span>
+                  <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Шаблон КП:</span>
                   <span className="font-medium truncate max-w-[140px]" style={{ color: 'hsl(var(--text))' }}>
                     {templateId != null ? templates.find((t) => t.id === templateId)?.name ?? '—' : 'Без шаблона'}
                   </span>
@@ -476,15 +491,15 @@ export default function SeoPage() {
 
         {/* Presets */}
         <div>
-          <h3 className="text-[14px] font-medium text-gray-700 dark:text-gray-300 mb-2">Быстрые шаблоны</h3>
+          <h3 className="text-[14px] font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>Быстрые шаблоны</h3>
           <div className="flex flex-wrap gap-2">
             {displayedPresets.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => handlePreset(p)}
-                className="px-3 py-1.5 rounded-full text-[13px] border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                style={{ color: 'hsl(var(--text))' }}
+                className="px-3 py-1.5 rounded-pill text-[13px] border transition-colors hover:bg-[hsl(var(--surface-2))] hover:border-brand-500/40"
+                style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}
               >
                 {p}
               </button>
@@ -493,8 +508,7 @@ export default function SeoPage() {
               <button
                 type="button"
                 onClick={() => setShowMorePresets(!showMorePresets)}
-                className="px-3 py-1.5 rounded-full text-[13px] font-medium"
-                style={{ color: 'hsl(var(--accent))' }}
+                className="px-3 py-1.5 rounded-pill text-[13px] font-medium text-brand-600 dark:text-brand-400"
               >
                 {showMorePresets ? 'Свернуть' : 'Показать ещё'}
               </button>
@@ -516,7 +530,7 @@ export default function SeoPage() {
           {advancedOpen && (
             <div className="px-4 pb-4 pt-0 space-y-4 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Глубина (Top N)</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>Глубина (Top N)</label>
                 <Select
                   value={String(advanced.depth)}
                   onChange={(e) => setAdvanced((a) => ({ ...a, depth: Number(e.target.value) }))}
@@ -533,18 +547,20 @@ export default function SeoPage() {
                     type="checkbox"
                     checked={advanced.filterPhone}
                     onChange={(e) => setAdvanced((a) => ({ ...a, filterPhone: e.target.checked }))}
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    className="rounded"
+                    style={{ borderColor: 'hsl(var(--border))' }}
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Только с телефоном</span>
+                  <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Только с телефоном</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={advanced.filterEmail}
                     onChange={(e) => setAdvanced((a) => ({ ...a, filterEmail: e.target.checked }))}
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    className="rounded"
+                    style={{ borderColor: 'hsl(var(--border))' }}
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Только с email</span>
+                  <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Только с email</span>
                 </label>
                 {hasBlacklist && (
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -552,9 +568,10 @@ export default function SeoPage() {
                       type="checkbox"
                       checked={advanced.excludeBlacklist}
                       onChange={(e) => setAdvanced((a) => ({ ...a, excludeBlacklist: e.target.checked }))}
-                      className="rounded border-gray-300 dark:border-gray-600"
+                      className="rounded"
+                      style={{ borderColor: 'hsl(var(--border))' }}
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Исключать blacklist</span>
+                    <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Исключать blacklist</span>
                   </label>
                 )}
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -562,9 +579,10 @@ export default function SeoPage() {
                     type="checkbox"
                     checked={advanced.saveToHistory}
                     onChange={(e) => setAdvanced((a) => ({ ...a, saveToHistory: e.target.checked }))}
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    className="rounded"
+                    style={{ borderColor: 'hsl(var(--border))' }}
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Сохранять в историю</span>
+                  <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Сохранять в историю</span>
                 </label>
               </div>
             </div>
@@ -576,23 +594,23 @@ export default function SeoPage() {
           <div ref={resultsRef} className="app-card-enhanced">
             {/* Results header */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'hsl(var(--text))' }}>
                 <span className="font-semibold" style={{ color: 'hsl(var(--text))' }}>Результаты</span>
                 {activeSearch && (
                   <>
-                    <span className="text-gray-400 dark:text-gray-600">|</span>
-                    <span><span className="text-gray-500 dark:text-gray-400">Запрос:</span> {activeSearch.query}</span>
-                    <span><span className="text-gray-500 dark:text-gray-400">Провайдер:</span> {activeSearch.search_provider}</span>
-                    <span><span className="text-gray-500 dark:text-gray-400">Найдено:</span> {activeResults.length}</span>
+                    <span style={{ color: 'hsl(var(--border))' }}>|</span>
+                    <span><span style={{ color: 'hsl(var(--muted))' }}>Запрос:</span> {activeSearch.query}</span>
+                    <span><span style={{ color: 'hsl(var(--muted))' }}>Провайдер:</span> {activeSearch.search_provider}</span>
+                    <span><span style={{ color: 'hsl(var(--muted))' }}>Найдено:</span> {activeResults.length}</span>
                     {activeLastUpdated && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
                         Обновлено: {activeLastUpdated.toLocaleTimeString('ru-RU')}
                       </span>
                     )}
                   </>
                 )}
                 {activeLoading && !activeSearch && (
-                  <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5" style={{ color: 'hsl(var(--muted))' }}>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" /> Загрузка…
                   </span>
                 )}
@@ -602,7 +620,8 @@ export default function SeoPage() {
                   <a
                     href={`/api/v1/searches/${activeRunId}/results/export/csv`}
                     download
-                    className="inline-flex items-center gap-1.5 rounded-[8px] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-v2-sm border bg-[hsl(var(--surface))] px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[hsl(var(--surface-2))]"
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                   >
                     <Download className="h-4 w-4" />
                     CSV
@@ -612,7 +631,8 @@ export default function SeoPage() {
                   type="button"
                   onClick={handleCloseResults}
                   title="Закрыть результаты"
-                  className="inline-flex items-center justify-center w-7 h-7 rounded-[8px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-v2-sm transition-colors hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
+                  style={{ color: 'hsl(var(--muted))' }}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -622,18 +642,18 @@ export default function SeoPage() {
             <div className="p-4 space-y-3">
               {/* Progress bar */}
               {isProcessing && (
-                <div className="rounded-[10px] border px-4 py-3" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
+                <div className="rounded-v2-sm border px-4 py-3" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Сбор результатов…</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{progressPercent}%</span>
+                    <span className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>Сбор результатов…</span>
+                    <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className="w-full h-2 rounded-pill overflow-hidden" style={{ background: 'hsl(var(--border))' }}>
                     <div
-                      className="h-full bg-blue-600 transition-all duration-500 ease-out"
+                      className="h-full bg-brand-gradient transition-all duration-500 ease-out"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-2 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                     Найдено {activeResults.length} из {expectedResults} результатов
                   </p>
                 </div>
@@ -641,10 +661,16 @@ export default function SeoPage() {
 
               {/* Error state */}
               {searchStatus === 'failed' && (
-                <div className="rounded-[10px] border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-                  <h3 className="mb-1 text-sm font-semibold text-red-800 dark:text-red-200">Поиск не удался</h3>
-                  <p className="text-sm text-red-700 dark:text-red-300">{typeof configError === 'string' ? configError : 'Неизвестная ошибка'}</p>
-                  <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                <div
+                  className="rounded-v2-sm border p-4"
+                  style={{
+                    background: 'var(--signal-hot-bg)',
+                    borderColor: 'rgb(239 68 68 / 0.3)',
+                  }}
+                >
+                  <h3 className="mb-1 text-sm font-semibold" style={{ color: 'var(--signal-hot)' }}>Поиск не удался</h3>
+                  <p className="text-sm" style={{ color: 'var(--signal-hot)' }}>{typeof configError === 'string' ? configError : 'Неизвестная ошибка'}</p>
+                  <p className="mt-2 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                     Часто Яндекс/Google блокируют запросы с серверов. Попробуйте DuckDuckGo или Яндекс XML с API-ключами.
                   </p>
                 </div>
@@ -652,16 +678,22 @@ export default function SeoPage() {
 
               {/* Timeout warning */}
               {activePollTimeout && (
-                <div className="rounded-[10px] border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
-                  <h3 className="mb-1 text-sm font-semibold text-amber-800 dark:text-amber-200">Поиск занимает необычно долго</h3>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                <div
+                  className="rounded-v2-sm border p-4"
+                  style={{
+                    background: 'var(--signal-warm-bg)',
+                    borderColor: 'rgb(245 158 11 / 0.3)',
+                  }}
+                >
+                  <h3 className="mb-1 text-sm font-semibold" style={{ color: 'var(--signal-warm)' }}>Поиск занимает необычно долго</h3>
+                  <p className="text-sm" style={{ color: 'var(--signal-warm)' }}>
                     Обновление данных остановлено по тайм-ауту (5 минут). Обновите страницу или попробуйте другой провайдер.
                   </p>
                 </div>
               )}
 
               {activeResults.length === 0 && !isProcessing && searchStatus === 'completed' && (
-                <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Результаты не найдены</p>
+                <p className="py-6 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>Результаты не найдены</p>
               )}
 
               {activeResults.length > 0 && (
@@ -686,11 +718,11 @@ export default function SeoPage() {
           {runsLoading ? (
             <div className="p-6 space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-10 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+                <div key={i} className="h-10 rounded-v2-sm skel-v2" />
               ))}
             </div>
           ) : recentRuns.length === 0 ? (
-            <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="p-6 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
               Запусков пока нет — сделайте первый запуск
             </div>
           ) : (
@@ -700,23 +732,18 @@ export default function SeoPage() {
                 {recentRuns.map((r) => (
                   <div
                     key={r.id}
-                    className="flex flex-col gap-1.5 py-2.5 px-3 active:bg-saas-primary-weak dark:active:bg-saas-primary-weak/20"
+                    className="flex flex-col gap-1.5 py-2.5 px-3 active:bg-brand-50 dark:active:bg-brand-500/10"
                     style={{ borderColor: 'hsl(var(--border))' }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[13px] font-semibold truncate flex-1" style={{ color: 'hsl(var(--text))' }} title={r.query}>
                         {r.query}
                       </span>
-                      <span className={cn(
-                        'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium',
-                        r.status === 'completed' && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
-                        r.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-                        (r.status === 'processing' || r.status === 'pending') && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
-                      )}>
+                      <SignalPill tone={statusTone(r.status)} size="sm">
                         {statusLabel(r.status)}
-                      </span>
+                      </SignalPill>
                     </div>
-                    <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-col gap-0.5 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
                       <span>{formatDateTime(r.created_at)}</span>
                       <span>{r.result_count ?? 0} доменов · {PROVIDERS[r.search_provider] ?? r.search_provider}</span>
                     </div>
@@ -732,7 +759,8 @@ export default function SeoPage() {
                           resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }, 150);
                       }}
-                      className="mt-0.5 self-start inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      className="mt-0.5 self-start inline-flex items-center gap-1 px-2.5 py-1 rounded-v2-sm text-[11px] font-medium border bg-[hsl(var(--surface))] transition-colors hover:bg-[hsl(var(--surface-2))]"
+                      style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     >
                       <Eye className="h-3 w-3" /> Открыть
                     </button>
@@ -745,34 +773,35 @@ export default function SeoPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
-                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Дата/время</th>
-                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Запрос</th>
-                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Провайдер</th>
-                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Статус</th>
-                      <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400">Доменов</th>
-                      <th className="text-right py-2 px-3 text-gray-600 dark:text-gray-400 uppercase tracking-wider text-xs">Действия</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Дата/время</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Запрос</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Провайдер</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Статус</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Доменов</th>
+                      <th className="text-right py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Действия</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentRuns.map((r) => (
-                      <tr key={r.id} className="border-b hover:bg-saas-primary-weak dark:hover:bg-saas-primary-weak/20 transition-colors" style={{ borderColor: 'hsl(var(--border))' }}>
-                        <td className="py-2 px-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
+                      <tr
+                        key={r.id}
+                        className="border-b transition-colors hover:bg-[hsl(var(--surface-2))]"
+                        style={{ borderColor: 'hsl(var(--border))' }}
+                      >
+                        <td className="py-2 px-3 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>{formatDateTime(r.created_at)}</td>
                         <td className="py-2 px-3 truncate max-w-[180px]" title={r.query} style={{ color: 'hsl(var(--text))' }}>{r.query}</td>
-                        <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{r.search_provider}</td>
+                        <td className="py-2 px-3" style={{ color: 'hsl(var(--muted))' }}>{r.search_provider}</td>
                         <td className="py-2 px-3">
-                          <span className={cn(
-                            'px-2 py-0.5 rounded text-xs',
-                            r.status === 'completed' && 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-                            r.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
-                            (r.status === 'processing' || r.status === 'pending') && 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
-                          )}>
+                          <SignalPill tone={statusTone(r.status)} size="sm">
                             {statusLabel(r.status)}
-                          </span>
+                          </SignalPill>
                         </td>
-                        <td className="py-2 px-3">{r.result_count ?? 0}</td>
+                        <td className="py-2 px-3" style={{ color: 'hsl(var(--text))' }}>{r.result_count ?? 0}</td>
                         <td className="py-2 px-3 text-right">
-                          <button
-                            type="button"
+                          <ButtonV2
+                            variant="secondary"
+                            size="sm"
+                            iconLeft={<Eye />}
                             onClick={() => {
                               activeRef.current = false;
                               if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -783,10 +812,9 @@ export default function SeoPage() {
                                 resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                               }, 150);
                             }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                           >
-                            <Eye className="h-3.5 w-3.5" /> Открыть
-                          </button>
+                            Открыть
+                          </ButtonV2>
                         </td>
                       </tr>
                     ))}
