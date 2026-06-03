@@ -3,6 +3,10 @@
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
+// §4.15 ТЗ редизайна 2026-06-03 (Phase C batch 4): компактная панель прогресса
+// на v2-токенах. Бренд-градиент для progress bar (был сплошной красный
+// saas-primary), signal-good для финального состояния.
+
 const STEPS = [
   'Парсим выдачу',
   'Собираем домены',
@@ -43,14 +47,28 @@ export function LoadingProcessPanel({
   const stepLabel = done ? 'Готово' : `Шаг ${index + 1}/4`;
 
   return (
-    <div className="w-full max-w-[900px] mx-auto rounded-[14px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md overflow-hidden">
-      <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-200 dark:border-gray-600">
+    <div
+      className="w-full max-w-[900px] mx-auto rounded-v2-lg border shadow-v2-sm overflow-hidden"
+      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+    >
+      <div
+        className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+        style={{ borderBottom: '1px solid hsl(var(--border))' }}
+      >
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+          <h2
+            className="font-display font-semibold tracking-tight text-lg"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            {title}
+          </h2>
+          <p className="text-sm" style={{ color: 'hsl(var(--muted))' }}>{subtitle}</p>
         </div>
         {done && (
-          <span className="inline-flex items-center rounded-[10px] bg-green-100 dark:bg-green-900/30 px-2.5 py-1 text-xs font-medium text-green-800 dark:text-green-200 shrink-0">
+          <span
+            className="inline-flex items-center rounded-v2-sm px-2.5 py-1 text-xs font-medium shrink-0"
+            style={{ background: 'var(--signal-good-bg)', color: 'var(--signal-good)' }}
+          >
             Готово
           </span>
         )}
@@ -59,26 +77,32 @@ export function LoadingProcessPanel({
         <div className="flex items-center gap-2 mb-2">
           <div className="w-5 h-5 shrink-0 flex items-center justify-center">
             {!done && (
-              <Loader2 className="w-4 h-4 text-red-600 dark:text-red-400 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-brand-600 dark:text-brand-400" />
             )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
                 {indeterminate ? 'Обновление…' : `Прогресс: ${Math.round(Math.min(100, progress))}%`}
               </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">{stepLabel}</span>
+              <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>{stepLabel}</span>
             </div>
             {indeterminate ? (
-              <div className="mt-1.5 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                <div className="h-full w-1/3 rounded-full bg-red-500/60 animate-pulse" />
+              <div
+                className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden"
+                style={{ background: 'hsl(var(--border))' }}
+              >
+                <div className="h-full w-1/3 rounded-pill bg-brand-500/60 animate-pulse" />
               </div>
             ) : (
-              <div className="mt-1.5 h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                className="mt-1.5 h-2.5 w-full rounded-pill overflow-hidden"
+                style={{ background: 'hsl(var(--border))' }}
+              >
                 <div
                   className={cn(
-                    'h-full rounded-full transition-all duration-150 ease-linear',
-                    done ? 'bg-green-600 dark:bg-green-500' : 'bg-saas-primary'
+                    'h-full rounded-pill transition-all duration-150 ease-linear',
+                    done ? 'bg-[var(--signal-good)]' : 'bg-brand-gradient',
                   )}
                   style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                 />
@@ -87,7 +111,7 @@ export function LoadingProcessPanel({
           </div>
         </div>
         {!done && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+          <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted))' }}>{label}</p>
         )}
       </div>
     </div>

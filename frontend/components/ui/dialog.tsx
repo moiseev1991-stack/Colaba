@@ -4,6 +4,12 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
+// §4.12 ТЗ редизайна 2026-06-03 (Phase C batch 4): Dialog на v2-токены.
+// Раньше — bg-white/bg-gray-800 + border-gray-100/200 + text-gray-{400,600,900,white}
+// с парными dark: вариантами. Теперь — единые токены --surface/--border/--text/--muted
+// + бренд-радиусы. Поведение, hit-area, safe-area, escape-handler и position='right'
+// (top-14 под навбаром) — без изменений.
+
 interface DialogProps {
   open: boolean;
   onClose: () => void;
@@ -22,6 +28,33 @@ interface DialogProps {
    *     юзер не мог его закрыть.
    */
   position?: 'center' | 'right';
+}
+
+// Общий заголовок с крестиком — одинаковый для center и right.
+function DialogHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div
+      className="flex shrink-0 items-start justify-between px-6 py-4"
+      style={{ borderBottom: '1px solid hsl(var(--border))' }}
+    >
+      <h2
+        className="font-display font-semibold tracking-tight text-lg"
+        style={{ color: 'hsl(var(--text))' }}
+      >
+        {title}
+      </h2>
+      <button
+        onClick={onClose}
+        // -m-2 p-2 = расширенный hit-area для пальца (40×40 фактических,
+        // 20×20 видимых) — аудит ловил промахи мимо мелкого крестика.
+        className="-m-2 ml-1 shrink-0 rounded-v2-sm p-2 transition-colors hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
+        style={{ color: 'hsl(var(--muted))' }}
+        aria-label="Закрыть"
+      >
+        <X className="h-5 w-5" />
+      </button>
+    </div>
+  );
 }
 
 export function Dialog({ open, onClose, title, children, className, position = 'center' }: DialogProps) {
@@ -53,29 +86,18 @@ export function Dialog({ open, onClose, title, children, className, position = '
             // top-14 = 56px = высота глобального AppHeader (h-14). Без
             // этого шапка drawer уезжала под навбар и крестик закрытия
             // был некликабельным — аудит ловил баг D/C и M3/D.
-            'absolute right-0 top-14 z-50 flex h-[calc(100%-3.5rem)] w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-gray-800',
-            'border-l border-gray-200 dark:border-gray-700',
+            'absolute right-0 top-14 z-50 flex h-[calc(100%-3.5rem)] w-full max-w-xl flex-col shadow-2xl',
+            'border-l',
             // safe-area для iOS — снизу не обрезается
             'pb-[env(safe-area-inset-bottom)]',
             className,
           )}
+          style={{
+            background: 'hsl(var(--surface))',
+            borderColor: 'hsl(var(--border))',
+          }}
         >
-          {title && (
-            <div className="flex shrink-0 items-start justify-between border-b border-gray-100 dark:border-gray-700 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {title}
-              </h2>
-              <button
-                onClick={onClose}
-                // p-2 -m-2 = расширенный hit-area (40×40 fact, видим 20×20)
-                // — без этого тап пальцем мимо крестика, аудит ловил.
-                className="-m-2 ml-1 shrink-0 rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
-                aria-label="Закрыть"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          )}
+          {title && <DialogHeader title={title} onClose={onClose} />}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
         </div>
       </div>
@@ -92,29 +114,18 @@ export function Dialog({ open, onClose, title, children, className, position = '
       {/* Dialog */}
       <div
         className={cn(
-          'relative z-50 mx-4 flex w-full max-w-md max-h-[85vh] flex-col bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 shadow-lg',
+          'relative z-50 mx-4 flex w-full max-w-md max-h-[85vh] flex-col rounded-v2-lg border shadow-v2',
           // safe-area для iOS — снизу не обрезается на телефонах с нотчем
           'pb-[env(safe-area-inset-bottom)]',
-          className
+          className,
         )}
+        style={{
+          background: 'hsl(var(--surface))',
+          borderColor: 'hsl(var(--border))',
+        }}
       >
         {/* Header */}
-        {title && (
-          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 dark:border-gray-700 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {title}
-            </h2>
-            <button
-              onClick={onClose}
-              // -m-2 p-2 = расширенный hit-area для пальца (40×40 фактических,
-              // 20×20 видимых) — аудит ловил промахи мимо мелкого крестика.
-              className="-m-2 ml-1 rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        )}
+        {title && <DialogHeader title={title} onClose={onClose} />}
         {/* Content */}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
       </div>

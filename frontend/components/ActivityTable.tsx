@@ -150,31 +150,54 @@ export function ActivityTable({ step, isComplete, isActive, liveResults }: Activ
     };
   }, [isActive, isComplete, step, liveResults]);
 
+  // §4.13 ТЗ редизайна 2026-06-03 (Phase C batch 4): «Лента обработки» на v2.
   return (
-    <div className="w-full max-w-[900px] mx-auto rounded-[14px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-md overflow-hidden">
-      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Лента обработки</h3>
+    <div
+      className="w-full max-w-[900px] mx-auto rounded-v2-lg border shadow-v2-sm overflow-hidden"
+      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+    >
+      <div
+        className="px-3 py-2 flex items-center justify-between"
+        style={{ borderBottom: '1px solid hsl(var(--border))' }}
+      >
+        <h3
+          className="font-display font-semibold tracking-tight text-sm"
+          style={{ color: 'hsl(var(--text))' }}
+        >
+          Лента обработки
+        </h3>
         {isComplete && (
-          <span className="text-xs font-medium text-green-600 dark:text-green-400">Process completed</span>
+          <span
+            className="text-xs font-medium"
+            style={{ color: 'var(--signal-good)' }}
+          >
+            Process completed
+          </span>
         )}
       </div>
       <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
         <table className="w-full text-left">
-          <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800/95 border-b border-gray-200 dark:border-gray-600">
+          <thead
+            className="sticky top-0"
+            style={{
+              background: 'hsl(var(--surface-2))',
+              borderBottom: '1px solid hsl(var(--border))',
+            }}
+          >
             <tr>
-              <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[70px]">
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider w-[70px] th-muted">
                 Time
               </th>
-              <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px]">
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider min-w-[120px] th-muted">
                 URL
               </th>
-              <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px]">
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider min-w-[100px] th-muted">
                 Action
               </th>
-              <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[50px]">
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider w-[50px] th-muted">
                 ms
               </th>
-              <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px]">
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider min-w-[100px] th-muted">
                 Findings
               </th>
             </tr>
@@ -183,30 +206,34 @@ export function ActivityTable({ step, isComplete, isActive, liveResults }: Activ
             {rows.map((r) => (
               <tr
                 key={r.id}
-                className="border-b border-gray-100 dark:border-gray-700/80 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                className="transition-colors hover:bg-[hsl(var(--surface-2))]"
+                style={{ borderBottom: '1px solid hsl(var(--border))' }}
               >
-                <td className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 tabular-nums">
+                <td className="px-3 py-1.5 text-xs tabular-nums td-muted">
                   {r.time}
                 </td>
-                <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 truncate max-w-[140px]" title={r.url}>
+                <td
+                  className="px-3 py-1.5 text-xs truncate max-w-[140px] td-default"
+                  title={r.url}
+                >
                   <span className="truncate block">{r.url}</span>
                 </td>
-                <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300">
+                <td className="px-3 py-1.5 text-xs td-default">
                   {r.action}
                 </td>
-                <td className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 tabular-nums">
+                <td className="px-3 py-1.5 text-xs tabular-nums td-muted">
                   {r.ms}
                 </td>
                 <td className="px-3 py-1.5">
                   <span
                     className={cn(
-                      'inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium',
+                      'inline-flex rounded-v2-sm px-1.5 py-0.5 text-[10px] font-medium',
                       r.finding.type === 'ok' &&
-                        'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200',
+                        'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]',
                       r.finding.type === 'warn' &&
-                        'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200',
+                        'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)]',
                       r.finding.type === 'missing' &&
-                        'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                        'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]',
                     )}
                   >
                     {r.finding.text}
@@ -217,12 +244,12 @@ export function ActivityTable({ step, isComplete, isActive, liveResults }: Activ
           </tbody>
         </table>
         {rows.length === 0 && !isComplete && isActive && (
-          <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          <div className="px-4 py-6 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
             Ожидание событий…
           </div>
         )}
         {rows.length === 0 && !isActive && !isComplete && (
-          <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          <div className="px-4 py-6 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
             Запустите поиск
           </div>
         )}

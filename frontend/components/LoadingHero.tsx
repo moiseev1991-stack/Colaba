@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Check, Loader2 } from 'lucide-react';
 
+// §4.15 ТЗ редизайна 2026-06-03 (Phase C batch 4): LoadingHero на v2.
+// Орбитальный спиннер и шаги остались — только цвета (был агрессивный red-500,
+// теперь бренд-эмеральд) и токены. Поведение анимации, шаги, ms — те же.
+
 const STEPS = [
   'Парсим выдачу поисковой системы',
   'Собираем домены',
@@ -56,36 +60,43 @@ export function LoadingHero({
     <div className="space-y-4">
       {/* Hero card */}
       <div
-        className={cn(
-          'rounded-[14px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm',
-          'min-h-[200px] sm:min-h-[240px] md:min-h-[280px] flex flex-col overflow-hidden'
-        )}
+        className="rounded-v2-lg border shadow-v2-sm min-h-[200px] sm:min-h-[240px] md:min-h-[280px] flex flex-col overflow-hidden"
+        style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
       >
         {/* Meta line — top */}
         {meta && (meta.query || meta.provider || meta.city || meta.status) && (
-          <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700/80 bg-gray-50/80 dark:bg-gray-800/80">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+          <div
+            className="px-4 py-2.5"
+            style={{
+              background: 'hsl(var(--surface-2))',
+              borderBottom: '1px solid hsl(var(--border))',
+            }}
+          >
+            <div
+              className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
               {meta.query && (
                 <span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Запрос:</span>{' '}
+                  <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Запрос:</span>{' '}
                   {meta.query}
                 </span>
               )}
               {meta.city && (
                 <span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Город:</span>{' '}
+                  <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Город:</span>{' '}
                   {meta.city}
                 </span>
               )}
               {providerLabel && (
                 <span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Провайдер:</span>{' '}
+                  <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Провайдер:</span>{' '}
                   {providerLabel}
                 </span>
               )}
               {meta.status && (
                 <span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Статус:</span>{' '}
+                  <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Статус:</span>{' '}
                   {meta.status === 'processing' || meta.status === 'pending'
                     ? 'Собираем…'
                     : meta.status}
@@ -100,7 +111,7 @@ export function LoadingHero({
           {/* Orbital spinner: central circle + 3 orbiting dots */}
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex items-center justify-center mb-4 sm:mb-5">
             <svg
-              className="absolute w-full h-full text-red-500 dark:text-red-400 animate-spin"
+              className="absolute w-full h-full text-brand-500 dark:text-brand-400 animate-spin"
               viewBox="0 0 100 100"
               fill="none"
             >
@@ -127,7 +138,7 @@ export function LoadingHero({
                   }}
                 >
                   <div
-                    className="w-full h-full rounded-full bg-red-500 dark:bg-red-400 animate-pulse-dot"
+                    className="w-full h-full rounded-full bg-brand-500 dark:bg-brand-400 animate-pulse-dot"
                     style={{ animationDelay: `${i * 0.25}s` }}
                   />
                 </div>
@@ -135,10 +146,16 @@ export function LoadingHero({
             </div>
           </div>
 
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white text-center mb-1">
+          <h2
+            className="font-display font-semibold tracking-tight text-xl sm:text-2xl md:text-3xl text-center mb-1"
+            style={{ color: 'hsl(var(--text))' }}
+          >
             {title}
           </h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 text-center max-w-md">
+          <p
+            className="text-sm sm:text-base text-center max-w-md"
+            style={{ color: 'hsl(var(--muted))' }}
+          >
             {subtitle}
           </p>
 
@@ -153,22 +170,22 @@ export function LoadingHero({
                     <div
                       key={index}
                       className={cn(
-                        'flex items-center gap-2 rounded-[10px] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm transition-colors',
+                        'flex items-center gap-2 rounded-v2-sm px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm transition-colors border',
                         done &&
-                          'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800/50',
+                          'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] border-[var(--signal-good)]/30',
                         current &&
-                          'bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100 border border-red-200 dark:border-red-800/50 ring-1 ring-red-300/50 dark:ring-red-600/30',
-                        !done &&
-                          !current &&
-                          'bg-gray-100 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700'
+                          'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border-[var(--signal-warm)]/30 ring-1 ring-[var(--signal-warm)]/40',
+                        !done && !current &&
+                          'bg-[hsl(var(--surface-2))] td-muted',
                       )}
+                      style={!done && !current ? { borderColor: 'hsl(var(--border))' } : undefined}
                     >
                       {done ? (
-                        <Check className="w-4 h-4 flex-shrink-0 text-green-600 dark:text-green-400" />
+                        <Check className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--signal-good)' }} />
                       ) : current ? (
-                        <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-red-600 dark:text-red-400" />
+                        <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" style={{ color: 'var(--signal-warm)' }} />
                       ) : (
-                        <span className="w-4 h-4 flex-shrink-0 rounded-full bg-gray-300 dark:bg-gray-600" />
+                        <span className="w-4 h-4 flex-shrink-0 rounded-full" style={{ background: 'hsl(var(--border))' }} />
                       )}
                       <span className="line-clamp-2">{step}</span>
                     </div>
@@ -182,17 +199,20 @@ export function LoadingHero({
 
       {/* Skeleton placeholder */}
       {showSkeleton && (
-        <div className="rounded-[14px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+        <div
+          className="rounded-v2-lg border shadow-v2-sm overflow-hidden"
+          style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+        >
           {/* Desktop: table rows */}
           <div className="hidden md:block p-4">
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4 animate-pulse">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8 flex-shrink-0" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded flex-1 max-w-[200px]" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-                  <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded flex-shrink-0" />
+                <div key={i} className="flex items-center gap-4">
+                  <div className="h-4 w-8 flex-shrink-0 skel-v2" />
+                  <div className="h-4 flex-1 max-w-[200px] skel-v2" />
+                  <div className="h-4 w-16 skel-v2" />
+                  <div className="h-4 w-20 skel-v2" />
+                  <div className="h-8 w-24 flex-shrink-0 skel-v2" />
                 </div>
               ))}
             </div>
@@ -202,14 +222,15 @@ export function LoadingHero({
             {[...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="rounded-[10px] border border-gray-200 dark:border-gray-700 p-3 animate-pulse"
+                className="rounded-v2-sm border p-3"
+                style={{ borderColor: 'hsl(var(--border))' }}
               >
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+                <div className="h-4 w-3/4 mb-2 skel-v2" />
                 <div className="flex gap-2 mb-2">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-12" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+                  <div className="h-3 w-12 skel-v2" />
+                  <div className="h-3 w-16 skel-v2" />
                 </div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                <div className="h-3 w-full skel-v2" />
               </div>
             ))}
           </div>

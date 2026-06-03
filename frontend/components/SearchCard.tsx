@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
-import { Button } from './ui/button';
 import { Select } from './ui/select';
+import { ButtonV2 } from './ui/ButtonV2';
+import { SignalPill } from './ui/SignalPill';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
 import { CitySelector } from './CitySelector';
+
+// §4.16 ТЗ редизайна 2026-06-03 (Phase C batch 4): SearchCard на v2-токены.
+// Tab «SEO» теперь в брендовом таб-стиле (bg-brand-50/text-brand-700),
+// «Скоро» плашки — SignalPill muted. Контейнер — на surface + v2-радиус.
 
 interface SearchCardProps {
   city: string;
@@ -36,28 +40,42 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
   }, [searchProvider, keyword, city, isDisabled]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-[12px] border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+    <div
+      className="rounded-v2-lg border shadow-v2-sm overflow-hidden"
+      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+    >
       {/* Tabs Header */}
-      <div className="flex gap-2 px-4 pt-3 pb-0 border-b border-gray-200 dark:border-gray-700 flex-wrap">
+      <div
+        className="flex gap-2 px-4 pt-3 pb-0 flex-wrap"
+        style={{ borderBottom: '1px solid hsl(var(--border))' }}
+      >
         <button
           type="button"
           className={cn(
-            'flex items-center h-8 px-2.5 rounded-[10px] text-sm font-medium transition-colors',
+            'flex items-center h-8 px-2.5 rounded-v2-sm text-sm font-medium transition-colors',
             activeModule === 'seo'
-              ? 'bg-saas-primary-weak text-saas-primary'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'
+              : 'td-muted hover:text-[hsl(var(--text))] hover:bg-[hsl(var(--surface-2))]',
           )}
           onClick={() => onModuleChange?.('seo')}
         >
           SEO
         </button>
-        <button type="button" className="flex items-center h-8 px-2.5 rounded-[10px] text-sm font-medium opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400" disabled>
+        <button
+          type="button"
+          className="flex items-center gap-2 h-8 px-2.5 rounded-v2-sm text-sm font-medium opacity-50 cursor-not-allowed td-muted"
+          disabled
+        >
           Контакты
-          <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-[6px]">Скоро</span>
+          <SignalPill tone="muted" size="sm">Скоро</SignalPill>
         </button>
-        <button type="button" className="flex items-center h-8 px-2.5 rounded-[10px] text-sm font-medium opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400" disabled>
+        <button
+          type="button"
+          className="flex items-center gap-2 h-8 px-2.5 rounded-v2-sm text-sm font-medium opacity-50 cursor-not-allowed td-muted"
+          disabled
+        >
           <span className="whitespace-nowrap">Мониторинг цен</span>
-          <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-[6px]">Скоро</span>
+          <SignalPill tone="muted" size="sm">Скоро</SignalPill>
         </button>
       </div>
 
@@ -65,34 +83,38 @@ export function SearchCard({ city, onCityChange, onSubmit, activeModule = 'seo',
       <div className="p-4 md:p-5">
         <form onSubmit={handleSubmit}>
           <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Поисковая система:</span>
-            <Select value={searchProvider} onChange={(e) => setSearchProvider(e.target.value)} disabled={isLoading} className="w-[200px] flex-shrink-0">
-              <option value="yandex_xml">Яндекс XML (ключи)</option>
-              <option value="yandex_html">Яндекс HTML (бесплатно)</option>
-              <option value="google_html">Google HTML (бесплатно)</option>
-              <option value="serpapi" disabled>SerpAPI (deprecated)</option>
-            </Select>
-          </div>
-          <Input type="text" placeholder="Введите ключевое слово..." value={keyword} onChange={(e) => setKeyword(e.target.value)} disabled={isLoading} className="flex-1 min-w-[200px]" />
-          <CitySelector
-            city={city}
-            onCityChange={onCityChange}
-            disabled={isLoading}
-            regionClassName="w-[200px] flex-shrink-0"
-            cityClassName="w-[160px] flex-shrink-0"
-          />
-          <Button type="submit" variant="default" disabled={isDisabled} className="flex-shrink-0">
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                <span className="hidden sm:inline">Поиск…</span>
-                <span className="sm:hidden">Поиск…</span>
-              </>
-            ) : (
-              'Найти'
-            )}
-          </Button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span
+                className="text-sm font-medium whitespace-nowrap"
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                Поисковая система:
+              </span>
+              <Select value={searchProvider} onChange={(e) => setSearchProvider(e.target.value)} disabled={isLoading} className="w-[200px] flex-shrink-0">
+                <option value="yandex_xml">Яндекс XML (ключи)</option>
+                <option value="yandex_html">Яндекс HTML (бесплатно)</option>
+                <option value="google_html">Google HTML (бесплатно)</option>
+                <option value="serpapi" disabled>SerpAPI (deprecated)</option>
+              </Select>
+            </div>
+            <Input type="text" placeholder="Введите ключевое слово..." value={keyword} onChange={(e) => setKeyword(e.target.value)} disabled={isLoading} className="flex-1 min-w-[200px]" />
+            <CitySelector
+              city={city}
+              onCityChange={onCityChange}
+              disabled={isLoading}
+              regionClassName="w-[200px] flex-shrink-0"
+              cityClassName="w-[160px] flex-shrink-0"
+            />
+            <ButtonV2
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={isDisabled}
+              loading={isLoading}
+              className="flex-shrink-0"
+            >
+              Найти
+            </ButtonV2>
           </div>
         </form>
       </div>

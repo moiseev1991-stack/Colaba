@@ -3,6 +3,10 @@
 import { cn } from '@/lib/utils';
 import { Check, Loader2 } from 'lucide-react';
 
+// §4.14 ТЗ редизайна 2026-06-03 (Phase C batch 4): «Идёт поиск лидов» на v2.
+// Все статусные плашки переехали на signal-tokens, бренд-цвет (был красный
+// hue!) — на brand. Скелетоны на skel-v2 shimmer.
+
 /** 0–25%, 25–55%, 55–80%, 80–100% */
 const STEPS = [
   'Парсим выдачу',
@@ -67,30 +71,29 @@ export function ProcessingHero({
 
   return (
     <div
-      className={cn(
-        'rounded-[14px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm overflow-hidden w-full'
-      )}
+      className="rounded-v2-lg border shadow-v2-sm overflow-hidden w-full"
+      style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
     >
       {/* Meta row — compact badges */}
       {meta && (meta.query || meta.provider || meta.city || meta.status) && (
-        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/80">
+        <div
+          className="px-3 py-2"
+          style={{
+            background: 'hsl(var(--surface-2))',
+            borderBottom: '1px solid hsl(var(--border))',
+          }}
+        >
           <div className="flex flex-wrap items-center gap-1.5">
-            {meta.query && (
-              <span className="inline-flex rounded bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                {meta.query}
-              </span>
-            )}
-            {meta.city && (
-              <span className="inline-flex rounded bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                {meta.city}
-              </span>
-            )}
-            {providerLabel && (
-              <span className="inline-flex rounded bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                {providerLabel}
-              </span>
-            )}
-            <span className="inline-flex rounded bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-800 dark:text-red-200">
+            {meta.query && <MetaPill>{meta.query}</MetaPill>}
+            {meta.city && <MetaPill>{meta.city}</MetaPill>}
+            {providerLabel && <MetaPill>{providerLabel}</MetaPill>}
+            <span
+              className="inline-flex rounded-v2-sm px-2 py-0.5 text-xs font-medium"
+              style={{
+                background: 'var(--signal-warm-bg)',
+                color: 'var(--signal-warm)',
+              }}
+            >
               {statusText || 'Собираем результаты…'}
             </span>
           </div>
@@ -101,7 +104,7 @@ export function ProcessingHero({
         <div className="flex flex-col items-center w-full max-w-md">
           <div className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mb-3">
             <svg
-              className="w-full h-full text-red-600 dark:text-red-400 animate-spin"
+              className="w-full h-full text-brand-600 dark:text-brand-400 animate-spin"
               viewBox="0 0 24 24"
               fill="none"
             >
@@ -118,28 +121,40 @@ export function ProcessingHero({
             </svg>
           </div>
 
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white text-center mb-0.5">
+          <h2
+            className="font-display font-semibold tracking-tight text-xl md:text-2xl text-center mb-0.5"
+            style={{ color: 'hsl(var(--text))' }}
+          >
             {title}
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-3">
+          <p
+            className="text-sm text-center mb-3"
+            style={{ color: 'hsl(var(--muted))' }}
+          >
             {subtitle}
           </p>
 
           {determinate ? (
             <div className="w-full space-y-1.5 mb-3">
-              <div className="flex justify-between text-xs font-medium text-gray-600 dark:text-gray-400">
+              <div
+                className="flex justify-between text-xs font-medium"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
                 <span>{progressLabel}</span>
                 {stepLabel && <span>{stepLabel}</span>}
               </div>
-              <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                className="h-2 w-full rounded-pill overflow-hidden"
+                style={{ background: 'hsl(var(--border))' }}
+              >
                 <div
-                  className="h-full rounded-full bg-saas-primary transition-all duration-150 ease-linear"
+                  className="h-full rounded-pill bg-brand-gradient transition-all duration-150 ease-linear"
                   style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
                 />
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Собираем результаты…</p>
+            <p className="text-xs mb-3" style={{ color: 'hsl(var(--muted))' }}>Собираем результаты…</p>
           )}
 
           {showSteps && (
@@ -151,20 +166,18 @@ export function ProcessingHero({
                   <span
                     key={index}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-[10px] px-2 py-1 text-xs font-medium transition-colors',
-                      done &&
-                        'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200',
+                      'inline-flex items-center gap-1 rounded-v2-sm px-2 py-1 text-xs font-medium transition-colors',
+                      done && 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]',
                       current &&
-                        'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-100 ring-1 ring-red-300 dark:ring-red-600',
-                      !done &&
-                        !current &&
-                        'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                        'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] ring-1 ring-[var(--signal-warm)]/40',
+                      !done && !current &&
+                        'bg-[hsl(var(--surface-2))] td-muted',
                     )}
                   >
                     {done ? (
-                      <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--signal-good)' }} />
                     ) : current ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-red-600 dark:text-red-400 flex-shrink-0" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 text-brand-600 dark:text-brand-400" />
                     ) : null}
                     <span className="truncate max-w-[140px]">{step}</span>
                   </span>
@@ -177,37 +190,57 @@ export function ProcessingHero({
 
       {showSkeleton && (
         <div
-          className={cn(
-            'border-t border-gray-200 dark:border-gray-600 max-h-[280px] md:max-h-[320px] overflow-hidden'
-          )}
+          className="max-h-[280px] md:max-h-[320px] overflow-hidden"
+          style={{ borderTop: '1px solid hsl(var(--border))' }}
         >
           <div className="hidden md:block p-3">
             <div className="space-y-2">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 animate-pulse">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8 flex-shrink-0" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded flex-1 max-w-[200px]" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-                  <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded flex-shrink-0" />
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-4 w-8 flex-shrink-0 skel-v2" />
+                  <div className="h-4 flex-1 max-w-[200px] skel-v2" />
+                  <div className="h-4 w-16 skel-v2" />
+                  <div className="h-4 w-20 skel-v2" />
+                  <div className="h-8 w-24 flex-shrink-0 skel-v2" />
                 </div>
               ))}
             </div>
           </div>
           <div className="md:hidden p-3 space-y-2 max-h-[280px] overflow-auto">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="rounded-lg bg-gray-100 dark:bg-gray-800/50 p-3 animate-pulse">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+              <div
+                key={i}
+                className="rounded-v2-sm p-3"
+                style={{ background: 'hsl(var(--surface-2))' }}
+              >
+                <div className="h-4 w-3/4 mb-2 skel-v2" />
                 <div className="flex gap-2 mb-1">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-12" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+                  <div className="h-3 w-12 skel-v2" />
+                  <div className="h-3 w-16 skel-v2" />
                 </div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                <div className="h-3 w-full skel-v2" />
               </div>
             ))}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// Метa-плашка под шапкой (запрос / город / провайдер). Серая, тонированная
+// под surface-2 — чтобы не конкурировала с warm-плашкой статуса справа.
+function MetaPill({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="inline-flex rounded-v2-sm px-2 py-0.5 text-xs font-medium border"
+      style={{
+        background: 'hsl(var(--surface))',
+        borderColor: 'hsl(var(--border))',
+        color: 'hsl(var(--text))',
+      }}
+    >
+      {children}
+    </span>
   );
 }
