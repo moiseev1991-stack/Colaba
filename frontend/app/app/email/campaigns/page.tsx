@@ -174,15 +174,24 @@ export default function CampaignsHistoryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[20px] font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--text))' }}>
-          <Mail className="h-5 w-5" />
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* §4.5 ТЗ редизайна 2026-06-03: display-шрифт, max-w-7xl */}
+      <div className="mb-6 flex items-center justify-between">
+        <h1
+          className="flex items-center gap-2 font-display font-semibold tracking-tight"
+          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        >
+          <Mail className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           История рассылок
         </h1>
         <Link
           href="/app/email/stats"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-v2-sm border px-3 py-1.5 text-[12px] font-medium transition-colors"
+          style={{
+            background: 'hsl(var(--surface))',
+            borderColor: 'hsl(var(--border))',
+            color: 'hsl(var(--text))',
+          }}
         >
           <BarChart3 className="h-3.5 w-3.5" />
           Статистика

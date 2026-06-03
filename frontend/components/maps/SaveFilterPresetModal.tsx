@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 import type { MapSearchFilter } from '@/src/services/api/maps';
 import { createUserPreset, type UserPresetOut } from '@/src/services/api/user-presets';
 
@@ -85,13 +86,13 @@ export function SaveFilterPresetModal({
     <Dialog open={open} onClose={onClose} title="Сохранить как пресет">
       <div className="space-y-4 p-6">
         {isEmpty ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="rounded-v2-sm border border-amber-200/60 bg-[var(--signal-warm-bg)] px-3 py-2 text-sm text-[color:var(--signal-warm)] dark:border-amber-500/30">
             Настройте фильтры в панели слева или задайте AI-промпт ниже — пустой
             пресет сохранять не имеет смысла.
           </div>
         ) : null}
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
             Название
           </label>
           <Input
@@ -106,8 +107,8 @@ export function SaveFilterPresetModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
-            Описание <span className="text-slate-400">(необязательно)</span>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+            Описание <span className="text-[hsl(var(--muted))] opacity-70">(необязательно)</span>
           </label>
           <textarea
             placeholder="Кому продаём, как искать… — показывается в tooltip над кнопкой"
@@ -116,13 +117,14 @@ export function SaveFilterPresetModal({
             disabled={isSaving}
             maxLength={1000}
             rows={2}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-v2-sm border bg-[hsl(var(--surface))] px-3 py-2 text-sm text-[hsl(var(--text))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            style={{ borderColor: 'hsl(var(--border))' }}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
-            AI-промпт <span className="text-slate-400">(необязательно — оценит каждую компанию)</span>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+            AI-промпт <span className="text-[hsl(var(--muted))] opacity-70">(необязательно — оценит каждую компанию)</span>
           </label>
           <textarea
             placeholder={
@@ -134,9 +136,10 @@ export function SaveFilterPresetModal({
             disabled={isSaving}
             maxLength={4000}
             rows={3}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="w-full rounded-v2-sm border bg-[hsl(var(--surface))] px-3 py-2 text-sm text-[hsl(var(--text))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            style={{ borderColor: 'hsl(var(--border))' }}
           />
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1 text-[11px] text-[hsl(var(--muted))]">
             Когда применишь этот пресет — для каждой компании выдачи LLM (gpt-4o-mini
             через ProxyAPI) посчитает score 0-10 + краткий комментарий. Лимит — 100
             анализов в сутки. Кэшируется по тексту промпта (повторно не платишь).
@@ -145,10 +148,10 @@ export function SaveFilterPresetModal({
 
         {summary.length > 0 && (
           <div>
-            <div className="mb-1 text-xs font-medium text-slate-600">
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
               Будет сохранено:
             </div>
-            <ul className="space-y-0.5 rounded-md bg-slate-50 p-2 text-xs text-slate-700">
+            <ul className="space-y-0.5 rounded-v2-sm bg-[hsl(var(--surface-2))] p-2.5 text-xs text-[hsl(var(--text))]">
               {summary.map((line, i) => (
                 <li key={i}>• {line}</li>
               ))}
@@ -157,28 +160,29 @@ export function SaveFilterPresetModal({
         )}
 
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <div className="rounded-v2-sm border border-red-200/60 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)] dark:border-red-500/30">
             {error}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-          <button
-            type="button"
+        <div className="flex justify-end gap-2 border-t pt-3" style={{ borderColor: 'hsl(var(--border))' }}>
+          <ButtonV2
+            variant="secondary"
+            size="md"
             onClick={onClose}
             disabled={isSaving}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
           >
             Отмена
-          </button>
-          <button
-            type="button"
+          </ButtonV2>
+          <ButtonV2
+            variant="primary"
+            size="md"
             onClick={handleSave}
             disabled={!canSave}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            loading={isSaving}
           >
-            {isSaving ? 'Сохраняю…' : 'Сохранить пресет'}
-          </button>
+            Сохранить пресет
+          </ButtonV2>
         </div>
       </div>
     </Dialog>
