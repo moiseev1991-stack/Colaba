@@ -695,6 +695,17 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
         )
         await db.commit()
 
+        # Phase 3 multi-source: зеркалим свежие контакты в company_contacts,
+        # чтобы новые таблицы оставались синхронными.
+        try:
+            from app.modules.maps.service import _sync_company_to_multisource
+            company_after = await db.get(Company, company_id, populate_existing=True)
+            if company_after:
+                await _sync_company_to_multisource(db, company_after)
+                await db.commit()
+        except Exception:
+            logger.exception("multi-source sync failed after 2gis enrich (#%d)", company_id)
+
         # Lead temperature (блок 3) + website_lead_score (блок 4). После
         # 2GIS-обогащения phone/website/мессенджеры могли появиться. Особенно
         # важно для website_score: появление website → score становится NULL.
@@ -834,6 +845,16 @@ async def _enrich_company_from_yandex_html_async(company_id: int) -> dict:
             )
         )
         await db.commit()
+
+        # Phase 3 multi-source: зеркалим в company_contacts
+        try:
+            from app.modules.maps.service import _sync_company_to_multisource
+            company_after = await db.get(Company, company_id, populate_existing=True)
+            if company_after:
+                await _sync_company_to_multisource(db, company_after)
+                await db.commit()
+        except Exception:
+            logger.exception("multi-source sync failed after yandex enrich (#%d)", company_id)
 
         try:
             from app.modules.maps.lead_temperature import recompute_for_company as _rt
@@ -1141,3 +1162,18 @@ def purge_review_raw_text():
     count = asyncio.run(_purge_review_raw_text_async())
     logger.info("purge_review_raw_text: purged %d rows", count)
     return count
+
+
+@celery_app.task(name="dedup_multisource_phase2", queue="maintenance")
+def dedup_multisource_phase2():
+    """Cron: раз в час дедуплицирует новые пары (2gis-row, yandex_maps-row).
+
+    Запускает scripts.dedup_multisource_phase2 в режиме --apply с дефолтным
+    min-confidence=0.85. Идемпотентен — повторный прогон ничего не делает
+    если новых пар нет.
+
+    См. docs/multi-source-companies-plan.md (Phase 3).
+    """
+    from scripts.dedup_multisource_phase2 import run as dedup_run
+    asyncio.run(dedup_run(dry_run=False, min_confidence=0.85))
+    return {"status": "ok"}

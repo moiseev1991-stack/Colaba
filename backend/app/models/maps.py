@@ -92,9 +92,120 @@ class Company(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     reviews = relationship("Review", back_populates="company", cascade="all, delete-orphan", lazy="raise")
+    # Источниковые профили компании — 2GIS, Я.Карты и т.п. Phase 1 заполняет их 1-к-1
+    # по существующим компаниям (одна company = один company_sources). После Phase 2
+    # (дедуп) у одной компании может быть несколько источников. См. docs/multi-source-companies-plan.md.
+    # NB: имя `source_profile_set` НЕ совпадает с pydantic-полем CompanyOut.sources_profiles
+    # специально: иначе CompanyOut.model_validate(orm_company) с from_attributes=True
+    # пытается достать sources_profiles напрямую из ORM и падает на lazy='raise'.
+    # Pydantic-поле заполняется вручную в router через attach_sources_for_companies.
+    source_profile_set = relationship(
+        "CompanySource", back_populates="company", cascade="all, delete-orphan", lazy="raise",
+    )
+    contact_set = relationship(
+        "CompanyContact", back_populates="company", cascade="all, delete-orphan", lazy="raise",
+    )
 
     def __repr__(self) -> str:
         return f"<Company #{self.id} {self.name!r} ({self.source})>"
+
+
+class CompanySource(Base):
+    """Источниковый профиль компании (миграция 028).
+
+    Одна компания может присутствовать в 2GIS И в Я.Картах одновременно — каждый
+    источник даёт свои рейтинг/отзывы/контакты, и они могут отличаться. Эта таблица
+    хранит данные именно конкретного источника, без смешивания с другими.
+
+    Phase 1: каждой существующей companies-записи сопоставлен ровно один company_sources
+    (1-к-1) — миграция аддитивная, не ломает существующее API.
+    Phase 2 (дедуп существующих) и Phase 3 (дедуп при парсинге) свяжут несколько
+    источников с одной companies-записью.
+
+    match_confidence:
+      - 1.00 — backfill из Phase 1 или новая компания без матча (свой company_id).
+      - <1.00 — домерджен по фуззи-матчу к существующему company_id.
+    """
+
+    __tablename__ = "company_sources"
+    __table_args__ = (
+        UniqueConstraint("source", "external_id", name="uq_company_sources_source_external_id"),
+    )
+
+    id = Column(BigInteger, primary_key=True)
+    company_id = Column(BigInteger, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    source = Column(String(20), nullable=False)         # '2gis' | 'yandex_maps' | 'google'
+    external_id = Column(String(255), nullable=False)
+    source_url = Column(String(500))                     # deeplink на карточку в источнике
+
+    rating = Column(Numeric(3, 2))
+    reviews_count = Column(Integer, nullable=False, default=0)
+    reviews_positive_count = Column(Integer, nullable=False, default=0)
+    reviews_negative_count = Column(Integer, nullable=False, default=0)
+    reviews_neutral_count = Column(Integer, nullable=False, default=0)
+    has_owner_replies = Column(Boolean, nullable=False, default=False)
+    owner_replies_count = Column(Integer, nullable=False, default=0)
+    last_review_at = Column(DateTime(timezone=True))
+
+    match_confidence = Column(Numeric(3, 2), nullable=False, default=1.00)
+    matched_by = Column(String(50))                     # 'phone' | 'coords' | 'name+city' | 'manual' | 'phase1_backfill'
+
+    raw_data = Column(JSONB)
+    last_parsed_at = Column(DateTime(timezone=True))
+
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    company = relationship("Company", back_populates="source_profile_set")
+    contact_set = relationship(
+        "CompanyContact", back_populates="source_profile", cascade="all, delete-orphan", lazy="raise",
+    )
+
+    def __repr__(self) -> str:
+        return f"<CompanySource #{self.id} company={self.company_id} {self.source}/{self.external_id}>"
+
+
+class CompanyContact(Base):
+    """Контакт компании, привязанный к конкретному источниковому профилю (миграция 028).
+
+    Один и тот же телефон в 2GIS и в Я.Картах — это ДВЕ записи (с разным source).
+    Это сознательно — UI показывает контакты раздельно, расхождение между источниками
+    может быть ценным сигналом (если совпадают — компания однозначно идентифицирована).
+
+    `is_primary` — отметка «основного» контакта своего типа в своём источнике.
+    Используется UI для показа главного телефона/сайта в превью карточки.
+    """
+
+    __tablename__ = "company_contacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_source_id", "type", "value", name="uq_contact_per_source_type_value",
+        ),
+    )
+
+    id = Column(BigInteger, primary_key=True)
+    company_source_id = Column(
+        BigInteger, ForeignKey("company_sources.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    # Денормализованно для быстрого фильтра «все контакты компании» без JOIN
+    company_id = Column(BigInteger, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    source = Column(String(20), nullable=False, index=True)
+
+    # 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' |
+    # 'instagram' | 'facebook' | 'ok' | 'youtube'
+    type = Column(String(20), nullable=False)
+    value = Column(String(500), nullable=False)
+    is_primary = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    source_profile = relationship("CompanySource", back_populates="contact_set")
+    company = relationship("Company", back_populates="contact_set")
+
+    def __repr__(self) -> str:
+        return f"<CompanyContact #{self.id} {self.type}={self.value!r} src={self.source}>"
 
 
 class Review(Base):
@@ -105,6 +216,12 @@ class Review(Base):
 
     id = Column(BigInteger, primary_key=True)
     company_id = Column(BigInteger, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Источниковый профиль (миграция 028). Phase 1 заполняет существующие отзывы
+    # через backfill; новый код парсинга/импорта пишет сюда обязательно.
+    # FK станет NOT NULL в одной из следующих миграций — после Phase 2.
+    company_source_id = Column(
+        BigInteger, ForeignKey("company_sources.id", ondelete="CASCADE"), nullable=True, index=True,
+    )
 
     source = Column(String(20), nullable=False)
     external_id = Column(String(255))

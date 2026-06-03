@@ -46,5 +46,13 @@ celery_app.conf.update(
             'task': 'recluster_popular_niches',
             'schedule': crontab(hour=4, minute=0),
         },
+        # multi-source dedup (Phase 3 ТЗ 2026-06-03): ищем пары
+        # (2gis-row, yandex_maps-row) одной компании по phone/coords/name
+        # и склеиваем под один company_id. Раз в час — баланс между
+        # «новые компании склеены быстро» и нагрузкой на БД.
+        'dedup-multisource-hourly': {
+            'task': 'dedup_multisource_phase2',
+            'schedule': crontab(minute=15),  # каждый час в :15
+        },
     },
 )

@@ -190,6 +190,44 @@ class PainTagOut(BaseModel):
     status: str = "active"
 
 
+class CompanyContactOut(BaseModel):
+    """Контакт компании с разметкой источника (миграция 028, Phase 4).
+
+    На фронте используется для построения секций «По данным 2GIS» / «По данным
+    Я.Карт» в drawer карточки. Дедуп между источниками НЕ делается — если телефон
+    совпал в обоих источниках, это две записи с пометкой совпадения на UI.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source: str           # '2gis' | 'yandex_maps'
+    type: str             # 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' | ...
+    value: str
+    is_primary: bool = False
+
+
+class CompanySourceOut(BaseModel):
+    """Один источниковый профиль компании (миграция 028, Phase 4).
+
+    Компания может присутствовать в 2GIS И в Я.Картах. Каждый источник даёт свои
+    rating/reviews_count/contacts — этот объект агрегирует их per-source без смешивания.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source: str                    # '2gis' | 'yandex_maps'
+    external_id: str
+    source_url: str | None = None  # deeplink на карточку в этом источнике
+    rating: float | None = None
+    reviews_count: int = 0
+    reviews_positive_count: int = 0
+    reviews_negative_count: int = 0
+    reviews_neutral_count: int = 0
+    has_owner_replies: bool = False
+    owner_replies_count: int = 0
+    contacts: list[CompanyContactOut] = Field(default_factory=list)
+
+
 class CompanyOut(BaseModel):
     """Карточка компании в выдаче. pain_tags пустой до ШАГов 7-11."""
 
@@ -242,6 +280,12 @@ class CompanyOut(BaseModel):
     # компанию на pain_tags (или вообще не нашёл match с тегами ниши).
     # Юзер видит «о чём негатив» сразу, без ожидания reviews_ai пайплайна.
     negative_snippets: list[str] = Field(default_factory=list)
+    # Multi-source (миграция 028, Phase 4). Список источниковых профилей этой
+    # компании — у одноисточниковых компаний длина 1, у склеенных 2gis+yandex 2.
+    # Пустой массив = провайдер ещё не заполнил эти таблицы (для очень старых
+    # тестов/моков). Для списка прогружается batch'ем через attach_sources_for_companies,
+    # для детали — single-shot.
+    sources_profiles: list[CompanySourceOut] = Field(default_factory=list)
 
 
 class ReviewOut(BaseModel):
@@ -257,6 +301,9 @@ class ReviewOut(BaseModel):
     has_owner_reply: bool = False
     source_url: str | None = None
     pain_tags: list[PainTagShort] = Field(default_factory=list)
+    # multi-source (миграция 028): чтобы UI мог группировать отзывы в вкладки
+    # «Все / 2GIS / Я.Карты». Тождественно reviews.source, отдаём явно.
+    source: str | None = None
 
 
 class CompanyDetailOut(CompanyOut):

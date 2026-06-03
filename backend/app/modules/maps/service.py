@@ -27,6 +27,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.maps import (
     Company,
+    CompanyContact,
+    CompanySource,
     MapSearch,
     MapSearchCache,
     MapSearchResult,
@@ -279,6 +281,168 @@ async def create_map_search(
 
 
 # ---------------------------------------------------------------------------
+# Multi-source: bulk-загрузка sources_profiles для API (Phase 4)
+# ---------------------------------------------------------------------------
+
+
+async def attach_sources_for_companies(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, list[dict[str, Any]]]:
+    """Тянет company_sources + company_contacts для списка company_ids за 2 SQL.
+
+    Возвращает map company_id → list[CompanySourceOut-совместимых dict'ов].
+    Используется в endpoint'ах списка компаний и детали для заполнения
+    CompanyOut.sources_profiles.
+    """
+    if not company_ids:
+        return {}
+    # Все источники
+    src_rows = (await db.execute(text(
+        """
+        SELECT id, company_id, source, external_id, source_url, rating,
+               reviews_count, reviews_positive_count, reviews_negative_count,
+               reviews_neutral_count, has_owner_replies, owner_replies_count
+        FROM company_sources
+        WHERE company_id = ANY(:ids)
+        ORDER BY company_id, source
+        """
+    ), {"ids": company_ids})).mappings().all()
+
+    # Все контакты
+    contacts_rows = (await db.execute(text(
+        """
+        SELECT company_source_id, source, type, value, is_primary
+        FROM company_contacts
+        WHERE company_id = ANY(:ids)
+        """
+    ), {"ids": company_ids})).mappings().all()
+
+    contacts_by_source_id: dict[int, list[dict[str, Any]]] = {}
+    for row in contacts_rows:
+        contacts_by_source_id.setdefault(int(row["company_source_id"]), []).append({
+            "source": row["source"],
+            "type": row["type"],
+            "value": row["value"],
+            "is_primary": bool(row["is_primary"]),
+        })
+
+    out: dict[int, list[dict[str, Any]]] = {}
+    for r in src_rows:
+        cid = int(r["company_id"])
+        out.setdefault(cid, []).append({
+            "source": r["source"],
+            "external_id": r["external_id"],
+            "source_url": r["source_url"],
+            "rating": float(r["rating"]) if r["rating"] is not None else None,
+            "reviews_count": int(r["reviews_count"] or 0),
+            "reviews_positive_count": int(r["reviews_positive_count"] or 0),
+            "reviews_negative_count": int(r["reviews_negative_count"] or 0),
+            "reviews_neutral_count": int(r["reviews_neutral_count"] or 0),
+            "has_owner_replies": bool(r["has_owner_replies"]),
+            "owner_replies_count": int(r["owner_replies_count"] or 0),
+            "contacts": contacts_by_source_id.get(int(r["id"]), []),
+        })
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Multi-source sync (Phase 3 ТЗ multi-source 2026-06-03)
+# ---------------------------------------------------------------------------
+
+
+# Карта: ключ contacts_extra → type в company_contacts
+_CONTACTS_EXTRA_TYPE_MAP = (
+    ("phones", "phone"),
+    ("telegrams", "telegram"),
+    ("vks", "vk"),
+    ("whatsapps", "whatsapp"),
+    ("instagrams", "instagram"),
+    ("facebooks", "facebook"),
+    ("oks", "ok"),
+    ("youtubes", "youtube"),
+)
+
+
+async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> None:
+    """Зеркалит данные companies.* в company_sources / company_contacts.
+
+    Дёргается из save_companies_batch и enrich-тасков после изменения companies.
+    Идемпотентна — повторный вызов на той же company безопасен (ON CONFLICT).
+
+    Phase 3 минимальная: матчинг к existing мульти-компаниям НЕ делается, новая
+    company всегда получает свой company_sources с match_confidence=1.00.
+    Склейку с другим источником (если найдётся) делает периодический Celery-job
+    `cron_dedup_multisource` (запускает скрипт scripts/dedup_multisource_phase2.py).
+    """
+    # 1. company_sources — UPSERT по (source, external_id)
+    src_ins = pg_insert(CompanySource).values(
+        company_id=company.id,
+        source=company.source,
+        external_id=company.external_id,
+        rating=company.rating,
+        reviews_count=company.reviews_count or 0,
+        reviews_positive_count=company.reviews_positive_count or 0,
+        reviews_negative_count=company.reviews_negative_count or 0,
+        reviews_neutral_count=company.reviews_neutral_count or 0,
+        has_owner_replies=company.has_owner_replies or False,
+        owner_replies_count=company.owner_replies_count or 0,
+        last_review_at=company.last_review_at,
+        raw_data=company.raw_data,
+        match_confidence=1.00,
+        matched_by="parser_sync",
+        last_parsed_at=func.now(),
+    ).on_conflict_do_update(
+        index_elements=["source", "external_id"],
+        set_={
+            "rating": company.rating,
+            "reviews_count": company.reviews_count or 0,
+            "reviews_positive_count": company.reviews_positive_count or 0,
+            "reviews_negative_count": company.reviews_negative_count or 0,
+            "reviews_neutral_count": company.reviews_neutral_count or 0,
+            "has_owner_replies": company.has_owner_replies or False,
+            "owner_replies_count": company.owner_replies_count or 0,
+            "last_review_at": company.last_review_at,
+            "raw_data": company.raw_data,
+            "last_parsed_at": func.now(),
+            "updated_at": func.now(),
+        },
+    ).returning(CompanySource.id)
+    cs_id = (await db.execute(src_ins)).scalar_one()
+
+    # 2. company_contacts — собираем все контакты компании в плоский список
+    contacts: list[tuple[str, str, bool]] = []  # (type, value, is_primary)
+    if company.phone:
+        contacts.append(("phone", company.phone, True))
+    if company.website:
+        contacts.append(("website", company.website, True))
+    for e in (company.emails or []):
+        if isinstance(e, str) and e:
+            contacts.append(("email", e, False))
+    extra = company.contacts_extra or {}
+    if isinstance(extra, dict):
+        for key, ctype in _CONTACTS_EXTRA_TYPE_MAP:
+            for v in (extra.get(key) or []):
+                if isinstance(v, str) and v:
+                    contacts.append((ctype, v, False))
+
+    # UPSERT каждого. ON CONFLICT DO NOTHING — если такой контакт уже есть.
+    for ctype, value, is_primary in contacts:
+        # value лимит 500 — обрезаем чтобы не упереться в столбец
+        v = value[:500]
+        contact_ins = pg_insert(CompanyContact).values(
+            company_source_id=cs_id,
+            company_id=company.id,
+            source=company.source,
+            type=ctype,
+            value=v,
+            is_primary=is_primary,
+        ).on_conflict_do_nothing(
+            index_elements=["company_source_id", "type", "value"],
+        )
+        await db.execute(contact_ins)
+
+
+# ---------------------------------------------------------------------------
 # Companies batch
 # ---------------------------------------------------------------------------
 
@@ -380,6 +544,15 @@ async def save_companies_batch(
         company = await db.get(Company, company_id, populate_existing=True)
         if company is not None:
             saved.append(company)
+            # Phase 3 multi-source (миграция 028): зеркалим companies.* в новые
+            # company_sources / company_contacts таблицы, чтобы новые компании
+            # сразу попадали в multi-source структуру без отдельного backfill.
+            # Тихо проглатываем ошибки — старые поля companies.* остаются
+            # источником истины пока не пройдёт Phase 4 (API).
+            try:
+                await _sync_company_to_multisource(db, company)
+            except Exception:
+                logger.exception("multi-source sync failed for company=%d", company.id)
 
     # Lead temperature (блок 3) + website_lead_score (блок 4). Пересчитываем
     # сразу после upsert — на этом этапе rating/reviews_count/контакты уже
