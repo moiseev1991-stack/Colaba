@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.40.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.39.0...v1.40.0) (2026-06-03)
+
+
+### Features
+
+* **ui:** redesign v2 phase B-2 — шаблоны КП, кампании, модалка пресета ([b26c881](https://github.com/moiseev1991-stack/Colaba/commit/b26c881018f1226b12827d4a0c968879d8e42870))
+
 # [1.39.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.38.0...v1.39.0) (2026-06-02)
 
 
