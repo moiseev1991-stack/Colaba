@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
-import { Button } from '@/components/ui/button';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
+import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
 import { ToastContainer, type Toast } from '@/components/Toast';
 import { tokenStorage } from '@/client';
@@ -133,26 +135,28 @@ export default function ProvidersPage() {
             type="checkbox"
             checked={!!checked}
             onChange={(e) => setField(p.id, key, e.target.checked)}
-            className="rounded border-gray-300 dark:border-gray-600"
+            className="rounded border"
+            style={{ borderColor: 'hsl(var(--border))' }}
           />
-          <span className="text-sm text-gray-700 dark:text-gray-300">{f.label}</span>
-          {f.description && <span className="text-xs text-gray-500">({f.description})</span>}
+          <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>{f.label}</span>
+          {f.description && (
+            <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({f.description})</span>
+          )}
         </label>
       );
     }
 
     return (
       <div key={key} className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
           {f.label}
-          {f.required && <span className="text-red-500"> *</span>}
+          {f.required && <span style={{ color: 'var(--signal-hot)' }}> *</span>}
         </label>
         <Input
           type={isSecret ? 'password' : 'text'}
           value={val === '***' ? '' : String(val ?? '')}
           placeholder={isSecret && val === '***' ? '••• (не менять)' : f.description}
           onChange={(e) => setField(p.id, key, e.target.value)}
-          className="bg-white dark:bg-gray-700"
         />
       </div>
     );
@@ -168,40 +172,43 @@ export default function ProvidersPage() {
       />
 
       {needsAuth ? (
-        <div className="app-card-enhanced p-6">
-          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>Войдите для доступа к настройкам провайдеров.</p>
-          <Link href="/auth/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+        <CardV2 className="p-6">
+          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
+            Войдите для доступа к настройкам провайдеров.
+          </p>
+          <Link
+            href="/auth/login"
+            className="text-brand-600 dark:text-brand-400 hover:underline"
+          >
             Войти
           </Link>
-        </div>
+        </CardV2>
       ) : loading ? (
-        <p className="text-gray-500 dark:text-gray-400">Загрузка…</p>
+        <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
       ) : (
         <div className="space-y-6">
           {list.map((p) => (
-            <div
-              key={p.id}
-              className="app-card-enhanced p-6"
-            >
+            <CardV2 key={p.id} className="p-6">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>{p.name}</h2>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2
+                      className="font-display font-semibold tracking-tight text-xl"
+                      style={{ color: 'hsl(var(--text))' }}
+                    >
+                      {p.name}
+                    </h2>
+                    <SignalPill tone="muted" size="sm">
                       {p.type === 'free' ? 'Бесплатный' : 'Платный'}
-                    </span>
+                    </SignalPill>
                     {p.configured ? (
-                      <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                        Настроен
-                      </span>
+                      <SignalPill tone="good" size="sm">Настроен</SignalPill>
                     ) : (
-                      <span className="text-xs px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                        Не настроен
-                      </span>
+                      <SignalPill tone="warm" size="sm">Не настроен</SignalPill>
                     )}
                   </div>
                   {p.description && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{p.description}</p>
+                    <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>{p.description}</p>
                   )}
                 </div>
               </div>
@@ -210,24 +217,28 @@ export default function ProvidersPage() {
                 {p.settings_schema.map((f) => renderField(p, f))}
               </div>
 
-              <div className="mt-4 pt-4 border-t flex gap-3" style={{ borderColor: 'hsl(var(--border))' }}>
-                <Button
+              <div
+                className="mt-4 pt-4 border-t flex gap-3"
+                style={{ borderColor: 'hsl(var(--border))' }}
+              >
+                <ButtonV2
+                  variant="secondary"
+                  size="sm"
                   onClick={() => handleTest(p.id)}
-                  disabled={!!testing[p.id]}
-                  variant="outline"
-                  size="sm"
+                  loading={!!testing[p.id]}
                 >
-                  {testing[p.id] ? 'Проверка…' : 'Проверить'}
-                </Button>
-                <Button
+                  Проверить
+                </ButtonV2>
+                <ButtonV2
+                  variant="primary"
+                  size="sm"
                   onClick={() => handleSave(p.id)}
-                  disabled={!!saving[p.id]}
-                  size="sm"
+                  loading={!!saving[p.id]}
                 >
-                  {saving[p.id] ? 'Сохранение…' : 'Сохранить'}
-                </Button>
+                  Сохранить
+                </ButtonV2>
               </div>
-            </div>
+            </CardV2>
           ))}
         </div>
       )}

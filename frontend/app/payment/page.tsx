@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { CreditCard, CheckCircle, Loader2, ExternalLink } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
-import { Button } from '@/components/ui/button';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
 import { apiClient } from '@/client';
 
 interface Plan {
@@ -68,11 +69,20 @@ export default function PaymentPage() {
       <PageHeader breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Оплата' }]} title="Подписка" />
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'hsl(var(--muted))' }} />
+        </div>
       ) : (
         <div className="space-y-4">
           {!configured && (
-            <div className="rounded-[12px] border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-700 dark:text-amber-300">
+            <div
+              className="rounded-v2-sm border p-4 text-sm"
+              style={{
+                background: 'var(--signal-warm-bg)',
+                borderColor: 'rgb(245 158 11 / 0.3)',
+                color: 'var(--signal-warm)',
+              }}
+            >
               <strong>Тестовый режим:</strong> платёжный шлюз ЮКасса не настроен.
               Укажите <code>YOOKASSA_SHOP_ID</code> и <code>YOOKASSA_SECRET_KEY</code> в переменных окружения.
             </div>
@@ -80,86 +90,117 @@ export default function PaymentPage() {
 
           {/* Тарифы */}
           <div className="grid gap-3">
-            {plans.map(plan => (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSelectedPlan(plan.id)}
-                className={`w-full text-left rounded-[12px] border-2 p-4 transition-colors ${
-                  selectedPlan === plan.id
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      selectedPlan === plan.id ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}>
-                      {selectedPlan === plan.id && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                      )}
+            {plans.map(plan => {
+              const isSel = selectedPlan === plan.id;
+              return (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setSelectedPlan(plan.id)}
+                  className={`w-full text-left rounded-v2-lg border-2 p-4 transition-colors ${
+                    isSel
+                      ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-500/10'
+                      : 'hover:border-brand-400/40'
+                  }`}
+                  style={!isSel ? { borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface))' } : undefined}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          isSel ? 'border-brand-500' : ''
+                        }`}
+                        style={!isSel ? { borderColor: 'hsl(var(--border))' } : undefined}
+                      >
+                        {isSel && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-semibold" style={{ color: 'hsl(var(--text))' }}>{plan.name}</div>
+                        <div className="text-sm" style={{ color: 'hsl(var(--muted))' }}>{plan.description}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{plan.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{plan.description}</div>
+                    <div className="text-right">
+                      <span
+                        className="font-display font-semibold tracking-tight text-lg"
+                        style={{ color: 'hsl(var(--text))' }}
+                      >
+                        {plan.price_rub.toLocaleString('ru-RU')} ₽
+                      </span>
+                      <div className="text-xs" style={{ color: 'hsl(var(--muted))' }}>/мес</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">
-                      {plan.price_rub.toLocaleString('ru-RU')} ₽
-                    </span>
-                    <div className="text-xs text-gray-400">/мес</div>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {/* Форма */}
-          <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+          <CardV2 className="p-5">
             <div className="flex items-center gap-2 mb-4">
-              <CreditCard className="h-5 w-5 text-blue-600" />
-              <span className="font-medium text-gray-900 dark:text-white">Оплата через ЮКасса</span>
+              <CreditCard className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+              <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Оплата через ЮКасса</span>
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email для чека</label>
+              <label
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                Email для чека
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="w-full h-10 px-3 rounded-[8px] border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 rounded-v2-sm border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                style={{
+                  background: 'hsl(var(--surface))',
+                  borderColor: 'hsl(var(--border))',
+                  color: 'hsl(var(--text))',
+                }}
               />
             </div>
 
             {error && (
-              <div className="mb-3 rounded-[8px] bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              <div
+                className="mb-3 rounded-v2-sm border px-3 py-2 text-sm"
+                style={{
+                  background: 'var(--signal-hot-bg)',
+                  borderColor: 'rgb(239 68 68 / 0.3)',
+                  color: 'var(--signal-hot)',
+                }}
+              >
                 {error}
               </div>
             )}
 
-            <Button
+            <ButtonV2
+              variant="primary"
+              size="lg"
               onClick={handlePay}
-              disabled={paying || !selectedPlan}
-              className="w-full h-11"
+              loading={paying}
+              disabled={!selectedPlan}
+              iconLeft={!paying ? <ExternalLink /> : undefined}
+              className="w-full"
             >
-              {paying ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Переадресация…</>
-              ) : (
-                <><ExternalLink className="h-4 w-4 mr-2" />
-                  Оплатить {selected ? `${selected.price_rub.toLocaleString('ru-RU')} ₽` : ''}
-                </>
-              )}
-            </Button>
+              {paying ? 'Переадресация…' : `Оплатить ${selected ? `${selected.price_rub.toLocaleString('ru-RU')} ₽` : ''}`}
+            </ButtonV2>
 
-            <ul className="mt-4 space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <li className="flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Оплата картой, СБП, ЮMoney</li>
-              <li className="flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Безопасная транзакция через ЮКасса</li>
-              <li className="flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Фискальный чек на email</li>
+            <ul className="mt-4 space-y-1.5 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5" style={{ color: 'var(--signal-good)' }} /> Оплата картой, СБП, ЮMoney
+              </li>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5" style={{ color: 'var(--signal-good)' }} /> Безопасная транзакция через ЮКасса
+              </li>
+              <li className="flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5" style={{ color: 'var(--signal-good)' }} /> Фискальный чек на email
+              </li>
             </ul>
-          </div>
+          </CardV2>
         </div>
       )}
     </div>

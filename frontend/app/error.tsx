@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 
 export default function Error({
   error,
@@ -15,18 +17,27 @@ export default function Error({
 
   return (
     <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 px-4">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div
+        className="rounded-v2-sm p-3"
+        style={{ background: 'var(--signal-hot-bg)', color: 'var(--signal-hot)' }}
+      >
+        <AlertCircle className="h-6 w-6" />
+      </div>
+      <h2
+        className="font-display font-semibold tracking-tight text-xl"
+        style={{ color: 'hsl(var(--text))' }}
+      >
         Что-то пошло не так
       </h2>
-      <p className="text-sm text-gray-600 dark:text-gray-400 text-center max-w-md">
+      <p
+        className="text-sm text-center max-w-md"
+        style={{ color: 'hsl(var(--muted))' }}
+      >
         {error.message}
       </p>
-      <button
-        onClick={reset}
-        className="inline-flex items-center justify-center rounded-[10px] px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium"
-      >
+      <ButtonV2 variant="primary" size="md" onClick={reset}>
         Попробовать снова
-      </button>
+      </ButtonV2>
     </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Search, Plus, Trash2, Edit, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogFooter } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/PageHeader';
@@ -142,62 +143,77 @@ export default function OrganizationsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-        <div className="text-center text-gray-600 dark:text-gray-400">Загрузка...</div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+        <div className="text-center" style={{ color: 'hsl(var(--muted))' }}>Загрузка...</div>
       </div>
     );
   }
 
   if (error && !isSuperuser) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-[14px] p-4">
-          <p className="text-red-800 dark:text-red-200">{error}</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+        <div
+          className="rounded-v2-sm border p-4"
+          style={{
+            background: 'var(--signal-hot-bg)',
+            borderColor: 'rgb(239 68 68 / 0.3)',
+            color: 'var(--signal-hot)',
+          }}
+        >
+          <p>{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
       <div className="space-y-6">
         <PageHeader
           breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Организации' }]}
           title="Организации"
           actions={
-            <Button
+            <ButtonV2
+              variant="primary"
+              size="md"
               onClick={() => setCreateModalOpen(true)}
-              variant="default"
+              iconLeft={<Plus />}
             >
-              <Plus className="h-4 w-4 mr-2" />
               Создать организацию
-            </Button>
+            </ButtonV2>
           }
         />
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-[14px] p-4">
-            <p className="text-red-800 dark:text-red-200">{error}</p>
+          <div
+            className="rounded-v2-sm border p-4"
+            style={{
+              background: 'var(--signal-hot-bg)',
+              borderColor: 'rgb(239 68 68 / 0.3)',
+              color: 'var(--signal-hot)',
+            }}
+          >
+            <p>{error}</p>
           </div>
         )}
 
         {organizations.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400">Организации не найдены</p>
-          </div>
+          <CardV2 className="p-8 text-center">
+            <p style={{ color: 'hsl(var(--muted))' }}>Организации не найдены</p>
+          </CardV2>
         ) : (
-          <div className="grid gap-4">
+          <div className="reveal-stack grid gap-4">
             {organizations.map((org) => (
-              <div
-                key={org.id}
-                className="bg-white dark:bg-gray-800 rounded-[14px] border border-gray-200 dark:border-gray-700 p-6 shadow-sm"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+              <CardV2 key={org.id} reveal className="p-6">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <h2
+                      className="font-display font-semibold tracking-tight text-2xl mb-4"
+                      style={{ color: 'hsl(var(--text))' }}
+                    >
                       {org.name}
                     </h2>
-                    <div className="flex gap-6 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex gap-6 text-sm flex-wrap" style={{ color: 'hsl(var(--muted))' }}>
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         <span>{org.users_count} пользователей</span>
@@ -206,40 +222,39 @@ export default function OrganizationsPage() {
                         <Search className="h-4 w-4" />
                         <span>{org.searches_count} поисков</span>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                      <div className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
                         Создана: {new Date(org.created_at).toLocaleDateString('ru-RU')}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
+                  <div className="flex gap-2 shrink-0">
+                    <ButtonV2
+                      variant="secondary"
                       size="sm"
                       onClick={() => handleViewUsers(org.id)}
-                      className="flex items-center gap-2"
+                      iconLeft={<Eye />}
                     >
-                      <Eye className="h-4 w-4" />
                       Пользователи
-                    </Button>
-                    <Button
-                      variant="outline"
+                    </ButtonV2>
+                    <ButtonV2
+                      variant="secondary"
                       size="sm"
                       onClick={() => openEditModal(org)}
-                      className="flex items-center gap-2"
+                      iconLeft={<Edit />}
                     >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
+                      <span className="sr-only">Редактировать</span>
+                    </ButtonV2>
+                    <ButtonV2
+                      variant="danger"
                       size="sm"
                       onClick={() => handleDelete(org.id, org.name)}
-                      className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      iconLeft={<Trash2 />}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <span className="sr-only">Удалить</span>
+                    </ButtonV2>
                   </div>
                 </div>
-              </div>
+              </CardV2>
             ))}
           </div>
         )}
@@ -253,7 +268,10 @@ export default function OrganizationsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              className="block text-sm font-medium mb-1"
+              style={{ color: 'hsl(var(--text))' }}
+            >
               Название организации
             </label>
             <Input
@@ -265,12 +283,12 @@ export default function OrganizationsPage() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={closeModals} disabled={submitting}>
+          <ButtonV2 variant="secondary" size="md" onClick={closeModals} disabled={submitting}>
             Отмена
-          </Button>
-          <Button onClick={handleCreateOrg} disabled={submitting}>
-            {submitting ? 'Создание...' : 'Создать'}
-          </Button>
+          </ButtonV2>
+          <ButtonV2 variant="primary" size="md" onClick={handleCreateOrg} loading={submitting}>
+            Создать
+          </ButtonV2>
         </DialogFooter>
       </Dialog>
 
@@ -282,7 +300,10 @@ export default function OrganizationsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              className="block text-sm font-medium mb-1"
+              style={{ color: 'hsl(var(--text))' }}
+            >
               Название организации
             </label>
             <Input
@@ -294,12 +315,12 @@ export default function OrganizationsPage() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={closeModals} disabled={submitting}>
+          <ButtonV2 variant="secondary" size="md" onClick={closeModals} disabled={submitting}>
             Отмена
-          </Button>
-          <Button onClick={handleEditOrg} disabled={submitting}>
-            {submitting ? 'Сохранение...' : 'Сохранить'}
-          </Button>
+          </ButtonV2>
+          <ButtonV2 variant="primary" size="md" onClick={handleEditOrg} loading={submitting}>
+            Сохранить
+          </ButtonV2>
         </DialogFooter>
       </Dialog>
     </div>

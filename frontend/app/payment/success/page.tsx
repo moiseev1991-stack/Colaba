@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { apiClient } from '@/client';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 
 function SuccessContent() {
   const params = useSearchParams();
@@ -22,34 +23,56 @@ function SuccessContent() {
       .catch(() => setStatus('pending'));
   }, [paymentId]);
 
+  const h1Cls = 'font-display font-semibold tracking-tight text-2xl mb-2';
+  const pCls = 'mb-6';
+
   return (
     <div className="max-w-[440px] mx-auto px-4 py-16 text-center">
-      {status === 'loading' && <Loader2 className="h-12 w-12 text-gray-400 animate-spin mx-auto mb-4" />}
+      {status === 'loading' && (
+        <Loader2
+          className="h-12 w-12 animate-spin mx-auto mb-4"
+          style={{ color: 'hsl(var(--muted))' }}
+        />
+      )}
       {status === 'paid' && (
         <>
-          <CheckCircle className="h-14 w-14 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Оплата прошла успешно!</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Подписка активирована. Добро пожаловать!</p>
-          <Link href="/app" className="inline-flex items-center justify-center px-6 py-2.5 rounded-[8px] bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
-            Перейти в панель
+          <CheckCircle
+            className="h-14 w-14 mx-auto mb-4"
+            style={{ color: 'var(--signal-good)' }}
+          />
+          <h1 className={h1Cls} style={{ color: 'hsl(var(--text))' }}>Оплата прошла успешно!</h1>
+          <p className={pCls} style={{ color: 'hsl(var(--muted))' }}>Подписка активирована. Добро пожаловать!</p>
+          <Link href="/app" className="contents">
+            <ButtonV2 variant="primary" size="md">Перейти в панель</ButtonV2>
           </Link>
         </>
       )}
       {status === 'pending' && (
         <>
-          <Loader2 className="h-12 w-12 text-amber-500 animate-spin mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Обработка платежа…</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Платёж в обработке. Страница обновится автоматически.</p>
-          <Link href="/app" className="text-sm text-blue-600 hover:underline">Вернуться в панель</Link>
+          <Loader2
+            className="h-12 w-12 animate-spin mx-auto mb-4"
+            style={{ color: 'var(--signal-warm)' }}
+          />
+          <h1 className={h1Cls} style={{ color: 'hsl(var(--text))' }}>Обработка платежа…</h1>
+          <p className={pCls} style={{ color: 'hsl(var(--muted))' }}>Платёж в обработке. Страница обновится автоматически.</p>
+          <Link
+            href="/app"
+            className="text-sm text-brand-600 dark:text-brand-400 hover:underline"
+          >
+            Вернуться в панель
+          </Link>
         </>
       )}
       {status === 'failed' && (
         <>
-          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Платёж отменён</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Оплата не была завершена. Попробуйте снова.</p>
-          <Link href="/payment" className="inline-flex items-center justify-center px-6 py-2.5 rounded-[8px] bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
-            Повторить
+          <XCircle
+            className="h-12 w-12 mx-auto mb-4"
+            style={{ color: 'var(--signal-hot)' }}
+          />
+          <h1 className={h1Cls} style={{ color: 'hsl(var(--text))' }}>Платёж отменён</h1>
+          <p className={pCls} style={{ color: 'hsl(var(--muted))' }}>Оплата не была завершена. Попробуйте снова.</p>
+          <Link href="/payment" className="contents">
+            <ButtonV2 variant="primary" size="md">Повторить</ButtonV2>
           </Link>
         </>
       )}
@@ -59,7 +82,13 @@ function SuccessContent() {
 
 export default function PaymentSuccessPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'hsl(var(--muted))' }} />
+        </div>
+      }
+    >
       <SuccessContent />
     </Suspense>
   );

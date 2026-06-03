@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
+import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
 import { ToastContainer, type Toast } from '@/components/Toast';
+import { Dialog } from '@/components/ui/dialog';
 import { tokenStorage } from '@/client';
 import { PageHeader } from '@/components/PageHeader';
 import {
@@ -205,16 +208,15 @@ export default function AiAssistantsPage() {
       const isSecret = f.secret === true;
       return (
         <div key={f.key} className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
             {f.label}
-            {f.required && <span className="text-red-500"> *</span>}
+            {f.required && <span style={{ color: 'var(--signal-hot)' }}> *</span>}
           </label>
           <Input
             type={isSecret ? 'password' : 'text'}
             value={val === '***' ? '' : String(val ?? '')}
             placeholder={isSecret && val === '***' ? '••• (не менять)' : f.description}
             onChange={(e) => setConfigField(f.key, e.target.value)}
-            className="bg-white dark:bg-gray-700"
           />
         </div>
       );
@@ -229,153 +231,178 @@ export default function AiAssistantsPage() {
         breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'AI-ассистенты' }]}
         title="AI-ассистенты"
         actions={!needsAuth && !loading ? (
-          <Button onClick={openCreate} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
+          <ButtonV2 variant="primary" size="sm" onClick={openCreate} iconLeft={<Plus />}>
             Добавить
-          </Button>
+          </ButtonV2>
         ) : undefined}
       />
 
       {needsAuth ? (
-        <div className="app-card-enhanced p-6">
-          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>Войдите для доступа к настройкам AI-ассистентов.</p>
-          <Link href="/auth/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+        <CardV2 className="p-6">
+          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
+            Войдите для доступа к настройкам AI-ассистентов.
+          </p>
+          <Link
+            href="/auth/login"
+            className="text-brand-600 dark:text-brand-400 hover:underline"
+          >
             Войти
           </Link>
-        </div>
+        </CardV2>
       ) : loading ? (
-        <p className="text-gray-500 dark:text-gray-400">Загрузка…</p>
+        <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
       ) : (
         <div className="space-y-4">
           {list.map((a) => (
-            <div
-              key={a.id}
-              className="app-card-enhanced p-6"
-            >
+            <CardV2 key={a.id} className="p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>{a.name}</h2>
-                  <span className="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
-                    {a.provider_type}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{a.model}</span>
-                  {a.supports_vision && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
-                      Vision
-                    </span>
-                  )}
-                  {a.is_default && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                      По умолчанию
-                    </span>
-                  )}
-                  {a.config?.api_key ? (
-                    <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                      Настроен
-                    </span>
-                  ) : null}
+                  <h2
+                    className="font-display font-semibold tracking-tight text-xl"
+                    style={{ color: 'hsl(var(--text))' }}
+                  >
+                    {a.name}
+                  </h2>
+                  <SignalPill tone="muted" size="sm">{a.provider_type}</SignalPill>
+                  <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>{a.model}</span>
+                  {a.supports_vision && <SignalPill tone="accent" size="sm">Vision</SignalPill>}
+                  {a.is_default && <SignalPill tone="warm" size="sm">По умолчанию</SignalPill>}
+                  {a.config?.api_key ? <SignalPill tone="good" size="sm">Настроен</SignalPill> : null}
                 </div>
                 <div className="flex gap-2">
                   {!a.is_default && (
-                    <Button variant="outline" size="sm" onClick={() => handleSetDefault(a.id)} title="Сделать по умолчанию">
-                      <Star className="h-4 w-4" />
-                    </Button>
+                    <ButtonV2
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleSetDefault(a.id)}
+                      title="Сделать по умолчанию"
+                      iconLeft={<Star />}
+                    >
+                      <span className="sr-only">По умолчанию</span>
+                    </ButtonV2>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => openEdit(a)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(a.id)} className="text-red-600 hover:text-red-700">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <ButtonV2
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openEdit(a)}
+                    iconLeft={<Pencil />}
+                  >
+                    <span className="sr-only">Редактировать</span>
+                  </ButtonV2>
+                  <ButtonV2
+                    variant="danger"
+                    size="sm"
+                    onClick={() => handleDelete(a.id)}
+                    iconLeft={<Trash2 />}
+                  >
+                    <span className="sr-only">Удалить</span>
+                  </ButtonV2>
                 </div>
               </div>
-            </div>
+            </CardV2>
           ))}
         </div>
       )}
 
-      {/* Modal Create / Edit */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !submitting && setModal(null)}>
-          <div
-            className="app-card-enhanced p-6 w-full max-w-lg shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text))' }}>
-              {modal === 'create' ? 'Добавить AI-ассистент' : 'Изменить'}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Тип провайдера *</label>
-                <select
-                  value={form.provider_type}
-                  onChange={(e) => {
-                    const pt = e.target.value;
-                    const ent = registry.find((r) => r.provider_type === pt);
-                    setForm((p) => ({
-                      ...p,
-                      provider_type: pt,
-                      model: ent?.model_examples?.[0] || p.model,
-                      config: {},
-                    }));
-                  }}
-                  className="mt-1 w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white"
-                >
-                  {registry.map((r) => (
-                    <option key={r.provider_type} value={r.provider_type}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Название *</label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setFormField('name', e.target.value)}
-                  className="mt-1 bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Модель *</label>
-                <Input
-                  value={form.model}
-                  onChange={(e) => setFormField('model', e.target.value)}
-                  placeholder={registry.find((r) => r.provider_type === form.provider_type)?.model_examples?.[0]}
-                  className="mt-1 bg-white dark:bg-gray-700"
-                />
-              </div>
-              {renderConfigFields()}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.supports_vision}
-                  onChange={(e) => setFormField('supports_vision', e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Поддержка Vision</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.is_default}
-                  onChange={(e) => setFormField('is_default', e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">По умолчанию</span>
-              </label>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <Button onClick={modal === 'create' ? handleCreate : handleUpdate} disabled={submitting}>
-                {submitting ? 'Сохранение…' : 'Сохранить'}
-              </Button>
-              <Button variant="outline" onClick={() => setModal(null)} disabled={submitting}>
-                Отмена
-              </Button>
-            </div>
+      {/* Modal Create / Edit — теперь использует общий Dialog primitive */}
+      <Dialog
+        open={!!modal}
+        onClose={() => !submitting && setModal(null)}
+        title={modal === 'create' ? 'Добавить AI-ассистент' : 'Изменить'}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+              Тип провайдера <span style={{ color: 'var(--signal-hot)' }}>*</span>
+            </label>
+            <select
+              value={form.provider_type}
+              onChange={(e) => {
+                const pt = e.target.value;
+                const ent = registry.find((r) => r.provider_type === pt);
+                setForm((p) => ({
+                  ...p,
+                  provider_type: pt,
+                  model: ent?.model_examples?.[0] || p.model,
+                  config: {},
+                }));
+              }}
+              className="mt-1 w-full rounded-v2-sm border px-3 py-2"
+              style={{
+                background: 'hsl(var(--surface))',
+                borderColor: 'hsl(var(--border))',
+                color: 'hsl(var(--text))',
+              }}
+            >
+              {registry.map((r) => (
+                <option key={r.provider_type} value={r.provider_type}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </div>
+          <div>
+            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+              Название <span style={{ color: 'var(--signal-hot)' }}>*</span>
+            </label>
+            <Input
+              value={form.name}
+              onChange={(e) => setFormField('name', e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+              Модель <span style={{ color: 'var(--signal-hot)' }}>*</span>
+            </label>
+            <Input
+              value={form.model}
+              onChange={(e) => setFormField('model', e.target.value)}
+              placeholder={registry.find((r) => r.provider_type === form.provider_type)?.model_examples?.[0]}
+              className="mt-1"
+            />
+          </div>
+          {renderConfigFields()}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.supports_vision}
+              onChange={(e) => setFormField('supports_vision', e.target.checked)}
+              className="rounded border"
+              style={{ borderColor: 'hsl(var(--border))' }}
+            />
+            <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Поддержка Vision</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.is_default}
+              onChange={(e) => setFormField('is_default', e.target.checked)}
+              className="rounded border"
+              style={{ borderColor: 'hsl(var(--border))' }}
+            />
+            <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>По умолчанию</span>
+          </label>
         </div>
-      )}
+        <div className="mt-6 flex gap-3">
+          <ButtonV2
+            variant="primary"
+            size="md"
+            onClick={modal === 'create' ? handleCreate : handleUpdate}
+            loading={submitting}
+          >
+            Сохранить
+          </ButtonV2>
+          <ButtonV2
+            variant="secondary"
+            size="md"
+            onClick={() => setModal(null)}
+            disabled={submitting}
+          >
+            Отмена
+          </ButtonV2>
+        </div>
+      </Dialog>
     </div>
   );
 }

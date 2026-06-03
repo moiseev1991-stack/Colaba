@@ -2,8 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
 import { PageHeader } from '@/components/PageHeader';
+import { Check } from 'lucide-react';
+
+// §4.17 ТЗ редизайна 2026-06-03 (Phase C batch 5): конфигурация на v2.
+// 4 идентичных чекбокс-блока вынесены в SeoCheckbox helper. CardV2 для секций.
+
+type SeoSettingKey = 'robotsTxt' | 'sitemap' | 'duplicateTitlesDescriptions' | 'emptyTitlesDescriptions';
+
+const SEO_CHECKS: { key: SeoSettingKey; label: string }[] = [
+  { key: 'robotsTxt', label: 'Отсутствие файла robots.txt' },
+  { key: 'sitemap', label: 'Отсутствие файла sitemap' },
+  { key: 'duplicateTitlesDescriptions', label: 'Дублирующиеся заголовки и описания' },
+  { key: 'emptyTitlesDescriptions', label: 'Отсутствие заголовков и описаний (пустые заголовки и описания)' },
+];
 
 export default function SettingsPage() {
   const initialSettings = {
@@ -18,228 +32,164 @@ export default function SettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    const hasAnyChanges = 
-      seoSettings.robotsTxt !== savedSeoSettings.robotsTxt ||
-      seoSettings.sitemap !== savedSeoSettings.sitemap ||
-      seoSettings.duplicateTitlesDescriptions !== savedSeoSettings.duplicateTitlesDescriptions ||
-      seoSettings.emptyTitlesDescriptions !== savedSeoSettings.emptyTitlesDescriptions;
+    const hasAnyChanges = SEO_CHECKS.some(({ key }) => seoSettings[key] !== savedSeoSettings[key]);
     setHasChanges(hasAnyChanges);
   }, [seoSettings, savedSeoSettings]);
 
-  const handleSeoChange = (key: keyof typeof seoSettings) => {
-    setSeoSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+  const handleSeoChange = (key: SeoSettingKey) => {
+    setSeoSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleApplyChanges = () => {
-    // Apply changes - save current settings as saved
     setSavedSeoSettings(seoSettings);
     setHasChanges(false);
-    // In real app, you would save to backend/localStorage here
     alert('Изменения применены');
   };
 
   const handleResetChanges = () => {
-    // Reset to saved settings
     setSeoSettings({ ...savedSeoSettings });
     setHasChanges(false);
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <div className="space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+      <div className="space-y-6">
         <PageHeader breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация' }]} title="Конфигурация" />
 
         {/* SEO Block */}
-        <div className="app-card-enhanced p-6">
-          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>SEO</h2>
-          
+        <CardV2 className="p-6">
+          <h2
+            className="font-display font-semibold tracking-tight text-2xl mb-6"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            SEO
+          </h2>
+
           <div className="space-y-4">
-            {/* Robots.txt */}
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={seoSettings.robotsTxt}
-                  onChange={() => handleSeoChange('robotsTxt')}
-                  className="sr-only"
-                />
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                  seoSettings.robotsTxt
-                    ? 'bg-saas-primary border-saas-primary'
-                    : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 group-hover:border-saas-primary'
-                }`}>
-                  {seoSettings.robotsTxt && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-              <span className="text-base text-gray-700 dark:text-gray-300">
-                Отсутствие файла robots.txt
-              </span>
-            </label>
-
-            {/* Sitemap */}
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={seoSettings.sitemap}
-                  onChange={() => handleSeoChange('sitemap')}
-                  className="sr-only"
-                />
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                  seoSettings.sitemap
-                    ? 'bg-saas-primary border-saas-primary'
-                    : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 group-hover:border-saas-primary'
-                }`}>
-                  {seoSettings.sitemap && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-              <span className="text-base text-gray-700 dark:text-gray-300">
-                Отсутствие файла sitemap
-              </span>
-            </label>
-
-            {/* Duplicate Titles and Descriptions */}
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={seoSettings.duplicateTitlesDescriptions}
-                  onChange={() => handleSeoChange('duplicateTitlesDescriptions')}
-                  className="sr-only"
-                />
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                  seoSettings.duplicateTitlesDescriptions
-                    ? 'bg-saas-primary border-saas-primary'
-                    : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 group-hover:border-saas-primary'
-                }`}>
-                  {seoSettings.duplicateTitlesDescriptions && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-              <span className="text-base text-gray-700 dark:text-gray-300">
-                Дублирующиеся заголовки и описания
-              </span>
-            </label>
-
-            {/* Empty Titles and Descriptions */}
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={seoSettings.emptyTitlesDescriptions}
-                  onChange={() => handleSeoChange('emptyTitlesDescriptions')}
-                  className="sr-only"
-                />
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                  seoSettings.emptyTitlesDescriptions
-                    ? 'bg-saas-primary border-saas-primary'
-                    : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 group-hover:border-saas-primary'
-                }`}>
-                  {seoSettings.emptyTitlesDescriptions && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-              <span className="text-base text-gray-700 dark:text-gray-300">
-                Отсутствие заголовков и описаний (пустые заголовки и описания)
-              </span>
-            </label>
+            {SEO_CHECKS.map(({ key, label }) => (
+              <SeoCheckbox
+                key={key}
+                checked={seoSettings[key]}
+                onToggle={() => handleSeoChange(key)}
+                label={label}
+              />
+            ))}
           </div>
 
-          {/* Apply Changes Button */}
           <div className="mt-6 pt-6 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
-            <div className="flex gap-4">
-              <Button
+            <div className="flex gap-3">
+              <ButtonV2
+                variant="primary"
+                size="md"
                 onClick={handleApplyChanges}
                 disabled={!hasChanges}
-                variant="default"
               >
                 Применить изменения
-              </Button>
-              <Button
+              </ButtonV2>
+              <ButtonV2
+                variant="secondary"
+                size="md"
                 onClick={handleResetChanges}
                 disabled={!hasChanges}
-                variant="outline"
-                className={`${
-                  hasChanges
-                    ? 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
-                }`}
               >
                 Сбросить изменения
-              </Button>
+              </ButtonV2>
             </div>
           </div>
-          <div className="mt-5"></div>
-        </div>
+        </CardV2>
 
-        {/* Провайдеры поиска */}
-        <div className="app-card-enhanced p-6">
-          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>Провайдеры поиска</h2>
-          <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
-            Настройка DuckDuckGo, Яндекс HTML/XML, Google HTML, SerpAPI: прокси, API-ключи, проверка подключения.
-          </p>
-          <Link href="/settings/providers">
-            <Button variant="outline" size="sm">
-              Открыть настройки провайдеров
-            </Button>
-          </Link>
-        </div>
+        <SettingsLinkBlock
+          title="Провайдеры поиска"
+          desc="Настройка DuckDuckGo, Яндекс HTML/XML, Google HTML, SerpAPI: прокси, API-ключи, проверка подключения."
+          href="/settings/providers"
+          cta="Открыть настройки провайдеров"
+        />
 
-        {/* AI-ассистенты */}
-        <div className="app-card-enhanced p-6">
-          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>AI-ассистенты</h2>
-          <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
-            OpenAI, Anthropic, Google, Ollama и др.: настройка моделей для чата и vision (в т.ч. обход капчи).
-          </p>
-          <Link href="/settings/ai-assistants">
-            <Button variant="outline" size="sm">
-              Открыть AI-ассистенты
-            </Button>
-          </Link>
-        </div>
+        <SettingsLinkBlock
+          title="AI-ассистенты"
+          desc="OpenAI, Anthropic, Google, Ollama и др.: настройка моделей для чата и vision (в т.ч. обход капчи)."
+          href="/settings/ai-assistants"
+          cta="Открыть AI-ассистенты"
+        />
 
-        {/* Обход капчи */}
-        <div className="app-card-enhanced p-6">
-          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>Обход капчи</h2>
-          <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
-            AI Vision для картинок, 2captcha и Anti-captcha для reCAPTCHA. Выбор AI-ассистента, проверка подключения.
-          </p>
-          <Link href="/settings/captcha">
-            <Button variant="outline" size="sm">
-              Открыть настройки обхода капчи
-            </Button>
-          </Link>
-        </div>
+        <SettingsLinkBlock
+          title="Обход капчи"
+          desc="AI Vision для картинок, 2captcha и Anti-captcha для reCAPTCHA. Выбор AI-ассистента, проверка подключения."
+          href="/settings/captcha"
+          cta="Открыть настройки обхода капчи"
+        />
 
-        {/* Contacts Block */}
-        <div className="app-card-enhanced p-6">
-          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>Контакты</h2>
+        <CardV2 className="p-6">
+          <h2
+            className="font-display font-semibold tracking-tight text-2xl mb-2"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            Контакты
+          </h2>
           <p style={{ color: 'hsl(var(--muted))' }}>Скоро будет</p>
-        </div>
+        </CardV2>
 
-        {/* Price Search Block */}
-        <div className="app-card-enhanced p-6">
-          <h2 className="text-2xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>Поиск цен</h2>
+        <CardV2 className="p-6">
+          <h2
+            className="font-display font-semibold tracking-tight text-2xl mb-2"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            Поиск цен
+          </h2>
           <p style={{ color: 'hsl(var(--muted))' }}>Скоро будет</p>
-        </div>
+        </CardV2>
       </div>
     </div>
+  );
+}
+
+// Кастомный «бренд» чекбокс. Раньше 4 копии 18-строчных JSX-блоков — теперь один компонент.
+function SeoCheckbox({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer group">
+      <div className="relative">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onToggle}
+          className="sr-only"
+        />
+        <div
+          className={`w-5 h-5 rounded-v2-sm border-2 flex items-center justify-center transition-all ${
+            checked
+              ? 'bg-brand-500 border-brand-500'
+              : 'group-hover:border-brand-400'
+          }`}
+          style={
+            !checked
+              ? {
+                  background: 'hsl(var(--surface))',
+                  borderColor: 'hsl(var(--border))',
+                }
+              : undefined
+          }
+        >
+          {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+        </div>
+      </div>
+      <span className="text-base" style={{ color: 'hsl(var(--text))' }}>{label}</span>
+    </label>
+  );
+}
+
+function SettingsLinkBlock({ title, desc, href, cta }: { title: string; desc: string; href: string; cta: string }) {
+  return (
+    <CardV2 className="p-6">
+      <h2
+        className="font-display font-semibold tracking-tight text-2xl mb-2"
+        style={{ color: 'hsl(var(--text))' }}
+      >
+        {title}
+      </h2>
+      <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>{desc}</p>
+      <Link href={href} className="contents">
+        <ButtonV2 variant="secondary" size="sm">{cta}</ButtonV2>
+      </Link>
+    </CardV2>
   );
 }
