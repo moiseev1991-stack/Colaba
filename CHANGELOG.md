@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.41.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.40.0...v1.41.0) (2026-06-03)
+
+
+### Features
+
+* **ui:** redesign v2 phase B-3 light — навбар на новые токены ([60a3c16](https://github.com/moiseev1991-stack/Colaba/commit/60a3c16877b90db195ed750b1a9892d2e01d8779))
+
 # [1.40.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.39.0...v1.40.0) (2026-06-03)
 
 
