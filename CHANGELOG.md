@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.47.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.46.0...v1.47.0) (2026-06-03)
+
+
+### Bug Fixes
+
+* **maps:** переименовать ORM relationship чтобы не конфликтовал с Pydantic-полем ([8181ae6](https://github.com/moiseev1991-stack/Colaba/commit/8181ae63a20d8a3f55232baa1cb5bc516da5e18f))
+
+
+### Features
+
+* **maps-ui:** Phase 5 multi-source — мульти-бейдж + drawer-секции + табы по источнику ([01dddb2](https://github.com/moiseev1991-stack/Colaba/commit/01dddb2e3224d57144e50c3cde74ca70f0fe2eee))
+* **maps:** Phase 1 multi-source — структура company_sources + company_contacts ([a1cc105](https://github.com/moiseev1991-stack/Colaba/commit/a1cc1055eb87ca320d7f6c8e66cdd06a478dab37))
+* **maps:** Phase 2 multi-source — дедуп существующих 2gis+yandex пар ([e4e4173](https://github.com/moiseev1991-stack/Colaba/commit/e4e417318bdff5d02cf646e2205d401264747c7d))
+* **maps:** Phase 3 multi-source — авто-sync новых компаний в company_sources/contacts ([241ea6b](https://github.com/moiseev1991-stack/Colaba/commit/241ea6bbd5edc538aeea35a6a8d3eb5ce3955d21))
+* **maps:** Phase 4 multi-source — API отдаёт sources_profiles + фильтр /reviews?source= ([f9c9866](https://github.com/moiseev1991-stack/Colaba/commit/f9c98663a7c1046bc9f42dcf33d5865b165e1ff7))
+
 # [1.46.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.45.0...v1.46.0) (2026-06-03)
 
 
