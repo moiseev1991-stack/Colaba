@@ -3,30 +3,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getEmailStats, listCampaigns, type EmailCampaign, type CampaignStats } from '@/src/services/api/emailCampaigns';
-import { BarChart3, Mail, CheckCircle, Eye, MousePointer, XCircle, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { BarChart3, Mail, CheckCircle, Eye, MousePointer, XCircle, AlertTriangle, Loader2, ArrowLeft, Send, FileEdit } from 'lucide-react';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { CardV2 } from '@/components/ui/CardV2';
+import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 
-function StatCard({ icon: Icon, label, value, subtext, color }: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  subtext?: string;
-  color: string;
-}) {
-  return (
-    <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-      <div className="flex items-start gap-3">
-        <div className={cn('p-2.5 rounded-[8px]', color)}>
-          <Icon className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <div className="text-[13px] text-gray-500 dark:text-gray-400 mb-0.5">{label}</div>
-          <div className="text-[24px] font-semibold" style={{ color: 'hsl(var(--text))' }}>{value}</div>
-          {subtext && <div className="text-[12px] text-gray-400">{subtext}</div>}
-        </div>
-      </div>
-    </div>
-  );
+// §4.5 ТЗ редизайна 2026-06-03 (Phase C batch 1): статистика на v2 токенах,
+// MetricCard вместо самопального StatCard, SignalPill для статусов кампаний.
+function statusPill(s: string): { label: string; tone: SignalTone; icon: React.ReactNode } {
+  switch (s) {
+    case 'draft':     return { label: 'Черновик', tone: 'muted', icon: <FileEdit /> };
+    case 'sending':   return { label: 'Отправка', tone: 'cool', icon: <Send /> };
+    case 'completed': return { label: 'Завершена', tone: 'good', icon: <CheckCircle /> };
+    case 'failed':    return { label: 'Ошибка',   tone: 'hot',  icon: <XCircle /> };
+    default:          return { label: s,          tone: 'muted', icon: null };
+  }
 }
 
 export default function EmailStatsPage() {
@@ -55,8 +46,11 @@ export default function EmailStatsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1200px] px-6 py-8">
-        <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+        <div
+          className="flex items-center justify-center gap-2 rounded-v2-lg border p-8"
+          style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
+        >
           <Loader2 className="h-5 w-5 animate-spin" /> Загрузка статистики…
         </div>
       </div>
@@ -64,112 +58,123 @@ export default function EmailStatsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex items-center gap-4 mb-6">
         <Link
           href="/app/email/campaigns"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm transition-colors hover:text-[hsl(var(--text))]"
+          style={{ color: 'hsl(var(--muted))' }}
         >
           <ArrowLeft className="h-4 w-4" /> К рассылкам
         </Link>
       </div>
 
-      <h1 className="text-[20px] font-semibold mb-6 flex items-center gap-2" style={{ color: 'hsl(var(--text))' }}>
-        <BarChart3 className="h-5 w-5" />
+      <h1
+        className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
+        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+      >
+        <BarChart3 className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Статистика доставки
       </h1>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          icon={Mail}
+      {/* Главные метрики: 4 в ряд на десктопе, 2 — на mobile. reveal-stack staggered. */}
+      <div className="reveal-stack grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <MetricCard
           label="Отправлено"
           value={stats?.sent ?? 0}
-          subtext="писем"
-          color="bg-blue-500"
+          icon={<Mail className="h-4 w-4" />}
         />
-        <StatCard
-          icon={CheckCircle}
+        <MetricCard
           label="Доставлено"
           value={stats?.delivered ?? 0}
-          subtext={stats ? `${stats.delivery_rate}% доставки` : undefined}
-          color="bg-green-500"
+          deltaLabel={stats ? `${stats.delivery_rate}% доставки` : undefined}
+          icon={<CheckCircle className="h-4 w-4" />}
         />
-        <StatCard
-          icon={Eye}
+        <MetricCard
           label="Открыто"
           value={stats?.opened ?? 0}
-          subtext={stats ? `${stats.open_rate}% открытий` : undefined}
-          color="bg-purple-500"
+          deltaLabel={stats ? `${stats.open_rate}% открытий` : undefined}
+          icon={<Eye className="h-4 w-4" />}
         />
-        <StatCard
-          icon={MousePointer}
+        <MetricCard
           label="Кликов"
           value={stats?.clicked ?? 0}
-          subtext={stats ? `${stats.click_rate}% CTR` : undefined}
-          color="bg-indigo-500"
+          deltaLabel={stats ? `${stats.click_rate}% CTR` : undefined}
+          icon={<MousePointer className="h-4 w-4" />}
         />
       </div>
 
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <StatCard
-          icon={XCircle}
+      {/* Secondary метрики: возвраты/спам — выделены отдельной парой, чтобы
+          не смешивались с «успешными» цифрами выше. */}
+      <div className="reveal-stack grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <MetricCard
           label="Возвраты (Bounced)"
           value={stats?.bounced ?? 0}
-          subtext={stats && stats.bounce_rate > 0 ? `${stats.bounce_rate}% возвратов` : 'Отлично!'}
-          color="bg-red-500"
+          deltaLabel={stats && stats.bounce_rate > 0 ? `${stats.bounce_rate}% возвратов` : 'Отлично — 0%'}
+          icon={<XCircle className="h-4 w-4" />}
         />
-        <StatCard
-          icon={AlertTriangle}
+        <MetricCard
           label="Спам / Ошибки"
           value={`${stats?.spam ?? 0} / ${stats?.failed ?? 0}`}
-          subtext="Жалоб на спам / ошибок отправки"
-          color="bg-amber-500"
+          deltaLabel="Жалоб на спам / ошибок отправки"
+          icon={<AlertTriangle className="h-4 w-4" />}
         />
       </div>
 
-      {/* Recent Campaigns */}
-      <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-[15px] font-medium" style={{ color: 'hsl(var(--text))' }}>Последние рассылки</h2>
+      {/* Последние рассылки */}
+      <CardV2 className="overflow-hidden">
+        <div
+          className="px-5 py-4"
+          style={{ borderBottom: '1px solid hsl(var(--border))' }}
+        >
+          <h2
+            className="font-display font-semibold tracking-tight text-[15px]"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            Последние рассылки
+          </h2>
         </div>
         {recentCampaigns.length === 0 ? (
-          <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          <div className="p-6 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
             Нет рассылок
           </div>
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {recentCampaigns.map(c => (
-              <div key={c.id} className="px-5 py-4 flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-medium" style={{ color: 'hsl(var(--text))' }}>{c.name}</div>
-                  <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                    {c.sent_count} отправлено / {c.delivered_count} доставлено / {c.opened_count} открыто
+          <ul className="reveal-stack divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+            {recentCampaigns.map(c => {
+              const pill = statusPill(c.status);
+              return (
+                <li
+                  key={c.id}
+                  className="reveal-item px-5 py-4 flex items-center justify-between gap-3"
+                  style={{ borderTop: 'none', borderBottom: '1px solid hsl(var(--border))' }}
+                >
+                  <div className="min-w-0">
+                    <div
+                      className="text-[14px] font-medium truncate"
+                      style={{ color: 'hsl(var(--text))' }}
+                      title={c.name}
+                    >
+                      {c.name}
+                    </div>
+                    <div className="text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                      {c.sent_count} отправлено / {c.delivered_count} доставлено / {c.opened_count} открыто
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={cn(
-                    'px-2 py-0.5 rounded text-xs',
-                    c.status === 'completed' && 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-                    c.status === 'sending' && 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-                    c.status === 'failed' && 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-                    c.status === 'draft' && 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
-                  )}>
-                    {c.status === 'completed' ? 'Завершена' : c.status === 'sending' ? 'Отправка' : c.status === 'failed' ? 'Ошибка' : 'Черновик'}
-                  </span>
-                  <Link
-                    href={`/app/email/campaigns/${c.id}`}
-                    className="text-[12px] text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Подробнее
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">{pill.label}</SignalPill>
+                    <Link
+                      href={`/app/email/campaigns/${c.id}`}
+                      className="text-[12px] font-medium text-brand-600 dark:text-brand-400 hover:underline"
+                    >
+                      Подробнее
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
+      </CardV2>
     </div>
   );
 }

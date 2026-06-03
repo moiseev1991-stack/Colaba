@@ -11,8 +11,16 @@ import {
   getEmailStatus,
   type EmailSettingsDTO,
 } from '@/src/services/api/emailSettings';
-import { cn } from '@/lib/utils';
 import { Loader2, Mail, Save, Server, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CardV2 } from '@/components/ui/CardV2';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+
+// §4.7 ТЗ редизайна 2026-06-03 (Phase C batch 1): единый стиль input на токенах.
+// Раньше каждое поле имело клон `rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm` —
+// теперь одна константа. Brand-focus уже глобален из @layer base (input:focus → --control-border-focus).
+const INPUT_CLS =
+  'w-full rounded-v2-sm border bg-[hsl(var(--surface))] px-3 py-2 text-sm transition-colors';
+const LABEL_CLS = 'block text-xs font-medium mb-1';
 
 type MeResponse = { email: string; is_superuser?: boolean };
 
@@ -163,45 +171,55 @@ export default function EmailSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'hsl(var(--muted))' }} />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[900px] px-6 py-8">
+    <div className="mx-auto max-w-[900px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[20px] font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--text))' }}>
-          <Server className="h-5 w-5" />
+        <h1
+          className="flex items-center gap-2 font-display font-semibold tracking-tight"
+          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        >
+          <Server className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           Настройка email
         </h1>
         <Link
           href="/app/email/campaigns"
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           ← Рассылки
         </Link>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+        <div
+          className="mb-4 rounded-v2-sm border px-4 py-3 text-sm flex items-start gap-2"
+          style={{
+            background: 'var(--signal-hot-bg)',
+            borderColor: 'rgb(239 68 68 / 0.3)',
+            color: 'var(--signal-hot)',
+          }}
+        >
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           {error}
         </div>
       )}
 
       {status && (
         <div
-          className={cn(
-            'mb-6 rounded-lg border px-4 py-3 flex items-start gap-3',
-            status.configured
-              ? 'border-green-200 dark:border-green-800 bg-green-50/80 dark:bg-green-950/20'
-              : 'border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/20'
-          )}
+          className="mb-6 rounded-v2-sm border px-4 py-3 flex items-start gap-3"
+          style={{
+            background: status.configured ? 'var(--signal-good-bg)' : 'var(--signal-warm-bg)',
+            borderColor: status.configured ? 'rgb(16 185 129 / 0.3)' : 'rgb(245 158 11 / 0.3)',
+          }}
         >
           {status.configured ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400 mt-0.5" />
+            <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'var(--signal-good)' }} />
           ) : (
-            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'var(--signal-warm)' }} />
           )}
           <div>
             <div className="font-medium" style={{ color: 'hsl(var(--text))' }}>
@@ -209,7 +227,7 @@ export default function EmailSettingsPage() {
                 ? `Отправка настроена (${status.provider})`
                 : 'Отправка писем не настроена или не проверена'}
             </div>
-            <p className="text-sm mt-1 opacity-80">
+            <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
               {status.configured
                 ? 'Суперпользователь может изменить провайдера и параметры ниже.'
                 : 'Суперпользователь должен сохранить настройки и выполнить тест подключения.'}
@@ -226,9 +244,12 @@ export default function EmailSettingsPage() {
 
       {me?.is_superuser && form && (
         <>
-          <section className="mb-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 p-5">
-            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: 'hsl(var(--text))' }}>
-              <Mail className="h-4 w-4" />
+          <CardV2 as="section" className="mb-6 p-5">
+            <h2
+              className="font-display font-semibold tracking-tight text-[15px] mb-4 flex items-center gap-2"
+              style={{ color: 'hsl(var(--text))' }}
+            >
+              <Mail className="h-4 w-4 text-brand-600 dark:text-brand-400" />
               Провайдер отправки
             </h2>
             <div className="flex gap-4 mb-4">
@@ -255,40 +276,39 @@ export default function EmailSettingsPage() {
             {form.provider_type === 'hyvor' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">API URL</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>API URL</label>
                   <input
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.hyvor_api_url || ''}
                     onChange={(e) => updateField('hyvor_api_url', e.target.value)}
                     placeholder="http://hyvor-relay:8000"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">API Key</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>API Key</label>
                   <input
                     type="password"
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.hyvor_api_key}
                     onChange={(e) => updateField('hyvor_api_key', e.target.value)}
                     placeholder="***"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">Webhook secret</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Webhook secret</label>
                   <input
                     type="password"
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.hyvor_webhook_secret}
                     onChange={(e) => updateField('hyvor_webhook_secret', e.target.value)}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleTestHyvor}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
+                <ButtonV2 variant="secondary" size="sm" onClick={handleTestHyvor}>
                   Проверить подключение к Hyvor
-                </button>
+                </ButtonV2>
               </div>
             )}
 
@@ -296,18 +316,20 @@ export default function EmailSettingsPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium mb-1 opacity-80">SMTP host</label>
+                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>SMTP host</label>
                     <input
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                      className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                       value={form.smtp_host || ''}
                       onChange={(e) => updateField('smtp_host', e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1 opacity-80">Порт</label>
+                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Порт</label>
                     <input
                       type="number"
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                      className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                       value={form.smtp_port ?? ''}
                       onChange={(e) => updateField('smtp_port', parseInt(e.target.value, 10) || 0)}
                     />
@@ -315,18 +337,20 @@ export default function EmailSettingsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium mb-1 opacity-80">Пользователь</label>
+                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Пользователь</label>
                     <input
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                      className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                       value={form.smtp_user || ''}
                       onChange={(e) => updateField('smtp_user', e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1 opacity-80">Пароль</label>
+                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Пароль</label>
                     <input
                       type="password"
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                      className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                       value={form.smtp_password}
                       onChange={(e) => updateField('smtp_password', e.target.value)}
                     />
@@ -342,66 +366,73 @@ export default function EmailSettingsPage() {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium mb-1 opacity-80">From email</label>
+                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>From email</label>
                     <input
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                      className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                       value={form.smtp_from_email || ''}
                       onChange={(e) => updateField('smtp_from_email', e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1 opacity-80">From name</label>
+                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>From name</label>
                     <input
-                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                      className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                       value={form.smtp_from_name || ''}
                       onChange={(e) => updateField('smtp_from_name', e.target.value)}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">Кому отправить тест</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Кому отправить тест</label>
                   <input
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm mb-2"
+                    className={`${INPUT_CLS} mb-2`}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={testEmail}
                     onChange={(e) => setTestEmail(e.target.value)}
                     placeholder="you@example.com"
                   />
-                  <button
-                    type="button"
-                    onClick={handleTestSmtp}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
+                  <ButtonV2 variant="secondary" size="sm" onClick={handleTestSmtp}>
                     Отправить тестовое письмо
-                  </button>
+                  </ButtonV2>
                 </div>
               </div>
             )}
-          </section>
+          </CardV2>
 
-          <section className="mb-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 p-5">
-            <h2 className="text-sm font-semibold mb-4" style={{ color: 'hsl(var(--text))' }}>
+          <CardV2 as="section" className="mb-6 p-5">
+            <h2
+              className="font-display font-semibold tracking-tight text-[15px] mb-4"
+              style={{ color: 'hsl(var(--text))' }}
+            >
               Приём ответов (IMAP)
             </h2>
-            <p className="text-xs opacity-80 mb-4">
+            <p className="text-xs mb-4" style={{ color: 'hsl(var(--muted))' }}>
               Настройте catch-all на домене, чтобы письма на{' '}
-              <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">reply-{'{id}'}@domain</code> попадали в один
+              <code
+                className="px-1.5 py-0.5 rounded-v2-sm text-[11px] font-mono"
+                style={{ background: 'hsl(var(--surface-2))', color: 'hsl(var(--text))' }}
+              >reply-{'{id}'}@domain</code> попадали в один
               ящик.
             </p>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">IMAP host</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>IMAP host</label>
                   <input
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.imap_host || ''}
                     onChange={(e) => updateField('imap_host', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">Порт</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Порт</label>
                   <input
                     type="number"
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.imap_port ?? ''}
                     onChange={(e) => updateField('imap_port', parseInt(e.target.value, 10) || 993)}
                   />
@@ -409,18 +440,20 @@ export default function EmailSettingsPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">Пользователь</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Пользователь</label>
                   <input
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.imap_user || ''}
                     onChange={(e) => updateField('imap_user', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1 opacity-80">Пароль</label>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Пароль</label>
                   <input
                     type="password"
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     value={form.imap_password}
                     onChange={(e) => updateField('imap_password', e.target.value)}
                   />
@@ -435,61 +468,77 @@ export default function EmailSettingsPage() {
                 IMAP SSL
               </label>
               <div>
-                <label className="block text-xs font-medium mb-1 opacity-80">Портфель (mailbox)</label>
+                <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Портфель (mailbox)</label>
                 <input
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                  className={INPUT_CLS}
+                  style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                   value={form.imap_mailbox}
                   onChange={(e) => updateField('imap_mailbox', e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1 opacity-80">Префикс Reply-To</label>
+                <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Префикс Reply-To</label>
                 <input
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                  className={INPUT_CLS}
+                  style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                   value={form.reply_prefix}
                   onChange={(e) => updateField('reply_prefix', e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1 opacity-80">Reply-To (общий, опционально)</label>
+                <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Reply-To (общий, опционально)</label>
                 <input
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                  className={INPUT_CLS}
+                  style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                   value={form.reply_to_email || ''}
                   onChange={(e) => updateField('reply_to_email', e.target.value)}
                 />
               </div>
             </div>
-          </section>
+          </CardV2>
 
-          <section className="mb-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 p-5">
-            <h2 className="text-sm font-semibold mb-4" style={{ color: 'hsl(var(--text))' }}>
+          <CardV2 as="section" className="mb-6 p-5">
+            <h2
+              className="font-display font-semibold tracking-tight text-[15px] mb-4"
+              style={{ color: 'hsl(var(--text))' }}
+            >
               Справка: DNS записи
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-600">
-                    <th className="text-left py-2 pr-2">Тип</th>
-                    <th className="text-left py-2 pr-2">Имя</th>
-                    <th className="text-left py-2 pr-2">Пример значения</th>
+                  <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                    <th
+                      className="text-left py-2 pr-2 text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >Тип</th>
+                    <th
+                      className="text-left py-2 pr-2 text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >Имя</th>
+                    <th
+                      className="text-left py-2 pr-2 text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >Пример значения</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
                 <tbody>
                   {DNS_ROWS.map((row) => (
-                    <tr key={row.type} className="border-b border-gray-100 dark:border-gray-800">
-                      <td className="py-2 pr-2 font-medium">{row.type}</td>
-                      <td className="py-2 pr-2 font-mono text-xs">{row.name}</td>
-                      <td className="py-2 pr-2 font-mono text-xs break-all">{row.value}</td>
+                    <tr key={row.type} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                      <td className="py-2 pr-2 font-medium" style={{ color: 'hsl(var(--text))' }}>{row.type}</td>
+                      <td className="py-2 pr-2 font-mono text-xs" style={{ color: 'hsl(var(--text))' }}>{row.name}</td>
+                      <td className="py-2 pr-2 font-mono text-xs break-all" style={{ color: 'hsl(var(--text))' }}>{row.value}</td>
                       <td className="py-2">
                         <button
                           type="button"
                           onClick={() => copy(row.value, row.type)}
-                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                          className="p-1.5 rounded-v2-sm transition-colors hover:bg-[hsl(var(--surface-2))]"
                           title="Копировать"
+                          style={{ color: 'hsl(var(--muted))' }}
                         >
                           {copied === row.type ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--signal-good)' }} />
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
@@ -500,27 +549,29 @@ export default function EmailSettingsPage() {
                 </tbody>
               </table>
             </div>
-            <ul className="mt-4 space-y-2 text-xs opacity-80">
+            <ul className="mt-4 space-y-2 text-xs" style={{ color: 'hsl(var(--muted))' }}>
               {DNS_ROWS.map((row) => (
-                <li key={row.type}><strong>{row.type}:</strong> {row.hint}</li>
+                <li key={row.type}>
+                  <strong style={{ color: 'hsl(var(--text))' }}>{row.type}:</strong> {row.hint}
+                </li>
               ))}
             </ul>
-          </section>
+          </CardV2>
 
           <div className="flex justify-end gap-3">
-            <button
-              type="button"
+            <ButtonV2
+              variant="primary"
+              size="md"
               onClick={handleSave}
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-sm font-medium disabled:opacity-50"
+              loading={saving}
+              iconLeft={<Save />}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Сохранить
-            </button>
+            </ButtonV2>
           </div>
 
           {testMsg && (
-            <p className="mt-4 text-sm text-gray-700 dark:text-gray-300">{testMsg}</p>
+            <p className="mt-4 text-sm" style={{ color: 'hsl(var(--text))' }}>{testMsg}</p>
           )}
         </>
       )}

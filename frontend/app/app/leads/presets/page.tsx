@@ -15,10 +15,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, EyeOff, Pencil, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, EyeOff, Pencil, Plus, RotateCcw, Sparkles, Trash2, Filter } from 'lucide-react';
 
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
 import { Dialog } from '@/components/ui/dialog';
+import { CardV2 } from '@/components/ui/CardV2';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { SignalPill } from '@/components/ui/SignalPill';
+import { cn } from '@/lib/utils';
 import type { MapSearchFilter } from '@/src/services/api/maps';
 import {
   deleteUserPreset,
@@ -27,6 +31,11 @@ import {
   type UserPresetOut,
   type UserPresetUpdate,
 } from '@/src/services/api/user-presets';
+
+// §4.8 ТЗ редизайна 2026-06-03 (Phase C batch 1): на v2 токенах.
+const INPUT_CLS =
+  'w-full rounded-v2-sm border px-2.5 py-1.5 text-sm transition-colors outline-none';
+const INPUT_STYLE = { borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' } as const;
 
 export default function MyPresetsPage() {
   const [presets, setPresets] = useState<UserPresetOut[]>([]);
@@ -108,48 +117,65 @@ export default function MyPresetsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1000px] space-y-5 px-6 py-6">
+    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Мои пресеты фильтров</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h1
+            className="flex items-center gap-2 font-display font-semibold tracking-tight"
+            style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          >
+            <Filter className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+            Мои пресеты фильтров
+          </h1>
+          <p className="mt-2 text-sm max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
             Сохранённые наборы фильтров для поиска по картам. Создаются на форме
             поиска кнопкой «сохранить» — здесь редактируешь название, описание,
             AI-промпт, скрываешь или удаляешь.
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
+          <ButtonV2
+            variant="primary"
+            size="sm"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            iconLeft={<Plus />}
           >
-            <Plus className="h-4 w-4" /> Создать пресет
-          </button>
-          <Link
-            href="/app/leads"
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            <ArrowLeft className="h-4 w-4" /> К поиску
+            Создать пресет
+          </ButtonV2>
+          <Link href="/app/leads" className="contents">
+            <ButtonV2 variant="secondary" size="sm" iconLeft={<ArrowLeft />}>
+              К поиску
+            </ButtonV2>
           </Link>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-300">
+        <div
+          className="flex items-start justify-between gap-3 rounded-v2-sm border px-3 py-2 text-sm"
+          style={{
+            background: 'var(--signal-hot-bg)',
+            borderColor: 'rgb(239 68 68 / 0.3)',
+            color: 'var(--signal-hot)',
+          }}
+        >
           <span>{error}</span>
           <button
             type="button"
             onClick={() => setError(null)}
             aria-label="Скрыть ошибку"
-            className="-m-1 rounded p-1 text-red-500 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-200"
+            className="-m-1 rounded-v2-sm p-1 transition-opacity hover:opacity-70"
+            style={{ color: 'var(--signal-hot)' }}
           >
             ✕
           </button>
         </div>
       )}
 
-      <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700">
+      <div
+        className="flex items-center gap-3"
+        style={{ borderBottom: '1px solid hsl(var(--border))' }}
+      >
         <TabButton current={tab} value="active" onClick={setTab} count={active.length}>
           Активные
         </TabButton>
@@ -159,84 +185,111 @@ export default function MyPresetsPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+        <div
+          className="rounded-v2-sm border px-4 py-6 text-sm"
+          style={{
+            background: 'hsl(var(--surface-2))',
+            borderColor: 'hsl(var(--border))',
+            color: 'hsl(var(--muted))',
+          }}
+        >
           Загружаю пресеты…
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+        <div
+          className="rounded-v2-sm border px-4 py-6 text-sm"
+          style={{
+            background: 'hsl(var(--surface-2))',
+            borderColor: 'hsl(var(--border))',
+            color: 'hsl(var(--muted))',
+          }}
+        >
           {tab === 'active'
             ? 'Активных пресетов нет. Открой поиск по картам, настрой фильтры и нажми «сохранить» — пресет появится здесь.'
             : 'Скрытых пресетов нет. Скрыть пресет можно с этой страницы или из боковой панели поиска.'}
         </div>
       ) : (
-        <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
-          {visible.map((p) => (
-            <li key={p.id} className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{p.name}</span>
-                  {p.ai_prompt && p.ai_prompt.trim() && (
-                    <span className="inline-flex items-center gap-0.5 rounded bg-violet-100 px-1.5 py-0 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
-                      <Sparkles className="h-2.5 w-2.5" /> AI
+        <CardV2 className="overflow-hidden">
+          <ul className="reveal-stack divide-y" style={{ borderColor: 'hsl(var(--border))' }}>
+            {visible.map((p) => (
+              <li
+                key={p.id}
+                className="reveal-item flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-[hsl(var(--surface-2))]"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="truncate text-sm font-medium font-display"
+                      style={{ color: 'hsl(var(--text))' }}
+                    >
+                      {p.name}
                     </span>
-                  )}
-                  {p.hidden && (
-                    <span className="rounded bg-slate-200 px-1.5 py-0 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                      скрыт
-                    </span>
-                  )}
-                </div>
-                {p.description && (
-                  <div className="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">{p.description}</div>
-                )}
-                <div className="mt-1 text-[12px] text-slate-500 dark:text-slate-400">
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Фильтр: </span>
-                  {summarizeFilter(p.filter as MapSearchFilter)}
-                </div>
-                {p.ai_prompt && p.ai_prompt.trim() && (
-                  <div className="mt-1 line-clamp-2 text-[12px] text-violet-700/90 dark:text-violet-300/90">
-                    <span className="font-medium">AI-промпт: </span>
-                    {p.ai_prompt}
+                    {p.ai_prompt && p.ai_prompt.trim() && (
+                      <SignalPill tone="accent" size="sm" icon={<Sparkles />}>
+                        AI
+                      </SignalPill>
+                    )}
+                    {p.hidden && (
+                      <SignalPill tone="muted" size="sm">скрыт</SignalPill>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <IconButton
-                  title="Редактировать"
-                  onClick={() => setEditing(p)}
-                  disabled={busyId === p.id}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </IconButton>
-                {p.hidden ? (
+                  {p.description && (
+                    <div className="mt-0.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                      {p.description}
+                    </div>
+                  )}
+                  <div className="mt-1 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                    <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Фильтр: </span>
+                    {summarizeFilter(p.filter as MapSearchFilter)}
+                  </div>
+                  {p.ai_prompt && p.ai_prompt.trim() && (
+                    <div
+                      className="mt-1 line-clamp-2 text-[12px]"
+                      style={{ color: 'rgb(139 92 246)' }}
+                    >
+                      <span className="font-medium">AI-промпт: </span>
+                      {p.ai_prompt}
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-1.5">
                   <IconButton
-                    title="Вернуть в активные"
-                    onClick={() => void toggleHidden(p, false)}
+                    title="Редактировать"
+                    onClick={() => setEditing(p)}
                     disabled={busyId === p.id}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </IconButton>
-                ) : (
+                  {p.hidden ? (
+                    <IconButton
+                      title="Вернуть в активные"
+                      onClick={() => void toggleHidden(p, false)}
+                      disabled={busyId === p.id}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </IconButton>
+                  ) : (
+                    <IconButton
+                      title="Скрыть"
+                      onClick={() => void toggleHidden(p, true)}
+                      disabled={busyId === p.id}
+                    >
+                      <EyeOff className="h-3.5 w-3.5" />
+                    </IconButton>
+                  )}
                   <IconButton
-                    title="Скрыть"
-                    onClick={() => void toggleHidden(p, true)}
+                    title="Удалить"
+                    danger
+                    onClick={() => setConfirmDelete(p)}
                     disabled={busyId === p.id}
                   >
-                    <EyeOff className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </IconButton>
-                )}
-                <IconButton
-                  title="Удалить"
-                  danger
-                  onClick={() => setConfirmDelete(p)}
-                  disabled={busyId === p.id}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </IconButton>
-              </div>
-            </li>
-          ))}
-        </ul>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardV2>
       )}
 
       {editing && (
@@ -265,29 +318,39 @@ export default function MyPresetsPage() {
         title="Удалить пресет?"
       >
         <div className="space-y-4 p-6">
-          <div className="text-sm text-slate-700 dark:text-slate-200">
+          <div className="text-sm" style={{ color: 'hsl(var(--text))' }}>
             Удалить пресет <strong>«{confirmDelete?.name}»</strong> навсегда?
           </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-300">
+          <div
+            className="rounded-v2-sm border px-3 py-2 text-[12px]"
+            style={{
+              background: 'var(--signal-warm-bg)',
+              borderColor: 'rgb(245 158 11 / 0.3)',
+              color: 'var(--signal-warm)',
+            }}
+          >
             Если просто временно убрать с глаз — лучше «скрыть» (он уедет во вкладку «Скрытые»).
           </div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
-            <button
-              type="button"
+          <div
+            className="flex justify-end gap-2 pt-3"
+            style={{ borderTop: '1px solid hsl(var(--border))' }}
+          >
+            <ButtonV2
+              variant="secondary"
+              size="sm"
               onClick={() => setConfirmDelete(null)}
               disabled={busyId === confirmDelete?.id}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Отмена
-            </button>
-            <button
-              type="button"
+            </ButtonV2>
+            <ButtonV2
+              variant="danger"
+              size="sm"
               onClick={() => void doDelete()}
-              disabled={busyId === confirmDelete?.id}
-              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              loading={busyId === confirmDelete?.id}
             >
-              {busyId === confirmDelete?.id ? 'Удаляю…' : 'Удалить'}
-            </button>
+              Удалить
+            </ButtonV2>
           </div>
         </div>
       </Dialog>
@@ -308,19 +371,21 @@ function TabButton({
   count: number;
   children: React.ReactNode;
 }) {
-  const active = current === value;
+  const isActive = current === value;
   return (
     <button
       type="button"
       onClick={() => onClick(value)}
-      className={
-        '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ' +
-        (active
-          ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
-          : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200')
-      }
+      className={cn(
+        '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+        isActive
+          ? 'border-brand-500 text-brand-700 dark:border-brand-400 dark:text-brand-400'
+          : 'border-transparent hover:text-[hsl(var(--text))]',
+      )}
+      style={isActive ? undefined : { color: 'hsl(var(--muted))' }}
     >
-      {children} <span className="text-slate-400">· {count}</span>
+      {children}{' '}
+      <span style={{ color: 'hsl(var(--muted))' }}>· {count}</span>
     </button>
   );
 }
@@ -345,14 +410,15 @@ function IconButton({
       aria-label={title}
       onClick={onClick}
       disabled={disabled}
-      className={
+      className={cn(
         // min-h-9 min-w-9 = 36px тач-таргет на mobile, на sm+ компактная p-1.5
         // (видимая иконка 14px, общая зона 36px) — аудит ловил 27×27 на мобиле.
-        'inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border bg-white p-1.5 text-slate-600 disabled:opacity-50 sm:min-h-0 sm:min-w-0 dark:bg-slate-800 dark:text-slate-300 ' +
-        (danger
-          ? 'border-slate-300 hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:border-slate-600 dark:hover:border-red-700/60 dark:hover:bg-red-900/30 dark:hover:text-red-300'
-          : 'border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white')
-      }
+        'inline-flex min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 items-center justify-center rounded-v2-sm border bg-[hsl(var(--surface))] p-1.5 transition-colors disabled:opacity-50',
+        danger
+          ? 'hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)] hover:border-[rgb(239_68_68_/_0.3)]'
+          : 'hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]',
+      )}
+      style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
     >
       {children}
     </button>
@@ -394,63 +460,85 @@ function EditPresetDialog({
     <Dialog open onClose={() => !saving && onClose()} title="Редактировать пресет">
       <div className="space-y-4 p-6">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Название</label>
+          <label
+            className="mb-1 block text-xs font-medium"
+            style={{ color: 'hsl(var(--muted))' }}
+          >
+            Название
+          </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Описание (опционально)</label>
+          <label
+            className="mb-1 block text-xs font-medium"
+            style={{ color: 'hsl(var(--muted))' }}
+          >
+            Описание (опционально)
+          </label>
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
             placeholder="Кратко: зачем этот пресет"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+          <label
+            className="mb-1 block text-xs font-medium"
+            style={{ color: 'hsl(var(--muted))' }}
+          >
             AI-промпт (опционально)
           </label>
           <textarea
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             rows={4}
-            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400"
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
             placeholder="Например: «Оцени готовность купить SMM 1-10 по отзывам клиентов»"
           />
-          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
             Если задан — при применении пресета каждой компании выдачи будет
             автоматически посчитан score 0-10. Лимит 100 запросов в сутки на юзера.
           </p>
         </div>
-        <div className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[12px] text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+        <div
+          className="rounded-v2-sm border px-3 py-2 text-[12px]"
+          style={{
+            background: 'hsl(var(--surface-2))',
+            borderColor: 'hsl(var(--border))',
+            color: 'hsl(var(--text))',
+          }}
+        >
           <span className="font-medium">Фильтр пресета: </span>
           {summarizeFilter(preset.filter as MapSearchFilter)}
-          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
             Чтобы поменять фильтр — открой пресет на странице поиска, отредактируй
             фильтры в боковой панели и сохрани под тем же именем (старый перезапишется).
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
+        <div
+          className="flex justify-end gap-2 pt-3"
+          style={{ borderTop: '1px solid hsl(var(--border))' }}
+        >
+          <ButtonV2 variant="secondary" size="sm" onClick={onClose} disabled={saving}>
             Отмена
-          </button>
-          <button
-            type="button"
+          </ButtonV2>
+          <ButtonV2
+            variant="primary"
+            size="sm"
             onClick={() => void handleSave()}
-            disabled={saving || name.trim().length < 2}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            disabled={name.trim().length < 2}
+            loading={saving}
           >
-            {saving ? 'Сохраняю…' : 'Сохранить'}
-          </button>
+            Сохранить
+          </ButtonV2>
         </div>
       </div>
     </Dialog>
