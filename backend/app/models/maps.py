@@ -95,10 +95,14 @@ class Company(Base):
     # Источниковые профили компании — 2GIS, Я.Карты и т.п. Phase 1 заполняет их 1-к-1
     # по существующим компаниям (одна company = один company_sources). После Phase 2
     # (дедуп) у одной компании может быть несколько источников. См. docs/multi-source-companies-plan.md.
-    sources_profiles = relationship(
+    # NB: имя `source_profile_set` НЕ совпадает с pydantic-полем CompanyOut.sources_profiles
+    # специально: иначе CompanyOut.model_validate(orm_company) с from_attributes=True
+    # пытается достать sources_profiles напрямую из ORM и падает на lazy='raise'.
+    # Pydantic-поле заполняется вручную в router через attach_sources_for_companies.
+    source_profile_set = relationship(
         "CompanySource", back_populates="company", cascade="all, delete-orphan", lazy="raise",
     )
-    contacts = relationship(
+    contact_set = relationship(
         "CompanyContact", back_populates="company", cascade="all, delete-orphan", lazy="raise",
     )
 
@@ -153,8 +157,8 @@ class CompanySource(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    company = relationship("Company", back_populates="sources_profiles")
-    contacts = relationship(
+    company = relationship("Company", back_populates="source_profile_set")
+    contact_set = relationship(
         "CompanyContact", back_populates="source_profile", cascade="all, delete-orphan", lazy="raise",
     )
 
@@ -197,8 +201,8 @@ class CompanyContact(Base):
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
-    source_profile = relationship("CompanySource", back_populates="contacts")
-    company = relationship("Company", back_populates="contacts")
+    source_profile = relationship("CompanySource", back_populates="contact_set")
+    company = relationship("Company", back_populates="contact_set")
 
     def __repr__(self) -> str:
         return f"<CompanyContact #{self.id} {self.type}={self.value!r} src={self.source}>"
