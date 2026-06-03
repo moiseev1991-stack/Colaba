@@ -119,6 +119,11 @@ export function MapsSearchResults({
 }: Props) {
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
+  // Multi-source (ТЗ 2026-06-04): счётчики по источникам для сегмент-переключателя
+  // «Все · 2GIS · Я.Карты». Берутся из CompaniesListOut.source_counts.
+  const [sourceCounts, setSourceCounts] = useState<{
+    total: number; twogis: number; yandex_maps: number; both: number;
+  } | null>(null);
   const [filter, setFilter] = useState<MapSearchFilter>(() => initialFilter(initialSearch));
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
@@ -253,6 +258,7 @@ export function MapsSearchResults({
         if (data.items.length > companies.length) {
           setCompanies(data.items);
         }
+        if (data.source_counts) setSourceCounts(data.source_counts);
       } catch {
         /* keep current */
       }
@@ -268,6 +274,7 @@ export function MapsSearchResults({
         const data = await listMapCompanies(search.id, f, 100, 0);
         setCompanies(data.items);
         setCompaniesEverLoaded(true);
+        if (data.source_counts) setSourceCounts(data.source_counts);
       } finally {
         setIsLoading(false);
       }
@@ -603,6 +610,43 @@ export function MapsSearchResults({
               <Sliders className="h-4 w-4" />
               Фильтры
             </button>
+            {/* Multi-source сегмент-переключатель «Все · 2GIS · Я.Карты»
+                (ТЗ 2026-06-04). Прячем когда оба источника пустые (ни одной
+                yandex_maps компании в выдаче — переключатель не нужен).
+                Счётчики берём из source_counts (полная выборка поиска). */}
+            {renderTotal > 0 && sourceCounts && sourceCounts.yandex_maps > 0 && sourceCounts.twogis > 0 && (
+              <div
+                className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600"
+                title={`Найдено: всего ${sourceCounts.total} · 2GIS ${sourceCounts.twogis} · Я.Карты ${sourceCounts.yandex_maps} · в обоих ${sourceCounts.both}`}
+              >
+                {([
+                  { id: 'all', label: 'Все', count: sourceCounts.total },
+                  { id: '2gis', label: '2GIS', count: sourceCounts.twogis },
+                  { id: 'yandex_maps', label: 'Я.Карты', count: sourceCounts.yandex_maps },
+                ] as const).map((opt, idx) => {
+                  const active = (filter.source_filter ?? 'all') === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleFilterChange({ ...filter, source_filter: opt.id })}
+                      aria-pressed={active}
+                      className={
+                        'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
+                        (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
+                        (active
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
+                      }
+                    >
+                      {opt.label}
+                      <span className={active ? 'opacity-80' : 'opacity-60'}>{opt.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* View toggle: список vs карта. Прячем пока не подгружены
                 компании — нечего показывать на карте. */}
             {renderTotal > 0 && (

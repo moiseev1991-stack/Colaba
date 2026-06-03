@@ -56,6 +56,7 @@ from app.modules.maps.schemas import (
     OutreachDraftRequest,
     PainTagOut,
     ProvidersHealthOut,
+    SourceCountsOut,
     ReviewOut,
     ReviewsListOut,
     SortBy,
@@ -233,6 +234,8 @@ async def list_search_companies(
     review_text_excludes: Optional[str] = Query(default=None, max_length=200),
     review_text_contains_any: Optional[list[str]] = Query(default=None),
     review_text_excludes_any: Optional[list[str]] = Query(default=None),
+    # Multi-source фильтр (ТЗ 2026-06-04): сегмент-переключатель в шапке.
+    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -254,6 +257,7 @@ async def list_search_companies(
         review_text_excludes=review_text_excludes,
         review_text_contains_any=review_text_contains_any or None,
         review_text_excludes_any=review_text_excludes_any or None,
+        source_filter=source_filter,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
@@ -305,11 +309,25 @@ async def list_search_companies(
                 matched_by=legal.matched_by,
             )
         out_items.append(out)
+    # Multi-source: счётчики на ВСЕЙ выборке (без source_filter) — нужны фронту
+    # чтобы рисовать «Все · 2GIS X · Я.Карты Y · в обоих Z» в шапке.
+    try:
+        counts_raw = await service.get_source_counts_for_search(db, search_id)
+        source_counts = SourceCountsOut(
+            total=counts_raw.get("total", 0),
+            twogis=counts_raw.get("twogis", 0),
+            yandex_maps=counts_raw.get("yandex_maps", 0),
+            both=counts_raw.get("both", 0),
+        )
+    except Exception:
+        logger.exception("source_counts compute failed for search_id=%d", search_id)
+        source_counts = None
     return CompaniesListOut(
         items=out_items,
         total=total,
         limit=limit,
         offset=offset,
+        source_counts=source_counts,
     )
 
 

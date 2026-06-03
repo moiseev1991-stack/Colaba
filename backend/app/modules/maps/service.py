@@ -281,6 +281,51 @@ async def create_map_search(
 
 
 # ---------------------------------------------------------------------------
+# Multi-source: счётчики по источникам для шапки выдачи (ТЗ 2026-06-04)
+# ---------------------------------------------------------------------------
+
+
+async def get_source_counts_for_search(
+    db: AsyncSession, search_id: int
+) -> dict[str, int]:
+    """Считает компании поиска по источникам: total / twogis / yandex_maps / both.
+
+    Считается на ПОЛНОЙ выборке поиска (через map_search_results), без учёта
+    активного source_filter — чтобы фронт мог показывать счётчики и до/после
+    переключения.
+    """
+    rows = (await db.execute(text(
+        """
+        WITH ids AS (
+            SELECT company_id FROM map_search_results WHERE map_search_id = :sid
+        ),
+        agg AS (
+            SELECT cs.company_id,
+                   BOOL_OR(cs.source = '2gis')        AS has_2gis,
+                   BOOL_OR(cs.source = 'yandex_maps') AS has_yandex
+            FROM company_sources cs
+            JOIN ids ON ids.company_id = cs.company_id
+            GROUP BY cs.company_id
+        )
+        SELECT
+            (SELECT COUNT(*) FROM ids) AS total,
+            COUNT(*) FILTER (WHERE has_2gis)                 AS twogis,
+            COUNT(*) FILTER (WHERE has_yandex)               AS yandex_maps,
+            COUNT(*) FILTER (WHERE has_2gis AND has_yandex)  AS both
+        FROM agg
+        """
+    ), {"sid": search_id})).mappings().first()
+    if not rows:
+        return {"total": 0, "twogis": 0, "yandex_maps": 0, "both": 0}
+    return {
+        "total": int(rows["total"] or 0),
+        "twogis": int(rows["twogis"] or 0),
+        "yandex_maps": int(rows["yandex_maps"] or 0),
+        "both": int(rows["both"] or 0),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Multi-source: bulk-загрузка sources_profiles для API (Phase 4)
 # ---------------------------------------------------------------------------
 

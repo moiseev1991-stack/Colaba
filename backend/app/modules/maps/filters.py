@@ -70,6 +70,24 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         query = query.where(Company.reviews_negative_count >= filters.min_negative)
     if filters.has_owner_replies is not None:
         query = query.where(Company.has_owner_replies == filters.has_owner_replies)
+    # Multi-source фильтр (ТЗ 2026-06-04): EXISTS-подзапрос на company_sources.
+    # 'all'/None — без фильтра, '2gis'/'yandex_maps' — только компании с
+    # соответствующим source-профилем. Склеенные мультисурс-компании остаются
+    # в обоих вариантах (потому что у них есть профиль каждого источника).
+    if filters.source_filter and filters.source_filter != "all":
+        try:
+            from app.models.maps import CompanySource
+            query = query.where(
+                exists(
+                    select(CompanySource.id)
+                    .where(
+                        CompanySource.company_id == Company.id,
+                        CompanySource.source == filters.source_filter,
+                    )
+                )
+            )
+        except ImportError:
+            logger.info("apply_filters: source_filter указан, но CompanySource ещё не создан (миграция 028) — фильтр игнорируется")
     if filters.has_website is not None:
         # 2GIS иногда отдаёт "", " " или строку только из пробелов —
         # фронт-индикатор такие считает «нет сайта», SQL-фильтр должен
