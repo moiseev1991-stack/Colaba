@@ -91,19 +91,18 @@ export function AppHeader() {
         backdropFilter: 'blur(12px)',
       }}
     >
-      {/* Left: Logo */}
+      {/* Left: Logo — §2.2 редизайн 2026-06-03 (бренд-градиент вместо blue-purple) */}
       <div className="flex items-center gap-2 shrink-0">
         <Link href="/dashboard" className="flex items-center gap-2 group" aria-label="SpinLid">
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-[8px] transition-all group-hover:scale-105 overflow-hidden shrink-0"
-            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)', boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)' }}
+            className="flex h-8 w-8 items-center justify-center rounded-v2-sm bg-brand-gradient shadow-v2-sm transition-all group-hover:scale-105 group-hover:shadow-v2-hover overflow-hidden shrink-0"
             aria-hidden
           >
             <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none">
               <path d="M16,6 C21.5,6 26,10.5 26,16 C26,18.5 25,20.8 23.2,22.3 C21.5,23.8 19.2,24.5 17,24 C14.5,23.4 12.5,21.5 12,19 C11.7,17.5 12,16 13,15.2 C14,15.5 15,16 15,17 C15,18 15.5,19 16.5,19.5 C17.5,20 19,19.8 20,19 C21,18.2 21.5,17 21.5,16 C21.5,13.2 19,11 16,11 C13,11 10.5,13.2 10.5,16 C10.5,17.5 11,19 12,20 C13,21 14.5,21.5 16,21.5" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
             </svg>
           </div>
-          <span className="font-bold text-[15px]" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
+          <span className="font-display font-semibold text-[15px] tracking-tight" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
         </Link>
       </div>
 
@@ -112,15 +111,12 @@ export function AppHeader() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
-        {/* Купить подписку — icon + text on desktop, icon only on mobile */}
+        {/* «Купить подписку» — главный фиолетовый акцент (§1.1 ТЗ: МАКСИМУМ
+            одна accent-кнопка на экран). Бренд CTA — это обычный primary
+            бренд-градиент в карточках, здесь — accent чтобы выделить покупку. */}
         <Link
           href="/#pricing"
-          className="flex items-center gap-2 h-9 px-2 md:px-4 rounded-[8px] text-[14px] font-semibold transition-all hover:scale-105"
-          style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
-            color: 'white',
-            boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
-          }}
+          className="inline-flex min-h-9 items-center gap-2 rounded-v2-sm bg-accent-gradient px-3 md:px-4 text-[13px] md:text-[14px] font-semibold text-white shadow-v2-sm transition-all hover:shadow-v2-hover hover:scale-[1.02] active:scale-[0.98]"
         >
           <Sparkles className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline">Купить подписку</span>
