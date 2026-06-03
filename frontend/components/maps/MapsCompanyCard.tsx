@@ -74,6 +74,17 @@ export function MapsCompanyCard({
 
   const sourceUrl = buildSourceUrl(company.source, company.external_id);
   const sourceTitle = sourceLabel(company.source);
+  // Multi-source (Phase 5): если у компании несколько источниковых профилей —
+  // показываем мульти-бейдж «2GIS + Я.Карты». Иначе fallback на legacy single-source.
+  const sourcesProfiles = Array.isArray(company.sources_profiles) ? company.sources_profiles : [];
+  const multiSourceList: { source: string; label: string; url: string | null }[] =
+    sourcesProfiles.length > 1
+      ? sourcesProfiles.map((sp) => ({
+          source: sp.source,
+          label: sourceLabel(sp.source),
+          url: sp.source_url ?? buildSourceUrl(sp.source, sp.external_id),
+        }))
+      : [];
 
   return (
     <CardV2
@@ -173,10 +184,22 @@ export function MapsCompanyCard({
             нужен сайт
           </SignalPill>
         )}
-        {company.source && (
-          <span className="ml-auto text-[11px] text-[hsl(var(--muted))]">
-            {sourceTitle}
+        {multiSourceList.length > 0 ? (
+          <span
+            className="ml-auto inline-flex items-center gap-1 text-[11px] text-[hsl(var(--muted))]"
+            title="Компания найдена в нескольких источниках"
+          >
+            {multiSourceList.map((s, idx) => (
+              <span key={s.source} className="inline-flex items-center gap-1">
+                {idx > 0 && <span aria-hidden>·</span>}
+                <span className="font-medium text-[hsl(var(--text))]">{s.label}</span>
+              </span>
+            ))}
           </span>
+        ) : (
+          company.source && (
+            <span className="ml-auto text-[11px] text-[hsl(var(--muted))]">{sourceTitle}</span>
+          )
         )}
       </div>
 
@@ -243,18 +266,39 @@ export function MapsCompanyCard({
             )}
           </span>
         )}
-        {sourceUrl && (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="ml-auto inline-flex items-center gap-1 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
-            title={`Открыть карточку в ${sourceTitle}`}
-          >
-            <ExternalLink className="h-3 w-3" />
-            {sourceTitle}
-          </a>
+        {multiSourceList.length > 0 ? (
+          <span className="ml-auto inline-flex items-center gap-1.5">
+            {multiSourceList.map((s) =>
+              s.url ? (
+                <a
+                  key={s.source}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
+                  title={`Открыть карточку в ${s.label}`}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {s.label}
+                </a>
+              ) : null
+            )}
+          </span>
+        ) : (
+          sourceUrl && (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="ml-auto inline-flex items-center gap-1 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
+              title={`Открыть карточку в ${sourceTitle}`}
+            >
+              <ExternalLink className="h-3 w-3" />
+              {sourceTitle}
+            </a>
+          )
         )}
       </div>
 

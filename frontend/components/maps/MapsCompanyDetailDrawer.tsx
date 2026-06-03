@@ -41,6 +41,7 @@ import {
 } from '@/src/services/api/maps';
 
 type Tab = 'all' | 'negative' | 'positive';
+type SourceTab = 'all' | '2gis' | 'yandex_maps';
 
 interface Props {
   companyId: number | null;
@@ -50,6 +51,9 @@ interface Props {
 export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   const [detail, setDetail] = useState<CompanyDetailOut | null>(null);
   const [tab, setTab] = useState<Tab>('all');
+  // Phase 5 multi-source: вкладка по источнику. Активна (видна) только если
+  // у компании 2+ источниковых профиля. 'all' = без фильтра.
+  const [sourceTab, setSourceTab] = useState<SourceTab>('all');
   const [reviews, setReviews] = useState<ReviewOut[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -74,6 +78,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
           ...(tab === 'all' ? {} : { sentiment: tab }),
           ...(debouncedText ? { text_contains: debouncedText } : {}),
           ...(onlyWithOwnerReply ? { has_owner_reply: true } : {}),
+          ...(sourceTab !== 'all' ? { source: sourceTab } : {}),
         },
         50,
         0,
@@ -82,7 +87,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, detail, tab, debouncedText, onlyWithOwnerReply]);
+  }, [companyId, detail, tab, debouncedText, onlyWithOwnerReply, sourceTab]);
 
   // Сбрасываем состояние при смене компании
   useEffect(() => {
@@ -90,6 +95,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
       setDetail(null);
       setReviews([]);
       setTab('all');
+      setSourceTab('all');
       setTextQuery('');
       setDebouncedText('');
       setOnlyWithOwnerReply(false);
@@ -112,15 +118,19 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
     if (companyId == null || !detail) return;
     // Дефолт «Все» без фильтров — используем уже загруженный recent_reviews,
     // не делаем лишний запрос.
-    if (tab === 'all' && !debouncedText && !onlyWithOwnerReply) {
+    if (tab === 'all' && !debouncedText && !onlyWithOwnerReply && sourceTab === 'all') {
       setReviews(detail.recent_reviews);
       return;
     }
     void loadReviews();
-  }, [tab, debouncedText, onlyWithOwnerReply, companyId, detail, loadReviews]);
+  }, [tab, debouncedText, onlyWithOwnerReply, sourceTab, companyId, detail, loadReviews]);
 
   const open = companyId != null;
-  const hasActiveFilters = tab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
+  const hasActiveFilters =
+    tab !== 'all' || sourceTab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
+  // Phase 5: показываем вкладку «По источнику» только если у компании ≥2 профиля.
+  const sourcesProfiles = detail?.sources_profiles ?? [];
+  const showSourceTabs = sourcesProfiles.length >= 2;
 
   return (
     <Dialog
@@ -138,7 +148,16 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             {formatAddressWithCity(detail.address, detail.city) || '—'}
           </div>
 
-          <ContactsBlock detail={detail} />
+          {/* Phase 5 multi-source: метрики и контакты по каждому источнику раздельно.
+              Одноисточниковые компании fall-back на старый ContactsBlock без секций. */}
+          {showSourceTabs ? (
+            <>
+              <SourceMetricsBlock profiles={sourcesProfiles} />
+              <MultiSourceContactsBlock profiles={sourcesProfiles} />
+            </>
+          ) : (
+            <ContactsBlock detail={detail} />
+          )}
 
           {/* Юр.данные из DaData (блок 2 ТЗ). Показываем только если матч найден. */}
           <LegalBlock legal={detail.legal} />
@@ -176,6 +195,34 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* === Tabs по источнику (Phase 5 multi-source) === */}
+          {showSourceTabs && (
+            <div className="mb-1 flex gap-2 border-b border-slate-200 dark:border-slate-700">
+              {(['all', '2gis', 'yandex_maps'] as SourceTab[]).map((st) => {
+                const sp = sourcesProfiles.find((s) => s.source === st);
+                const count = sp?.reviews_count ?? 0;
+                const label =
+                  st === 'all' ? 'Все' : st === '2gis' ? '2GIS' : 'Я.Карты';
+                return (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setSourceTab(st)}
+                    className={cn(
+                      'border-b-2 px-2 py-1 text-xs font-medium transition-colors',
+                      sourceTab === st
+                        ? 'border-brand-500 text-brand-700 dark:border-brand-400 dark:text-brand-400'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                    )}
+                  >
+                    {label}
+                    {st !== 'all' && count > 0 ? ` (${count})` : ''}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -535,6 +582,187 @@ function sourceLabel(source: string): string {
   if (source === '2gis') return '2GIS';
   if (source === 'yandex_maps') return 'Я.Картах';
   return source;
+}
+
+function sourceShortLabel(source: string): string {
+  if (source === '2gis') return '2GIS';
+  if (source === 'yandex_maps') return 'Я.Карты';
+  return source;
+}
+
+// ---------------------------------------------------------------------------
+// SourceMetricsBlock — мини-таблица «рейтинг × отзывы» по каждому источнику
+// (Phase 5 multi-source). Расхождение rating/reviews между 2GIS и Я.Картами —
+// полезный сигнал юзеру, может означать вылетевшие отзывы в одном из них или
+// разную аудиторию.
+// ---------------------------------------------------------------------------
+
+function SourceMetricsBlock({ profiles }: { profiles: CompanyDetailOut['sources_profiles'] }) {
+  const arr = profiles ?? [];
+  if (arr.length < 2) return null;
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        Метрики по источникам
+      </div>
+      <div className="grid grid-cols-[auto,1fr,1fr,1fr] gap-x-3 gap-y-1 text-[12px]">
+        <div className="text-slate-500 dark:text-slate-400">Источник</div>
+        <div className="text-slate-500 dark:text-slate-400">Рейтинг</div>
+        <div className="text-slate-500 dark:text-slate-400">Отзывы</div>
+        <div className="text-slate-500 dark:text-slate-400">Негатив</div>
+        {arr.map((p) => (
+          <React.Fragment key={p.source}>
+            <div className="font-medium text-slate-900 dark:text-slate-100">
+              {sourceShortLabel(p.source)}
+            </div>
+            <div className="text-slate-700 dark:text-slate-200">
+              {typeof p.rating === 'number' ? p.rating.toFixed(1) : '—'}
+            </div>
+            <div className="text-slate-700 dark:text-slate-200">{p.reviews_count}</div>
+            <div className="text-slate-700 dark:text-slate-200">
+              {p.reviews_negative_count > 0 ? p.reviews_negative_count : '—'}
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MultiSourceContactsBlock — контакты в РАЗДЕЛЁННЫХ секциях по источникам.
+// Активен когда у компании ≥2 источниковых профиля (Phase 5 multi-source).
+// Контакты внутри секции отсортированы: основной телефон/сайт первыми (is_primary),
+// потом дополнительные. Между секциями ничего не дедуплицируется — это ТЗ §1.3.
+// ---------------------------------------------------------------------------
+
+type ContactProfile = NonNullable<CompanyDetailOut['sources_profiles']>[number];
+
+function MultiSourceContactsBlock({ profiles }: { profiles: CompanyDetailOut['sources_profiles'] }) {
+  const arr = profiles ?? [];
+  if (arr.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {arr.map((p) => (
+        <SourceContactsSection key={`${p.source}-${p.external_id}`} profile={p} />
+      ))}
+    </div>
+  );
+}
+
+function SourceContactsSection({ profile }: { profile: ContactProfile }) {
+  const cs = profile.contacts ?? [];
+  if (cs.length === 0 && !profile.source_url) return null;
+  // Сортируем: primary первые, потом по типу phone→website→email→социалки.
+  const order: Record<string, number> = {
+    phone: 1, website: 2, email: 3, telegram: 4, whatsapp: 5,
+    vk: 6, instagram: 7, facebook: 8, ok: 9, youtube: 10,
+  };
+  const sorted = [...cs].sort((a, b) => {
+    if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+    return (order[a.type] ?? 99) - (order[b.type] ?? 99);
+  });
+  const deepLink = buildSourceUrl(profile.source, profile.external_id);
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          По данным {sourceShortLabel(profile.source)}
+        </div>
+        {deepLink && (
+          <a
+            href={deepLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-700 hover:underline dark:text-brand-400"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Открыть в {sourceShortLabel(profile.source)}
+          </a>
+        )}
+      </div>
+      {sorted.length > 0 ? (
+        <div className="flex flex-col gap-1.5 text-[13px]">
+          {sorted.map((c, idx) => (
+            <ContactValueRow key={`${c.type}-${c.value}-${idx}`} contact={c} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-[12px] text-slate-500 dark:text-slate-400">
+          {profile.source === '2gis'
+            ? 'Catalog API 2GIS не отдал контакты — открой исходную карточку.'
+            : 'Контактов с карточки Я.Карт не получено.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][number] }) {
+  const { type, value } = contact;
+  // phone
+  if (type === 'phone') {
+    return (
+      <ContactRow icon={<Phone className="h-3.5 w-3.5" />} href={`tel:${normalizePhone(value)}`}>
+        {value}
+      </ContactRow>
+    );
+  }
+  if (type === 'email') {
+    return (
+      <ContactRow icon={<Mail className="h-3.5 w-3.5" />} href={`mailto:${value}`}>
+        {value}
+      </ContactRow>
+    );
+  }
+  if (type === 'website') {
+    return (
+      <ContactRow icon={<Globe className="h-3.5 w-3.5" />} href={value} external>
+        {prettifyUrl(value)}
+      </ContactRow>
+    );
+  }
+  if (type === 'telegram') {
+    const handle = value.startsWith('http')
+      ? value.replace(/^https?:\/\/(?:t\.me|telegram\.me)\//i, '').replace(/\/$/, '')
+      : value.startsWith('@')
+        ? value.slice(1)
+        : value;
+    return (
+      <ContactRow
+        icon={<Send className="h-3.5 w-3.5" />}
+        href={value.startsWith('http') ? value : `https://t.me/${handle}`}
+        external
+        label="Telegram"
+      >
+        @{handle}
+      </ContactRow>
+    );
+  }
+  if (type === 'whatsapp') {
+    const href = value.startsWith('http')
+      ? value
+      : `https://wa.me/${value.replace(/\D/g, '')}`;
+    return (
+      <ContactRow
+        icon={<MessageCircle className="h-3.5 w-3.5" />}
+        href={href}
+        external
+        label="WhatsApp"
+      >
+        {value}
+      </ContactRow>
+    );
+  }
+  if (type === 'vk' || type === 'instagram' || type === 'facebook' || type === 'ok' || type === 'youtube') {
+    const href = value.startsWith('http') ? value : `https://${value}`;
+    return (
+      <ContactRow icon={<MessageCircle className="h-3.5 w-3.5" />} href={href} external label={type}>
+        {prettifyUrl(value)}
+      </ContactRow>
+    );
+  }
+  return null;
 }
 
 function ContactRow({

@@ -131,6 +131,32 @@ export interface CompanyPainOut {
   top_quote_similarity?: number | null;
 }
 
+/** Multi-source (Phase 4 ТЗ 2026-06-03): один контакт с пометкой источника.
+ *  Дедуп между источниками НЕ делается — если телефон совпал в 2GIS и Я.Картах,
+ *  это две записи (UI может пометить «совпадает»). */
+export interface CompanyContactOut {
+  source: string;        // '2gis' | 'yandex_maps'
+  type: string;          // 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' | ...
+  value: string;
+  is_primary: boolean;
+}
+
+/** Multi-source: один источниковый профиль компании. У одноисточниковых длина 1,
+ *  у склеенных Phase 2/3 — 2 (2gis + yandex_maps). */
+export interface CompanySourceOut {
+  source: string;
+  external_id: string;
+  source_url?: string | null;
+  rating?: number | null;
+  reviews_count: number;
+  reviews_positive_count: number;
+  reviews_negative_count: number;
+  reviews_neutral_count: number;
+  has_owner_replies: boolean;
+  owner_replies_count: number;
+  contacts: CompanyContactOut[];
+}
+
 export interface CompanyOut {
   id: number;
   name: string;
@@ -170,6 +196,10 @@ export interface CompanyOut {
   /** Юр.данные из DaData (блок 2). null если не обогащались или
    *  matched_by=null. */
   legal?: CompanyLegalShort | null;
+  /** Multi-source профили (Phase 4 ТЗ 2026-06-03). У одноисточниковых компаний
+   *  массив длины 1, у склеенных 2gis+yandex_maps — длины 2. Контакты внутри
+   *  каждого профиля показываем в drawer раздельно в секциях. */
+  sources_profiles?: CompanySourceOut[];
 }
 
 export interface CompanyLegalShort {
@@ -234,6 +264,9 @@ export interface ReviewOut {
   has_owner_reply: boolean;
   source_url?: string | null;
   pain_tags: PainTagShort[];
+  /** Multi-source (Phase 4): '2gis' | 'yandex_maps' | 'google'. Используется
+   *  для вкладок «Все / 2GIS / Я.Карты» в drawer. */
+  source?: string | null;
 }
 
 export interface CompanyDetailOut extends CompanyOut {
@@ -328,6 +361,8 @@ export interface ReviewQueryFilter {
   min_rating?: number;
   max_rating?: number;
   has_owner_reply?: boolean;
+  /** Multi-source (Phase 4): фильтр по источнику для табов «2GIS / Я.Карты». */
+  source?: '2gis' | 'yandex_maps' | 'google';
 }
 
 export async function getCompanyReviews(
@@ -351,6 +386,7 @@ export async function getCompanyReviews(
     params.set('max_rating', String(filter.max_rating));
   if (filter.has_owner_reply !== undefined)
     params.set('has_owner_reply', String(filter.has_owner_reply));
+  if (filter.source) params.set('source', filter.source);
   params.set('limit', String(limit));
   params.set('offset', String(offset));
   const response = await apiClient.get<ReviewsListOut>(
