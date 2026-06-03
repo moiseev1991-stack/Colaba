@@ -359,8 +359,8 @@ class YandexMapsProvider(MapProvider):
             "X-Requested-With": "XMLHttpRequest",
             "Referer": "https://yandex.ru/maps/",
         }
-        proxies = get_proxy_config() if self._use_proxy else None
-        async with httpx.AsyncClient(timeout=15.0, headers=headers, proxies=proxies) as client:
+        proxy = get_proxy_config() if self._use_proxy else None
+        async with httpx.AsyncClient(timeout=15.0, headers=headers, proxy=proxy) as client:
             while yielded < limit:
                 params = {
                     "businessId": company_external_id,

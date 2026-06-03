@@ -398,7 +398,7 @@ async def _try_submit_yandex_captcha_form(
         "Content-Type": "application/x-www-form-urlencoded",
     }
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxy=proxy_config) as client:
             r = await client.post(action_url, data=data, cookies=cookies or {}, headers=headers)
             if r.status_code != 200:
                 return None

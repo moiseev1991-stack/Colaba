@@ -259,7 +259,7 @@ async def _try_submit_google_recaptcha_form(
     proxy_config = get_proxy_config(proxy_overrides)
     headers = {"User-Agent": get_random_user_agent(), "Referer": page_url, "Content-Type": "application/x-www-form-urlencoded"}
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxy=proxy_config) as client:
             r = await client.post(action_url, data=data, cookies=cookies, headers=headers)
             if r.status_code != 200:
                 return None
@@ -301,7 +301,7 @@ async def _try_submit_google_captcha_form(
     proxy_config = get_proxy_config(proxy_overrides)
     headers = {"User-Agent": get_random_user_agent(), "Referer": page_url, "Content-Type": "application/x-www-form-urlencoded"}
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxies=proxy_config) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, proxy=proxy_config) as client:
             r = await client.post(action_url, data=data, cookies=cookies, headers=headers)
             if r.status_code != 200:
                 return None

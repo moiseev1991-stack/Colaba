@@ -46,19 +46,20 @@ def get_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
 
-def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, str]]:
+def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Optional[str]:
     """
-    Получить конфигурацию прокси из настроек или из proxy_overrides.
-    
+    Получить URL прокси для httpx (`proxy=` параметр).
+
     Если proxy_overrides задан и содержит proxy_url или proxy_list и use_proxy — использовать их.
     Иначе — USE_PROXY, PROXY_URL, PROXY_LIST из settings.
-    
+
     Поддерживает:
     - PROXY_URL / proxy_url — одиночный прокси (http://proxy:port или socks5://proxy:port)
-    - PROXY_LIST / proxy_list — список прокси через запятую
-    
+    - PROXY_LIST / proxy_list — список прокси через запятую, случайно выбирается один
+
     Returns:
-        Словарь с настройками прокси для httpx или None
+        URL прокси (строка) или None. Передавать в `httpx.AsyncClient(proxy=...)`.
+        До httpx 0.28 ожидался Dict — но он удалил поддержку, теперь только string.
     """
     use_proxy = False
     proxy_url = None
@@ -78,15 +79,13 @@ def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Option
     if not use_proxy:
         return None
 
-    # Приоритет: PROXY_URL > PROXY_LIST
     if proxy_url:
-        return {"http://": proxy_url, "https://": proxy_url}
+        return proxy_url
 
     if proxy_list:
         proxies = [p.strip() for p in proxy_list.split(",") if p.strip()]
         if proxies:
-            selected_proxy = random.choice(proxies)
-            return {"http://": selected_proxy, "https://": selected_proxy}
+            return random.choice(proxies)
 
     return None
 
@@ -103,9 +102,11 @@ async def random_delay(min_seconds: float = 1.0, max_seconds: float = 3.0):
     await asyncio.sleep(delay)
 
 
-# Ключевые слова капчи (общие для detect_blocking и единый источник)
+# Ключевые слова капчи (общие для detect_blocking и единый источник).
+# ВАЖНО: не включать просто "captcha" — на yandex.ru/maps в JS-конфиге есть URL
+# https://yandex.ru/captchapgrd (Yandex SDK fingerprint lib), что давало false-positive
+# и приводило к CaptchaWallError на нормальной выдаче.
 CAPTCHA_KEYWORDS = [
-    "captcha",
     "капча",
     "проверка на робота",
     "unusual traffic",
@@ -273,7 +274,7 @@ async def fetch_with_retry(
             async with httpx.AsyncClient(
                 timeout=timeout,
                 follow_redirects=True,
-                proxies=proxy_config,
+                proxy=proxy_config,
                 headers=headers,
             ) as client:
                 response = await client.get(url, cookies=cookies if cookies else {})
