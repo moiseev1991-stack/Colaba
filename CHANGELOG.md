@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.43.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.42.0...v1.43.0) (2026-06-03)
+
+
+### Features
+
+* **ui:** redesign v2 phase B-3 follow-up — таблица истории рассылок и drill-down ([0b8dacf](https://github.com/moiseev1991-stack/Colaba/commit/0b8dacff7fd00032c10062853f42e16049b6454e))
+* **ui:** redesign v2 phase C batch 1 — email stats/settings + leads presets/settings на v2 ([5a19b49](https://github.com/moiseev1991-stack/Colaba/commit/5a19b495f0cfd6de15ad9c2258c4ff0f26df5f51))
+* **ui:** redesign v2 phase C batch 2 — SEO раздел (главная + шаблоны) на v2 ([87f3c83](https://github.com/moiseev1991-stack/Colaba/commit/87f3c83a3c853cd2ab9e3855d2516a3599c196a2))
+* **ui:** redesign v2 phase C batch 3 — LeadsTable + ModuleCards + auth/register на v2 ([b5ec5aa](https://github.com/moiseev1991-stack/Colaba/commit/b5ec5aa9a2723e08d1929aaa61754170bf9414ed))
+* **ui:** redesign v2 phase C batch 4 — Dialog primitive, лоадеры, SearchCard, ProfileCard ([7183517](https://github.com/moiseev1991-stack/Colaba/commit/71835174d2d5a60f14b40d48e8d3b52043aff2ce))
+* **ui:** redesign v2 phase C batch 5 — settings/organizations/payment/error/policy на v2 ([e82f2fd](https://github.com/moiseev1991-stack/Colaba/commit/e82f2fd90f5deb1ea30dc591b3916d7a0f40a83c))
+* **ui:** redesign v2 phase C batches 6-9 — maps/auth/demo/captcha + остальные мелкие ([8f7d716](https://github.com/moiseev1991-stack/Colaba/commit/8f7d7162567af46e90a90aff8b55c35bce52a175))
+
 # [1.42.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.41.0...v1.42.0) (2026-06-03)
 
 
