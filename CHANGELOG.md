@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.44.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.43.0...v1.44.0) (2026-06-03)
+
+
+### Features
+
+* **landing:** рефакт под «компании с диагнозом» (smell + fake-numbers fix) ([669e051](https://github.com/moiseev1991-stack/Colaba/commit/669e051eb3c67e68341579baa8b5fcf27276ef33)), closes [#stats](https://github.com/moiseev1991-stack/Colaba/issues/stats) [#diagnosis](https://github.com/moiseev1991-stack/Colaba/issues/diagnosis) [#diagnosis](https://github.com/moiseev1991-stack/Colaba/issues/diagnosis)
+
 # [1.43.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.42.0...v1.43.0) (2026-06-03)
 
 
