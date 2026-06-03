@@ -323,21 +323,21 @@ function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
       {pains.slice(0, 3).map((p) => (
         <div
           key={p.pain_tag_id}
-          className="rounded-v2-sm border border-amber-200/60 bg-amber-50/70 px-2.5 py-1.5 dark:border-amber-500/30 dark:bg-amber-500/10"
+          className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2.5 py-1.5"
         >
           <div className="flex items-center gap-2">
-            <span className="rounded-pill bg-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-500/30 dark:text-amber-200">
+            <span className="rounded-pill bg-[var(--signal-warm)]/20 px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)]">
               {p.label}
             </span>
             {p.mention_count > 0 && (
-              <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
+              <span className="text-[11px] text-[color:var(--signal-warm)]/80">
                 × {p.mention_count}
               </span>
             )}
           </div>
           {p.top_quote && (
             <div className="mt-1 flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
-              <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+              <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
               <span className="line-clamp-2 italic">«{p.top_quote}»</span>
             </div>
           )}
@@ -357,7 +357,7 @@ function NegativeSnippetsBlock({ snippets }: { snippets: string[] }) {
       {snippets.slice(0, 2).map((quote, idx) => (
         <div
           key={idx}
-          className="rounded-v2-sm border border-red-200/60 bg-red-50/70 px-2.5 py-1.5 dark:border-red-500/30 dark:bg-red-500/10"
+          className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-2.5 py-1.5"
           title="AI ещё не разобрал боли — показан кусок негативного отзыва"
         >
           <div className="flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">

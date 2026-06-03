@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { apiClient, tokenStorage } from '@/client';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { OAuthButton } from '@/components/OAuthButton';
 import { GoogleIcon } from '@/components/OAuthIcons';
 import { YandexIcon } from '@/components/OAuthIcons';
@@ -61,16 +62,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'hsl(var(--bg))' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand" style={{ backgroundColor: 'hsl(var(--bg))' }}>
       <div className="w-full max-w-[440px]">
-        <div className="rounded-[8px] border p-8 shadow-lg" style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}>
+        <div
+          className="rounded-v2-lg border p-8 shadow-v2"
+          style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+        >
           <div className="mb-8 flex items-center justify-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-saas-primary-weak" aria-hidden>
-              <span className="text-saas-primary font-bold text-lg">S</span>
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-v2-sm bg-brand-gradient shadow-v2-sm"
+              aria-hidden
+            >
+              <span className="text-white font-bold text-lg">S</span>
             </div>
-            <span className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
+            <span
+              className="font-display font-semibold tracking-tight text-xl"
+              style={{ color: 'hsl(var(--text))' }}
+            >
+              SpinLid
+            </span>
           </div>
-          <h2 className="text-center text-2xl font-semibold mb-2" style={{ color: 'hsl(var(--text))' }}>
+          <h2
+            className="text-center font-display font-semibold tracking-tight text-2xl mb-2"
+            style={{ color: 'hsl(var(--text))' }}
+          >
             Вход в систему
           </h2>
           <p className="mt-2 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
@@ -118,7 +133,7 @@ export default function LoginPage() {
               <div className="w-full border-t" style={{ borderColor: 'hsl(var(--border))' }}></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800" style={{ color: 'hsl(var(--muted))' }}>
+              <span className="px-2" style={{ color: 'hsl(var(--muted))', background: 'hsl(var(--surface))' }}>
                 или через email
               </span>
             </div>
@@ -127,8 +142,17 @@ export default function LoginPage() {
           {/* Email/Password Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
-              <div className="rounded-[6px] border-2 border-red-500 bg-red-50 p-4 dark:border-red-400 dark:bg-red-950/50" role="alert">
-                <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
+              <div
+                className="rounded-v2-sm border p-4 flex items-start gap-2"
+                style={{
+                  background: 'var(--signal-hot-bg)',
+                  borderColor: 'rgb(239 68 68 / 0.3)',
+                  color: 'var(--signal-hot)',
+                }}
+                role="alert"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{error}</p>
               </div>
             )}
             <div>
@@ -155,20 +179,21 @@ export default function LoginPage() {
                 className="rounded-t-none"
               />
             </div>
-            <Button
+            <ButtonV2
               type="submit"
-              disabled={loading}
-              className="ui-btn ui-btn-primary w-full disabled:opacity-70 disabled:cursor-wait"
+              variant="primary"
+              size="lg"
+              loading={loading}
+              className="w-full"
             >
-              {loading ? 'Подключение...' : 'Войти'}
-            </Button>
+              Войти
+            </ButtonV2>
           </form>
 
           <div className="mt-6 text-center">
             <a
               href="/auth/register"
-              className="text-sm font-medium hover:underline"
-              style={{ color: 'hsl(var(--primary))' }}
+              className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
             >
               Нет аккаунта? Зарегистрируйтесь
             </a>

@@ -28,19 +28,22 @@ export class AppErrorBoundary extends Component<Props, State> {
       return (
         <div
           role="alert"
-          className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 p-8"
-          style={{ fontFamily: 'system-ui, sans-serif' }}
+          className="min-h-screen flex flex-col items-center justify-center gap-6 p-8"
+          style={{ background: 'hsl(var(--bg))', fontFamily: 'system-ui, sans-serif' }}
         >
           <div className="text-center max-w-md">
-            <h1 className="text-xl font-semibold text-gray-900 mb-2">
+            <h1
+              className="font-display font-semibold tracking-tight text-xl mb-2"
+              style={{ color: 'hsl(var(--text))' }}
+            >
               Что-то пошло не так
             </h1>
-            <p className="text-gray-600 text-sm mb-6">
+            <p className="text-sm mb-6" style={{ color: 'hsl(var(--muted))' }}>
               Приложение столкнулось с ошибкой. Попробуйте обновить страницу.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              className="px-4 py-2 bg-brand-gradient text-white rounded-v2-sm hover:shadow-v2-hover shadow-v2-sm font-medium"
             >
               Обновить страницу
             </button>

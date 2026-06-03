@@ -70,7 +70,7 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
           )}
 
           {error && !loading && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
               {error}
             </div>
           )}
@@ -78,17 +78,17 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
           {!loading && !error && draft && (
             <div className="space-y-4">
               {draft.used_pains.length > 0 && (
-                <div className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2">
-                  <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-amber-800">
+                <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2">
+                  <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-[color:var(--signal-warm)]">
                     Основано на болях
                   </div>
                   <ul className="space-y-1.5">
                     {draft.used_pains.map((p) => (
                       <li key={p.pain_tag_id} className="text-[12px]">
-                        <span className="font-medium text-amber-900">{p.label}</span>
+                        <span className="font-medium text-[color:var(--signal-warm)]">{p.label}</span>
                         {p.top_quote && (
                           <div className="mt-0.5 flex items-start gap-1 text-slate-700">
-                            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+                            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
                             <span className="italic">«{p.top_quote}»</span>
                           </div>
                         )}

@@ -19,7 +19,7 @@ export function SearchControls({ city, engine, onCityChange, onEngineChange }: S
   return (
     <div className="flex items-center gap-3 mb-8 flex-nowrap -ml-1">
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">Поисковая система:</span>
+        <span className="text-sm font-medium td-default whitespace-nowrap">Поисковая система:</span>
         <Select
           value={engine}
           onChange={(e) => onEngineChange(e.target.value)}
@@ -34,7 +34,7 @@ export function SearchControls({ city, engine, onCityChange, onEngineChange }: S
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">Город:</span>
+        <span className="text-sm font-medium td-default whitespace-nowrap">Город:</span>
         <CityCombobox
           city={city}
           onCityChange={onCityChange}

@@ -121,20 +121,20 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
           )}
 
           {error && !loading && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
               {error}
             </div>
           )}
 
           {result && !loading && (
             <div className="space-y-3">
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-3 py-2 text-sm text-[color:var(--signal-good)]">
                 <div className="font-medium">
                   Готово: {result.drafts.length} драфт{result.drafts.length === 1 ? '' : result.drafts.length < 5 ? 'а' : 'ов'}{' '}
                   из {result.total_companies} компаний
                 </div>
                 {(result.skipped_no_pains > 0 || result.skipped_llm_error > 0) && (
-                  <div className="mt-1 text-[12px] text-emerald-700">
+                  <div className="mt-1 text-[12px] text-[color:var(--signal-good)]/80">
                     Пропущено: {result.skipped_no_pains} без болей, {result.skipped_llm_error}{' '}
                     с ошибкой LLM.
                   </div>
@@ -179,13 +179,13 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                     </div>
 
                     {d.used_pain_label && (
-                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5">
-                        <div className="text-[11px] font-medium text-amber-900">
+                      <div className="mt-2 rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2 py-1.5">
+                        <div className="text-[11px] font-medium text-[color:var(--signal-warm)]">
                           использована боль: {d.used_pain_label}
                         </div>
                         {d.used_pain_quote && (
                           <div className="mt-0.5 flex items-start gap-1 text-[12px] text-slate-700">
-                            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+                            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
                             <span className="italic">«{d.used_pain_quote}»</span>
                           </div>
                         )}

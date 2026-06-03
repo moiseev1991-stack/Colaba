@@ -93,9 +93,9 @@ export function CreateCampaignFromListModal({
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {result ? (
             <div className="space-y-4">
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-4 py-3 text-sm text-[color:var(--signal-good)]">
                 <div className="font-medium">Кампания #{result.campaign_id} создана</div>
-                <div className="mt-1 text-emerald-700">
+                <div className="mt-1 opacity-90">
                   Получателей: {result.total_recipients}.{' '}
                   {result.skipped_no_email > 0 && (
                     <>
@@ -116,7 +116,7 @@ export function CreateCampaignFromListModal({
           ) : (
             <div className="space-y-3">
               {error && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
                   {error}
                 </div>
               )}

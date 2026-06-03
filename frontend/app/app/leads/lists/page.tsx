@@ -89,7 +89,7 @@ export default function LeadListsPage() {
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
           {error}
         </div>
       )}
@@ -143,7 +143,7 @@ export default function LeadListsPage() {
               <button
                 onClick={() => remove(l.id)}
                 disabled={deletingId === l.id}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-v2-sm border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)] disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {deletingId === l.id ? '…' : 'Удалить'}

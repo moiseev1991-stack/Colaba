@@ -33,18 +33,23 @@ export function ProcessStepsIndicator({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-900 dark:text-white">{title}</h3>
+      <h3
+        className="font-display font-semibold tracking-tight text-sm"
+        style={{ color: 'hsl(var(--text))' }}
+      >
+        {title}
+      </h3>
       <div className="space-y-2">
         {steps.map((step, index) => (
           <div
             key={index}
             className={cn(
               'flex items-center gap-2 text-sm transition-all',
-              activeStep === index ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+              activeStep === index ? 'td-default' : 'td-muted'
             )}
           >
             {activeStep === index ? (
-              <Loader2 className="w-4 h-4 animate-spin text-red-600 dark:text-red-500 flex-shrink-0" />
+              <Loader2 className="w-4 h-4 animate-spin text-brand-600 dark:text-brand-400 flex-shrink-0" />
             ) : (
               <div className="w-4 h-4 flex-shrink-0" />
             )}

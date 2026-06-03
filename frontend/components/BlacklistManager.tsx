@@ -42,7 +42,7 @@ export function BlacklistManager() {
       {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="flex items-center gap-3">
-          <FolderMinus className="h-5 w-5 text-saas-primary" />
+          <FolderMinus className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--text))' }}>Блэклист</h2>
         </div>
       </div>
@@ -57,9 +57,12 @@ export function BlacklistManager() {
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-              className="pr-10 bg-white dark:bg-gray-700"
+              className="pr-10"
             />
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <ChevronDown
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+              style={{ color: 'hsl(var(--muted))' }}
+            />
           </div>
           <Button 
             onClick={handleAdd}
@@ -73,7 +76,7 @@ export function BlacklistManager() {
       {/* Blacklist Items */}
       <div className="px-6 py-4">
         {blacklist.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+          <p className="text-center py-4" style={{ color: 'hsl(var(--muted))' }}>
             Черный список пуст
           </p>
         ) : (

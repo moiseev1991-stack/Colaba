@@ -287,7 +287,7 @@ export function MapsFiltersPanel({
                 className={cn(
                   'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
                   active
-                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-300 dark:border-emerald-400 dark:bg-emerald-900/30 dark:ring-emerald-700/50'
+                    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-400/40 dark:border-brand-400 dark:bg-brand-500/10 dark:ring-brand-500/40'
                     : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-400 dark:hover:bg-slate-700'
                 )}
               >
@@ -382,10 +382,10 @@ export function MapsFiltersPanel({
                 className={cn(
                   'group relative flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 pr-7 text-left transition-colors',
                   active
-                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-300 dark:border-emerald-400 dark:bg-emerald-900/30 dark:ring-emerald-700/50'
+                    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-400/40 dark:border-brand-400 dark:bg-brand-500/10 dark:ring-brand-500/40'
                     : p.hidden
                     ? 'border-slate-200 bg-slate-50/60 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-500'
-                    : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:hover:border-emerald-500/60'
+                    : 'border-brand-200 bg-brand-50/40 hover:border-brand-400 dark:border-brand-500/30 dark:bg-brand-500/5 dark:hover:border-brand-400/60'
                 )}
               >
                 <button
@@ -439,7 +439,7 @@ export function MapsFiltersPanel({
                       }}
                       title="Скрыть (можно вернуть из вкладки «Скрытые»)"
                       aria-label={`Скрыть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-400 hover:bg-emerald-100 hover:text-slate-700"
+                      className="rounded p-0.5 text-slate-400 hover:bg-brand-100 hover:text-slate-700"
                     >
                       <EyeOff className="h-3 w-3" />
                     </button>
@@ -452,7 +452,7 @@ export function MapsFiltersPanel({
                     }}
                     title="Удалить навсегда"
                     aria-label={`Удалить пресет ${p.name}`}
-                    className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    className="rounded p-0.5 text-slate-400 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -480,7 +480,7 @@ export function MapsFiltersPanel({
           <div className="text-sm text-slate-700">
             Удалить пресет <strong>«{confirmDelete?.name}»</strong> навсегда?
           </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-[12px] text-amber-800">
+          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-[12px] text-[color:var(--signal-warm)]">
             Если хочешь временно убрать с глаз — лучше нажми «скрыть» (иконка глаза).
             Пресет уедет во вкладку «Скрытые», откуда его легко вернуть.
           </div>
@@ -497,7 +497,7 @@ export function MapsFiltersPanel({
               type="button"
               onClick={() => void confirmDeleteNow()}
               disabled={deleteInProgress}
-              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              className="rounded-v2-sm bg-[color:var(--signal-hot)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {deleteInProgress ? 'Удаляю…' : 'Удалить'}
             </button>
@@ -616,7 +616,7 @@ export function MapsFiltersPanel({
       </div>
 
       {/* Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal */}
-      <div className="rounded-md border border-blue-200 bg-blue-50/40 p-2 dark:border-blue-700 dark:bg-blue-900/20">
+      <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-2">
         <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
           Платёжеспособные (DaData)
         </div>

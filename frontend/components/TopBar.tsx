@@ -258,13 +258,16 @@ export function TopBar() {
       <div className="container mx-auto px-6 flex items-center justify-between gap-4 h-full">
         <Link
           href="/"
-          className="flex items-center gap-2 shrink-0 mr-2 text-gray-900 dark:text-white hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 shrink-0 mr-2 td-default hover:opacity-90 transition-opacity"
           aria-label="Главная"
         >
-          <div className="w-8 h-8 rounded-[10px] bg-saas-primary-weak flex items-center justify-center shrink-0" aria-hidden>
-            <span className="text-saas-primary font-bold text-sm">S</span>
+          <div
+            className="w-8 h-8 rounded-v2-sm bg-brand-gradient shadow-v2-sm flex items-center justify-center shrink-0"
+            aria-hidden
+          >
+            <span className="text-white font-bold text-sm">S</span>
           </div>
-          <span className="font-semibold text-base">SpinLid</span>
+          <span className="font-display font-semibold tracking-tight text-base">SpinLid</span>
         </Link>
         <nav
           className="flex items-center gap-3 overflow-x-auto flex-1 min-w-0 py-1 -mx-1 px-1"

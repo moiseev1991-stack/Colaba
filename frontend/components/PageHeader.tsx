@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
+// §4.19 ТЗ редизайна 2026-06-03 (Phase C batch 9): PageHeader на v2 — breadcrumbs + h1.
+
 export type BreadcrumbItem = {
   label: string;
   href?: string;
@@ -16,16 +18,28 @@ interface PageHeaderProps {
 
 export function PageHeader({ breadcrumb, title, actions }: PageHeaderProps) {
   return (
-    <header className="mb-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/40 px-4 py-2.5 min-h-[44px] flex items-center">
+    <header
+      className="mb-4 border-b px-4 py-2.5 min-h-[44px] flex items-center"
+      style={{
+        background: 'hsl(var(--surface-2) / 0.6)',
+        borderColor: 'hsl(var(--border))',
+      }}
+    >
       <div className="page-header-inner flex flex-col md:flex-row md:flex-wrap items-start md:items-center justify-between gap-2 md:gap-3 w-full">
         <div className="min-w-0 w-full md:flex-1">
           {breadcrumb && breadcrumb.length > 0 && (
-            <nav className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <nav
+              className="flex items-center gap-1 text-xs mb-1"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
               {breadcrumb.map((item, i) => (
                 <span key={i} className="flex items-center gap-1">
                   {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />}
                   {item.href ? (
-                    <Link href={item.href} className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                    <Link
+                      href={item.href}
+                      className="transition-colors hover:text-[hsl(var(--text))]"
+                    >
                       {item.label}
                     </Link>
                   ) : (
@@ -35,7 +49,10 @@ export function PageHeader({ breadcrumb, title, actions }: PageHeaderProps) {
               ))}
             </nav>
           )}
-          <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white leading-tight">
+          <h1
+            className="font-display font-semibold tracking-tight text-base sm:text-lg leading-tight"
+            style={{ color: 'hsl(var(--text))' }}
+          >
             {title}
           </h1>
         </div>

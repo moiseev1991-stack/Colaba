@@ -24,10 +24,10 @@ function InfoBadge({
   const base = 'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium';
   const variants = {
     source:
-      'bg-blue-500/10 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300 border border-blue-400/20 dark:border-blue-500/25',
-    ok: 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300 border border-emerald-400/20 dark:border-emerald-500/25',
-    warn: 'bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300 border border-amber-400/20 dark:border-amber-500/25',
-    error: 'bg-red-500/10 text-red-700 dark:bg-red-400/15 dark:text-red-300 border border-red-400/20 dark:border-red-500/25',
+      'bg-[var(--signal-cool-bg)] text-[color:var(--signal-cool)] border border-[color:var(--signal-cool)]/30',
+    ok: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] border border-[color:var(--signal-good)]/30',
+    warn: 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border border-[color:var(--signal-warm)]/30',
+    error: 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)] border border-[color:var(--signal-hot)]/30',
     neutral: 'bg-slate-500/10 text-slate-600 dark:bg-slate-400/15 dark:text-slate-300 border border-slate-400/20 dark:border-slate-500/25',
   };
   return <span className={`${base} ${variants[variant]}`}>{label}</span>;
@@ -43,11 +43,11 @@ function UrlPill({ url }: { url: string }) {
       className="group flex items-center gap-1.5 min-w-0 rounded-md px-2 py-1.5 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-600/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 transition-colors duration-150"
       title={url}
     >
-      <Link2 className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
-      <span className="text-sm text-blue-600 dark:text-blue-400 truncate flex-1 min-w-0">
+      <Link2 className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" />
+      <span className="text-sm text-brand-600 dark:text-brand-400 truncate flex-1 min-w-0">
         {url.replace(/^https?:\/\//, '')}
       </span>
-      <ExternalLink className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100" />
+      <ExternalLink className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100" />
     </a>
   );
 }
@@ -165,7 +165,7 @@ function ContactActionCard({
   const iconColor =
     type === 'phone'
       ? 'text-emerald-600 dark:text-emerald-400'
-      : 'text-blue-600 dark:text-blue-400';
+      : 'text-brand-600 dark:text-brand-400';
 
   const handleCopy = useCallback(
     async (e: React.MouseEvent) => {

@@ -124,10 +124,10 @@ export default function DemoPage() {
                   <div className="mt-0.5 text-xs text-slate-500">{c.address}</div>
                 </div>
                 <span
-                  className={`shrink-0 rounded-md px-2 py-1 text-[12px] font-semibold ${
-                    c.rating >= 4 ? 'bg-emerald-50 text-emerald-700' :
-                    c.rating <= 3.5 ? 'bg-red-50 text-red-700' :
-                    'bg-amber-50 text-amber-700'
+                  className={`shrink-0 rounded-v2-sm px-2 py-1 text-[12px] font-semibold ${
+                    c.rating >= 4 ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' :
+                    c.rating <= 3.5 ? 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]' :
+                    'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)]'
                   }`}
                 >
                   ★ {c.rating.toFixed(1)}
@@ -138,7 +138,7 @@ export default function DemoPage() {
                 <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">
                   {c.reviewsCount} отзывов
                 </span>
-                <span className="rounded-md bg-red-50 px-2 py-0.5 text-red-700 ring-1 ring-inset ring-red-200">
+                <span className="rounded-v2-sm bg-[var(--signal-hot-bg)] px-2 py-0.5 text-[color:var(--signal-hot)] ring-1 ring-inset ring-[color:var(--signal-hot)]/30">
                   негатив {c.reviewsNegative}
                 </span>
               </div>
@@ -163,15 +163,15 @@ export default function DemoPage() {
 
               <div className="mt-3 space-y-1.5">
                 {c.topPains.map((p, i) => (
-                  <div key={i} className="rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5">
+                  <div key={i} className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2 py-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                      <span className="rounded-pill bg-[var(--signal-warm)]/20 px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)]">
                         {p.label}
                       </span>
-                      <span className="text-[11px] text-amber-700/80">× {p.mentionCount}</span>
+                      <span className="text-[11px] text-[color:var(--signal-warm)]/80">× {p.mentionCount}</span>
                     </div>
                     <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700">
-                      <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+                      <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
                       <span className="italic">«{p.quote}»</span>
                     </div>
                   </div>

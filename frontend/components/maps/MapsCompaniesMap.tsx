@@ -102,7 +102,7 @@ export default function MapsCompaniesMap({ companies, aiAnalyses, onOpenCompany 
 
   if (withCoords.length === 0) {
     return (
-      <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-800">
+      <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-6 text-sm text-[color:var(--signal-warm)]">
         У этих компаний не сохранены координаты — карту построить не из чего.
         Это бывает у старых поисков (до миграции координат в API). Сделай новый
         поиск — у свежих компаний координаты есть.

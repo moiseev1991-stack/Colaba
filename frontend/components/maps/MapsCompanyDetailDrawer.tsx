@@ -356,9 +356,9 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-700/50 dark:bg-blue-900/20">
+    <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[12px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+        <div className="text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
           Юр.данные (DaData)
         </div>
         {typeof legal.match_confidence === 'number' && (
@@ -610,9 +610,9 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
   const sentiment = review.sentiment as 'positive' | 'negative' | 'neutral' | null;
   const accent =
     sentiment === 'negative'
-      ? 'border-l-red-400 bg-red-50/40 dark:bg-red-900/20'
+      ? 'border-l-[color:var(--signal-hot)] bg-[var(--signal-hot-bg)]'
       : sentiment === 'positive'
-        ? 'border-l-emerald-400 bg-emerald-50/30 dark:bg-emerald-900/20'
+        ? 'border-l-[color:var(--signal-good)] bg-[var(--signal-good-bg)]'
         : 'border-l-slate-300 bg-white dark:border-l-slate-600 dark:bg-slate-900';
 
   return (
@@ -627,7 +627,7 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
         )}
         {sentiment && <SentimentBadge sentiment={sentiment} />}
         {review.has_owner_reply && (
-          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+          <span className="rounded-v2-sm bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[color:var(--signal-good)]">
             ответ владельца
           </span>
         )}
@@ -686,8 +686,8 @@ function StarRating({ value }: { value: number }) {
 
 function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'neutral' }) {
   const cfg = {
-    positive: { label: 'позитив', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' },
-    negative: { label: 'негатив', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
+    positive: { label: 'позитив', cls: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' },
+    negative: { label: 'негатив', cls: 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]' },
     neutral: { label: 'нейтр.', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200' },
   }[sentiment];
   return (
@@ -721,7 +721,7 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === needle.toLowerCase() ? (
-          <mark key={i} className="rounded bg-amber-200/70 px-0.5 text-slate-900 dark:bg-amber-500/40 dark:text-amber-100">
+          <mark key={i} className="rounded bg-[var(--signal-warm)]/40 px-0.5 text-slate-900 dark:text-amber-100">
             {part}
           </mark>
         ) : (

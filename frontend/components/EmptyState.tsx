@@ -75,7 +75,7 @@ export function EmptyState({
               background: 'rgb(252 211 77 / 0.08)',
             }}
           >
-            <span className="inline-flex items-center px-1.5 h-5 text-[10px] font-bold uppercase tracking-wider rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
+            <span className="inline-flex items-center px-1.5 h-5 text-[10px] font-bold uppercase tracking-wider rounded-v2-sm bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border border-[color:var(--signal-warm)]/40">
               Пример
             </span>
             <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>

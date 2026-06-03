@@ -523,13 +523,13 @@ export function MapsSearchResults({
                     </span>
                   </li>
                   <li>
-                    <span className="mr-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-800 ring-1 ring-inset ring-blue-200">5л · ₽ 1.2М</span>
+                    <span className="mr-1 rounded-v2-sm bg-[var(--signal-cool-bg)] px-1.5 py-0.5 text-[11px] text-[color:var(--signal-cool)] ring-1 ring-inset ring-[color:var(--signal-cool)]/30">5л · ₽ 1.2М</span>
                     <span className="text-slate-600 dark:text-slate-300">
                       <b>Юр.данные (DaData)</b>: возраст компании в годах и оборот за последний год (если DaData отдала). Клик по карточке → блок «Юр.данные».
                     </span>
                   </li>
                   <li>
-                    <span className="mr-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-700 ring-1 ring-inset ring-amber-200">пилюли</span>
+                    <span className="mr-1 rounded-v2-sm bg-[var(--signal-warm-bg)] px-1.5 py-0.5 text-[11px] text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30">пилюли</span>
                     <span className="text-slate-600 dark:text-slate-300">
                       Жёлтый блок = боль клиентов (AI разобрал отзывы), розовый блок = кусок негативного отзыва (AI ещё не классифицировал боль).
                     </span>
@@ -541,7 +541,7 @@ export function MapsSearchResults({
               </div>
             )}
             {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
-              <div className="mt-1 inline-block rounded-md border border-emerald-200 bg-emerald-50/70 px-2 py-0.5 text-[11px] text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <div className="mt-1 inline-block rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-0.5 text-[11px] text-[color:var(--signal-good)]">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
               </div>
             )}
@@ -584,7 +584,7 @@ export function MapsSearchResults({
             {!isTerminal && (
               <div className="mt-1 flex items-center gap-2">
                 <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div className="h-full w-1/3 animate-pulse bg-emerald-500" />
+                  <div className="h-full w-1/3 animate-pulse bg-brand-gradient" />
                 </div>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   карточки появляются по мере парсинга
@@ -660,7 +660,7 @@ export function MapsSearchResults({
                 <button
                   onClick={handleExportWebsiteLeadsXlsx}
                   title="XLSX с двумя вкладками: «Лиды» (для продаж) + «Производство сайта» (для верстальщика). Только компании без собственного сайта."
-                  className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
+                  className="rounded-v2-sm border border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] px-3 py-2 text-sm font-medium text-[color:var(--signal-good)] hover:opacity-90"
                 >
                   💼 Excel: лиды на сайт
                 </button>
@@ -676,15 +676,15 @@ export function MapsSearchResults({
         </div>
 
         {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <div className="rounded-v2-sm bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
             Ошибка стрима: {stream.error}
           </div>
         )}
 
         {search.status === 'failed' && isSoftEmptyError(search.error) && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200">
+          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
             <div className="font-medium">Ничего не нашлось</div>
-            <div className="mt-1 text-amber-700 dark:text-amber-300">
+            <div className="mt-1 opacity-90">
               По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу
               или сменить город.
             </div>
@@ -692,9 +692,9 @@ export function MapsSearchResults({
         )}
 
         {search.status === 'failed' && !isSoftEmptyError(search.error) && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700/50 dark:bg-red-900/30 dark:text-red-200">
+          <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-4 py-3 text-sm text-[color:var(--signal-hot)]">
             <div className="font-medium">Поиск завершился ошибкой</div>
-            <div className="mt-1 text-red-700 dark:text-red-300">
+            <div className="mt-1 opacity-90">
               {search.error_type === 'ConnectTimeout' ? (
                 <>
                   2GIS API не отвечает с этой машины (TLS-таймаут). Чаще всего это сеть провайдера
@@ -722,9 +722,9 @@ export function MapsSearchResults({
         {search.status === 'completed' &&
           search.error_type === 'EmptyResult' &&
           renderTotal === 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200">
+            <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
               <div className="font-medium">Ничего не нашлось</div>
-              <div className="mt-1 text-amber-700 dark:text-amber-300">{search.error}</div>
+              <div className="mt-1 opacity-90">{search.error}</div>
             </div>
           )}
 
@@ -737,9 +737,9 @@ export function MapsSearchResults({
         )}
 
         {!isLoading && companiesEverLoaded && renderList.length === 0 && search.status !== 'failed' && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/30 dark:text-amber-200">
+          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
             <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
-            <div className="mt-1 text-amber-700 dark:text-amber-300">
+            <div className="mt-1 opacity-90">
               Ослабь критерии в панели слева (например, убери минимум рейтинга
               или отключи «Только с сайтом») или сбрось пресет.
             </div>
@@ -789,7 +789,7 @@ export function MapsSearchResults({
                   <button
                     type="button"
                     onClick={() => setBulkAddOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1 font-medium text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                    className="inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-gradient px-2.5 py-1 font-medium text-white shadow-v2-sm hover:shadow-v2-hover"
                   >
                     Добавить выбранные в список
                   </button>

@@ -16,10 +16,11 @@ export function ClientHydrationFix({ children }: { children: React.ReactNode }) 
     return (
       <div
         id="app-loading"
-        className="min-h-screen flex items-center justify-center bg-gray-50"
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'hsl(var(--bg))' }}
         suppressHydrationWarning
       >
-        <span className="text-gray-500">Загрузка...</span>
+        <span style={{ color: 'hsl(var(--muted))' }}>Загрузка...</span>
       </div>
     );
   }

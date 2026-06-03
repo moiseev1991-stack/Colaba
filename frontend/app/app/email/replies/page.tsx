@@ -24,7 +24,7 @@ const SAMPLE_REPLIES: Array<EmailReply & { _category: string; _categoryColor: st
     forwarded_to: null,
     received_at: new Date(Date.now() - 1000 * 60 * 28).toISOString(),
     _category: 'Интерес',
-    _categoryColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40',
+    _categoryColor: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] border-[color:var(--signal-good)]/40',
   },
   {
     id: -2,
@@ -66,7 +66,7 @@ const SAMPLE_REPLIES: Array<EmailReply & { _category: string; _categoryColor: st
     forwarded_to: null,
     received_at: new Date(Date.now() - 1000 * 60 * 60 * 22).toISOString(),
     _category: 'Авто-ответ',
-    _categoryColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40',
+    _categoryColor: 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border-[color:var(--signal-warm)]/40',
   },
 ];
 
@@ -224,8 +224,8 @@ export default function EmailRepliesPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full border ${
                       reply.is_processed
-                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
-                        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40'
+                        ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] border-[color:var(--signal-good)]/40'
+                        : 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border-[color:var(--signal-warm)]/40'
                     }`}>
                       {reply.is_processed ? 'Обработан' : 'Новый'}
                     </span>

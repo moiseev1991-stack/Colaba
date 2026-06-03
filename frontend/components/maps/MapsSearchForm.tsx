@@ -469,7 +469,7 @@ export function MapsSearchForm({ onStarted }: Props) {
               )}
               title="Конкурентный режим: компании в радиусе X км от заданного адреса"
             >
-              По радиусу <span className="ml-1 rounded-sm bg-amber-200 px-1.5 text-[10px] text-amber-900">new</span>
+              По радиусу <span className="ml-1 rounded-sm bg-[var(--signal-warm)]/40 px-1.5 text-[10px] text-[color:var(--signal-warm)]">new</span>
             </button>
           </div>
 
@@ -633,7 +633,7 @@ export function MapsSearchForm({ onStarted }: Props) {
               </div>
             </div>
             {presetLabel && (
-              <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[12px] text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <div className="mb-2 rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-1 text-[12px] text-[color:var(--signal-good)]">
                 Применён: <strong>{presetLabel}</strong> — применится к выдаче сразу после поиска.
                 {aiPreset && (
                   <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-[11px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
@@ -671,7 +671,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     className={cn(
                       'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
                         : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700'
                     )}
                   >
@@ -692,8 +692,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                     className={cn(
                       'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
-                        ? 'border-emerald-500 bg-emerald-50'
-                        : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
+                        ? 'border-brand-500 bg-brand-50'
+                        : 'border-brand-200 bg-brand-50/40 hover:border-brand-400'
                     )}
                   >
                     <span className="text-[12px] font-medium text-slate-800">
@@ -772,7 +772,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     key={s.id}
                     className={cn(
                       'flex cursor-pointer items-center gap-2.5 rounded-md border px-3.5 py-2.5 text-[13px] transition-colors',
-                      checked ? 'border-emerald-500 bg-emerald-500/10' : 'border-[hsl(var(--border))] hover:border-[hsl(var(--accent)/0.6)]'
+                      checked ? 'border-brand-500 bg-brand-500/10' : 'border-[hsl(var(--border))] hover:border-brand-400'
                     )}
                   >
                     <input

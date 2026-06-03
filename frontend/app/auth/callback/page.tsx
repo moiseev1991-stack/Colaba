@@ -2,8 +2,11 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { CardV2 } from '@/components/ui/CardV2';
+
+// §4.18 ТЗ редизайна 2026-06-03 (Phase C batch 7): OAuth callback на v2.
 
 function CallbackContent() {
   const searchParams = useSearchParams();
@@ -60,14 +63,21 @@ function CallbackContent() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand">
       <div className="max-w-md w-full">
-        <div className="rounded-lg border p-8 shadow-lg bg-white dark:bg-gray-800">
+        <CardV2 className="p-8">
           {status === 'loading' && (
             <div className="text-center py-8">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-500" />
-              <h2 className="text-xl font-semibold mb-2">Обработка авторизации...</h2>
-              <p className="text-gray-500 dark:text-gray-400">
+              <Loader2
+                className="h-12 w-12 animate-spin mx-auto mb-4 text-brand-600 dark:text-brand-400"
+              />
+              <h2
+                className="font-display font-semibold tracking-tight text-xl mb-2"
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                Обработка авторизации...
+              </h2>
+              <p style={{ color: 'hsl(var(--muted))' }}>
                 Пожалуйста, подождите
               </p>
             </div>
@@ -75,30 +85,44 @@ function CallbackContent() {
 
           {status === 'success' && (
             <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-              <h2 className="text-xl font-semibold mb-2 text-green-600 dark:text-green-400">
+              <CheckCircle
+                className="h-12 w-12 mx-auto mb-4"
+                style={{ color: 'var(--signal-good)' }}
+              />
+              <h2
+                className="font-display font-semibold tracking-tight text-xl mb-2"
+                style={{ color: 'var(--signal-good)' }}
+              >
                 Успешно!
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">{message}</p>
+              <p style={{ color: 'hsl(var(--muted))' }}>{message}</p>
             </div>
           )}
 
           {status === 'error' && (
             <div className="text-center py-8">
-              <XCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-              <h2 className="text-xl font-semibold mb-2 text-red-600 dark:text-red-400">
+              <XCircle
+                className="h-12 w-12 mx-auto mb-4"
+                style={{ color: 'var(--signal-hot)' }}
+              />
+              <h2
+                className="font-display font-semibold tracking-tight text-xl mb-2"
+                style={{ color: 'var(--signal-hot)' }}
+              >
                 Ошибка
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">{message}</p>
-              <Button
+              <p className="mb-6" style={{ color: 'hsl(var(--muted))' }}>{message}</p>
+              <ButtonV2
+                variant="primary"
+                size="md"
                 onClick={() => router.push('/auth/login')}
                 className="w-full"
               >
                 Вернуться к входу
-              </Button>
+              </ButtonV2>
             </div>
           )}
-        </div>
+        </CardV2>
       </div>
     </div>
   );
@@ -108,7 +132,7 @@ export default function OAuthCallbackPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+        <Loader2 className="h-12 w-12 animate-spin text-brand-600 dark:text-brand-400" />
       </div>
     }>
       <CallbackContent />

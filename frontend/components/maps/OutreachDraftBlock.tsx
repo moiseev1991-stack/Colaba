@@ -133,8 +133,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
           onClick={() => handleGenerate(false)}
           disabled={isLoading}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60',
-            'dark:bg-emerald-700 dark:hover:bg-emerald-600'
+            'inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-gradient px-3 py-1.5 text-xs font-medium text-white shadow-v2-sm hover:shadow-v2-hover disabled:opacity-60',
           )}
         >
           <Sparkles className="h-3.5 w-3.5" />

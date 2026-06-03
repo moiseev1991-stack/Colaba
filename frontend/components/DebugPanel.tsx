@@ -39,14 +39,22 @@ export function DebugPanel() {
 
   return (
     <div
-      className="fixed bottom-2 left-2 z-[9999] max-w-[280px] rounded-[8px] border border-gray-300 dark:border-gray-600 bg-white/95 dark:bg-gray-800/95 p-3 text-[11px] font-mono shadow-lg backdrop-blur"
-      style={{ color: 'hsl(var(--text))' }}
+      className="fixed bottom-2 left-2 z-[9999] max-w-[280px] rounded-v2-sm border p-3 text-[11px] font-mono shadow-v2 backdrop-blur"
+      style={{
+        background: 'hsl(var(--surface) / 0.95)',
+        borderColor: 'hsl(var(--border))',
+        color: 'hsl(var(--text))',
+      }}
     >
-      <div className="font-semibold mb-2 text-gray-600 dark:text-gray-400">Debug</div>
+      <div className="font-semibold mb-2" style={{ color: 'hsl(var(--muted))' }}>Debug</div>
       <div>Auth: {token ? 'loggedIn' : 'no token'}</div>
       <div>Theme: {theme}</div>
       <div>Module: {currentModule}</div>
-      {lastError && <div className="text-red-600 dark:text-red-400 truncate" title={lastError}>Last error: {lastError}</div>}
+      {lastError && (
+        <div className="truncate" style={{ color: 'var(--signal-hot)' }} title={lastError}>
+          Last error: {lastError}
+        </div>
+      )}
     </div>
   );
 }

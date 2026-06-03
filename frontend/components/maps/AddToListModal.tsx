@@ -116,7 +116,7 @@ export function AddToListModal({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {error && (
-            <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mb-3 rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
               {error}
             </div>
           )}
