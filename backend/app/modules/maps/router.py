@@ -47,6 +47,7 @@ from app.modules.maps.schemas import (
     CompanyLegalOut,
     CompanyOut,
     CompanyPainOut,
+    CompanySourceOut,
     MapSearchCreate,
     MapSearchFilter,
     MapSearchOut,
@@ -275,12 +276,17 @@ async def list_search_companies(
             select(CompanyLegal).where(CompanyLegal.company_id.in_(ids))
         )).scalars().all()
         legal_map = {int(l.company_id): l for l in legals}
+    # Phase 4 multi-source: источники + контакты per-source одним батчем.
+    sources_map = await service.attach_sources_for_companies(db, [c.id for c in items])
     out_items: list[CompanyOut] = []
     for c in items:
         out = CompanyOut.model_validate(c)
         out.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(c.id, [])]
         if not out.top_pains:
             out.negative_snippets = negative_snippets_map.get(c.id, [])
+        # sources_profiles: список источниковых профилей компании. У одноисточниковых
+        # длина 1, у склеенных 2gis+yandex — 2 (после Phase 2/3).
+        out.sources_profiles = [CompanySourceOut(**s) for s in sources_map.get(c.id, [])]
         legal = legal_map.get(c.id)
         if legal and legal.status == "ok":
             out.legal = CompanyLegalOut(
@@ -434,6 +440,9 @@ async def get_company(
     detail.recent_reviews = [ReviewOut.model_validate(r) for r in recent]
     pains_by_company = await service.get_top_pains_for_companies(db, [company.id], limit_per_company=5)
     detail.top_pains = [CompanyPainOut(**p) for p in pains_by_company.get(company.id, [])]
+    # Phase 4 multi-source: источники + контакты per-source для drawer-карточки.
+    sources_map = await service.attach_sources_for_companies(db, [company.id])
+    detail.sources_profiles = [CompanySourceOut(**s) for s in sources_map.get(company.id, [])]
 
     # Блок 2 ТЗ: юр.данные из company_legal (DaData) — для блока в drawer.
     from app.models.company_legal import CompanyLegal
@@ -469,6 +478,8 @@ async def list_company_reviews(
     min_rating: Optional[int] = Query(default=None, ge=1, le=5),
     max_rating: Optional[int] = Query(default=None, ge=1, le=5),
     has_owner_reply: Optional[bool] = Query(default=None),
+    # Phase 4 multi-source: фильтр для табов «Все / 2GIS / Я.Карты» в drawer.
+    source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -486,6 +497,8 @@ async def list_company_reviews(
         q = q.where(Review.rating <= max_rating)
     if has_owner_reply is not None:
         q = q.where(Review.has_owner_reply == has_owner_reply)
+    if source:
+        q = q.where(Review.source == source)
     q = q.order_by(Review.posted_at.desc().nullslast())
 
     from sqlalchemy import func
