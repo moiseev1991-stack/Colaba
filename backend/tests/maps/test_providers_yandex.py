@@ -9,12 +9,9 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
-
 import httpx
 import pytest
 
-from app.modules.maps.providers import CaptchaWallError
 from app.modules.maps.providers import yandex_maps as ym
 from app.modules.maps.providers.yandex_maps import (
     YandexMapsProvider,
@@ -109,135 +106,11 @@ def _make_response(text: str, status: int = 200, headers: dict[str, str] | None 
 
 
 # ---------------------------------------------------------------------------
-# search_companies tests
+# search_companies — теперь идёт через Playwright (см. yandex_maps.py), требует
+# живой chromium + прокси, юнит-тестами не покрываем (E2E на проде).
+# Старые тесты, мокавшие httpx fetch_with_retry / JSON-LD parser, удалены —
+# тот код-путь больше не вызывается.
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_search_companies_happy_path(monkeypatch):
-    html = (FIXTURES / "yandex_search_jsonld.html").read_text(encoding="utf-8")
-    calls: list[dict[str, Any]] = []
-
-    async def fake_fetch(url, **kwargs):
-        calls.append({"url": url, **kwargs})
-        return _make_response(html)
-
-    monkeypatch.setattr(ym, "fetch_with_retry", fake_fetch)
-
-    provider = YandexMapsProvider(use_proxy=False)
-    companies = []
-    async for c in provider.search_companies("стоматология", "Москва", limit=10):
-        companies.append(c)
-
-    assert len(companies) == 3
-    # niche/city проставляются провайдером
-    assert all(c.niche == "стоматология" and c.city == "Москва" for c in companies)
-    # один запрос
-    assert len(calls) == 1
-    assert "text=" in calls[0]["url"]
-    assert "yandex.ru/maps" in calls[0]["url"]
-
-
-@pytest.mark.asyncio
-async def test_search_companies_respects_limit(monkeypatch):
-    html = (FIXTURES / "yandex_search_jsonld.html").read_text(encoding="utf-8")
-
-    async def fake_fetch(url, **kwargs):
-        return _make_response(html)
-
-    monkeypatch.setattr(ym, "fetch_with_retry", fake_fetch)
-    provider = YandexMapsProvider(use_proxy=False)
-
-    companies = []
-    async for c in provider.search_companies("стоматология", "Москва", limit=2):
-        companies.append(c)
-    assert len(companies) == 2
-
-
-# ---------------------------------------------------------------------------
-# Captcha tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_detect_captcha_marker_triggers_solver(monkeypatch):
-    """При первой капче — пробуем solver; если он вернул токен, повторяем
-    запрос с cookie и получаем нормальный HTML."""
-    captcha_html = (FIXTURES / "yandex_captcha_wall.html").read_text(encoding="utf-8")
-    success_html = (FIXTURES / "yandex_search_jsonld.html").read_text(encoding="utf-8")
-
-    fetch_responses = [_make_response(captcha_html), _make_response(success_html)]
-    fetch_calls: list[dict[str, Any]] = []
-
-    async def fake_fetch(url, **kwargs):
-        fetch_calls.append(kwargs)
-        return fetch_responses.pop(0)
-
-    solver_calls: list[tuple[str, str]] = []
-
-    async def fake_solver(html, url, db):
-        solver_calls.append((url, "called"))
-        return "fake-smart-token"
-
-    monkeypatch.setattr(ym, "fetch_with_retry", fake_fetch)
-    monkeypatch.setattr(ym, "solve_yandex_smartcaptcha", fake_solver)
-
-    db_mock = MagicMock()
-    provider = YandexMapsProvider(db=db_mock, use_proxy=False)
-    companies = [c async for c in provider.search_companies("стоматология", "Москва", limit=10)]
-
-    assert len(companies) == 3
-    assert len(solver_calls) == 1
-    # второй запрос ушёл с cookie smart-token
-    assert fetch_calls[1].get("cookies", {}).get("smart-token") == "fake-smart-token"
-
-
-@pytest.mark.asyncio
-async def test_captcha_wall_three_attempts(monkeypatch):
-    """Если solver не справляется (возвращает None) трижды → CaptchaWallError."""
-    captcha_html = (FIXTURES / "yandex_captcha_wall.html").read_text(encoding="utf-8")
-
-    async def fake_fetch(url, **kwargs):
-        return _make_response(captcha_html)
-
-    async def fake_solver(html, url, db):
-        return None  # solver не справился
-
-    monkeypatch.setattr(ym, "fetch_with_retry", fake_fetch)
-    monkeypatch.setattr(ym, "solve_yandex_smartcaptcha", fake_solver)
-
-    db_mock = MagicMock()
-    provider = YandexMapsProvider(db=db_mock, use_proxy=False)
-
-    with pytest.raises(CaptchaWallError):
-        async for _ in provider.search_companies("стоматология", "Москва", limit=10):
-            pass
-
-
-@pytest.mark.asyncio
-async def test_captcha_without_db_skips_solver(monkeypatch):
-    """Если db=None — solver не зовём, и капча сразу прокинет CaptchaWallError
-    после MAX_CAPTCHA_ATTEMPTS попыток."""
-    captcha_html = (FIXTURES / "yandex_captcha_wall.html").read_text(encoding="utf-8")
-
-    async def fake_fetch(url, **kwargs):
-        return _make_response(captcha_html)
-
-    solver_calls: list[Any] = []
-
-    async def fake_solver(html, url, db):
-        solver_calls.append(1)
-        return None
-
-    monkeypatch.setattr(ym, "fetch_with_retry", fake_fetch)
-    monkeypatch.setattr(ym, "solve_yandex_smartcaptcha", fake_solver)
-
-    provider = YandexMapsProvider(db=None, use_proxy=False)
-    with pytest.raises(CaptchaWallError):
-        async for _ in provider.search_companies("стоматология", "Москва", limit=10):
-            pass
-
-    assert len(solver_calls) == 0  # solver не вызван
 
 
 # ---------------------------------------------------------------------------

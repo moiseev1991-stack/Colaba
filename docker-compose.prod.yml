@@ -177,7 +177,7 @@ services:
     # Низкий prefetch + concurrency=2 (для HTML-парсера 2GIS отдельный rate_limit
     # на самом таске — 20/m). Без отдельной очереди maps_2gis_html таски бы
     # копились в celery default-кью с большим concurrency и долбили 2GIS.
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews,maps_2gis_html
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews,maps_2gis_html,maps_yandex_html
 
   frontend:
     image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}

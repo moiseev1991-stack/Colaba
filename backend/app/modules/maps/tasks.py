@@ -439,6 +439,21 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning("_maybe_enrich_contacts: cannot enqueue 2gis_html for #%d: %s", company.id, e)
 
+    # Я.Карты: Playwright-парсер карточки yandex.ru/maps/org/{id}/. Триггерим
+    # для source='yandex_maps' с external_id, по которым мы ещё не ходили на
+    # карточку (маркеры fetched_yandex_url / error_yandex в contacts_extra).
+    try:
+        extra = company.contacts_extra or {}
+        already_tried_yandex_html = "fetched_yandex_url" in extra or "error_yandex" in extra
+        if (
+            company.source == "yandex_maps"
+            and company.external_id
+            and not already_tried_yandex_html
+        ):
+            enrich_company_from_yandex_html.delay(company.id)
+    except Exception as e:
+        logger.warning("_maybe_enrich_contacts: cannot enqueue yandex_html for #%d: %s", company.id, e)
+
 
 async def _reenrich_cached_companies_async(
     db, niche: str, city: str, source: str, limit: int = 300
@@ -484,6 +499,16 @@ async def _reenrich_cached_companies_async(
                     queued += 1
                 except Exception as e:
                     logger.warning("_reenrich: cannot enqueue 2gis_html #%s: %s", r["id"], e)
+
+        # Я.Карты Playwright — для yandex_maps-компаний по аналогии с 2GIS.
+        if r["source"] == "yandex_maps" and r["external_id"]:
+            extra = r["contacts_extra"] or {}
+            if "fetched_yandex_url" not in extra and "error_yandex" not in extra:
+                try:
+                    enrich_company_from_yandex_html.delay(int(r["id"]))
+                    queued += 1
+                except Exception as e:
+                    logger.warning("_reenrich: cannot enqueue yandex_html #%s: %s", r["id"], e)
     return queued
 
 
@@ -729,6 +754,138 @@ def enrich_company_from_2gis_html(self, company_id: int):
         return asyncio.run(_enrich_company_from_2gis_html_async(company_id))
     except Exception as exc:
         logger.warning("enrich_company_from_2gis_html retrying company=%d: %s", company_id, exc)
+        raise self.retry(exc=exc, countdown=60, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# enrich_company_from_yandex_html — Playwright-парсер карточки yandex.ru/maps/org/{id}
+# ---------------------------------------------------------------------------
+
+
+async def _enrich_company_from_yandex_html_async(company_id: int) -> dict:
+    """Качает yandex.ru/maps/org/{external_id}/ через Playwright, мерджит контакты в БД.
+
+    Срабатывает только для source='yandex_maps' с external_id. Аналогично 2GIS-енричу
+    использует COALESCE-merge — пустые поля не затирают существующие.
+    """
+    from app.modules.maps.enrich_yandex import enrich_from_yandex_card
+
+    async with AsyncSessionLocal() as db:
+        company = await db.get(Company, company_id)
+        if company is None:
+            return {"status": "not_found"}
+        if company.source != "yandex_maps" or not company.external_id:
+            return {"status": "skip_not_yandex_maps"}
+
+        result = await enrich_from_yandex_card(company.external_id)
+
+        existing_extra: dict = dict(company.contacts_extra or {})
+        new_extra: dict = {}
+
+        def merge_list(key: str, new_vals: list[str]) -> None:
+            if not new_vals:
+                return
+            cur = existing_extra.get(key) or []
+            cur_set = set(cur)
+            merged = list(cur)
+            for v in new_vals:
+                if v not in cur_set:
+                    merged.append(v)
+                    cur_set.add(v)
+            new_extra[key] = merged
+
+        merge_list("phones", result.phones)
+        merge_list("telegrams", result.telegrams)
+        merge_list("vks", result.vks)
+        merge_list("whatsapps", result.whatsapps)
+        merge_list("instagrams", result.instagrams)
+        merge_list("facebooks", result.facebooks)
+        merge_list("oks", result.oks)
+        merge_list("youtubes", result.youtubes)
+        if result.fetched_url:
+            new_extra["fetched_yandex_url"] = result.fetched_url
+        if result.error:
+            new_extra["error_yandex"] = result.error
+
+        existing_emails = list(company.emails or [])
+        merged_emails = list(existing_emails)
+        for e in result.emails:
+            if e not in merged_emails:
+                merged_emails.append(e)
+
+        new_phone = company.phone
+        if not new_phone and result.phones:
+            new_phone = result.phones[0]
+
+        new_website = company.website
+        if not new_website and result.website:
+            new_website = result.website
+
+        full_extra = {**existing_extra, **new_extra} if new_extra else (existing_extra or None)
+
+        await db.execute(
+            update(Company)
+            .where(Company.id == company_id)
+            .values(
+                phone=new_phone,
+                website=new_website,
+                emails=merged_emails or None,
+                contacts_extra=full_extra,
+            )
+        )
+        await db.commit()
+
+        try:
+            from app.modules.maps.lead_temperature import recompute_for_company as _rt
+            from app.modules.maps.website_lead_score import recompute_for_company as _rw
+            await _rt(db, company_id)
+            await _rw(db, company_id)
+            await db.commit()
+        except Exception:
+            logger.exception(
+                "scores recompute failed after enrich_company_from_yandex_html (#%d)",
+                company_id,
+            )
+
+        try:
+            company_after = await db.get(Company, company_id)
+            if company_after and not (company_after.website or "").strip():
+                discover_company_website.delay(company_id)
+        except Exception as e:
+            logger.warning(
+                "discover_company_website enqueue failed for #%d: %s",
+                company_id, e,
+            )
+
+        return {
+            "status": "ok",
+            "phones_found": len(result.phones),
+            "emails_found": len(result.emails),
+            "telegrams_found": len(result.telegrams),
+            "vks_found": len(result.vks),
+            "whatsapps_found": len(result.whatsapps),
+            "website_found": bool(result.website),
+            "error": result.error,
+        }
+
+
+@celery_app.task(
+    name="enrich_company_from_yandex_html",
+    queue="maps_yandex_html",
+    bind=True,
+    max_retries=1,
+    rate_limit="20/m",  # тот же лимит что у 2GIS-енрича — Playwright + прокси, не агрессим
+)
+def enrich_company_from_yandex_html(self, company_id: int):
+    """Качает yandex.ru/maps/org/{external_id}/ и доливает контакты в БД.
+
+    Отдельная очередь maps_yandex_html — чтобы Playwright-таски не конкурировали
+    с легковесными httpx-задачами поиска. Concurrency=1 + rate_limit=20/m.
+    """
+    try:
+        return asyncio.run(_enrich_company_from_yandex_html_async(company_id))
+    except Exception as exc:
+        logger.warning("enrich_company_from_yandex_html retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=60, max_retries=1)
 
 
