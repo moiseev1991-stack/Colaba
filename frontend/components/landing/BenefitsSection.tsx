@@ -2,38 +2,42 @@
 
 import { ArrowRight } from 'lucide-react';
 
+// ТЗ лендинг-рефакта 2026-06-03 §3+§6: переориентация с «парсера контактов»
+// на «диагноз → письмо → отправка». 6 benefits переписаны под главную фишку,
+// StatsRow с выдуманными 50K+/89%/24-7 заменена на честные продуктовые факты.
+
 const BENEFITS = [
   {
-    title: 'Сбор лидов по ключевым запросам',
-    desc: 'Ниша + регион → список компаний и контактов из открытых источников.',
+    title: 'Компании из 2GIS и Яндекс.Карт',
+    desc: 'Ниша + город → реальные карточки с рейтингом, отзывами, телефонами и сайтами.',
   },
   {
-    title: 'Фильтры и нормализация контактов',
-    desc: 'Телефоны, email, сайт, город — приводим к единому виду, убираем мусор.',
+    title: 'Диагноз из отзывов AI',
+    desc: 'Отзывы клиентов проходят через AI: на каждой компании — топ-3 боли с количеством упоминаний.',
   },
   {
-    title: 'Экспорт CSV и копирование',
-    desc: 'В 1 клик выгрузка в таблицу или копирование выбранных строк.',
+    title: 'Цитаты-доказательства',
+    desc: 'Под каждой болью — конкретные слова клиента из отзыва. Не статистика, а живой текст.',
   },
   {
-    title: 'Отправка КП и статусы доставки',
-    desc: 'Отправляйте коммерческие предложения и смотрите: доставлено / открыто / ошибка.',
+    title: 'Черновик письма под боль',
+    desc: 'Один клик — готовый текст: вместо «здравствуйте» — упоминание конкретной жалобы клиента.',
   },
   {
-    title: 'Редактор КП и шаблоны',
-    desc: 'Шаблоны под разные ниши + быстрые правки перед отправкой.',
+    title: 'Лиды без своего сайта',
+    desc: 'Отдельный фильтр: компании без работающего сайта — горячие лиды для веб-студий и SMM.',
   },
   {
-    title: 'История лидов и запусков',
-    desc: 'Возвращайтесь к прошлым выгрузкам, повторяйте удачные сценарии.',
+    title: 'Юр.данные и температура лида',
+    desc: 'Оборот, возраст, ИНН (DaData) и AI-оценка готовности купить — на каждую карточку.',
   },
 ];
 
 const FUNNEL_STEPS = [
-  { label: 'Запрос', accent: false },
-  { label: 'Лиды', accent: false },
-  { label: 'КП', accent: true },
-  { label: 'Статусы', accent: true },
+  { label: 'Ниша + город', accent: false },
+  { label: 'Компании', accent: false },
+  { label: 'Боли', accent: true },
+  { label: 'Письмо', accent: true },
 ];
 
 function MiniFunnel() {
@@ -73,10 +77,11 @@ function MiniFunnel() {
   );
 }
 
-const STATS = [
-  { value: '50K+', label: 'Контактов собрано' },
-  { value: '89%', label: 'Доставляемость' },
-  { value: '24/7', label: 'Автоматизация' },
+// Честные продуктовые факты вместо несуществующей клиентской статистики
+const FACTS = [
+  { value: '2GIS', label: 'основной источник' },
+  { value: 'AI', label: 'анализ отзывов' },
+  { value: '500 / мес', label: 'бесплатно' },
 ];
 
 function StatsRow() {
@@ -89,9 +94,9 @@ function StatsRow() {
         marginTop: '24px',
       }}
     >
-      {STATS.map((stat) => (
+      {FACTS.map((fact) => (
         <div
-          key={stat.label}
+          key={fact.label}
           style={{
             textAlign: 'center',
             padding: '16px 12px',
@@ -102,7 +107,7 @@ function StatsRow() {
         >
           <div
             style={{
-              fontSize: '24px',
+              fontSize: '20px',
               fontWeight: 800,
               background: 'var(--landing-grad-accent)',
               WebkitBackgroundClip: 'text',
@@ -110,10 +115,10 @@ function StatsRow() {
               backgroundClip: 'text',
             }}
           >
-            {stat.value}
+            {fact.value}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--landing-muted)', marginTop: '4px' }}>
-            {stat.label}
+            {fact.label}
           </div>
         </div>
       ))}
@@ -121,58 +126,58 @@ function StatsRow() {
   );
 }
 
+// Демо-карточка → теперь pain-теги + цитата + кнопка «Письмо», а не «Лиды/КП/Статусы»
 function PseudoUICards() {
   return (
     <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
       <div className="benefits-pseudo-card order-2 sm:order-1">
         <div
-          className="w-full max-w-[200px] rounded-[12px] border px-4 py-3 shadow-sm sm:-rotate-2 sm:translate-y-1"
+          className="w-full max-w-[210px] rounded-[12px] border px-4 py-3 shadow-sm sm:-rotate-2 sm:translate-y-1"
           style={{ backgroundColor: 'var(--landing-bg)', borderColor: 'var(--landing-border)' }}
         >
-          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Лиды</div>
-          <div className="mt-2 space-y-1.5 text-[12px]" style={{ color: 'var(--landing-text)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>ООО «Технолоджи»</span>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--landing-accent)' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>ИП Иванов</span>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--landing-accent)' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>АО «Строй»</span>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#94a3b8' }} />
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Компания</div>
+          <div className="mt-2 space-y-1 text-[12px]" style={{ color: 'var(--landing-text)' }}>
+            <div style={{ fontWeight: 600 }}>Стоматология «Улыбка+»</div>
+            <div style={{ fontSize: '11px', color: 'var(--landing-muted)' }}>
+              ★ 3.8 · 142 отзыва · 31 негатив
             </div>
           </div>
-          <button
-            type="button"
-            className="mt-3 rounded px-3 py-1 text-[11px] font-medium"
-            style={{ backgroundColor: 'var(--landing-accent-soft)', color: 'var(--landing-accent)' }}
+          <div
+            className="mt-2 rounded-[6px] px-2 py-1"
+            style={{
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+            }}
           >
-            Экспорт CSV
-          </button>
+            <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#d97706' }}>
+              Долгое ожидание × 12
+            </div>
+            <div style={{ fontSize: '10.5px', marginTop: 2, fontStyle: 'italic', color: 'var(--landing-muted)' }}>
+              «Записала ребёнка на 10, приняли в 11:20…»
+            </div>
+          </div>
         </div>
       </div>
       <div className="benefits-pseudo-card order-1 sm:order-2 sm:z-10">
         <div
-          className="w-full max-w-[200px] rounded-[12px] border px-4 py-3 shadow-lg"
+          className="w-full max-w-[220px] rounded-[12px] border px-4 py-3 shadow-lg"
           style={{
             backgroundColor: 'var(--landing-bg)',
             borderColor: 'var(--landing-accent)',
             boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
           }}
         >
-          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-accent)' }}>Отправка КП</div>
-          <div className="mt-2 text-[12px]" style={{ color: 'var(--landing-text)' }}>
-            <div style={{ marginBottom: '8px' }}>Шаблон: «Услуги B2B»</div>
-            <div style={{ fontSize: '11px', color: 'var(--landing-muted)' }}>Получателей: 127</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-accent)' }}>Письмо под боль</div>
+          <div className="mt-2 text-[11.5px]" style={{ color: 'var(--landing-text)', lineHeight: 1.45 }}>
+            «Здравствуйте! Вижу в отзывах, что у клиентов жалоба
+            на долгое ожидание — могу показать, как это решить онлайн-записью…»
           </div>
           <button
             type="button"
             className="mt-3 w-full rounded px-3 py-1.5 text-[11px] font-semibold"
             style={{ backgroundColor: 'var(--landing-accent)', color: '#fff' }}
           >
-            Запустить рассылку
+            Отправить
           </button>
         </div>
       </div>
@@ -181,22 +186,19 @@ function PseudoUICards() {
           className="w-full max-w-[200px] rounded-[12px] border px-4 py-3 shadow-sm sm:rotate-2 sm:-translate-y-1"
           style={{ backgroundColor: 'var(--landing-bg)', borderColor: 'var(--landing-border)' }}
         >
-          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Статусы</div>
-          <div className="mt-2 space-y-1.5">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--landing-accent)' }} />
-              <span style={{ color: 'var(--landing-text)' }}>Доставлено</span>
-              <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--landing-accent)' }}>98</span>
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-muted)' }}>Юр.данные</div>
+          <div className="mt-2 space-y-1.5 text-[12px]" style={{ color: 'var(--landing-text)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--landing-muted)' }}>Возраст</span>
+              <span style={{ fontWeight: 600 }}>5 лет</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#22c55e' }} />
-              <span style={{ color: 'var(--landing-text)' }}>Открыто</span>
-              <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#22c55e' }}>43</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--landing-muted)' }}>Оборот</span>
+              <span style={{ fontWeight: 600 }}>~ 1.2 млн ₽</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ef4444' }} />
-              <span style={{ color: 'var(--landing-text)' }}>Ошибка</span>
-              <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#ef4444' }}>2</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--landing-muted)' }}>Температура</span>
+              <span style={{ fontWeight: 600, color: 'var(--landing-accent)' }}>🔥 73</span>
             </div>
           </div>
         </div>
@@ -219,7 +221,7 @@ export function BenefitsSection() {
         >
           {/* Left: text */}
           <div>
-            <div className="section-label reveal">Что вы получите</div>
+            <div className="section-label reveal">Что входит</div>
             <h2
               className="reveal"
               style={{
@@ -230,10 +232,10 @@ export function BenefitsSection() {
                 letterSpacing: '-0.5px',
               }}
             >
-              Полный цикл B2B-продаж
+              Полный цикл: ниша → диагноз → письмо
             </h2>
             <p className="reveal" style={{ color: 'var(--landing-muted)', marginBottom: '28px', fontSize: '15px' }}>
-              Собирайте лиды, отправляйте КП и следите за статусами — всё в одном кабинете.
+              Apollo показывает, кому писать. SpinLid — что написать и почему откликнутся.
             </p>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {BENEFITS.map(({ title, desc }) => (
@@ -267,7 +269,7 @@ export function BenefitsSection() {
                 href="#examples"
                 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--landing-accent)', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                Посмотреть пример →
+                Посмотреть демо →
               </a>
             </div>
           </div>

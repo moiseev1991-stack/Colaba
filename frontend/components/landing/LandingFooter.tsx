@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 const LINKS = [
+  { href: '#diagnosis', label: 'Диагноз' },
   { href: '#features', label: 'Возможности' },
-  { href: '#stats', label: 'Результаты' },
   { href: '#pricing', label: 'Тарифы' },
   { href: '#examples', label: 'Примеры' },
   { href: '#faq', label: 'FAQ' },
@@ -14,7 +14,7 @@ export function LandingFooter() {
     <footer className="l-footer">
       <div className="l-footer__inner">
         <a href="#top" className="l-footer__logo">
-          Spin<span style={{ color: 'var(--landing-accent)' }}>.</span>Lid
+          SpinLid
         </a>
 
         <ul className="l-footer__links">

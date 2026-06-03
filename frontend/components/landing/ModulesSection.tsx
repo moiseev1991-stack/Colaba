@@ -1,15 +1,40 @@
+// ТЗ лендинг-рефакта 2026-06-03 §6: ушли от перечня «4 модуля» как главного
+// посыла. Теперь раздел продаёт связку «диагноз → письмо → отправка»,
+// SEO-аудит и Госзакупки убраны из верха (они есть в кабинете, но не продают
+// суть). Шесть карточек — все про главную фишку: компании → отзывы → боли
+// → черновик → отправка → история.
+
 const MODULES = [
   {
     svg: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" />
       </svg>
     ),
-    title: 'Поиск лидов',
-    desc: 'Собирайте базы компаний по ключевым запросам, нишам и регионам из открытых источников.',
-    bullets: ['Компании, сайты, телефоны, почты', 'Фильтры: город, отрасль, тип контактов', 'Экспорт CSV в 1 клик'],
+    title: 'Поиск компаний на картах',
+    desc: 'Ниша + город → реальные карточки из 2GIS и Яндекс.Карт: название, рейтинг, телефоны, сайт, адрес.',
+    bullets: ['12 подмосковных городов с фильтром-сателлитом', 'Playwright тащит контакты со страницы 2GIS', 'Фильтры по рейтингу, негативу, наличию сайта'],
+  },
+  {
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+    title: 'AI-диагноз из отзывов',
+    desc: 'Отзывы клиентов проходят через AI: на каждой компании — топ-3 боли с количеством упоминаний и цитатой-доказательством.',
+    bullets: ['Кластеризация болей по нише', 'Цитаты клиентов под каждым тегом', 'AI-температура лида 0-100'],
+  },
+  {
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2v6m0 0l-3-3m3 3l3-3M3 12h6m0 0l-3-3m3 3l-3 3M21 12h-6m0 0l3 3m-3-3l3-3M12 22v-6m0 0l3 3m-3-3l-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    title: 'Письмо под боль одним кликом',
+    desc: 'AI генерирует черновик: «вижу в отзывах жалобу на X, могу показать решение» — с упоминанием конкретной цитаты.',
+    bullets: ['Шаблоны под нишу и тон письма', 'Регенерация и ручная правка', 'Bulk-драфты на весь список'],
   },
   {
     svg: (
@@ -18,43 +43,19 @@ const MODULES = [
         <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Отправка КП',
-    desc: 'Шаблоны коммерческих предложений, кампании рассылок и детальные статусы доставки.',
-    bullets: ['Шаблоны и выбор получателей', 'Кампании рассылок КП', 'Статусы: отправлено / открыто / ошибка'],
+    title: 'Email-кампании и статусы',
+    desc: 'Запускайте рассылки по выбранным компаниям. В реальном времени — кто получил, открыл, кликнул, не доставлено.',
+    bullets: ['SMTP или Hyvor Relay', 'Доставлено / Открыто / Кликнул / Ошибка', 'Ответы — в одном ящике через catch-all'],
   },
   {
     svg: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
-        <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 8h6M9 12h6M9 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    title: 'SEO-аудит',
-    desc: 'Проверяйте домены, извлекайте контакты с сайтов, анализируйте техническое состояние.',
-    bullets: ['Robots, sitemap, meta-теги', 'Контакты с сайтов', 'Экспорт и история'],
-  },
-  {
-    svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    ),
-    title: 'Госзакупки',
-    desc: 'Мониторинг тендеров по вашим параметрам: регион, цена, тип заказчика.',
-    bullets: ['Поиск тендеров по параметрам', 'Фильтры по региону и сумме', 'Мониторинг и история'],
-  },
-  {
-    svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    ),
-    title: 'Фильтры и нормализация',
-    desc: 'Телефоны, email, сайт, город — приводим к единому виду, убираем дубли и мусор.',
-    bullets: ['Умная очистка контактов', 'Дедупликация базы', 'Blacklist по доменам'],
+    title: 'Юр.данные и платёжеспособность',
+    desc: 'DaData подтягивает ИНН, ОГРН, оборот за последний год и возраст компании. Фильтр «платёжеспособные».',
+    bullets: ['Бесплатно через DaData', 'Бейдж «оборот ~N млн ₽ · открыта X лет»', 'Фильтр по возрасту и обороту'],
   },
   {
     svg: (
@@ -62,9 +63,9 @@ const MODULES = [
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'История и аналитика',
-    desc: 'Возвращайтесь к прошлым запускам, повторяйте успешные кампании, отслеживайте динамику.',
-    bullets: ['История всех запусков', 'Статистика кампаний КП', 'Экспорт отчётов'],
+    title: 'История, пресеты, экспорт',
+    desc: 'Сохранённые фильтры (включая «свой AI-промпт»), повтор удачных поисков, экспорт в Excel и CSV.',
+    bullets: ['Свои пресеты с AI-скорингом', 'Excel «лиды на сайт» — 2 вкладки', 'Тепловые карты по нишам'],
   },
 ];
 
@@ -90,6 +91,18 @@ export function ModulesSection() {
             </div>
           ))}
         </div>
+        <p
+          className="reveal"
+          style={{
+            marginTop: '32px',
+            textAlign: 'center',
+            fontSize: '13px',
+            color: 'var(--landing-muted)',
+          }}
+        >
+          В кабинете также есть SEO-аудит сайтов и мониторинг госзакупок —
+          но главная фишка SpinLid здесь, выше.
+        </p>
       </div>
     </section>
   );

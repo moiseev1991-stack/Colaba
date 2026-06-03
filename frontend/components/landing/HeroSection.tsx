@@ -1,5 +1,10 @@
 'use client';
 
+// ТЗ лендинг-рефакта 2026-06-03 §2+§6: переориентация с «парсер контактов» на
+// «компании с диагнозом». Бейдж описывает фишку (диагноз из отзывов), заголовок
+// формулирует отстройку от Snov/Apollo. Floating cards и три статистики справа —
+// теперь продуктовые факты, а не выдуманные числа клиентов.
+
 export function HeroSection({
   onCtaRegister,
   onCtaExamples,
@@ -20,22 +25,23 @@ export function HeroSection({
       {/* Контент */}
       <div className="l-hero__inner">
         <div>
-          {/* Badge */}
+          {/* Badge — фишка, а не перечисление модулей */}
           <div className="l-hero__badge reveal">
             <span className="l-hero__badge-dot" />
-            Лиды · КП · SEO · Госзакупки — всё в одном кабинете
+            Компании с диагнозом из отзывов на картах
           </div>
 
           {/* Заголовок */}
           <h1 className="l-hero__title reveal">
-            Собирайте базы клиентов<br />
-            <span className="grad-text">и отправляйте КП</span><br />
-            за считанные минуты
+            Не база контактов.<br />
+            <span className="grad-text">Компании с диагнозом.</span>
           </h1>
 
           <p className="l-hero__sub reveal">
-            Ниша + регион → список компаний и контактов из открытых источников<br />
-            Отбирайте нужных, отправляйте КП, получайте статусы доставки
+            Укажите нишу и город — SpinLid найдёт компании на картах,
+            вытащит боли клиентов из отзывов и подготовит письмо под каждую боль.
+            Не «вот 1000 компаний», а «вот 23 компании, где клиенты жалуются на X —
+            вот цитаты — вот контакт — вот черновик письма».
           </p>
 
           {/* CTA */}
@@ -55,68 +61,66 @@ export function HeroSection({
             </button>
           </div>
 
-          {/* Статистика */}
+          {/* Продуктовые факты вместо выдуманных клиентских цифр */}
           <div className="l-hero__stats reveal">
             <div>
-              <div className="l-hero__stat-val">50K<span>+</span></div>
-              <div className="l-hero__stat-label">Лидов собрано</div>
+              <div className="l-hero__stat-val">2<span>мин</span></div>
+              <div className="l-hero__stat-label">Первые 50 компаний</div>
             </div>
             <div>
-              <div className="l-hero__stat-val">98<span>%</span></div>
-              <div className="l-hero__stat-label">Успешных доставок</div>
+              <div className="l-hero__stat-val">500</div>
+              <div className="l-hero__stat-label">Лидов в месяц бесплатно</div>
             </div>
             <div>
-              <div className="l-hero__stat-val">4<span>+</span></div>
-              <div className="l-hero__stat-label">Модуля в кабинете</div>
+              <div className="l-hero__stat-val">AI</div>
+              <div className="l-hero__stat-label">Анализ отзывов и черновик письма</div>
             </div>
           </div>
         </div>
 
-        {/* Floating cards */}
+        {/* Floating cards — продуктовые «фишки», не клиентские цифры */}
         <div className="l-hero__float-cards">
           <div className="l-hero__float-card l-hero__float-card--1 reveal">
             <div className="l-hfc__icon l-hfc__icon--green">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2.5" />
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M12 2v6m0 0l-3-3m3 3l3-3M3 12h6m0 0l-3-3m3 3l-3 3M21 12h-6m0 0l3 3m-3-3l3-3M12 22v-6m0 0l3 3m-3-3l-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <div>
-              <div className="l-hfc__val">+142</div>
-              <div className="l-hfc__label">Новых лидов сегодня</div>
+              <div className="l-hfc__val">Боли</div>
+              <div className="l-hfc__label">из отзывов клиентов</div>
             </div>
           </div>
 
           <div className="l-hero__float-card l-hero__float-card--2 reveal">
             <div className="l-hfc__icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2.5" />
-                <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
             <div>
-              <div className="l-hfc__val">34%</div>
-              <div className="l-hfc__label">Open rate кампаний</div>
+              <div className="l-hfc__val">Цитаты</div>
+              <div className="l-hfc__label">доказательства боли</div>
             </div>
           </div>
 
           <div className="l-hero__float-card l-hero__float-card--3 reveal">
             <div className="l-hfc__icon l-hfc__icon--purple">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" />
+                <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
             <div>
-              <div className="l-hfc__val">30s</div>
-              <div className="l-hfc__label">До первого результата</div>
+              <div className="l-hfc__val">Письмо</div>
+              <div className="l-hfc__label">черновик под боль</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Scroll hint */}
-      <a href="#stats" className="l-hero__scroll-hint">
+      <a href="#diagnosis" className="l-hero__scroll-hint">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
           <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import '@/components/landing/landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { DiagnosisSection } from '@/components/landing/DiagnosisSection';
 import { ImpactSection } from '@/components/landing/ImpactSection';
 import { ModulesSection } from '@/components/landing/ModulesSection';
 import { BenefitsSection } from '@/components/landing/BenefitsSection';
@@ -76,11 +77,13 @@ export default function LandingPage() {
       <main>
         <HeroSection
           onCtaRegister={() => scrollTo('register', true)}
-          onCtaExamples={() => scrollTo('examples')}
+          onCtaExamples={() => scrollTo('diagnosis')}
         />
+        {/* §4 ТЗ лендинг-рефакта 2026-06-03: главная фишка — сразу после hero */}
+        <DiagnosisSection />
         <ImpactSection />
-        <ModulesSection />
         <BenefitsSection />
+        <ModulesSection />
         <RegisterSection />
         <AudienceSection />
         <HowItWorksSection />

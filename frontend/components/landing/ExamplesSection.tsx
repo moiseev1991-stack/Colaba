@@ -1,43 +1,86 @@
 'use client';
 
+// ТЗ лендинг-рефакта 2026-06-03 §6+§8: на главном лендинге демонстрируем
+// то, что продаёт SpinLid — компании с диагнозом и кампании КП. Вкладки
+// «SEO» и «Госзакупки» убраны (модули есть в кабинете, но не продают суть).
+// Все таблицы помечены «ПРИМЕР» — без претензии на реальных клиентов (§3).
+
 import { useState } from 'react';
-import { Loader2, Download, Copy } from 'lucide-react';
+import { Loader2, Download, Copy, MessageSquareQuote } from 'lucide-react';
 
 const TABS = [
-  { id: 'leads', label: 'Лиды: компании и контакты' },
+  { id: 'diagnosis', label: 'Компании с диагнозом' },
   { id: 'campaigns', label: 'Кампании КП' },
-  { id: 'seo', label: 'SEO: домены' },
-  { id: 'tenders', label: 'Госзакупки' },
 ];
 
-const MOCK_LEADS = [
-  { company: 'Компания А', site: 'company-a.ru', phone: '+7 999…', email: 'info@a.ru', source: 'Яндекс', status: 'OK' },
-  { company: 'Компания Б', site: 'company-b.com', phone: '—', email: 'contact@b.com', source: 'Google', status: 'OK' },
-  { company: 'ООО Рога', site: 'roga.ru', phone: '+7 495…', email: '—', source: 'Яндекс', status: 'OK' },
-  { company: 'ИП Копыта', site: 'kopyta.ru', phone: '—', email: 'mail@kopyta.ru', source: '2GIS', status: 'processing' },
-  { company: 'ООО Сервис', site: 'service.com', phone: '+7 800…', email: 'info@service.com', source: 'Яндекс', status: 'OK' },
+type Pain = { label: string; count: number };
+
+const MOCK_DIAGNOSIS: {
+  company: string;
+  rating: number;
+  reviews: number;
+  pains: Pain[];
+  quote: string;
+  phone: string;
+}[] = [
+  {
+    company: 'Стоматология «Улыбка+»',
+    rating: 3.8,
+    reviews: 142,
+    pains: [
+      { label: 'Долгое ожидание', count: 12 },
+      { label: 'Грубят на ресепшене', count: 5 },
+      { label: 'Не перезванивают', count: 3 },
+    ],
+    quote: 'Записала ребёнка на 10, приняли в 11:20…',
+    phone: '+7 (495) 123-45…',
+  },
+  {
+    company: 'Клиника «Здоровье»',
+    rating: 4.1,
+    reviews: 89,
+    pains: [
+      { label: 'Дорого / непрозрачные цены', count: 8 },
+      { label: 'Долгая запись', count: 4 },
+    ],
+    quote: 'На сайте от 1500, по факту чек 4800…',
+    phone: '+7 (495) 555-12…',
+  },
+  {
+    company: 'Автосервис «Кардан»',
+    rating: 3.6,
+    reviews: 67,
+    pains: [
+      { label: 'Затянули сроки', count: 9 },
+      { label: 'Доп. работы без согласия', count: 6 },
+    ],
+    quote: 'Сказали 2 дня, делали 9. Когда ругаешься — хамят…',
+    phone: '+7 (903) 444-66…',
+  },
+  {
+    company: 'Детская клиника «Радуга»',
+    rating: 4.3,
+    reviews: 156,
+    pains: [
+      { label: 'Очереди несмотря на запись', count: 7 },
+    ],
+    quote: 'Записаны на 14:00, провели в кабинет в 15:30…',
+    phone: '+7 (495) 200-30…',
+  },
+  {
+    company: 'Стоматология «Дентал»',
+    rating: 4.5,
+    reviews: 203,
+    pains: [],
+    quote: '',
+    phone: '+7 (495) 678-90…',
+  },
 ];
 
 const MOCK_CAMPAIGNS = [
-  { name: 'КП производителям Москва', recipients: 45, sent: 45, opened: 12, errors: 2, date: '25.02.2026', status: 'OK' },
-  { name: 'Рекламное предложение СПб', recipients: 120, sent: 118, opened: 34, errors: 2, date: '24.02.2026', status: 'OK' },
-  { name: 'B2B услуги Казань', recipients: 80, sent: 76, opened: 0, errors: 0, date: '24.02.2026', status: 'processing' },
-  { name: 'Оптовая поставка', recipients: 60, sent: 60, opened: 18, errors: 1, date: '23.02.2026', status: 'OK' },
-  { name: 'IT-аутсорс', recipients: 30, sent: 30, opened: 8, errors: 0, date: '23.02.2026', status: 'OK' },
-];
-
-const MOCK_SEO = [
-  { domain: 'example.ru', title: 'Главная — Example', robots: 'OK', sitemap: 'OK', contacts: '✓', status: 'OK' },
-  { domain: 'sample.com', title: 'Sample Site', robots: 'OK', sitemap: 'OK', contacts: '✓', status: 'OK' },
-  { domain: 'site.org', title: 'Site Org', robots: 'не найден', sitemap: 'OK', contacts: '—', status: 'OK' },
-  { domain: 'demo.ru', title: 'Демо', robots: 'OK', sitemap: 'не найдена', contacts: '✓', status: 'OK' },
-];
-
-const MOCK_TENDERS = [
-  { customer: 'ГБУ Москва', subject: 'Поставка оборудования', region: 'Москва', price: '1,2 млн ₽', date: '25.02.2026', status: 'OK' },
-  { customer: 'Администрация СПб', subject: 'Услуги разработки', region: 'СПб', price: '500 тыс ₽', date: '26.02.2026', status: 'OK' },
-  { customer: 'Минстрой', subject: 'Стройматериалы', region: 'РФ', price: '5 млн ₽', date: '27.02.2026', status: 'processing' },
-  { customer: 'ГКУ Регион', subject: 'ИТ-оборудование', region: 'МО', price: '800 тыс ₽', date: '28.02.2026', status: 'OK' },
+  { name: 'Стоматологии Москвы — холодное письмо', recipients: 247, sent: 247, opened: 89, errors: 12, date: '02.06.2026', status: 'OK' },
+  { name: 'Автосервисы СПб — повторное касание', recipients: 180, sent: 96, opened: 28, errors: 4, date: '01.06.2026', status: 'processing' },
+  { name: 'Клиники Воронежа — приглашение на demo', recipients: 64, sent: 64, opened: 22, errors: 1, date: '30.05.2026', status: 'OK' },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -61,13 +104,37 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function PainPill({ pain }: { pain: Pain }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '2px 8px',
+        marginRight: '4px',
+        marginBottom: '2px',
+        borderRadius: '999px',
+        fontSize: '11px',
+        fontWeight: 500,
+        background: 'rgba(245, 158, 11, 0.15)',
+        color: '#92400e',
+        border: '1px solid rgba(245, 158, 11, 0.3)',
+      }}
+    >
+      {pain.label}
+      <span style={{ fontSize: '10px', opacity: 0.75 }}>×{pain.count}</span>
+    </span>
+  );
+}
+
 export function ExamplesSection() {
-  const [tab, setTab] = useState('leads');
+  const [tab, setTab] = useState('diagnosis');
 
   return (
     <section id="examples" className="landing-section l-examples">
       <div className="container">
-        <div className="section-label reveal">Примеры результатов</div>
+        <div className="section-label reveal">Примеры в кабинете</div>
         <h2 className="section-title reveal">
           Как выглядит <span style={{ color: 'var(--landing-accent)' }}>в кабинете</span>
         </h2>
@@ -83,6 +150,28 @@ export function ExamplesSection() {
               {label}
             </button>
           ))}
+        </div>
+
+        {/* «ПРИМЕР»-плашка (§3) */}
+        <div
+          className="reveal"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '16px',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            background: 'rgba(245, 158, 11, 0.12)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+            color: '#92400e',
+          }}
+        >
+          Пример · демо-данные, не реальные клиенты
         </div>
 
         {/* Actions */}
@@ -115,24 +204,64 @@ export function ExamplesSection() {
 
         {/* Table */}
         <div className="l-examples__table-wrap reveal" style={{ overflowX: 'auto' }}>
-          {tab === 'leads' && (
-            <table className="l-examples__table" style={{ minWidth: '600px' }}>
+          {tab === 'diagnosis' && (
+            <table className="l-examples__table" style={{ minWidth: '720px' }}>
               <thead>
                 <tr>
-                  {['Компания', 'Сайт', 'Телефон', 'Email', 'Источник', 'Статус'].map(h => (
+                  {['Компания', 'Рейтинг', 'Pain-теги', 'Цитата клиента', 'Контакт'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {MOCK_LEADS.map((r, i) => (
+                {MOCK_DIAGNOSIS.map((r, i) => (
                   <tr key={i}>
                     <td style={{ fontWeight: 600 }}>{r.company}</td>
-                    <td>{r.site}</td>
-                    <td>{r.phone}</td>
-                    <td>{r.email}</td>
-                    <td>{r.source}</td>
-                    <td><StatusBadge status={r.status} /></td>
+                    <td>
+                      ★ {r.rating} <span style={{ color: 'var(--landing-muted)', fontSize: '11px' }}>· {r.reviews}</span>
+                    </td>
+                    <td>
+                      {r.pains.length === 0 ? (
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--landing-accent)',
+                            background: 'var(--landing-accent-soft)',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                          }}
+                        >
+                          без негатива
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                          {r.pains.map((p) => (
+                            <PainPill key={p.label} pain={p} />
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ maxWidth: '260px' }}>
+                      {r.quote ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'flex-start',
+                            gap: '6px',
+                            fontSize: '12px',
+                            fontStyle: 'italic',
+                            color: 'var(--landing-text-body)',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          <MessageSquareQuote size={11} style={{ color: '#d97706', flexShrink: 0, marginTop: '3px' }} />
+                          «{r.quote}»
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--landing-muted)', fontSize: '12px' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>{r.phone}</td>
                   </tr>
                 ))}
               </tbody>
@@ -155,52 +284,6 @@ export function ExamplesSection() {
                     <td>{r.sent}</td>
                     <td>{r.opened}</td>
                     <td style={{ color: r.errors ? 'var(--landing-danger)' : undefined }}>{r.errors}</td>
-                    <td>{r.date}</td>
-                    <td><StatusBadge status={r.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {tab === 'seo' && (
-            <table className="l-examples__table" style={{ minWidth: '600px' }}>
-              <thead>
-                <tr>
-                  {['Домен', 'Title', 'Robots', 'Sitemap', 'Контакты', 'Статус'].map(h => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {MOCK_SEO.map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 600 }}>{r.domain}</td>
-                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</td>
-                    <td>{r.robots}</td>
-                    <td>{r.sitemap}</td>
-                    <td>{r.contacts}</td>
-                    <td><StatusBadge status={r.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {tab === 'tenders' && (
-            <table className="l-examples__table" style={{ minWidth: '640px' }}>
-              <thead>
-                <tr>
-                  {['Заказчик', 'Предмет', 'Регион', 'Цена', 'Дата', 'Статус'].map(h => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {MOCK_TENDERS.map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 600 }}>{r.customer}</td>
-                    <td>{r.subject}</td>
-                    <td>{r.region}</td>
-                    <td>{r.price}</td>
                     <td>{r.date}</td>
                     <td><StatusBadge status={r.status} /></td>
                   </tr>
