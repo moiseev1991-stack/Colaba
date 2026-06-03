@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.45.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.44.1...v1.45.0) (2026-06-03)
+
+
+### Features
+
+* **maps:** YandexMapsProvider.search_companies через Playwright ([29a1a5d](https://github.com/moiseev1991-stack/Colaba/commit/29a1a5d9543f20098a90a1212a16ee73ae694c3b))
+
 ## [1.44.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.44.0...v1.44.1) (2026-06-03)
 
 
