@@ -20,9 +20,12 @@ import {
   AlertTriangle,
   Send,
   Clock,
+  FileEdit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/EmptyState';
+import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 
 function formatDateTime(iso: string | undefined): string {
   if (!iso) return '-';
@@ -30,24 +33,22 @@ function formatDateTime(iso: string | undefined): string {
   return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function statusLabel(s: string): string {
-  const map: Record<string, string> = {
-    draft: 'Черновик',
-    sending: 'Отправка',
-    completed: 'Завершена',
-    failed: 'Ошибка',
-  };
-  return map[s] || s;
-}
-
-function statusColor(s: string): string {
-  const map: Record<string, string> = {
-    draft: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
-    sending: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-    completed: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-    failed: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-  };
-  return map[s] || 'bg-gray-100 text-gray-700';
+// §4.5 ТЗ редизайна 2026-06-03 (фоллоу-ап Phase B-3):
+// Статус кампании → SignalPill. Раньше были разнокалиберные bg-gray-100/blue-100/...,
+// теперь единая сигнальная шкала (cool=инфо, warm=в процессе, good=успех, hot=ошибка).
+function campaignStatusPill(s: string): { label: string; tone: SignalTone; icon: React.ReactNode } {
+  switch (s) {
+    case 'draft':
+      return { label: 'Черновик', tone: 'muted', icon: <FileEdit /> };
+    case 'sending':
+      return { label: 'Отправка', tone: 'cool', icon: <Send /> };
+    case 'completed':
+      return { label: 'Завершена', tone: 'good', icon: <CheckCircle /> };
+    case 'failed':
+      return { label: 'Ошибка', tone: 'hot', icon: <XCircle /> };
+    default:
+      return { label: s, tone: 'muted', icon: null };
+  }
 }
 
 // Демо-кампании для empty-state. Показываются только когда у юзера нет ни
@@ -184,23 +185,16 @@ export default function CampaignsHistoryPage() {
           <Mail className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           История рассылок
         </h1>
-        <Link
-          href="/app/email/stats"
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-v2-sm border px-3 py-1.5 text-[12px] font-medium transition-colors"
-          style={{
-            background: 'hsl(var(--surface))',
-            borderColor: 'hsl(var(--border))',
-            color: 'hsl(var(--text))',
-          }}
-        >
-          <BarChart3 className="h-3.5 w-3.5" />
-          Статистика
+        <Link href="/app/email/stats" className="contents">
+          <ButtonV2 variant="secondary" size="sm" iconLeft={<BarChart3 />}>
+            Статистика
+          </ButtonV2>
         </Link>
       </div>
 
       {loading ? (
         <div
-          className="rounded-[12px] border overflow-hidden p-8 flex items-center justify-center gap-2"
+          className="rounded-v2-lg border overflow-hidden p-8 flex items-center justify-center gap-2"
           style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
         >
           <Loader2 className="h-5 w-5 animate-spin" /> Загрузка…
@@ -216,186 +210,30 @@ export default function CampaignsHistoryPage() {
             </>
           }
           action={
-            <Link
-              href="/app/leads/history"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[8px] text-[13px] font-semibold bg-[hsl(var(--accent))] text-white hover:opacity-90 transition-opacity"
-            >
-              К результатам поиска <ArrowRight className="h-3.5 w-3.5" />
+            <Link href="/app/leads/history" className="contents">
+              <ButtonV2 variant="primary" size="md" iconRight={<ArrowRight />}>
+                К результатам поиска
+              </ButtonV2>
             </Link>
           }
           demoNote="демо-данные — не ваши кампании"
-          demo={
-            <div className="overflow-x-auto opacity-90">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
-                    <th className="text-left py-3 px-4" style={{ color: 'hsl(var(--muted))' }} title="Когда кампания создана">Дата</th>
-                    <th className="text-left py-3 px-4" style={{ color: 'hsl(var(--muted))' }}>Название</th>
-                    <th className="text-left py-3 px-4" style={{ color: 'hsl(var(--muted))' }} title="Этап: Черновик → Отправка → Завершена">Статус</th>
-                    <th className="text-center py-3 px-4" style={{ color: 'hsl(var(--muted))' }} title="Сколько писем уже ушло из общего числа получателей">Отправлено</th>
-                    <th className="text-center py-3 px-4" style={{ color: 'hsl(var(--muted))' }} title="Письма реально дошли до почтового ящика и не отбились">Доставлено</th>
-                    <th className="text-center py-3 px-4" style={{ color: 'hsl(var(--muted))' }} title="Сколько получателей открыли письмо (по пикселю в HTML)">Открыто</th>
-                    <th className="text-center py-3 px-4" style={{ color: 'hsl(var(--muted))' }} title="Письма, которые сервер получателя отбил — адреса не существуют или ящик переполнен. Если >5% — почтовики начнут резать вашу рассылку.">Не дошли</th>
-                    <th className="py-3 px-4 text-right uppercase tracking-wider text-xs" style={{ color: 'hsl(var(--muted))' }}>Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SAMPLE_CAMPAIGNS.map((c) => (
-                    <tr key={c.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                      <td className="py-3 px-4 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>
-                        {formatDateTime(c.created_at)}
-                      </td>
-                      <td className="py-3 px-4 truncate max-w-[260px]" title={c.name} style={{ color: 'hsl(var(--text))' }}>
-                        {c.name}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={cn('px-2 py-0.5 rounded text-xs', statusColor(c.status))}>
-                          {statusLabel(c.status)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center" style={{ color: 'hsl(var(--text))' }}>
-                        {c.sent_count} / {c.total_recipients}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                          <span style={{ color: 'hsl(var(--text))' }}>{c.delivered_count}</span>
-                          <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({deliveryRate(c)}%)</span>
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <Eye className="h-3.5 w-3.5 text-blue-500" />
-                          <span style={{ color: 'hsl(var(--text))' }}>{c.opened_count}</span>
-                          <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({openRate(c)}%)</span>
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          {c.bounced_count > 0 && <XCircle className="h-3.5 w-3.5 text-red-500" />}
-                          <span style={{ color: 'hsl(var(--text))' }}>{c.bounced_count}</span>
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-end">
-                          <span
-                            className="text-xs italic select-none"
-                            style={{ color: 'hsl(var(--muted))' }}
-                            title="Это пример — кнопка «Детали» появится после первой реальной рассылки"
-                          >
-                            (пример)
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          }
+          demo={<CampaignsTable campaigns={SAMPLE_CAMPAIGNS} variant="demo" deliveryRate={deliveryRate} openRate={openRate} />}
         />
       ) : (
         <div
-          className="rounded-[12px] border overflow-hidden"
+          className="rounded-v2-lg border overflow-hidden shadow-v2-sm"
           style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Дата</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Название</th>
-                  <th className="text-left py-3 px-4 text-gray-600 dark:text-gray-400">Статус</th>
-                  <th className="text-center py-3 px-4 text-gray-600 dark:text-gray-400">Отправлено</th>
-                  <th className="text-center py-3 px-4 text-gray-600 dark:text-gray-400">Доставлено</th>
-                  <th className="text-center py-3 px-4 text-gray-600 dark:text-gray-400">Открыто</th>
-                  <th className="text-center py-3 px-4 text-gray-600 dark:text-gray-400">Возвраты</th>
-                  <th className="py-3 px-4 text-right text-gray-600 dark:text-gray-400 uppercase tracking-wider text-xs">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {campaigns.map(c => {
-                  const isExpanded = expandedId === c.id;
-                  return (
-                    <Fragment key={c.id}>
-                      <tr
-                        onClick={() => toggleExpand(c.id)}
-                        className={cn(
-                          'border-b cursor-pointer transition-colors',
-                          isExpanded
-                            ? 'bg-[hsl(var(--surface-2))]'
-                            : 'hover:bg-[hsl(var(--surface-2)/0.6)]',
-                        )}
-                        style={{ borderColor: 'hsl(var(--border))' }}
-                      >
-                        <td className="py-3 px-4 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>{formatDateTime(c.created_at)}</td>
-                        <td className="py-3 px-4 truncate max-w-[200px]" title={c.name} style={{ color: 'hsl(var(--text))' }}>
-                          {c.name}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={cn('px-2 py-0.5 rounded text-xs', statusColor(c.status))}>
-                            {statusLabel(c.status)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center" style={{ color: 'hsl(var(--text))' }}>
-                          {c.sent_count} / {c.total_recipients}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="flex items-center justify-center gap-1">
-                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                            <span style={{ color: 'hsl(var(--text))' }}>{c.delivered_count}</span>
-                            <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({deliveryRate(c)}%)</span>
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="flex items-center justify-center gap-1">
-                            <Eye className="h-3.5 w-3.5 text-blue-500" />
-                            <span style={{ color: 'hsl(var(--text))' }}>{c.opened_count}</span>
-                            <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({openRate(c)}%)</span>
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="flex items-center justify-center gap-1">
-                            {c.bounced_count > 0 && <XCircle className="h-3.5 w-3.5 text-red-500" />}
-                            <span style={{ color: 'hsl(var(--text))' }}>{c.bounced_count}</span>
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-end">
-                            <button
-                              type="button"
-                              aria-label={isExpanded ? 'Свернуть детали' : 'Показать детали'}
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(c.id); }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-xs font-medium border hover:bg-[hsl(var(--surface-2))] transition-colors"
-                              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              Детали
-                              <ChevronDown
-                                className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-180')}
-                                style={{ color: 'hsl(var(--muted))' }}
-                              />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr style={{ background: 'hsl(var(--surface-2) / 0.4)' }}>
-                          <td colSpan={8} className="p-0" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                            <CampaignDrilldown
-                              campaign={c}
-                              logs={logsByCampaign.get(c.id) ?? []}
-                              loading={loadingLogs.has(c.id)}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <CampaignsTable
+            campaigns={campaigns}
+            variant="live"
+            expandedId={expandedId}
+            toggleExpand={toggleExpand}
+            logsByCampaign={logsByCampaign}
+            loadingLogs={loadingLogs}
+            deliveryRate={deliveryRate}
+            openRate={openRate}
+          />
 
           {/* Пагинация */}
           <div
@@ -404,29 +242,247 @@ export default function CampaignsHistoryPage() {
           >
             <span>Страница {page + 1}</span>
             <div className="flex gap-2">
-              <button
-                type="button"
+              <ButtonV2
+                variant="secondary"
+                size="sm"
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="px-3 py-1 rounded border hover:bg-[hsl(var(--surface-2))] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                style={{ borderColor: 'hsl(var(--border))' }}
               >
                 ← Назад
-              </button>
-              <button
-                type="button"
+              </ButtonV2>
+              <ButtonV2
+                variant="secondary"
+                size="sm"
                 onClick={() => setPage(p => p + 1)}
                 disabled={campaigns.length < PAGE_SIZE}
-                className="px-3 py-1 rounded border hover:bg-[hsl(var(--surface-2))] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                style={{ borderColor: 'hsl(var(--border))' }}
               >
                 Вперёд →
-              </button>
+              </ButtonV2>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// Единая таблица с двумя режимами: live (с drill-down) и demo (статика для empty-state).
+// Раньше markup был дублирован — теперь одна точка правды, бейджи на SignalPill.
+type TableProps =
+  | {
+      variant: 'demo';
+      campaigns: EmailCampaign[];
+      deliveryRate: (c: EmailCampaign) => number;
+      openRate: (c: EmailCampaign) => number;
+    }
+  | {
+      variant: 'live';
+      campaigns: EmailCampaign[];
+      expandedId: number | null;
+      toggleExpand: (id: number) => void;
+      logsByCampaign: Map<number, EmailLog[]>;
+      loadingLogs: Set<number>;
+      deliveryRate: (c: EmailCampaign) => number;
+      openRate: (c: EmailCampaign) => number;
+    };
+
+function CampaignsTable(props: TableProps) {
+  const isDemo = props.variant === 'demo';
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr
+            style={{
+              borderBottom: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--surface-2))',
+            }}
+          >
+            <Th title="Когда кампания создана">Дата</Th>
+            <Th>Название</Th>
+            <Th title="Этап: Черновик → Отправка → Завершена">Статус</Th>
+            <Th align="center" title="Сколько писем уже ушло из общего числа получателей">Отправлено</Th>
+            <Th align="center" title="Письма реально дошли до почтового ящика и не отбились">Доставлено</Th>
+            <Th align="center" title="Сколько получателей открыли письмо (по пикселю в HTML)">Открыто</Th>
+            <Th align="center" title="Письма, которые сервер получателя отбил — адреса не существуют или ящик переполнен. Если >5% — почтовики начнут резать вашу рассылку.">Возвраты</Th>
+            <Th align="right">Действия</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.campaigns.map((c) => {
+            const pill = campaignStatusPill(c.status);
+            if (isDemo) {
+              return (
+                <tr key={c.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                  <Td muted nowrap>{formatDateTime(c.created_at)}</Td>
+                  <Td className="truncate max-w-[260px]" title={c.name}>{c.name}</Td>
+                  <Td>
+                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">{pill.label}</SignalPill>
+                  </Td>
+                  <Td align="center">{c.sent_count} / {c.total_recipients}</Td>
+                  <Td align="center"><DeliveredCell campaign={c} rate={props.deliveryRate(c)} /></Td>
+                  <Td align="center"><OpenedCell campaign={c} rate={props.openRate(c)} /></Td>
+                  <Td align="center"><BouncedCell campaign={c} /></Td>
+                  <Td align="right">
+                    <span
+                      className="text-xs italic select-none"
+                      style={{ color: 'hsl(var(--muted))' }}
+                      title="Это пример — кнопка «Детали» появится после первой реальной рассылки"
+                    >
+                      (пример)
+                    </span>
+                  </Td>
+                </tr>
+              );
+            }
+
+            const isExpanded = props.expandedId === c.id;
+            return (
+              <Fragment key={c.id}>
+                <tr
+                  onClick={() => props.toggleExpand(c.id)}
+                  className={cn(
+                    'cursor-pointer transition-colors',
+                    isExpanded
+                      ? 'bg-[hsl(var(--surface-2))]'
+                      : 'hover:bg-[hsl(var(--surface-2)/0.6)]',
+                  )}
+                  style={{ borderBottom: '1px solid hsl(var(--border))' }}
+                >
+                  <Td muted nowrap>{formatDateTime(c.created_at)}</Td>
+                  <Td className="truncate max-w-[200px]" title={c.name}>{c.name}</Td>
+                  <Td>
+                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">{pill.label}</SignalPill>
+                  </Td>
+                  <Td align="center">{c.sent_count} / {c.total_recipients}</Td>
+                  <Td align="center"><DeliveredCell campaign={c} rate={props.deliveryRate(c)} /></Td>
+                  <Td align="center"><OpenedCell campaign={c} rate={props.openRate(c)} /></Td>
+                  <Td align="center"><BouncedCell campaign={c} /></Td>
+                  <Td align="right">
+                    <div className="flex items-center justify-end">
+                      <ButtonV2
+                        variant="secondary"
+                        size="sm"
+                        aria-label={isExpanded ? 'Свернуть детали' : 'Показать детали'}
+                        onClick={(e) => { e.stopPropagation(); props.toggleExpand(c.id); }}
+                        iconLeft={<Eye />}
+                        iconRight={
+                          <ChevronDown
+                            className={cn('transition-transform', isExpanded && 'rotate-180')}
+                          />
+                        }
+                      >
+                        Детали
+                      </ButtonV2>
+                    </div>
+                  </Td>
+                </tr>
+                {isExpanded && (
+                  <tr style={{ background: 'hsl(var(--surface-2) / 0.4)' }}>
+                    <td colSpan={8} className="p-0" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                      <CampaignDrilldown
+                        campaign={c}
+                        logs={props.logsByCampaign.get(c.id) ?? []}
+                        loading={props.loadingLogs.has(c.id)}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Reusable header cell with v2-aware styling. Inline-table — не делю на ui/Table,
+// нагрузка на единственную страницу не оправдывает отдельного компонента.
+function Th({
+  children,
+  align = 'left',
+  title,
+}: {
+  children: React.ReactNode;
+  align?: 'left' | 'center' | 'right';
+  title?: string;
+}) {
+  return (
+    <th
+      title={title}
+      className={cn(
+        'py-3 px-4 text-[11px] font-semibold uppercase tracking-wider',
+        align === 'left' && 'text-left',
+        align === 'center' && 'text-center',
+        align === 'right' && 'text-right',
+      )}
+      style={{ color: 'hsl(var(--muted))' }}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  align = 'left',
+  muted,
+  nowrap,
+  className,
+  title,
+}: {
+  children: React.ReactNode;
+  align?: 'left' | 'center' | 'right';
+  muted?: boolean;
+  nowrap?: boolean;
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <td
+      title={title}
+      className={cn(
+        'py-3 px-4',
+        align === 'center' && 'text-center',
+        align === 'right' && 'text-right',
+        nowrap && 'whitespace-nowrap',
+        className,
+      )}
+      style={{ color: muted ? 'hsl(var(--muted))' : 'hsl(var(--text))' }}
+    >
+      {children}
+    </td>
+  );
+}
+
+function DeliveredCell({ campaign, rate }: { campaign: EmailCampaign; rate: number }) {
+  return (
+    <span className="inline-flex items-center justify-center gap-1">
+      <CheckCircle className="h-3.5 w-3.5" style={{ color: 'var(--signal-good)' }} />
+      <span style={{ color: 'hsl(var(--text))' }}>{campaign.delivered_count}</span>
+      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({rate}%)</span>
+    </span>
+  );
+}
+
+function OpenedCell({ campaign, rate }: { campaign: EmailCampaign; rate: number }) {
+  return (
+    <span className="inline-flex items-center justify-center gap-1">
+      <Eye className="h-3.5 w-3.5" style={{ color: 'var(--signal-cool)' }} />
+      <span style={{ color: 'hsl(var(--text))' }}>{campaign.opened_count}</span>
+      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({rate}%)</span>
+    </span>
+  );
+}
+
+function BouncedCell({ campaign }: { campaign: EmailCampaign }) {
+  const hasBounce = campaign.bounced_count > 0;
+  return (
+    <span className="inline-flex items-center justify-center gap-1">
+      {hasBounce && <XCircle className="h-3.5 w-3.5" style={{ color: 'var(--signal-hot)' }} />}
+      <span style={{ color: 'hsl(var(--text))' }}>{campaign.bounced_count}</span>
+    </span>
   );
 }
 
@@ -479,7 +535,7 @@ function CampaignDrilldown({
         </div>
       ) : logs.length === 0 ? (
         <div
-          className="p-6 text-center text-sm rounded"
+          className="p-6 text-center text-sm rounded-v2-sm"
           style={{
             color: 'hsl(var(--muted))',
             background: 'hsl(var(--surface))',
@@ -490,7 +546,7 @@ function CampaignDrilldown({
         </div>
       ) : (
         <div
-          className="overflow-x-auto rounded"
+          className="overflow-x-auto rounded-v2-sm"
           style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}
         >
           <table className="w-full text-[13px]">
@@ -522,17 +578,14 @@ function CampaignDrilldown({
                       )}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
-                      <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border', info.cls)}>
-                        {info.icon}
-                        {info.label}
-                      </span>
+                      <SignalPill tone={info.tone} icon={info.icon} size="sm">{info.label}</SignalPill>
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>
                       {eventTime ? formatDateTime(eventTime) : '—'}
                     </td>
                     <td className="py-2 px-3 max-w-[280px]">
                       {log.error_message ? (
-                        <span className="text-xs text-red-600 dark:text-red-400 truncate block" title={log.error_message}>
+                        <span className="text-xs truncate block" style={{ color: 'var(--signal-hot)' }} title={log.error_message}>
                           {log.error_message}
                         </span>
                       ) : (
@@ -550,30 +603,32 @@ function CampaignDrilldown({
   );
 }
 
+// Per-recipient log status → SignalPill (та же сигнальная шкала, что у кампаний).
+// pending=muted, sent=cool, delivered/opened/clicked=good, bounced/failed=hot, spam=warm.
 function logStatusInfo(status: EmailLog['status']): {
   label: string;
   icon: React.ReactNode;
-  cls: string;
+  tone: SignalTone;
 } {
   switch (status) {
     case 'pending':
-      return { label: 'В очереди', icon: <Clock className="h-3 w-3" />, cls: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 border-zinc-500/30' };
+      return { label: 'В очереди', icon: <Clock />, tone: 'muted' };
     case 'sent':
-      return { label: 'Отправлено', icon: <Send className="h-3 w-3" />, cls: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30' };
+      return { label: 'Отправлено', icon: <Send />, tone: 'cool' };
     case 'delivered':
-      return { label: 'Доставлено', icon: <CheckCircle className="h-3 w-3" />, cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' };
+      return { label: 'Доставлено', icon: <CheckCircle />, tone: 'good' };
     case 'opened':
-      return { label: 'Открыто', icon: <Eye className="h-3 w-3" />, cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' };
+      return { label: 'Открыто', icon: <Eye />, tone: 'good' };
     case 'clicked':
-      return { label: 'Кликнул', icon: <ArrowRight className="h-3 w-3" />, cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' };
+      return { label: 'Кликнул', icon: <ArrowRight />, tone: 'good' };
     case 'bounced':
-      return { label: 'Возврат', icon: <XCircle className="h-3 w-3" />, cls: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30' };
+      return { label: 'Возврат', icon: <XCircle />, tone: 'hot' };
     case 'spam':
-      return { label: 'Спам', icon: <AlertTriangle className="h-3 w-3" />, cls: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30' };
+      return { label: 'Спам', icon: <AlertTriangle />, tone: 'warm' };
     case 'failed':
-      return { label: 'Ошибка', icon: <XCircle className="h-3 w-3" />, cls: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30' };
+      return { label: 'Ошибка', icon: <XCircle />, tone: 'hot' };
     default:
-      return { label: status, icon: null, cls: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 border-zinc-500/30' };
+      return { label: status, icon: null, tone: 'muted' };
   }
 }
 
