@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.46.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.45.0...v1.46.0) (2026-06-03)
+
+
+### Features
+
+* **maps:** enrich контактов Я.Карт через Playwright (phone/website/мессенджеры) ([2865994](https://github.com/moiseev1991-stack/Colaba/commit/28659949885567a10af242d8b34df991366964dc))
+
 # [1.45.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.44.1...v1.45.0) (2026-06-03)
 
 
