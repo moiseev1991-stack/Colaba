@@ -190,7 +190,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
       type="button"
       onClick={handleToggle}
       className={`flex h-10 w-10 items-center justify-center rounded-[10px] transition-all hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-      style={{ background: 'var(--grad-accent)', color: 'white' }}
+      style={{ background: 'var(--brand-gradient)', color: 'white' }}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-label={`Раздел: ${MODULE_LABELS[module]}`}
@@ -213,7 +213,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
     >
       <span
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]"
-        style={{ background: 'var(--grad-accent)', color: 'white' }}
+        style={{ background: 'var(--brand-gradient)', color: 'white' }}
         aria-hidden
       >
         <ActiveIcon className="h-4 w-4" />
@@ -340,7 +340,7 @@ export function Sidebar() {
     >
       <div
         className="absolute top-0 left-0 right-0 h-[2px]"
-        style={{ background: 'var(--grad-accent)' }}
+        style={{ background: 'var(--brand-gradient)' }}
         aria-hidden="true"
       />
 
@@ -446,7 +446,7 @@ export function Sidebar() {
                         <span
                           data-active-bar="true"
                           className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
-                          style={{ background: 'var(--grad-accent)' }}
+                          style={{ background: 'var(--brand-gradient)' }}
                           aria-hidden="true"
                         />
                       )}

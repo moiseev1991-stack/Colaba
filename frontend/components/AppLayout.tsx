@@ -42,7 +42,7 @@ function MobileModuleTabs() {
             {active && (
               <span
                 className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full"
-                style={{ background: 'var(--grad-accent)' }}
+                style={{ background: 'var(--brand-gradient)' }}
                 aria-hidden="true"
               />
             )}
