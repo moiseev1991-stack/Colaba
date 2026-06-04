@@ -528,70 +528,117 @@ class YandexMapsProvider(MapProvider):
         company_external_id: str,
         limit: int = 100,
     ) -> AsyncIterator[ReviewRaw]:
-        """Стримит отзывы через AJAX /maps/api/business/fetchReviews."""
-        offset = 0
-        yielded = 0
+        """Стримит отзывы парсингом SSR HTML /maps/org/{id}/reviews/.
+
+        Раньше использовался AJAX /maps/api/business/fetchReviews — он отдавал
+        чистый JSON. С 2026-06 этот endpoint требует CSRF и при любом обычном
+        вызове возвращает только {"csrfToken": "..."} (67 байт), а отзывы не
+        отдаёт даже с токеном (400 Bad Request или повторно токен — Yandex
+        блокирует сторонних потребителей).
+
+        Решение: HTML-страница /maps/org/{businessId}/reviews/ инлайнит
+        первые ~50 отзывов прямо в HTML с полной Schema.org разметкой
+        (`<div itemprop="review" itemtype=".../Review">`). Парсим её через
+        BeautifulSoup. Для большинства компаний из MVP-сценариев (стоматологии,
+        фитнес, общепит) 50 свежих отзывов более чем достаточно для
+        sentiment/pain-tag анализа.
+
+        Pagination через bare AJAX не сделать — для глубокой выгрузки нужен
+        будет Playwright (см. enrich_yandex.py). Пока не критично.
+        """
+        url = f"https://yandex.ru/maps/org/{company_external_id}/reviews/"
         headers = {
             "User-Agent": get_random_user_agent(),
-            "Accept": "application/json,text/plain,*/*",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "ru-RU,ru;q=0.9",
-            "X-Requested-With": "XMLHttpRequest",
-            "Referer": "https://yandex.ru/maps/",
         }
         proxy = get_proxy_config() if self._use_proxy else None
-        async with httpx.AsyncClient(timeout=15.0, headers=headers, proxy=proxy) as client:
-            while yielded < limit:
-                params = {
-                    "businessId": company_external_id,
-                    "offset": offset,
-                    "limit": REVIEWS_PAGE_SIZE,
-                    "lang": "ru",
-                }
-                try:
-                    response = await client.get(YANDEX_MAPS_API_REVIEWS, params=params)
-                except httpx.HTTPError as e:
-                    logger.warning("yandex_maps fetchReviews error: %s", e)
-                    return
+        try:
+            async with httpx.AsyncClient(
+                timeout=20.0, headers=headers, proxy=proxy, follow_redirects=True
+            ) as client:
+                response = await client.get(url)
+        except httpx.HTTPError as e:
+            logger.warning("yandex_maps reviews HTML error: %s", e)
+            return
 
-                if response.status_code != 200:
-                    logger.warning(
-                        "yandex_maps fetchReviews: status=%d for business=%s offset=%d",
-                        response.status_code, company_external_id, offset,
-                    )
-                    return
+        if response.status_code != 200:
+            logger.warning(
+                "yandex_maps reviews HTML: status=%d for business=%s",
+                response.status_code, company_external_id,
+            )
+            return
 
-                ctype = (response.headers.get("content-type") or "").lower()
-                if "json" not in ctype:
-                    # вернули HTML с капчей вместо JSON
-                    return
+        soup = BeautifulSoup(response.text, "html.parser")
+        review_nodes = soup.select('div.business-review-view[itemprop="review"]')
+        if not review_nodes:
+            logger.info(
+                "yandex_maps reviews HTML: no review nodes for business=%s (len=%d)",
+                company_external_id, len(response.content),
+            )
+            return
 
-                try:
-                    data = response.json()
-                except (ValueError, json.JSONDecodeError):
-                    return
+        yielded = 0
+        for node in review_nodes:
+            if yielded >= limit:
+                return
+            review = _parse_review_node(node, company_external_id)
+            if review is not None:
+                yield review
+                yielded += 1
 
-                items = data.get("items") or data.get("reviews") or []
-                if not isinstance(items, list) or not items:
-                    return
 
-                for item in items:
-                    if yielded >= limit:
-                        return
-                    if not isinstance(item, dict):
-                        continue
-                    author = (item.get("author") or {}) if isinstance(item.get("author"), dict) else {}
-                    yield ReviewRaw(
-                        source="yandex_maps",
-                        external_id=str(item["id"]) if item.get("id") is not None else None,
-                        author_masked=mask_author(author.get("name") if isinstance(author, dict) else None),
-                        rating=_safe_int(item.get("rating")),
-                        raw_text=item.get("text"),
-                        source_url=item.get("link") or item.get("url"),
-                        posted_at=_parse_unix_timestamp(item.get("time") or item.get("updated_time")),
-                        has_owner_reply=bool(item.get("business_reply") or item.get("owner_reply")),
-                    )
-                    yielded += 1
+def _parse_review_node(node: Any, business_id: str) -> ReviewRaw | None:
+    """BeautifulSoup-Tag отзыва → ReviewRaw. None если данных совсем нет."""
+    # rating: <meta itemprop="ratingValue" content="5.0"/>
+    rating_meta = node.select_one('meta[itemprop="ratingValue"]')
+    rating: int | None = None
+    if rating_meta and rating_meta.get("content"):
+        try:
+            rating = int(round(float(rating_meta["content"])))
+        except (ValueError, TypeError):
+            rating = None
 
-                if len(items) < REVIEWS_PAGE_SIZE:
-                    return
-                offset += REVIEWS_PAGE_SIZE
+    # date: <meta itemprop="datePublished" content="2026-01-24T06:57:24.400Z"/>
+    date_meta = node.select_one('meta[itemprop="datePublished"]')
+    posted_at: datetime | None = None
+    if date_meta and date_meta.get("content"):
+        raw = str(date_meta["content"]).strip()
+        try:
+            # ISO-8601 с Z (UTC). datetime.fromisoformat в py3.11 принимает Z.
+            posted_at = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            posted_at = None
+
+    # author name: <span itemprop="name">Имя Фамилия</span>
+    name_node = node.select_one('[itemprop="author"] [itemprop="name"]')
+    raw_name = name_node.get_text(strip=True) if name_node else None
+    author_masked = mask_author(raw_name) if raw_name else None
+
+    # body: <span itemprop="reviewBody"> ИЛИ .business-review-view__body
+    body_node = node.select_one('[itemprop="reviewBody"]') or node.select_one(
+        ".business-review-view__body"
+    )
+    raw_text = body_node.get_text(separator="\n", strip=True) if body_node else None
+
+    # owner reply: блок .business-review-view__date._org-answer присутствует,
+    # когда владелец ответил.
+    has_owner_reply = node.select_one(".business-review-view__date._org-answer") is not None
+
+    # source_url: ссылка на сам отзыв на Я.Картах.
+    # Стабильного якоря на отдельный отзыв в DOM нет — даём ссылку на reviews-блок компании.
+    source_url = f"https://yandex.ru/maps/org/{business_id}/reviews/"
+
+    # Уникальный id отзыва в HTML не выставлен. Используем хэш content+author
+    # как deterministic-id; в save_reviews_batch есть собственный dedup по
+    # raw_text+author, так что external_id=None не критичен.
+    return ReviewRaw(
+        source="yandex_maps",
+        external_id=None,
+        author_masked=author_masked,
+        rating=rating,
+        raw_text=raw_text,
+        source_url=source_url,
+        posted_at=posted_at,
+        has_owner_reply=has_owner_reply,
+    )
