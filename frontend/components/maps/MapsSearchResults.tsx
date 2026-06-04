@@ -52,16 +52,6 @@ const MapsCompaniesMap = dynamic(() => import('@/components/maps/MapsCompaniesMa
   ),
 });
 
-// Тепловая карта (блок 5 ТЗ 2026-06-02). leaflet.heat тоже трогает window.
-const MapsCompaniesHeatmap = dynamic(() => import('@/components/maps/MapsCompaniesHeatmap'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-sm text-slate-500">
-      Загружаю тепловую карту…
-    </div>
-  ),
-});
-
 interface Props {
   search: MapSearchOut;
   initialMode: 'searching' | 'results';
@@ -182,7 +172,7 @@ export function MapsSearchResults({
   const autoTriggeredRef = useRef(false);
   // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
   // загружается ленива через dynamic(), требует координат у компаний.
-  const [viewMode, setViewMode] = useState<'list' | 'map' | 'heatmap'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
   // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
   const [showBadgeLegend, setShowBadgeLegend] = useState(false);
@@ -729,20 +719,6 @@ export function MapsSearchResults({
                 >
                   <MapIcon className="h-3.5 w-3.5" /> Карта
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('heatmap')}
-                  aria-pressed={viewMode === 'heatmap'}
-                  title="Тепловая карта: плотность / боль / лиды на сайт / рейтинг / платёжеспособность"
-                  className={
-                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium dark:border-slate-600 ' +
-                    (viewMode === 'heatmap'
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
-                  }
-                >
-                  🔥 Тепло
-                </button>
               </div>
             )}
             {isTerminal && companies.length > 0 && (
@@ -927,20 +903,6 @@ export function MapsSearchResults({
             companies={renderList as CompanyOut[]}
             aiAnalyses={aiAnalyses}
             onOpenCompany={(id) => setDrawerCompanyId(id)}
-          />
-        )}
-
-        {viewMode === 'heatmap' && (
-          <MapsCompaniesHeatmap
-            searchId={search.id}
-            fallbackCenter={(() => {
-              const withCoord = (renderList as CompanyOut[]).find(
-                (c) => typeof c.lat === 'number' && typeof c.lng === 'number'
-              );
-              return withCoord
-                ? { lat: withCoord.lat as number, lng: withCoord.lng as number }
-                : undefined;
-            })()}
           />
         )}
       </div>
