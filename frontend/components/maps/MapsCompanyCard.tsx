@@ -47,6 +47,17 @@ interface Props {
   aiAnalysis?: CompanyAnalysisOut | null;
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
+  /** Multi-source §3.2 ТЗ 2026-06-04: когда в шапке выбран фильтр
+   *  «Только 2GIS» / «Только Я.Карты», карточка склеенной компании
+   *  фокусирует превью на данных выбранного источника:
+   *    - rating / reviews_count / reviews_negative_count / has_owner_replies
+   *      берутся из sources_profiles[source]
+   *    - phone / website / emails — из контактов выбранного профиля
+   *    - бейдж выбранного источника подсвечен, второй приглушён
+   *    - deeplink «открыть в …» ведёт на выбранный источник
+   *  Если у компании только один профиль или activeSource='all'/undef —
+   *  карточка рендерится как раньше (агрегированные плоские поля). */
+  activeSource?: 'all' | '2gis' | 'yandex_maps' | null;
 }
 
 export function MapsCompanyCard({
@@ -59,30 +70,61 @@ export function MapsCompanyCard({
   aiAnalysis,
   selected,
   onToggleSelect,
+  activeSource,
 }: Props) {
   const id = company.id ?? company.company_id;
-  const reviewsTotal = company.reviews_count ?? 0;
-  const reviewsNeg = company.reviews_negative_count ?? 0;
-  const ownerReplies = company.has_owner_replies;
-  const emails = Array.isArray(company.emails) ? company.emails : [];
+  const sourcesProfiles = Array.isArray(company.sources_profiles) ? company.sources_profiles : [];
+  // §3.2: фокус-профиль выбран только когда активен фильтр '2gis'/'yandex_maps'
+  // И у компании реально несколько профилей (одноисточниковую карточку
+  // фокусировать незачем — она и так показывает свой единственный источник).
+  const focusedProfile =
+    activeSource && activeSource !== 'all' && sourcesProfiles.length > 1
+      ? sourcesProfiles.find((sp) => sp.source === activeSource) ?? null
+      : null;
+
+  // Контакты выбранного профиля (если есть): первое попавшееся значение каждого типа.
+  const focusedPhone = focusedProfile?.contacts.find((c) => c.type === 'phone')?.value ?? null;
+  const focusedWebsite = focusedProfile?.contacts.find((c) => c.type === 'website')?.value ?? null;
+  const focusedEmails = focusedProfile
+    ? focusedProfile.contacts.filter((c) => c.type === 'email').map((c) => c.value)
+    : null;
+
+  const reviewsTotal = focusedProfile?.reviews_count ?? company.reviews_count ?? 0;
+  const reviewsNeg = focusedProfile?.reviews_negative_count ?? company.reviews_negative_count ?? 0;
+  const ownerReplies = focusedProfile?.has_owner_replies ?? company.has_owner_replies;
+  const rating = focusedProfile?.rating ?? company.rating ?? null;
+  const phone = focusedPhone ?? company.phone ?? null;
+  const website = focusedWebsite ?? company.website ?? null;
+  const emails = focusedEmails ?? (Array.isArray(company.emails) ? company.emails : []);
   const topPains = Array.isArray(company.top_pains) ? company.top_pains : [];
   const negativeSnippets = Array.isArray(company.negative_snippets) ? company.negative_snippets : [];
   const fullAddress = formatAddressWithCity(company.address, company.city);
-  const hasWebsite = typeof company.website === 'string' && company.website.trim().length > 0;
+  const hasWebsite = typeof website === 'string' && website.trim().length > 0;
   const fallbackTags =
     topPains.length === 0 && Array.isArray(company.pain_tags) ? company.pain_tags : [];
 
-  const sourceUrl = buildSourceUrl(company.source, company.external_id);
-  const sourceTitle = sourceLabel(company.source);
+  // Single-source deeplink. При активном фильтре — на выбранный источник, иначе
+  // на «основной» source компании (исторический).
+  const singleSource = focusedProfile?.source ?? company.source;
+  const singleExternalId = focusedProfile?.external_id ?? company.external_id;
+  const sourceUrl =
+    focusedProfile?.source_url ?? buildSourceUrl(singleSource, singleExternalId);
+  const sourceTitle = sourceLabel(singleSource);
   // Multi-source (Phase 5): если у компании несколько источниковых профилей —
   // показываем мульти-бейдж «2GIS + Я.Карты». Иначе fallback на legacy single-source.
-  const sourcesProfiles = Array.isArray(company.sources_profiles) ? company.sources_profiles : [];
-  const multiSourceList: { source: string; label: string; url: string | null }[] =
+  // §3.2 ТЗ 2026-06-04: при активном source-фильтре выделяем выбранный бейдж.
+  const multiSourceList: {
+    source: string;
+    label: string;
+    url: string | null;
+    active: boolean;
+  }[] =
     sourcesProfiles.length > 1
       ? sourcesProfiles.map((sp) => ({
           source: sp.source,
           label: sourceLabel(sp.source),
           url: sp.source_url ?? buildSourceUrl(sp.source, sp.external_id),
+          active: !!activeSource && activeSource !== 'all' && sp.source === activeSource,
         }))
       : [];
 
@@ -124,8 +166,8 @@ export function MapsCompanyCard({
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          {company.rating != null && (
-            <RatingPill rating={Number(company.rating)} />
+          {rating != null && (
+            <RatingPill rating={Number(rating)} />
           )}
           {typeof company.lead_temperature === 'number' && (
             <SignalPill
@@ -186,13 +228,27 @@ export function MapsCompanyCard({
         )}
         {multiSourceList.length > 0 ? (
           <span
-            className="ml-auto inline-flex items-center gap-1 text-[11px] text-[hsl(var(--muted))]"
-            title="Компания найдена в нескольких источниках"
+            className="ml-auto inline-flex items-center gap-1 text-[11px]"
+            title={
+              activeSource && activeSource !== 'all'
+                ? `Фильтр: только ${sourceLabel(activeSource)}. Карточка фокусирует данные выбранного источника.`
+                : 'Компания найдена в нескольких источниках'
+            }
           >
             {multiSourceList.map((s, idx) => (
               <span key={s.source} className="inline-flex items-center gap-1">
-                {idx > 0 && <span aria-hidden>·</span>}
-                <span className="font-medium text-[hsl(var(--text))]">{s.label}</span>
+                {idx > 0 && <span aria-hidden className="text-[hsl(var(--muted))]">·</span>}
+                <span
+                  className={
+                    s.active
+                      ? 'rounded-pill bg-brand-500/15 px-1.5 py-0.5 font-semibold text-brand-700 dark:text-brand-300'
+                      : activeSource && activeSource !== 'all'
+                      ? 'font-medium text-[hsl(var(--muted))] opacity-70'
+                      : 'font-medium text-[hsl(var(--text))]'
+                  }
+                >
+                  {s.label}
+                </span>
               </span>
             ))}
           </span>
@@ -225,29 +281,29 @@ export function MapsCompanyCard({
 
       {/* Контакты */}
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[hsl(var(--muted))]">
-        {company.phone && (
+        {phone && (
           <span className="inline-flex items-center gap-1">
             <Phone className="h-3 w-3 text-[hsl(var(--muted))]" />
             <a
-              href={`tel:${company.phone}`}
+              href={`tel:${phone}`}
               onClick={(e) => e.stopPropagation()}
               className="hover:text-brand-600 hover:underline"
             >
-              {company.phone}
+              {phone}
             </a>
           </span>
         )}
-        {hasWebsite && (
+        {hasWebsite && website && (
           <span className="inline-flex items-center gap-1">
             <Globe className="h-3 w-3 text-[hsl(var(--muted))]" />
             <a
-              href={normalizeUrl(company.website!.trim())}
+              href={normalizeUrl(website.trim())}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
               className="max-w-[180px] truncate hover:text-brand-600 hover:underline"
             >
-              {stripScheme(company.website!.trim())}
+              {stripScheme(website.trim())}
             </a>
           </span>
         )}
@@ -268,22 +324,26 @@ export function MapsCompanyCard({
         )}
         {multiSourceList.length > 0 ? (
           <span className="ml-auto inline-flex items-center gap-1.5">
-            {multiSourceList.map((s) =>
-              s.url ? (
-                <a
-                  key={s.source}
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
-                  title={`Открыть карточку в ${s.label}`}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {s.label}
-                </a>
-              ) : null
-            )}
+            {/* При активном source-фильтре прячем deeplink на «другой» источник —
+                карточка сфокусирована на выбранном (§3.2). */}
+            {multiSourceList
+              .filter((s) => !activeSource || activeSource === 'all' || s.active)
+              .map((s) =>
+                s.url ? (
+                  <a
+                    key={s.source}
+                    href={s.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
+                    title={`Открыть карточку в ${s.label}`}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {s.label}
+                  </a>
+                ) : null,
+              )}
           </span>
         ) : (
           sourceUrl && (

@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { HelpCircle, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -75,14 +76,27 @@ interface Props {
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
 const DEFAULT_FILTER: MapSearchFilter = { sort_by: 'rating_desc' };
 
-function initialFilter(search: MapSearchOut): MapSearchFilter {
+const SOURCE_FILTER_VALUES = new Set(['all', '2gis', 'yandex_maps']);
+function parseSourceFilter(raw: string | null): MapSearchFilter['source_filter'] | undefined {
+  if (!raw) return undefined;
+  return SOURCE_FILTER_VALUES.has(raw) ? (raw as 'all' | '2gis' | 'yandex_maps') : undefined;
+}
+
+function initialFilter(
+  search: MapSearchOut,
+  urlSource: MapSearchFilter['source_filter'] | undefined,
+): MapSearchFilter {
   // Если на форме поиска юзер выбрал пресет, его фильтры сохранились в
   // MapSearch.filters. Применяем их сразу — иначе юзер кликнул «Нужен сайт»
   // на форме, а после загрузки видит выдачу без фильтра.
-  if (search.filters && Object.keys(search.filters).length > 0) {
-    return { sort_by: 'rating_desc', ...search.filters };
-  }
-  return DEFAULT_FILTER;
+  const base: MapSearchFilter =
+    search.filters && Object.keys(search.filters).length > 0
+      ? { sort_by: 'rating_desc', ...search.filters }
+      : { ...DEFAULT_FILTER };
+  // URL-параметр ?src=2gis|yandex_maps|all имеет приоритет над пресетом —
+  // юзер пришёл по ссылке/назад с явным выбором источника.
+  if (urlSource !== undefined) base.source_filter = urlSource;
+  return base;
 }
 
 function statusLabel(status: string): string {
@@ -117,6 +131,10 @@ export function MapsSearchResults({
   initialAiPreset,
   onNewSearch,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
   // Multi-source (ТЗ 2026-06-04): счётчики по источникам для сегмент-переключателя
@@ -124,7 +142,9 @@ export function MapsSearchResults({
   const [sourceCounts, setSourceCounts] = useState<{
     total: number; twogis: number; yandex_maps: number; both: number;
   } | null>(null);
-  const [filter, setFilter] = useState<MapSearchFilter>(() => initialFilter(initialSearch));
+  const [filter, setFilter] = useState<MapSearchFilter>(() =>
+    initialFilter(initialSearch, parseSourceFilter(searchParams?.get('src') ?? null)),
+  );
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
   const [addToListCompanyId, setAddToListCompanyId] = useState<number | null>(null);
@@ -179,6 +199,38 @@ export function MapsSearchResults({
     setFilter(next);
     setFilterDirty(true);
   }, []);
+
+  // Multi-source persistence (§3.1 ТЗ 2026-06-04): синхронизируем
+  // filter.source_filter с query-параметром ?src=. router.replace без scroll
+  // не вызывает full reload — Next App Router просто меняет URL. Это даёт
+  // «возврат по назад/вперёд», переход по ссылке и устойчивость к F5
+  // (в рамках сессии где search уже создан в родительском MapsSearchPanel).
+  const lastUrlSrcRef = useRef<string | null>(searchParams?.get('src') ?? null);
+  useEffect(() => {
+    const current = filter.source_filter && filter.source_filter !== 'all'
+      ? filter.source_filter
+      : null;
+    if (lastUrlSrcRef.current === current) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    if (current) params.set('src', current);
+    else params.delete('src');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    lastUrlSrcRef.current = current;
+  }, [filter.source_filter, pathname, router, searchParams]);
+
+  // Внешние изменения URL (Назад/Вперёд браузера, переход по ссылке) →
+  // подхватываем ?src= в state, если оно расходится с текущим.
+  useEffect(() => {
+    const fromUrl = parseSourceFilter(searchParams?.get('src') ?? null) ?? 'all';
+    const inState = filter.source_filter ?? 'all';
+    if (fromUrl !== inState) {
+      lastUrlSrcRef.current = fromUrl === 'all' ? null : fromUrl;
+      setFilter((prev) => ({ ...prev, source_filter: fromUrl }));
+      setFilterDirty(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
@@ -862,6 +914,7 @@ export function MapsSearchResults({
                     aiAnalysis={aiAnalysis}
                     selected={typeof id === 'number' && selectedIds.has(id)}
                     onToggleSelect={typeof id === 'number' ? toggleSelect : undefined}
+                    activeSource={filter.source_filter ?? null}
                   />
                 );
               })}
