@@ -34,8 +34,10 @@ BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAG
 
 echo "=== 3/5: git pull в $SRC_DIR ==="
 cd "$SRC_DIR"
+# На проде у origin fetch refspec только +refs/heads/main:refs/remotes/origin/main,
+# поэтому origin/feat-* не создаётся локально. Идём через FETCH_HEAD.
 git fetch origin "$BRANCH"
-git reset --hard "origin/$BRANCH"
+git reset --hard FETCH_HEAD
 git log --oneline -3
 
 echo "=== 4/5: docker cp router.py + удаление heatmap.py ==="
