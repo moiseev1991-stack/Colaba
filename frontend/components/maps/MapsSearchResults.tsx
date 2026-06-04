@@ -205,7 +205,12 @@ export function MapsSearchResults({
     if (current) params.set('src', current);
     else params.delete('src');
     const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const nextUrl = qs ? `${pathname}?${qs}` : pathname;
+    // Каждый юзер-клик по сегменту = новая запись в history. Без этого
+    // браузерные «Назад/Вперёд» не переключают между ?src=2gis ↔
+    // ?src=yandex_maps, а уходят на предыдущую страницу — баг C1 из
+    // аудита 2026-06-05.
+    router.push(nextUrl, { scroll: false });
     lastUrlSrcRef.current = current;
   }, [filter.source_filter, pathname, router, searchParams]);
 
