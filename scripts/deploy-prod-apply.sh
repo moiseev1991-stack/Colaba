@@ -23,8 +23,11 @@ docker load -i "$TAR"
 
 echo "=== 2/5: recreate frontend контейнера ==="
 cd "$COMPOSE_DIR"
+# --no-build обязателен: при --pull never compose всё равно пытается
+# собрать backend (его context: ./backend в compose-файле резолвится в
+# /opt/colaba/backend, которого тут нет — исходники в /opt/colaba-src).
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
-  docker compose -f docker-compose.prod.yml up -d --force-recreate --pull never frontend
+  docker compose -f docker-compose.prod.yml up -d --force-recreate --pull never --no-build frontend
 
 echo "=== 3/5: git pull в $SRC_DIR ==="
 cd "$SRC_DIR"
