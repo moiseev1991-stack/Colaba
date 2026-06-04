@@ -259,7 +259,21 @@ async def _parse_map_search_async(search_id: int) -> None:
                         logger.warning("parse_map_search: cache-hit re-enrich failed: %s", e)
                     continue
                 try:
-                    count, completed = await _parse_companies_for_source(db, search, source)
+                    # Per-source таймаут 5 минут: если провайдер «завис»
+                    # (Yandex+Москва без прокси, прокси упал, headless-Chromium
+                    # повис на загрузке) — отдаём то, что успели набрать.
+                    # Без таймаута поиск висит в running вечно, фронт спамит
+                    # /status сотнями запросов до hard-timeout на клиенте.
+                    count, completed = await asyncio.wait_for(
+                        _parse_companies_for_source(db, search, source),
+                        timeout=300.0,
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "parse_map_search: source=%s превысил 5-минутный таймаут, считаем как partial",
+                        source,
+                    )
+                    count, completed = 0, False
                 except RuntimeError as e:
                     # Третий слой защиты: если что-то прорвалось через все catch'и
                     # внутри _parse_companies_for_source (например, новая логическая

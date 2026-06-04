@@ -285,13 +285,45 @@ export function MapsSearchResults({
     })();
   }, [stream.done, search.id]);
 
-  // Polling статуса + компаний каждые 3с, пока не terminal. SSE через
-  // Next.js proxy буферизует (см. docs/maps-module-guide.md §7.3) —
+  // Polling статуса + компаний с экспоненциальным backoff, пока не terminal.
+  // SSE через Next.js proxy буферизует (см. docs/maps-module-guide.md §7.3) —
   // без polling юзер не увидит смену pending→running→completed/failed
   // И не увидит карточки, которые celery успел сохранить.
+  //
+  // Backoff (раньше было фиксированно 3 сек): 3s → 5s → 8s → 13s → 20s → 30s.
+  // Hard-timeout: 15 минут. Если парсер реально завис (Yandex+Москва без
+  // прокси, например) — без таймаута мы бы спамили API часами. Чтобы выйти
+  // из «парсер завис» в UI — юзеру надо просто нажать «Новый поиск».
+  const POLL_BACKOFF_MS = [3000, 5000, 8000, 13000, 20000, 30000];
+  const POLL_HARD_TIMEOUT_MS = 15 * 60 * 1000;
+  const pollAttemptRef = useRef(0);
+  const pollStartedAtRef = useRef<number | null>(null);
   useEffect(() => {
-    if (TERMINAL_STATUSES.has(search.status)) return;
-    const timer = setInterval(async () => {
+    if (TERMINAL_STATUSES.has(search.status)) {
+      pollAttemptRef.current = 0;
+      pollStartedAtRef.current = null;
+      return;
+    }
+    if (pollStartedAtRef.current == null) {
+      pollStartedAtRef.current = Date.now();
+    }
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const elapsed = Date.now() - (pollStartedAtRef.current ?? Date.now());
+      if (elapsed > POLL_HARD_TIMEOUT_MS) {
+        // 15 минут pending — реальная ошибка, останавливаемся.
+        return;
+      }
+      const idx = Math.min(pollAttemptRef.current, POLL_BACKOFF_MS.length - 1);
+      const delay = POLL_BACKOFF_MS[idx];
+      pollAttemptRef.current += 1;
+      setTimeout(tick, delay);
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
       try {
         const updated = await getMapSearch(search.id);
         if (updated.status !== search.status || updated.companies_found !== search.companies_found) {
@@ -309,8 +341,13 @@ export function MapsSearchResults({
       } catch {
         /* keep current */
       }
-    }, 3000);
-    return () => clearInterval(timer);
+      scheduleNext();
+    };
+
+    scheduleNext();
+    return () => {
+      cancelled = true;
+    };
   }, [search.id, search.status, search.companies_found, companies.length]);
 
   // Перезагрузка списка с фильтрами: только после terminal-статуса, с debounce 300мс
@@ -733,11 +770,11 @@ export function MapsSearchResults({
           </div>
         </div>
 
-        {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
-          <div className="rounded-v2-sm bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
-            Ошибка стрима: {stream.error}
-          </div>
-        )}
+        {/* Stream-ошибка раньше выводилась алертом «Ошибка стрима…».
+            SSE через Next.js proxy реально часто отваливается, но polling
+            каждые N сек подхватывает данные — юзеру алерт не нужен, он
+            пугает («сломалось!»), хотя парсинг живёт. Если поиск реально
+            упал — это видно через search.status='failed' (блок ниже). */}
 
         {search.status === 'failed' && isSoftEmptyError(search.error) && (
           <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
