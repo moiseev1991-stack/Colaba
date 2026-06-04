@@ -333,6 +333,34 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
             logger.warning("parse_company_reviews: Company #%d not found", company_id)
             return 0
 
+        # Multi-source: external_id для запроса берём из company_sources, а не
+        # из companies. У склеенной компании Company.external_id — это id
+        # «основного» источника (обычно 2gis). Если просим source='yandex_maps',
+        # надо взять yandex-id из company_sources, иначе парсер пойдёт в 2GIS
+        # с 2gis-id и ничего не найдёт. Fallback на Company.external_id — для
+        # одноисточниковых компаний, у которых company_sources может ещё не
+        # быть синхронизирован (Phase 1-3 миграции).
+        from sqlalchemy import select
+        from app.models.maps import CompanySource
+
+        provider_ext_id: str | None = None
+        cs_row = (await db.execute(
+            select(CompanySource.external_id)
+            .where(CompanySource.company_id == company_id)
+            .where(CompanySource.source == source)
+        )).scalar_one_or_none()
+        if cs_row:
+            provider_ext_id = cs_row
+        elif company.source == source:
+            provider_ext_id = company.external_id
+
+        if not provider_ext_id:
+            logger.info(
+                "parse_company_reviews: no external_id for company=%d source=%s — skipping",
+                company_id, source,
+            )
+            return 0
+
         try:
             provider = _build_provider(source, db)
         except MissingAPIKeyError as e:
@@ -342,7 +370,7 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
         batch: list[ReviewRaw] = []
         total_inserted = 0
         try:
-            async for review_raw in provider.fetch_reviews(company.external_id, limit=limit):
+            async for review_raw in provider.fetch_reviews(provider_ext_id, limit=limit):
                 batch.append(review_raw)
                 if len(batch) >= REVIEWS_BATCH_SIZE:
                     total_inserted += await service.save_reviews_batch(db, company.id, batch)
