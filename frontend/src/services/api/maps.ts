@@ -66,6 +66,10 @@ export interface MapSearchFilter {
   min_revenue?: number | null;
   /** Возраст компании в полных годах от registration_date. */
   min_age_years?: number | null;
+  /** Multi-source (ТЗ 2026-06-04): сегмент-переключатель в шапке выдачи.
+   *  'all' / null — все источники. '2gis'/'yandex_maps' — EXISTS-фильтр
+   *  по company_sources. Склеенные мультисурс-компании остаются в обоих. */
+  source_filter?: 'all' | '2gis' | 'yandex_maps' | null;
 }
 
 export type SearchMode = 'city' | 'radius';
@@ -273,11 +277,21 @@ export interface CompanyDetailOut extends CompanyOut {
   recent_reviews: ReviewOut[];
 }
 
+/** Multi-source (ТЗ 2026-06-04): счётчики компаний по источникам. */
+export interface SourceCountsOut {
+  total: number;
+  twogis: number;
+  yandex_maps: number;
+  both: number;
+}
+
 export interface CompaniesListOut {
   items: CompanyOut[];
   total: number;
   limit: number;
   offset: number;
+  /** Multi-source: для сегмент-переключателя «Все · 2GIS · Я.Карты». */
+  source_counts?: SourceCountsOut | null;
 }
 
 export interface ReviewsListOut {
@@ -339,6 +353,9 @@ export async function listMapCompanies(
     for (const t of filter.review_text_contains_any) params.append('review_text_contains_any', t);
   if (filter.review_text_excludes_any?.length)
     for (const t of filter.review_text_excludes_any) params.append('review_text_excludes_any', t);
+  // Multi-source (ТЗ 2026-06-04). 'all' и null отправлять не надо — на сервере дефолт.
+  if (filter.source_filter && filter.source_filter !== 'all')
+    params.set('source_filter', filter.source_filter);
   params.set('sort_by', backendSortBy(filter.sort_by));
   params.set('limit', String(limit));
   params.set('offset', String(offset));

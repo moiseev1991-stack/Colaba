@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { HelpCircle, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -51,16 +52,6 @@ const MapsCompaniesMap = dynamic(() => import('@/components/maps/MapsCompaniesMa
   ),
 });
 
-// Тепловая карта (блок 5 ТЗ 2026-06-02). leaflet.heat тоже трогает window.
-const MapsCompaniesHeatmap = dynamic(() => import('@/components/maps/MapsCompaniesHeatmap'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-sm text-slate-500">
-      Загружаю тепловую карту…
-    </div>
-  ),
-});
-
 interface Props {
   search: MapSearchOut;
   initialMode: 'searching' | 'results';
@@ -75,14 +66,27 @@ interface Props {
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
 const DEFAULT_FILTER: MapSearchFilter = { sort_by: 'rating_desc' };
 
-function initialFilter(search: MapSearchOut): MapSearchFilter {
+const SOURCE_FILTER_VALUES = new Set(['all', '2gis', 'yandex_maps']);
+function parseSourceFilter(raw: string | null): MapSearchFilter['source_filter'] | undefined {
+  if (!raw) return undefined;
+  return SOURCE_FILTER_VALUES.has(raw) ? (raw as 'all' | '2gis' | 'yandex_maps') : undefined;
+}
+
+function initialFilter(
+  search: MapSearchOut,
+  urlSource: MapSearchFilter['source_filter'] | undefined,
+): MapSearchFilter {
   // Если на форме поиска юзер выбрал пресет, его фильтры сохранились в
   // MapSearch.filters. Применяем их сразу — иначе юзер кликнул «Нужен сайт»
   // на форме, а после загрузки видит выдачу без фильтра.
-  if (search.filters && Object.keys(search.filters).length > 0) {
-    return { sort_by: 'rating_desc', ...search.filters };
-  }
-  return DEFAULT_FILTER;
+  const base: MapSearchFilter =
+    search.filters && Object.keys(search.filters).length > 0
+      ? { sort_by: 'rating_desc', ...search.filters }
+      : { ...DEFAULT_FILTER };
+  // URL-параметр ?src=2gis|yandex_maps|all имеет приоритет над пресетом —
+  // юзер пришёл по ссылке/назад с явным выбором источника.
+  if (urlSource !== undefined) base.source_filter = urlSource;
+  return base;
 }
 
 function statusLabel(status: string): string {
@@ -117,9 +121,20 @@ export function MapsSearchResults({
   initialAiPreset,
   onNewSearch,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [search, setSearch] = useState<MapSearchOut>(initialSearch);
   const [companies, setCompanies] = useState<CompanyOut[]>([]);
-  const [filter, setFilter] = useState<MapSearchFilter>(() => initialFilter(initialSearch));
+  // Multi-source (ТЗ 2026-06-04): счётчики по источникам для сегмент-переключателя
+  // «Все · 2GIS · Я.Карты». Берутся из CompaniesListOut.source_counts.
+  const [sourceCounts, setSourceCounts] = useState<{
+    total: number; twogis: number; yandex_maps: number; both: number;
+  } | null>(null);
+  const [filter, setFilter] = useState<MapSearchFilter>(() =>
+    initialFilter(initialSearch, parseSourceFilter(searchParams?.get('src') ?? null)),
+  );
   const [isLoading, setIsLoading] = useState(initialMode === 'results');
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
   const [addToListCompanyId, setAddToListCompanyId] = useState<number | null>(null);
@@ -157,7 +172,7 @@ export function MapsSearchResults({
   const autoTriggeredRef = useRef(false);
   // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
   // загружается ленива через dynamic(), требует координат у компаний.
-  const [viewMode, setViewMode] = useState<'list' | 'map' | 'heatmap'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
   // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
   const [showBadgeLegend, setShowBadgeLegend] = useState(false);
@@ -174,6 +189,38 @@ export function MapsSearchResults({
     setFilter(next);
     setFilterDirty(true);
   }, []);
+
+  // Multi-source persistence (§3.1 ТЗ 2026-06-04): синхронизируем
+  // filter.source_filter с query-параметром ?src=. router.replace без scroll
+  // не вызывает full reload — Next App Router просто меняет URL. Это даёт
+  // «возврат по назад/вперёд», переход по ссылке и устойчивость к F5
+  // (в рамках сессии где search уже создан в родительском MapsSearchPanel).
+  const lastUrlSrcRef = useRef<string | null>(searchParams?.get('src') ?? null);
+  useEffect(() => {
+    const current = filter.source_filter && filter.source_filter !== 'all'
+      ? filter.source_filter
+      : null;
+    if (lastUrlSrcRef.current === current) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    if (current) params.set('src', current);
+    else params.delete('src');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    lastUrlSrcRef.current = current;
+  }, [filter.source_filter, pathname, router, searchParams]);
+
+  // Внешние изменения URL (Назад/Вперёд браузера, переход по ссылке) →
+  // подхватываем ?src= в state, если оно расходится с текущим.
+  useEffect(() => {
+    const fromUrl = parseSourceFilter(searchParams?.get('src') ?? null) ?? 'all';
+    const inState = filter.source_filter ?? 'all';
+    if (fromUrl !== inState) {
+      lastUrlSrcRef.current = fromUrl === 'all' ? null : fromUrl;
+      setFilter((prev) => ({ ...prev, source_filter: fromUrl }));
+      setFilterDirty(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const onAddToList = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
@@ -253,6 +300,7 @@ export function MapsSearchResults({
         if (data.items.length > companies.length) {
           setCompanies(data.items);
         }
+        if (data.source_counts) setSourceCounts(data.source_counts);
       } catch {
         /* keep current */
       }
@@ -268,6 +316,7 @@ export function MapsSearchResults({
         const data = await listMapCompanies(search.id, f, 100, 0);
         setCompanies(data.items);
         setCompaniesEverLoaded(true);
+        if (data.source_counts) setSourceCounts(data.source_counts);
       } finally {
         setIsLoading(false);
       }
@@ -603,6 +652,43 @@ export function MapsSearchResults({
               <Sliders className="h-4 w-4" />
               Фильтры
             </button>
+            {/* Multi-source сегмент-переключатель «Все · 2GIS · Я.Карты»
+                (ТЗ 2026-06-04). Прячем когда оба источника пустые (ни одной
+                yandex_maps компании в выдаче — переключатель не нужен).
+                Счётчики берём из source_counts (полная выборка поиска). */}
+            {renderTotal > 0 && sourceCounts && sourceCounts.yandex_maps > 0 && sourceCounts.twogis > 0 && (
+              <div
+                className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600"
+                title={`Найдено: всего ${sourceCounts.total} · 2GIS ${sourceCounts.twogis} · Я.Карты ${sourceCounts.yandex_maps} · в обоих ${sourceCounts.both}`}
+              >
+                {([
+                  { id: 'all', label: 'Все', count: sourceCounts.total },
+                  { id: '2gis', label: '2GIS', count: sourceCounts.twogis },
+                  { id: 'yandex_maps', label: 'Я.Карты', count: sourceCounts.yandex_maps },
+                ] as const).map((opt, idx) => {
+                  const active = (filter.source_filter ?? 'all') === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleFilterChange({ ...filter, source_filter: opt.id })}
+                      aria-pressed={active}
+                      className={
+                        'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
+                        (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
+                        (active
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
+                      }
+                    >
+                      {opt.label}
+                      <span className={active ? 'opacity-80' : 'opacity-60'}>{opt.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* View toggle: список vs карта. Прячем пока не подгружены
                 компании — нечего показывать на карте. */}
             {renderTotal > 0 && (
@@ -632,20 +718,6 @@ export function MapsSearchResults({
                   }
                 >
                   <MapIcon className="h-3.5 w-3.5" /> Карта
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('heatmap')}
-                  aria-pressed={viewMode === 'heatmap'}
-                  title="Тепловая карта: плотность / боль / лиды на сайт / рейтинг / платёжеспособность"
-                  className={
-                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium dark:border-slate-600 ' +
-                    (viewMode === 'heatmap'
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
-                  }
-                >
-                  🔥 Тепло
                 </button>
               </div>
             )}
@@ -818,6 +890,7 @@ export function MapsSearchResults({
                     aiAnalysis={aiAnalysis}
                     selected={typeof id === 'number' && selectedIds.has(id)}
                     onToggleSelect={typeof id === 'number' ? toggleSelect : undefined}
+                    activeSource={filter.source_filter ?? null}
                   />
                 );
               })}
@@ -830,20 +903,6 @@ export function MapsSearchResults({
             companies={renderList as CompanyOut[]}
             aiAnalyses={aiAnalyses}
             onOpenCompany={(id) => setDrawerCompanyId(id)}
-          />
-        )}
-
-        {viewMode === 'heatmap' && (
-          <MapsCompaniesHeatmap
-            searchId={search.id}
-            fallbackCenter={(() => {
-              const withCoord = (renderList as CompanyOut[]).find(
-                (c) => typeof c.lat === 'number' && typeof c.lng === 'number'
-              );
-              return withCoord
-                ? { lat: withCoord.lat as number, lng: withCoord.lng as number }
-                : undefined;
-            })()}
           />
         )}
       </div>

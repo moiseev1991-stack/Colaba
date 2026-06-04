@@ -264,7 +264,10 @@ async def test_export_csv_returns_attachment(monkeypatch):
         assert "text/csv" in r.headers.get("content-type", "")
         assert "attachment" in r.headers.get("content-disposition", "")
         body = r.text
-        assert "name,niche,city" in body  # заголовки CSV
+        # UTF-8 BOM в начале — Excel в RU-локали без него читает как Windows-1251.
+        assert body.startswith("﻿"), "ожидается UTF-8 BOM в начале CSV"
+        # Разделитель ';' — стандарт RU-локали Excel (с ',' все колонки склеиваются).
+        assert "name;niche;city" in body  # заголовки CSV
         assert "Stomatology One" in body
         assert "+74950000001" in body
 

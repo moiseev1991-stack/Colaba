@@ -615,6 +615,27 @@ export function MapsFiltersPanel({
         </Select>
       </div>
 
+      {/* Multi-source (ТЗ 2026-06-04 §3.1): фильтр по источнику и в боковой
+          панели тоже — дублирует сегмент в шапке выдачи. Полезно когда юзер
+          сохраняет пресет с фильтром источника или открывает выдачу с узкого
+          экрана где шапка прокручена. */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+          Источник
+        </label>
+        <Select
+          value={value.source_filter ?? 'all'}
+          onChange={(e) => {
+            const v = e.target.value as 'all' | '2gis' | 'yandex_maps';
+            onChange({ ...value, source_filter: v });
+          }}
+        >
+          <option value="all">Все источники</option>
+          <option value="2gis">Только 2GIS</option>
+          <option value="yandex_maps">Только Я.Карты</option>
+        </Select>
+      </div>
+
       {/* Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal */}
       <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-2">
         <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">

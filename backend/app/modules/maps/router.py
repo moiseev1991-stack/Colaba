@@ -56,6 +56,7 @@ from app.modules.maps.schemas import (
     OutreachDraftRequest,
     PainTagOut,
     ProvidersHealthOut,
+    SourceCountsOut,
     ReviewOut,
     ReviewsListOut,
     SortBy,
@@ -233,6 +234,8 @@ async def list_search_companies(
     review_text_excludes: Optional[str] = Query(default=None, max_length=200),
     review_text_contains_any: Optional[list[str]] = Query(default=None),
     review_text_excludes_any: Optional[list[str]] = Query(default=None),
+    # Multi-source фильтр (ТЗ 2026-06-04): сегмент-переключатель в шапке.
+    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -254,6 +257,7 @@ async def list_search_companies(
         review_text_excludes=review_text_excludes,
         review_text_contains_any=review_text_contains_any or None,
         review_text_excludes_any=review_text_excludes_any or None,
+        source_filter=source_filter,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
@@ -305,11 +309,25 @@ async def list_search_companies(
                 matched_by=legal.matched_by,
             )
         out_items.append(out)
+    # Multi-source: счётчики на ВСЕЙ выборке (без source_filter) — нужны фронту
+    # чтобы рисовать «Все · 2GIS X · Я.Карты Y · в обоих Z» в шапке.
+    try:
+        counts_raw = await service.get_source_counts_for_search(db, search_id)
+        source_counts = SourceCountsOut(
+            total=counts_raw.get("total", 0),
+            twogis=counts_raw.get("twogis", 0),
+            yandex_maps=counts_raw.get("yandex_maps", 0),
+            both=counts_raw.get("both", 0),
+        )
+    except Exception:
+        logger.exception("source_counts compute failed for search_id=%d", search_id)
+        source_counts = None
     return CompaniesListOut(
         items=out_items,
         total=total,
         limit=limit,
         offset=offset,
+        source_counts=source_counts,
     )
 
 
@@ -349,8 +367,13 @@ async def export_search_csv(
     )
     items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
+    # Excel в русской локали по умолчанию открывает CSV как Windows-1251.
+    # Чтобы он понял UTF-8 — добавляем BOM (﻿) в начало файла.
+    # Разделитель ";" вместо "," — это стандарт CSV для русской локали
+    # Excel (List separator из ОС). С "," Excel в RU всё пишет в одну колонку.
     output = io.StringIO()
-    writer = csv.writer(output)
+    output.write("﻿")
+    writer = csv.writer(output, delimiter=";")
     writer.writerow([
         "id", "name", "niche", "city", "address", "phone", "website",
         "rating", "reviews_count", "reviews_positive", "reviews_negative",
@@ -708,34 +731,6 @@ async def outreach_draft_for_company(
         suggested_to_emails=list(emails)[:5],
         cached=result.cached,
     )
-
-
-# ---------------------------------------------------------------------------
-# Heatmap (блок 5 ТЗ 2026-06-02)
-# ---------------------------------------------------------------------------
-
-
-@router.get("/heatmap")
-@limiter.limit("60/minute")
-async def get_heatmap(
-    request: Request,
-    search_id: int = Query(...),
-    layer: str = Query(default="density"),
-    user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    """Возвращает массив точек {lat, lng, weight} для Leaflet.heat.
-
-    layer — один из density / pain / website / rating / wealth. Подробнее
-    см. docstring app/modules/maps/heatmap.py.
-    """
-    if layer not in ("density", "pain", "website", "rating", "wealth"):
-        raise HTTPException(status_code=400, detail=f"unknown layer: {layer}")
-
-    from app.modules.maps.heatmap import build_points
-
-    points = await build_points(db, search_id, layer)  # type: ignore[arg-type]
-    return {"layer": layer, "points": points, "count": len(points)}
 
 
 # ---------------------------------------------------------------------------

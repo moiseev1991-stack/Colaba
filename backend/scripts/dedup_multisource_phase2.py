@@ -101,6 +101,45 @@ def _name_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
 
+# Технические/служебные/соцсетевые домены, не идентифицирующие компанию.
+# Не используем для дедуп-матча — у разных компаний может быть вконтакте/инст/etc.
+_DOMAIN_EXCLUDE = (
+    "vk.com", "vk.ru", "facebook.com", "fb.com", "instagram.com",
+    "ok.ru", "odnoklassniki.ru", "t.me", "telegram.me", "wa.me",
+    "youtube.com", "youtu.be", "twitter.com", "x.com",
+    "yandex.ru", "yandex.com", "ya.ru", "2gis.ru", "2gis.com",
+    "max.ru", "max.app",
+)
+
+
+def _norm_domain(raw: str | None) -> str | None:
+    """https://www.cdiclinic.ru/?utm_source=yandex#x → 'cdiclinic.ru'.
+
+    Используется в дедуп-матчинге как сильный якорь (если у обеих компаний
+    один и тот же доменный сайт — почти наверняка одна организация). Возвращает
+    None для соцсетей/мессенджеров (см. _DOMAIN_EXCLUDE) — они не идентифицируют.
+    """
+    if not raw:
+        return None
+    try:
+        from urllib.parse import urlparse
+        s = raw.strip().lower()
+        if not s.startswith(("http://", "https://")):
+            s = "https://" + s.lstrip("/")
+        host = urlparse(s).netloc
+        if host.startswith("www."):
+            host = host[4:]
+        host = host.split(":")[0]  # убрать порт
+        if not host or "." not in host:
+            return None
+        for bad in _DOMAIN_EXCLUDE:
+            if host == bad or host.endswith("." + bad):
+                return None
+        return host
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Загрузка компаний
 # ---------------------------------------------------------------------------
@@ -116,6 +155,7 @@ class Cand:
     lat: float | None
     lng: float | None
     phones: set[str] = field(default_factory=set)
+    domains: set[str] = field(default_factory=set)  # ТЗ 2026-06-04: domain-якорь
     reviews_count: int = 0
 
 
@@ -125,11 +165,15 @@ async def _load(db, source: str) -> list[Cand]:
     rows = (await db.execute(text(
         """
         SELECT
-            c.id, c.source, c.name, c.city, c.lat, c.lng, c.phone AS main_phone,
+            c.id, c.source, c.name, c.city, c.lat, c.lng,
+            c.phone AS main_phone, c.website AS main_website,
             COALESCE(c.reviews_count, 0) AS reviews_count,
             (SELECT array_agg(cc.value)
              FROM company_contacts cc
-             WHERE cc.company_id = c.id AND cc.type = 'phone') AS extra_phones
+             WHERE cc.company_id = c.id AND cc.type = 'phone') AS extra_phones,
+            (SELECT array_agg(cc.value)
+             FROM company_contacts cc
+             WHERE cc.company_id = c.id AND cc.type = 'website') AS extra_websites
         FROM companies c
         WHERE c.source = :src
         """
@@ -146,6 +190,16 @@ async def _load(db, source: str) -> list[Cand]:
             np = _norm_phone(p)
             if np:
                 phones.add(np)
+        # ТЗ 2026-06-04: domain-якорь. Берём основной website + все из company_contacts.
+        domains: set[str] = set()
+        if r["main_website"]:
+            d = _norm_domain(r["main_website"])
+            if d:
+                domains.add(d)
+        for w in (r["extra_websites"] or []):
+            d = _norm_domain(w)
+            if d:
+                domains.add(d)
         out.append(Cand(
             id=int(r["id"]),
             source=str(r["source"]),
@@ -155,6 +209,7 @@ async def _load(db, source: str) -> list[Cand]:
             lat=float(r["lat"]) if r["lat"] is not None else None,
             lng=float(r["lng"]) if r["lng"] is not None else None,
             phones=phones,
+            domains=domains,
             reviews_count=int(r["reviews_count"]),
         ))
     return out
@@ -204,11 +259,15 @@ def _find_matches(twogis: list[Cand], yandex: list[Cand]) -> list[Match]:
     конфликты (один yandex может матчиться только к одному 2gis и наоборот) жадно
     по убыванию confidence.
     """
-    # Индекс yandex по телефону и городу для быстрого поиска
+    # Индекс yandex по телефону, домену и городу для быстрого поиска
     y_by_phone: dict[str, list[Cand]] = {}
     for y in yandex:
         for p in y.phones:
             y_by_phone.setdefault(p, []).append(y)
+    y_by_domain: dict[str, list[Cand]] = {}
+    for y in yandex:
+        for d in y.domains:
+            y_by_domain.setdefault(d, []).append(y)
     y_by_city: dict[str, list[Cand]] = {}
     for y in yandex:
         if y.city:
@@ -230,6 +289,13 @@ def _find_matches(twogis: list[Cand], yandex: list[Cand]) -> list[Match]:
                 if tg.city and y.city and tg.city != y.city:
                     continue
                 consider(tg, y, 0.95, "phone", f"phone {p}")
+
+        # 1b. По совпадению доменного сайта — сильный якорь (ТЗ 2026-06-04 §1.1).
+        # Конкретный домен типа cdiclinic.ru → почти наверняка одна организация.
+        # Соцсети/мессенджеры в _norm_domain отброшены.
+        for d in tg.domains:
+            for y in y_by_domain.get(d, []):
+                consider(tg, y, 0.93, "domain", f"domain {d}")
 
         # 2. По координатам ≤100м + name similarity ≥0.7
         if tg.lat is not None and tg.lng is not None and tg.city:

@@ -121,6 +121,12 @@ class MapSearchFilter(BaseModel):
     min_revenue: float | None = None
     min_age_years: int | None = None
 
+    # Multi-source фильтр (ТЗ 2026-06-04): глобальный переключатель
+    # в шапке выдачи «Все · 2GIS · Я.Карты». EXISTS-фильтр по company_sources.
+    # 'all'/None — без фильтра. '2gis'/'yandex_maps' — только компании с
+    # соответствующим source-профилем (склеенные мульти-компании остаются).
+    source_filter: Literal["all", "2gis", "yandex_maps"] | None = None
+
 
 # ---------------------------------------------------------------------------
 # API request/response schemas
@@ -338,11 +344,27 @@ class MapSearchOut(BaseModel):
     radius_meters: int | None = None
 
 
+class SourceCountsOut(BaseModel):
+    """Счётчики по источникам в шапке выдачи (ТЗ 2026-06-04 §2.2).
+
+    Считаются на ВСЕЙ выборке поиска (до пагинации, без фильтра по source).
+    `both` — компании, имеющие профили обоих источников (склеенные Phase 2/3).
+    """
+
+    total: int = 0
+    twogis: int = 0          # с профилем 2gis
+    yandex_maps: int = 0     # с профилем yandex_maps
+    both: int = 0            # с обоими (мультисурсовые)
+
+
 class CompaniesListOut(BaseModel):
     items: list[CompanyOut]
     total: int
     limit: int
     offset: int
+    # Multi-source (ТЗ 2026-06-04): счётчики для сегмент-переключателя
+    # «Все · 2GIS · Я.Карты» в шапке списка. None у легаси-клиентов.
+    source_counts: SourceCountsOut | None = None
 
 
 class ReviewsListOut(BaseModel):
