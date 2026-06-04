@@ -114,8 +114,39 @@ def _make_response(text: str, status: int = 200, headers: dict[str, str] | None 
 
 
 # ---------------------------------------------------------------------------
-# fetch_reviews via AJAX tests
+# fetch_reviews via SSR-HTML tests
 # ---------------------------------------------------------------------------
+#
+# С 2026-06 Yandex закрыл /maps/api/business/fetchReviews для сторонних
+# потребителей (отдаёт только {"csrfToken": ...}). Парсер переведён на
+# SSR-HTML страницы /maps/org/{businessId}/reviews/. Тесты подменяют
+# httpx.AsyncClient мок-клиентом, который возвращает мини-HTML с двумя
+# отзывами и проверяют корректный mapping в ReviewRaw.
+
+
+_REVIEW_HTML_FIXTURE = """
+<!doctype html><html><body>
+<div data-chunk="reviews">
+  <div class="business-review-view" itemprop="review" itemscope itemtype="http://schema.org/Review">
+    <meta itemprop="ratingValue" content="5.0"/>
+    <meta itemprop="datePublished" content="2026-01-24T06:57:24.400Z"/>
+    <div itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <span itemprop="name">Анна Петрова</span>
+    </div>
+    <span itemprop="reviewBody">Отличная клиника, всё понравилось.</span>
+  </div>
+  <div class="business-review-view" itemprop="review" itemscope itemtype="http://schema.org/Review">
+    <meta itemprop="ratingValue" content="2.0"/>
+    <meta itemprop="datePublished" content="2025-12-10T03:43:41Z"/>
+    <div itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <span itemprop="name">Дмитрий М.</span>
+    </div>
+    <div class="business-review-view__body" itemprop="reviewBody">Долго ждал, грязно.</div>
+    <div class="business-review-view__date _org-answer">Ответ владельца</div>
+  </div>
+</div>
+</body></html>
+"""
 
 
 class _AsyncClientMock:
@@ -137,15 +168,16 @@ class _AsyncClientMock:
 
 
 @pytest.mark.asyncio
-async def test_fetch_reviews_via_ajax_happy_path(monkeypatch):
-    import json
-    data = json.loads((FIXTURES / "yandex_fetch_reviews_response.json").read_text(encoding="utf-8"))
+async def test_fetch_reviews_ssr_html_happy_path(monkeypatch):
+    """HTML-страница /maps/org/{id}/reviews/ → 2 отзыва со Schema.org разметкой."""
+    captured_url: dict[str, str] = {}
 
     def factory(url, params):
+        captured_url["url"] = url
         return _make_response(
-            json.dumps(data),
+            _REVIEW_HTML_FIXTURE,
             status=200,
-            headers={"content-type": "application/json"},
+            headers={"content-type": "text/html; charset=utf-8"},
         )
 
     mock_client = _AsyncClientMock(factory)
@@ -154,37 +186,45 @@ async def test_fetch_reviews_via_ajax_happy_path(monkeypatch):
     provider = YandexMapsProvider(use_proxy=False)
     reviews = [r async for r in provider.fetch_reviews("1010101010101", limit=50)]
 
-    # 4 items в фикстуре, последний (без text+rating, без author.name) тоже идёт —
-    # отличие от 2GIS: тут провайдер не отсеивает (мы решили: даже rating=None отзыв
-    # сохраняется). Проверим что хотя бы первые три валидно смапились.
-    assert len(reviews) >= 3
+    # URL парсера — это страница reviews, а не AJAX endpoint.
+    assert "/maps/org/1010101010101/reviews/" in captured_url["url"]
+    assert len(reviews) == 2
+
     first = reviews[0]
     assert first.source == "yandex_maps"
-    assert first.external_id == "ya-rev-1001"
-    assert first.author_masked == "А. П."
     assert first.rating == 5
+    assert first.author_masked  # mask_author применён, точная маска зависит от utils
+    assert "Отличная клиника" in (first.raw_text or "")
     assert first.has_owner_reply is False
     assert isinstance(first.posted_at, datetime)
-    assert first.posted_at.year == 2024
+    assert first.posted_at.year == 2026
 
-    # Второй — с ответом владельца
     second = reviews[1]
-    assert second.external_id == "ya-rev-1002"
-    assert second.has_owner_reply is True
     assert second.rating == 2
-
-    # Третий — пустой author
-    third = reviews[2]
-    assert third.author_masked == "Аноним"
-    # updated_time в миллисекундах распознан
-    assert isinstance(third.posted_at, datetime)
+    assert "Долго ждал" in (second.raw_text or "")
+    # Блок с _org-answer присутствует → has_owner_reply True
+    assert second.has_owner_reply is True
 
 
 @pytest.mark.asyncio
-async def test_fetch_reviews_returns_when_non_json(monkeypatch):
-    """Если content-type не json (например, прилетел HTML с капчей) — стрим завершается."""
+async def test_fetch_reviews_returns_when_no_review_nodes(monkeypatch):
+    """Если HTML без блоков отзывов (капча/редирект/баг) — стрим завершается пустым."""
     def factory(url, params):
-        return _make_response("<html>captcha</html>", status=200, headers={"content-type": "text/html"})
+        return _make_response("<html><body>nope</body></html>", status=200, headers={"content-type": "text/html"})
+
+    mock_client = _AsyncClientMock(factory)
+    monkeypatch.setattr(ym.httpx, "AsyncClient", lambda **kw: mock_client)
+
+    provider = YandexMapsProvider(use_proxy=False)
+    reviews = [r async for r in provider.fetch_reviews("x", limit=50)]
+    assert reviews == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_reviews_returns_on_non_200(monkeypatch):
+    """Не-200 ответ (например, 403/429) → стрим завершается без ошибок."""
+    def factory(url, params):
+        return _make_response("forbidden", status=403, headers={"content-type": "text/html"})
 
     mock_client = _AsyncClientMock(factory)
     monkeypatch.setattr(ym.httpx, "AsyncClient", lambda **kw: mock_client)
