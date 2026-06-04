@@ -678,7 +678,10 @@ async def save_reviews_batch(
 
 async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
     """Пересчитывает companies.reviews_*_count, has_owner_replies, owner_replies_count,
-    last_review_at одним UPDATE по подзапросу.
+    last_review_at одним UPDATE по подзапросу. Дополнительно пересчитывает
+    per-source агрегаты в company_sources (multi-source Phase 4) — фронт берёт
+    оттуда `sources_profiles[].reviews_count` для секции «Метрики по источникам»
+    и счётчиков табов «2GIS (N) / Я.Карты (M)» в drawer.
 
     Sentiment derived from rating уже проставлен в save_reviews_batch — поэтому
     распределение positive/negative/neutral корректно даже без AI-обработки.
@@ -708,6 +711,39 @@ async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
                 WHERE company_id = :cid
             ) AS sub
             WHERE companies.id = :cid
+            """
+        ),
+        {"cid": company_id},
+    )
+
+    # Multi-source (Phase 4): per-source агрегаты в company_sources.
+    # GROUPED BY reviews.source — counts/positive/negative/neutral/has_owner_replies
+    # по каждому источнику отдельно. Без этого UI показывает «Я.Карты 0 отзывов»
+    # даже когда в reviews есть 50 yandex_maps-отзывов.
+    await db.execute(
+        text(
+            """
+            UPDATE company_sources cs
+            SET
+                reviews_count = sub.total,
+                reviews_positive_count = sub.positive,
+                reviews_negative_count = sub.negative,
+                reviews_neutral_count  = sub.neutral,
+                owner_replies_count    = sub.owner_replies,
+                has_owner_replies      = (sub.owner_replies > 0)
+            FROM (
+                SELECT
+                    source,
+                    COUNT(*)::int AS total,
+                    COUNT(*) FILTER (WHERE sentiment = 'positive')::int AS positive,
+                    COUNT(*) FILTER (WHERE sentiment = 'negative')::int AS negative,
+                    COUNT(*) FILTER (WHERE sentiment = 'neutral')::int  AS neutral,
+                    COUNT(*) FILTER (WHERE has_owner_reply IS TRUE)::int AS owner_replies
+                FROM reviews
+                WHERE company_id = :cid
+                GROUP BY source
+            ) AS sub
+            WHERE cs.company_id = :cid AND cs.source = sub.source
             """
         ),
         {"cid": company_id},
