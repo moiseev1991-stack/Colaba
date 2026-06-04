@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.48.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.47.0...v1.48.0) (2026-06-04)
+
+
+### Bug Fixes
+
+* **deploy:** git reset через FETCH_HEAD (на проде нет remote-tracking ref для feature-веток) ([5862ae8](https://github.com/moiseev1991-stack/Colaba/commit/5862ae8d2607c64708e14f2769f3890845be1af8))
+* **deploy:** добавить --no-build к compose up frontend ([54ad5b7](https://github.com/moiseev1991-stack/Colaba/commit/54ad5b7dbd2e16f67785fc4b5765a63481ad2ef3))
+* **deploy:** добавить --no-deps к compose up frontend ([8e94594](https://github.com/moiseev1991-stack/Colaba/commit/8e94594ae8a3cc5be5c5cd93e52fde9434ba4f5d))
+* **export:** UTF-8 BOM + ; разделитель в CSV для корректного открытия в Excel ([54f6dee](https://github.com/moiseev1991-stack/Colaba/commit/54f6dee4a9ec887fee43d98aa671869c24f8aeb4))
+* **maps:** Yandex reviews через HTML-парсинг (API теперь требует CSRF) ([d189323](https://github.com/moiseev1991-stack/Colaba/commit/d1893236b237577706feddb394b9f77227c48147))
+
+
+### Features
+
+* **maps:** URL-persistence ?src= + фокус карточки на выбранном источнике ([64d4aef](https://github.com/moiseev1991-stack/Colaba/commit/64d4aef95d1a4626340c12359601eb74f2b1d813))
+* **maps:** фильтр источника в боковой панели + чистка лендинга ([c3e9e81](https://github.com/moiseev1991-stack/Colaba/commit/c3e9e81ebe8dc75e1f865e2bed1aa54f61b52dfd))
+* **maps:** фильтр-переключатель источника + усиленная дедуп-склейка (ТЗ 2026-06-04) ([af42e7b](https://github.com/moiseev1991-stack/Colaba/commit/af42e7bee18cf941ddbb406428f9d180c0e1ba65))
+
 # [1.47.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.46.0...v1.47.0) (2026-06-03)
 
 
