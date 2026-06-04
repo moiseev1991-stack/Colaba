@@ -23,11 +23,14 @@ docker load -i "$TAR"
 
 echo "=== 2/5: recreate frontend контейнера ==="
 cd "$COMPOSE_DIR"
-# --no-build обязателен: при --pull never compose всё равно пытается
-# собрать backend (его context: ./backend в compose-файле резолвится в
-# /opt/colaba/backend, которого тут нет — исходники в /opt/colaba-src).
+# --no-build: при --pull never compose всё равно пытается собрать backend
+# (context: ./backend резолвится в /opt/colaba/backend, которого нет —
+# исходники в /opt/colaba-src).
+# --no-deps: backend на проде запущен под image-tag sha-..., наш
+# IMAGE_TAG=latest промахивается по backend-образу. --no-deps говорит
+# compose «не трогай зависимости, только сам frontend».
 BACKEND_IMAGE="$BACKEND_IMAGE" FRONTEND_IMAGE="$FRONTEND_IMAGE" IMAGE_TAG="$IMAGE_TAG" \
-  docker compose -f docker-compose.prod.yml up -d --force-recreate --pull never --no-build frontend
+  docker compose -f docker-compose.prod.yml up -d --force-recreate --pull never --no-build --no-deps frontend
 
 echo "=== 3/5: git pull в $SRC_DIR ==="
 cd "$SRC_DIR"
