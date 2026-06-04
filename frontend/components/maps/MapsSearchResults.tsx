@@ -466,16 +466,6 @@ export function MapsSearchResults({
     a.remove();
   }
 
-  function handleExportWebsiteLeadsXlsx() {
-    // Блок 4 ТЗ 2026-06-02: .xlsx с двумя вкладками для пакетной продажи
-    // сайтов. Бэкенд: GET /maps/website-leads/export.
-    const a = document.createElement('a');
-    a.href = `/api/v1/maps/website-leads/export?search_id=${search.id}&only_website_leads=true`;
-    a.download = `website-leads_${search.id}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
@@ -722,21 +712,12 @@ export function MapsSearchResults({
               </div>
             )}
             {isTerminal && companies.length > 0 && (
-              <>
-                <button
-                  onClick={handleExport}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                >
-                  Экспорт CSV
-                </button>
-                <button
-                  onClick={handleExportWebsiteLeadsXlsx}
-                  title="XLSX с двумя вкладками: «Лиды» (для продаж) + «Производство сайта» (для верстальщика). Только компании без собственного сайта."
-                  className="rounded-v2-sm border border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] px-3 py-2 text-sm font-medium text-[color:var(--signal-good)] hover:opacity-90"
-                >
-                  💼 Excel: лиды на сайт
-                </button>
-              </>
+              <button
+                onClick={handleExport}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Экспорт CSV
+              </button>
             )}
             <button
               onClick={onNewSearch}
