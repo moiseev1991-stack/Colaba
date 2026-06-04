@@ -161,8 +161,10 @@ async def export_search_results_csv(
         offset=0,
     )
 
+    # UTF-8 BOM + ";" разделитель — для корректного открытия в Excel/RU.
     output = io.StringIO()
-    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+    output.write("﻿")
+    writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_ALL)
     writer.writerow([
         "position", "domain", "url", "title", "phone", "email",
         "seo_score", "contact_status", "outreach_subject", "outreach_text", "snippet",

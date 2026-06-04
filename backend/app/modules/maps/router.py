@@ -367,8 +367,13 @@ async def export_search_csv(
     )
     items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
+    # Excel в русской локали по умолчанию открывает CSV как Windows-1251.
+    # Чтобы он понял UTF-8 — добавляем BOM (﻿) в начало файла.
+    # Разделитель ";" вместо "," — это стандарт CSV для русской локали
+    # Excel (List separator из ОС). С "," Excel в RU всё пишет в одну колонку.
     output = io.StringIO()
-    writer = csv.writer(output)
+    output.write("﻿")
+    writer = csv.writer(output, delimiter=";")
     writer.writerow([
         "id", "name", "niche", "city", "address", "phone", "website",
         "rating", "reviews_count", "reviews_positive", "reviews_negative",
