@@ -44,7 +44,7 @@ from app.modules.maps.providers.base import (
     RateLimitError,  # noqa: F401 — оставлен для единообразия импортов
 )
 from app.modules.maps.schemas import CompanyRaw, ReviewRaw
-from app.modules.maps.utils import mask_author
+from app.modules.maps.utils import extract_city_from_address, mask_author
 from app.modules.searches.providers.common import (
     detect_blocking,
     fetch_with_retry,
@@ -458,7 +458,11 @@ class YandexMapsProvider(MapProvider):
             if yielded >= limit:
                 return
             company.niche = niche
-            company.city = city
+            # Yandex HTML отдаёт address строкой без структурированного adm_div
+            # (как у 2GIS). Если в строке адреса виден другой известный город —
+            # значит компания из соседнего НП, и сохранять её под `city` запроса
+            # = утечка. extract_city_from_address возвращает фактический город.
+            company.city = extract_city_from_address(company.address, city)
             yield company
             yielded += 1
 
@@ -506,13 +510,14 @@ class YandexMapsProvider(MapProvider):
             if not external_id or not name:
                 continue
             coords = item.get("coordinates") or {}
+            raw_address = item.get("address") if isinstance(item.get("address"), str) else None
             yield CompanyRaw(
                 source="yandex_maps",
                 external_id=str(external_id),
                 name=str(name),
                 niche=niche,
-                city=city,
-                address=item.get("address") if isinstance(item.get("address"), str) else None,
+                city=extract_city_from_address(raw_address, city),
+                address=raw_address,
                 lat=_safe_float(coords.get("lat")) if isinstance(coords, dict) else None,
                 lng=_safe_float(coords.get("lon")) if isinstance(coords, dict) else None,
                 phone=item.get("phone") if isinstance(item.get("phone"), str) else None,

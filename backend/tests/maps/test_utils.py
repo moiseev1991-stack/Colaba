@@ -4,6 +4,7 @@ import pytest
 
 from app.modules.maps.utils import (
     derive_sentiment_from_rating,
+    extract_city_from_address,
     hash_review_text,
     mask_author,
     normalize_text_for_hash,
@@ -59,3 +60,31 @@ def test_derive_sentiment_from_rating(rating, expected_label, expected_score):
     label, score = derive_sentiment_from_rating(rating)
     assert label == expected_label
     assert score == pytest.approx(expected_score)
+
+
+@pytest.mark.parametrize(
+    "address, fallback, expected",
+    [
+        # Запрошенный город есть в адресе — возвращаем его, не ищем дальше.
+        ("г. Химки, ул. Ленинградская, 1", "Химки", "Химки"),
+        ("Москва, Тверская, 5", "Москва", "Москва"),
+        # Утечка: Yandex для запроса «Химки» вернул компанию из Балашихи.
+        ("г. Балашиха, ул. Кирова, 7", "Химки", "Балашиха"),
+        ("Мытищи, Ярославское шоссе, 12", "Химки", "Мытищи"),
+        # Утечка под запрос «Москва» — компания в Подмосковье.
+        ("Реутов, Юбилейный проспект, 60", "Москва", "Реутов"),
+        # Адрес пустой / None — fallback на запрошенный.
+        (None, "Химки", "Химки"),
+        ("", "Химки", "Химки"),
+        # Адрес не содержит ни одного известного города — fallback.
+        ("ул. Центральная, 1", "Химки", "Химки"),
+        # Word-boundary: «Пушкино» не должно матчиться как «Пушкин» (СПб).
+        ("г. Пушкино, ул. Центральная", "Москва", "Пушкино"),
+        # Регистронезависимо.
+        ("БАЛАШИХА, шоссе Энтузиастов", "Химки", "Балашиха"),
+        # Двусоставное название.
+        ("Нижний Новгород, Большая Покровская, 1", "Москва", "Нижний Новгород"),
+    ],
+)
+def test_extract_city_from_address(address, fallback, expected):
+    assert extract_city_from_address(address, fallback) == expected
