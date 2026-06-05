@@ -14,6 +14,7 @@ from app.modules.maps.providers.twogis import (
     CITY_TO_REGION_ID,
     TWOGIS_FALLBACK_REGION_ID,
     TwoGisProvider,
+    _extract_emails_and_extra,
     resolve_region_id,
 )
 
@@ -37,6 +38,38 @@ def test_city_not_in_map_uses_fallback_region():
 def test_missing_api_key_raises_on_init():
     with pytest.raises(MissingAPIKeyError):
         TwoGisProvider(api_key="")
+
+
+def test_extract_emails_filters_2gis_placeholders():
+    item = {
+        "contact_groups": [
+            {
+                "contacts": [
+                    {"type": "email", "value": "Help@2gis.ru"},
+                    {"type": "email", "value": "info@2gis.com"},
+                    {"type": "email", "value": "Sales@Clinic.ru"},
+                    {"type": "email", "value": "owner@clinic.ru"},
+                ]
+            }
+        ]
+    }
+    emails, _ = _extract_emails_and_extra(item)
+    assert emails == ["sales@clinic.ru", "owner@clinic.ru"]
+
+
+def test_extract_emails_dedupes_case_insensitively():
+    item = {
+        "contact_groups": [
+            {
+                "contacts": [
+                    {"type": "email", "value": "Foo@bar.ru"},
+                    {"type": "email", "value": "foo@BAR.ru"},
+                ]
+            }
+        ]
+    }
+    emails, _ = _extract_emails_and_extra(item)
+    assert emails == ["foo@bar.ru"]
 
 
 def test_provider_constructed_with_key():
