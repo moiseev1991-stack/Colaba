@@ -492,9 +492,23 @@ export async function getCompanyDigest(
   return response.data;
 }
 
-/** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку. */
-export function exportSearchCsvUrl(searchId: number, filter: MapSearchFilter = {}): string {
+/** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку.
+ *
+ *  Два режима:
+ *  - `companyIds=undefined` (default) — экспорт всех с применением `filter`.
+ *  - `companyIds=[…]` — bulk-режим: экспорт только выбранных карточек.
+ *    Бэкенд игнорирует `filter` (юзер уже отметил конкретные строки).
+ */
+export function exportSearchCsvUrl(
+  searchId: number,
+  filter: MapSearchFilter = {},
+  companyIds?: number[],
+): string {
   const params = new URLSearchParams();
+  if (companyIds && companyIds.length) {
+    for (const id of companyIds) params.append('company_ids', String(id));
+    return `/api/v1/maps/search/${searchId}/export?${params.toString()}`;
+  }
   if (filter.min_rating !== undefined && filter.min_rating !== null)
     params.set('min_rating', String(filter.min_rating));
   if (filter.max_rating !== undefined && filter.max_rating !== null)
