@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.49.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.48.2...v1.49.0) (2026-06-05)
+
+
+### Features
+
+* **maps:** bulk-toolbar — CSV выбранных карточек ([c177659](https://github.com/moiseev1991-stack/Colaba/commit/c177659fa535a8b02b5aa1d941aa6d4cb3e744a2))
+* **maps:** чистка пресетов под 4 MVP-кейса + дропдаун экспорта + чек-лист для Chrome-агента ([4a933e1](https://github.com/moiseev1991-stack/Colaba/commit/4a933e1c8f5d7c41181c4cdede97f3628100ba24))
+
 ## [1.48.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.48.1...v1.48.2) (2026-06-05)
 
 
