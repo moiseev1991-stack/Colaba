@@ -143,6 +143,7 @@ export function MapsSearchResults({
   // toolbar и чекбоксы в карточках. Очищается при смене search.id.
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftLoadingCompanyId, setDraftLoadingCompanyId] = useState<number | null>(null);
@@ -734,21 +735,80 @@ export function MapsSearchResults({
               </div>
             )}
             {isTerminal && companies.length > 0 && (
-              <>
+              <div className="relative">
                 <button
-                  onClick={handleExport}
+                  type="button"
+                  onClick={() => setExportMenuOpen((v) => !v)}
                   className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  aria-haspopup="menu"
+                  aria-expanded={exportMenuOpen}
                 >
-                  Экспорт CSV
+                  📥 Экспорт ▾
                 </button>
-                <button
-                  onClick={handleExportWebsiteLeadsXlsx}
-                  title="XLSX с двумя вкладками: «Лиды» (для продаж) + «Производство сайта» (для верстальщика). Только компании без собственного сайта."
-                  className="rounded-v2-sm border border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] px-3 py-2 text-sm font-medium text-[color:var(--signal-good)] hover:opacity-90"
-                >
-                  💼 Excel: лиды на сайт
-                </button>
-              </>
+                {exportMenuOpen && (
+                  <>
+                    {/* Невидимый overlay для закрытия по клику вне меню. */}
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setExportMenuOpen(false)}
+                      aria-hidden
+                    />
+                    <div
+                      role="menu"
+                      className="absolute right-0 z-40 mt-1 w-72 rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setExportMenuOpen(false);
+                          handleExport();
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200"
+                      >
+                        <div className="font-medium">CSV — все компании</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          с учётом текущих фильтров слева
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={selectedIds.size === 0}
+                        onClick={() => {
+                          setExportMenuOpen(false);
+                          handleExportSelected();
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-700 dark:text-slate-200"
+                      >
+                        <div className="font-medium">
+                          CSV — выбранные{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          {selectedIds.size === 0
+                            ? 'отметь карточки чекбоксами слева'
+                            : 'только отмеченные карточки'}
+                        </div>
+                      </button>
+                      <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setExportMenuOpen(false);
+                          handleExportWebsiteLeadsXlsx();
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200"
+                      >
+                        <div className="font-medium">💼 Excel — лиды на сайт</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          XLSX с двумя вкладками: «Лиды» + «Производство сайта». Только компании без собственного сайта.
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <button
               onClick={onNewSearch}
@@ -876,14 +936,6 @@ export function MapsSearchResults({
                     className="inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-gradient px-2.5 py-1 font-medium text-white shadow-v2-sm hover:shadow-v2-hover"
                   >
                     Добавить выбранные в список
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportSelected}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    title="Скачать CSV только по отмеченным карточкам"
-                  >
-                    CSV выбранных
                   </button>
                   <button
                     type="button"
