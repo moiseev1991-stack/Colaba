@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.48.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.48.0...v1.48.1) (2026-06-05)
+
+
+### Bug Fixes
+
+* **maps:** фильтр placeholder-email 2GIS (help@2gis.ru и др.) ([d61a297](https://github.com/moiseev1991-stack/Colaba/commit/d61a2972d460e9a69788b0f62498e13b585349d1))
+
 # [1.48.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.47.0...v1.48.0) (2026-06-04)
 
 
