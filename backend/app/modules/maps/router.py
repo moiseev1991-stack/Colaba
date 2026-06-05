@@ -348,24 +348,45 @@ async def export_search_csv(
     review_text_excludes: Optional[str] = Query(default=None, max_length=200),
     review_text_contains_any: Optional[list[str]] = Query(default=None),
     review_text_excludes_any: Optional[list[str]] = Query(default=None),
+    company_ids: Optional[list[int]] = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Экспорт компаний поиска в CSV (с теми же фильтрами что у /companies)."""
+    """Экспорт компаний поиска в CSV.
+
+    Два режима:
+    - **Без `company_ids`** (default) — экспорт всех компаний поиска с теми же
+      фильтрами что у `/companies`.
+    - **С `company_ids`** — экспорт только выбранных карточек (bulk-toolbar
+      «CSV выбранных»). Фильтры игнорируются: юзер уже явно отметил нужные
+      строки чекбоксами, фильтры теряют смысл и могут сократить выдачу
+      неожиданно. Привязка к `search_id` сохраняется — нельзя экспортнуть
+      чужие компании, подсунув их id.
+    """
     await _get_owned_search(db, search_id, user_id)
-    flt = MapSearchFilter(
-        min_rating=min_rating, max_rating=max_rating,
-        min_reviews=min_reviews, min_negative=min_negative,
-        has_owner_replies=has_owner_replies,
-        has_website=has_website,
-        pain_tag_ids=pain_tag_ids or None,
-        sort_by=sort_by,
-        review_text_contains=review_text_contains,
-        review_text_excludes=review_text_excludes,
-        review_text_contains_any=review_text_contains_any or None,
-        review_text_excludes_any=review_text_excludes_any or None,
-    )
-    items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
+    if company_ids:
+        from app.models.maps import MapSearchResult
+        q = (
+            select(Company)
+            .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+            .where(MapSearchResult.map_search_id == search_id)
+            .where(Company.id.in_(company_ids))
+        )
+        items = list((await db.execute(q)).scalars().all())
+    else:
+        flt = MapSearchFilter(
+            min_rating=min_rating, max_rating=max_rating,
+            min_reviews=min_reviews, min_negative=min_negative,
+            has_owner_replies=has_owner_replies,
+            has_website=has_website,
+            pain_tag_ids=pain_tag_ids or None,
+            sort_by=sort_by,
+            review_text_contains=review_text_contains,
+            review_text_excludes=review_text_excludes,
+            review_text_contains_any=review_text_contains_any or None,
+            review_text_excludes_any=review_text_excludes_any or None,
+        )
+        items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
     # Excel в русской локали по умолчанию открывает CSV как Windows-1251.
     # Чтобы он понял UTF-8 — добавляем BOM (﻿) в начало файла.

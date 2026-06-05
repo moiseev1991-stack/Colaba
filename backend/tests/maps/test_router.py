@@ -272,6 +272,90 @@ async def test_export_csv_returns_attachment(monkeypatch):
         assert "+74950000001" in body
 
 
+@pytest.mark.asyncio
+async def test_export_csv_with_company_ids_filters_to_selected(monkeypatch):
+    """GET /export?company_ids=… (bulk-режим) — отдаёт только выбранные
+    карточки и игнорирует остальные фильтры."""
+    from app.modules.maps import tasks as maps_tasks
+    monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
+
+    user_id, headers = await _create_user()
+    async with AsyncSessionLocal() as db:
+        search = await service.create_map_search(
+            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Alpha", rating=4.5, reviews_count=10),
+            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Beta",  rating=4.5, reviews_count=10),
+            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Gamma", rating=4.5, reviews_count=10),
+        ], search.id)
+        search_id = search.id
+
+        # Берём id двух из трёх для выборочного экспорта.
+        from app.models.maps import Company, MapSearchResult
+        from sqlalchemy import select
+        rows = await db.execute(
+            select(Company.id, Company.name)
+            .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+            .where(MapSearchResult.map_search_id == search_id)
+            .order_by(Company.name)
+        )
+        rows = list(rows.all())
+        alpha_id = next(rid for rid, name in rows if name == "Alpha")
+        gamma_id = next(rid for rid, name in rows if name == "Gamma")
+
+    async with _client() as c:
+        # Запрос с двумя ids: Alpha и Gamma; Beta должна не попасть в выдачу.
+        r = await c.get(
+            f"/api/v1/maps/search/{search_id}/export"
+            f"?company_ids={alpha_id}&company_ids={gamma_id}",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.text
+        assert "Alpha" in body
+        assert "Gamma" in body
+        assert "Beta" not in body
+
+
+@pytest.mark.asyncio
+async def test_export_csv_with_company_ids_does_not_leak_other_search(monkeypatch):
+    """GET /export?company_ids=… не должен возвращать компании из чужого
+    search_id, даже если их id переданы. Защита от подмены параметра."""
+    from app.modules.maps import tasks as maps_tasks
+    monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
+
+    user_id, headers = await _create_user()
+    async with AsyncSessionLocal() as db:
+        search_a = await service.create_map_search(
+            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+        )
+        search_b = await service.create_map_search(
+            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="OnlyInB", rating=4.5, reviews_count=10),
+        ], search_b.id)
+
+        from app.models.maps import Company, MapSearchResult
+        from sqlalchemy import select
+        only_in_b_id = (await db.execute(
+            select(Company.id)
+            .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+            .where(MapSearchResult.map_search_id == search_b.id)
+        )).scalar_one()
+        search_a_id = search_a.id
+
+    async with _client() as c:
+        r = await c.get(
+            f"/api/v1/maps/search/{search_a_id}/export?company_ids={only_in_b_id}",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        # Тело CSV содержит только заголовки, без OnlyInB:
+        assert "OnlyInB" not in r.text
+
+
 def _unique_id(prefix: str) -> str:
     return f"r-{prefix}-{uuid.uuid4().hex[:10]}"
 

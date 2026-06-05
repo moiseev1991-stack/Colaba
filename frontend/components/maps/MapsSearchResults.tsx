@@ -466,6 +466,18 @@ export function MapsSearchResults({
     a.remove();
   }
 
+  function handleExportSelected() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const url = exportSearchCsvUrl(search.id, filter, ids);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `maps_search_${search.id}_selected.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   function handleExportWebsiteLeadsXlsx() {
     // Блок 4 ТЗ 2026-06-02: .xlsx с двумя вкладками для пакетной продажи
     // сайтов. Бэкенд: GET /maps/website-leads/export.
@@ -864,6 +876,14 @@ export function MapsSearchResults({
                     className="inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-gradient px-2.5 py-1 font-medium text-white shadow-v2-sm hover:shadow-v2-hover"
                   >
                     Добавить выбранные в список
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportSelected}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    title="Скачать CSV только по отмеченным карточкам"
+                  >
+                    CSV выбранных
                   </button>
                   <button
                     type="button"
