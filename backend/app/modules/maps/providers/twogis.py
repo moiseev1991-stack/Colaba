@@ -28,6 +28,7 @@ from app.modules.maps.providers.base import (
     MissingAPIKeyError,
     RateLimitError,
 )
+from app.modules.maps.enrich import _accept_email
 from app.modules.maps.schemas import CompanyRaw, ReviewRaw
 from app.modules.maps.utils import mask_author
 
@@ -246,8 +247,9 @@ def _extract_emails_and_extra(item: dict[str, Any]) -> tuple[list[str], dict[str
                 continue
 
             if ctype == "email":
-                if value not in emails:
-                    emails.append(value)
+                value_lower = value.lower()
+                if _accept_email(value_lower) and value_lower not in emails:
+                    emails.append(value_lower)
             elif ctype == "phone":
                 if not main_phone_seen:
                     main_phone_seen = True
