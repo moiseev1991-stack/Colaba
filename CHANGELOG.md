@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.48.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.48.1...v1.48.2) (2026-06-05)
+
+
+### Bug Fixes
+
+* **maps:** Yandex — реальный город компании из строки адреса ([ee3210f](https://github.com/moiseev1991-stack/Colaba/commit/ee3210f3e6b54fa65a1f51395ec564da23617707))
+
 ## [1.48.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.48.0...v1.48.1) (2026-06-05)
 
 
