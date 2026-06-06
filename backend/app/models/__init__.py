@@ -37,6 +37,7 @@ from app.models.user_filter_preset import UserFilterPreset
 from app.models.company_ai_analysis import CompanyAiAnalysis
 from app.models.company_outreach_draft import CompanyOutreachDraft
 from app.models.company_legal import CompanyLegal
+from app.models.company_decision_maker import CompanyDecisionMaker
 
 __all__ = [
     "User",
@@ -78,4 +79,5 @@ __all__ = [
     "CompanyAiAnalysis",
     "CompanyOutreachDraft",
     "CompanyLegal",
+    "CompanyDecisionMaker",
 ]
