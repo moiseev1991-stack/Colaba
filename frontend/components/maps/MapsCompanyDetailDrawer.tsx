@@ -416,6 +416,16 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
       value: `${legal.okved ?? ''} ${legal.okved_name}`.trim(),
     });
   }
+  // ЛПР (ТЗ A.1 2026-06-04): ФИО + должность руководителя из DaData.
+  // Юзер видит «ЛПР: Иванов Иван Иванович, Генеральный директор» и
+  // может писать письмо на конкретное имя, а не в info@.
+  if (legal.director_name) {
+    const post = legal.director_post ? `, ${legal.director_post}` : '';
+    items.push({
+      label: 'ЛПР',
+      value: `${legal.director_name}${post}`,
+    });
+  }
 
   if (items.length === 0) return null;
 

@@ -217,6 +217,11 @@ export interface CompanyLegalShort {
   legal_status?: string | null;
   okved?: string | null;
   okved_name?: string | null;
+  /** ЛПР (ТЗ A.1 2026-06-04): ФИО руководителя и должность из DaData.
+   *  Отображается в drawer карточки как «ЛПР: Иванов Иван, директор».
+   *  В outreach-письме первое имя подставляется в обращение. */
+  director_name?: string | null;
+  director_post?: string | null;
   age_years?: number | null;
   match_confidence?: number | null;
   matched_by?: string | null;
