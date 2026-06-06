@@ -1090,12 +1090,68 @@ async def list_pain_tags(
 
 
 @router.get("/health/providers", response_model=ProvidersHealthOut)
-async def health_providers():
+async def health_providers(db: AsyncSession = Depends(get_db)):
     """Текущий статус доступности провайдеров (без реальных HTTP-запросов).
 
-    twogis: 'ok' если API-ключ задан, иначе 'no_api_key'.
-    yandex_maps: 'ok' если USE_PROXY=true (без прокси быстро забанит), иначе 'no_proxy'.
+    Поля:
+      - twogis: 'ok' если API-ключ задан, иначе 'no_api_key'.
+      - yandex_maps: 'ok' если USE_PROXY=true (без прокси быстро забанит),
+        иначе 'no_proxy'.
+      - dadata: 'ok' если DADATA_API_KEY задан; иначе 'no_api_key'.
+        details.dadata_enriched — сколько компаний уже обогащено (status='ok').
+      - llm: 'ok' если OPENAI_API_KEY (или ProxyAPI ключ) задан и есть хоть один
+        ai_assistant с непустой model. Иначе подробный статус о причине.
+      - sentry: 'on' если SENTRY_DSN задан, иначе 'off'.
+
+    Эндпоинт не делает реальных HTTP-запросов наружу — это «есть ли ключ
+    в env + соответствующая запись в БД». Реальные HTTP-проверки оставлены
+    провайдер-конкретным health'ам (например /admin → DaData ping)
+    чтобы не задерживать общий dashboard и не есть free-tier лимиты.
     """
     twogis = "ok" if settings.TWOGIS_API_KEY else "no_api_key"
     yandex_maps = "ok" if settings.USE_PROXY else "no_proxy"
-    return ProvidersHealthOut(twogis=twogis, yandex_maps=yandex_maps)
+
+    # DaData
+    dadata = "ok" if (settings.DADATA_API_KEY or "").strip() else "no_api_key"
+
+    # LLM: ключ от OpenAI/ProxyAPI/Anthropic + хотя бы один ai_assistant
+    # с непустой model в БД (иначе pick_assistant_id вернёт None — vendор
+    # на свече, AI-пайплайны no-op'нут).
+    have_openai = bool((settings.OPENAI_API_KEY or "").strip())
+    from app.models.ai_assistant import AiAssistant
+    have_assistant = (await db.execute(
+        select(sa_func.count(AiAssistant.id)).where(AiAssistant.model.isnot(None))
+    )).scalar_one() or 0
+    if not have_openai:
+        llm = "no_api_key"
+    elif have_assistant == 0:
+        llm = "no_assistant_configured"
+    else:
+        llm = "ok"
+
+    # Sentry
+    sentry_dsn = (settings.SENTRY_DSN or "").strip()
+    sentry = "on" if sentry_dsn else "off"
+
+    # Details: счётчики для DaData/AI которые юзер хочет видеть рядом.
+    details: dict[str, Any] = {}
+    try:
+        from app.models.company_legal import CompanyLegal
+        enriched_cnt = (await db.execute(
+            select(sa_func.count(CompanyLegal.id)).where(CompanyLegal.status == "ok")
+        )).scalar_one() or 0
+        details["dadata_enriched"] = int(enriched_cnt)
+    except Exception:
+        # БД-таблицы может не быть в очень старых стендах — не валим health.
+        pass
+    details["ai_assistants_count"] = int(have_assistant)
+    details["environment"] = settings.ENVIRONMENT
+
+    return ProvidersHealthOut(
+        twogis=twogis,
+        yandex_maps=yandex_maps,
+        dadata=dadata,
+        llm=llm,
+        sentry=sentry,
+        details=details,
+    )
