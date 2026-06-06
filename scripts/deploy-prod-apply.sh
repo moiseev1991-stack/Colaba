@@ -41,12 +41,27 @@ git fetch origin "$BRANCH"
 git reset --hard FETCH_HEAD
 git log --oneline -3
 
-echo "=== 4/6: docker cp router.py + удаление heatmap.py ==="
+echo "=== 4/6: docker cp ВСЁ backend/app/ + alembic/ + alembic upgrade head ==="
+# Раньше копировали только maps/router.py — все остальные изменения в backend
+# (reviews_ai-endpoint, celery-таски, схемы, новые alembic-ревизии) требовали
+# ручного docker cp ПОСЛЕ деплоя. Теперь синкаем целиком /backend/app/ +
+# /backend/alembic/ в контейнер; для подхвата Python перечитывает модули
+# при restart (шаг 5), так что важна последовательность 4 → 5, а не наоборот.
+# Backend-образ на проде закреплён на старом sha-теге; полный rebuild через
+# compose падает по OOM, поэтому остаёмся на этом «overlay» подходе.
 for c in colaba-backend-1 colaba-celery-worker-1 colaba-celery-worker-search-1; do
-  echo "  → $c"
-  docker cp "$SRC_DIR/backend/app/modules/maps/router.py" "$c:/app/app/modules/maps/router.py"
+  echo "  → $c (синхронизация /app/app/ и /app/alembic/)"
+  docker cp "$SRC_DIR/backend/app/." "$c:/app/app/"
+  docker cp "$SRC_DIR/backend/alembic/." "$c:/app/alembic/"
   docker exec "$c" rm -f /app/app/modules/maps/heatmap.py || true
 done
+
+# Прокатываем новые alembic-ревизии. Раньше они не доезжали потому что
+# образ backend не пересобирался — теперь файлы versions/ лежат внутри
+# контейнера (см. синхронизацию выше), и upgrade head их подхватит.
+# Идемпотентно: если HEAD не сдвинулся — просто выведет «no upgrade required».
+echo "  → alembic upgrade head"
+docker exec colaba-backend-1 alembic upgrade head
 
 echo "=== 5/6: restart backend + workers ==="
 cd "$COMPOSE_DIR"
