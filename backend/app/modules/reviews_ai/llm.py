@@ -32,12 +32,18 @@ from app.modules.reviews_ai.prompts import (
     OUTREACH_LANGUAGE_HINTS,
     OUTREACH_TONE_HINTS,
     SENTIMENT_PROMPT,
+    TEAM_EXTRACT_PROMPT,
 )
 
 logger = logging.getLogger(__name__)
 
 AssistantKind = Literal[
-    "sentiment", "naming", "outreach_draft", "custom_analysis", "company_description"
+    "sentiment",
+    "naming",
+    "outreach_draft",
+    "custom_analysis",
+    "company_description",
+    "team_extract",
 ]
 
 
@@ -53,6 +59,7 @@ _KIND_HINTS: dict[AssistantKind, list[str]] = {
     "outreach_draft":      ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback
     "custom_analysis":     ["gpt-4o-mini", "haiku", "lite"],     # лёгкая модель
     "company_description": ["gpt-4o-mini", "haiku", "lite"],     # короткий текст — дёшево
+    "team_extract":        ["gpt-4o-mini", "haiku", "lite"],     # парсинг страницы, дёшево
 }
 
 
@@ -74,6 +81,10 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
             settings, "REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME", ""
         )
         explicit = (explicit or "reviews_ai_company_description").strip()
+    elif kind == "team_extract":
+        # Своей env-переменной не заводим (см. подход custom_analysis),
+        # auto-pick по hints всегда подберёт haiku/gpt-4o-mini.
+        explicit = ""
     else:  # custom_analysis — нет отдельной env, всегда auto-pick
         explicit = ""
 
@@ -525,3 +536,77 @@ async def call_llm_custom_analysis(
     if score is None and not comment:
         return None
     return {"score": score, "comment": comment or None}
+
+
+# ---------------------------------------------------------------------------
+# Team / decision-makers extraction (ТЗ A.2 2026-06-04)
+# ---------------------------------------------------------------------------
+
+
+async def call_llm_extract_team(
+    db: AsyncSession,
+    *,
+    company_name: str,
+    page_text: str,
+) -> list[dict[str, Any]] | None:
+    """Извлекает ЛПР со страницы сайта (Команда / О нас / Контакты).
+
+    Возвращает список объектов вида
+    `[{"name": "Иванов Иван", "post": "Директор", "is_dm": true}, ...]`
+    или None если LLM-ассистент не настроен / ответил мусором.
+
+    page_text — уже очищенный (без HTML-тегов) текст страницы, обрезанный
+    до ~8 КБ (страница «команды» редко больше — а если больше, LLM всё
+    равно работает по сэмплу). Обрезку делает вызывающий код.
+    """
+    if not page_text or len(page_text.strip()) < 50:
+        # Слишком короткая страница — там нечего извлекать. Не тратим токены.
+        return []
+
+    assistant_id = await pick_assistant_id(db, "team_extract")
+    if assistant_id is None:
+        logger.info("call_llm_extract_team: no assistant available")
+        return None
+
+    prompt = TEAM_EXTRACT_PROMPT.format(
+        company_name=company_name or "—",
+        page_text=page_text[:8000],
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt}],
+            db=db,
+            max_tokens=800,
+            temperature=0.1,
+        )
+    except Exception as e:
+        logger.warning("call_llm_extract_team: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, list):
+        return []
+    out: list[dict[str, Any]] = []
+    seen_lower: set[str] = set()
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        name = (item.get("name") or "").strip()
+        post = (item.get("post") or "").strip() or None
+        is_dm_raw = item.get("is_dm")
+        is_dm = bool(is_dm_raw) if isinstance(is_dm_raw, bool) else False
+        # Сан-чек: имя должно быть ≥2 кириллических слов (иначе мусор
+        # вроде «Имя Фамилия», шаблоны, английский транслит).
+        parts = [p for p in re.split(r"\s+", name) if p]
+        if len(parts) < 2:
+            continue
+        if not all(re.match(r"^[А-ЯЁа-яё\-]+$", p) for p in parts):
+            continue
+        key = name.lower()
+        if key in seen_lower:
+            continue
+        seen_lower.add(key)
+        out.append({"name": name[:200], "post": (post or "")[:200] or None, "is_dm": is_dm})
+    return out
+

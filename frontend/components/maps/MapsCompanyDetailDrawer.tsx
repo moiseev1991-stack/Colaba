@@ -37,6 +37,7 @@ import {
   getCompanyDetail,
   getCompanyReviews,
   type CompanyDetailOut,
+  type DecisionMakerOut,
   type ReviewOut,
 } from '@/src/services/api/maps';
 
@@ -161,6 +162,12 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
 
           {/* Юр.данные из DaData (блок 2 ТЗ). Показываем только если матч найден. */}
           <LegalBlock legal={detail.legal} />
+
+          {/* ЛПР со страниц сайта (ТЗ A.2 2026-06-04). Если decision_makers
+              пуст и legal.director_name тоже null — блок не рендерится. */}
+          <DecisionMakersBlock
+            decisionMakers={detail.decision_makers ?? []}
+          />
 
           {/* Aha-moment блок 1: драфт холодного письма по компании */}
           <OutreachDraftBlock
@@ -991,5 +998,70 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
         ),
       )}
     </>
+  );
+}
+
+
+// ЛПР со страниц сайта (ТЗ A.2 2026-06-04). decision_makers[] — массив,
+// отсортированный API по убыванию is_decision_maker + confidence. Если пуст
+// — компонент не рендерится (нет смысла показывать пустой блок).
+function DecisionMakersBlock({
+  decisionMakers,
+}: {
+  decisionMakers: DecisionMakerOut[];
+}) {
+  if (!decisionMakers || decisionMakers.length === 0) return null;
+  // Делим: верхние is_dm и остальные. Если все без is_dm — показываем общим
+  // списком «контактные лица» без выделения.
+  const dms = decisionMakers.filter((d) => d.is_decision_maker);
+  const others = decisionMakers.filter((d) => !d.is_decision_maker);
+  const sourceLabel: Record<string, string> = {
+    website_team: 'команда сайта',
+    website_about: 'страница «о нас»',
+    website_contacts: 'контакты сайта',
+  };
+  return (
+    <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
+      <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
+        ЛПР с сайта компании
+      </div>
+      <ul className="space-y-1.5">
+        {(dms.length > 0 ? dms : others).map((d, i) => (
+          <li key={`${d.name}-${i}`} className="text-[12px]">
+            <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
+            {d.post && (
+              <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
+            )}
+            {d.source_url && (
+              <a
+                href={d.source_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="ml-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
+                title={sourceLabel[d.source] ?? d.source}
+              >
+                ↗
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+      {dms.length > 0 && others.length > 0 && (
+        <details className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+          <summary className="cursor-pointer">
+            + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
+          </summary>
+          <ul className="mt-1 space-y-1 pl-3">
+            {others.map((d, i) => (
+              <li key={`other-${d.name}-${i}`}>
+                <span className="font-medium">{d.name}</span>
+                {d.post && <span>{` · ${d.post}`}</span>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }

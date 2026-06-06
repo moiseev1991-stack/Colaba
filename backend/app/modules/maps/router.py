@@ -509,6 +509,32 @@ async def get_company(
             match_confidence=float(legal.match_confidence) if legal.match_confidence is not None else None,
             matched_by=legal.matched_by,
         )
+
+    # ТЗ A.2 2026-06-04: ЛПР со страниц сайта (Celery-таск enrich_company_team).
+    # Возвращаем все is_decision_maker=true первыми, затем остальные сотрудники
+    # (если они вообще есть — на /контактах часто перечислены менеджеры).
+    from app.models.company_decision_maker import CompanyDecisionMaker
+    from app.modules.maps.schemas import DecisionMakerOut
+    dm_rows = (await db.execute(
+        select(CompanyDecisionMaker)
+        .where(CompanyDecisionMaker.company_id == company.id)
+        .order_by(
+            CompanyDecisionMaker.is_decision_maker.desc(),
+            CompanyDecisionMaker.confidence.desc(),
+            CompanyDecisionMaker.id.asc(),
+        )
+    )).scalars().all()
+    detail.decision_makers = [
+        DecisionMakerOut(
+            name=r.name,
+            post=r.post,
+            source=r.source,
+            source_url=r.source_url,
+            confidence=float(r.confidence) if r.confidence is not None else None,
+            is_decision_maker=bool(r.is_decision_maker),
+        )
+        for r in dm_rows
+    ]
     return detail
 
 

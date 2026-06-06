@@ -312,8 +312,26 @@ class ReviewOut(BaseModel):
     source: str | None = None
 
 
+class DecisionMakerOut(BaseModel):
+    """ЛПР с сайта компании (ТЗ A.2 2026-06-04). Из company_decision_makers."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    post: str | None = None
+    source: str  # 'website_team' | 'website_about' | 'website_contacts'
+    source_url: str | None = None
+    confidence: float | None = None
+    is_decision_maker: bool = True
+
+
 class CompanyDetailOut(CompanyOut):
     recent_reviews: list[ReviewOut] = Field(default_factory=list)
+    # ТЗ A.2 2026-06-04: список ЛПР, извлечённых LLM-ом со страниц сайта.
+    # Параллельно с CompanyLegalOut.director_name (DaData) — там единственный
+    # директор «по ЕГРЮЛ», здесь — все лица найденные на /команда /о-нас.
+    # Пустой массив = краулер ещё не отработал или сайт без явных страниц команды.
+    decision_makers: list[DecisionMakerOut] = Field(default_factory=list)
 
 
 class MapSearchOut(BaseModel):
