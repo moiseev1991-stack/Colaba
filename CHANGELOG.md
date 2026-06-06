@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.49.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.49.1...v1.49.2) (2026-06-06)
+
+
+### Bug Fixes
+
+* **maps:** /companies/{id}/digest падал с TypeError на func.case(else_=…) ([19ed733](https://github.com/moiseev1991-stack/Colaba/commit/19ed733e6adab53e99f4a707b6991438e3a2c98c))
+
 ## [1.49.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.49.0...v1.49.1) (2026-06-06)
 
 
