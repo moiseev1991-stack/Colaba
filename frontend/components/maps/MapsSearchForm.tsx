@@ -367,7 +367,10 @@ export function MapsSearchForm({ onStarted }: Props) {
   const displayedPresets = showAllPresets ? NICHE_PRESETS : NICHE_PRESETS.slice(0, 6);
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-10 relative z-10">
+    // На мобиле было px-6 → горизонтальные 48px + внутренние padding'и
+    // карточки p-6 = ещё 48px съедали ширину 390px, поля и заголовки
+    // обрезались. На <sm даём px-3, на sm+ возвращаем px-6.
+    <div className="mx-auto max-w-[1200px] w-full px-3 sm:px-6 py-6 sm:py-10 relative z-10">
       {/* === QUICK START PRESETS === */}
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -421,14 +424,16 @@ export function MapsSearchForm({ onStarted }: Props) {
 
       {/* === LAUNCH PANEL === */}
       <section className="app-hero-card app-reveal app-reveal-delay-1">
-        <form onSubmit={handleSubmit} className="p-6 md:p-8">
+        {/* Меньший padding на мобиле — иначе суммарно 24+24 px по бокам
+            съедало уже узкие 390px и текст обрезался. */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8">
           <div
-            className="flex items-center justify-between mb-6 pb-5 border-b"
+            className="flex flex-wrap items-center justify-between gap-2 mb-6 pb-5 border-b"
             style={{ borderColor: 'hsl(var(--border))' }}
           >
-            <div className="flex items-center gap-3">
-              <span className="app-step-num app-step-num-active">02</span>
-              <div>
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="app-step-num app-step-num-active shrink-0">02</span>
+              <div className="min-w-0">
                 <h2 className="text-[18px] font-bold leading-tight" style={{ color: 'hsl(var(--text))' }}>
                   Параметры поиска
                 </h2>
@@ -442,8 +447,8 @@ export function MapsSearchForm({ onStarted }: Props) {
             </span>
           </div>
 
-          {/* Mode switcher */}
-          <div className="mb-4 flex gap-2">
+          {/* Mode switcher — flex-wrap для случая когда кнопки не влезают */}
+          <div className="mb-4 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setMode('city')}

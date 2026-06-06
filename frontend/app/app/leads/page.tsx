@@ -28,9 +28,11 @@ export default function LeadsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="mx-auto max-w-[1200px] px-6 pt-6">
-        <div className="flex items-center justify-between border-b border-slate-200">
-          <nav className="-mb-px flex gap-4">
+      {/* px-3 на мобиле — было px-6 (48px по бокам) и шапка вкладок
+          с двумя кнопками справа не влезала на 390px (ТЗ B.0 #4). */}
+      <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200">
+          <nav className="-mb-px flex gap-2 sm:gap-4">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -47,7 +49,7 @@ export default function LeadsPage() {
               </button>
             ))}
           </nav>
-          <div className="mb-1 flex gap-2">
+          <div className="mb-1 flex flex-wrap gap-2">
             <Link
               href="/app/leads/presets"
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -68,7 +70,7 @@ export default function LeadsPage() {
 
       {tab === 'sites' && <LegacyLeadsPanel />}
       {tab === 'maps' && (
-        <div className="mx-auto max-w-[1200px] px-6 pb-10">
+        <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pb-10">
           <MapsSearchPanel />
         </div>
       )}

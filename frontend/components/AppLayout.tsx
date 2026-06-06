@@ -64,7 +64,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileModuleTabs />
 
         <div className="flex flex-1 min-w-0 overflow-hidden relative z-10">
-          <Sidebar />
+          {/* Sidebar только на md+. На мобиле навигация полностью через
+              MobileModuleTabs (сверху) + MobileTabBar (снизу) — иначе
+              icon-rail 72px наезжал на контент карточек на 360-414px. */}
+          <div className="hidden md:flex">
+            <Sidebar />
+          </div>
           {/* pb-20 на мобайле — чтоб содержимое не уезжало под MobileTabBar (56px + safe-area). */}
           <main className="app-main flex-1 min-w-0 overflow-auto pb-20 md:pb-0">
             {children}
