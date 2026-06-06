@@ -7,8 +7,8 @@
  * Готовые пресеты ниже — см. BUILTIN_PRESETS (источник истины).
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { BookmarkPlus, EyeOff, RotateCcw, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BookmarkPlus, Eraser, EyeOff, RotateCcw, X } from 'lucide-react';
 
 import { BUILTIN_PRESETS, type BuiltinPreset } from '@/components/maps/builtinPresets';
 import { PainTagsCloud } from '@/components/maps/PainTagsCloud';
@@ -182,6 +182,77 @@ export function MapsFiltersPanel({
     setLocalExcludesWords(joinWords(value.review_text_excludes, value.review_text_excludes_any));
   }, [value]);
 
+  // Debounce-auto-apply для числовых полей. Раньше изменения коммитились
+  // только onBlur — юзер набирал «4» в «рейтинг от» и думал что фильтр
+  // сломан, пока не кликнет за пределами поля. Теперь — через 500мс
+  // тишины поле само применяется. onBlur оставлен как «применить
+  // немедленно» (для табуляции в следующее поле).
+  const skipNextAutoApply = useRef(true);
+  useEffect(() => {
+    // Первый прогон после маунта/синка с props — не триггерим (иначе
+    // обнулим существующие фильтры при открытии страницы).
+    if (skipNextAutoApply.current) {
+      skipNextAutoApply.current = false;
+      return;
+    }
+    const t = setTimeout(() => {
+      onChange({
+        ...value,
+        min_rating: parseNum(localMinRating),
+        max_rating: parseNum(localMaxRating),
+        min_reviews: parseNum(localMinReviews) as number | null,
+        min_negative: parseNum(localMinNegative) as number | null,
+      });
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localMinRating, localMaxRating, localMinReviews, localMinNegative]);
+  // Сбросить флаг на следующий внешний sync (когда применили пресет или
+  // нажали Reset — value меняется снаружи, useEffect выше обновит local-state,
+  // и мы не хотим, чтобы auto-apply сразу же написал то же значение обратно).
+  useEffect(() => {
+    skipNextAutoApply.current = true;
+  }, [value]);
+
+  /** Полный сброс всех фильтров к дефолту. Числовые/булевые/массивы → null,
+   *  сортировка → rating_desc. Используется по кнопке «Сбросить фильтры». */
+  const resetAllFilters = useCallback(() => {
+    onChange({
+      min_rating: null,
+      max_rating: null,
+      min_reviews: null,
+      min_negative: null,
+      has_owner_replies: null,
+      has_website: null,
+      pain_tag_ids: null,
+      sort_by: 'rating_desc',
+      review_text_contains: null,
+      review_text_excludes: null,
+      review_text_contains_any: null,
+      review_text_excludes_any: null,
+      min_revenue: null,
+      min_age_years: null,
+      source_filter: 'all',
+    });
+  }, [onChange]);
+
+  /** Есть ли вообще что сбрасывать — иначе кнопка серая. */
+  const hasAnyFilter =
+    value.min_rating != null ||
+    value.max_rating != null ||
+    value.min_reviews != null ||
+    value.min_negative != null ||
+    value.has_owner_replies != null ||
+    value.has_website != null ||
+    (value.pain_tag_ids?.length ?? 0) > 0 ||
+    !!value.review_text_contains ||
+    !!value.review_text_excludes ||
+    (value.review_text_contains_any?.length ?? 0) > 0 ||
+    (value.review_text_excludes_any?.length ?? 0) > 0 ||
+    value.min_revenue != null ||
+    value.min_age_years != null ||
+    (value.source_filter != null && value.source_filter !== 'all');
+
   function commitWords(kind: 'contains' | 'excludes', raw: string) {
     const arr = raw
       .split(/[,\n]/)
@@ -266,6 +337,24 @@ export function MapsFiltersPanel({
 
   return (
     <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+      {/* Глобальный «Сбросить фильтры» наверху панели. Показываем всегда —
+          серая (disabled) когда сбрасывать нечего, активная и яркая когда
+          юзер накрутил фильтров и хочет вернуться к чистой выдаче. */}
+      <button
+        type="button"
+        onClick={resetAllFilters}
+        disabled={!hasAnyFilter}
+        title={hasAnyFilter ? 'Сбросить все фильтры к дефолту' : 'Нечего сбрасывать — фильтры уже пустые'}
+        className={cn(
+          'inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-medium transition-colors',
+          hasAnyFilter
+            ? 'border-rose-300 bg-rose-50 text-rose-700 hover:border-rose-500 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20'
+            : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500'
+        )}
+      >
+        <Eraser className="h-3.5 w-3.5" />
+        Сбросить фильтры
+      </button>
       <div>
         <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Готовые пресеты
@@ -658,6 +747,14 @@ export function MapsFiltersPanel({
               }}
               className="text-[12px]"
             />
+            {/* Подсказка по «реалистичному» минимуму. У ИП и ООО формально
+                оборот может быть 0 (нулёвка). Для B2B-лидгена живой
+                микро-точки (одна стоматология, кофейня) разумно отсекать
+                от 3-5 млн ₽/год — компании ниже либо мёртвые, либо в
+                stealth-mode и платить за сайт вряд ли захотят. */}
+            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              реалистичный минимум живой точки — от ~3-5 млн ₽/год
+            </div>
           </div>
           <div>
             <label className="mb-0.5 block text-[11px] text-slate-600 dark:text-slate-400">

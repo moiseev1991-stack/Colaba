@@ -226,7 +226,22 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             </div>
           )}
 
-          {/* === Tabs sentiment === */}
+          {/* === Tabs sentiment ===
+              Счётчики динамически зависят от sourceTab: когда выбран 2GIS или
+              Я.Карты — берём reviews_* из соответствующего CompanySourceOut, а
+              не из общих detail.reviews_* (иначе при переключении источника
+              счётчики «застревают» на общих и юзер думает что фильтр сломан). */}
+          {(() => {
+            const activeProfile =
+              sourceTab === 'all'
+                ? null
+                : sourcesProfiles.find((s) => s.source === sourceTab) ?? null;
+            const totalAll = activeProfile?.reviews_count ?? detail.reviews_count;
+            const totalNeg =
+              activeProfile?.reviews_negative_count ?? detail.reviews_negative_count;
+            const totalPos =
+              activeProfile?.reviews_positive_count ?? detail.reviews_positive_count;
+            return (
           <div>
             <div className="mb-2 flex gap-2 border-b border-slate-200 dark:border-slate-700">
               {(['all', 'negative', 'positive'] as Tab[]).map((t) => (
@@ -242,10 +257,10 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                   )}
                 >
                   {t === 'all'
-                    ? `Все${detail.reviews_count > 0 ? ` (${detail.reviews_count})` : ''}`
+                    ? `Все${totalAll > 0 ? ` (${totalAll})` : ''}`
                     : t === 'negative'
-                      ? `Негатив${detail.reviews_negative_count > 0 ? ` (${detail.reviews_negative_count})` : ''}`
-                      : `Позитив${detail.reviews_positive_count > 0 ? ` (${detail.reviews_positive_count})` : ''}`}
+                      ? `Негатив${totalNeg > 0 ? ` (${totalNeg})` : ''}`
+                      : `Позитив${totalPos > 0 ? ` (${totalPos})` : ''}`}
                 </button>
               ))}
             </div>
@@ -320,6 +335,8 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               </>
             )}
           </div>
+            );
+          })()}
         </div>
       )}
     </Dialog>
@@ -402,6 +419,16 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
 
   if (items.length === 0) return null;
 
+  // Человечий вид способа матча: показываем рядом с %, чтобы юзеру было
+  // понятно «почему именно эти юр.данные» без раскрытия tooltip.
+  const matchedByRu: Record<string, string> = {
+    phone: 'по телефону',
+    name_address: 'по названию и адресу',
+    name_city: 'по названию и городу',
+    inn: 'по ИНН',
+    manual: 'вручную',
+  };
+  const matchedByLabel = legal.matched_by ? matchedByRu[legal.matched_by] ?? legal.matched_by : null;
   return (
     <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -411,9 +438,16 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
         {typeof legal.match_confidence === 'number' && (
           <div
             className="text-[10px] text-blue-600 dark:text-blue-400"
-            title={`Уверенность матча: ${(legal.match_confidence * 100).toFixed(0)}%, способ: ${legal.matched_by ?? '—'}`}
+            title={
+              `Уверенность матча DaData ↔ компания: ${(legal.match_confidence * 100).toFixed(0)}%. ` +
+              `Чем выше — тем надёжнее что это именно та компания. ` +
+              `Способ: ${matchedByLabel ?? '—'}. ` +
+              `100% — точный матч (например, по ИНН/телефону), ` +
+              `<70% — стоит вручную проверить что юр.лицо реально совпадает.`
+            }
           >
-            {(legal.match_confidence * 100).toFixed(0)}%
+            совпадение {(legal.match_confidence * 100).toFixed(0)}%
+            {matchedByLabel ? ` · ${matchedByLabel}` : ''}
           </div>
         )}
       </div>
