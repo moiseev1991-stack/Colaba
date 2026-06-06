@@ -4,6 +4,7 @@ FastAPI main application entry point.
 Создает FastAPI приложение, настраивает middleware, подключает routers.
 """
 
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -16,6 +17,36 @@ from app.core.database import init_db, engine
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import api_router
+
+
+logger = logging.getLogger(__name__)
+
+
+# Sentry init — до создания FastAPI приложения. Если SENTRY_DSN пустой,
+# init no-op'ит и ничего никуда не отправляет (безопасно для dev).
+if settings.SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
+        # send_default_pii=False — не льём в Sentry куки/IP/headers по умолчанию.
+        # Достаточно типа исключения, traceback и custom-тегов.
+        send_default_pii=False,
+        integrations=[
+            StarletteIntegration(),
+            FastApiIntegration(),
+            CeleryIntegration(),
+            SqlalchemyIntegration(),
+        ],
+    )
+    logger.info("Sentry enabled: env=%s", settings.ENVIRONMENT)
 
 
 @asynccontextmanager
@@ -66,7 +97,18 @@ async def value_error_handler(request, exc: ValueError) -> JSONResponse:
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc: Exception) -> JSONResponse:
-    """Обработчик общих исключений с возвратом 500 Internal Server Error."""
+    """Обработчик общих исключений с возвратом 500 Internal Server Error.
+
+    ВАЖНО: глобальный handler глушит traceback наружу — поэтому здесь
+    обязательно (а) логируем с traceback в наш logger, (б) если включён
+    Sentry — отдельно отправляем исключение туда. Иначе Sentry не увидит
+    падений, перехваченных этим хендлером.
+    """
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    if settings.SENTRY_DSN:
+        import sentry_sdk
+
+        sentry_sdk.capture_exception(exc)
     return JSONResponse(
         status_code=500,
         content={"error": "Internal server error", "code": "INTERNAL_ERROR"},

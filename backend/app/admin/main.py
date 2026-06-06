@@ -8,6 +8,8 @@ from starlette.responses import RedirectResponse
 
 from sqladmin import Admin
 
+from app.admin.auth import AdminAuth
+from app.core.config import settings
 from app.core.database import engine
 from app.admin.views.users import UserAdmin
 from app.admin.views.organizations import OrganizationAdmin
@@ -52,7 +54,15 @@ class LanguageMiddleware(BaseHTTPMiddleware):
 
 
 def setup_admin(app) -> Admin:
-    """Setup SQLAdmin with the FastAPI application and i18n support."""
+    """Setup SQLAdmin with the FastAPI application and i18n support.
+
+    SQLAdmin закрыт авторизацией: только пользователи с is_superuser=True
+    могут зайти в /admin. См. AdminAuth.login → проверка пароля + флага.
+    SessionMiddleware регистрируется самим AuthenticationBackend поверх
+    admin-Mount, отдельно подключать не нужно.
+    """
+
+    session_secret = settings.ADMIN_SESSION_SECRET or settings.SECRET_KEY
 
     # Add language middleware
     app.add_middleware(LanguageMiddleware)
@@ -63,18 +73,21 @@ def setup_admin(app) -> Admin:
         """Switch admin interface language."""
         if language in SUPPORTED_LANGUAGES:
             set_language(language)
-        
+
         # Redirect back to admin with cookie
         referer = request.headers.get("referer", "/admin")
         response = RedirectResponse(url=referer, status_code=303)
         response.set_cookie("admin_lang", language, max_age=365*24*60*60)
         return response
 
-    # Create admin instance (using default templates)
+    # Create admin instance (using default templates).
+    # authentication_backend закрывает все admin-страницы экраном логина —
+    # без is_superuser зайти невозможно.
     admin = Admin(
         app,
         engine,
         title="Colaba Admin",
+        authentication_backend=AdminAuth(secret_key=session_secret),
     )
 
     # Register admin views - Users & Organizations

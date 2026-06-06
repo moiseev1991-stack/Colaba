@@ -162,6 +162,25 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 
+    # Sentry — error tracking. Пусто = выключен (no-op). Чтобы включить —
+    # положить DSN в env. Прод-проект: https://sentry.io/ → settings → DSN.
+    SENTRY_DSN: str = Field(default="", description="Sentry DSN; пусто = выключен")
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(
+        default=0.05,
+        description="Доля транзакций для performance-мониторинга (0..1). 0.05 = 5%.",
+    )
+    SENTRY_PROFILES_SAMPLE_RATE: float = Field(
+        default=0.0,
+        description="Доля профилирования (0..1). 0 = выкл, free-tier не тянет.",
+    )
+
+    # SQLAdmin session secret. По умолчанию падает обратно на SECRET_KEY (JWT),
+    # но рекомендуется отдельный сложный ключ для production.
+    ADMIN_SESSION_SECRET: str = Field(
+        default="",
+        description="Session signing key для SQLAdmin cookie. Пусто = fallback на SECRET_KEY.",
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:
