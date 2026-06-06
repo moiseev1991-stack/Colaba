@@ -995,6 +995,8 @@ export function MapsSearchResults({
             companies={renderList as CompanyOut[]}
             aiAnalyses={aiAnalyses}
             onOpenCompany={(id) => setDrawerCompanyId(id)}
+            searchId={search.id}
+            activeSource={filter.source_filter ?? 'all'}
           />
         )}
       </div>

@@ -48,6 +48,8 @@ from app.modules.maps.schemas import (
     CompanyOut,
     CompanyPainOut,
     CompanySourceOut,
+    HeatmapOut,
+    HeatmapPoint,
     MapSearchCreate,
     MapSearchFilter,
     MapSearchOut,
@@ -328,6 +330,128 @@ async def list_search_companies(
         limit=limit,
         offset=offset,
         source_counts=source_counts,
+    )
+
+
+@router.get("/search/{search_id}/heatmap", response_model=HeatmapOut)
+@limiter.limit("30/minute")
+async def get_search_heatmap(
+    request: Request,
+    search_id: int,
+    layer: str = Query(default="density", regex="^(density|pain|website|rating|wealth)$"),
+    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает точки для Leaflet.heat поверх карты выдачи (блок 5 ТЗ 2026-06-02).
+
+    Слои:
+      - density: каждая компания weight=1 → плотность концентрации.
+      - pain: weight = reviews_negative_count (нормализовано к max) → где
+        больше всего недовольных клиентов в нише.
+      - website: weight = website_lead_score / 100 → где плотность лидов
+        «продать сайт». Компании с уже работающим сайтом исключаются.
+      - rating: weight = (4 - rating)/4 для rating<4, иначе 0 → проблемные
+        зоны репутации.
+      - wealth: weight = log10(revenue+1)/8 → где сидят денежные компании
+        по DaData. Без DaData = пусто.
+
+    Грузим всю выборку поиска (без пагинации), берём только компании с
+    координатами. Без фильтров по рейтингу/болям — heatmap должен
+    показывать целостную картину ниши, а не сужать её.
+    """
+    await _get_owned_search(db, search_id, user_id)
+
+    # Берём всю выборку поиска под source_filter (без других фильтров).
+    flt = MapSearchFilter(source_filter=source_filter)
+    items, total = await service.get_search_results(
+        db, search_id, flt, limit=2000, offset=0
+    )
+
+    points: list[HeatmapPoint] = []
+    max_intensity = 1.0
+    contributing = 0
+
+    if layer == "density":
+        for c in items:
+            if c.lat is None or c.lng is None:
+                continue
+            points.append(HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=1.0))
+            contributing += 1
+        max_intensity = 1.0
+
+    elif layer == "pain":
+        # Нормализуем reviews_negative_count к max-у в выборке, чтобы heat-карта
+        # была сравнимой между разными нишами/городами (50 негативов в кофейне
+        # ≠ 50 негативов в крупном медцентре, но в рамках одной выборки шкала
+        # «относительно лидера» уместна).
+        raw = [
+            (float(c.lat), float(c.lng), int(c.reviews_negative_count or 0))
+            for c in items
+            if c.lat is not None and c.lng is not None and (c.reviews_negative_count or 0) > 0
+        ]
+        peak = max((w for _, _, w in raw), default=1)
+        for lat, lng, w in raw:
+            points.append(HeatmapPoint(lat=lat, lng=lng, weight=w / peak))
+            contributing += 1
+        max_intensity = 1.0
+
+    elif layer == "website":
+        # website_lead_score уже 0..100 (NULL = у компании есть сайт, не
+        # website-лид → пропускаем).
+        for c in items:
+            if c.lat is None or c.lng is None:
+                continue
+            score = getattr(c, "website_lead_score", None)
+            if score is None or score <= 0:
+                continue
+            points.append(
+                HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=float(score) / 100.0)
+            )
+            contributing += 1
+        max_intensity = 1.0
+
+    elif layer == "rating":
+        # Фокус на проблемной репутации: компании с rating<4 дают вес,
+        # выше = хуже. rating IS NULL пропускаем (нет данных).
+        for c in items:
+            if c.lat is None or c.lng is None:
+                continue
+            r = float(c.rating) if c.rating is not None else None
+            if r is None or r >= 4.0:
+                continue
+            weight = (4.0 - r) / 4.0
+            points.append(
+                HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight)
+            )
+            contributing += 1
+        max_intensity = 1.0
+
+    elif layer == "wealth":
+        # log-нормировка по DaData revenue. Без DaData-матча компании
+        # пропускаются (legal is None).
+        import math
+        for c in items:
+            if c.lat is None or c.lng is None:
+                continue
+            legal = getattr(c, "legal", None)
+            revenue = getattr(legal, "revenue", None) if legal else None
+            if revenue is None or revenue <= 0:
+                continue
+            # log10(revenue/1k+1) / 8 даёт ~1.0 для 10 млрд ₽, ~0.5 для 1 млн ₽.
+            weight = min(1.0, math.log10(float(revenue) / 1000.0 + 1.0) / 8.0)
+            points.append(
+                HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight)
+            )
+            contributing += 1
+        max_intensity = 1.0
+
+    return HeatmapOut(
+        layer=layer,
+        points=points,
+        max_intensity=max_intensity,
+        total_companies=total,
+        contributing=contributing,
     )
 
 
