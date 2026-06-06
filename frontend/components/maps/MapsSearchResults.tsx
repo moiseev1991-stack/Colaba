@@ -381,9 +381,22 @@ export function MapsSearchResults({
 
   const handleTriggerAi = useCallback(async () => {
     if (!activeAiPreset || visibleCompanyIds.length === 0 || aiTriggering) return;
+    // Backend ограничивает один POST не более чем AI_RUN_MAX компаниями. Если
+    // в выдаче больше — раньше прилетал 422 «Не удалось запустить AI-анализ»
+    // без объяснений. Теперь — режем сами и предупреждаем юзера, чтобы он
+    // понял, почему обработались не все.
+    const AI_RUN_MAX = 500;
+    let ids = visibleCompanyIds;
+    if (ids.length > AI_RUN_MAX) {
+      window.alert(
+        `Видимых компаний ${ids.length}, AI-анализ за один запуск обрабатывает максимум ${AI_RUN_MAX}. ` +
+          `Запускаю на первых ${AI_RUN_MAX}. Сузь фильтры и нажми ещё раз для остальных.`
+      );
+      ids = ids.slice(0, AI_RUN_MAX);
+    }
     setAiTriggering(true);
     try {
-      const result = await runPresetAnalysis(activeAiPreset.id, visibleCompanyIds);
+      const result = await runPresetAnalysis(activeAiPreset.id, ids);
       setAiLastRun(result);
       // Сразу подтянем кэшированные результаты (cached>0)
       await fetchAnalyses();
@@ -393,10 +406,17 @@ export function MapsSearchResults({
         aiPollTimer.current = setInterval(() => { void fetchAnalyses(); }, 3000);
       }
     } catch (e) {
-      // показать ошибку как-то — alert минимально
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-        || 'Не удалось запустить AI-анализ';
-      window.alert(typeof msg === 'string' ? msg : 'Не удалось запустить AI-анализ');
+      // Показываем человечий detail если бэк его прислал (наш handler
+      // отдаёт pydantic errors() при 422). Иначе — общий fallback.
+      const err = e as { response?: { status?: number; data?: { detail?: unknown } } };
+      const detail = err?.response?.data?.detail;
+      let msg = 'Не удалось запустить AI-анализ';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        msg = `Ошибка проверки запроса: ${JSON.stringify(detail[0])}`;
+      }
+      window.alert(msg);
     } finally {
       setAiTriggering(false);
     }

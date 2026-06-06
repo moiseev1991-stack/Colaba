@@ -13,7 +13,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,10 +29,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reviews-ai", tags=["reviews-ai"])
 
 
+# max_length по company_ids = 500. Раньше было 200 — на проде с
+# фильтрами «Все источники + большой город» в выдаче бывает 250-400
+# компаний, юзер жал «AI-анализ для всех видимых» и упирался в 422
+# без понятной ошибки. 500 = достаточно с запасом, дневной лимит
+# AI_ANALYSIS_DAILY_LIMIT всё равно отсечёт перерасход.
+_RUN_PRESET_MAX = 500
+
+
 class RunPresetAnalysisIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
     preset_id: int
-    company_ids: list[int] = Field(..., min_length=1, max_length=200)
+    company_ids: list[int] = Field(..., min_length=1, max_length=_RUN_PRESET_MAX)
 
 
 class RunPresetAnalysisOut(BaseModel):
@@ -57,7 +65,6 @@ class CompanyAnalysisOut(BaseModel):
 @limiter.limit("30/minute")
 async def run_preset_analysis(
     request: Request,
-    payload: RunPresetAnalysisIn,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -68,7 +75,34 @@ async def run_preset_analysis(
       2. По кэшу (company_id, prompt_hash, user_id) — пропускаем уже посчитанные.
       3. Проверяем лимит юзера на сегодня (последние 24 часа).
       4. Для каждой оставшейся company_id — создаём pending-row и ставим Celery.
+
+    Парсим payload вручную (не через Depends(payload)) ради ВНЯТНОГО лога
+    422-ошибок. На фронте они отображались как «Не удалось запустить
+    AI-анализ» без деталей; теперь в backend-логе виден conducted-size
+    company_ids и причина валидации.
     """
+    try:
+        raw = await request.json()
+    except Exception as e:
+        logger.warning("run_preset_analysis: bad JSON body: %s", e)
+        raise HTTPException(status_code=400, detail="Невалидный JSON в теле запроса")
+
+    try:
+        payload = RunPresetAnalysisIn(**raw)
+    except ValidationError as e:
+        # Логируем структуру (без значений) — preset_id type/value, длину company_ids,
+        # и errors() от pydantic. Этого достаточно чтобы понять причину 422.
+        cids = raw.get("company_ids") if isinstance(raw, dict) else None
+        logger.warning(
+            "run_preset_analysis: validation failed user=%s preset_id=%r "
+            "company_ids_type=%s company_ids_len=%s errors=%s",
+            user_id,
+            raw.get("preset_id") if isinstance(raw, dict) else None,
+            type(cids).__name__,
+            len(cids) if isinstance(cids, list) else None,
+            e.errors(),
+        )
+        raise HTTPException(status_code=422, detail=e.errors())
     preset = (await db.execute(
         select(UserFilterPreset).where(
             UserFilterPreset.id == payload.preset_id,
