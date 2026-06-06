@@ -204,6 +204,23 @@ export interface CompanyOut {
    *  массив длины 1, у склеенных 2gis+yandex_maps — длины 2. Контакты внутри
    *  каждого профиля показываем в drawer раздельно в секциях. */
   sources_profiles?: CompanySourceOut[];
+  /** ЛПР со страниц сайта (ТЗ A.2 2026-06-04). Подтягивается Celery-таском
+   *  enrich_company_team. Пустой массив = краулер ещё не отработал или сайт
+   *  без явных страниц команды. */
+  decision_makers?: DecisionMakerOut[];
+}
+
+/** ЛПР, извлечённый LLM-ом со страницы сайта /команда /о-нас /контакты
+ *  (ТЗ A.2 2026-06-04). source указывает с какой страницы пришло.
+ *  is_decision_maker=true для ролей в whitelist (директор/владелец/...).
+ *  Параллельно с CompanyLegalShort.director_name (DaData по ЕГРЮЛ). */
+export interface DecisionMakerOut {
+  name: string;
+  post?: string | null;
+  source: string;
+  source_url?: string | null;
+  confidence?: number | null;
+  is_decision_maker: boolean;
 }
 
 export interface CompanyLegalShort {

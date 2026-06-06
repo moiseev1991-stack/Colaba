@@ -427,6 +427,18 @@ def _maybe_enrich_contacts(company: Company) -> None:
             company.id, e,
         )
 
+    # ТЗ A.2 2026-06-04: ЛПР со страниц /team /о-нас сайта компании.
+    # Триггерим только если у компании есть website (без сайта парсить
+    # нечего) — таска внутри сама пропускает соцсети и уже обработанные.
+    try:
+        if company.website:
+            enrich_company_team.delay(company.id)
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue team-enrich for #%d: %s",
+            company.id, e,
+        )
+
     try:
         extra = company.contacts_extra or {}
         already_tried_2gis_html = "fetched_2gis_url" in extra or "error_2gis" in extra
@@ -1046,6 +1058,39 @@ def enrich_company_legal(self, company_id: int):
     except Exception as exc:
         logger.warning(
             "enrich_company_legal retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# Team / decision-makers enrichment (ТЗ A.2 2026-06-04)
+# ---------------------------------------------------------------------------
+
+
+async def _enrich_company_team_async(company_id: int) -> dict:
+    """Wrapper для Celery: тянет /team /о-нас /контакты, LLM-извлечение ФИО."""
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.team_enrich import enrich_company_team
+        return await enrich_company_team(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_company_team",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # LLM-вызовы дорогие — не больше 30 компаний в минуту, чтобы не
+    # упереться в дневной лимит ProxyAPI и не выжечь $ за прогоном
+    # большого поиска.
+    rate_limit="30/m",
+)
+def enrich_company_team(self, company_id: int):
+    """Извлекает ЛПР со страниц сайта компании в company_decision_makers."""
+    try:
+        return asyncio.run(_enrich_company_team_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_company_team retrying company=%d: %s", company_id, exc
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
