@@ -380,6 +380,35 @@ class CompaniesListOut(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class HeatmapPoint(BaseModel):
+    """Одна точка для Leaflet.heat: [lat, lng, intensity 0..1]."""
+
+    lat: float
+    lng: float
+    weight: float = 1.0
+
+
+class HeatmapOut(BaseModel):
+    """Ответ /maps/search/{id}/heatmap.
+
+    layer — какой именно слой тепла отрисовать (density/pain/website/rating/wealth).
+    Frontend Leaflet.heat принимает массив `[[lat, lng, weight], ...]`,
+    serializer этого не делает (Pydantic не любит anon-кортежи), поэтому
+    отдаём список объектов и фронт его маппит.
+    """
+
+    layer: str
+    points: list[HeatmapPoint]
+    # Подсказка фронту: рекомендуемая интенсивность max (для шкалы цвета).
+    # Без неё Leaflet.heat сам нормализует, что иногда даёт «всё красное».
+    max_intensity: float = 1.0
+    # Сколько компаний было всего в поиске под текущим source-фильтром;
+    # сколько из них реально дали ненулевой вклад в этот слой (для UI-подписи
+    # «найдено 73 компаний · 31 на heatmap pain»).
+    total_companies: int = 0
+    contributing: int = 0
     # Multi-source (ТЗ 2026-06-04): счётчики для сегмент-переключателя
     # «Все · 2GIS · Я.Карты» в шапке списка. None у легаси-клиентов.
     source_counts: SourceCountsOut | None = None

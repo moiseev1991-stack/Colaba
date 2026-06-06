@@ -32,6 +32,39 @@ export function isClientOnlySort(s: SortBy | undefined | null): boolean {
   return s === 'ai_score_desc' || s === 'ai_score_asc';
 }
 
+/** Блок 5 ТЗ 2026-06-02: переключаемые слои тепловой карты по нишам. */
+export type HeatmapLayer = 'density' | 'pain' | 'website' | 'rating' | 'wealth';
+
+export interface HeatmapPoint {
+  lat: number;
+  lng: number;
+  weight: number;
+}
+
+export interface HeatmapOut {
+  layer: HeatmapLayer;
+  points: HeatmapPoint[];
+  /** Шкала Leaflet.heat (передаётся в `max` опцию плагина). */
+  max_intensity: number;
+  total_companies: number;
+  contributing: number;
+}
+
+export async function getSearchHeatmap(
+  searchId: number,
+  layer: HeatmapLayer,
+  source_filter?: 'all' | '2gis' | 'yandex_maps' | null,
+): Promise<HeatmapOut> {
+  const params = new URLSearchParams({ layer });
+  if (source_filter && source_filter !== 'all') {
+    params.set('source_filter', source_filter);
+  }
+  const resp = await apiClient.get<HeatmapOut>(
+    `/maps/search/${searchId}/heatmap?${params.toString()}`,
+  );
+  return resp.data;
+}
+
 /** Нормализует sort_by для запроса к бэку: client-only превращаются в rating_desc. */
 function backendSortBy(s: SortBy | undefined | null): SortBy {
   if (isClientOnlySort(s)) return 'rating_desc';
