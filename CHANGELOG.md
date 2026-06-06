@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.49.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.49.0...v1.49.1) (2026-06-06)
+
+
+### Bug Fixes
+
+* **maps:** drawer-счётчики по источнику, Reset/auto-apply фильтров, AI-422 диагноз ([40c44f0](https://github.com/moiseev1991-stack/Colaba/commit/40c44f0d7651ac51002f19ba70a61299fb7acac6))
+
 # [1.49.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.48.2...v1.49.0) (2026-06-05)
 
 
