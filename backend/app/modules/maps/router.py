@@ -23,7 +23,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func as sa_func, select
+from sqlalchemy import case as sa_case, func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -579,20 +579,23 @@ async def get_company_digest(
     стоит ли использовать конкретную боль в письме.
     """
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
-    from sqlalchemy import func as _func
 
     company = await _get_company_or_404(db, company_id)
     since = _dt.now(_tz.utc) - _td(days=days)
 
-    # Агрегаты по sentiment / rating / owner_reply одним запросом
+    # Агрегаты по sentiment / rating / owner_reply одним запросом.
+    # ВАЖНО: case() — это standalone-функция SQLAlchemy 2.0, импортируется из
+    # sqlalchemy напрямую. func.case(...) не работает (Function.__init__ не
+    # принимает else_ kwarg) — старый код падал с TypeError на каждом запросе
+    # к /maps/companies/{id}/digest.
     aggregate_row = (await db.execute(
         select(
-            _func.count(Review.id),
-            _func.sum(_func.case((Review.sentiment == "positive", 1), else_=0)),
-            _func.sum(_func.case((Review.sentiment == "negative", 1), else_=0)),
-            _func.sum(_func.case((Review.sentiment == "neutral", 1), else_=0)),
-            _func.avg(Review.rating),
-            _func.sum(_func.case((Review.has_owner_reply.is_(True), 1), else_=0)),
+            sa_func.count(Review.id),
+            sa_func.sum(sa_case((Review.sentiment == "positive", 1), else_=0)),
+            sa_func.sum(sa_case((Review.sentiment == "negative", 1), else_=0)),
+            sa_func.sum(sa_case((Review.sentiment == "neutral", 1), else_=0)),
+            sa_func.avg(Review.rating),
+            sa_func.sum(sa_case((Review.has_owner_reply.is_(True), 1), else_=0)),
         )
         .where(Review.company_id == company_id, Review.posted_at >= since)
     )).one()
