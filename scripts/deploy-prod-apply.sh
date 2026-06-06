@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Прод-часть деплоя feat/multi-source-filter. Запускать на VPS внутри SSH.
+# Прод-часть деплоя текущего main. Запускать на VPS внутри SSH
+# (обычно через scripts/deploy-prod-now.sh с локальной машины).
 # Требования:
 #  - tarball уже лежит в /tmp/colaba-frontend.tar (скопирован через scp)
 #  - /opt/colaba и /opt/colaba-src существуют
@@ -7,7 +8,7 @@
 #    colaba-celery-worker-search-1 запущены
 set -euo pipefail
 
-BRANCH=feat/multi-source-filter
+BRANCH=main
 TAR=/tmp/colaba-frontend.tar
 COMPOSE_DIR=/opt/colaba
 SRC_DIR=/opt/colaba-src
