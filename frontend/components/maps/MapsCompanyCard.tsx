@@ -153,19 +153,23 @@ export function MapsCompanyCard({
         />
       )}
 
-      {/* Шапка: название (display) + рейтинг */}
-      <div className="flex items-start justify-between gap-3">
+      {/* Шапка: название (display) + рейтинг.
+          Мобайл (<sm): название переносится в 2 строки (line-clamp-2), правая
+          колонка ограничена max-w-[45%] и flex-wrap'ом — раньше длинные
+          бейджи «₽ 5.2М · 23л» с shrink-0 распирали карточку за вьюпорт
+          (см. ТЗ B.0 #1 «карточка обрезана справа»). */}
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-[15px] sm:text-[16px] font-semibold leading-snug tracking-tight text-[hsl(var(--text))] truncate">
+          <h3 className="font-display text-[15px] sm:text-[16px] font-semibold leading-snug tracking-tight text-[hsl(var(--text))] break-words line-clamp-2 sm:truncate">
             {company.name || '—'}
           </h3>
           {fullAddress && (
-            <div className="mt-0.5 truncate text-[12px] text-[hsl(var(--muted))]">
+            <div className="mt-0.5 text-[12px] text-[hsl(var(--muted))] break-words line-clamp-2 sm:truncate sm:line-clamp-none">
               {fullAddress}
             </div>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex max-w-[45%] flex-col items-end gap-1 shrink">
           {rating != null && (
             <RatingPill rating={Number(rating)} />
           )}
