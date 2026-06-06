@@ -2,9 +2,33 @@
 Celery application configuration.
 """
 
+import logging
+
 from celery import Celery
 from celery.schedules import crontab
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
+
+
+# Sentry init для Celery worker'ов. Без отдельного init здесь FastAPI app
+# (где sentry_sdk.init вызван в main.py) не запускается в воркере → исключения
+# в Celery-тасках уходят только в local log, без алерта.
+if settings.SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
+        send_default_pii=False,
+        integrations=[CeleryIntegration(), SqlalchemyIntegration()],
+    )
+    logger.info("Sentry enabled in Celery worker: env=%s", settings.ENVIRONMENT)
 
 # Create Celery app
 celery_app = Celery(
