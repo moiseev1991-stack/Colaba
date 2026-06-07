@@ -307,6 +307,8 @@ async def list_search_companies(
                 age_years=legal.age_years,
                 match_confidence=float(legal.match_confidence) if legal.match_confidence is not None else None,
                 matched_by=legal.matched_by,
+                director_name=legal.director_name,
+                director_post=legal.director_post,
             )
         out_items.append(out)
     # Multi-source: счётчики на ВСЕЙ выборке (без source_filter) — нужны фронту
@@ -508,6 +510,8 @@ async def get_company(
             age_years=legal.age_years,
             match_confidence=float(legal.match_confidence) if legal.match_confidence is not None else None,
             matched_by=legal.matched_by,
+            director_name=legal.director_name,
+            director_post=legal.director_post,
         )
     return detail
 

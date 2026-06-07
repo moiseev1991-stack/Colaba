@@ -397,6 +397,9 @@ class CompanyLegalOut(BaseModel):
     age_years: int | None = None
     match_confidence: float | None = None
     matched_by: str | None = None
+    # ЛПР (ТЗ A.1 2026-06-04): ФИО руководителя + должность из DaData.
+    director_name: str | None = None
+    director_post: str | None = None
 
 
 class OutreachDraftOut(BaseModel):

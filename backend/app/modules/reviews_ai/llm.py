@@ -245,6 +245,8 @@ async def call_llm_outreach_draft(
     has_email: bool = False,
     rating: float | None = None,
     reviews_count: int | None = None,
+    recipient_first_name: str | None = None,
+    recipient_post: str | None = None,
 ) -> dict[str, str] | None:
     """Возвращает {"subject": "...", "body": "..."} или None.
 
@@ -299,11 +301,26 @@ async def call_llm_outreach_draft(
         "automation": "автоматизация контакта с клиентами",
         "seo": "SEO-продвижение",
     }
+    # ЛПР (ТЗ A.1 2026-06-04): если есть ФИО руководителя — даём LLM
+    # явное обращение, иначе письмо начинается «Здравствуйте!».
+    if recipient_first_name:
+        post_part = f" ({recipient_post})" if recipient_post else ""
+        recipient_section = (
+            f"Имя получателя — {recipient_first_name}{post_part}. "
+            f"Обратись по имени в первом предложении: «Здравствуйте, {recipient_first_name}!». "
+            f"Не используй отчество.\n"
+        )
+    else:
+        recipient_section = (
+            "Имя получателя неизвестно — начни с нейтрального «Здравствуйте!».\n"
+        )
+
     prompt = OUTREACH_DRAFT_PROMPT.format(
         company_name=company_name or "—",
         niche=niche or "—",
         city=city or "—",
         source=source or "карты",
+        recipient_section=recipient_section,
         pains_section=pains_section,
         angle_label=angle_labels.get(angle, angle),
         angle_hint=OUTREACH_ANGLE_HINTS[angle],

@@ -28,9 +28,11 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.company_legal import CompanyLegal
 from app.models.company_outreach_draft import CompanyOutreachDraft
 from app.models.maps import Company
 from app.modules.maps import service as maps_service
+from app.modules.maps.legal_enrich import extract_first_name
 from app.modules.reviews_ai.llm import call_llm_outreach_draft
 
 
@@ -207,6 +209,17 @@ async def generate_or_get_draft(
                 None,
             )
 
+    # ЛПР (ТЗ A.1 2026-06-04): если у компании есть юр.данные с ФИО
+    # директора — подставляем имя в обращение письма. Без блокировки:
+    # если CompanyLegal нет / директора нет — письмо будет с «Здравствуйте!».
+    legal = (await db.execute(
+        select(CompanyLegal).where(CompanyLegal.company_id == company.id)
+    )).scalar_one_or_none()
+    recipient_first_name = (
+        extract_first_name(legal.director_name) if legal and legal.director_name else None
+    )
+    recipient_post = legal.director_post if legal and legal.director_post else None
+
     # 4. Зовём LLM. pains может быть пустым — функция это умеет.
     pains_for_llm = [
         {"label": p["label"], "quote": p.get("top_quote") or ""}
@@ -226,6 +239,8 @@ async def generate_or_get_draft(
         has_email=_has_email(company),
         rating=float(company.rating) if company.rating is not None else None,
         reviews_count=int(company.reviews_count or 0),
+        recipient_first_name=recipient_first_name,
+        recipient_post=recipient_post,
     )
     if draft is None:
         return None, (

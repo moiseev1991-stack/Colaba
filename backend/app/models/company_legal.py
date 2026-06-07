@@ -55,6 +55,16 @@ class CompanyLegal(Base):
     okved = Column(String(20))
     okved_name = Column(String(300))
 
+    # ЛПР: ФИО руководителя из DaData (data.management.name) + должность
+    # (data.management.post). По ним подставляем «Здравствуйте, Иван!»
+    # в outreach-письма и отображаем «ЛПР: Иванов И.И., директор» в drawer.
+    # Бесплатный тариф DaData отдаёт это поле для большинства ООО.
+    # founders_json — массив учредителей (data.founders) для будущего
+    # отображения «кто реально владеет», сейчас просто кэшируем.
+    director_name = Column(String(200))
+    director_post = Column(String(200))
+    founders_json = Column(JSONB)
+
     # Матчинг.
     match_confidence = Column(Numeric(3, 2))
     matched_by = Column(String(20))  # phone | name_address | inn | manual

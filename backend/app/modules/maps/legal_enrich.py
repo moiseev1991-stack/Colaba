@@ -60,6 +60,12 @@ class LegalMatch:
     legal_status: str | None = None
     okved: str | None = None
     okved_name: str | None = None
+    # ЛПР (ТЗ A.1 2026-06-04): ФИО руководителя и должность из
+    # data.management. Для большинства ООО есть; у ИП обычно пусто,
+    # потому что ИП = физлицо и ФИО уже в legal_name.
+    director_name: str | None = None
+    director_post: str | None = None
+    founders_json: list[dict[str, Any]] | None = None
     match_confidence: float = 0.0
     matched_by: str = "name_address"
     raw_json: dict[str, Any] | None = None
@@ -174,6 +180,33 @@ def _build_match_from_suggestion(
     }
     legal_status = status_map.get(legal_status_raw)
 
+    # ЛПР (ТЗ A.1): data.management — единое лицо-руководитель. У ИП поле
+    # обычно пустое, у ООО — есть в ~90% случаев. DaData отдаёт ФИО в
+    # верхнем регистре «ИВАНОВ ИВАН ИВАНОВИЧ» — нормализуем к Title Case.
+    management = data.get("management") or {}
+    director_raw = management.get("name") if isinstance(management, dict) else None
+    director_post_raw = management.get("post") if isinstance(management, dict) else None
+    director_name = _titlecase_fio(director_raw)
+    director_post = _normalize_post(director_post_raw)
+
+    # Учредители — массив; кэшируем как есть, на UI пока не показываем.
+    founders = data.get("founders") if isinstance(data.get("founders"), list) else None
+    founders_compact: list[dict[str, Any]] | None = None
+    if founders:
+        # Не храним пер-юзер всю исходную нагрузку — оставляем только то,
+        # что реально будем использовать в Excel/UI: имя, доля, ИНН.
+        founders_compact = []
+        for f in founders[:20]:  # верхний предел — учредителей бывает много
+            if not isinstance(f, dict):
+                continue
+            share = f.get("share") or {}
+            founders_compact.append({
+                "name": _titlecase_fio(f.get("name")),
+                "share_value": share.get("value") if isinstance(share, dict) else None,
+                "share_type": share.get("type") if isinstance(share, dict) else None,
+                "inn": f.get("inn"),
+            })
+
     return LegalMatch(
         inn=str(data.get("inn") or "")[:12] or None,
         ogrn=str(data.get("ogrn") or "")[:20] or None,
@@ -186,10 +219,63 @@ def _build_match_from_suggestion(
         legal_status=legal_status,
         okved=str(okved_main)[:20] if okved_main else None,
         okved_name=str(okved_name)[:300] if okved_name else None,
+        director_name=director_name,
+        director_post=director_post,
+        founders_json=founders_compact,
         match_confidence=confidence,
         matched_by=matched_by,
         raw_json=s,
     )
+
+
+def _titlecase_fio(s: str | None) -> str | None:
+    """ИВАНОВ ИВАН ИВАНОВИЧ → Иванов Иван Иванович.
+
+    DaData отдаёт ФИО в верхнем регистре. Для UI и outreach-писем
+    нужен нормальный Title Case с поддержкой составных фамилий через
+    дефис («МАМИН-СИБИРЯК» → «Мамин-Сибиряк»).
+    """
+    if not s or not isinstance(s, str):
+        return None
+    raw = s.strip()
+    if not raw:
+        return None
+    parts = re.split(r"(\s+|-)", raw)  # сохраняем разделители
+    result = []
+    for p in parts:
+        if not p or p.isspace() or p == "-":
+            result.append(p)
+            continue
+        result.append(p.capitalize())
+    out = "".join(result)
+    return out[:200]
+
+
+def _normalize_post(s: str | None) -> str | None:
+    """ГЕНЕРАЛЬНЫЙ ДИРЕКТОР → Генеральный директор."""
+    if not s or not isinstance(s, str):
+        return None
+    raw = s.strip()
+    if not raw:
+        return None
+    # Capitalize первого слова + lower остальных. «директор» в середине
+    # фразы (например «Председатель совета директоров») всё равно ниже.
+    out = raw.lower().capitalize()
+    return out[:200]
+
+
+def extract_first_name(full_name: str | None) -> str | None:
+    """«Иванов Иван Иванович» → «Иван». Для подстановки в обращение
+    («Здравствуйте, Иван!»)."""
+    if not full_name:
+        return None
+    parts = full_name.strip().split()
+    # Русское ФИО: фамилия → имя → отчество. Имя на индексе 1.
+    if len(parts) >= 2:
+        return parts[1]
+    if len(parts) == 1:
+        return parts[0]
+    return None
 
 
 async def find_legal_for_company(company: Company) -> LegalMatch | None:
@@ -280,6 +366,9 @@ async def upsert_legal(
             "legal_status": match.legal_status,
             "okved": match.okved,
             "okved_name": match.okved_name,
+            "director_name": match.director_name,
+            "director_post": match.director_post,
+            "founders_json": match.founders_json,
             "match_confidence": match.match_confidence,
             "matched_by": match.matched_by,
             "source": "dadata",
