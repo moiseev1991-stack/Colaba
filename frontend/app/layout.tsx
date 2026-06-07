@@ -6,6 +6,8 @@ import { CookieBanner } from '@/components/CookieBanner';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://spinlid.ru'),
+  manifest: '/manifest.json',
+  themeColor: '#2dd4bf',
   title: {
     default: 'SpinLid — лиды из 2GIS и Яндекс.Карт с диагнозом болей клиентов',
     template: '%s | SpinLid',

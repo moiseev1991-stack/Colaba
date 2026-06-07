@@ -1,0 +1,24 @@
+{
+  "name": "SpinLid — лиды с диагнозом болей клиентов",
+  "short_name": "SpinLid",
+  "description": "Сбор компаний из 2GIS и Яндекс.Карт, контакты и AI-анализ отзывов",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#2dd4bf",
+  "background_color": "#0b1220",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "180x180",
+      "purpose": "any maskable"
+    }
+  ]
+}
