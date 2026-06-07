@@ -2,7 +2,26 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 
-const PUBLIC_PATHS = new Set<string>(['/auth/login', '/auth/register', '/demo']);
+const PUBLIC_PATHS = new Set<string>([
+  '/auth/login',
+  '/auth/register',
+  '/demo',
+  // Правовые/служебные (ТЗ 2026-06-05) — должны открываться без логина,
+  // в т.ч. для индексации поисковиками.
+  '/terms',
+  '/policy',
+  '/consent',
+  '/offer',
+  '/data-sources',
+  // SEO-лендинги под коммерческие ключи (ТЗ 2026-06-05) — публичные,
+  // индексируемые.
+  '/parsing-otzyvov',
+  '/parser-2gis',
+  '/parser-yandex-maps',
+  '/baza-klientov',
+  '/sbor-kontaktov',
+  '/holodnaya-rassylka',
+]);
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname);
