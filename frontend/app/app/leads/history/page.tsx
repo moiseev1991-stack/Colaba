@@ -11,7 +11,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { listSearches, deleteSearch } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
-import { Eye, Trash2, Download, Loader2, MoreVertical } from 'lucide-react';
+import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
+import { Eye, Trash2, Download, Loader2, MoreVertical, Map } from 'lucide-react';
 
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
@@ -40,6 +41,7 @@ function statusTone(s: string): 'good' | 'hot' | 'warm' | 'muted' {
 export default function LeadsHistoryPage() {
   const router = useRouter();
   const [runs, setRuns] = useState<SearchResponse[]>([]);
+  const [mapSearches, setMapSearches] = useState<MapSearchOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
@@ -50,10 +52,17 @@ export default function LeadsHistoryPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const data = await listSearches({ limit: PAGE_SIZE, offset: p * PAGE_SIZE });
-      setRuns(data);
+      const [legacyData, mapsData] = await Promise.all([
+        listSearches({ limit: PAGE_SIZE, offset: p * PAGE_SIZE }),
+        // Maps-поиски только на первой странице — их обычно немного,
+        // пагинация не нужна, на 2-й странице легаси показываем без них.
+        p === 0 ? listMyMapSearches(20, 0).catch(() => [] as MapSearchOut[]) : Promise.resolve([] as MapSearchOut[]),
+      ]);
+      setRuns(legacyData);
+      setMapSearches(mapsData);
     } catch {
       setRuns([]);
+      setMapSearches([]);
     } finally {
       setLoading(false);
     }
@@ -91,15 +100,75 @@ export default function LeadsHistoryPage() {
         </h1>
       </div>
 
+      {/* Секция «По картам» — поиски через MapsSearchPanel. Только на
+          первой странице (p=0). Раньше maps-поиски нигде не отображались
+          списком и юзер не мог их найти. */}
+      {!loading && mapSearches.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--accent))]">
+            <Map className="h-3.5 w-3.5" />
+            По картам · {mapSearches.length}
+          </div>
+          <ul className="space-y-2">
+            {mapSearches.map((m) => (
+              <li key={`maps-${m.id}`}>
+                <CardV2
+                  interactive
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/app/leads?map_search_id=${m.id}`)}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter')
+                      router.push(`/app/leads?map_search_id=${m.id}`);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                      title={`${m.niche} ${m.city}`}
+                    >
+                      {m.niche} · {m.city}
+                    </div>
+                    <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                      {formatDateTime(m.created_at)} · {m.sources} ·{' '}
+                      {m.companies_found ?? 0}{' '}
+                      {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
+                    </div>
+                  </div>
+                  <SignalPill tone={statusTone(m.status)} size="sm">
+                    {statusLabel(m.status)}
+                  </SignalPill>
+                  <a
+                    href={`/api/v1/maps/website-leads/export?search_id=${m.id}&only_website_leads=false`}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Скачать Excel (все компании)"
+                    className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
+                </CardV2>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[72px]" rounded="lg" />)}
         </div>
-      ) : runs.length === 0 ? (
+      ) : runs.length === 0 && mapSearches.length === 0 ? (
         <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
           История пустая — запустите первый поиск
         </CardV2>
-      ) : (
+      ) : runs.length === 0 ? null : (
+        <div>
+          {mapSearches.length > 0 && (
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted))]">
+              По сайтам (через провайдер)
+            </div>
+          )}
         <ul className="reveal-stack space-y-2" ref={menuRef}>
           {runs.map((r, idx) => (
             <li key={r.id}>
@@ -174,6 +243,7 @@ export default function LeadsHistoryPage() {
             </li>
           ))}
         </ul>
+        </div>
       )}
 
       {!loading && runs.length > 0 && (

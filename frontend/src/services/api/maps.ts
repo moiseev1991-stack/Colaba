@@ -376,6 +376,20 @@ export async function getMapSearch(id: number): Promise<MapSearchOut> {
   return response.data;
 }
 
+export async function listMyMapSearches(
+  limit = 50,
+  offset = 0,
+): Promise<MapSearchOut[]> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await apiClient.get<MapSearchOut[]>(
+    `/maps/searches?${params.toString()}`,
+  );
+  return response.data;
+}
+
 export async function listMapCompanies(
   searchId: number,
   filter: MapSearchFilter = {},

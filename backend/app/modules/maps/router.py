@@ -182,6 +182,32 @@ async def create_map_search(
     return search
 
 
+@router.get("/searches", response_model=list[MapSearchOut])
+@limiter.limit("60/minute")
+async def list_my_map_searches(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Список maps-поисков пользователя, новые сверху. Для страницы
+    «История» — раньше maps-поиски нигде не отображались списком,
+    можно было только знать ID и попасть на /app/leads напрямую."""
+    from sqlalchemy import desc
+    from app.models.maps import MapSearch
+
+    stmt = (
+        select(MapSearch)
+        .where(MapSearch.user_id == user_id)
+        .order_by(desc(MapSearch.created_at))
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    return [MapSearchOut.model_validate(r) for r in rows]
+
+
 @router.get("/search/{search_id}", response_model=MapSearchOut)
 @limiter.limit("60/minute")
 async def get_map_search(
