@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.60.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.59.1...v1.60.0) (2026-06-07)
+
+
+### Features
+
+* MVP demo cases — 4 пресета под кейсы ТЗ + Excel-колонки + парсер скрипт ([88a162f](https://github.com/moiseev1991-stack/Colaba/commit/88a162f5fc6b38b41db122af1889f254ff646211))
+
 ## [1.59.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.59.0...v1.59.1) (2026-06-07)
 
 
