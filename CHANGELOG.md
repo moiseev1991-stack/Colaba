@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.61.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.3...v1.61.0) (2026-06-07)
+
+
+### Features
+
+* **seo:** полная переработка SEO-лендингов — плотность, доказательство в hero, брендмарка ([e044093](https://github.com/moiseev1991-stack/Colaba/commit/e0440930bd1292958587d8cff2db9aab66ca83c3))
+
 ## [1.60.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.2...v1.60.3) (2026-06-07)
 
 
