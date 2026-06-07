@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.60.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.0...v1.60.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **scripts:** parse-demo-cases использует create_map_search + parse_map_search.delay ([049eb4b](https://github.com/moiseev1991-stack/Colaba/commit/049eb4b9731d9217dbc313bb799b3496e9d776f5))
+
 # [1.60.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.59.1...v1.60.0) (2026-06-07)
 
 
