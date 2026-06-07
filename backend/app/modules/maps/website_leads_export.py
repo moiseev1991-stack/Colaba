@@ -29,6 +29,7 @@ from app.models.lead_list import LeadList  # noqa: F401  (для будущег�
 from app.models.maps import Company, MapSearch, MapSearchResult, Review
 from app.models.company_outreach_draft import CompanyOutreachDraft
 from app.models.company_legal import CompanyLegal
+from app.models.company_decision_maker import CompanyDecisionMaker
 from app.modules.maps import service as maps_service
 
 
@@ -60,6 +61,9 @@ def _build_leads_columns():
         ("Юр.название", "legal_name", 32, None),
         ("Оборот", "legal_revenue", 14, None),
         ("Возраст (лет)", "legal_age", 12, None),
+        ("ЛПР (ФИО)", "lpr_name", 28, None),
+        ("ЛПР: должность", "lpr_post", 22, None),
+        ("ЛПР: источник", "lpr_source_label", 18, None),
         ("Website-score", "website_lead_score", 12, "score"),
         ("Температура", "lead_temperature", 12, "score"),
         ("Ссылка на 2GIS/Я.Карты", "source_url", 40, None),
@@ -231,6 +235,41 @@ async def _load_legal(
     return out
 
 
+async def _load_top_decision_makers(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, CompanyDecisionMaker]:
+    """Топ-1 ЛПР с сайта по каждой компании (PR #15, миграция 032).
+
+    Берём is_decision_maker=True, сортируем по confidence DESC — если
+    несколько лиц найдено на /team, выбираем самого уверенного.
+    """
+    if not company_ids:
+        return {}
+    stmt = (
+        select(CompanyDecisionMaker)
+        .where(CompanyDecisionMaker.company_id.in_(company_ids))
+        .where(CompanyDecisionMaker.is_decision_maker.is_(True))
+        .order_by(
+            CompanyDecisionMaker.company_id.asc(),
+            CompanyDecisionMaker.confidence.desc(),
+        )
+    )
+    res = await db.execute(stmt)
+    out: dict[int, CompanyDecisionMaker] = {}
+    for row in res.scalars().all():
+        cid = int(row.company_id)
+        if cid not in out:
+            out[cid] = row
+    return out
+
+
+_DM_SOURCE_LABELS = {
+    "website_team": "Сайт (/team)",
+    "website_about": "Сайт (/о-нас)",
+    "website_contacts": "Сайт (/контакты)",
+}
+
+
 async def _load_top_positive_quotes(
     db: AsyncSession, company_ids: list[int], limit_per_company: int = 3
 ) -> dict[int, list[str]]:
@@ -331,6 +370,22 @@ def _row_value(field: str, c: Company, ctx: dict) -> Any:
             return float(legal.revenue) if legal.revenue is not None else ""
         if field == "legal_age":
             return legal.age_years if legal.age_years is not None else ""
+    if field in ("lpr_name", "lpr_post", "lpr_source_label"):
+        legal = ctx.get("legal")
+        dm = ctx.get("decision_maker")
+        if legal is not None and legal.status == "ok" and legal.director_name:
+            if field == "lpr_name":
+                return legal.director_name
+            if field == "lpr_post":
+                return legal.director_post or ""
+            return "DaData"
+        if dm is not None:
+            if field == "lpr_name":
+                return dm.name
+            if field == "lpr_post":
+                return dm.post or ""
+            return _DM_SOURCE_LABELS.get(dm.source, dm.source)
+        return ""
     return getattr(c, field, "") or ""
 
 
@@ -390,6 +445,7 @@ async def build_website_leads_xlsx(
     drafts = await _load_drafts(db, ids)
     quotes_map = await _load_top_positive_quotes(db, ids, limit_per_company=3)
     legal_map = await _load_legal(db, ids)
+    dm_map = await _load_top_decision_makers(db, ids)
 
     # Блок 4C: автотриггер — для компаний без ai_description ставим
     # Celery-таски в фоне. Excel юзеру отдаём сразу с тем что есть;
@@ -424,6 +480,7 @@ async def build_website_leads_xlsx(
             "quotes": quotes_map.get(c.id, []),
             "ai_description": c.ai_description or "",
             "legal": legal,
+            "decision_maker": dm_map.get(c.id),
         }
         rows.append((c, ctx))
 

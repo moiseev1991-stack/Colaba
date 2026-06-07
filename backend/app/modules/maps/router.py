@@ -1054,6 +1054,55 @@ async def admin_queue_company_descriptions(
 
 
 # ---------------------------------------------------------------------------
+# Admin: bulk re-enrich ЛПР со страниц сайта (после PR #15 / миграции 032)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/admin/bulk-enrich-team")
+@limiter.limit("5/minute")
+async def admin_bulk_enrich_team(
+    request: Request,
+    search_id: int | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=2000),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ставит Celery-таски enrich_company_team для компаний с website,
+    у которых ещё нет извлечённых ЛПР (нет записи в company_decision_makers).
+
+    Идемпотентно: повторный вызов пропустит компании, у которых ЛПР уже
+    есть. enrich_company_team сам ходит на /team /о-нас /контакты и
+    LLM-извлекает ФИО (rate-limit 30/m, ProxyAPI).
+    """
+    from app.models.company_decision_maker import CompanyDecisionMaker
+    from app.modules.maps.tasks import enrich_company_team
+
+    sub = select(CompanyDecisionMaker.company_id)
+    stmt = (
+        select(Company.id)
+        .where(Company.website.isnot(None))
+        .where(Company.website != "")
+        .where(Company.id.not_in(sub))
+        .limit(limit)
+    )
+    if search_id is not None:
+        from app.models.maps import MapSearchResult
+        stmt = stmt.join(
+            MapSearchResult, MapSearchResult.company_id == Company.id
+        ).where(MapSearchResult.map_search_id == search_id)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    queued = 0
+    for cid in rows:
+        try:
+            enrich_company_team.delay(int(cid))
+            queued += 1
+        except Exception as e:
+            logger.warning("bulk-enrich-team enqueue failed for #%s: %s", cid, e)
+    return {"queued": queued}
+
+
+# ---------------------------------------------------------------------------
 # Website leads Excel export (блок 4 ТЗ 2026-06-02)
 # ---------------------------------------------------------------------------
 
