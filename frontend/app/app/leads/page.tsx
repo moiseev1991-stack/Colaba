@@ -10,7 +10,7 @@
 
 import { Bookmark, ListPlus } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import LegacyLeadsPanel from './_components/LegacyLeadsPanel';
 import { MapsSearchPanel } from '@/components/maps/MapsSearchPanel';
@@ -71,7 +71,11 @@ export default function LeadsPage() {
       {tab === 'sites' && <LegacyLeadsPanel />}
       {tab === 'maps' && (
         <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pb-10">
-          <MapsSearchPanel />
+          {/* Suspense нужен потому что MapsSearchPanel читает useSearchParams
+              (?map_search_id=N); без него Next.js падает на prerender. */}
+          <Suspense fallback={null}>
+            <MapsSearchPanel />
+          </Suspense>
         </div>
       )}
     </div>
