@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.52.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.51.0...v1.52.0) (2026-06-07)
+
+
+### Features
+
+* **maps:** heatmap по нишам — 5 переключаемых слоёв (блок 5 ТЗ 2026-06-02) ([21788da](https://github.com/moiseev1991-stack/Colaba/commit/21788da93dcdfba642008340cd342c2627a31192))
+
 # [1.51.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.50.0...v1.51.0) (2026-06-07)
 
 
