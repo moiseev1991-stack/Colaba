@@ -162,30 +162,29 @@ export default function LegacyLeadsPanel() {
 
   return (
     <div className="mx-auto max-w-[1200px] px-6 py-10 relative z-10">
-      {/* === HERO === */}
-      <section className="mb-10 app-reveal">
-        <div className="flex items-center gap-3 mb-5">
-          <span className="app-live-dot" aria-hidden />
-          <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
-            01 / Поиск лидов
-          </span>
-          <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-            online · режим production
-          </span>
+      {/* === Compact in-app header (без лендингового hero — юзер уже в кабинете) === */}
+      <section className="mb-8 app-reveal">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1
+              className="font-display font-semibold tracking-tight"
+              style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+            >
+              Поиск лидов
+            </h1>
+            <p className="mt-1 text-sm max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
+              Введите нишу и город — получите телефоны, email и сайты компаний.
+            </p>
+          </div>
+          {hasRuns && (
+            <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
+              {stats.totalLeads} лидов · {stats.totalRuns} запусков
+            </span>
+          )}
         </div>
-        <h1 className="text-[44px] md:text-[60px] font-extrabold leading-[0.98] tracking-[-2px] mb-5">
-          Найдите <span className="app-hero-gradient">1 000 клиентов</span>
-          <br className="hidden md:block" />
-          <span className="md:inline"> </span>за 5 минут.
-        </h1>
-        <p className="text-[16px] md:text-[17px] max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
-          Введите нишу и город — получите телефоны, email и сайты компаний, готовых к рассылке.
-          Первые 50 лидов — бесплатно.
-        </p>
 
-        {/* Live stats — only when there's data */}
         {hasRuns && (
-          <div className="mt-7 grid grid-cols-2 md:grid-cols-4 gap-px bg-[hsl(var(--border))] rounded-[6px] overflow-hidden border border-[hsl(var(--border))]">
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-px bg-[hsl(var(--border))] rounded-[6px] overflow-hidden border border-[hsl(var(--border))]">
             <StatCell label="Лидов в базе" value={stats.totalLeads} accent />
             <StatCell label="Запусков" value={stats.totalRuns} />
             <StatCell label="Городов" value={new Set(recentRuns.map((r) => r.query.split(' ').slice(-1)[0])).size} />

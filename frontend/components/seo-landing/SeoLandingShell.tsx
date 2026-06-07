@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { LegalFooter } from '@/components/legal/LegalFooter';
 
 export interface FaqItem {
@@ -46,6 +47,11 @@ export function SeoLandingShell({
   faq,
   related,
 }: SeoLandingShellProps) {
+  // Залогиненный юзер уже в продукте — ему незачем «Создать аккаунт» и
+  // gigantic hero. Cookie access_token есть только у авторизованных
+  // (см. middleware.ts).
+  const isAuthed = Boolean(cookies().get('access_token')?.value);
+
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -55,78 +61,115 @@ export function SeoLandingShell({
         fontFamily: 'var(--font-body), system-ui, sans-serif',
       }}
     >
-      <SeoHeader />
+      <SeoHeader isAuthed={isAuthed} />
 
       <main className="flex-1">
-        {/* Hero */}
-        <section
-          style={{
-            background:
-              'radial-gradient(1200px 600px at 50% -200px, rgba(45, 212, 191, 0.18), transparent), #0b1220',
-            color: '#fff',
-          }}
-        >
-          <div className="max-w-4xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28 text-center">
-            <h1
-              className="font-display font-bold tracking-tight mb-5"
-              style={{
-                fontSize: 'clamp(2rem, 5vw, 3.5rem)',
-                lineHeight: 1.1,
-                color: '#fff',
-              }}
-            >
-              {h1}
-            </h1>
-            <p
-              className="mx-auto"
-              style={{
-                fontSize: 'clamp(1rem, 1.5vw, 1.25rem)',
-                lineHeight: 1.55,
-                color: 'rgba(255,255,255,0.8)',
-                maxWidth: '680px',
-              }}
-            >
-              {lead}
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-9">
-              <Link
-                href="/auth/register"
+        {/* Hero — компактный для залогиненного, гостевой большой для незалогиненного */}
+        {isAuthed ? (
+          <section
+            className="border-b"
+            style={{
+              borderColor: 'hsl(var(--border))',
+              background: 'hsl(var(--bg))',
+            }}
+          >
+            <div className="max-w-4xl mx-auto px-6 py-8">
+              <h1
+                className="font-display font-semibold tracking-tight mb-2"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background:
-                    'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                  color: '#0b1220',
-                  fontWeight: 600,
-                  fontSize: '15px',
-                  padding: '13px 22px',
-                  borderRadius: '10px',
-                  boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+                  fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+                  color: 'hsl(var(--text))',
                 }}
               >
-                Создать аккаунт
-              </Link>
-              <Link
-                href="/#diagnosis"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.85)',
-                  fontWeight: 500,
-                  fontSize: '15px',
-                  padding: '12px 20px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                }}
+                {h1}
+              </h1>
+              <p
+                className="text-base"
+                style={{ color: 'hsl(var(--muted))', maxWidth: '640px' }}
               >
-                Посмотреть демо
-              </Link>
+                {lead}
+              </p>
+              <div className="mt-5">
+                <Link
+                  href="/app/leads"
+                  className="inline-flex items-center gap-2 text-sm font-semibold hover:underline"
+                  style={{ color: '#06b6d4' }}
+                >
+                  Открыть в кабинете →
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section
+            style={{
+              background:
+                'radial-gradient(1200px 600px at 50% -200px, rgba(45, 212, 191, 0.18), transparent), #0b1220',
+              color: '#fff',
+            }}
+          >
+            <div className="max-w-4xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28 text-center">
+              <h1
+                className="font-display font-bold tracking-tight mb-5"
+                style={{
+                  fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+                  lineHeight: 1.1,
+                  color: '#fff',
+                }}
+              >
+                {h1}
+              </h1>
+              <p
+                className="mx-auto"
+                style={{
+                  fontSize: 'clamp(1rem, 1.5vw, 1.25rem)',
+                  lineHeight: 1.55,
+                  color: 'rgba(255,255,255,0.8)',
+                  maxWidth: '680px',
+                }}
+              >
+                {lead}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 mt-9">
+                <Link
+                  href="/auth/register"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background:
+                      'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                    color: '#0b1220',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    padding: '13px 22px',
+                    borderRadius: '10px',
+                    boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+                  }}
+                >
+                  Создать аккаунт
+                </Link>
+                <Link
+                  href="/#diagnosis"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'transparent',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                  }}
+                >
+                  Посмотреть демо
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Проблема → решение */}
         <section className="max-w-3xl mx-auto px-6 py-14 md:py-20">
@@ -277,55 +320,86 @@ export function SeoLandingShell({
           </section>
         )}
 
-        {/* Финальный CTA */}
-        <section
-          className="py-20"
-          style={{
-            background:
-              'radial-gradient(900px 400px at 50% 50%, rgba(45, 212, 191, 0.2), transparent), #0b1220',
-            color: '#fff',
-            textAlign: 'center',
-          }}
-        >
-          <div className="max-w-3xl mx-auto px-6">
-            <h2
-              className="font-display font-bold tracking-tight mb-4"
-              style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)' }}
-            >
-              Готовы попробовать?
-            </h2>
-            <p
-              className="mb-8"
-              style={{
-                color: 'rgba(255,255,255,0.75)',
-                fontSize: '1rem',
-                lineHeight: 1.55,
-              }}
-            >
-              Регистрация за 30 секунд, без кредитной карты.
-              <br />
-              Первые 500 лидов и 5 кампаний КП — бесплатно.
-            </p>
-            <Link
-              href="/auth/register"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background:
-                  'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: '#0b1220',
-                fontWeight: 600,
-                fontSize: '16px',
-                padding: '14px 26px',
-                borderRadius: '10px',
-                boxShadow: '0 12px 32px rgba(6, 182, 212, 0.4)',
-              }}
-            >
-              Создать аккаунт →
-            </Link>
-          </div>
-        </section>
+        {/* Финальный CTA — для гостей «Создать аккаунт», для залогиненных «Открыть кабинет» */}
+        {isAuthed ? (
+          <section
+            className="py-12 border-t"
+            style={{
+              borderColor: 'hsl(var(--border))',
+              background: 'hsl(var(--surface))',
+              textAlign: 'center',
+            }}
+          >
+            <div className="max-w-3xl mx-auto px-6">
+              <Link
+                href="/app/leads"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background:
+                    'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                  color: '#0b1220',
+                  fontWeight: 600,
+                  fontSize: '15px',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                }}
+              >
+                Открыть в кабинете →
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <section
+            className="py-20"
+            style={{
+              background:
+                'radial-gradient(900px 400px at 50% 50%, rgba(45, 212, 191, 0.2), transparent), #0b1220',
+              color: '#fff',
+              textAlign: 'center',
+            }}
+          >
+            <div className="max-w-3xl mx-auto px-6">
+              <h2
+                className="font-display font-bold tracking-tight mb-4"
+                style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)' }}
+              >
+                Готовы попробовать?
+              </h2>
+              <p
+                className="mb-8"
+                style={{
+                  color: 'rgba(255,255,255,0.75)',
+                  fontSize: '1rem',
+                  lineHeight: 1.55,
+                }}
+              >
+                Регистрация за 30 секунд, без кредитной карты.
+                <br />
+                Первые 500 лидов и 5 кампаний КП — бесплатно.
+              </p>
+              <Link
+                href="/auth/register"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background:
+                    'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                  color: '#0b1220',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  padding: '14px 26px',
+                  borderRadius: '10px',
+                  boxShadow: '0 12px 32px rgba(6, 182, 212, 0.4)',
+                }}
+              >
+                Создать аккаунт →
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* Перелинковка */}
         {related.length > 0 && (
@@ -373,7 +447,7 @@ export function SeoLandingShell({
   );
 }
 
-function SeoHeader() {
+function SeoHeader({ isAuthed }: { isAuthed: boolean }) {
   return (
     <header
       className="border-b"
@@ -391,32 +465,58 @@ function SeoHeader() {
           SpinLid
         </Link>
         <nav className="flex items-center gap-5 text-sm">
-          <Link
-            href="/#pricing"
-            className="hover:underline"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
-            Тарифы
-          </Link>
-          <Link
-            href="/auth/login"
-            className="hover:underline"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
-            Войти
-          </Link>
-          <Link
-            href="/auth/register"
-            style={{
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-              color: '#0b1220',
-              fontWeight: 600,
-              padding: '8px 14px',
-              borderRadius: '8px',
-            }}
-          >
-            Создать аккаунт
-          </Link>
+          {isAuthed ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="hover:underline"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
+                Дашборд
+              </Link>
+              <Link
+                href="/app/leads"
+                style={{
+                  background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                  color: '#0b1220',
+                  fontWeight: 600,
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                }}
+              >
+                К поиску
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/#pricing"
+                className="hover:underline"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
+                Тарифы
+              </Link>
+              <Link
+                href="/auth/login"
+                className="hover:underline"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
+                Войти
+              </Link>
+              <Link
+                href="/auth/register"
+                style={{
+                  background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                  color: '#0b1220',
+                  fontWeight: 600,
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                }}
+              >
+                Создать аккаунт
+              </Link>
+            </>
+          )}
         </nav>
       </div>
     </header>

@@ -25,9 +25,12 @@ import { SignalPill } from '@/components/ui/SignalPill';
 import { cn } from '@/lib/utils';
 import type { MapSearchFilter } from '@/src/services/api/maps';
 import {
+  cloneStarterPreset,
   deleteUserPreset,
+  listStarterPresets,
   listUserPresets,
   updateUserPreset,
+  type StarterPresetOut,
   type UserPresetOut,
   type UserPresetUpdate,
 } from '@/src/services/api/user-presets';
@@ -39,12 +42,14 @@ const INPUT_STYLE = { borderColor: 'hsl(var(--border))', color: 'hsl(var(--text)
 
 export default function MyPresetsPage() {
   const [presets, setPresets] = useState<UserPresetOut[]>([]);
+  const [starters, setStarters] = useState<StarterPresetOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'active' | 'hidden'>('active');
   const [editing, setEditing] = useState<UserPresetOut | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<UserPresetOut | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [cloningSlug, setCloningSlug] = useState<string | null>(null);
   // Создание пресета прямо с этой страницы. Открываем SaveFilterPresetModal
   // с пустым фильтром — юзер сможет сохранить чистый AI-пресет (название +
   // AI-промпт без фильтров). Для пресета с фильтрами лучше идти на форму
@@ -56,8 +61,12 @@ export default function MyPresetsPage() {
     setError(null);
     try {
       // null = и активные, и скрытые — фильтрация по табам делается локально
-      const list = await listUserPresets('maps', null);
+      const [list, starterList] = await Promise.all([
+        listUserPresets('maps', null),
+        listStarterPresets().catch(() => [] as StarterPresetOut[]),
+      ]);
       setPresets(list);
+      setStarters(starterList);
     } catch (e: any) {
       setError(e?.message || 'Не удалось загрузить пресеты');
     } finally {
@@ -68,6 +77,21 @@ export default function MyPresetsPage() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  async function doCloneStarter(s: StarterPresetOut) {
+    setCloningSlug(s.slug);
+    setError(null);
+    try {
+      const cloned = await cloneStarterPreset(s.slug);
+      setPresets((prev) => [cloned, ...prev]);
+      setTab('active');
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setError(detail || e?.message || 'Не удалось скопировать пресет');
+    } finally {
+      setCloningSlug(null);
+    }
+  }
 
   const active = presets.filter((p) => !p.hidden);
   const hidden = presets.filter((p) => p.hidden);
@@ -170,6 +194,77 @@ export default function MyPresetsPage() {
             ✕
           </button>
         </div>
+      )}
+
+      {/* Стартовые (системные) пресеты — read-only, можно склонировать к себе. */}
+      {starters.length > 0 && (
+        <section>
+          <h2
+            className="font-display font-semibold tracking-tight text-base mb-2"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            Стандартные пресеты
+          </h2>
+          <p className="text-xs mb-3" style={{ color: 'hsl(var(--muted))' }}>
+            Готовые наборы фильтров под типовые сценарии. Нажми «Скопировать
+            к себе» — пресет появится в активных, его можно будет править
+            и применять на форме поиска.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {starters.map((s) => (
+              <div
+                key={s.slug}
+                className="rounded-v2-sm border p-3"
+                style={{
+                  background: 'hsl(var(--surface-2))',
+                  borderColor: 'hsl(var(--border))',
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="text-sm font-medium font-display"
+                        style={{ color: 'hsl(var(--text))' }}
+                      >
+                        {s.name}
+                      </span>
+                      <SignalPill tone="muted" size="sm">стандартный</SignalPill>
+                      {s.ai_prompt && (
+                        <SignalPill tone="accent" size="sm" icon={<Sparkles />}>
+                          AI
+                        </SignalPill>
+                      )}
+                    </div>
+                    {s.description && (
+                      <div
+                        className="mt-1 text-[12px] leading-relaxed"
+                        style={{ color: 'hsl(var(--muted))' }}
+                      >
+                        {s.description}
+                      </div>
+                    )}
+                    <div className="mt-1.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                      <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>
+                        Фильтр:{' '}
+                      </span>
+                      {summarizeFilter(s.filter as MapSearchFilter)}
+                    </div>
+                  </div>
+                  <ButtonV2
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void doCloneStarter(s)}
+                    loading={cloningSlug === s.slug}
+                    disabled={cloningSlug !== null}
+                  >
+                    Скопировать к себе
+                  </ButtonV2>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <div

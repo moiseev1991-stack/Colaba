@@ -56,3 +56,20 @@ class UserPresetOut(BaseModel):
     ai_prompt: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class StarterPresetOut(BaseModel):
+    """Стартовый (системный) пресет — read-only, для отображения и клона.
+
+    Поле slug — машинно-читаемый ID, используется в /clone-эндпоинте.
+    Сравните с UserPresetOut.id (числовой) — у стартовых ID нет, чтобы
+    не путаться с пользовательскими.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    slug: str
+    name: str
+    description: str | None = None
+    filter: dict[str, Any]
+    ai_prompt: str | None = None

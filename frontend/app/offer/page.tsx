@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { LegalPageShell } from '@/components/legal/LegalPageShell';
 
 export const metadata: Metadata = {
-  title: 'Публичная оферта | SpinLid',
+  title: 'Публичная оферта',
   description:
     'Условия оплаты тарифов сервиса SpinLid, момент акцепта, порядок возврата.',
   alternates: { canonical: 'https://spinlid.ru/offer' },
