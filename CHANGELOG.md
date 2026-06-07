@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.57.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.56.0...v1.57.0) (2026-06-07)
+
+
+### Features
+
+* **maps:** Multi-preset AND — несколько пресетов фильтров одновременно ([7e1e55b](https://github.com/moiseev1991-stack/Colaba/commit/7e1e55b740767c00ae2f5bede454069d79710e1d))
+
 # [1.56.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.55.1...v1.56.0) (2026-06-07)
 
 
