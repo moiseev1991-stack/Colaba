@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.60.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.1...v1.60.2) (2026-06-07)
+
+
+### Bug Fixes
+
+* **maps:** maps-поиски в /app/leads/history + открытие через ?map_search_id ([2dacad0](https://github.com/moiseev1991-stack/Colaba/commit/2dacad0887be0fc5be6f551c94622be2aa9129e1))
+
 ## [1.60.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.0...v1.60.1) (2026-06-07)
 
 
