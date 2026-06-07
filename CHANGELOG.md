@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.52.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.52.0...v1.52.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **mobile:** убираем горизонтальный overflow на 360-414px ([c1fa6d9](https://github.com/moiseev1991-stack/Colaba/commit/c1fa6d92cd9f369cf56896822600c1bbc2584140))
+
 # [1.52.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.51.0...v1.52.0) (2026-06-07)
 
 
