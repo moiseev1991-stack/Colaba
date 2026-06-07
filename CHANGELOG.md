@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.56.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.55.1...v1.56.0) (2026-06-07)
+
+
+### Features
+
+* SEO-лендинги auth-aware, компактный hero в /app/leads, стартовые пресеты ([e5cfe94](https://github.com/moiseev1991-stack/Colaba/commit/e5cfe9464ee24bfa7516466d9844f36990f68eac))
+
 ## [1.55.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.55.0...v1.55.1) (2026-06-07)
 
 
