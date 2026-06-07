@@ -8,6 +8,8 @@ import {
   Search,
   History,
   Ban,
+  Bookmark,
+  ListPlus,
   Settings,
   FileSearch,
   FileText,
@@ -62,6 +64,10 @@ const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           { href: '/app/leads', label: 'Поиск лидов', icon: Search },
           { href: '/leads/dashboard', label: 'Дашборд', icon: LayoutDashboard },
           { href: '/app/leads/history', label: 'История', icon: History },
+          // Раньше эти пункты были только через шапку /app/leads — юзер
+          // их не находил, см. отчёт Chrome-агента 2026-06-07.
+          { href: '/app/leads/presets', label: 'Мои пресеты', icon: Bookmark },
+          { href: '/app/leads/lists', label: 'Мои списки', icon: ListPlus },
         ],
       },
       PROPOSALS_SECTION,
