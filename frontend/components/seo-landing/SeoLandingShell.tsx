@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { LegalFooter } from '@/components/legal/LegalFooter';
+import { cookies, headers } from 'next/headers';
+import { SeoLandingFooter } from './SeoLandingFooter';
+import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 
 export interface FaqItem {
   q: string;
@@ -47,6 +48,20 @@ export function SeoLandingShell({
   faq,
   related,
 }: SeoLandingShellProps) {
+  // Текущий путь (для футера — скрыть себя из «Решений»). next-headers
+  // в App Router server component'е даёт нам path через middleware-добавленный
+  // заголовок или через href. Простой подход: парсим referer или берём
+  // первый match из SEO_NAV_LINKS, если заголовок не пришёл. Жертвуем
+  // точностью — это не критично, повторяющаяся ссылка не сломает UX.
+  let currentHref: string | undefined;
+  try {
+    const path = headers().get('x-pathname') || headers().get('next-url') || '';
+    const match = SEO_NAV_LINKS.find((s) => path.endsWith(s.href));
+    currentHref = match?.href;
+  } catch {
+    /* server-only headers недоступны на build-time для статических страниц — OK */
+  }
+
   // Залогиненный юзер уже в продукте — ему незачем «Создать аккаунт» и
   // gigantic hero. Cookie access_token есть только у авторизованных
   // (см. middleware.ts).
@@ -229,6 +244,94 @@ export function SeoLandingShell({
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Демо-карточка — что юзер увидит в кабинете */}
+        <section className="py-12 md:py-16">
+          <div className="max-w-3xl mx-auto px-6">
+            <div
+              className="rounded-2xl border overflow-hidden"
+              style={{
+                background: 'hsl(var(--bg))',
+                borderColor: 'hsl(var(--border))',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div
+                className="px-6 py-3 border-b text-xs font-semibold tracking-wide uppercase"
+                style={{
+                  background: 'hsl(var(--surface))',
+                  borderColor: 'hsl(var(--border))',
+                  color: 'hsl(var(--muted))',
+                }}
+              >
+                Пример карточки компании в кабинете
+              </div>
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <div
+                      className="font-display font-semibold text-lg"
+                      style={{ color: 'hsl(var(--text))' }}
+                    >
+                      Стоматология «Улыбка+»
+                    </div>
+                    <div
+                      className="text-sm mt-0.5"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
+                      Москва, ул. Ленина 12 · ★ 3.8 · 142 отзыва
+                    </div>
+                  </div>
+                  <span
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      color: '#dc2626',
+                    }}
+                  >
+                    31 негатив
+                  </span>
+                </div>
+                <div
+                  className="text-sm mb-3"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  +7 (495) 123-45-67 · info@ulybka-plus.ru
+                </div>
+                <div
+                  className="text-xs font-semibold uppercase tracking-wide mb-3"
+                  style={{ color: '#f59e0b' }}
+                >
+                  Диагноз по отзывам
+                </div>
+                <div className="space-y-2">
+                  <DemoPainTag
+                    label="Долгое ожидание"
+                    count={12}
+                    quote="«Записала ребёнка на 10:00, приняли в 11:20.»"
+                  />
+                  <DemoPainTag
+                    label="Непрозрачные цены"
+                    count={7}
+                    quote="«На сайте от 1500 ₽, по факту чек 4800.»"
+                  />
+                  <DemoPainTag
+                    label="Не перезванивают"
+                    count={5}
+                    quote="«Оставила заявку три дня назад — ни звонка, ни SMS.»"
+                  />
+                </div>
+              </div>
+            </div>
+            <p
+              className="mt-3 text-center text-xs"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
+              Так выглядит каждая карточка в выдаче SpinLid — с конкретными
+              жалобами клиентов, готовыми для зацепки в письме.
+            </p>
           </div>
         </section>
 
@@ -442,7 +545,7 @@ export function SeoLandingShell({
         )}
       </main>
 
-      <LegalFooter />
+      <SeoLandingFooter currentHref={currentHref} />
     </div>
   );
 }
@@ -519,6 +622,118 @@ function SeoHeader({ isAuthed }: { isAuthed: boolean }) {
           )}
         </nav>
       </div>
+
+      {/* Sub-nav: ссылки на все SEO-страницы. Все ссылки сразу в DOM —
+          поисковики видят внутреннюю перелинковку, юзер быстро
+          переключается между темами. Прокручивается горизонтально на
+          узких экранах. */}
+      <div
+        style={{
+          background: 'hsl(var(--surface))',
+          borderTop: '1px solid hsl(var(--border))',
+          borderBottom: '1px solid hsl(var(--border))',
+        }}
+      >
+        <div
+          className="max-w-5xl mx-auto px-6 py-2 flex items-center gap-1 overflow-x-auto"
+          style={{ fontSize: '13px', whiteSpace: 'nowrap' }}
+        >
+          <span
+            style={{
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontWeight: 600,
+              color: 'hsl(var(--muted))',
+              marginRight: '8px',
+              flexShrink: 0,
+            }}
+          >
+            Возможности:
+          </span>
+          {SEO_NAV_LINKS.map((s, i) => (
+            <span key={s.href} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <Link
+                href={s.href}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--text))',
+                  textDecoration: 'none',
+                }}
+              >
+                {shortLabel(s.href)}
+              </Link>
+              {i < SEO_NAV_LINKS.length - 1 && (
+                <span style={{ color: 'hsl(var(--muted))', opacity: 0.4 }}>·</span>
+              )}
+            </span>
+          ))}
+        </div>
+      </div>
     </header>
   );
+}
+
+function DemoPainTag({
+  label,
+  count,
+  quote,
+}: {
+  label: string;
+  count: number;
+  quote: string;
+}) {
+  return (
+    <div
+      className="rounded-lg px-3 py-2"
+      style={{
+        background: 'rgba(245, 158, 11, 0.06)',
+        border: '1px solid rgba(245, 158, 11, 0.18)',
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="text-xs font-semibold px-2 py-0.5 rounded-full"
+          style={{
+            background: 'rgba(245, 158, 11, 0.18)',
+            color: '#b45309',
+          }}
+        >
+          {label}
+        </span>
+        <span
+          className="text-xs"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          × {count}
+        </span>
+      </div>
+      <div
+        className="mt-1 text-sm italic"
+        style={{ color: 'hsl(var(--text))' }}
+      >
+        {quote}
+      </div>
+    </div>
+  );
+}
+
+function shortLabel(href: string): string {
+  switch (href) {
+    case '/parsing-otzyvov':
+      return 'Анализ отзывов';
+    case '/parser-2gis':
+      return 'Парсер 2GIS';
+    case '/parser-yandex-maps':
+      return 'Парсер Я.Карт';
+    case '/baza-klientov':
+      return 'База клиентов';
+    case '/sbor-kontaktov':
+      return 'Сбор контактов';
+    case '/holodnaya-rassylka':
+      return 'Холодная рассылка';
+    default:
+      return href;
+  }
 }
