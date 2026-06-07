@@ -7,10 +7,15 @@
  * Готовые пресеты ниже — см. BUILTIN_PRESETS (источник истины).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookmarkPlus, Eraser, EyeOff, RotateCcw, X } from 'lucide-react';
 
 import { BUILTIN_PRESETS, type BuiltinPreset } from '@/components/maps/builtinPresets';
+import {
+  findPresetConflicts,
+  humanFieldLabel,
+  mergePresetsAND,
+} from '@/components/maps/multiPresetMerge';
 import { PainTagsCloud } from '@/components/maps/PainTagsCloud';
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
 import { Dialog } from '@/components/ui/dialog';
@@ -28,6 +33,23 @@ import {
 // Встроенные пресеты — в общем файле, переиспользуются в MapsSearchForm.
 const PRESETS = BUILTIN_PRESETS;
 type Preset = BuiltinPreset;
+
+// Лейбл applied-preset chip'а. Резолвит id вида `builtin:foo` / `user:42`.
+function labelOfPresetId(
+  id: string,
+  builtins: BuiltinPreset[],
+  userPresets: UserPresetOut[],
+): string {
+  if (id.startsWith('builtin:')) {
+    const presetId = id.slice('builtin:'.length);
+    return builtins.find((p) => p.id === presetId)?.label ?? presetId;
+  }
+  if (id.startsWith('user:')) {
+    const presetId = Number(id.slice('user:'.length));
+    return userPresets.find((p) => p.id === presetId)?.name ?? `пресет #${presetId}`;
+  }
+  return id;
+}
 
 interface Props {
   niche: string;
@@ -70,6 +92,18 @@ export function MapsFiltersPanel({
   // вешал страницу на 30 секунд (CDP-блокер) — заменили на Dialog.
   const [confirmDelete, setConfirmDelete] = useState<UserPresetOut | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+
+  // Multi-preset AND: список применённых сейчас пресетов в порядке клика.
+  // ID = `builtin:${id}` для встроенных, `user:${id}` для пользовательских.
+  // Порядок важен — для конфликтных полей (boolean, sort_by) выигрывает
+  // первый добавленный.
+  const [appliedPresetIds, setAppliedPresetIds] = useState<string[]>([]);
+  // Manual-overrides: то что юзер изменил в input'ах/select'ах ПОВЕРХ
+  // merged-пресетов. При toggle нового пресета — overrides сохраняются
+  // и применяются сверху merged, чтобы ручные правки не терялись.
+  const [manualOverrides, setManualOverrides] = useState<
+    Partial<MapSearchFilter>
+  >({});
 
   const activeUserPresets = allUserPresets.filter((p) => !p.hidden);
   const hiddenUserPresets = allUserPresets.filter((p) => p.hidden);
@@ -126,50 +160,92 @@ export function MapsFiltersPanel({
     setUserPresetsTab('active');
   }, []);
 
-  function applyUserPreset(p: UserPresetOut) {
-    onChange({
-      ...(p.filter as MapSearchFilter),
-      pain_tag_ids: value.pain_tag_ids,
+  /** Резолвит applied-preset id в объект с фильтром. Возвращает null если
+   *  пресет уже удалён (на случай если user-пресет успели удалить пока
+   *  он был в applied). */
+  function resolvePreset(
+    id: string,
+  ): { filter: MapSearchFilter; ai_prompt?: string | null } | null {
+    if (id.startsWith('builtin:')) {
+      const presetId = id.slice('builtin:'.length);
+      const p = PRESETS.find((x) => x.id === presetId);
+      return p ? { filter: p.filter, ai_prompt: p.ai_prompt } : null;
+    }
+    if (id.startsWith('user:')) {
+      const presetId = Number(id.slice('user:'.length));
+      const p = allUserPresets.find((x) => x.id === presetId);
+      return p
+        ? { filter: p.filter as MapSearchFilter, ai_prompt: p.ai_prompt }
+        : null;
+    }
+    return null;
+  }
+
+  /** Конфликты в выбранных пресетах (показываем юзеру). */
+  const presetConflicts = useMemo(() => {
+    const resolved = appliedPresetIds
+      .map((id) => resolvePreset(id))
+      .filter((x): x is { filter: MapSearchFilter } => x !== null);
+    return findPresetConflicts(resolved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedPresetIds, allUserPresets]);
+
+  /** Применяет/снимает пресет в наборе. Пересчитывает финальный фильтр:
+   *  mergePresetsAND(applied) + manualOverrides сверху + pain_tag_ids. */
+  function toggleAppliedId(id: string) {
+    setAppliedPresetIds((prev) => {
+      const isApplied = prev.includes(id);
+      const next = isApplied ? prev.filter((x) => x !== id) : [...prev, id];
+
+      const resolved = next
+        .map((presetId) => resolvePreset(presetId))
+        .filter((x): x is { filter: MapSearchFilter } => x !== null);
+      const merged = mergePresetsAND(resolved);
+
+      // Применяем manual-overrides поверх merged — ручные правки выигрывают.
+      const finalFilter: Record<string, unknown> = { ...merged };
+      for (const [k, v] of Object.entries(manualOverrides)) {
+        if (v !== null && v !== undefined) finalFilter[k] = v;
+      }
+      // pain_tag_ids ходит сам по себе (управляется через PainTagsCloud).
+      finalFilter.pain_tag_ids = value.pain_tag_ids ?? null;
+      // sort_by по умолчанию.
+      if (finalFilter.sort_by == null) finalFilter.sort_by = 'rating_desc';
+
+      onChange(finalFilter as MapSearchFilter);
+      return next;
     });
-    if (p.ai_prompt && p.ai_prompt.trim()) {
+  }
+
+  /** Записывает override-значение в manualOverrides по факту ручной правки.
+   *  Вызывается из commit() / commitWords() / прямых onChange'ей. */
+  function recordManualOverride(field: keyof MapSearchFilter, v: unknown) {
+    setManualOverrides((prev) => {
+      if (v === null || v === undefined) {
+        // null = сброс — убираем из overrides, чтобы пресеты могли управлять
+        // полем снова.
+        if (!(field in prev)) return prev;
+        const { [field]: _, ...rest } = prev;
+        return rest as Partial<MapSearchFilter>;
+      }
+      return { ...prev, [field]: v };
+    });
+  }
+
+  /** Toggle для пользовательских пресетов — теперь через appliedPresetIds. */
+  function toggleUserPreset(p: UserPresetOut) {
+    if (p.hidden) return; // скрытые не активируем
+    const id = `user:${p.id}`;
+    const wasApplied = appliedPresetIds.includes(id);
+    toggleAppliedId(id);
+    // AI-prompt колбэк родителю — только при ВКЛЮЧЕНИИ user-пресета с ai.
+    if (!wasApplied && p.ai_prompt && p.ai_prompt.trim()) {
       onUserPresetWithAiSelected?.(p);
     }
   }
 
-  /** Toggle для пользовательских пресетов — как togglePreset, но для UserPresetOut. */
-  function toggleUserPreset(p: UserPresetOut) {
-    if (!p.hidden && isUserPresetActive(p)) {
-      const f = (p.filter ?? {}) as Record<string, unknown>;
-      const cleared: Record<string, unknown> = { ...value };
-      for (const k of Object.keys(f)) {
-        if (k === 'pain_tag_ids') continue;
-        if (k === 'sort_by') {
-          cleared[k] = 'rating_desc';
-          continue;
-        }
-        cleared[k] = null;
-      }
-      onChange(cleared as MapSearchFilter);
-    } else {
-      applyUserPreset(p);
-    }
-  }
-
-  /** Точное совпадение фильтра пользовательского пресета с текущим. Та же
-   *  логика что у isPresetActive — null/undefined эквивалентны, массивы как
-   *  отсортированный JSON. */
   function isUserPresetActive(p: UserPresetOut): boolean {
-    const norm = (v: unknown): string => {
-      if (v == null) return 'null';
-      if (Array.isArray(v)) return JSON.stringify([...v].sort());
-      return JSON.stringify(v);
-    };
-    const f = (p.filter ?? {}) as Record<string, unknown>;
-    for (const [k, expected] of Object.entries(f)) {
-      const actual = (value as Record<string, unknown>)[k];
-      if (norm(expected) !== norm(actual)) return false;
-    }
-    return true;
+    return appliedPresetIds.includes(`user:${p.id}`);
   }
 
   // При внешнем изменении value (например, клик по пресету) — синкаем локальные
@@ -215,8 +291,12 @@ export function MapsFiltersPanel({
   }, [value]);
 
   /** Полный сброс всех фильтров к дефолту. Числовые/булевые/массивы → null,
-   *  сортировка → rating_desc. Используется по кнопке «Сбросить фильтры». */
+   *  сортировка → rating_desc. Используется по кнопке «Сбросить фильтры».
+   *  Также чистит все applied-пресеты и manual-overrides — иначе после
+   *  reset нажатие на пресет снова бы накладывало стек. */
   const resetAllFilters = useCallback(() => {
+    setAppliedPresetIds([]);
+    setManualOverrides({});
     onChange({
       min_rating: null,
       max_rating: null,
@@ -259,16 +339,20 @@ export function MapsFiltersPanel({
       .map((s) => s.trim())
       .filter(Boolean);
     if (kind === 'contains') {
+      const next = arr.length ? arr : null;
+      recordManualOverride('review_text_contains_any', next);
       onChange({
         ...value,
         review_text_contains: null, // legacy single-форму не используем здесь
-        review_text_contains_any: arr.length ? arr : null,
+        review_text_contains_any: next,
       });
     } else {
+      const next = arr.length ? arr : null;
+      recordManualOverride('review_text_excludes_any', next);
       onChange({
         ...value,
         review_text_excludes: null,
-        review_text_excludes_any: arr.length ? arr : null,
+        review_text_excludes_any: next,
       });
     }
   }
@@ -280,59 +364,30 @@ export function MapsFiltersPanel({
   }
 
   function commit() {
+    const minR = parseNum(localMinRating);
+    const maxR = parseNum(localMaxRating);
+    const minRev = parseNum(localMinReviews) as number | null;
+    const minNeg = parseNum(localMinNegative) as number | null;
+    recordManualOverride('min_rating', minR);
+    recordManualOverride('max_rating', maxR);
+    recordManualOverride('min_reviews', minRev);
+    recordManualOverride('min_negative', minNeg);
     onChange({
       ...value,
-      min_rating: parseNum(localMinRating),
-      max_rating: parseNum(localMaxRating),
-      min_reviews: parseNum(localMinReviews) as number | null,
-      min_negative: parseNum(localMinNegative) as number | null,
+      min_rating: minR,
+      max_rating: maxR,
+      min_reviews: minRev,
+      min_negative: minNeg,
     });
   }
 
-  function applyPreset(p: Preset) {
-    // Пресет полностью заменяет фильтр, сохраняя только pain_tag_ids
-    onChange({ ...p.filter, pain_tag_ids: value.pain_tag_ids });
-  }
-
-  /** Toggle-логика: клик по активному пресету его ОТКЛЮЧАЕТ
-   *  (сбрасывает все поля пресета в null), клик по неактивному —
-   *  применяет. Юзер часто хочет «снять фильтр и увидеть больше
-   *  компаний» — раньше для этого приходилось вручную сбрасывать каждое
-   *  поле, теперь достаточно повторного клика. */
+  /** Multi-preset AND: применяет/снимает встроенный пресет в наборе. */
   function togglePreset(p: Preset) {
-    if (isPresetActive(p)) {
-      const cleared: Record<string, unknown> = { ...value };
-      for (const k of Object.keys(p.filter)) {
-        // pain_tag_ids ходит сам по себе (управляется облаком тегов).
-        if (k === 'pain_tag_ids') continue;
-        // sort_by при деактивации возвращаем к дефолту, чтобы выдача
-        // не осталась с «По упоминаниям болей» когда сам пресет ушёл.
-        if (k === 'sort_by') {
-          cleared[k] = 'rating_desc';
-          continue;
-        }
-        cleared[k] = null;
-      }
-      onChange(cleared as MapSearchFilter);
-    } else {
-      applyPreset(p);
-    }
+    toggleAppliedId(`builtin:${p.id}`);
   }
 
-  /** Активен ли пресет — точное совпадение всех его значений в текущем фильтре.
-   *  Сравниваем сериализацией: null/undefined считаем эквивалентными (важно
-   *  для полей, которых нет в пресете). Массивы сравниваем как JSON. */
   function isPresetActive(p: Preset): boolean {
-    const norm = (v: unknown): string => {
-      if (v == null) return 'null';
-      if (Array.isArray(v)) return JSON.stringify([...v].sort());
-      return JSON.stringify(v);
-    };
-    for (const [k, expected] of Object.entries(p.filter)) {
-      const actual = (value as Record<string, unknown>)[k];
-      if (norm(expected) !== norm(actual)) return false;
-    }
-    return true;
+    return appliedPresetIds.includes(`builtin:${p.id}`);
   }
 
   return (
@@ -355,6 +410,47 @@ export function MapsFiltersPanel({
         <Eraser className="h-3.5 w-3.5" />
         Сбросить фильтры
       </button>
+
+      {/* Applied presets chips (Multi-preset AND). Показываем только если
+          выбрано >=2 пресета — для одного пресета и так понятно по подсветке. */}
+      {appliedPresetIds.length >= 2 && (
+        <div className="rounded-md border border-brand-200 bg-brand-50 px-2.5 py-2 dark:border-brand-500/30 dark:bg-brand-500/10">
+          <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
+            Применено пресетов: {appliedPresetIds.length} · фильтры AND
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {appliedPresetIds.map((id) => {
+              const label = labelOfPresetId(id, PRESETS, allUserPresets);
+              return (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-brand-800 border border-brand-300 dark:bg-brand-500/10 dark:border-brand-400/40 dark:text-brand-200"
+                >
+                  {label}
+                  <button
+                    type="button"
+                    onClick={() => toggleAppliedId(id)}
+                    aria-label={`Снять пресет ${label}`}
+                    className="ml-0.5 -mr-0.5 rounded p-0.5 hover:bg-brand-100 dark:hover:bg-brand-500/20"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          {presetConflicts.length > 0 && (
+            <div className="mt-1.5 text-[10px] leading-tight text-amber-700 dark:text-amber-300">
+              Конфликт в пресетах:{' '}
+              {presetConflicts
+                .map((c) => humanFieldLabel(c.field))
+                .join(', ')}{' '}
+              — учитываем значение первого применённого.
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Готовые пресеты
@@ -665,10 +761,9 @@ export function MapsFiltersPanel({
           }
           onChange={(e) => {
             const v = e.target.value;
-            onChange({
-              ...value,
-              has_owner_replies: v === 'yes' ? true : v === 'no' ? false : null,
-            });
+            const next = v === 'yes' ? true : v === 'no' ? false : null;
+            recordManualOverride('has_owner_replies', next);
+            onChange({ ...value, has_owner_replies: next });
           }}
         >
           <option value="any">Не важно</option>
@@ -691,10 +786,9 @@ export function MapsFiltersPanel({
           }
           onChange={(e) => {
             const v = e.target.value;
-            onChange({
-              ...value,
-              has_website: v === 'yes' ? true : v === 'no' ? false : null,
-            });
+            const next = v === 'yes' ? true : v === 'no' ? false : null;
+            recordManualOverride('has_website', next);
+            onChange({ ...value, has_website: next });
           }}
         >
           <option value="any">Не важно</option>
@@ -715,6 +809,7 @@ export function MapsFiltersPanel({
           value={value.source_filter ?? 'all'}
           onChange={(e) => {
             const v = e.target.value as 'all' | '2gis' | 'yandex_maps';
+            recordManualOverride('source_filter', v);
             onChange({ ...value, source_filter: v });
           }}
         >
@@ -740,10 +835,9 @@ export function MapsFiltersPanel({
               value={value.min_revenue ?? ''}
               onChange={(e) => {
                 const v = e.target.value.trim();
-                onChange({
-                  ...value,
-                  min_revenue: v === '' ? null : Number(v),
-                });
+                const next = v === '' ? null : Number(v);
+                recordManualOverride('min_revenue', next);
+                onChange({ ...value, min_revenue: next });
               }}
               className="text-[12px]"
             />
@@ -766,10 +860,9 @@ export function MapsFiltersPanel({
               value={value.min_age_years ?? ''}
               onChange={(e) => {
                 const v = e.target.value.trim();
-                onChange({
-                  ...value,
-                  min_age_years: v === '' ? null : Number(v),
-                });
+                const next = v === '' ? null : Number(v);
+                recordManualOverride('min_age_years', next);
+                onChange({ ...value, min_age_years: next });
               }}
               className="text-[12px]"
             />
@@ -851,7 +944,11 @@ export function MapsFiltersPanel({
         <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Сортировка</label>
         <Select
           value={value.sort_by ?? 'rating_desc'}
-          onChange={(e) => onChange({ ...value, sort_by: e.target.value as SortBy })}
+          onChange={(e) => {
+            const next = e.target.value as SortBy;
+            recordManualOverride('sort_by', next);
+            onChange({ ...value, sort_by: next });
+          }}
         >
           <option value="rating_desc">Рейтинг ↓</option>
           <option value="rating_asc">Рейтинг ↑</option>
