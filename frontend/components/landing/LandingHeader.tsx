@@ -17,6 +17,28 @@ export function LandingHeader() {
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const observersRef = useRef<IntersectionObserver[]>([]);
+  const solutionsRef = useRef<HTMLLIElement | null>(null);
+
+  // Click-outside для dropdown «Возможности». Hover убран — раньше при
+  // уводе курсора с кнопки на меню (между ними пиксельный зазор) меню
+  // успевало закрыться и нельзя было выбрать пункт.
+  useEffect(() => {
+    if (!solutionsOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (solutionsRef.current && !solutionsRef.current.contains(e.target as Node)) {
+        setSolutionsOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSolutionsOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [solutionsOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -82,17 +104,17 @@ export function LandingHeader() {
         </a>
 
         <ul className={`l-nav__links${mobileOpen ? ' open' : ''}`}>
-          {/* Dropdown «Возможности» — ведёт на 6 SEO-страниц. На мобиле
-              раскрывается inline (hover недоступен), на десктопе по hover. */}
-          <li
-            style={{ position: 'relative' }}
-            onMouseEnter={() => setSolutionsOpen(true)}
-            onMouseLeave={() => setSolutionsOpen(false)}
-          >
+          {/* Dropdown «Возможности» — ведёт на 6 SEO-страниц. Открывается
+              по клику и остаётся открытым до клика вне, Escape или клика
+              на пункт. Hover не используется — был баг: при движении
+              курсора с кнопки на список меню успевало закрыться через
+              onMouseLeave. */}
+          <li ref={solutionsRef} style={{ position: 'relative' }}>
             <button
               type="button"
               onClick={() => setSolutionsOpen((v) => !v)}
               aria-expanded={solutionsOpen}
+              aria-haspopup="menu"
             >
               Возможности ▾
             </button>
