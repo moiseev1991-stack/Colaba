@@ -87,6 +87,10 @@ def _build_production_columns():
         ("Мессенджеры", "messengers", 22, None),
         ("Рейтинг", "rating", 8, None),
         ("Отзывов", "reviews_count", 9, None),
+        # ЛПР — для генератора hero «Связаться с директором Иваном Ивановичем»
+        # (см. план в memory project_session_pending_2026-06-05.md).
+        ("ЛПР (ФИО)", "lpr_name", 28, None),
+        ("ЛПР: должность", "lpr_post", 22, None),
         ("Цитата 1", "quote_1", 60, "wrap"),
         ("Цитата 2", "quote_2", 60, "wrap"),
         ("Цитата 3", "quote_3", 60, "wrap"),

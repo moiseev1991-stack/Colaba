@@ -186,6 +186,27 @@ export function SeoLandingShell({
           </section>
         )}
 
+        {/* Trust-strip: 4 коротких индикатора. Не зависит от состояния
+            авторизации — это статичные цифры/факты о продукте. */}
+        <section
+          className="border-y"
+          style={{
+            background: 'hsl(var(--surface))',
+            borderColor: 'hsl(var(--border))',
+          }}
+        >
+          <div className="max-w-5xl mx-auto px-6 py-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-xl"
+              style={{ background: 'hsl(var(--border))' }}
+            >
+              <TrustCell value="5" label="источников данных" hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData" />
+              <TrustCell value="~60 сек" label="до результата" hint="первый поиск — обычно меньше минуты" />
+              <TrustCell value="500" label="лидов бесплатно" hint="без кредитной карты" />
+              <TrustCell value="0 ₽" label="за старт" hint="платный тариф — только при росте" />
+            </div>
+          </div>
+        </section>
+
         {/* Проблема → решение */}
         <section className="max-w-3xl mx-auto px-6 py-14 md:py-20">
           <div className="space-y-5 text-base md:text-lg leading-relaxed">
@@ -672,6 +693,51 @@ function SeoHeader({ isAuthed }: { isAuthed: boolean }) {
         </div>
       </div>
     </header>
+  );
+}
+
+function TrustCell({
+  value,
+  label,
+  hint,
+}: {
+  value: string;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <div
+      className="px-4 py-3 md:py-4"
+      style={{ background: 'hsl(var(--bg))' }}
+    >
+      <div
+        className="font-display font-bold text-2xl md:text-3xl"
+        style={{
+          background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          color: 'transparent',
+          letterSpacing: '-0.01em',
+        }}
+      >
+        {value}
+      </div>
+      <div
+        className="text-xs md:text-sm mt-1 font-medium"
+        style={{ color: 'hsl(var(--text))' }}
+      >
+        {label}
+      </div>
+      {hint && (
+        <div
+          className="text-[11px] mt-0.5 leading-tight"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
 
