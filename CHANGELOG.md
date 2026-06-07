@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.55.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.54.0...v1.55.0) (2026-06-07)
+
+
+### Features
+
+* **frontend:** правовые страницы + 6 SEO-лендингов + sitemap/robots + cookie-баннер ([9db7396](https://github.com/moiseev1991-stack/Colaba/commit/9db73967938adb689ef9007b7c6e9309a62255ed))
+
 # [1.54.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.53.0...v1.54.0) (2026-06-07)
 
 
