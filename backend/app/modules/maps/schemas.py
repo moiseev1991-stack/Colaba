@@ -422,8 +422,22 @@ class ReviewsListOut(BaseModel):
 
 
 class ProvidersHealthOut(BaseModel):
+    """Сводный health-check всех внешних провайдеров.
+
+    Каждое поле — короткая строка: 'ok' | 'no_api_key' | 'no_proxy' | ...
+    Дополнительно — счётчики из БД для запоминающих провайдеров (DaData).
+    `details` — словарь произвольных pair'ов для UI/devops без жёсткой схемы
+    (например count compleсtion, последний ошибочный запрос).
+    """
+
     twogis: str
     yandex_maps: str
+    # ТЗ 2026-06-07: дополнительные провайдеры — DaData (юр.данные),
+    # LLM-шлюз (OpenAI/ProxyAPI/Anthropic), Sentry (error tracking).
+    dadata: str = "unknown"
+    llm: str = "unknown"
+    sentry: str = "off"
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class CompanyLegalOut(BaseModel):
