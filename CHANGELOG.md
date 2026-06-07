@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.55.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.55.0...v1.55.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **frontend:** открыть правовые и SEO-страницы для незалогиненных в middleware ([0c43ba3](https://github.com/moiseev1991-stack/Colaba/commit/0c43ba36e931f36b32bf2a9c0a737f6ab4fafdfe))
+
 # [1.55.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.54.0...v1.55.0) (2026-06-07)
 
 
