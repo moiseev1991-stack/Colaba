@@ -30,6 +30,7 @@ from app.models.maps import Company, MapSearch, MapSearchResult, Review
 from app.models.company_outreach_draft import CompanyOutreachDraft
 from app.models.company_legal import CompanyLegal
 from app.models.company_decision_maker import CompanyDecisionMaker
+from app.models.pain_tag import CompanyPainScore, PainTag
 from app.modules.maps import service as maps_service
 
 
@@ -54,8 +55,12 @@ def _build_leads_columns():
         ("Мессенджеры", "messengers", 22, None),
         ("Рейтинг", "rating", 8, None),
         ("Отзывов", "reviews_count", 9, None),
+        ("Позитив", "reviews_positive_count", 9, None),
         ("Негатив", "reviews_negative_count", 9, None),
         ("Отвечает", "has_owner_replies", 10, None),
+        ("Сайт", "website", 28, None),
+        ("Источник", "source_label", 14, None),
+        ("Pain-теги (топ-3)", "pain_tags_summary", 60, "wrap"),
         ("Адрес", "address", 36, None),
         ("ИНН", "legal_inn", 14, None),
         ("Юр.название", "legal_name", 32, None),
@@ -274,6 +279,97 @@ _DM_SOURCE_LABELS = {
 }
 
 
+async def _load_top_pain_tags(
+    db: AsyncSession, company_ids: list[int], limit_per_company: int = 3
+) -> dict[int, list[tuple[str, int, str | None]]]:
+    """Топ N pain-теги по каждой компании: (label, mention_count, top_quote).
+
+    Сортировка по mention_count DESC внутри компании. Если у компании
+    мало болей — возвращаем меньше. Если совсем нет — нет записи в dict.
+    """
+    if not company_ids:
+        return {}
+    stmt = (
+        select(
+            CompanyPainScore.company_id,
+            CompanyPainScore.mention_count,
+            CompanyPainScore.top_quote,
+            PainTag.label,
+        )
+        .join(PainTag, PainTag.id == CompanyPainScore.pain_tag_id)
+        .where(CompanyPainScore.company_id.in_(company_ids))
+        .where(CompanyPainScore.mention_count > 0)
+        .order_by(
+            CompanyPainScore.company_id.asc(),
+            CompanyPainScore.mention_count.desc(),
+        )
+    )
+    rows = list((await db.execute(stmt)).all())
+    out: dict[int, list[tuple[str, int, str | None]]] = {}
+    for cid, count, quote, label in rows:
+        cid_int = int(cid)
+        bucket = out.setdefault(cid_int, [])
+        if len(bucket) >= limit_per_company:
+            continue
+        bucket.append((label, int(count), quote))
+    return out
+
+
+async def _load_company_sources_map(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, set[str]]:
+    """Множество источников по компании (2gis / yandex_maps / both)."""
+    if not company_ids:
+        return {}
+    from sqlalchemy import text as sa_text
+
+    sql = sa_text(
+        "SELECT company_id, source FROM company_sources "
+        "WHERE company_id = ANY(:ids)"
+    )
+    rows = list((await db.execute(sql, {"ids": list(company_ids)})).mappings().all())
+    out: dict[int, set[str]] = {}
+    for r in rows:
+        out.setdefault(int(r["company_id"]), set()).add(r["source"])
+    return out
+
+
+_SOURCE_LABELS = {
+    "2gis": "2GIS",
+    "yandex_maps": "Я.Карты",
+}
+
+
+def _format_source_label(sources: set[str] | None, fallback_single: str | None) -> str:
+    """Человекочитаемый источник: «2GIS», «Я.Карты», «Оба»."""
+    if sources and len(sources) > 1:
+        return "Оба"
+    if sources:
+        s = next(iter(sources))
+        return _SOURCE_LABELS.get(s, s)
+    if fallback_single:
+        return _SOURCE_LABELS.get(fallback_single, fallback_single)
+    return ""
+
+
+def _format_pain_tags_summary(
+    pains: list[tuple[str, int, str | None]] | None,
+) -> str:
+    """Текст для колонки «Pain-теги (топ-3)»: каждый тег с count и цитатой."""
+    if not pains:
+        return ""
+    parts = []
+    for label, count, quote in pains:
+        line = f"• {label} (×{count})"
+        if quote:
+            quote_trimmed = quote.strip().replace("\n", " ")
+            if len(quote_trimmed) > 140:
+                quote_trimmed = quote_trimmed[:140].rstrip() + "…"
+            line += f"\n  «{quote_trimmed}»"
+        parts.append(line)
+    return "\n".join(parts)
+
+
 async def _load_top_positive_quotes(
     db: AsyncSession, company_ids: list[int], limit_per_company: int = 3
 ) -> dict[int, list[str]]:
@@ -374,6 +470,15 @@ def _row_value(field: str, c: Company, ctx: dict) -> Any:
             return float(legal.revenue) if legal.revenue is not None else ""
         if field == "legal_age":
             return legal.age_years if legal.age_years is not None else ""
+    if field == "source_label":
+        return _format_source_label(
+            ctx.get("company_sources") if isinstance(ctx.get("company_sources"), set) else None,
+            getattr(c, "source", None),
+        )
+    if field == "pain_tags_summary":
+        return _format_pain_tags_summary(ctx.get("pain_tags"))
+    if field == "website":
+        return getattr(c, "website", None) or ""
     if field in ("lpr_name", "lpr_post", "lpr_source_label"):
         legal = ctx.get("legal")
         dm = ctx.get("decision_maker")
@@ -450,6 +555,8 @@ async def build_website_leads_xlsx(
     quotes_map = await _load_top_positive_quotes(db, ids, limit_per_company=3)
     legal_map = await _load_legal(db, ids)
     dm_map = await _load_top_decision_makers(db, ids)
+    pain_tags_map = await _load_top_pain_tags(db, ids, limit_per_company=3)
+    sources_map = await _load_company_sources_map(db, ids)
 
     # Блок 4C: автотриггер — для компаний без ai_description ставим
     # Celery-таски в фоне. Excel юзеру отдаём сразу с тем что есть;
@@ -485,6 +592,8 @@ async def build_website_leads_xlsx(
             "ai_description": c.ai_description or "",
             "legal": legal,
             "decision_maker": dm_map.get(c.id),
+            "pain_tags": pain_tags_map.get(c.id, []),
+            "company_sources": sources_map.get(c.id),
         }
         rows.append((c, ctx))
 
