@@ -15,9 +15,14 @@ from app.core.dependencies import get_current_user_id
 from app.core.rate_limit import limiter
 from app.modules.user_presets import service
 from app.modules.user_presets.schemas import (
+    StarterPresetOut,
     UserPresetCreate,
     UserPresetOut,
     UserPresetUpdate,
+)
+from app.modules.user_presets.starter_presets import (
+    get_starter_by_slug,
+    list_starter_presets,
 )
 
 
@@ -113,3 +118,60 @@ async def delete_preset(
     ok = await service.delete_preset(db, preset_id=preset_id, user_id=user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Пресет не найден")
+
+
+# ---------------------------------------------------------------------------
+# Стартовые (системные) пресеты — read-only, видны всем.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/starter", response_model=list[StarterPresetOut])
+@limiter.limit("120/minute")
+async def list_starter(
+    request: Request,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Возвращает встроенные стартовые пресеты. Авторизация нужна
+    (как и у обычных пресетов) — чтобы не тратить трафик у роботов."""
+    return [StarterPresetOut.model_validate(p) for p in list_starter_presets()]
+
+
+@router.post(
+    "/starter/{slug}/clone",
+    response_model=UserPresetOut,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("30/minute")
+async def clone_starter(
+    request: Request,
+    slug: str,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Копирует стартовый пресет в пользовательские. После клона юзер
+    может его править, скрывать, удалять как обычный."""
+    src = get_starter_by_slug(slug)
+    if src is None:
+        raise HTTPException(status_code=404, detail="Стартовый пресет не найден")
+    try:
+        preset = await service.create(
+            db,
+            user_id=user_id,
+            organization_id=None,
+            module="maps",
+            name=src["name"],
+            description=src.get("description"),
+            filter=src["filter"],
+            ai_prompt=src.get("ai_prompt"),
+        )
+    except IntegrityError:
+        await db.rollback()
+        # У юзера уже есть пресет с этим именем — для UX делаем подсказку.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"У вас уже есть пресет «{src['name']}» — переименуйте его "
+                "или удалите, чтобы склонировать стартовый заново."
+            ),
+        )
+    return UserPresetOut.model_validate(preset)

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { LegalPageShell } from '@/components/legal/LegalPageShell';
 
 export const metadata: Metadata = {
-  title: 'Пользовательское соглашение | SpinLid',
+  title: 'Пользовательское соглашение',
   description:
     'Условия использования сервиса SpinLid: предмет, права и обязанности сторон, ответственность за рассылки и соблюдение 152-ФЗ.',
   alternates: { canonical: 'https://spinlid.ru/terms' },

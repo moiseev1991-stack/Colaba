@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { LegalPageShell } from '@/components/legal/LegalPageShell';
 
 export const metadata: Metadata = {
-  title: 'Политика конфиденциальности | SpinLid',
+  title: 'Политика конфиденциальности',
   description:
     'Как сервис SpinLid обрабатывает персональные данные пользователей: цели, сроки хранения, передача третьим лицам, права субъекта ПДн (152-ФЗ).',
   alternates: { canonical: 'https://spinlid.ru/policy' },

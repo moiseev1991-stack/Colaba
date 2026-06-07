@@ -73,3 +73,28 @@ export async function updateUserPreset(
 export async function deleteUserPreset(id: number): Promise<void> {
   await apiClient.delete(`/user-presets/${id}`);
 }
+
+// ---------------------------------------------------------------------------
+// Стартовые (системные) пресеты — read-only, видны всем юзерам.
+// ---------------------------------------------------------------------------
+
+export interface StarterPresetOut {
+  slug: string;
+  name: string;
+  description: string | null;
+  filter: Record<string, unknown>;
+  ai_prompt: string | null;
+}
+
+export async function listStarterPresets(): Promise<StarterPresetOut[]> {
+  const response = await apiClient.get<StarterPresetOut[]>('/user-presets/starter');
+  return response.data;
+}
+
+export async function cloneStarterPreset(slug: string): Promise<UserPresetOut> {
+  const response = await apiClient.post<UserPresetOut>(
+    `/user-presets/starter/${slug}/clone`,
+    {},
+  );
+  return response.data;
+}

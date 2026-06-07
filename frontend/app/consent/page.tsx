@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { LegalPageShell } from '@/components/legal/LegalPageShell';
 
 export const metadata: Metadata = {
-  title: 'Согласие на обработку персональных данных | SpinLid',
+  title: 'Согласие на обработку персональных данных',
   description:
     'Текст согласия на обработку персональных данных, которое пользователь даёт при регистрации в сервисе SpinLid (152-ФЗ).',
   alternates: { canonical: 'https://spinlid.ru/consent' },

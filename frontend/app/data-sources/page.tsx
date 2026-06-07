@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { LegalPageShell } from '@/components/legal/LegalPageShell';
 
 export const metadata: Metadata = {
-  title: 'Политика использования открытых источников | SpinLid',
+  title: 'Политика использования открытых источников',
   description:
     'Какие открытые источники использует SpinLid, как мы относимся к актуальности данных, как удалить компанию из выдачи по запросу.',
   alternates: { canonical: 'https://spinlid.ru/data-sources' },
