@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.50.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.49.2...v1.50.0) (2026-06-07)
+
+
+### Features
+
+* **maps:** ЛПР из DaData — ФИО директора + подстановка в outreach + бейдж в drawer ([10eb623](https://github.com/moiseev1991-stack/Colaba/commit/10eb62374f3d81588f4499745e3fa1b1e604b522))
+
 ## [1.49.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.49.1...v1.49.2) (2026-06-06)
 
 
