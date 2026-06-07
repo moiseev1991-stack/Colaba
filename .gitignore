@@ -95,3 +95,15 @@ test-results/
 *.egg-info/
 dist/
 build/
+
+# IDE
+.claude/
+
+# Local test/probe scripts (not part of product)
+/probe_*.py
+/frontend/test-req*.js
+/frontend/test-write*.txt
+
+# Local prod-clone working copy
+/spinlid-clean/
+
