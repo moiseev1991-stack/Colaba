@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.59.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.59.0...v1.59.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **landing:** dropdown «Возможности» теперь работает по клику, а не hover ([479be06](https://github.com/moiseev1991-stack/Colaba/commit/479be067b432dee2d93621e762fe19cba06b879c))
+
 # [1.59.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.58.0...v1.59.0) (2026-06-07)
 
 
