@@ -82,8 +82,12 @@ export default function MyPresetsPage() {
     setCloningSlug(s.slug);
     setError(null);
     try {
-      const cloned = await cloneStarterPreset(s.slug);
-      setPresets((prev) => [cloned, ...prev]);
+      await cloneStarterPreset(s.slug);
+      // Перезагружаем весь список из БД — гарантия что id и порядок
+      // соответствуют серверу (без этого был случай delete→404 потому что
+      // optimistic-добавленный id расходился с реальным).
+      const list = await listUserPresets('maps', null);
+      setPresets(list);
       setTab('active');
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
