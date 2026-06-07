@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.59.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.58.0...v1.59.0) (2026-06-07)
+
+
+### Features
+
+* ЛПР в «Производство сайта», пресеты/списки в sidebar, trust-strip на SEO ([1f2b677](https://github.com/moiseev1991-stack/Colaba/commit/1f2b6776508518d253653864faa5ff3fd88a666d))
+
 # [1.58.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.57.1...v1.58.0) (2026-06-07)
 
 
