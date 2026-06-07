@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.53.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.52.1...v1.53.0) (2026-06-07)
+
+
+### Features
+
+* **health:** расширяем /maps/health/providers — DaData, LLM, Sentry, счётчики ([dcb6445](https://github.com/moiseev1991-stack/Colaba/commit/dcb6445d910e8031a81df4d9a4a8012a5d6b5857)), closes [#11](https://github.com/moiseev1991-stack/Colaba/issues/11)
+
 ## [1.52.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.52.0...v1.52.1) (2026-06-07)
 
 
