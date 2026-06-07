@@ -42,20 +42,24 @@ for entry in "${CASES[@]}"; do
 import asyncio
 from app.core.database import AsyncSessionLocal
 from app.modules.maps import service as maps_service
+from app.modules.maps.tasks import parse_map_search
 
 async def main():
     async with AsyncSessionLocal() as db:
-        # user_id=1 — оператор по умолчанию (создаётся при init). Если
-        # на проде он другой — поменяй в скрипте.
-        search = await maps_service.start_search(
+        # user_id=1 — первый зарегистрированный (обычно админ). Поменяй
+        # если на проде другой.
+        search = await maps_service.create_map_search(
             db,
             user_id=1,
             niche='$NICHE',
             city='$CITY',
             sources=['2gis', 'yandex_maps'],
-            max_results=200,
         )
         print(f'  search_id={search.id} status={search.status}')
+        # Если из кэша — таск не нужен.
+        if search.status != 'from_cache':
+            parse_map_search.delay(search.id)
+            print(f'  → parse_map_search.delay({search.id}) поставлен в Celery')
 
 asyncio.run(main())
 " || echo "  ✗ Ошибка при старте $NICHE / $CITY"
