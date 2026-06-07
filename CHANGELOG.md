@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.57.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.57.0...v1.57.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* sidebar на правовых/SEO, hero на «По картам», подвалы, переименование «Письмо под боль» ([98093d4](https://github.com/moiseev1991-stack/Colaba/commit/98093d453720a616a820788bc55ef6abe2966692))
+
 # [1.57.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.56.0...v1.57.0) (2026-06-07)
 
 
