@@ -7,6 +7,7 @@ import { HeroSection } from '@/components/landing/HeroSection';
 import { DiagnosisSection } from '@/components/landing/DiagnosisSection';
 import { ImpactSection } from '@/components/landing/ImpactSection';
 import { ModulesSection } from '@/components/landing/ModulesSection';
+import { SolutionsSection } from '@/components/landing/SolutionsSection';
 import { BenefitsSection } from '@/components/landing/BenefitsSection';
 import { RegisterSection } from '@/components/landing/RegisterSection';
 import { AudienceSection } from '@/components/landing/AudienceSection';
@@ -84,6 +85,7 @@ export default function LandingPage() {
         <ImpactSection />
         <BenefitsSection />
         <ModulesSection />
+        <SolutionsSection />
         <RegisterSection />
         <AudienceSection />
         <HowItWorksSection />

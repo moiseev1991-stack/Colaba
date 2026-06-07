@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { SEO_NAV_LINKS } from './seoNavLinks';
 
 const ANCHORS = [
   { id: 'diagnosis', label: 'Диагноз' },
-  { id: 'features', label: 'Возможности' },
   { id: 'pricing', label: 'Тарифы' },
   { id: 'examples', label: 'Примеры' },
   { id: 'faq', label: 'FAQ' },
@@ -14,6 +14,7 @@ const ANCHORS = [
 export function LandingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const observersRef = useRef<IntersectionObserver[]>([]);
 
@@ -81,6 +82,81 @@ export function LandingHeader() {
         </a>
 
         <ul className={`l-nav__links${mobileOpen ? ' open' : ''}`}>
+          {/* Dropdown «Возможности» — ведёт на 6 SEO-страниц. На мобиле
+              раскрывается inline (hover недоступен), на десктопе по hover. */}
+          <li
+            style={{ position: 'relative' }}
+            onMouseEnter={() => setSolutionsOpen(true)}
+            onMouseLeave={() => setSolutionsOpen(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setSolutionsOpen((v) => !v)}
+              aria-expanded={solutionsOpen}
+            >
+              Возможности ▾
+            </button>
+            {solutionsOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: '4px',
+                  minWidth: '320px',
+                  padding: '8px',
+                  background: 'rgba(15, 23, 42, 0.97)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+                  display: 'grid',
+                  gap: '2px',
+                  zIndex: 50,
+                }}
+              >
+                {SEO_NAV_LINKS.map((s) => (
+                  <Link
+                    key={s.href}
+                    href={s.href}
+                    role="menuitem"
+                    onClick={() => {
+                      setSolutionsOpen(false);
+                      setMobileOpen(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      color: 'rgba(255,255,255,0.92)',
+                      textDecoration: 'none',
+                      transition: 'background-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(45,212,191,0.12)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '14px' }}>
+                      {s.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: 'rgba(255,255,255,0.6)',
+                        marginTop: '2px',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {s.hint}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </li>
           {ANCHORS.map(({ id, label }) => (
             <li key={id}>
               <button
