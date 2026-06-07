@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { AlertCircle } from 'lucide-react';
 import { apiClient, tokenStorage } from '@/client';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
@@ -16,6 +17,7 @@ function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -35,6 +37,13 @@ function RegisterForm() {
 
     if (password !== confirmPassword) {
       setError('Пароли не совпадают');
+      return;
+    }
+
+    if (!consent) {
+      setError(
+        'Для регистрации необходимо принять Пользовательское соглашение и согласиться на обработку персональных данных'
+      );
       return;
     }
 
@@ -149,11 +158,53 @@ function RegisterForm() {
             </div>
           </div>
 
+          <label
+            className="flex items-start gap-3 text-xs"
+            style={{ color: 'hsl(var(--muted))' }}
+          >
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border focus:ring-2 focus:ring-brand-500"
+              style={{ borderColor: 'hsl(var(--border))' }}
+              required
+            />
+            <span>
+              Создавая аккаунт, я принимаю{' '}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="text-brand-600 dark:text-brand-400 hover:underline"
+              >
+                Пользовательское соглашение
+              </Link>{' '}
+              и даю{' '}
+              <Link
+                href="/consent"
+                target="_blank"
+                className="text-brand-600 dark:text-brand-400 hover:underline"
+              >
+                согласие на обработку персональных данных
+              </Link>{' '}
+              в соответствии с{' '}
+              <Link
+                href="/policy"
+                target="_blank"
+                className="text-brand-600 dark:text-brand-400 hover:underline"
+              >
+                Политикой конфиденциальности
+              </Link>
+              .
+            </span>
+          </label>
+
           <ButtonV2
             type="submit"
             variant="primary"
             size="lg"
             loading={loading}
+            disabled={!consent}
             className="w-full"
           >
             Зарегистрироваться
