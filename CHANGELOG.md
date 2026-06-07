@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.58.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.57.1...v1.58.0) (2026-06-07)
+
+
+### Features
+
+* SEO-страницы в навигации, перелинковка, демо-блок + секция «Решения» на главной ([c7a7a8b](https://github.com/moiseev1991-stack/Colaba/commit/c7a7a8b5853c3cf7ffd4b3f137f131ed52fd04a4)), closes [#features](https://github.com/moiseev1991-stack/Colaba/issues/features) [#features](https://github.com/moiseev1991-stack/Colaba/issues/features) [#solutions](https://github.com/moiseev1991-stack/Colaba/issues/solutions) [#diagnosis](https://github.com/moiseev1991-stack/Colaba/issues/diagnosis) [#pricing](https://github.com/moiseev1991-stack/Colaba/issues/pricing) [#examples](https://github.com/moiseev1991-stack/Colaba/issues/examples) [#faq](https://github.com/moiseev1991-stack/Colaba/issues/faq)
+
 ## [1.57.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.57.0...v1.57.1) (2026-06-07)
 
 
