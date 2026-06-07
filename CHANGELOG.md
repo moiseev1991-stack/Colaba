@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.54.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.53.0...v1.54.0) (2026-06-07)
+
+
+### Features
+
+* **maps:** ЛПР в Excel-экспорте + bulk-enrich-team endpoint (after PR [#14](https://github.com/moiseev1991-stack/Colaba/issues/14)+[#15](https://github.com/moiseev1991-stack/Colaba/issues/15)) ([fad067d](https://github.com/moiseev1991-stack/Colaba/commit/fad067dc2cc9cfef9e2cb4cbf310fbc2a679c987))
+
 # [1.53.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.52.1...v1.53.0) (2026-06-07)
 
 
