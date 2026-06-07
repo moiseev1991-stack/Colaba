@@ -167,7 +167,7 @@ function PseudoUICards() {
             boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
           }}
         >
-          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-accent)' }}>Письмо под боль</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--landing-accent)' }}>Черновик письма</div>
           <div className="mt-2 text-[11.5px]" style={{ color: 'var(--landing-text)', lineHeight: 1.45 }}>
             «Здравствуйте! Вижу в отзывах, что у клиентов жалоба
             на долгое ожидание — могу показать, как это решить онлайн-записью…»

@@ -238,7 +238,7 @@ export function DiagnosisSection() {
                   }}
                 >
                   <Sparkles size={14} />
-                  Письмо под боль
+                  Сгенерировать черновик
                 </button>
                 <button
                   type="button"

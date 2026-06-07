@@ -397,28 +397,17 @@ export function MapsSearchForm({ onStarted }: Props) {
         </div>
       </section>
 
-      {/* === HERO === */}
-      <section className="mb-8 app-reveal">
-        <div className="flex items-center gap-3 mb-5">
-          <span className="app-live-dot" aria-hidden />
-          <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
-            01 / Поиск по картам
-          </span>
-          <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-            2GIS · Яндекс.Карты
-          </span>
-        </div>
+      {/* Компактный заголовок (без лендингового hero — юзер в кабинете). */}
+      <section className="mb-6 app-reveal">
         <h1
-          className="font-display font-semibold leading-[1.02] tracking-tight mb-5"
-          style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: 'hsl(var(--text))' }}
+          className="font-display font-semibold tracking-tight"
+          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
         >
-          Компании с <span className="text-gradient-brand">«болями» клиентов</span>
-          <br className="hidden md:block" />
-          <span className="md:inline"> </span>из отзывов на картах.
+          Поиск лидов
         </h1>
-        <p className="text-[15px] md:text-[17px] max-w-[640px] leading-relaxed" style={{ color: 'hsl(var(--muted))' }}>
+        <p className="mt-1 text-sm max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
           Введите нишу и город — модуль найдёт компании в 2GIS / Яндекс.Картах,
-          подтянет отзывы и выделит «боли» клиентов, чтобы было о чём писать в холодную рассылку.
+          подтянет отзывы и выделит «боли» клиентов.
         </p>
       </section>
 

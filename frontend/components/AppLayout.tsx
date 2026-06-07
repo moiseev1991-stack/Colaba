@@ -1,9 +1,19 @@
 'use client';
 
+import Link from 'next/link';
 import { ModuleProvider, useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
 import { Sidebar } from './Sidebar';
 import { AppHeader } from './AppHeader';
 import { MobileTabBar } from './MobileTabBar';
+
+const LEGAL_LINKS = [
+  { href: '/terms', label: 'Соглашение' },
+  { href: '/policy', label: 'Политика' },
+  { href: '/consent', label: 'Согласие на ПДн' },
+  { href: '/offer', label: 'Оферта' },
+  { href: '/data-sources', label: 'Источники' },
+];
+const SUPPORT_EMAIL = 'support@spinlid.ru';
 
 function MobileModuleTabs() {
   const { module, setModule } = useModule();
@@ -77,14 +87,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <footer
-          className="app-footer hidden md:block shrink-0 py-3 px-4 text-center text-[12px] relative z-10 backdrop-blur-sm"
+          className="app-footer hidden md:block shrink-0 py-2.5 px-4 text-[12px] relative z-10 backdrop-blur-sm"
           style={{
             color: 'hsl(var(--muted))',
             borderTop: '1px solid hsl(var(--border))',
             background: 'hsl(var(--surface) / 0.8)',
           }}
         >
-          © SpinLid
+          <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-x-5 gap-y-1.5">
+            <span suppressHydrationWarning>© {new Date().getFullYear()} SpinLid</span>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {LEGAL_LINKS.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="hover:underline" target="_blank">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:underline">
+              {SUPPORT_EMAIL}
+            </a>
+          </div>
         </footer>
 
         {/* §2.3 — мобильная нижняя навигация. Только md-, на десктопе — sidebar. */}
