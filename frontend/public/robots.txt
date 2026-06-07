@@ -1,0 +1,30 @@
+# spinlid.ru — robots.txt
+# Публичный лендинг + SEO-страницы индексируются.
+# Кабинет, авторизация и API закрыты.
+
+User-agent: *
+Allow: /
+
+# Кабинет и авторизация
+Disallow: /app/
+Disallow: /auth/
+Disallow: /dashboard/
+Disallow: /demo/
+Disallow: /leads/
+Disallow: /monitor/
+Disallow: /organizations/
+Disallow: /payment/
+Disallow: /profile/
+Disallow: /runs/
+Disallow: /seo/
+Disallow: /settings/
+Disallow: /tenders/
+
+# Backend API
+Disallow: /api/
+
+# Параметры аналитики
+Disallow: /*?utm_*
+Disallow: /*?ref=*
+
+Sitemap: https://spinlid.ru/sitemap.xml
