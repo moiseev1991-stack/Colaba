@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.60.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.2...v1.60.3) (2026-06-07)
+
+
+### Bug Fixes
+
+* **build:** обернуть MapsSearchPanel в Suspense — useSearchParams требует boundary ([a5f0d56](https://github.com/moiseev1991-stack/Colaba/commit/a5f0d560ee2f87a48a19049fa5bda828c9e1818b))
+
 ## [1.60.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.1...v1.60.2) (2026-06-07)
 
 
