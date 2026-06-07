@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.51.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.50.0...v1.51.0) (2026-06-07)
+
+
+### Bug Fixes
+
+* **tests:** CompanyDecisionMaker импорт в models/__init__ — без него Base.metadata не знал о таблице ([87c07a7](https://github.com/moiseev1991-stack/Colaba/commit/87c07a74feea29ee8f2e9bfe3b3fe16667381b38))
+
+
+### Features
+
+* **maps:** LLM-извлечение ЛПР со страниц сайта (/team /о-нас /контакты) ([129c6e0](https://github.com/moiseev1991-stack/Colaba/commit/129c6e0b49b4fcd6129e40a4dbc4dc19eda7e187))
+
 # [1.50.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.49.2...v1.50.0) (2026-06-07)
 
 
