@@ -178,6 +178,9 @@ class CompanyPainOut(BaseModel):
     mention_count: int = 0
     top_quote: str | None = None
     top_quote_similarity: float | None = None
+    # Даты для UI «N нед. назад» — берутся из CompanyPainScore (миграция 020).
+    first_mention_at: datetime | None = None
+    last_mention_at: datetime | None = None
 
 
 class PainTagOut(BaseModel):

@@ -232,33 +232,27 @@ export function MapsCompanyCard({
         )}
         {multiSourceList.length > 0 ? (
           <span
-            className="ml-auto inline-flex items-center gap-1 text-[11px]"
+            className="ml-auto inline-flex items-center gap-1"
             title={
               activeSource && activeSource !== 'all'
                 ? `Фильтр: только ${sourceLabel(activeSource)}. Карточка фокусирует данные выбранного источника.`
                 : 'Компания найдена в нескольких источниках'
             }
           >
-            {multiSourceList.map((s, idx) => (
-              <span key={s.source} className="inline-flex items-center gap-1">
-                {idx > 0 && <span aria-hidden className="text-[hsl(var(--muted))]">·</span>}
-                <span
-                  className={
-                    s.active
-                      ? 'rounded-pill bg-brand-500/15 px-1.5 py-0.5 font-semibold text-brand-700 dark:text-brand-300'
-                      : activeSource && activeSource !== 'all'
-                      ? 'font-medium text-[hsl(var(--muted))] opacity-70'
-                      : 'font-medium text-[hsl(var(--text))]'
-                  }
-                >
-                  {s.label}
-                </span>
-              </span>
+            {multiSourceList.map((s) => (
+              <SourceChip
+                key={s.source}
+                source={s.source}
+                active={s.active}
+                dimmed={Boolean(activeSource && activeSource !== 'all' && !s.active)}
+              />
             ))}
           </span>
         ) : (
           company.source && (
-            <span className="ml-auto text-[11px] text-[hsl(var(--muted))]">{sourceTitle}</span>
+            <span className="ml-auto">
+              <SourceChip source={company.source} active />
+            </span>
           )
         )}
       </div>
@@ -411,14 +405,86 @@ export function MapsCompanyCard({
 
 /* ===== Сабкомпоненты ===== */
 
+/**
+ * Заметный рейтинг с явной цветовой шкалой. Не SignalPill (тот мелкий) —
+ * самостоятельная плашка, шрифт 14px, ★-иконка крупная. Цветовая шкала:
+ *   < 3.5 — красный (опасный сигнал, привлекает внимание)
+ *   3.5-4.0 — янтарный (средний)
+ *   4.0-4.5 — оливково-зелёный
+ *   ≥ 4.5 — изумрудный (премиум)
+ * Юзер должен мгновенно сканировать список глазами по цвету ★.
+ */
 function RatingPill({ rating }: { rating: number }) {
-  const tone: 'good' | 'warm' | 'hot' | 'muted' =
-    rating >= 4.3 ? 'good' : rating <= 3.5 ? 'hot' : 'warm';
+  let bg: string;
+  let fg: string;
+  let bd: string;
+  if (rating < 3.5) {
+    bg = 'rgba(220, 38, 38, 0.12)';
+    fg = '#dc2626';
+    bd = 'rgba(220, 38, 38, 0.35)';
+  } else if (rating < 4.0) {
+    bg = 'rgba(245, 158, 11, 0.14)';
+    fg = '#b45309';
+    bd = 'rgba(245, 158, 11, 0.4)';
+  } else if (rating < 4.5) {
+    bg = 'rgba(132, 204, 22, 0.14)';
+    fg = '#4d7c0f';
+    bd = 'rgba(132, 204, 22, 0.4)';
+  } else {
+    bg = 'rgba(16, 185, 129, 0.14)';
+    fg = '#059669';
+    bd = 'rgba(16, 185, 129, 0.4)';
+  }
   return (
-    <SignalPill tone={tone} size="sm">
-      <span className="font-semibold">★ {rating.toFixed(1)}</span>
-    </SignalPill>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        background: bg,
+        color: fg,
+        border: `1px solid ${bd}`,
+        borderRadius: 999,
+        padding: '3px 9px',
+        fontSize: 13,
+        fontWeight: 700,
+        lineHeight: 1,
+        whiteSpace: 'nowrap',
+      }}
+      title={`Рейтинг ${rating.toFixed(1)} из 5`}
+    >
+      <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>★</span>
+      {rating.toFixed(1)}
+    </span>
   );
+}
+
+/**
+ * Relative-time для дат отзывов: «сегодня», «3 дня назад», «2 нед. назад»,
+ * «3 мес. назад», «1 год назад». Лучше абсолютной даты для UI-превью —
+ * юзер мгновенно видит «свежий это негатив или старый».
+ */
+function relativeTimeRu(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return 'только что';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} мин назад`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ч назад`;
+  const day = Math.floor(hr / 24);
+  if (day === 0) return 'сегодня';
+  if (day === 1) return 'вчера';
+  if (day < 7) return `${day} дн назад`;
+  const week = Math.floor(day / 7);
+  if (week < 5) return `${week} нед. назад`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month} мес. назад`;
+  const year = Math.floor(day / 365);
+  return `${year} ${year === 1 ? 'год' : year < 5 ? 'года' : 'лет'} назад`;
 }
 
 function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
@@ -428,29 +494,40 @@ function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
         <Activity className="h-3 w-3 text-[color:var(--signal-warm)]" />
         Диагноз по отзывам
       </div>
-      {pains.slice(0, 3).map((p) => (
-        <div
-          key={p.pain_tag_id}
-          className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2.5 py-1.5"
-        >
-          <div className="flex items-center gap-2">
-            <span className="rounded-pill bg-[var(--signal-warm)]/20 px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)]">
-              {p.label}
-            </span>
-            {p.mention_count > 0 && (
-              <span className="text-[11px] text-[color:var(--signal-warm)]/80">
-                × {p.mention_count}
+      {pains.slice(0, 3).map((p) => {
+        const when = relativeTimeRu(p.last_mention_at);
+        return (
+          <div
+            key={p.pain_tag_id}
+            className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2.5 py-1.5"
+          >
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="rounded-pill bg-[var(--signal-warm)]/20 px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)]">
+                {p.label}
               </span>
+              {p.mention_count > 0 && (
+                <span className="text-[11px] text-[color:var(--signal-warm)]/80">
+                  × {p.mention_count}
+                </span>
+              )}
+              {when && (
+                <span
+                  className="ml-auto text-[10px] text-[hsl(var(--muted))]"
+                  title={p.last_mention_at ?? undefined}
+                >
+                  {when}
+                </span>
+              )}
+            </div>
+            {p.top_quote && (
+              <div className="mt-1 flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
+                <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
+                <span className="line-clamp-2 italic">«{p.top_quote}»</span>
+              </div>
             )}
           </div>
-          {p.top_quote && (
-            <div className="mt-1 flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
-              <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
-              <span className="line-clamp-2 italic">«{p.top_quote}»</span>
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -511,6 +588,68 @@ function sourceLabel(source: string | null | undefined): string {
   if (source === '2gis') return '2GIS';
   if (source === 'yandex_maps') return 'Я.Карты';
   return source ?? '';
+}
+
+/** Бренд-цвет источника — используется в SourceChip и легенде. */
+function sourceColor(source: string | null | undefined): string {
+  if (source === '2gis') return '#19c129'; // фирменный зелёный 2GIS
+  if (source === 'yandex_maps') return '#ffcc00'; // фирменный жёлтый Я
+  return '#64748b';
+}
+
+/** Бренд-буква в круге — компактный визуальный маркер источника. */
+function SourceChip({
+  source,
+  active,
+  dimmed,
+}: {
+  source: string | null | undefined;
+  active?: boolean;
+  dimmed?: boolean;
+}) {
+  const label = sourceLabel(source);
+  const color = sourceColor(source);
+  const letter = source === '2gis' ? '2' : source === 'yandex_maps' ? 'Я' : '?';
+  return (
+    <span
+      title={`Источник: ${label}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        background: active ? `${color}26` : `${color}14`,
+        border: `1px solid ${color}${active ? '88' : '44'}`,
+        color: active ? color : 'inherit',
+        borderRadius: 999,
+        padding: '2px 8px 2px 4px',
+        fontSize: 11,
+        fontWeight: 600,
+        lineHeight: 1,
+        opacity: dimmed ? 0.55 : 1,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: color,
+          color: '#fff',
+          fontSize: 10,
+          fontWeight: 800,
+          lineHeight: 1,
+        }}
+      >
+        {letter}
+      </span>
+      {label}
+    </span>
+  );
 }
 
 function buildSourceUrl(source: string | null | undefined, externalId: string | null | undefined): string | null {

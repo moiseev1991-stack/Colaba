@@ -1139,6 +1139,21 @@ async def export_website_leads_xlsx(
     request: Request,
     search_id: int = Query(...),
     only_website_leads: bool = Query(default=True),
+    # Те же фильтры, что и у /search/{id}/export — чтобы выгрузка XLSX
+    # не игнорила пресет ("Нет сайта", "Низкий рейтинг" и т.п.). Фикс
+    # бага 2026-06-08: юзер применял пресет → 9/70 → скачивал 70.
+    min_rating: Optional[float] = Query(default=None, ge=0, le=5),
+    max_rating: Optional[float] = Query(default=None, ge=0, le=5),
+    min_reviews: Optional[int] = Query(default=None, ge=0),
+    min_negative: Optional[int] = Query(default=None, ge=0),
+    has_owner_replies: Optional[bool] = Query(default=None),
+    has_website: Optional[bool] = Query(default=None),
+    pain_tag_ids: Optional[list[int]] = Query(default=None),
+    review_text_contains: Optional[str] = Query(default=None, max_length=200),
+    review_text_excludes: Optional[str] = Query(default=None, max_length=200),
+    review_text_contains_any: Optional[list[str]] = Query(default=None),
+    review_text_excludes_any: Optional[list[str]] = Query(default=None),
+    company_ids: Optional[list[int]] = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1147,6 +1162,10 @@ async def export_website_leads_xlsx(
     - only_website_leads=true (дефолт): только компании без собственного
       сайта (website_lead_score IS NOT NULL).
     - only_website_leads=false: все компании поиска (общий экспорт).
+    - Дополнительные query-фильтры (min_rating, has_website, pain_tag_ids,
+      review_text_*) применяются так же, как в /search/{id}/export.
+      Если передан company_ids — фильтры игнорируются, берутся только
+      указанные id (для bulk-выбора по чекбоксам).
 
     Файл собирается серверно openpyxl'ом, отдаётся как поток.
     """
@@ -1164,8 +1183,27 @@ async def export_website_leads_xlsx(
     if search_obj is None:
         raise HTTPException(status_code=404, detail="search not found")
 
+    # Собираем фильтр для передачи в loader (None-поля = «без ограничения»).
+    flt = MapSearchFilter(
+        min_rating=min_rating,
+        max_rating=max_rating,
+        min_reviews=min_reviews,
+        min_negative=min_negative,
+        has_owner_replies=has_owner_replies,
+        has_website=has_website,
+        pain_tag_ids=pain_tag_ids or None,
+        review_text_contains=review_text_contains,
+        review_text_excludes=review_text_excludes,
+        review_text_contains_any=review_text_contains_any or None,
+        review_text_excludes_any=review_text_excludes_any or None,
+    )
+
     blob = await build_website_leads_xlsx(
-        db, search_id, only_website_leads=only_website_leads
+        db,
+        search_id,
+        only_website_leads=only_website_leads,
+        flt=flt,
+        company_ids=company_ids or None,
     )
     filename = build_filename(search_obj)
     return Response(

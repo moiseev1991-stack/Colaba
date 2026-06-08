@@ -166,6 +166,9 @@ export interface CompanyPainOut {
   mention_count: number;
   top_quote?: string | null;
   top_quote_similarity?: number | null;
+  /** ISO datetime — для UI «3 нед. назад» в превью карточки. */
+  first_mention_at?: string | null;
+  last_mention_at?: string | null;
 }
 
 /** Multi-source (Phase 4 ТЗ 2026-06-03): один контакт с пометкой источника.

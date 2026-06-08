@@ -297,17 +297,21 @@ export function MapsSearchResults({
         // чтобы UI наполнялся карточками в реальном времени, а не ждал
         // terminal-статус. Без этого юзер видит пустоту и думает что
         // «ничего не происходит».
-        const data = await listMapCompanies(search.id, DEFAULT_FILTER, 100, 0);
-        if (data.items.length > companies.length) {
-          setCompanies(data.items);
-        }
+        // Поллинг во время парсинга — учитываем активный фильтр пресета,
+        // иначе он перезаписывает state на нефильтрованный список и
+        // «Выбрать все на странице» захватывает все компании, а не
+        // отфильтрованные. Фикс бага 2026-06-08.
+        const data = await listMapCompanies(search.id, filter, 100, 0);
+        setCompanies(data.items);
         if (data.source_counts) setSourceCounts(data.source_counts);
       } catch {
         /* keep current */
       }
     }, 3000);
     return () => clearInterval(timer);
-  }, [search.id, search.status, search.companies_found, companies.length]);
+    // filter — чтобы при смене пресета во время парсинга polling начал
+    // дёргать API уже с новым фильтром.
+  }, [search.id, search.status, search.companies_found, filter]);
 
   // Перезагрузка списка с фильтрами: только после terminal-статуса, с debounce 300мс
   const refreshCompanies = useCallback(
@@ -502,8 +506,22 @@ export function MapsSearchResults({
   function handleExportWebsiteLeadsXlsx() {
     // Блок 4 ТЗ 2026-06-02: .xlsx с двумя вкладками для пакетной продажи
     // сайтов. Бэкенд: GET /maps/website-leads/export.
+    // 2026-06-08: передаём активный фильтр пресета, иначе xlsx
+    // возвращает все 70 компаний вместо отфильтрованных 9.
+    const params = new URLSearchParams();
+    params.set('search_id', String(search.id));
+    params.set('only_website_leads', 'true');
+    if (filter.min_rating != null) params.set('min_rating', String(filter.min_rating));
+    if (filter.max_rating != null) params.set('max_rating', String(filter.max_rating));
+    if (filter.min_reviews != null) params.set('min_reviews', String(filter.min_reviews));
+    if (filter.min_negative != null) params.set('min_negative', String(filter.min_negative));
+    if (filter.has_owner_replies != null) params.set('has_owner_replies', String(filter.has_owner_replies));
+    if (filter.has_website != null) params.set('has_website', String(filter.has_website));
+    if (filter.pain_tag_ids?.length) for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
+    if (filter.review_text_contains_any?.length) for (const t of filter.review_text_contains_any) params.append('review_text_contains_any', t);
+    if (filter.review_text_excludes_any?.length) for (const t of filter.review_text_excludes_any) params.append('review_text_excludes_any', t);
     const a = document.createElement('a');
-    a.href = `/api/v1/maps/website-leads/export?search_id=${search.id}&only_website_leads=true`;
+    a.href = `/api/v1/maps/website-leads/export?${params.toString()}`;
     a.download = `website-leads_${search.id}.xlsx`;
     document.body.appendChild(a);
     a.click();
@@ -569,15 +587,12 @@ export function MapsSearchResults({
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Источники: {search.sources}. Статус: {statusLabel(search.status)}.{' '}
-              {isTerminal
-                ? // Если фильтр сузил выдачу — показываем оба числа: «под фильтр / всего».
-                  // Раньше счётчик «всего» оставался без изменений и врал юзеру.
-                  companiesEverLoaded &&
-                    typeof search.companies_found === 'number' &&
-                    renderTotal !== search.companies_found
+              {isTerminal &&
+                (companiesEverLoaded &&
+                  typeof search.companies_found === 'number' &&
+                  renderTotal !== search.companies_found
                   ? `Под фильтр: ${renderTotal} из ${search.companies_found}.`
-                  : `Найдено компаний: ${search.companies_found ?? renderTotal}.`
-                : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
+                  : `Найдено компаний: ${search.companies_found ?? renderTotal}.`)}
               <button
                 type="button"
                 onClick={() => setShowBadgeLegend((s) => !s)}
@@ -839,7 +854,18 @@ export function MapsSearchResults({
           </div>
         </div>
 
-        {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
+        {/* Пошаговый прогресс парсинга: видно пока статус не terminal.
+            Показывает разбивку по источникам + бар + текущую фазу. */}
+        {!isTerminal && (
+          <ParsingProgressBar
+            renderTotal={renderTotal}
+            sourceCounts={sourceCounts}
+            progress={stream.progress}
+            sources={search.sources}
+          />
+        )}
+
+        {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && !isTerminal && (
           <div className="rounded-v2-sm bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
             Ошибка стрима: {stream.error}
           </div>
@@ -1034,6 +1060,120 @@ export function MapsSearchResults({
         error={draftError}
         onClose={() => setDraftOpen(false)}
       />
+    </div>
+  );
+}
+
+/**
+ * Пошаговый прогресс парсинга. Показывается пока статус поиска не terminal.
+ * Состав:
+ *  — текущая фаза (из SSE progress.stage если есть, иначе «парсим…»)
+ *  — счётчики по источникам как цветные чипы (2GIS зелёный, Я.Карты жёлтый)
+ *  — индикатор «совпадает в обоих» если есть склейка
+ *  — индетерминированный прогресс-бар (мы не знаем общее число до завершения)
+ *
+ * Заменил однострочный «Найдено пока: X компаний» — он не показывал
+ * структуру, не объяснял что происходит, и юзер не понимал почему «долго».
+ */
+function ParsingProgressBar({
+  renderTotal,
+  sourceCounts,
+  progress,
+  sources,
+}: {
+  renderTotal: number;
+  sourceCounts: { total: number; twogis: number; yandex_maps: number; both: number } | null;
+  progress: { stage?: string; source?: string; saved?: number; expected?: number } | null;
+  sources: string;
+}) {
+  const has2gis = sources.includes('2gis');
+  const hasYa = sources.includes('yandex_maps');
+  const stageLabel = (() => {
+    const s = progress?.stage;
+    if (s === 'parsing' || s === 'parse') return 'Парсим карточки';
+    if (s === 'enriching' || s === 'enrich') return 'Достаём контакты с сайтов';
+    if (s === 'ai' || s === 'ai_analysis') return 'AI-анализ отзывов';
+    if (s === 'reviews' || s === 'fetching_reviews') return 'Тянем отзывы';
+    if (s === 'merging') return 'Склеиваем дубли';
+    return 'Парсим…';
+  })();
+
+  const twogisCount = sourceCounts?.twogis ?? 0;
+  const yaCount = sourceCounts?.yandex_maps ?? 0;
+  const both = sourceCounts?.both ?? 0;
+
+  return (
+    <div className="rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="inline-block w-2 h-2 rounded-full bg-brand-500 animate-pulse" aria-hidden />
+        <span className="text-sm font-medium text-[hsl(var(--text))]">{stageLabel}</span>
+        <span className="text-xs text-[hsl(var(--muted))]">· найдено {renderTotal}</span>
+      </div>
+      {/* Индетерминированная полоска: при неизвестном total — анимация */}
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[hsl(var(--surface-2))] mb-2.5">
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: '40%',
+            background: 'linear-gradient(90deg, transparent, #06b6d4 50%, transparent)',
+            animation: 'progressSlide 1.6s linear infinite',
+          }}
+        />
+      </div>
+      <style>{`@keyframes progressSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }`}</style>
+      <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+        {has2gis && (
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(25, 193, 41, 0.12)', color: '#15803d',
+              border: '1px solid rgba(25, 193, 41, 0.35)',
+              borderRadius: 999, padding: '2px 8px 2px 4px',
+              fontWeight: 600, lineHeight: 1.4,
+            }}
+            title="Компаний найдено из 2GIS"
+          >
+            <span aria-hidden style={{
+              display:'inline-flex', alignItems:'center', justifyContent:'center',
+              width:16, height:16, borderRadius:'50%', background:'#19c129',
+              color:'#fff', fontSize:10, fontWeight:800,
+            }}>2</span>
+            2GIS: {twogisCount}
+          </span>
+        )}
+        {hasYa && (
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(245, 158, 11, 0.14)', color: '#92400e',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: 999, padding: '2px 8px 2px 4px',
+              fontWeight: 600, lineHeight: 1.4,
+            }}
+            title="Компаний найдено из Яндекс.Карт"
+          >
+            <span aria-hidden style={{
+              display:'inline-flex', alignItems:'center', justifyContent:'center',
+              width:16, height:16, borderRadius:'50%', background:'#ffcc00',
+              color:'#000', fontSize:10, fontWeight:800,
+            }}>Я</span>
+            Я.Карты: {yaCount}
+          </span>
+        )}
+        {both > 0 && (
+          <span
+            className="rounded-pill border border-[hsl(var(--border))] px-2 py-0.5 text-[11px] text-[hsl(var(--muted))]"
+            title="Найдены в обоих источниках, склеены в одну карточку"
+          >
+            склейка: {both}
+          </span>
+        )}
+        {progress?.saved != null && progress?.expected != null && progress.expected > 0 && (
+          <span className="ml-auto text-[11px] text-[hsl(var(--muted))]">
+            {progress.saved} / {progress.expected}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

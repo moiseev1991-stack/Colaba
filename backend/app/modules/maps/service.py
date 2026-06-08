@@ -829,7 +829,8 @@ async def get_top_pains_for_companies(
     sql = text(
         """
         SELECT company_id, pain_tag_id, label, description, mention_count,
-               top_quote, top_quote_similarity
+               top_quote, top_quote_similarity,
+               first_mention_at, last_mention_at
         FROM (
             SELECT
                 cps.company_id,
@@ -839,6 +840,8 @@ async def get_top_pains_for_companies(
                 cps.mention_count,
                 cps.top_quote,
                 cps.top_quote_similarity,
+                cps.first_mention_at,
+                cps.last_mention_at,
                 ROW_NUMBER() OVER (
                     PARTITION BY cps.company_id
                     ORDER BY cps.mention_count DESC, cps.last_mention_at DESC NULLS LAST
@@ -862,6 +865,8 @@ async def get_top_pains_for_companies(
             "mention_count": int(r["mention_count"] or 0),
             "top_quote": r["top_quote"],
             "top_quote_similarity": float(r["top_quote_similarity"]) if r["top_quote_similarity"] is not None else None,
+            "first_mention_at": r["first_mention_at"],
+            "last_mention_at": r["last_mention_at"],
         })
     return by_company
 

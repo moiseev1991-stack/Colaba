@@ -17,7 +17,10 @@ from __future__ import annotations
 import io
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.maps.schemas import MapSearchFilter
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -192,18 +195,55 @@ def _extract_logo_url(c: Company) -> str:
 
 
 async def _load_companies_for_search(
-    db: AsyncSession, search_id: int, only_website_leads: bool
+    db: AsyncSession,
+    search_id: int,
+    only_website_leads: bool,
+    *,
+    flt: Optional["MapSearchFilter"] = None,
 ) -> list[Company]:
-    """Тянет все компании поиска. only_website_leads=True — только те, у
-    кого website_lead_score IS NOT NULL (то есть нет собственного сайта)."""
+    """Тянет компании поиска с применением фильтров.
+
+    only_website_leads=True — только те, у кого website_lead_score IS NOT
+    NULL (нет собственного сайта). flt — те же поля что в /companies endpoint
+    (min_rating, has_website, pain_tag_ids, review_text_*). None → без
+    доп. фильтра.
+    """
+    # Переиспользуем service.get_search_results, который уже знает
+    # все нюансы (review_text_contains_any как JOIN на reviews, pain-теги,
+    # сортировки). Так не дублируем логику фильтрации и не рискуем
+    # разойтись с UI выдачей.
+    from app.modules.maps.schemas import MapSearchFilter as _Filter
+
+    if flt is None:
+        flt = _Filter()
+
+    # Берём service-функцию из maps-модуля. Импорт внутри — service.py
+    # импортит модели, можем словить цикл при import-time.
+    from app.modules.maps import service as maps_service
+
+    # Большой лимит чтобы экспортнуть весь поиск (UI обычно ≤2000).
+    items, _ = await maps_service.get_search_results(
+        db, search_id, flt, limit=5000, offset=0
+    )
+
+    if only_website_leads:
+        items = [c for c in items if c.website_lead_score is not None]
+    return items
+
+
+async def _load_companies_by_ids(
+    db: AsyncSession, search_id: int, company_ids: list[int]
+) -> list[Company]:
+    """Bulk-режим: компании только по списку id, привязанные к этому поиску."""
+    if not company_ids:
+        return []
     stmt = (
         select(Company)
         .join(MapSearchResult, MapSearchResult.company_id == Company.id)
         .where(MapSearchResult.map_search_id == search_id)
+        .where(Company.id.in_(company_ids))
         .order_by(MapSearchResult.position.asc())
     )
-    if only_website_leads:
-        stmt = stmt.where(Company.website_lead_score.isnot(None))
     res = await db.execute(stmt)
     return list(res.scalars().all())
 
@@ -530,13 +570,25 @@ async def build_website_leads_xlsx(
     search_id: int,
     *,
     only_website_leads: bool = True,
+    flt: Optional["MapSearchFilter"] = None,
+    company_ids: Optional[list[int]] = None,
 ) -> bytes:
     """Главная entry-point: тянет компании, drafts, цитаты и собирает xlsx.
 
     only_website_leads=True (дефолт) — только те, у кого score IS NOT NULL.
     False — все компании поиска (для общего экспорта без фокуса на website).
+    flt — те же фильтры что и у /search/{id}/export. Если задан — применяются
+    дополнительно к only_website_leads. None → без фильтра.
+    company_ids — если задан, фильтры игнорируются, берутся только
+    указанные id (bulk-выбор чекбоксами).
     """
-    companies = await _load_companies_for_search(db, search_id, only_website_leads)
+    if company_ids:
+        # Bulk-режим: только выбранные id, не считаемся с фильтрами.
+        companies = await _load_companies_by_ids(db, search_id, company_ids)
+    else:
+        companies = await _load_companies_for_search(
+            db, search_id, only_website_leads, flt=flt
+        )
     if not companies:
         # Возвращаем пустую книгу с заголовками — фронт получит файл, но
         # юзер увидит пустоту и поймёт что фильтр пустой.
