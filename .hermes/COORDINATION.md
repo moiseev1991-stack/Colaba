@@ -102,7 +102,9 @@
 
 | # | Фича | Кто | Ветка | Модули/файлы | Статус |
 |---|------|-----|-------|-------------|--------|
-| | | | | | |
+| 1 | Google Maps провайдер | Claude | feat/google-maps-provider | maps | 🟡 В работе |
+| 2 | ✨ Почистить 22 мёртвые ветки | Claude | main | git housekeeping | ⏳ Завтра |
+| 3 | ✨ Починить deploy workflow | Claude | main | .github/workflows/deploy.yml | ⏳ Завтра |
 
 ---
 
