@@ -8,6 +8,7 @@ import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
 import { getTheme, setTheme } from '@/lib/storage';
 import type { Theme } from '@/lib/types';
+import { BrandMark } from '@/components/BrandMark';
 
 export function AppHeader() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -91,17 +92,17 @@ export function AppHeader() {
         backdropFilter: 'blur(12px)',
       }}
     >
-      {/* Left: Logo — §2.2 редизайн 2026-06-03 (бренд-градиент вместо blue-purple) */}
+      {/* Left: Logo — единая BrandMark (emerald→cyan, белая спираль) */}
       <div className="flex items-center gap-2 shrink-0">
         <Link href="/dashboard" className="flex items-center gap-2 group" aria-label="SpinLid">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-v2-sm bg-brand-gradient shadow-v2-sm transition-all group-hover:scale-105 group-hover:shadow-v2-hover overflow-hidden shrink-0"
-            aria-hidden
-          >
-            <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none">
-              <path d="M16,6 C21.5,6 26,10.5 26,16 C26,18.5 25,20.8 23.2,22.3 C21.5,23.8 19.2,24.5 17,24 C14.5,23.4 12.5,21.5 12,19 C11.7,17.5 12,16 13,15.2 C14,15.5 15,16 15,17 C15,18 15.5,19 16.5,19.5 C17.5,20 19,19.8 20,19 C21,18.2 21.5,17 21.5,16 C21.5,13.2 19,11 16,11 C13,11 10.5,13.2 10.5,16 C10.5,17.5 11,19 12,20 C13,21 14.5,21.5 16,21.5" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
-            </svg>
-          </div>
+          <span className="inline-flex items-center justify-center transition-all group-hover:scale-105 shrink-0">
+            <BrandMark
+              size={32}
+              gradient="linear-gradient(135deg, #10b981 0%, #06b6d4 100%)"
+              spiralColor="white"
+              glow="var(--shadow-v2-sm)"
+            />
+          </span>
           <span className="font-display font-semibold text-[15px] tracking-tight" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
         </Link>
       </div>

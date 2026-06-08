@@ -13,9 +13,28 @@ interface BrandMarkProps {
   bg?: boolean;
   /** Класс для обёртки (для позиционирования). */
   className?: string;
+  /**
+   * CSS-градиент подложки. Дефолт — landing-палитра teal→cyan.
+   * Для кабинета передаём продуктовый `--brand-gradient` (emerald→cyan).
+   */
+  gradient?: string;
+  /** Цвет спирали. Дефолт — тёмный для светлой подложки. В кабинете белый. */
+  spiralColor?: string;
+  /** Тень-glow вокруг плашки. */
+  glow?: string;
 }
 
-export function BrandMark({ size = 32, bg = true, className }: BrandMarkProps) {
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)';
+const DEFAULT_GLOW = '0 0 12px rgba(45, 212, 191, 0.4)';
+
+export function BrandMark({
+  size = 32,
+  bg = true,
+  className,
+  gradient = DEFAULT_GRADIENT,
+  spiralColor,
+  glow = DEFAULT_GLOW,
+}: BrandMarkProps) {
   if (bg) {
     return (
       <span
@@ -27,16 +46,16 @@ export function BrandMark({ size = 32, bg = true, className }: BrandMarkProps) {
           width: size,
           height: size,
           borderRadius: Math.round(size * 0.22),
-          background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-          boxShadow: '0 0 12px rgba(45, 212, 191, 0.4)',
+          background: gradient,
+          boxShadow: glow,
         }}
         aria-hidden
       >
-        <BrandSpiral size={Math.round(size * 0.7)} color="#0b1220" />
+        <BrandSpiral size={Math.round(size * 0.7)} color={spiralColor ?? '#0b1220'} />
       </span>
     );
   }
-  return <BrandSpiral size={size} color="#06b6d4" className={className} />;
+  return <BrandSpiral size={size} color={spiralColor ?? '#06b6d4'} className={className} />;
 }
 
 function BrandSpiral({

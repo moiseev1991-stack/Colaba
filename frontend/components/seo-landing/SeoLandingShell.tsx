@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { SeoLandingFooter } from './SeoLandingFooter';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
+import { Reveal } from '@/components/Reveal';
 
 export interface FaqItem {
   q: string;
@@ -66,45 +67,47 @@ export function SeoLandingShell({
         {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} />}
 
         {/* Trust-strip */}
-        <TrustStrip />
+        <Reveal><TrustStrip /></Reveal>
 
         {/* «Было / стало» — визуальная схема вместо текстовых абзацев */}
-        <BeforeAfterDiagram />
+        <Reveal><BeforeAfterDiagram /></Reveal>
 
         {/* Проблема → решение (плотные параграфы, max-width 640) */}
-        <section className="max-w-2xl mx-auto px-6 py-12 md:py-16">
-          <div className="space-y-4 text-base leading-relaxed">
-            {problemSolutionParagraphs.map((p, i) => (
-              <p key={i} style={{ color: 'hsl(var(--text))' }}>
-                {p}
-              </p>
-            ))}
-          </div>
-        </section>
+        <Reveal>
+          <section className="max-w-2xl mx-auto px-6 py-12 md:py-16">
+            <div className="space-y-4 text-base leading-relaxed">
+              {problemSolutionParagraphs.map((p, i) => (
+                <p key={i} style={{ color: 'hsl(var(--text))' }}>
+                  {p}
+                </p>
+              ))}
+            </div>
+          </section>
+        </Reveal>
 
         {/* Как это работает — 4 шага с иконками */}
-        <HowItWorksSection title={howItWorksTitle} items={howItWorks} />
+        <Reveal><HowItWorksSection title={howItWorksTitle} items={howItWorks} /></Reveal>
 
         {/* Источники данных — логотипы */}
-        <SourcesSection />
+        <Reveal><SourcesSection /></Reveal>
 
         {/* Скриншоты кабинета (mock-блоки) */}
-        <ScreensSection />
+        <Reveal><ScreensSection /></Reveal>
 
         {/* Сравнение «обычный парсер vs SpinLid» */}
-        <CompareTable />
+        <Reveal><CompareTable /></Reveal>
 
         {/* Фишка-блок (брендовая плашка) */}
-        <KillerBlock title={killer.title} body={killer.body} />
+        <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
 
         {/* FAQ */}
-        {faq.length > 0 && <FaqSection items={faq} />}
+        {faq.length > 0 && <Reveal><FaqSection items={faq} /></Reveal>}
 
         {/* Финальный CTA */}
-        {isAuthed ? <CompactAuthedCta /> : <FinalCta />}
+        <Reveal>{isAuthed ? <CompactAuthedCta /> : <FinalCta />}</Reveal>
 
         {/* Перелинковка */}
-        {related.length > 0 && <RelatedBlock related={related} />}
+        {related.length > 0 && <Reveal><RelatedBlock related={related} /></Reveal>}
       </main>
 
       <SeoLandingFooter currentHref={currentHref} />
