@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.62.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.61.0...v1.62.0) (2026-06-08)
+
+
+### Features
+
+* **seo+app:** унификация BrandMark в шапке кабинета и анимации появления секций ([8ba902e](https://github.com/moiseev1991-stack/Colaba/commit/8ba902ea903d1d69855313f066f36d485704315c)), closes [#2dd4bf](https://github.com/moiseev1991-stack/Colaba/issues/2dd4bf) [#06b6d4](https://github.com/moiseev1991-stack/Colaba/issues/06b6d4) [#10b981](https://github.com/moiseev1991-stack/Colaba/issues/10b981)
+
 # [1.61.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.60.3...v1.61.0) (2026-06-07)
 
 
