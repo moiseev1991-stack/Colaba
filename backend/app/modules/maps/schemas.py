@@ -14,7 +14,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-Source = Literal["2gis", "yandex_maps"]
+Source = Literal["2gis", "yandex_maps", "google_maps"]
 
 
 class CompanyRaw(BaseModel):
@@ -432,6 +432,10 @@ class ProvidersHealthOut(BaseModel):
 
     twogis: str
     yandex_maps: str
+    # Google Maps через SerpAPI (ТЗ 2026-06-09): 'ok' если SERPAPI_KEY задан,
+    # иначе 'no_api_key'. В UI шапке появляется чекбокс «Google Maps»,
+    # disabled если no_api_key.
+    google_maps: str = "no_api_key"
     # ТЗ 2026-06-07: дополнительные провайдеры — DaData (юр.данные),
     # LLM-шлюз (OpenAI/ProxyAPI/Anthropic), Sentry (error tracking).
     dadata: str = "unknown"

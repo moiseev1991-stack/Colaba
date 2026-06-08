@@ -27,6 +27,7 @@ from app.modules.maps.providers.base import (
     MissingAPIKeyError,
     RateLimitError,
 )
+from app.modules.maps.providers.google_maps import GoogleMapsProvider
 from app.modules.maps.providers.twogis import TwoGisProvider
 from app.modules.maps.providers.yandex_maps import YandexMapsProvider
 from app.modules.maps.schemas import CompanyRaw, ReviewRaw
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 PROVIDERS_REGISTRY = {
     "2gis": TwoGisProvider,
     "yandex_maps": YandexMapsProvider,
+    "google_maps": GoogleMapsProvider,
 }
 
 # 5 вместо 20 — на multi-query expansion с 4 синонимами и дедупом по

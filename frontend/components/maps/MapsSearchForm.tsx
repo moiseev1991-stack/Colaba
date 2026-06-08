@@ -865,6 +865,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 [
                   { id: '2gis' as MapSource, name: '2GIS', hint: 'основной, работает' },
                   { id: 'yandex_maps' as MapSource, name: 'Яндекс.Карты', hint: 'нужен прокси' },
+                  { id: 'google_maps' as MapSource, name: 'Google Maps', hint: 'через SerpAPI, нужен ключ' },
                 ]
               ).map((s) => {
                 const checked = sources.includes(s.id);

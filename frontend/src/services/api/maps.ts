@@ -11,7 +11,7 @@ import { apiClient } from '@/client';
 // Types (соответствуют Pydantic-схемам backend/app/modules/maps/schemas.py)
 // ---------------------------------------------------------------------------
 
-export type MapSource = '2gis' | 'yandex_maps';
+export type MapSource = '2gis' | 'yandex_maps' | 'google_maps';
 
 export type SortBy =
   | 'rating_asc'
