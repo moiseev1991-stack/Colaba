@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.67.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.66.0...v1.67.0) (2026-06-08)
+
+
+### Features
+
+* **maps:** «Найти ЛПР» в UI выдачи — bulk-кнопка через POST /companies/enrich-team ([fd8bf66](https://github.com/moiseev1991-stack/Colaba/commit/fd8bf6690779cd54bf548d4072b1f9515983d88d))
+
 # [1.66.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.65.0...v1.66.0) (2026-06-08)
 
 
