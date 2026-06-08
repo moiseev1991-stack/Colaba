@@ -1084,6 +1084,87 @@ async def admin_queue_company_descriptions(
 # ---------------------------------------------------------------------------
 
 
+# Обычный user-доступный endpoint для bulk-обогащения ЛПР по списку
+# конкретных компаний. Принимает выбранные id из UI bulk-toolbar выдачи.
+# Идемпотентно (skip уже обогащённых) + проверяет владение поиском.
+
+@router.post("/companies/enrich-team")
+@limiter.limit("10/minute")
+async def companies_enrich_team(
+    request: Request,
+    payload: dict,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ставит Celery-таски enrich_company_team для списка company_ids.
+
+    Body: {"company_ids": [1, 2, 3], "search_id": 42}
+    search_id — обязателен для проверки владения; user не может обогатить
+    компании из чужого поиска (даже если знает их id).
+
+    Идемпотентно: пропускает компании без website + те, у кого ЛПР уже есть.
+    Возвращает {"queued": N, "skipped_no_website": M, "skipped_already_has_lpr": K}.
+    """
+    from app.models.company_decision_maker import CompanyDecisionMaker
+    from app.models.maps import MapSearchResult
+    from app.modules.maps.tasks import enrich_company_team
+
+    company_ids = payload.get("company_ids") or []
+    search_id = payload.get("search_id")
+    if not isinstance(company_ids, list) or not company_ids:
+        raise HTTPException(status_code=400, detail="company_ids обязателен")
+    if search_id is None:
+        raise HTTPException(status_code=400, detail="search_id обязателен")
+    company_ids = [int(x) for x in company_ids if isinstance(x, (int, str))][:500]
+
+    await _get_owned_search(db, int(search_id), user_id)
+
+    # Проверка что все id привязаны к этому search_id — защита от подмены.
+    valid_rows = (await db.execute(
+        select(MapSearchResult.company_id)
+        .where(MapSearchResult.map_search_id == int(search_id))
+        .where(MapSearchResult.company_id.in_(company_ids))
+    )).scalars().all()
+    valid_set = {int(x) for x in valid_rows}
+    if not valid_set:
+        return {"queued": 0, "skipped_no_website": 0, "skipped_already_has_lpr": 0}
+
+    # Уже обогащённые (есть запись в company_decision_makers).
+    already_dms = (await db.execute(
+        select(CompanyDecisionMaker.company_id).where(
+            CompanyDecisionMaker.company_id.in_(valid_set)
+        ).distinct()
+    )).scalars().all()
+    already_set = {int(x) for x in already_dms}
+
+    # Компании этой выборки + их website (для фильтрации no_website).
+    websites = (await db.execute(
+        select(Company.id, Company.website).where(Company.id.in_(valid_set))
+    )).all()
+    web_map = {int(r[0]): (r[1] or "").strip() for r in websites}
+
+    queued = 0
+    skipped_no_website = 0
+    skipped_already = 0
+    for cid in valid_set:
+        if cid in already_set:
+            skipped_already += 1
+            continue
+        if not web_map.get(cid):
+            skipped_no_website += 1
+            continue
+        try:
+            enrich_company_team.delay(int(cid))
+            queued += 1
+        except Exception as e:
+            logger.warning("companies_enrich_team enqueue failed for #%s: %s", cid, e)
+    return {
+        "queued": queued,
+        "skipped_no_website": skipped_no_website,
+        "skipped_already_has_lpr": skipped_already,
+    }
+
+
 @router.post("/admin/bulk-enrich-team")
 @limiter.limit("5/minute")
 async def admin_bulk_enrich_team(

@@ -26,6 +26,7 @@ import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
   draftEmailForCompany,
+  enrichCompaniesTeam,
   exportSearchCsvUrl,
   getMapSearch,
   listMapCompanies,
@@ -143,6 +144,9 @@ export function MapsSearchResults({
   // toolbar и чекбоксы в карточках. Очищается при смене search.id.
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  // ЛПР bulk-enrich UI-state: одно из 'idle' | 'loading' | сообщение результата.
+  const [lprBulkBusy, setLprBulkBusy] = useState(false);
+  const [lprBulkMsg, setLprBulkMsg] = useState<string | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
   const [draftLoading, setDraftLoading] = useState(false);
@@ -959,11 +963,43 @@ export function MapsSearchResults({
                   </button>
                   <button
                     type="button"
+                    disabled={lprBulkBusy}
+                    onClick={async () => {
+                      const ids = Array.from(selectedIds);
+                      setLprBulkBusy(true);
+                      setLprBulkMsg(null);
+                      try {
+                        const r = await enrichCompaniesTeam(search.id, ids);
+                        const parts: string[] = [];
+                        if (r.queued > 0) parts.push(`${r.queued} ЛПР в очереди`);
+                        if (r.skipped_already_has_lpr > 0) parts.push(`${r.skipped_already_has_lpr} уже есть`);
+                        if (r.skipped_no_website > 0) parts.push(`${r.skipped_no_website} без сайта`);
+                        setLprBulkMsg(parts.join(' · ') || 'нечего обогащать');
+                        // Через ~2 минуты ЛПР должны появиться в БД — перезагружаем список.
+                        setTimeout(() => void refreshCompanies(filter), 90_000);
+                      } catch (e: any) {
+                        setLprBulkMsg(e?.message ?? 'Ошибка при запуске обогащения ЛПР');
+                      } finally {
+                        setLprBulkBusy(false);
+                      }
+                    }}
+                    title="Найти ЛПР (директор/маркетолог) на сайтах выбранных компаний. Идёт в фоне ~2 мин, результат появится в карточках сам."
+                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    {lprBulkBusy ? 'Ставлю в очередь…' : '🧑‍💼 Найти ЛПР'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={clearSelection}
                     className="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     Очистить
                   </button>
+                  {lprBulkMsg && (
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300" role="status">
+                      {lprBulkMsg}
+                    </span>
+                  )}
                 </>
               )}
             </div>

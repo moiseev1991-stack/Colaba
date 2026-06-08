@@ -561,6 +561,32 @@ export async function getCompanyDigest(
   return response.data;
 }
 
+/**
+ * Bulk-обогащение ЛПР по выбранным компаниям. POST /maps/companies/enrich-team.
+ * Идемпотентно — компании с уже найденными ЛПР пропускаются.
+ *
+ * Возвращает счётчики:
+ *  queued — сколько компаний реально поставлены в Celery
+ *  skipped_no_website — пропущены т.к. нет сайта (LLM-краулинг невозможен)
+ *  skipped_already_has_lpr — уже обогащены ранее
+ */
+export interface EnrichTeamResponse {
+  queued: number;
+  skipped_no_website: number;
+  skipped_already_has_lpr: number;
+}
+
+export async function enrichCompaniesTeam(
+  searchId: number,
+  companyIds: number[],
+): Promise<EnrichTeamResponse> {
+  const resp = await apiClient.post<EnrichTeamResponse>(
+    `/maps/companies/enrich-team`,
+    { search_id: searchId, company_ids: companyIds },
+  );
+  return resp.data;
+}
+
 /** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку.
  *
  *  Два режима:
