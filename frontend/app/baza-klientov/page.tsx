@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function BazaKlientovPage() {
   return (
     <SeoLandingShell
+      decorTheme="database"
       h1="База клиентов под вашу нишу — с контактами и диагнозом"
       lead="Не покупка устаревшего CSV из 100 000 строк, в котором половина телефонов уже не работает. SpinLid собирает актуальную базу под вашу нишу и город прямо сейчас — из открытых источников. С контактами, юр.данными и болями клиентов из отзывов."
       problemSolutionParagraphs={[

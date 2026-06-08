@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function ParserYandexMapsPage() {
   return (
     <SeoLandingShell
+      decorTheme="maps-yandex"
       h1="Парсер Яндекс.Карт: компании и отзывы по нише и городу"
       lead="Выгрузка организаций из Яндекс.Карт: рейтинги, контакты, отзывы клиентов. AI выделяет боли клиентов из отзывов — и они автоматически встраиваются в драфт письма. Старт бесплатно."
       problemSolutionParagraphs={[

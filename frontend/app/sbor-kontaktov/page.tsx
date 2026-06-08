@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function SborKontaktovPage() {
   return (
     <SeoLandingShell
+      decorTheme="contacts"
       h1="Сбор контактов компаний: email и телефоны из открытых источников"
       lead="Соберём email и телефоны компаний с сайтов, 2GIS и Яндекс.Карт. Автоматическая нормализация формата, фильтры по нише и городу, экспорт в Excel. Без ручной чистки и без устаревших баз."
       problemSolutionParagraphs={[
