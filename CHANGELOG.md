@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.65.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.64.0...v1.65.0) (2026-06-08)
+
+
+### Features
+
+* **seo:** тематический декор hero — свой набор стикеров на каждую SEO-страницу ([d40ce4e](https://github.com/moiseev1991-stack/Colaba/commit/d40ce4eeb82fa0c400fb115d94eee4ec4883a315))
+
 # [1.64.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.63.0...v1.64.0) (2026-06-08)
 
 
