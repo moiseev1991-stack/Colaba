@@ -29,6 +29,7 @@ import { SeoLandingFooter } from './SeoLandingFooter';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
+import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 
 /**
  * Принудительная светлая палитра для SEO-страниц. Переопределяет CSS-токены
@@ -175,47 +176,17 @@ function GuestHero({ h1, lead, decorTheme }: { h1: string; lead: string; decorTh
       style={{
         position: 'relative',
         overflow: 'hidden',
-        background:
-          'radial-gradient(900px 500px at 80% -100px, rgba(45, 212, 191, 0.28), transparent), radial-gradient(700px 400px at 0% 100%, rgba(6, 182, 212, 0.22), transparent), radial-gradient(500px 300px at 50% 50%, rgba(99, 102, 241, 0.12), transparent), #0b1220',
+        background: '#070b14',
         color: '#fff',
       }}
     >
-      {/* Тонкая сетка-паттерн */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage:
-            'linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          maskImage:
-            'radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 90%)',
-          WebkitMaskImage:
-            'radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 90%)',
-          pointerEvents: 'none',
-        }}
-      />
+      {/* Декоративный фон: mesh-blobs + dot-matrix + SVG-граф потоков данных */}
+      <HeroBackgroundDecor />
+
       {/* Декоративные «стикеры» — тема под конкретную SEO-страницу */}
       <HeroFloatingTags theme={decorTheme} />
-      {/* Большой watermark-блик BrandMark в углу */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          top: -80,
-          right: -80,
-          width: 360,
-          height: 360,
-          opacity: 0.08,
-          filter: 'blur(2px)',
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(circle at 30% 30%, #2dd4bf 0%, transparent 60%), radial-gradient(circle at 70% 70%, #06b6d4 0%, transparent 55%)',
-          borderRadius: '50%',
-        }}
-      />
-      <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-16 md:pt-20 md:pb-24 grid gap-12 md:grid-cols-2 items-center">
+
+      <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-16 md:pt-20 md:pb-24 grid gap-12 md:grid-cols-2 items-center" style={{ zIndex: 1 }}>
         <div>
           <h1
             className="font-display font-bold tracking-tight mb-5"

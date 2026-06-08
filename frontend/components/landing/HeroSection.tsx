@@ -1,5 +1,7 @@
 'use client';
 
+import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
+
 // ТЗ лендинг-рефакта 2026-06-03 §2+§6: переориентация с «парсер контактов» на
 // «компании с диагнозом». Бейдж описывает фишку (диагноз из отзывов), заголовок
 // формулирует отстройку от Snov/Apollo. Floating cards и три статистики справа —
@@ -14,13 +16,11 @@ export function HeroSection({
 }) {
   return (
     <section className="l-hero" id="top">
-      {/* Фоновые слои */}
+      {/* Фоновые слои (старый orb/grid) + новый декор (mesh + граф + dots) */}
       <div className="l-hero__bg">
         <div className="l-hero__overlay" />
-        <div className="l-hero__grid" />
-        <div className="l-hero__orb l-hero__orb--1" />
-        <div className="l-hero__orb l-hero__orb--2" />
       </div>
+      <HeroBackgroundDecor />
 
       {/* Контент */}
       <div className="l-hero__inner">
