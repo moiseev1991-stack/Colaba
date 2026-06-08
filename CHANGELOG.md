@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.68.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.67.0...v1.68.0) (2026-06-08)
+
+
+### Features
+
+* **maps:** расширенный поиск — массовый прогон N городов × M ниш ([dca59c1](https://github.com/moiseev1991-stack/Colaba/commit/dca59c1cf17f46a5cf4f3f2c68470aecebb5bdde))
+
 # [1.67.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.66.0...v1.67.0) (2026-06-08)
 
 
