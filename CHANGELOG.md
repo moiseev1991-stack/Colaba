@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.64.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.63.0...v1.64.0) (2026-06-08)
+
+
+### Features
+
+* **seo:** декоративный фон hero + переименование CTA в «Сгенерировать КП» ([0e9a4e3](https://github.com/moiseev1991-stack/Colaba/commit/0e9a4e311691395b8277dccd349cbebced2ea226))
+
 # [1.63.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.62.0...v1.63.0) (2026-06-08)
 
 
