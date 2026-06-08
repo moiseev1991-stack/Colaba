@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.66.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.65.0...v1.66.0) (2026-06-08)
+
+
+### Features
+
+* **hero:** радикально новый фон hero — mesh-blobs + SVG-граф + dot-matrix ([dbb4a3d](https://github.com/moiseev1991-stack/Colaba/commit/dbb4a3da552635ff2cf9dbd9f4fa392c39296755)), closes [#070b14](https://github.com/moiseev1991-stack/Colaba/issues/070b14)
+
 # [1.65.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.64.0...v1.65.0) (2026-06-08)
 
 
