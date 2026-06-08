@@ -1,13 +1,16 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Manrope, Unbounded } from 'next/font/google';
 import { AppShell } from '@/components/AppShell';
 import { CookieBanner } from '@/components/CookieBanner';
 
+export const viewport: Viewport = {
+  themeColor: '#2dd4bf',
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://spinlid.ru'),
   manifest: '/manifest.json',
-  themeColor: '#2dd4bf',
   title: {
     default: 'SpinLid — лиды из 2GIS и Яндекс.Карт с диагнозом болей клиентов',
     template: '%s | SpinLid',
