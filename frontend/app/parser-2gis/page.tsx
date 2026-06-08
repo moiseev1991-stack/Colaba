@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function Parser2gisPage() {
   return (
     <SeoLandingShell
+      decorTheme="maps"
       h1="Парсер 2GIS: компании, контакты и боли клиентов из отзывов"
       lead="Соберите компании из 2GIS по нише и городу — с телефонами, сайтами, рейтингами и диагнозом болей клиентов из отзывов. Выгрузите в Excel или CSV. Не просто список карточек, а готовый материал для холодной рассылки."
       problemSolutionParagraphs={[

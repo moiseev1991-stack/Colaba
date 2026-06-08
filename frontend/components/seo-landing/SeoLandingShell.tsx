@@ -1,6 +1,30 @@
 import Link from 'next/link';
 import { cookies, headers } from 'next/headers';
-import { Search, Sparkles, Target, Mail, MapPin, Map as MapIcon, Globe, FileText, Building2 } from 'lucide-react';
+import {
+  Search,
+  Sparkles,
+  Target,
+  Mail,
+  MapPin,
+  Map as MapIcon,
+  Globe,
+  FileText,
+  Building2,
+  Phone,
+  Star,
+  Quote,
+  Banknote,
+  Send,
+  MailCheck,
+  MailX,
+  MessageSquare,
+  Tag,
+  PhoneCall,
+  AtSign,
+  Hash,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { SeoLandingFooter } from './SeoLandingFooter';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
@@ -47,6 +71,12 @@ interface SeoLandingShellProps {
   killer: { title: string; body: string };
   faq: FaqItem[];
   related: RelatedLink[];
+  /**
+   * Тематика декоративных «стикеров» в фоне hero. Каждая SEO-страница
+   * выбирает свою, чтобы фон ассоциировался с её темой (карты, отзывы,
+   * контакты, юр.данные, рассылки). Если не задано — общий микс.
+   */
+  decorTheme?: keyof typeof HERO_DECOR;
 }
 
 export function SeoLandingShell({
@@ -58,6 +88,7 @@ export function SeoLandingShell({
   killer,
   faq,
   related,
+  decorTheme = 'mixed',
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
@@ -83,7 +114,7 @@ export function SeoLandingShell({
 
       <main className="flex-1">
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка) === */}
-        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} />}
+        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} />}
 
         {/* Trust-strip */}
         <Reveal><TrustStrip /></Reveal>
@@ -138,7 +169,7 @@ export function SeoLandingShell({
 // HERO — две колонки: H1+CTA слева, демо-карточка с диагнозом справа
 // ============================================================================
 
-function GuestHero({ h1, lead }: { h1: string; lead: string }) {
+function GuestHero({ h1, lead, decorTheme }: { h1: string; lead: string; decorTheme: keyof typeof HERO_DECOR }) {
   return (
     <section
       style={{
@@ -165,8 +196,8 @@ function GuestHero({ h1, lead }: { h1: string; lead: string }) {
           pointerEvents: 'none',
         }}
       />
-      {/* Декоративные «стикеры» — источники и сигналы */}
-      <HeroFloatingTags />
+      {/* Декоративные «стикеры» — тема под конкретную SEO-страницу */}
+      <HeroFloatingTags theme={decorTheme} />
       {/* Большой watermark-блик BrandMark в углу */}
       <div
         aria-hidden
@@ -253,18 +284,88 @@ function GuestHero({ h1, lead }: { h1: string; lead: string }) {
 
 /**
  * Декоративные «плавающие стикеры» в фоне hero. SSR-friendly, без JS.
- * Каждый стикер — стилизованный chip с источником / сигналом из продукта.
- * Псевдо-3D через слабый rotate + glassy bg + glow в бренд-цветах.
+ * Каждый стикер — стилизованный chip с продуктовой деталью (карта, отзыв,
+ * контакт, рассылка, юр.данные). На каждой SEO-странице — свой набор,
+ * чтобы фон ассоциировался с темой страницы. Псевдо-3D через rotate +
+ * glassy backdrop-blur + glow в бренд-цвете.
  */
-function HeroFloatingTags() {
-  const tags = [
-    { text: '2GIS · отзывы', top: '12%', left: '6%', rotate: -8, color: '#19c129' },
-    { text: 'Я.Карты · контакты', top: '22%', left: '46%', rotate: 4, color: '#ffcc00' },
-    { text: 'DaData · ИНН/ОГРН', top: '70%', left: '8%', rotate: 5, color: '#3b82f6' },
-    { text: '5 источников', top: '78%', left: '52%', rotate: -3, color: '#06b6d4' },
-    { text: 'AI · pain-теги', top: '8%', left: '78%', rotate: 6, color: '#a855f7' },
-    { text: 'ЛПР · /team', top: '60%', left: '88%', rotate: -5, color: '#f59e0b' },
-  ];
+type DecorItem = {
+  Icon?: LucideIcon;
+  text: string;
+  color: string;
+  top: string;
+  left: string;
+  rotate: number;
+};
+
+const HERO_DECOR: Record<string, DecorItem[]> = {
+  // /parser-2gis — карты, точки, телефоны, рейтинг
+  maps: [
+    { Icon: MapPin, text: 'Москва · 2GIS', color: '#19c129', top: '10%', left: '5%', rotate: -8 },
+    { Icon: Star, text: '★ 3.8 · 142 отзыва', color: '#f59e0b', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Phone, text: '+7 (495) 123-45-67', color: '#06b6d4', top: '72%', left: '6%', rotate: 5 },
+    { Icon: Building2, text: 'Карточка компании', color: '#a855f7', top: '8%', left: '76%', rotate: 6 },
+    { Icon: Tag, text: 'Ниша · стоматология', color: '#3b82f6', top: '78%', left: '50%', rotate: -3 },
+    { Icon: MapPin, text: '55.7558°, 37.6173°', color: '#ef4444', top: '58%', left: '86%', rotate: -5 },
+  ],
+  // /parser-yandex-maps — карты Яндекс, склейка дублей
+  'maps-yandex': [
+    { Icon: MapIcon, text: 'Я.Карты · СПб', color: '#ffcc00', top: '10%', left: '5%', rotate: -8 },
+    { Icon: MapPin, text: 'Метро · Невский пр.', color: '#06b6d4', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Sparkles, text: 'Склейка дублей', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: Star, text: '★ 4.2', color: '#f59e0b', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Phone, text: '+7 (812) 555-12-34', color: '#19c129', top: '78%', left: '50%', rotate: -3 },
+    { Icon: Building2, text: '8 470 компаний', color: '#3b82f6', top: '58%', left: '86%', rotate: -5 },
+  ],
+  // /parsing-otzyvov — отзывы, цитаты, рейтинги, pain-теги
+  reviews: [
+    { Icon: Star, text: '★ 3.8 · 142 отзыва', color: '#f59e0b', top: '10%', left: '5%', rotate: -8 },
+    { Icon: Quote, text: '«долго ждали приём»', color: '#ef4444', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Tag, text: 'pain · цены', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: MessageSquare, text: '31 негатив', color: '#ec4899', top: '8%', left: '76%', rotate: 6 },
+    { Icon: Sparkles, text: 'AI · кластеризация', color: '#06b6d4', top: '78%', left: '50%', rotate: -3 },
+    { Icon: Quote, text: '«не перезвонили»', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
+  ],
+  // /baza-klientov — юр.данные, лиды, деньги, ИНН
+  database: [
+    { Icon: Hash, text: 'ИНН 7704123456', color: '#3b82f6', top: '10%', left: '5%', rotate: -8 },
+    { Icon: Banknote, text: 'выручка 18 млн ₽', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Users, text: 'ЛПР: Иванов И. И.', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: FileText, text: 'ОГРН · ЕГРЮЛ', color: '#64748b', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Building2, text: 'возраст 8 лет', color: '#06b6d4', top: '78%', left: '50%', rotate: -3 },
+    { Icon: Tag, text: 'DaData · обогащение', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
+  ],
+  // /sbor-kontaktov — email, телефоны, мессенджеры, краулер
+  contacts: [
+    { Icon: AtSign, text: 'info@ulybka-plus.ru', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
+    { Icon: PhoneCall, text: '+7 (495) 123-45-67', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Globe, text: '/contacts · /team', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: MessageSquare, text: 'Telegram · WhatsApp', color: '#3b82f6', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Mail, text: '12 480 email собрано', color: '#ec4899', top: '78%', left: '50%', rotate: -3 },
+    { Icon: Phone, text: '+7 (812) 555-90-12', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
+  ],
+  // /holodnaya-rassylka — конверты, статусы доставки, кампании
+  mailing: [
+    { Icon: Send, text: 'Кампания · 500 писем', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
+    { Icon: MailCheck, text: 'доставлено 487', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Mail, text: 'открыто 213 (44%)', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: MailX, text: 'отказы 13 (2.6%)', color: '#ef4444', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Sparkles, text: 'персональный pain', color: '#f59e0b', top: '78%', left: '50%', rotate: -3 },
+    { Icon: AtSign, text: 'ivan@example.ru', color: '#3b82f6', top: '58%', left: '86%', rotate: -5 },
+  ],
+  // дефолтный микс — лендинг / непрофильные страницы
+  mixed: [
+    { Icon: MapPin, text: '2GIS · отзывы', color: '#19c129', top: '12%', left: '6%', rotate: -8 },
+    { Icon: PhoneCall, text: 'Я.Карты · контакты', color: '#ffcc00', top: '22%', left: '46%', rotate: 4 },
+    { Icon: Hash, text: 'DaData · ИНН/ОГРН', color: '#3b82f6', top: '70%', left: '8%', rotate: 5 },
+    { Icon: Sparkles, text: 'AI · pain-теги', color: '#a855f7', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Users, text: 'ЛПР · /team', color: '#f59e0b', top: '60%', left: '88%', rotate: -5 },
+    { Icon: Mail, text: 'Рассылка · CTR 44%', color: '#06b6d4', top: '78%', left: '52%', rotate: -3 },
+  ],
+};
+
+function HeroFloatingTags({ theme }: { theme: keyof typeof HERO_DECOR }) {
+  const items = HERO_DECOR[theme] ?? HERO_DECOR.mixed;
   return (
     <div
       aria-hidden
@@ -276,13 +377,16 @@ function HeroFloatingTags() {
         zIndex: 0,
       }}
     >
-      {tags.map((t, i) => (
+      {items.map((t, i) => (
         <span
           key={i}
           style={{
             position: 'absolute',
             top: t.top,
             left: t.left,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
             transform: `rotate(${t.rotate}deg)`,
             background: 'rgba(15, 23, 42, 0.55)',
             border: `1px solid ${t.color}55`,
@@ -290,15 +394,16 @@ function HeroFloatingTags() {
             fontSize: '11px',
             fontWeight: 600,
             letterSpacing: '0.02em',
-            padding: '5px 11px',
+            padding: '5px 11px 5px 9px',
             borderRadius: '999px',
             boxShadow: `0 0 0 1px ${t.color}22, 0 8px 24px rgba(0,0,0,0.35)`,
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            opacity: 0.7,
+            opacity: 0.75,
             whiteSpace: 'nowrap',
           }}
         >
+          {t.Icon && <t.Icon size={12} strokeWidth={2.4} color={t.color} />}
           {t.text}
         </span>
       ))}
