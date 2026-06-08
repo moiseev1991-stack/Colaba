@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.69.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.68.0...v1.69.0) (2026-06-08)
+
+
+### Features
+
+* **maps:** третий источник — Google Maps через SerpAPI ([982c04e](https://github.com/moiseev1991-stack/Colaba/commit/982c04e69342d18ea0f93629d2a8d8b534a57fef))
+
 # [1.68.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.67.0...v1.68.0) (2026-06-08)
 
 
