@@ -1420,6 +1420,7 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     """
     twogis = "ok" if settings.TWOGIS_API_KEY else "no_api_key"
     yandex_maps = "ok" if settings.USE_PROXY else "no_proxy"
+    google_maps = "ok" if (settings.SERPAPI_KEY or "").strip() else "no_api_key"
 
     # DaData
     dadata = "ok" if (settings.DADATA_API_KEY or "").strip() else "no_api_key"
@@ -1460,6 +1461,7 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     return ProvidersHealthOut(
         twogis=twogis,
         yandex_maps=yandex_maps,
+        google_maps=google_maps,
         dadata=dadata,
         llm=llm,
         sentry=sentry,

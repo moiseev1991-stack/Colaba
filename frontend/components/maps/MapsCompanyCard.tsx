@@ -510,6 +510,7 @@ function tempTone(t: number): 'hot' | 'warm' | 'muted' {
 function sourceLabel(source: string | null | undefined): string {
   if (source === '2gis') return '2GIS';
   if (source === 'yandex_maps') return 'Я.Карты';
+  if (source === 'google_maps') return 'Google Maps';
   return source ?? '';
 }
 
@@ -517,6 +518,7 @@ function buildSourceUrl(source: string | null | undefined, externalId: string | 
   if (!externalId || !source) return null;
   if (source === '2gis') return `https://2gis.ru/firm/${externalId}`;
   if (source === 'yandex_maps') return `https://yandex.ru/maps/org/${externalId}`;
+  if (source === 'google_maps') return `https://www.google.com/maps/place/?q=place_id:${externalId}`;
   return null;
 }
 
