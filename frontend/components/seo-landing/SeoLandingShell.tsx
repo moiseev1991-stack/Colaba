@@ -1,9 +1,26 @@
 import Link from 'next/link';
 import { cookies, headers } from 'next/headers';
+import { Search, Sparkles, Target, Mail, MapPin, Map as MapIcon, Globe, FileText, Building2 } from 'lucide-react';
 import { SeoLandingFooter } from './SeoLandingFooter';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
+
+/**
+ * Принудительная светлая палитра для SEO-страниц. Переопределяет CSS-токены
+ * на root-обёртке, чтобы промо-страницы выглядели одинаково светлыми
+ * у залогиненных юзеров (которые могут сидеть в dark theme) и в инкогнито.
+ *
+ * Значения совпадают с :root (light) из globals.css.
+ */
+const SEO_LIGHT_VARS = {
+  '--bg': '216 20% 97%',
+  '--surface': '0 0% 100%',
+  '--surface-2': '214 32% 95%',
+  '--border': '214 32% 89%',
+  '--text': '222 47% 8%',
+  '--muted': '215 16% 40%',
+} as Record<string, string>;
 
 export interface FaqItem {
   q: string;
@@ -54,11 +71,13 @@ export function SeoLandingShell({
   return (
     <div
       className="min-h-screen flex flex-col"
+      data-theme="light"
       style={{
+        ...SEO_LIGHT_VARS,
         background: 'hsl(var(--bg))',
         color: 'hsl(var(--text))',
         fontFamily: 'var(--font-body), system-ui, sans-serif',
-      }}
+      } as React.CSSProperties}
     >
       <SeoHeader isAuthed={isAuthed} />
 
@@ -571,7 +590,7 @@ function HowItWorksSection({
   title: string;
   items: HowItWorksItem[];
 }) {
-  const stepIcons = ['🔍', '🧠', '🎯', '✉️'];
+  const stepIcons = [Search, Sparkles, Target, Mail];
   return (
     <section
       className="py-16 md:py-20"
@@ -585,47 +604,51 @@ function HowItWorksSection({
           {title}
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {items.map((step, i) => (
-            <div
-              key={i}
-              className="rounded-2xl p-5 border"
-              style={{
-                background: 'hsl(var(--bg))',
-                borderColor: 'hsl(var(--border))',
-              }}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl text-xl"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, rgba(45,212,191,0.18), rgba(6,182,212,0.12))',
-                    border: '1px solid rgba(45,212,191,0.3)',
-                  }}
-                >
-                  {stepIcons[i] ?? '•'}
+          {items.map((step, i) => {
+            const Icon = stepIcons[i] ?? Sparkles;
+            return (
+              <div
+                key={i}
+                className="rounded-2xl p-5 border"
+                style={{
+                  background: 'hsl(var(--bg))',
+                  borderColor: 'hsl(var(--border))',
+                }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="inline-flex items-center justify-center w-11 h-11 rounded-xl"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, rgba(16,185,129,0.22), rgba(6,182,212,0.18))',
+                      border: '1px solid rgba(16,185,129,0.35)',
+                      boxShadow: '0 4px 14px rgba(6,182,212,0.18)',
+                    }}
+                  >
+                    <Icon size={22} strokeWidth={2.2} color="#0b1220" />
+                  </div>
+                  <div
+                    className="text-[11px] font-bold tracking-widest uppercase"
+                    style={{ color: '#0ea97a' }}
+                  >
+                    Шаг {i + 1}
+                  </div>
                 </div>
-                <div
-                  className="text-xs font-bold"
-                  style={{ color: '#06b6d4' }}
+                <h3
+                  className="font-display font-semibold text-base mb-1.5"
+                  style={{ color: 'hsl(var(--text))' }}
                 >
-                  ШАГ {i + 1}
-                </div>
+                  {step.title}
+                </h3>
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  {step.body}
+                </p>
               </div>
-              <h3
-                className="font-display font-semibold text-base mb-1.5"
-                style={{ color: 'hsl(var(--text))' }}
-              >
-                {step.title}
-              </h3>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                {step.body}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
@@ -637,11 +660,11 @@ function HowItWorksSection({
 // ============================================================================
 
 const SOURCES = [
-  { label: '2GIS', hint: 'Карточки компаний и отзывы', color: '#19c129' },
-  { label: 'Яндекс.Карты', hint: 'Альтернативный источник', color: '#ffcc00' },
-  { label: 'Сайты компаний', hint: 'Краулер: контакты, /team', color: '#06b6d4' },
-  { label: 'ЕГРЮЛ', hint: 'ИНН, ОГРН, юр.адрес', color: '#64748b' },
-  { label: 'DaData', hint: 'Оборот, возраст, директор', color: '#2563eb' },
+  { label: '2GIS', hint: 'Карточки компаний и отзывы', color: '#19c129', Icon: MapPin },
+  { label: 'Яндекс.Карты', hint: 'Альтернативный источник', color: '#ffcc00', Icon: MapIcon },
+  { label: 'Сайты компаний', hint: 'Краулер: контакты, /team', color: '#06b6d4', Icon: Globe },
+  { label: 'ЕГРЮЛ', hint: 'ИНН, ОГРН, юр.адрес', color: '#64748b', Icon: FileText },
+  { label: 'DaData', hint: 'Оборот, возраст, директор', color: '#2563eb', Icon: Building2 },
 ];
 
 function SourcesSection() {
@@ -660,33 +683,33 @@ function SourcesSection() {
         >
           Не один парсер — пять открытых источников
         </h2>
-        <div
-          className="grid grid-cols-2 md:grid-cols-5 gap-3"
-          style={{}}
-        >
-          {SOURCES.map((s) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {SOURCES.map(({ label, hint, color, Icon }) => (
             <div
-              key={s.label}
-              className="rounded-xl border p-4 text-center"
+              key={label}
+              className="rounded-xl border p-4 text-center transition-shadow hover:shadow-md"
               style={{
                 background: 'hsl(var(--surface))',
                 borderColor: 'hsl(var(--border))',
               }}
             >
               <div
-                className="inline-flex items-center justify-center w-10 h-10 rounded-lg mx-auto mb-2"
-                style={{ background: `${s.color}22`, color: s.color, fontWeight: 800 }}
+                className="inline-flex items-center justify-center w-11 h-11 rounded-lg mx-auto mb-2"
+                style={{
+                  background: `${color}1f`,
+                  border: `1px solid ${color}55`,
+                }}
               >
-                {s.label[0]}
+                <Icon size={22} strokeWidth={2.2} color={color} />
               </div>
               <div
                 className="font-display font-semibold text-sm mb-0.5"
                 style={{ color: 'hsl(var(--text))' }}
               >
-                {s.label}
+                {label}
               </div>
               <div className="text-[11px] leading-tight" style={{ color: 'hsl(var(--muted))' }}>
-                {s.hint}
+                {hint}
               </div>
             </div>
           ))}
