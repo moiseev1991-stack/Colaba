@@ -140,6 +140,13 @@ export function MapsSearchForm({ onStarted }: Props) {
   const [mode, setMode] = useState<SearchModeTab>('city');
   const [niche, setNiche] = useState('');
   const [city, setCity] = useState('Москва');
+  // Multi-search MVP (ТЗ юзера 2026-06-08): доп. города и доп. ниши через
+  // запятую. При submit с непустыми extra* — клиент создаёт N×M поисков
+  // (по одному на пару city × niche). Без backend-миграций; все поиски
+  // сразу попадают в /app/leads/history. Юзер перенаправляется в первый.
+  const [extraCities, setExtraCities] = useState('');
+  const [extraNiches, setExtraNiches] = useState('');
+  const [multiSearchProgress, setMultiSearchProgress] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [radiusKm, setRadiusKm] = useState(2);
   const [reviewWord, setReviewWord] = useState('');
@@ -307,8 +314,67 @@ export function MapsSearchForm({ onStarted }: Props) {
       }
     }
     setIsLoading(true);
+    setMultiSearchProgress(null);
     try {
       const filters = buildFilters();
+
+      // Multi-search режим: парсим extraCities и extraNiches через запятую,
+      // строим N×M декартово произведение. Включается только для mode='city'
+      // (для radius — нет смысла, у нас одна точка). Если extra пусты —
+      // обычный single-search.
+      const parseList = (s: string) =>
+        s
+          .split(/[,;\n]/)
+          .map((x) => x.trim())
+          .filter((x) => x.length >= 2);
+      const niches = mode === 'radius'
+        ? [niche.trim()]
+        : [niche.trim(), ...parseList(extraNiches)].filter((v, i, a) => v && a.indexOf(v) === i);
+      const cities = mode === 'radius'
+        ? ['']
+        : [(city.trim() || 'Москва'), ...parseList(extraCities)].filter((v, i, a) => v && a.indexOf(v) === i);
+      const pairs: { niche: string; city: string }[] = [];
+      for (const n of niches) {
+        for (const c of cities) pairs.push({ niche: n, city: c });
+      }
+
+      if (mode === 'city' && pairs.length > 1) {
+        // Multi: ставим все в очередь параллельно, перенаправляем на первый.
+        setMultiSearchProgress(`Создаю ${pairs.length} поисков…`);
+        let firstSearch: Awaited<ReturnType<typeof createMapSearch>> | null = null;
+        let done = 0;
+        const results = await Promise.allSettled(
+          pairs.map((p) =>
+            createMapSearch({
+              niche: p.niche,
+              city: p.city,
+              sources,
+              ...(filters ? { filters } : {}),
+            }).then((r) => {
+              done += 1;
+              setMultiSearchProgress(`Создал ${done} из ${pairs.length}…`);
+              return r;
+            }),
+          ),
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled') {
+            firstSearch = firstSearch ?? r.value;
+          }
+        }
+        const failed = results.filter((r) => r.status === 'rejected').length;
+        if (failed > 0) {
+          setError(
+            `${failed} из ${pairs.length} поисков не создались. Остальные открыты в /app/leads/history.`,
+          );
+        }
+        setMultiSearchProgress(null);
+        if (firstSearch) {
+          onStarted(firstSearch, aiPreset);
+        }
+        return;
+      }
+
       const payload =
         mode === 'radius'
           ? {
@@ -490,18 +556,59 @@ export function MapsSearchForm({ onStarted }: Props) {
               />
             </div>
             {mode === 'city' ? (
-              <div className="md:col-span-6">
-                <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
-                  город
-                </label>
-                <CityCombobox
-                  city={city}
-                  onCityChange={(c) => setCity(c)}
-                  disabled={isLoading}
-                  className="w-full"
-                  placeholder="Выберите город"
-                />
-              </div>
+              <>
+                <div className="md:col-span-6">
+                  <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
+                    город
+                  </label>
+                  <CityCombobox
+                    city={city}
+                    onCityChange={(c) => setCity(c)}
+                    disabled={isLoading}
+                    className="w-full"
+                    placeholder="Выберите город"
+                  />
+                </div>
+                <div className="md:col-span-12">
+                  <details className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/60">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-[12px] font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]">
+                      + Расширенный поиск: ещё ниши/города (массовый прогон)
+                    </summary>
+                    <div className="grid grid-cols-1 gap-3 px-3 pb-3 pt-1 md:grid-cols-2">
+                      <div>
+                        <label className="block app-mono-label mb-1.5" style={{ color: 'hsl(var(--muted))' }}>
+                          доп. ниши (через запятую)
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="например: ортодонт, детская стоматология"
+                          value={extraNiches}
+                          onChange={(e) => setExtraNiches(e.target.value)}
+                          disabled={isLoading}
+                          className="w-full h-10 text-[13px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block app-mono-label mb-1.5" style={{ color: 'hsl(var(--muted))' }}>
+                          доп. города (через запятую)
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="например: Чехов, Видное, Климовск"
+                          value={extraCities}
+                          onChange={(e) => setExtraCities(e.target.value)}
+                          disabled={isLoading}
+                          className="w-full h-10 text-[13px]"
+                        />
+                      </div>
+                      <p className="md:col-span-2 text-[11px] text-[hsl(var(--muted))]">
+                        При заполнении создастся N×M отдельных поисков (по одному
+                        на каждую пару). Открыть их можно в «Истории поисков».
+                      </p>
+                    </div>
+                  </details>
+                </div>
+              </>
             ) : (
               <>
                 <div className="md:col-span-6">
@@ -848,7 +955,8 @@ export function MapsSearchForm({ onStarted }: Props) {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" /> Запуск…
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {multiSearchProgress ? multiSearchProgress : 'Запуск…'}
                 </>
               ) : (
                 <>
