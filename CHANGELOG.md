@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.63.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.62.0...v1.63.0) (2026-06-08)
+
+
+### Features
+
+* **seo+pricing:** принудительная светлая тема SEO, lucide-иконки, новые тарифы ([34ce7ee](https://github.com/moiseev1991-stack/Colaba/commit/34ce7ee0d354de29ceea3213c4200e4f9a0eb9ee))
+
 # [1.62.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.61.0...v1.62.0) (2026-06-08)
 
 
