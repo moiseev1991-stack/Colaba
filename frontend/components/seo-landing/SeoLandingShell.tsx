@@ -142,12 +142,49 @@ function GuestHero({ h1, lead }: { h1: string; lead: string }) {
   return (
     <section
       style={{
+        position: 'relative',
+        overflow: 'hidden',
         background:
-          'radial-gradient(900px 500px at 80% -100px, rgba(45, 212, 191, 0.22), transparent), radial-gradient(700px 400px at 0% 100%, rgba(6, 182, 212, 0.18), transparent), #0b1220',
+          'radial-gradient(900px 500px at 80% -100px, rgba(45, 212, 191, 0.28), transparent), radial-gradient(700px 400px at 0% 100%, rgba(6, 182, 212, 0.22), transparent), radial-gradient(500px 300px at 50% 50%, rgba(99, 102, 241, 0.12), transparent), #0b1220',
         color: '#fff',
       }}
     >
-      <div className="max-w-6xl mx-auto px-6 pt-14 pb-16 md:pt-20 md:pb-24 grid gap-12 md:grid-cols-2 items-center">
+      {/* Тонкая сетка-паттерн */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          maskImage:
+            'radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 90%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 90%)',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Декоративные «стикеры» — источники и сигналы */}
+      <HeroFloatingTags />
+      {/* Большой watermark-блик BrandMark в углу */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: -80,
+          right: -80,
+          width: 360,
+          height: 360,
+          opacity: 0.08,
+          filter: 'blur(2px)',
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(circle at 30% 30%, #2dd4bf 0%, transparent 60%), radial-gradient(circle at 70% 70%, #06b6d4 0%, transparent 55%)',
+          borderRadius: '50%',
+        }}
+      />
+      <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-16 md:pt-20 md:pb-24 grid gap-12 md:grid-cols-2 items-center">
         <div>
           <h1
             className="font-display font-bold tracking-tight mb-5"
@@ -211,6 +248,61 @@ function GuestHero({ h1, lead }: { h1: string; lead: string }) {
         <DemoCompanyCard variant="hero" />
       </div>
     </section>
+  );
+}
+
+/**
+ * Декоративные «плавающие стикеры» в фоне hero. SSR-friendly, без JS.
+ * Каждый стикер — стилизованный chip с источником / сигналом из продукта.
+ * Псевдо-3D через слабый rotate + glassy bg + glow в бренд-цветах.
+ */
+function HeroFloatingTags() {
+  const tags = [
+    { text: '2GIS · отзывы', top: '12%', left: '6%', rotate: -8, color: '#19c129' },
+    { text: 'Я.Карты · контакты', top: '22%', left: '46%', rotate: 4, color: '#ffcc00' },
+    { text: 'DaData · ИНН/ОГРН', top: '70%', left: '8%', rotate: 5, color: '#3b82f6' },
+    { text: '5 источников', top: '78%', left: '52%', rotate: -3, color: '#06b6d4' },
+    { text: 'AI · pain-теги', top: '8%', left: '78%', rotate: 6, color: '#a855f7' },
+    { text: 'ЛПР · /team', top: '60%', left: '88%', rotate: -5, color: '#f59e0b' },
+  ];
+  return (
+    <div
+      aria-hidden
+      className="hidden md:block"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    >
+      {tags.map((t, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute',
+            top: t.top,
+            left: t.left,
+            transform: `rotate(${t.rotate}deg)`,
+            background: 'rgba(15, 23, 42, 0.55)',
+            border: `1px solid ${t.color}55`,
+            color: t.color,
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            padding: '5px 11px',
+            borderRadius: '999px',
+            boxShadow: `0 0 0 1px ${t.color}22, 0 8px 24px rgba(0,0,0,0.35)`,
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            opacity: 0.7,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t.text}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -332,7 +424,7 @@ function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }
               cursor: 'default',
             }}
           >
-            ✨ Сгенерировать черновик
+            ✨ Сгенерировать КП
           </button>
         </div>
       </div>
