@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { HelpCircle, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
+import { HelpCircle, List, Map as MapIcon, Sliders, Sparkles, Activity } from 'lucide-react';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
@@ -23,6 +23,7 @@ import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
+import { NichePainCloud } from '@/components/maps/NichePainCloud';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
   draftEmailForCompany,
@@ -173,7 +174,7 @@ export function MapsSearchResults({
   const autoTriggeredRef = useRef(false);
   // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
   // загружается ленива через dynamic(), требует координат у компаний.
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'map' | 'pain'>('list');
   // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
   // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
   const [showBadgeLegend, setShowBadgeLegend] = useState(false);
@@ -752,6 +753,20 @@ export function MapsSearchResults({
                 >
                   <MapIcon className="h-3.5 w-3.5" /> Карта
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('pain')}
+                  aria-pressed={viewMode === 'pain'}
+                  title="Облако болей всей ниши — фишка ТЗ 2026-06-08"
+                  className={
+                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium dark:border-slate-600 ' +
+                    (viewMode === 'pain'
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
+                  }
+                >
+                  <Activity className="h-3.5 w-3.5" /> Облако болей
+                </button>
               </div>
             )}
             {isTerminal && companies.length > 0 && (
@@ -997,6 +1012,14 @@ export function MapsSearchResults({
             onOpenCompany={(id) => setDrawerCompanyId(id)}
             searchId={search.id}
             activeSource={filter.source_filter ?? 'all'}
+          />
+        )}
+
+        {viewMode === 'pain' && (
+          <NichePainCloud
+            searchId={search.id}
+            niche={search.niche}
+            city={search.city}
           />
         )}
       </div>

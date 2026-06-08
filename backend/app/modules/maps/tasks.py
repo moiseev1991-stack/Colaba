@@ -301,6 +301,20 @@ async def _parse_map_search_async(search_id: int) -> None:
                 search.id, "done",
                 {"companies_found": total_found, "reviews_found": search.reviews_found},
             )
+            # Niche pain clusters: агрегатор «облака болей всей ниши»
+            # (ТЗ юзера 2026-06-08). Откладываем на 120с — даём AI-анализу
+            # хотя бы частично разобрать отзывы. Юзер может вручную
+            # перезапустить через POST /maps/search/{id}/pain-clusters/refresh.
+            try:
+                from app.modules.maps.tasks import aggregate_niche_pain_clusters_task
+                if total_found > 0:
+                    aggregate_niche_pain_clusters_task.apply_async(
+                        args=[search.id], countdown=120
+                    )
+            except Exception as e:
+                logger.warning(
+                    "parse_map_search: не смог поставить aggregate_niche_pain_clusters: %s", e
+                )
         except Exception as e:
             logger.exception("parse_map_search: unhandled error")
             search.status = "failed"
@@ -1207,6 +1221,45 @@ def purge_review_raw_text():
     count = asyncio.run(_purge_review_raw_text_async())
     logger.info("purge_review_raw_text: purged %d rows", count)
     return count
+
+
+# ---------------------------------------------------------------------------
+# Niche pain clusters — агрегирование болей всей ниши в одном поиске
+# (ТЗ юзера 2026-06-08).
+# ---------------------------------------------------------------------------
+
+
+async def _aggregate_niche_pain_clusters_async(search_id: int) -> int:
+    from app.core.database import AsyncSessionLocal
+    from app.modules.maps.niche_pain_clusters import aggregate_niche_pain_clusters
+
+    async with AsyncSessionLocal() as db:
+        return await aggregate_niche_pain_clusters(db, search_id)
+
+
+@celery_app.task(
+    name="aggregate_niche_pain_clusters",
+    queue="maps_ai",
+    bind=True,
+    max_retries=2,
+    # Простая агрегация по БД, не LLM — лимит не нужен, но на всякий случай.
+    rate_limit="60/m",
+)
+def aggregate_niche_pain_clusters_task(self, search_id: int):
+    """Пересчитывает niche_pain_clusters по одному поиску.
+
+    Триггерится автоматически после parse_map_search завершения; вручную —
+    POST /maps/search/{id}/pain-clusters/refresh.
+    """
+    try:
+        n = asyncio.run(_aggregate_niche_pain_clusters_async(search_id))
+        logger.info("aggregate_niche_pain_clusters_task: search=%d → %d clusters", search_id, n)
+        return {"search_id": search_id, "clusters": n}
+    except Exception as exc:
+        logger.warning(
+            "aggregate_niche_pain_clusters_task retrying search=%d: %s", search_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=2)
 
 
 @celery_app.task(name="dedup_multisource_phase2", queue="maintenance")

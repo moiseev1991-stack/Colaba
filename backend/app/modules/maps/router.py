@@ -53,6 +53,8 @@ from app.modules.maps.schemas import (
     MapSearchCreate,
     MapSearchFilter,
     MapSearchOut,
+    NichePainClusterOut,
+    NichePainClustersOut,
     OutreachDraftCachedOut,
     OutreachDraftOut,
     OutreachDraftRequest,
@@ -1384,3 +1386,87 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
         sentry=sentry,
         details=details,
     )
+
+
+# ---------------------------------------------------------------------------
+# Niche pain clusters — «облако болей всей ниши» (ТЗ юзера 2026-06-08)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/search/{search_id}/pain-clusters", response_model=NichePainClustersOut)
+@limiter.limit("60/minute")
+async def get_search_pain_clusters(
+    request: Request,
+    search_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает агрегированное «облако болей» по нише этого поиска.
+
+    Если таска aggregate_niche_pain_clusters ещё не отрабатывала —
+    status='pending', clusters=[]. UI показывает спиннер «AI ещё думает».
+    Если поиск завершён и pain-теги пусты — status='empty'.
+    """
+    search = await _get_owned_search(db, search_id, user_id)
+
+    from app.models.niche_pain_cluster import NichePainCluster
+
+    stmt = (
+        select(NichePainCluster)
+        .where(NichePainCluster.search_id == search_id)
+        .order_by(
+            NichePainCluster.frequency_pct.desc(),
+            NichePainCluster.total_mentions.desc(),
+        )
+    )
+    rows = list((await db.execute(stmt)).scalars().all())
+
+    # Total companies из map_search_results — для UI «процент от 89 компаний».
+    from app.models.maps import MapSearchResult
+    total_q = select(sa_func.count(MapSearchResult.company_id)).where(
+        MapSearchResult.map_search_id == search_id
+    )
+    total_companies = int((await db.execute(total_q)).scalar_one() or 0)
+
+    if rows:
+        return NichePainClustersOut(
+            search_id=search_id,
+            niche=search.niche,
+            city=search.city,
+            total_companies=total_companies,
+            clusters=[NichePainClusterOut.model_validate(r) for r in rows],
+            generated_at=max(r.generated_at for r in rows),
+            status="ready",
+        )
+
+    # Пока пусто — pending или empty
+    is_terminal = search.status in ("completed", "from_cache", "failed")
+    return NichePainClustersOut(
+        search_id=search_id,
+        niche=search.niche,
+        city=search.city,
+        total_companies=total_companies,
+        clusters=[],
+        generated_at=None,
+        status="empty" if is_terminal else "pending",
+    )
+
+
+@router.post("/search/{search_id}/pain-clusters/refresh", status_code=202)
+@limiter.limit("5/minute")
+async def refresh_search_pain_clusters(
+    request: Request,
+    search_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ручной триггер пересчёта кластеров болей по поиску.
+
+    Используется UI-кнопкой «Обновить» во вкладке «Облако болей», и
+    когда юзеру нужно пересобрать после доразбора отзывов AI'ем.
+    """
+    await _get_owned_search(db, search_id, user_id)
+    from app.modules.maps.tasks import aggregate_niche_pain_clusters_task
+
+    aggregate_niche_pain_clusters_task.delay(search_id)
+    return {"status": "queued"}

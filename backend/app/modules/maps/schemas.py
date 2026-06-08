@@ -196,6 +196,46 @@ class PainTagOut(BaseModel):
     status: str = "active"
 
 
+class NichePainClusterSampleQuote(BaseModel):
+    quote: str
+    company_name: str | None = None
+    posted_at: str | None = None
+
+
+class NichePainClusterOut(BaseModel):
+    """Один кластер «облака болей по нише» — фишка ТЗ 2026-06-08.
+
+    Используется UI-вкладкой выдачи «Облако болей»: бар с % частоты,
+    суммарным количеством упоминаний, и 2-3 цитатами как доказательство.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    cluster_label: str
+    company_count: int
+    frequency_pct: float
+    total_mentions: int
+    pain_tag_ids: list[int] = Field(default_factory=list)
+    sample_quotes: list[NichePainClusterSampleQuote] = Field(default_factory=list)
+
+
+class NichePainClustersOut(BaseModel):
+    """Ответ /maps/search/{id}/pain-clusters."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    search_id: int
+    niche: str
+    city: str | None = None
+    total_companies: int
+    clusters: list[NichePainClusterOut]
+    generated_at: datetime | None = None
+    # 'ready' — данные есть; 'pending' — таска ещё не отработала;
+    # 'empty' — поиск завершён, но pain-теги отсутствуют (нет негатива
+    # или AI ещё не разобрал отзывы).
+    status: str = "ready"
+
+
 class CompanyContactOut(BaseModel):
     """Контакт компании с разметкой источника (миграция 028, Phase 4).
 
