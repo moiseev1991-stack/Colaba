@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.5](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.4...v1.71.5) (2026-06-09)
+
+
+### Performance Improvements
+
+* **maps:** векторный match + countdown 120→5 + collapsible sidebar ([511bb0b](https://github.com/moiseev1991-stack/Colaba/commit/511bb0b09340a73b6250d8b8662b7d010a687bee))
+
 ## [1.71.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.3...v1.71.4) (2026-06-09)
 
 
