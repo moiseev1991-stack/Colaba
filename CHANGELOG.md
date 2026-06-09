@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.3...v1.71.4) (2026-06-09)
+
+
+### Bug Fixes
+
+* **reviews_ai:** robust кластеризация + diagnostic endpoint ([7c547f2](https://github.com/moiseev1991-stack/Colaba/commit/7c547f2d2592a34f78997a7a952d1fcb6666a1f2))
+
 ## [1.71.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.2...v1.71.3) (2026-06-09)
 
 
