@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.1...v1.71.2) (2026-06-09)
+
+
+### Bug Fixes
+
+* **maps:** шапка выдачи — убрал «бейджи», добавил live прогресс AI-разбора ([b254c16](https://github.com/moiseev1991-stack/Colaba/commit/b254c16a4aa20bbbc106cfac8040b65a0461cacf))
+
 ## [1.71.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.0...v1.71.1) (2026-06-09)
 
 
