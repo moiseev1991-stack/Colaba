@@ -1383,6 +1383,115 @@ async def admin_recluster_niche(
     }
 
 
+@router.get("/search/{search_id}/ai-progress")
+@limiter.limit("60/minute")
+async def get_ai_progress(
+    request: Request,
+    search_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Прогресс AI-разбора отзывов для конкретного поиска.
+
+    UI поллит этот эндпоинт раз в ~5 секунд после клика «Разобрать боли AI»,
+    чтобы показать реальный прогресс-бар (а не молча ждать 4 минуты).
+
+    Возвращает счётчики на трёх уровнях цепочки:
+      1. reviews_total / reviews_with_embedding / reviews_with_sentiment
+         — сколько отзывов реально обработал `analyze_reviews_for_company`
+      2. companies_with_pains — сколько компаний уже получили pain-tags
+         после `recluster_pains_for_niche_task`
+      3. stage — грубая оценка фазы для UI:
+           'idle'     — нет отзывов вообще (нечего разбирать)
+           'analyzing'— ставим embeddings/sentiment
+           'clustering'— embeddings готовы, ждём recluster
+           'ready'    — у части компаний уже есть pain-tags
+    """
+    from app.models.maps import MapSearchResult
+    from app.models.pain_tag import CompanyPainScore
+
+    search = await _get_owned_search(db, search_id, user_id)
+
+    # Все company_id этого поиска
+    company_ids_rows = (
+        await db.execute(
+            select(MapSearchResult.company_id).where(
+                MapSearchResult.map_search_id == search.id
+            )
+        )
+    ).scalars().all()
+    company_ids = [int(c) for c in company_ids_rows]
+    companies_total = len(company_ids)
+
+    if companies_total == 0:
+        return {
+            "companies_total": 0,
+            "companies_with_pains": 0,
+            "reviews_total": 0,
+            "reviews_with_embedding": 0,
+            "reviews_with_sentiment": 0,
+            "stage": "idle",
+            "percent": 0,
+        }
+
+    reviews_total = (
+        await db.execute(
+            select(sa_func.count(Review.id)).where(Review.company_id.in_(company_ids))
+        )
+    ).scalar() or 0
+    reviews_with_embedding = (
+        await db.execute(
+            select(sa_func.count(Review.id)).where(
+                Review.company_id.in_(company_ids),
+                Review.embedding.is_not(None),
+            )
+        )
+    ).scalar() or 0
+    reviews_with_sentiment = (
+        await db.execute(
+            select(sa_func.count(Review.id)).where(
+                Review.company_id.in_(company_ids),
+                Review.sentiment.is_not(None),
+            )
+        )
+    ).scalar() or 0
+    companies_with_pains = (
+        await db.execute(
+            select(sa_func.count(sa_func.distinct(CompanyPainScore.company_id))).where(
+                CompanyPainScore.company_id.in_(company_ids),
+            )
+        )
+    ).scalar() or 0
+
+    # Грубая оценка фазы для UI
+    if reviews_total == 0:
+        stage = "idle"
+        percent = 0
+    elif companies_with_pains > 0:
+        stage = "ready"
+        # Прогресс: какая доля компаний поиска уже получила pain-теги
+        percent = round(companies_with_pains * 100 / max(1, companies_total))
+    elif reviews_with_embedding >= max(1, reviews_total * 0.5):
+        # Половина и больше отзывов проиндексирована — ждём финальный recluster
+        stage = "clustering"
+        # ~70% — analyze почти готов, recluster ещё впереди
+        percent = max(70, round(reviews_with_embedding * 70 / reviews_total))
+    else:
+        stage = "analyzing"
+        # До 60% — масштабируем по embeddings (analyze — главная медленная часть)
+        percent = round(reviews_with_embedding * 60 / max(1, reviews_total))
+
+    return {
+        "companies_total": companies_total,
+        "companies_with_pains": int(companies_with_pains),
+        "reviews_total": int(reviews_total),
+        "reviews_with_embedding": int(reviews_with_embedding),
+        "reviews_with_sentiment": int(reviews_with_sentiment),
+        "stage": stage,
+        "percent": min(100, int(percent)),
+    }
+
+
 @router.post("/admin/recompute-website-score")
 @limiter.limit("2/minute")
 async def admin_recompute_website_score(
