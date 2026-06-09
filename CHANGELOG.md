@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.7](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.6...v1.71.7) (2026-06-09)
+
+
+### Bug Fixes
+
+* **maps:** pain-labels без обвинений + редизайн плиток ([2dd48fe](https://github.com/moiseev1991-stack/Colaba/commit/2dd48fe0daaae998018e58753eaa5b1f0bc5eab7))
+* **reviews_ai:** _soften_pain_label не трогает регистр без реальной замены ([402249b](https://github.com/moiseev1991-stack/Colaba/commit/402249b2e3d3692f59deae3cbd1020cb65176f4c))
+
 ## [1.71.6](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.5...v1.71.6) (2026-06-09)
 
 
