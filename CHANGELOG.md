@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.6](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.5...v1.71.6) (2026-06-09)
+
+
+### Bug Fixes
+
+* **reviews_ai:** threshold 0.78→0.55 + HDBSCAN leaf + kmeans на <5 кластеров ([471b044](https://github.com/moiseev1991-stack/Colaba/commit/471b044f2b49f3249ee4c4715d0be069de350499))
+
 ## [1.71.5](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.4...v1.71.5) (2026-06-09)
 
 
