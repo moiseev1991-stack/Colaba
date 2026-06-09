@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.70.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.69.0...v1.70.0) (2026-06-09)
+
+
+### Features
+
+* **promo:** таблица «компания → pain-теги → цитата» на первом экране промо ([1ea57e6](https://github.com/moiseev1991-stack/Colaba/commit/1ea57e6afb54b3164ca3d9596285dbf8d28dea12))
+
 # [1.69.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.68.0...v1.69.0) (2026-06-08)
 
 
