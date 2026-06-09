@@ -531,6 +531,31 @@ export async function adminReclusterNiche(searchId: number): Promise<ReclusterNi
   return response.data;
 }
 
+/** Прогресс AI-разбора отзывов конкретного поиска.
+ *
+ *  stage:
+ *   - 'idle'       — нет отзывов вообще, разбирать нечего
+ *   - 'analyzing'  — embeddings/sentiment ещё ставятся
+ *   - 'clustering' — embeddings готовы, ждём финальной кластеризации
+ *   - 'ready'      — pain-теги начали появляться у компаний
+ */
+export interface MapsAiProgressOut {
+  companies_total: number;
+  companies_with_pains: number;
+  reviews_total: number;
+  reviews_with_embedding: number;
+  reviews_with_sentiment: number;
+  stage: 'idle' | 'analyzing' | 'clustering' | 'ready';
+  percent: number;
+}
+
+export async function getMapsAiProgress(searchId: number): Promise<MapsAiProgressOut> {
+  const response = await apiClient.get<MapsAiProgressOut>(
+    `/maps/search/${searchId}/ai-progress`,
+  );
+  return response.data;
+}
+
 /** POST /maps/companies/{id}/draft-email — LLM-генерация драфта холодного письма. */
 export async function draftEmailForCompany(companyId: number): Promise<OutreachDraftOut> {
   const response = await apiClient.post<OutreachDraftOut>(

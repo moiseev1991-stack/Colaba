@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { HelpCircle, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
+import { Brain, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
@@ -30,8 +30,10 @@ import {
   enrichCompaniesTeam,
   exportSearchCsvUrl,
   getMapSearch,
+  getMapsAiProgress,
   listMapCompanies,
   type CompanyOut,
+  type MapsAiProgressOut,
   type MapSearchFilter,
   type MapSearchOut,
   type OutreachDraftOut,
@@ -100,6 +102,27 @@ function statusLabel(status: string): string {
     case 'from_cache': return 'из кэша';
     default: return status;
   }
+}
+
+const SOURCE_PRETTY: Record<string, { label: string; dot: string }> = {
+  '2gis': { label: '2GIS', dot: '🟢' },
+  'yandex_maps': { label: 'Я.Карты', dot: '🔴' },
+  'google_maps': { label: 'Google Maps', dot: '🔵' },
+};
+
+function sourceListPretty(
+  raw: string | null | undefined,
+): Array<{ id: string; label: string; dot: string }> {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((id) => ({
+      id,
+      label: SOURCE_PRETTY[id]?.label ?? id,
+      dot: SOURCE_PRETTY[id]?.dot ?? '·',
+    }));
 }
 
 // Шаблоны сообщений из backend, которые означают «2GIS просто ничего не нашёл»
@@ -179,9 +202,6 @@ export function MapsSearchResults({
   // Режим отображения выдачи: список или карта. Карта — Leaflet + OSM,
   // загружается ленива через dynamic(), требует координат у компаний.
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
-  // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
-  const [showBadgeLegend, setShowBadgeLegend] = useState(false);
   // Recluster (AI-разбор болей ниши). Cron делает это раз в сутки только
   // для top-30 ниш; для редких комбинаций типа «стоматология/Балашиха»
   // company_pain_scores оставался пуст → карточки в fallback. Кнопка
@@ -190,6 +210,11 @@ export function MapsSearchResults({
     'idle' | 'queueing' | 'queued' | 'error'
   >('idle');
   const [reclusterMsg, setReclusterMsg] = useState<string>('');
+  // Live-прогресс AI-цепочки. Полл каждые 5 сек после клика «Разобрать боли»,
+  // чтобы юзер видел реальный прогресс (раньше 4 минуты молча ждали setTimeout).
+  // null = не запрашивали; полностью обнуляется при 'ready' с pains > 0.
+  const [aiProgress, setAiProgress] = useState<MapsAiProgressOut | null>(null);
+  const aiProgressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -438,6 +463,34 @@ export function MapsSearchResults({
   // Останавливаем поллинг при размонтировании
   useEffect(() => stopAiPolling, [stopAiPolling]);
 
+  const stopAiProgressPolling = useCallback(() => {
+    if (aiProgressTimer.current) {
+      clearInterval(aiProgressTimer.current);
+      aiProgressTimer.current = null;
+    }
+  }, []);
+
+  const fetchAiProgressOnce = useCallback(async () => {
+    try {
+      const p = await getMapsAiProgress(search.id);
+      setAiProgress(p);
+      // Как только pain-теги начали появляться у трети компаний — подтягиваем
+      // выдачу, чтобы юзер сразу увидел плитки. Останавливаем polling,
+      // когда у всех компаний с отзывами уже есть pain-теги.
+      if (p.stage === 'ready' && p.companies_with_pains > 0) {
+        void refreshCompanies(filter);
+      }
+      if (
+        p.stage === 'ready' &&
+        p.companies_with_pains >= Math.max(1, Math.floor(p.companies_total * 0.6))
+      ) {
+        stopAiProgressPolling();
+      }
+    } catch {
+      // silent — следующий тик повторит
+    }
+  }, [search.id, refreshCompanies, filter, stopAiProgressPolling]);
+
   const handleReclusterNiche = useCallback(async () => {
     if (reclusterState === 'queueing' || reclusterState === 'queued') return;
     setReclusterState('queueing');
@@ -446,12 +499,19 @@ export function MapsSearchResults({
       const result = await adminReclusterNiche(search.id);
       setReclusterState('queued');
       setReclusterMsg(result.hint);
-      // Цепочка: analyze_reviews (sentiment+embeddings) ~1-2 мин + countdown 120с
-      // + recluster_pains_for_niche (LLM-naming N кластеров) ~1-2 мин = ~4 мин.
-      // Берём 4 минуты + запас.
+      // Сразу запрашиваем прогресс и стартуем polling каждые 5 сек.
+      // Прогресс-бар в шапке выдачи покажет юзеру что цепочка реально работает.
+      void fetchAiProgressOnce();
+      stopAiProgressPolling();
+      aiProgressTimer.current = setInterval(() => {
+        void fetchAiProgressOnce();
+      }, 5000);
+      // Финальный safety-refresh на ~6 минуте — если polling по какой-то
+      // причине прекратился, выдача всё равно обновится.
       window.setTimeout(() => {
         void refreshCompanies(filter);
-      }, 240_000);
+        stopAiProgressPolling();
+      }, 360_000);
     } catch (e) {
       setReclusterState('error');
       const err = e as { response?: { status?: number; data?: { detail?: unknown } } };
@@ -462,7 +522,9 @@ export function MapsSearchResults({
           : 'Не удалось поставить AI-разбор в очередь. Проверь логи.',
       );
     }
-  }, [reclusterState, search.id, refreshCompanies, filter]);
+  }, [reclusterState, search.id, refreshCompanies, filter, fetchAiProgressOnce, stopAiProgressPolling]);
+
+  useEffect(() => stopAiProgressPolling, [stopAiProgressPolling]);
 
   // Автозапуск анализа, если пресет выбрали ещё на форме поиска (initialAiPreset).
   // Условия: пресет активен, парсинг завершён, есть видимые компании, ещё не
@@ -599,72 +661,98 @@ export function MapsSearchResults({
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {search.niche} —{' '}
+          <div className="min-w-0">
+            <h2 className="font-display text-[20px] sm:text-[22px] font-semibold leading-tight tracking-tight text-[hsl(var(--text))]">
+              {search.niche}
+              <span className="text-[hsl(var(--muted))]"> · </span>
               {search.mode === 'radius' && search.address
                 ? `${search.address} · радиус ${((search.radius_meters ?? 0) / 1000).toFixed(1)} км`
                 : search.city}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Источники: {search.sources}. Статус: {statusLabel(search.status)}.{' '}
-              {isTerminal
-                ? // Если фильтр сузил выдачу — показываем оба числа: «под фильтр / всего».
-                  // Раньше счётчик «всего» оставался без изменений и врал юзеру.
-                  companiesEverLoaded &&
-                    typeof search.companies_found === 'number' &&
-                    renderTotal !== search.companies_found
-                  ? `Под фильтр: ${renderTotal} из ${search.companies_found}.`
-                  : `Найдено компаний: ${search.companies_found ?? renderTotal}.`
-                : `Найдено пока: ${renderTotal} компаний. Парсер ещё работает…`}
-              <button
-                type="button"
-                onClick={() => setShowBadgeLegend((s) => !s)}
-                className="ml-2 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                aria-expanded={showBadgeLegend}
-                title="Что значат бейджи 🔥 / 💼 / Nл в карточке?"
+            {/* Чипы статуса вместо одной плотной строки текста. */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px]">
+              <span
+                className="inline-flex items-center gap-1 rounded-pill bg-[hsl(var(--surface-2))] px-2 py-0.5 font-medium text-[hsl(var(--text))]"
+                title="Сколько компаний показано в выдаче"
               >
-                <HelpCircle className="h-3 w-3" /> что значат бейджи?
-              </button>
-            </p>
-            {showBadgeLegend && (
-              <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
-                <div className="mb-1.5 font-medium">Бейджи на карточке справа сверху:</div>
-                <ul className="space-y-1">
-                  <li>
-                    <span className="mr-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">🔥 70+</span>
-                    <span className="text-slate-600 dark:text-slate-300">
-                      <b>Температура лида</b> 0–100. Связка рейтинг × кол-во отзывов × свежесть × контакты × ответы владельца. <b>70+</b> — горячий лид (звонить сразу), 40–69 — тёплый, &lt;40 — холодный.
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mr-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">💼 70+</span>
-                    <span className="text-slate-600 dark:text-slate-300">
-                      <b>Website-score</b> — «нужен сайт, а его нет». Чем выше, тем больше шансов продать сайт. Если бейджа <b>нет совсем</b> — у компании уже есть свой работающий сайт.
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mr-1 rounded-v2-sm bg-[var(--signal-cool-bg)] px-1.5 py-0.5 text-[11px] text-[color:var(--signal-cool)] ring-1 ring-inset ring-[color:var(--signal-cool)]/30">5л · ₽ 1.2М</span>
-                    <span className="text-slate-600 dark:text-slate-300">
-                      <b>Юр.данные (DaData)</b>: возраст компании в годах и оборот за последний год (если DaData отдала). Клик по карточке → блок «Юр.данные».
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mr-1 rounded-v2-sm bg-[var(--signal-warm-bg)] px-1.5 py-0.5 text-[11px] text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30">пилюли</span>
-                    <span className="text-slate-600 dark:text-slate-300">
-                      Жёлтый блок = боль клиентов (AI разобрал отзывы), розовый блок = кусок негативного отзыва (AI ещё не классифицировал боль).
-                    </span>
-                  </li>
-                </ul>
-                <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-                  Цвет шкалы 🔥/💼: <span className="text-slate-500">серый</span> (&lt;40) → <span className="text-amber-700">жёлтый</span> (40–69) → <span className="text-rose-700 font-semibold">красный</span> (70+).
-                </div>
-              </div>
-            )}
+                <span className="text-[11px] text-[hsl(var(--muted))]">
+                  {isTerminal
+                    ? companiesEverLoaded &&
+                      typeof search.companies_found === 'number' &&
+                      renderTotal !== search.companies_found
+                      ? 'Под фильтр'
+                      : 'Найдено'
+                    : 'Уже найдено'}
+                </span>
+                <span className="font-semibold tabular-nums">
+                  {isTerminal
+                    ? companiesEverLoaded &&
+                      typeof search.companies_found === 'number' &&
+                      renderTotal !== search.companies_found
+                      ? `${renderTotal} из ${search.companies_found}`
+                      : (search.companies_found ?? renderTotal)
+                    : renderTotal}
+                </span>
+                <span className="text-[11px] text-[hsl(var(--muted))]">
+                  {(() => {
+                    const n = isTerminal ? renderTotal : renderTotal;
+                    if (n === 1) return 'компания';
+                    if (n >= 2 && n <= 4) return 'компании';
+                    return 'компаний';
+                  })()}
+                </span>
+              </span>
+              {/* Источники как мини-бейджи. */}
+              {sourceListPretty(search.sources).map((src) => (
+                <span
+                  key={src.id}
+                  className="inline-flex items-center gap-1 rounded-pill border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))]"
+                  title={`Источник данных: ${src.label}`}
+                >
+                  <span aria-hidden>{src.dot}</span> {src.label}
+                </span>
+              ))}
+              {/* Статус только если он информативен (не completed) или показываем "из кэша" с иконкой. */}
+              {search.status === 'from_cache' && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-cool-bg)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-cool)] ring-1 ring-inset ring-[color:var(--signal-cool)]/30"
+                  title="Результат не парсился заново — взят из ранее собранной выдачи"
+                >
+                  ⚡ из кэша
+                </span>
+              )}
+              {!isTerminal && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-warm-bg)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30"
+                  title="Парсер ещё собирает компании"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--signal-warm)] animate-pulse" />
+                  {statusLabel(search.status)}
+                </span>
+              )}
+              {search.status === 'failed' && (
+                <span className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-hot-bg)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-hot)] ring-1 ring-inset ring-[color:var(--signal-hot)]/30">
+                  ⚠ ошибка
+                </span>
+              )}
+            </div>
             {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
               <div className="mt-1 inline-block rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-0.5 text-[11px] text-[color:var(--signal-good)]">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
               </div>
+            )}
+            {/* Live прогресс-плашка AI-разбора. Появляется после клика
+                «Разобрать боли AI» и тикает каждые 5 сек. Раньше юзер видел
+                только кнопку «AI работает — ~4 мин» и не знал, идёт ли вообще
+                что-то — теперь видны три фазы и реальные числа отзывов. */}
+            {reclusterState === 'queued' && (
+              <AiPainProgressBar
+                progress={aiProgress}
+                onRetry={() => {
+                  setReclusterState('idle');
+                  setAiProgress(null);
+                }}
+              />
             )}
             {activeAiPreset && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
@@ -871,27 +959,28 @@ export function MapsSearchResults({
             )}
             {/* Recluster — показываем когда выдача завершена, есть компании,
                 и хотя бы у одной нет top_pains. Если у всех уже разобрано,
-                кнопка не нужна. */}
+                кнопка не нужна. В состоянии queued вместо неинформативной
+                кнопки рисуем мини-плашку с прогресс-баром — она ниже. */}
             {isTerminal &&
               companies.length > 0 &&
-              companies.some((c) => !c.top_pains || c.top_pains.length === 0) && (
+              companies.some((c) => !c.top_pains || c.top_pains.length === 0) &&
+              reclusterState !== 'queued' && (
                 <button
                   type="button"
                   onClick={() => void handleReclusterNiche()}
-                  disabled={reclusterState === 'queueing' || reclusterState === 'queued'}
+                  disabled={reclusterState === 'queueing'}
                   title={
                     reclusterMsg ||
-                    'AI разберёт отзывы и присвоит pain-теги. Занимает 1-3 минуты.'
+                    'AI разберёт отзывы и присвоит pain-теги. Занимает 3-5 минут.'
                   }
-                  className="rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-violet-600 dark:bg-violet-900/40 dark:text-violet-100 dark:hover:bg-violet-900/70"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-violet-600 dark:bg-violet-900/40 dark:text-violet-100 dark:hover:bg-violet-900/70"
                 >
+                  <Brain className="h-4 w-4" />
                   {reclusterState === 'queueing'
                     ? 'Ставлю в очередь…'
-                    : reclusterState === 'queued'
-                      ? '🧠 AI работает — ~4 мин'
-                      : reclusterState === 'error'
-                        ? '⚠ Не удалось — повторить'
-                        : '🧠 Разобрать боли AI'}
+                    : reclusterState === 'error'
+                      ? '⚠ Не удалось — повторить'
+                      : 'Разобрать боли AI'}
                 </button>
               )}
             <button
@@ -1130,6 +1219,104 @@ export function MapsSearchResults({
         error={draftError}
         onClose={() => setDraftOpen(false)}
       />
+    </div>
+  );
+}
+
+/**
+ * Прогресс-плашка AI-разбора отзывов в нише.
+ *
+ * Три фазы (stage), показываем их человеческим языком + прогресс-бар:
+ *   1. analyzing  — embeddings/sentiment отзывов (ProxyAPI/OpenAI)
+ *   2. clustering — k-means + LLM-naming кластеров
+ *   3. ready      — pain-теги начали появляться у компаний
+ *
+ * progress=null означает «только что нажали, ещё не дождались первого ответа».
+ */
+function AiPainProgressBar({
+  progress,
+  onRetry,
+}: {
+  progress: MapsAiProgressOut | null;
+  onRetry: () => void;
+}) {
+  const stage = progress?.stage ?? 'analyzing';
+  const percent = progress?.percent ?? 5;
+  const stageLabel = (() => {
+    switch (stage) {
+      case 'idle':
+        return 'Нет отзывов для разбора';
+      case 'analyzing':
+        return 'Шаг 1 из 2 · читаю отзывы и считаю эмбеддинги';
+      case 'clustering':
+        return 'Шаг 2 из 2 · собираю кластеры болей';
+      case 'ready':
+        return 'Готово · показываю плитки болей в карточках';
+      default:
+        return 'AI работает…';
+    }
+  })();
+  const tone =
+    stage === 'ready'
+      ? 'good'
+      : stage === 'idle'
+      ? 'muted'
+      : 'warm';
+  const barCls =
+    tone === 'good'
+      ? 'bg-emerald-500'
+      : tone === 'muted'
+      ? 'bg-slate-400'
+      : 'bg-violet-500';
+
+  return (
+    <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 font-medium text-violet-900 dark:text-violet-100">
+          <Brain className="h-3.5 w-3.5" />
+          AI разбирает отзывы
+        </span>
+        <span className="text-violet-800/80 dark:text-violet-200/80">{stageLabel}</span>
+        <span className="ml-auto tabular-nums text-[11px] font-semibold text-violet-900 dark:text-violet-100">
+          {percent}%
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-violet-200/60 dark:bg-violet-900/60">
+        <div
+          className={`h-full ${barCls} transition-[width] duration-700`}
+          style={{ width: `${Math.max(3, Math.min(100, percent))}%` }}
+        />
+      </div>
+      {progress && (
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-violet-800/80 dark:text-violet-200/70">
+          <span title="Сколько компаний поиска уже получили pain-теги">
+            Готовы: <b className="tabular-nums">{progress.companies_with_pains}</b> из{' '}
+            <b className="tabular-nums">{progress.companies_total}</b> компаний
+          </span>
+          {progress.reviews_total > 0 && (
+            <span title="Сколько отзывов уже прошло через AI-эмбеддинги">
+              Отзывы: <b className="tabular-nums">{progress.reviews_with_embedding}</b> /{' '}
+              <b className="tabular-nums">{progress.reviews_total}</b>
+            </span>
+          )}
+          {stage !== 'ready' && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="ml-auto text-violet-700 underline-offset-2 hover:underline dark:text-violet-200"
+              title="Скрыть прогресс-плашку. Запустить AI снова можно кнопкой выше."
+            >
+              скрыть
+            </button>
+          )}
+        </div>
+      )}
+      {stage === 'idle' && (
+        <div className="mt-1.5 text-[11px] text-violet-800/80 dark:text-violet-200/70">
+          У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу
+          или подожди, пока подтянутся отзывы.
+        </div>
+      )}
     </div>
   );
 }
