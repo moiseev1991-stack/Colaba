@@ -1338,9 +1338,32 @@ async def admin_recluster_niche(
             detail="У поиска не указана ниша или город — recluster невозможен.",
         )
 
+    # Полная цепочка: analyze_reviews_for_company (sentiment + embeddings) для
+    # КАЖДОЙ компании поиска, потом через 120с recluster_pains_for_niche.
+    # Раньше дёргали только recluster — но если у отзывов не было embeddings
+    # (analyze ещё не отрабатывал), recluster тихо возвращал 0 и плитки
+    # никогда не появлялись. Теперь сначала готовим данные, потом кластеризуем.
+    from app.models.maps import MapSearchResult
+    company_ids_rows = (
+        await db.execute(
+            select(MapSearchResult.company_id).where(
+                MapSearchResult.map_search_id == search.id
+            )
+        )
+    ).scalars().all()
+    company_ids = [int(c) for c in company_ids_rows]
+
     try:
-        from app.modules.reviews_ai.tasks import recluster_pains_for_niche_task
-        recluster_pains_for_niche_task.delay(search.niche, search.city)
+        from app.modules.reviews_ai.tasks import (
+            analyze_reviews_for_company,
+            recluster_pains_for_niche_task,
+        )
+        for cid in company_ids:
+            analyze_reviews_for_company.delay(cid)
+        recluster_pains_for_niche_task.apply_async(
+            args=[search.niche, search.city],
+            countdown=120,
+        )
     except Exception as e:
         logger.exception("admin_recluster_niche: failed to enqueue")
         raise HTTPException(
@@ -1352,7 +1375,11 @@ async def admin_recluster_niche(
         "queued": True,
         "niche": search.niche,
         "city": search.city,
-        "hint": "AI-разбор обычно занимает 1-3 минуты. Обнови страницу через минуту.",
+        "companies_queued_for_analyze": len(company_ids),
+        "hint": (
+            "Запущено: sentiment + embeddings для всех компаний, затем "
+            "через 2 минуты — кластеризация. Общее время ~3-5 минут."
+        ),
     }
 
 
