@@ -391,7 +391,7 @@ export function MapsFiltersPanel({
   }
 
   return (
-    <aside className="space-y-5 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+    <aside className="space-y-4 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
       {/* Глобальный «Сбросить фильтры» наверху панели. Показываем всегда —
           серая (disabled) когда сбрасывать нечего, активная и яркая когда
           юзер накрутил фильтров и хочет вернуться к чистой выдаче. */}
@@ -819,12 +819,27 @@ export function MapsFiltersPanel({
         </Select>
       </div>
 
-      {/* Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal */}
-      <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-2">
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
-          Платёжеспособные (DaData)
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+      {/* Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal.
+          Свёрнут по умолчанию — нужен редко, экономит ~150px скролла.
+          Открывается с автоматически если в фильтре есть min_revenue/min_age_years. */}
+      <details
+        className="group rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-2 open:pb-3"
+        open={Boolean(value.min_revenue || value.min_age_years)}
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
+          <span className="inline-flex items-center gap-1.5">
+            💼 Платёжеспособные (DaData)
+            {Boolean(value.min_revenue || value.min_age_years) && (
+              <span className="rounded-full bg-blue-200/70 px-1.5 py-0.5 text-[9px] font-semibold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">
+                активно
+              </span>
+            )}
+          </span>
+          <span className="text-blue-500 group-open:rotate-180 transition-transform">
+            ▾
+          </span>
+        </summary>
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
             <label className="mb-0.5 block text-[11px] text-slate-600 dark:text-slate-400">
               Оборот от ₽
@@ -872,13 +887,37 @@ export function MapsFiltersPanel({
           Применит JOIN company_legal — покажет только компании с
           подтянутыми юр.данными.
         </div>
-      </div>
+      </details>
 
-      <div className="rounded-md border border-slate-200 bg-slate-50/40 p-2 dark:border-slate-700 dark:bg-slate-800/40">
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
-          Слова в отзывах
-        </div>
-        <div className="mb-2">
+      {/* Слова в отзывах — тоже свёрнут по умолчанию, экономит ~200px. */}
+      <details
+        className="group rounded-md border border-slate-200 bg-slate-50/40 p-2 open:pb-3 dark:border-slate-700 dark:bg-slate-800/40"
+        open={Boolean(
+          value.review_text_contains_any?.length ||
+            value.review_text_excludes_any?.length ||
+            value.review_text_contains ||
+            value.review_text_excludes,
+        )}
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
+          <span className="inline-flex items-center gap-1.5">
+            💬 Слова в отзывах
+            {Boolean(
+              value.review_text_contains_any?.length ||
+                value.review_text_excludes_any?.length ||
+                value.review_text_contains ||
+                value.review_text_excludes,
+            ) && (
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+                активно
+              </span>
+            )}
+          </span>
+          <span className="text-slate-400 group-open:rotate-180 transition-transform">
+            ▾
+          </span>
+        </summary>
+        <div className="mt-2 mb-2">
           <label className="mb-0.5 block text-[11px] text-emerald-700 dark:text-emerald-400">
             содержит (через запятую) — компании с любым из слов
           </label>
@@ -938,7 +977,7 @@ export function MapsFiltersPanel({
             очистить слова
           </button>
         )}
-      </div>
+      </details>
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Сортировка</label>
@@ -971,20 +1010,38 @@ export function MapsFiltersPanel({
         )}
       </div>
 
-      <div>
-        <label className="mb-2 block text-xs font-medium text-slate-600">
-          Боли клиентов (AI-теги)
-        </label>
-        <PainTagsCloud
-          niche={niche}
-          city={city}
-          searchId={searchId}
-          value={value.pain_tag_ids ?? []}
-          onChange={(ids) =>
-            onChange({ ...value, pain_tag_ids: ids.length ? ids : null })
-          }
-        />
-      </div>
+      {/* Pain-cloud: открыт по умолчанию когда есть выбранные теги или
+          когда нашлись теги в нише — иначе свёрнут, чтобы не показывать
+          пустой блок «AI ещё не разобрал». */}
+      <details
+        className="group rounded-md border border-violet-200 bg-violet-50/40 p-2 open:pb-3 dark:border-violet-700/40 dark:bg-violet-900/20"
+        open={Boolean(value.pain_tag_ids?.length)}
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">
+          <span className="inline-flex items-center gap-1.5">
+            🧠 Боли клиентов (AI-теги)
+            {(value.pain_tag_ids?.length ?? 0) > 0 && (
+              <span className="rounded-full bg-violet-200 px-1.5 py-0.5 text-[9px] font-semibold text-violet-800 dark:bg-violet-500/30 dark:text-violet-200">
+                {value.pain_tag_ids?.length} выбрано
+              </span>
+            )}
+          </span>
+          <span className="text-violet-500 group-open:rotate-180 transition-transform">
+            ▾
+          </span>
+        </summary>
+        <div className="mt-2">
+          <PainTagsCloud
+            niche={niche}
+            city={city}
+            searchId={searchId}
+            value={value.pain_tag_ids ?? []}
+            onChange={(ids) =>
+              onChange({ ...value, pain_tag_ids: ids.length ? ids : null })
+            }
+          />
+        </div>
+      </details>
     </aside>
   );
 }

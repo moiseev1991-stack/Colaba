@@ -1364,13 +1364,34 @@ async def admin_recluster_niche(
         # источника (2GIS отдаёт «Стоматологические клиники») может не
         # совпадать с search.niche («стоматология»), и фильтр recluster
         # по niche тогда давал 0 отзывов → теги не создавались, UI вис на 70%.
+        #
+        # countdown: если все отзывы уже с embedding (cache hit / прошлый
+        # запуск analyze) — recluster через 5 секунд. Иначе даём 60 сек
+        # чтобы первые analyze-таски посчитали хотя бы базу embeddings.
+        # Раньше countdown=120 ждал даже когда работать уже было можно.
+        all_reviews = (
+            await db.execute(
+                select(sa_func.count(Review.id)).where(
+                    Review.company_id.in_(company_ids) if company_ids else False,
+                )
+            )
+        ).scalar() or 0
+        with_emb = (
+            await db.execute(
+                select(sa_func.count(Review.id)).where(
+                    Review.company_id.in_(company_ids) if company_ids else False,
+                    Review.embedding.is_not(None),
+                )
+            )
+        ).scalar() or 0
+        countdown_sec = 5 if all_reviews > 0 and with_emb >= all_reviews else 60
         recluster_pains_for_niche_task.apply_async(
             kwargs={
                 "niche": search.niche,
                 "city": search.city,
                 "company_ids": company_ids,
             },
-            countdown=120,
+            countdown=countdown_sec,
         )
     except Exception as e:
         logger.exception("admin_recluster_niche: failed to enqueue")
@@ -1385,8 +1406,8 @@ async def admin_recluster_niche(
         "city": search.city,
         "companies_queued_for_analyze": len(company_ids),
         "hint": (
-            "Запущено: sentiment + embeddings для всех компаний, затем "
-            "через 2 минуты — кластеризация. Общее время ~3-5 минут."
+            f"Запущено: sentiment + embeddings, затем через {countdown_sec}с — "
+            f"кластеризация. Общее время ~{2 if countdown_sec < 30 else 4} минуты."
         ),
     }
 

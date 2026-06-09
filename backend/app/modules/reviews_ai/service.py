@@ -204,93 +204,134 @@ async def match_reviews_to_pain_tags(
         if not niche:
             continue
         tags = await _pain_tags_for_niche(db, niche, city)
-        # фильтруем теги с непустым centroid
         tags_with_c = [(t, np.asarray(list(t.centroid), dtype=np.float64))
                        for t in tags if t.centroid is not None]
         if not tags_with_c:
             continue
 
-        for rid, company_id, embedding, raw_text, _, _ in bucket:
-            vec = np.asarray(list(embedding), dtype=np.float64)
-            v_norm = float(np.linalg.norm(vec))
-            if v_norm == 0:
-                continue
-            matched: list[tuple[int, float]] = []
-            for tag, centroid in tags_with_c:
-                c_norm = float(np.linalg.norm(centroid))
-                if c_norm == 0:
-                    continue
-                sim = float(np.dot(vec, centroid) / (v_norm * c_norm))
-                if sim >= threshold:
-                    matched.append((tag.id, sim))
-            if not matched:
-                continue
+        # ---------- ВЕКТОРНЫЙ COSINE: R @ T.T за один matmul ----------
+        # До рефакторинга: Python-цикл считал N*M dot product'ов и делал
+        # N*M*2 DB-roundtrip'ов (по два upsert на (review, tag)). На 3к
+        # отзывов × 10 тегов это десятки секунд — отсюда жалоба «Готовы
+        # 1 из 73 · 6 минут». Теперь cosine — один numpy matmul (милисек),
+        # DB-операции свёрнуты в bulk через executemany. Логика top_quote
+        # сохранена: побеждает отзыв с максимальным sim в (company, tag).
+        review_matrix = np.asarray([list(r[2]) for r in bucket], dtype=np.float64)
+        tag_matrix = np.asarray([c for _, c in tags_with_c], dtype=np.float64)
+        # Нормализация по строкам — потом cosine = dot product
+        r_norm = np.linalg.norm(review_matrix, axis=1, keepdims=True)
+        r_norm[r_norm == 0] = 1.0
+        t_norm = np.linalg.norm(tag_matrix, axis=1, keepdims=True)
+        t_norm[t_norm == 0] = 1.0
+        sim_matrix = (review_matrix / r_norm) @ (tag_matrix / t_norm).T
+        # Маска: какие (review_idx, tag_idx) выше threshold
+        hit_indices = np.argwhere(sim_matrix >= threshold)
+        if hit_indices.size == 0:
+            continue
 
-            # Цитата: первые 280 символов raw_text (хватает на «фрагмент»).
-            # Длинный отзыв в карточке UI обрезается, цитата не должна весить
-            # больше предложения-двух.
+        # ---------- Подготовка bulk-данных ----------
+        # review_pain_tags: список (review_id, pain_tag_id, similarity)
+        rpt_rows: list[dict] = []
+        # CompanyPainScore: агрегация по (company_id, tag_id)
+        # value = {"mention": int, "top_sim": float, "top_quote": str, "top_review_id": int}
+        cps_agg: dict[tuple[int, int], dict] = {}
+
+        for ridx, tidx in hit_indices:
+            ridx = int(ridx)
+            tidx = int(tidx)
+            sim = float(sim_matrix[ridx, tidx])
+            sim_rounded = round(sim, 3)
+            rid = int(bucket[ridx][0])
+            company_id = int(bucket[ridx][1])
+            raw_text = bucket[ridx][3]
+            tag_id = int(tags_with_c[tidx][0].id)
+
+            rpt_rows.append({
+                "review_id": rid, "pain_tag_id": tag_id, "similarity": sim_rounded,
+            })
+
             quote_text = (raw_text or "").strip()
             if len(quote_text) > 280:
                 quote_text = quote_text[:277].rstrip() + "..."
 
-            for tag_id, sim in matched:
-                sim_rounded = round(sim, 3)
-                # review_pain_tags upsert
-                ins = pg_insert(ReviewPainTag).values(
-                    review_id=int(rid), pain_tag_id=int(tag_id),
-                    similarity=sim_rounded,
-                ).on_conflict_do_update(
-                    index_elements=["review_id", "pain_tag_id"],
-                    set_={"similarity": sim_rounded},
-                )
-                await db.execute(ins)
-
-                # company_pain_scores: инкремент mention_count + last_mention_at.
-                # Также сохраняем top_quote: текущий отзыв становится топом, если
-                # либо top_quote ещё не было, либо новый sim > старого.
-                # COALESCE-обёртка на CompanyPainScore.top_quote_similarity нужна
-                # потому что Numeric(4,3) сравнивается напрямую: NULL > X = NULL.
-                table = CompanyPainScore.__table__
-                cps_ins = pg_insert(CompanyPainScore).values(
-                    company_id=int(company_id), pain_tag_id=int(tag_id),
-                    mention_count=1,
-                    first_mention_at=now,
-                    last_mention_at=now,
-                    top_quote=quote_text or None,
-                    top_quote_review_id=int(rid) if quote_text else None,
-                    top_quote_similarity=sim_rounded if quote_text else None,
-                )
-                set_clause = {
-                    "mention_count": table.c.mention_count + 1,
-                    "last_mention_at": now,
+            key = (company_id, tag_id)
+            cur = cps_agg.get(key)
+            if cur is None:
+                cps_agg[key] = {
+                    "mention": 1,
+                    "top_sim": sim_rounded if quote_text else 0,
+                    "top_quote": quote_text or None,
+                    "top_review_id": rid if quote_text else None,
                 }
-                if quote_text:
-                    # CASE WHEN excluded.sim > coalesce(current.sim, 0) THEN excluded.* ELSE current.* END
-                    cur_sim = func.coalesce(table.c.top_quote_similarity, 0)
-                    is_better = cps_ins.excluded.top_quote_similarity > cur_sim
-                    set_clause["top_quote"] = case(
-                        (is_better, cps_ins.excluded.top_quote),
-                        else_=table.c.top_quote,
-                    )
-                    set_clause["top_quote_review_id"] = case(
-                        (is_better, cps_ins.excluded.top_quote_review_id),
-                        else_=table.c.top_quote_review_id,
-                    )
-                    set_clause["top_quote_similarity"] = case(
-                        (is_better, cps_ins.excluded.top_quote_similarity),
-                        else_=table.c.top_quote_similarity,
-                    )
-                cps_ins = cps_ins.on_conflict_do_update(
-                    index_elements=["company_id", "pain_tag_id"],
-                    set_=set_clause,
+            else:
+                cur["mention"] += 1
+                if quote_text and sim_rounded > cur["top_sim"]:
+                    cur["top_sim"] = sim_rounded
+                    cur["top_quote"] = quote_text
+                    cur["top_review_id"] = rid
+
+            assigned.setdefault(rid, []).append(tag_id)
+
+        # ---------- Bulk INSERT review_pain_tags ----------
+        if rpt_rows:
+            rpt_ins = (
+                pg_insert(ReviewPainTag)
+                .values(rpt_rows)
+                .on_conflict_do_update(
+                    index_elements=["review_id", "pain_tag_id"],
+                    set_={"similarity": pg_insert(ReviewPainTag).excluded.similarity},
                 )
-                await db.execute(cps_ins)
+            )
+            await db.execute(rpt_ins)
 
-            assigned[int(rid)] = [t for t, _ in matched]
+        # ---------- Bulk INSERT/UPDATE company_pain_scores ----------
+        # Для каждой агрегированной пары делаем один upsert. Это всё ещё
+        # M*N в худшем случае, но без cosine-loop'а — на порядок быстрее.
+        # (Полностью bulk-upsert с CASE-merge mention_count невозможен в
+        # одном SQL — Postgres ON CONFLICT не умеет агрегировать по
+        # одинаковым ключам в одном VALUES; так что цикл по агрегатам.)
+        table = CompanyPainScore.__table__
+        for (company_id, tag_id), agg in cps_agg.items():
+            cps_ins = pg_insert(CompanyPainScore).values(
+                company_id=company_id,
+                pain_tag_id=tag_id,
+                mention_count=agg["mention"],
+                first_mention_at=now,
+                last_mention_at=now,
+                top_quote=agg["top_quote"],
+                top_quote_review_id=agg["top_review_id"],
+                top_quote_similarity=agg["top_sim"] if agg["top_quote"] else None,
+            )
+            set_clause: dict = {
+                "mention_count": table.c.mention_count + agg["mention"],
+                "last_mention_at": now,
+            }
+            if agg["top_quote"]:
+                cur_sim = func.coalesce(table.c.top_quote_similarity, 0)
+                is_better = cps_ins.excluded.top_quote_similarity > cur_sim
+                set_clause["top_quote"] = case(
+                    (is_better, cps_ins.excluded.top_quote),
+                    else_=table.c.top_quote,
+                )
+                set_clause["top_quote_review_id"] = case(
+                    (is_better, cps_ins.excluded.top_quote_review_id),
+                    else_=table.c.top_quote_review_id,
+                )
+                set_clause["top_quote_similarity"] = case(
+                    (is_better, cps_ins.excluded.top_quote_similarity),
+                    else_=table.c.top_quote_similarity,
+                )
+            cps_ins = cps_ins.on_conflict_do_update(
+                index_elements=["company_id", "pain_tag_id"], set_=set_clause,
+            )
+            await db.execute(cps_ins)
 
-            # Помечаем отзыв обработанным
+        # ---------- Помечаем все сматченные отзывы обработанными ----------
+        matched_review_ids = list(assigned.keys())
+        if matched_review_ids:
             await db.execute(
-                update(Review).where(Review.id == int(rid)).values(ai_processed_at=now)
+                update(Review).where(Review.id.in_(matched_review_ids))
+                .values(ai_processed_at=now)
             )
 
     await db.commit()
