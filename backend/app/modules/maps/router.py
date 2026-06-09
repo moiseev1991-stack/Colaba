@@ -1391,6 +1391,101 @@ async def admin_recluster_niche(
     }
 
 
+@router.post("/admin/recluster-niche/diagnostic")
+@limiter.limit("3/minute")
+async def admin_recluster_niche_diagnostic(
+    request: Request,
+    search_id: int = Query(...),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """СИНХРОННЫЙ recluster для отладки. Не ставит задачу в Celery — выполняет
+    кластеризацию прямо в HTTP-запросе и возвращает все промежуточные счётчики:
+
+      - reviews_with_embedding — сколько отзывов прошло в кластеризацию
+      - clusters_found         — сколько кластеров создалось (HDBSCAN или KMeans fallback)
+      - pain_tags_upserted     — сколько PainTag в БД создано/обновлено
+      - companies_with_pains_after — сколько компаний получило pain-теги после match
+      - error                  — если что-то упало, текст ошибки
+
+    Юзер может дернуть прямо из UI «AI завис» → видит точную причину.
+    """
+    from app.models.maps import MapSearchResult
+    from app.models.pain_tag import CompanyPainScore
+    from app.modules.reviews_ai import service as ai_service
+
+    search = await _get_owned_search(db, search_id, user_id)
+    if not search.niche or not search.city:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="У поиска не указана ниша или город — diagnostic невозможен.",
+        )
+
+    company_ids_rows = (
+        await db.execute(
+            select(MapSearchResult.company_id).where(
+                MapSearchResult.map_search_id == search.id
+            )
+        )
+    ).scalars().all()
+    company_ids = [int(c) for c in company_ids_rows]
+
+    reviews_with_embedding = (
+        await db.execute(
+            select(sa_func.count(Review.id)).where(
+                Review.company_id.in_(company_ids) if company_ids else False,
+                Review.embedding.is_not(None),
+            )
+        )
+    ).scalar() or 0
+
+    result: dict = {
+        "search_id": search.id,
+        "niche": search.niche,
+        "city": search.city,
+        "companies_total": len(company_ids),
+        "reviews_with_embedding": int(reviews_with_embedding),
+        "clusters_found": 0,
+        "pain_tags_upserted": 0,
+        "companies_with_pains_after": 0,
+        "error": None,
+    }
+
+    if reviews_with_embedding == 0:
+        result["error"] = "Нет ни одного отзыва с embedding — analyze не отрабатывал"
+        return result
+
+    try:
+        n_tags = await ai_service.recluster_pains_for_niche(
+            db, search.niche, search.city, company_ids=company_ids,
+        )
+        result["pain_tags_upserted"] = int(n_tags)
+
+        # Сколько компаний поиска получили хотя бы один pain-tag
+        cwp = (
+            await db.execute(
+                select(sa_func.count(sa_func.distinct(CompanyPainScore.company_id))).where(
+                    CompanyPainScore.company_id.in_(company_ids),
+                )
+            )
+        ).scalar() or 0
+        result["companies_with_pains_after"] = int(cwp)
+
+        # Сколько активных pain-tags теперь для (niche, city)
+        from app.models.pain_tag import PainTag
+        pt_q = select(sa_func.count(PainTag.id)).where(
+            PainTag.niche == search.niche,
+            PainTag.status == "active",
+            PainTag.city == search.city,
+        )
+        result["clusters_found"] = int((await db.execute(pt_q)).scalar() or 0)
+    except Exception as e:
+        logger.exception("recluster diagnostic failed")
+        result["error"] = f"{type(e).__name__}: {e}"
+
+    return result
+
+
 @router.get("/search/{search_id}/ai-progress")
 @limiter.limit("60/minute")
 async def get_ai_progress(

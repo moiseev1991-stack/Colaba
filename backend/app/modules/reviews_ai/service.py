@@ -362,9 +362,17 @@ async def recluster_pains_for_niche(
         if city is not None:
             base = base.where(Company.city == city)
     rows = list((await db.execute(base)).all())
+    logger.info(
+        "recluster %r/%r: взяли %d reviews с embedding (company_ids=%s, min_cs=%d)",
+        niche, city, len(rows),
+        f"{len(company_ids)} ids" if company_ids else "by Company.niche",
+        min_cs,
+    )
     if len(rows) < min_cs:
-        logger.info("recluster: %r/%r: только %d reviews с embedding, нужно ≥%d",
-                    niche, city, len(rows), min_cs)
+        logger.warning(
+            "recluster %r/%r: ABORT — только %d reviews с embedding, нужно ≥%d",
+            niche, city, len(rows), min_cs,
+        )
         return 0
 
     embeddings = np.asarray([list(r[2]) for r in rows], dtype=np.float64)
@@ -372,10 +380,18 @@ async def recluster_pains_for_niche(
 
     cluster_ids = sorted({int(l) for l in labels if l >= 0})
     if not cluster_ids:
-        logger.info("recluster: %r/%r: HDBSCAN не нашёл кластеров", niche, city)
+        logger.warning(
+            "recluster %r/%r: ABORT — кластеризация (HDBSCAN+kmeans fallback) вернула 0 кластеров на %d embeddings",
+            niche, city, len(rows),
+        )
         await _archive_unused_pain_tags(db, niche, city, keep_ids=set())
         await db.commit()
         return 0
+    logger.info(
+        "recluster %r/%r: нашли %d кластеров (размеры: %s)",
+        niche, city, len(cluster_ids),
+        ", ".join(str(int(np.sum(labels == cid))) for cid in cluster_ids[:10]),
+    )
 
     # 2-3. Для каждого кластера: centroid + label
     rng = random.Random(42)
@@ -470,11 +486,15 @@ async def recluster_pains_for_niche(
     # компаний Company.niche может НЕ совпадать с нашим niche; передаём
     # force_niche/force_city, чтобы match искал теги именно нашей пары
     # (niche, city) — то есть тех, которые мы только что создали.
-    await match_reviews_to_pain_tags(
+    assigned = await match_reviews_to_pain_tags(
         db,
         review_ids,
         force_niche=niche if company_ids else None,
         force_city=city if company_ids else None,
+    )
+    logger.info(
+        "recluster %r/%r: DONE — %d тегов upserted, %d reviews сматчено к тегам",
+        niche, city, len(upserted_ids), len(assigned),
     )
 
     return len(upserted_ids)
