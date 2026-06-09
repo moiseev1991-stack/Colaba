@@ -68,9 +68,19 @@ def cluster_embeddings(
             min_cluster_size=min_size,
             min_samples=min(min_samples, max(2, min_size // 2)),
             metric="euclidean",
-            cluster_selection_method="eom",
+            # 'leaf' даёт больше мелких чётких кластеров вместо нескольких
+            # огромных (eom). На большой выборке (3к+ отзывов одной ниши)
+            # eom часто схлопывал всё в 1-2 общих кластера, и match-threshold
+            # отсекал большинство отзывов как «не похожие». Leaf лучше под
+            # наш кейс: 10-15 узких болей вместо «жалобы вообще».
+            cluster_selection_method="leaf",
         )
         return clusterer.fit_predict(normalized)
+
+    # Минимум кластеров, чтобы считать HDBSCAN-результат «достаточным».
+    # На большой выборке (>500 reviews) пара кластеров — это сигнал что
+    # eom/leaf слишком агрессивно мерджит, лучше упасть в kmeans (k=10+).
+    MIN_USEFUL_CLUSTERS = 5 if n >= 500 else 2
 
     labels = _hdbscan(min_cluster_size)
     n_clusters = len({int(l) for l in labels if l >= 0})
@@ -78,7 +88,7 @@ def cluster_embeddings(
         "cluster_embeddings: HDBSCAN pass-1 n=%d min_size=%d → %d clusters, %d noise",
         n, min_cluster_size, n_clusters, int(np.sum(labels < 0)),
     )
-    if n_clusters > 0:
+    if n_clusters >= MIN_USEFUL_CLUSTERS:
         return labels
 
     # Pass 2: пониженный min_cluster_size
@@ -90,12 +100,13 @@ def cluster_embeddings(
             "cluster_embeddings: HDBSCAN pass-2 min_size=%d → %d clusters, %d noise",
             fallback_size, n_clusters, int(np.sum(labels < 0)),
         )
-        if n_clusters > 0:
+        if n_clusters >= MIN_USEFUL_CLUSTERS:
             return labels
 
     # Pass 3: k-means как гарантированный fallback. Даже «мягкие» границы
-    # — это лучше чем «AI ничего не нашёл, 70% вечно». LLM-naming извлечёт
-    # из каждого k-means кластера осмысленный pain-label.
+    # — это лучше чем «AI нашёл всего 2 кластера и ни на одну компанию
+    # их не повесил». LLM-naming извлечёт из каждого k-means кластера
+    # осмысленный pain-label.
     try:
         from sklearn.cluster import KMeans
     except ImportError:
