@@ -1412,6 +1412,47 @@ async def admin_recluster_niche(
     }
 
 
+@router.post("/admin/soften-pain-labels")
+@limiter.limit("2/minute")
+async def admin_soften_pain_labels(
+    request: Request,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Применяет _soften_pain_label ко всем существующим PainTag в БД.
+
+    Контекст: при первом recluster'е до 2026-06-10 LLM генерировал
+    обвинительные формулировки («Мошенничество с ценами», «Развод
+    клиентов»). Это плохо смотрится в карточке-лиде и юридически рискованно
+    в исходящих письмах. С нового релиза промпт и post-process делают
+    label нейтральным, но УЖЕ СОЗДАННЫЕ теги нужно пере-смягчить
+    в БД одним проходом — иначе ждать пере-recluster'а каждой ниши.
+
+    Endpoint меняет только текстовые поля (label, description) активных
+    тегов; centroid'ы, привязки review_pain_tags и company_pain_scores
+    остаются — это просто переименование.
+    """
+    from app.modules.reviews_ai.llm import _soften_pain_label
+
+    tags = (
+        (await db.execute(select(PainTag).where(PainTag.status == "active")))
+        .scalars()
+        .all()
+    )
+    changed = 0
+    for tag in tags:
+        new_label = _soften_pain_label(tag.label or "")
+        new_desc = _soften_pain_label(tag.description or "")
+        if new_label != (tag.label or "") or new_desc != (tag.description or ""):
+            tag.label = new_label
+            if tag.description is not None:
+                tag.description = new_desc
+            changed += 1
+    if changed > 0:
+        await db.commit()
+    return {"scanned": len(tags), "softened": changed}
+
+
 @router.post("/admin/recluster-niche/diagnostic")
 @limiter.limit("3/minute")
 async def admin_recluster_niche_diagnostic(
