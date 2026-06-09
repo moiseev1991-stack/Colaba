@@ -30,6 +30,7 @@ import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
+import { SignalsTableDemo } from '@/components/landing/SignalsTableDemo';
 
 /**
  * Принудительная светлая палитра для SEO-страниц. Переопределяет CSS-токены
@@ -119,6 +120,10 @@ export function SeoLandingShell({
 
         {/* Trust-strip */}
         <Reveal><TrustStrip /></Reveal>
+
+        {/* Выдача с диагнозом по нескольким нишам — идеологическая фишка
+            «не контакты, а боли», сразу после кредибилити-цифр. */}
+        <Reveal><SignalsTableShowcase /></Reveal>
 
         {/* «Было / стало» — визуальная схема вместо текстовых абзацев */}
         <Reveal><BeforeAfterDiagram /></Reveal>
@@ -610,6 +615,45 @@ function TrustCell({
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// Signals table showcase — таблица «компания → pain-теги → цитата → контакт»
+// ============================================================================
+
+function SignalsTableShowcase() {
+  return (
+    <section className="py-14 md:py-20">
+      <div className="max-w-6xl mx-auto px-6">
+        <div
+          className="text-center text-xs font-semibold uppercase tracking-widest mb-3"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          Так выглядит выдача
+        </div>
+        <h2
+          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          style={{ color: 'hsl(var(--text))' }}
+        >
+          Не «вот 1000 контактов», а кому, с чем и как написать
+        </h2>
+        <p
+          className="text-center text-sm md:text-base mb-8 max-w-2xl mx-auto"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          AI читает отзывы 2GIS и Я.Карт, выделяет повторяющиеся жалобы и
+          подкладывает цитату клиента под каждую боль — прямо в строке таблицы.
+        </p>
+        <SignalsTableDemo />
+        <div
+          className="mt-3 text-center text-[12px]"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          ПРИМЕР · так выглядит таблица «По картам» в кабинете
+        </div>
+      </div>
+    </section>
   );
 }
 

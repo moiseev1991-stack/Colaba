@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import '@/components/landing/landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { SignalsTableSection } from '@/components/landing/SignalsTableSection';
 import { DiagnosisSection } from '@/components/landing/DiagnosisSection';
 import { ImpactSection } from '@/components/landing/ImpactSection';
 import { ModulesSection } from '@/components/landing/ModulesSection';
@@ -80,6 +81,9 @@ export default function LandingPage() {
           onCtaRegister={() => scrollTo('register', true)}
           onCtaExamples={() => scrollTo('diagnosis')}
         />
+        {/* Идеологическая фишка — сначала «вот выдача с диагнозами» (breadth),
+            потом DiagnosisSection раскроет одну компанию подробно (depth). */}
+        <SignalsTableSection />
         {/* §4 ТЗ лендинг-рефакта 2026-06-03: главная фишка — сразу после hero */}
         <DiagnosisSection />
         <ImpactSection />
