@@ -1360,8 +1360,16 @@ async def admin_recluster_niche(
         )
         for cid in company_ids:
             analyze_reviews_for_company.delay(cid)
+        # Передаём company_ids явно — у Company.niche в БД формулировка из
+        # источника (2GIS отдаёт «Стоматологические клиники») может не
+        # совпадать с search.niche («стоматология»), и фильтр recluster
+        # по niche тогда давал 0 отзывов → теги не создавались, UI вис на 70%.
         recluster_pains_for_niche_task.apply_async(
-            args=[search.niche, search.city],
+            kwargs={
+                "niche": search.niche,
+                "city": search.city,
+                "company_ids": company_ids,
+            },
             countdown=120,
         )
     except Exception as e:
@@ -1430,6 +1438,7 @@ async def get_ai_progress(
             "reviews_total": 0,
             "reviews_with_embedding": 0,
             "reviews_with_sentiment": 0,
+            "pain_tags_total": 0,
             "stage": "idle",
             "percent": 0,
         }
@@ -1462,6 +1471,15 @@ async def get_ai_progress(
             )
         )
     ).scalar() or 0
+    # Активные pain-теги, созданные recluster'ом для (search.niche, search.city).
+    # Нужно чтобы UI отличал «recluster ещё не отработал» (= 0) от
+    # «теги созданы, идёт матч → company_pain_scores заполняется».
+    pain_tags_q = select(sa_func.count(PainTag.id)).where(
+        PainTag.niche == search.niche, PainTag.status == "active",
+    )
+    if search.city is not None:
+        pain_tags_q = pain_tags_q.where(PainTag.city == search.city)
+    pain_tags_total = (await db.execute(pain_tags_q)).scalar() or 0
 
     # Грубая оценка фазы для UI
     if reviews_total == 0:
@@ -1474,8 +1492,12 @@ async def get_ai_progress(
     elif reviews_with_embedding >= max(1, reviews_total * 0.5):
         # Половина и больше отзывов проиндексирована — ждём финальный recluster
         stage = "clustering"
-        # ~70% — analyze почти готов, recluster ещё впереди
-        percent = max(70, round(reviews_with_embedding * 70 / reviews_total))
+        if pain_tags_total > 0:
+            # Теги созданы, матч уже идёт — почти готово
+            percent = 90
+        else:
+            # ~70% — analyze почти готов, recluster ещё впереди
+            percent = max(70, round(reviews_with_embedding * 70 / reviews_total))
     else:
         stage = "analyzing"
         # До 60% — масштабируем по embeddings (analyze — главная медленная часть)
@@ -1487,6 +1509,7 @@ async def get_ai_progress(
         "reviews_total": int(reviews_total),
         "reviews_with_embedding": int(reviews_with_embedding),
         "reviews_with_sentiment": int(reviews_with_sentiment),
+        "pain_tags_total": int(pain_tags_total),
         "stage": stage,
         "percent": min(100, int(percent)),
     }

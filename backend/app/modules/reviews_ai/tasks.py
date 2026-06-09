@@ -75,16 +75,34 @@ def analyze_reviews_batch(review_ids: list[int]):
 # ---------------------------------------------------------------------------
 
 
-async def _recluster_async(niche: str, city: Optional[str]) -> int:
+async def _recluster_async(
+    niche: str,
+    city: Optional[str],
+    company_ids: Optional[list[int]] = None,
+) -> int:
     async with AsyncSessionLocal() as db:
-        return await service.recluster_pains_for_niche(db, niche, city)
+        return await service.recluster_pains_for_niche(
+            db, niche, city, company_ids=company_ids,
+        )
 
 
 @celery_app.task(name="recluster_pains_for_niche_task", queue="maps_ai", bind=True, time_limit=900)
-def recluster_pains_for_niche_task(self, niche: str, city: Optional[str] = None):
-    """Обёртка над service.recluster_pains_for_niche. time_limit 15 мин (LLM-naming N кластеров может быть медленным)."""
+def recluster_pains_for_niche_task(
+    self,
+    niche: str,
+    city: Optional[str] = None,
+    company_ids: Optional[list[int]] = None,
+):
+    """Обёртка над service.recluster_pains_for_niche. time_limit 15 мин (LLM-naming N кластеров может быть медленным).
+
+    company_ids — если передан, recluster берёт отзывы строго по этому списку
+    компаний, игнорируя Company.niche. Нужно для admin/recluster-niche по
+    конкретному поиску: парсер мог записать у Company.niche другую формулировку
+    («стоматологическая клиника» вместо «стоматология»), и фильтр по niche
+    выдавал 0 отзывов → recluster тихо ничего не делал.
+    """
     try:
-        return asyncio.run(_recluster_async(niche, city))
+        return asyncio.run(_recluster_async(niche, city, company_ids))
     except Exception as exc:
         logger.warning("recluster_pains_for_niche_task retrying %r/%r: %s", niche, city, exc)
         raise self.retry(exc=exc, countdown=300, max_retries=1)

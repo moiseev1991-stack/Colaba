@@ -141,12 +141,22 @@ async def match_reviews_to_pain_tags(
     db: AsyncSession,
     review_ids: list[int],
     threshold: float | None = None,
+    force_niche: str | None = None,
+    force_city: str | None = None,
 ) -> dict[int, list[int]]:
     """Для каждого review_id, для которого есть embedding, ищет ближайшие pain_tags
     той же ниши (и города компании или глобальные для ниши) через cosine similarity.
 
     Сохраняет matches в review_pain_tags и пересчитывает company_pain_scores.
     Возвращает {review_id: [pain_tag_id, ...]} только для назначенных.
+
+    force_niche/force_city — если переданы, игнорируем Company.niche/Company.city
+    и считаем все reviews одной группой под этой ниша/город. Нужно когда
+    recluster делается для конкретного поиска: у Company.niche в БД может
+    стоять формулировка из источника («Стоматологические клиники»), которая
+    не совпадает с search.niche («стоматология»), и без переопределения
+    match сматчит отзывы только с тегами «старой» ниши, а свежесозданные
+    теги нужной ниши останутся неприсвоенными.
     """
     if not review_ids:
         return {}
@@ -179,10 +189,13 @@ async def match_reviews_to_pain_tags(
     if not rows:
         return {}
 
-    # Группируем по (niche, city) чтобы один раз достать pain_tags на пару
+    # Группируем по (niche, city) чтобы один раз достать pain_tags на пару.
+    # При force_niche — все отзывы под одной парой (force_niche, force_city),
+    # независимо от Company.niche/Company.city.
     by_niche_city: dict[tuple[str, str | None], list[tuple]] = defaultdict(list)
     for r in rows:
-        by_niche_city[(r[4], r[5])].append(r)
+        key = (force_niche, force_city) if force_niche else (r[4], r[5])
+        by_niche_city[key].append(r)
 
     assigned: dict[int, list[int]] = {}
     now = datetime.now(timezone.utc)
@@ -315,6 +328,7 @@ async def recluster_pains_for_niche(
     niche: str,
     city: str | None = None,
     min_cluster_size: int | None = None,
+    company_ids: list[int] | None = None,
 ) -> int:
     """1. Берём все reviews этой ниши+города с embeddings.
     2. HDBSCAN.
@@ -322,18 +336,31 @@ async def recluster_pains_for_niche(
     4. Старые активные pain_tags этой ниши (не в новом наборе) → archived.
     5. Сбрасываем review_pain_tags / company_pain_scores этой ниши и матчим заново.
 
+    Если передан `company_ids` — фильтруем reviews ровно по этим компаниям
+    (а не по Company.niche). Это нужно когда admin/recluster-niche
+    запускают из конкретного поиска: у Company.niche может быть другая
+    формулировка из источника (2GIS отдаёт «Стоматологические клиники»,
+    а юзер искал «стоматология») — фильтр по niche в этом случае давал 0
+    отзывов, recluster тихо ничего не создавал, UI висел на 70%.
+
     Возвращает количество созданных/обновлённых тегов.
     """
     min_cs = min_cluster_size if min_cluster_size is not None else settings.REVIEWS_AI_MIN_CLUSTER_SIZE
 
-    # 1. Reviews этой ниши+города с embedding
+    # 1. Reviews этой ниши+города с embedding (либо по company_ids — см. docstring)
     base = (
         select(Review.id, Review.raw_text, Review.embedding, Review.company_id)
-        .join(Company, Company.id == Review.company_id)
-        .where(Review.embedding.isnot(None), Company.niche == niche)
+        .where(Review.embedding.isnot(None))
     )
-    if city is not None:
-        base = base.where(Company.city == city)
+    if company_ids:
+        # Явный список компаний: фильтруем без JOIN на Company.niche/city
+        base = base.where(Review.company_id.in_(company_ids))
+    else:
+        base = base.join(Company, Company.id == Review.company_id).where(
+            Company.niche == niche
+        )
+        if city is not None:
+            base = base.where(Company.city == city)
     rows = list((await db.execute(base)).all())
     if len(rows) < min_cs:
         logger.info("recluster: %r/%r: только %d reviews с embedding, нужно ≥%d",
@@ -424,20 +451,31 @@ async def recluster_pains_for_niche(
             text("DELETE FROM review_pain_tags WHERE review_id = ANY(:ids)"),
             {"ids": review_ids},
         )
-        # company_pain_scores: чистим по компаниям этой ниши, чтобы пересчитать
-        company_ids = list({int(r[3]) for r in rows})
+        # company_pain_scores: чистим по компаниям, чьи отзывы кластеризовали,
+        # — связки с pain_tags этой search-niche, чтобы пересчитать.
+        # (Локальное имя — отдельное от параметра company_ids, который пришёл
+        # в функцию извне; именно reviews-set даёт нам правильный список.)
+        member_company_ids = list({int(r[3]) for r in rows})
         await db.execute(
             text(
                 "DELETE FROM company_pain_scores WHERE company_id = ANY(:ids) "
                 "AND pain_tag_id IN (SELECT id FROM pain_tags WHERE niche = :n)"
             ),
-            {"ids": company_ids, "n": niche},
+            {"ids": member_company_ids, "n": niche},
         )
 
     await db.commit()
 
-    # Заново матчим
-    await match_reviews_to_pain_tags(db, review_ids)
+    # Заново матчим. Если recluster был вызван с явным company_ids — у этих
+    # компаний Company.niche может НЕ совпадать с нашим niche; передаём
+    # force_niche/force_city, чтобы match искал теги именно нашей пары
+    # (niche, city) — то есть тех, которые мы только что создали.
+    await match_reviews_to_pain_tags(
+        db,
+        review_ids,
+        force_niche=niche if company_ids else None,
+        force_city=city if company_ids else None,
+    )
 
     return len(upserted_ids)
 

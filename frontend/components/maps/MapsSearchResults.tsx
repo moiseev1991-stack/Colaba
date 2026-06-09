@@ -215,6 +215,10 @@ export function MapsSearchResults({
   // null = не запрашивали; полностью обнуляется при 'ready' с pains > 0.
   const [aiProgress, setAiProgress] = useState<MapsAiProgressOut | null>(null);
   const aiProgressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Время старта recluster — нужно для детектора «зависло»: если за >3 мин
+  // pain_tags_total так и 0 при 100% эмбеддингов, скорее всего recluster
+  // упал тихо и нужно дать юзеру кнопку retry.
+  const [reclusterStartedAt, setReclusterStartedAt] = useState<number | null>(null);
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -495,10 +499,12 @@ export function MapsSearchResults({
     if (reclusterState === 'queueing' || reclusterState === 'queued') return;
     setReclusterState('queueing');
     setReclusterMsg('');
+    setAiProgress(null);
     try {
       const result = await adminReclusterNiche(search.id);
       setReclusterState('queued');
       setReclusterMsg(result.hint);
+      setReclusterStartedAt(Date.now());
       // Сразу запрашиваем прогресс и стартуем polling каждые 5 сек.
       // Прогресс-бар в шапке выдачи покажет юзеру что цепочка реально работает.
       void fetchAiProgressOnce();
@@ -748,9 +754,20 @@ export function MapsSearchResults({
             {reclusterState === 'queued' && (
               <AiPainProgressBar
                 progress={aiProgress}
-                onRetry={() => {
+                startedAt={reclusterStartedAt}
+                onDismiss={() => {
                   setReclusterState('idle');
                   setAiProgress(null);
+                  setReclusterStartedAt(null);
+                  stopAiProgressPolling();
+                }}
+                onRestart={() => {
+                  setReclusterState('idle');
+                  setAiProgress(null);
+                  setReclusterStartedAt(null);
+                  stopAiProgressPolling();
+                  // Сразу заново ставим в очередь — юзер хочет повторить
+                  void handleReclusterNiche();
                 }}
               />
             )}
@@ -1232,63 +1249,104 @@ export function MapsSearchResults({
  *   3. ready      — pain-теги начали появляться у компаний
  *
  * progress=null означает «только что нажали, ещё не дождались первого ответа».
+ *
+ * Детектор «зависло»: если эмбеддинги 100% и pain_tags_total=0 уже >3 мин —
+ * почти наверняка recluster_pains_for_niche упал тихо или нашёл 0 кластеров.
+ * Показываем CTA «Запустить заново».
  */
 function AiPainProgressBar({
   progress,
-  onRetry,
+  startedAt,
+  onDismiss,
+  onRestart,
 }: {
   progress: MapsAiProgressOut | null;
-  onRetry: () => void;
+  startedAt: number | null;
+  onDismiss: () => void;
+  onRestart: () => void;
 }) {
   const stage = progress?.stage ?? 'analyzing';
   const percent = progress?.percent ?? 5;
+  const elapsedSec =
+    startedAt != null ? Math.floor((Date.now() - startedAt) / 1000) : 0;
+
+  // Stuck-детектор: эмбеддинги готовы, но pain-тегов так и не появилось > 3 мин.
+  const isStuck =
+    progress != null &&
+    stage === 'clustering' &&
+    progress.reviews_total > 0 &&
+    progress.reviews_with_embedding === progress.reviews_total &&
+    progress.pain_tags_total === 0 &&
+    elapsedSec > 180;
+
   const stageLabel = (() => {
+    if (isStuck) return 'Похоже, AI зависла на финальном шаге';
     switch (stage) {
       case 'idle':
         return 'Нет отзывов для разбора';
       case 'analyzing':
         return 'Шаг 1 из 2 · читаю отзывы и считаю эмбеддинги';
       case 'clustering':
-        return 'Шаг 2 из 2 · собираю кластеры болей';
+        return progress && progress.pain_tags_total > 0
+          ? 'Шаг 2 из 2 · привязываю кластеры к компаниям'
+          : 'Шаг 2 из 2 · собираю кластеры болей';
       case 'ready':
         return 'Готово · показываю плитки болей в карточках';
       default:
         return 'AI работает…';
     }
   })();
-  const tone =
-    stage === 'ready'
-      ? 'good'
-      : stage === 'idle'
-      ? 'muted'
-      : 'warm';
+  const tone = isStuck
+    ? 'hot'
+    : stage === 'ready'
+    ? 'good'
+    : stage === 'idle'
+    ? 'muted'
+    : 'warm';
   const barCls =
     tone === 'good'
       ? 'bg-emerald-500'
       : tone === 'muted'
       ? 'bg-slate-400'
+      : tone === 'hot'
+      ? 'bg-rose-500'
       : 'bg-violet-500';
+  const wrapCls = isStuck
+    ? 'border-rose-200 bg-rose-50/70 dark:border-rose-700/50 dark:bg-rose-900/30'
+    : 'border-violet-200 bg-violet-50/70 dark:border-violet-700/50 dark:bg-violet-900/30';
+  const labelCls = isStuck
+    ? 'text-rose-900 dark:text-rose-100'
+    : 'text-violet-900 dark:text-violet-100';
+  const muteCls = isStuck
+    ? 'text-rose-800/80 dark:text-rose-200/80'
+    : 'text-violet-800/80 dark:text-violet-200/80';
 
   return (
-    <div className="mt-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
+    <div className={`mt-2 rounded-md border px-3 py-2 text-[12px] ${wrapCls}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 font-medium text-violet-900 dark:text-violet-100">
+        <span className={`inline-flex items-center gap-1.5 font-medium ${labelCls}`}>
           <Brain className="h-3.5 w-3.5" />
-          AI разбирает отзывы
+          {isStuck ? 'AI-разбор завис' : 'AI разбирает отзывы'}
         </span>
-        <span className="text-violet-800/80 dark:text-violet-200/80">{stageLabel}</span>
-        <span className="ml-auto tabular-nums text-[11px] font-semibold text-violet-900 dark:text-violet-100">
+        <span className={muteCls}>{stageLabel}</span>
+        <span
+          className={`ml-auto tabular-nums text-[11px] font-semibold ${labelCls}`}
+        >
           {percent}%
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-violet-200/60 dark:bg-violet-900/60">
+      <div
+        className={`mt-1.5 h-1.5 w-full overflow-hidden rounded-full ${
+          isStuck ? 'bg-rose-200/60 dark:bg-rose-900/60' : 'bg-violet-200/60 dark:bg-violet-900/60'
+        }`}
+      >
         <div
           className={`h-full ${barCls} transition-[width] duration-700`}
           style={{ width: `${Math.max(3, Math.min(100, percent))}%` }}
         />
       </div>
       {progress && (
-        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-violet-800/80 dark:text-violet-200/70">
+        <div className={`mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] ${muteCls}`}>
           <span title="Сколько компаний поиска уже получили pain-теги">
             Готовы: <b className="tabular-nums">{progress.companies_with_pains}</b> из{' '}
             <b className="tabular-nums">{progress.companies_total}</b> компаний
@@ -1299,20 +1357,45 @@ function AiPainProgressBar({
               <b className="tabular-nums">{progress.reviews_total}</b>
             </span>
           )}
-          {stage !== 'ready' && (
+          <span title="Сколько кластеров болей создано для этой ниши">
+            Кластеры: <b className="tabular-nums">{progress.pain_tags_total}</b>
+          </span>
+          {startedAt && (
+            <span title="Прошло времени с момента запуска AI-разбора">
+              · {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
+            </span>
+          )}
+          <span className="ml-auto inline-flex items-center gap-2">
+            {isStuck && (
+              <button
+                type="button"
+                onClick={onRestart}
+                className="rounded-md bg-rose-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-rose-700"
+                title="Поставить AI-разбор в очередь повторно"
+              >
+                Запустить заново
+              </button>
+            )}
             <button
               type="button"
-              onClick={onRetry}
-              className="ml-auto text-violet-700 underline-offset-2 hover:underline dark:text-violet-200"
+              onClick={onDismiss}
+              className="underline-offset-2 hover:underline"
               title="Скрыть прогресс-плашку. Запустить AI снова можно кнопкой выше."
             >
               скрыть
             </button>
-          )}
+          </span>
+        </div>
+      )}
+      {isStuck && (
+        <div className={`mt-1.5 text-[11px] ${muteCls}`}>
+          Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты.
+          Скорее всего сорвался ProxyAPI на этапе именования кластеров — нажми
+          «Запустить заново», чтобы повторить.
         </div>
       )}
       {stage === 'idle' && (
-        <div className="mt-1.5 text-[11px] text-violet-800/80 dark:text-violet-200/70">
+        <div className={`mt-1.5 text-[11px] ${muteCls}`}>
           У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу
           или подожди, пока подтянутся отзывы.
         </div>

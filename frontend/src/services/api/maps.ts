@@ -545,6 +545,9 @@ export interface MapsAiProgressOut {
   reviews_total: number;
   reviews_with_embedding: number;
   reviews_with_sentiment: number;
+  /** Кол-во активных pain-тегов в (search.niche, search.city). 0 при
+   *  stage=clustering означает, что recluster ещё не дошёл / упал. */
+  pain_tags_total: number;
   stage: 'idle' | 'analyzing' | 'clustering' | 'ready';
   percent: number;
 }
