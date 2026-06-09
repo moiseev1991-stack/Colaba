@@ -512,6 +512,25 @@ export async function getProvidersHealth(): Promise<ProvidersHealthOut> {
   return response.data;
 }
 
+export interface ReclusterNicheResponse {
+  queued: boolean;
+  niche: string;
+  city: string;
+  hint: string;
+}
+
+/** POST /maps/admin/recluster-niche — ручной триггер AI-разбора болей
+ *  ниши/города поиска. Cron делает это раз в сутки только для top-30
+ *  ниш по reviews; для редких ниш карточки навсегда оставались без
+ *  pain-pills и показывали fallback NegativeSnippetsBlock. */
+export async function adminReclusterNiche(searchId: number): Promise<ReclusterNicheResponse> {
+  const response = await apiClient.post<ReclusterNicheResponse>(
+    `/maps/admin/recluster-niche?search_id=${searchId}`,
+    {}
+  );
+  return response.data;
+}
+
 /** POST /maps/companies/{id}/draft-email — LLM-генерация драфта холодного письма. */
 export async function draftEmailForCompany(companyId: number): Promise<OutreachDraftOut> {
   const response = await apiClient.post<OutreachDraftOut>(

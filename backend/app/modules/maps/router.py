@@ -1311,6 +1311,51 @@ async def admin_recompute_lead_temperature(
     return {"processed": processed, "remaining_estimate": int(remaining)}
 
 
+@router.post("/admin/recluster-niche")
+@limiter.limit("5/minute")
+async def admin_recluster_niche(
+    request: Request,
+    search_id: int = Query(...),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ручной триггер AI-разбора болей для ниши/города поиска.
+
+    Зачем: cron `recluster_popular_niches` запускает recluster раз в сутки
+    только для top-30 (niche, city) по reviews. Для редких или свежих
+    комбинаций (типа «стоматология / Балашиха») это значит что
+    `company_pain_scores` навсегда пуст → карточки показывают «ЖАЛОБЫ
+    КЛИЕНТОВ» (snippet-fallback) вместо красивых pain-pills с лейблами.
+
+    Этот endpoint дёргает `recluster_pains_for_niche_task` для конкретной
+    ниши/города поиска. После завершения (1-3 мин) `top_pains` у всех
+    компаний этой ниши заполнится и UI покажет pain-tags.
+    """
+    search = await _get_owned_search(db, search_id, user_id)
+    if not search.niche or not search.city:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="У поиска не указана ниша или город — recluster невозможен.",
+        )
+
+    try:
+        from app.modules.reviews_ai.tasks import recluster_pains_for_niche_task
+        recluster_pains_for_niche_task.delay(search.niche, search.city)
+    except Exception as e:
+        logger.exception("admin_recluster_niche: failed to enqueue")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Не смог поставить задачу: {e}",
+        )
+
+    return {
+        "queued": True,
+        "niche": search.niche,
+        "city": search.city,
+        "hint": "AI-разбор обычно занимает 1-3 минуты. Обнови страницу через минуту.",
+    }
+
+
 @router.post("/admin/recompute-website-score")
 @limiter.limit("2/minute")
 async def admin_recompute_website_score(
