@@ -515,32 +515,40 @@ function MetricChip({
 }
 
 function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
-  // v3: pain-pills рядом (как на промо SignalsTableDemo) + одна цитата по
-  // самой популярной боли в стиле blockquote. Заголовок мягче, без больших
-  // жёлтых fill-плашек по каждой боли.
+  // v4: убираем шумный жёлтый bg и × N с обводкой. Теперь плитка —
+  // тонкий outlined-chip как у профессиональных дашбордов (Linear, Notion).
+  // Заголовок «Диагноз по отзывам» → «Темы из негативных отзывов» —
+  // нейтральнее и точнее: AI кластеризует именно темы жалоб, а не ставит
+  // компании диагноз. Цитата отзыва ниже остаётся в blockquote-стиле.
   return (
     <div className="mt-3 space-y-2">
       <div className="flex items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--muted))]">
-        <Activity className="h-3 w-3 text-[color:var(--signal-warm)]" />
-        Диагноз по отзывам
+        <Activity className="h-3 w-3 text-[hsl(var(--muted))]" />
+        Темы из негативных отзывов
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {pains.slice(0, 5).map((p) => (
+        {pains.slice(0, 6).map((p) => (
           <span
             key={p.pain_tag_id}
             title={p.description ?? p.label}
-            className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-warm-bg)] px-2 py-0.5 text-[11.5px] font-medium text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30"
+            className="inline-flex items-center gap-1.5 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11.5px] text-[hsl(var(--text))] hover:border-[color:var(--signal-warm)]/50 transition-colors"
           >
-            {p.label}
-            {p.mention_count > 0 && (
-              <span className="font-semibold opacity-80">×{p.mention_count}</span>
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-[color:var(--signal-warm)]/70"
+              aria-hidden
+            />
+            <span className="leading-tight">{p.label}</span>
+            {p.mention_count > 1 && (
+              <span className="text-[10px] tabular-nums text-[hsl(var(--muted))]">
+                {p.mention_count}
+              </span>
             )}
           </span>
         ))}
       </div>
       {pains[0]?.top_quote && (
-        <div className="flex items-start gap-2 border-l-2 border-[color:var(--signal-warm)]/40 pl-2.5 text-[12.5px] leading-snug text-[hsl(var(--text))]">
-          <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]/70" />
+        <div className="flex items-start gap-2 border-l-2 border-[hsl(var(--border))] pl-2.5 text-[12.5px] leading-snug text-[hsl(var(--muted))]">
+          <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[hsl(var(--muted))]" />
           <span className="line-clamp-2 italic">«{pains[0].top_quote}»</span>
         </div>
       )}
