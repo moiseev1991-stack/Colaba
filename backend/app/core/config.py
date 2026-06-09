@@ -147,7 +147,13 @@ class Settings(BaseSettings):
     REVIEWS_AI_NAMING_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для naming кластеров; пусто = auto-pick по подсказке 'sonnet'")
     REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для генерации драфта холодного письма; пусто = auto-pick")
     REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для AI-описания компании (блок 4C); пусто = reviews_ai_company_description")
-    REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(default=0.78, description="Cosine similarity threshold для матчинга review→pain_tag")
+    # Cosine similarity threshold для матчинга review→pain_tag.
+    # 0.78 был слишком высоким: на 2968 отзывов «стоматология/Балашиха» с 2
+    # кластерами match присвоил теги только 1 компании из 73 (юзер 2026-06-10).
+    # Снижение до 0.55 — на нормализованных text-embedding-3-small это «явная
+    # тематическая близость», ниже идёт уже шум. Можно гонять выше через env,
+    # если будут ложные срабатывания.
+    REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(default=0.55, description="Cosine similarity threshold для матчинга review→pain_tag")
     REVIEWS_AI_MIN_CLUSTER_SIZE: int = Field(default=8, description="HDBSCAN min_cluster_size")
 
     # DaData (блок 2 ТЗ 2026-06-02). Бесплатный тариф 10k запросов/день.
