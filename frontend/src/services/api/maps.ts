@@ -559,6 +559,32 @@ export async function getMapsAiProgress(searchId: number): Promise<MapsAiProgres
   return response.data;
 }
 
+/** Синхронный recluster для отладки. Выполняет кластеризацию прямо в HTTP-запросе
+ *  и возвращает все промежуточные счётчики. Юзер нажимает «Запустить диагностику»
+ *  на stuck-плашке — за 30-60 сек получает точную причину почему ничего не вышло. */
+export interface MapsReclusterDiagnosticOut {
+  search_id: number;
+  niche: string;
+  city: string | null;
+  companies_total: number;
+  reviews_with_embedding: number;
+  clusters_found: number;
+  pain_tags_upserted: number;
+  companies_with_pains_after: number;
+  error: string | null;
+}
+
+export async function adminReclusterNicheDiagnostic(
+  searchId: number,
+): Promise<MapsReclusterDiagnosticOut> {
+  const response = await apiClient.post<MapsReclusterDiagnosticOut>(
+    `/maps/admin/recluster-niche/diagnostic?search_id=${searchId}`,
+    {},
+    { timeout: 180_000 }, // до 3 мин: синхронный HDBSCAN на 3к точек небыстрый
+  );
+  return response.data;
+}
+
 /** POST /maps/companies/{id}/draft-email — LLM-генерация драфта холодного письма. */
 export async function draftEmailForCompany(companyId: number): Promise<OutreachDraftOut> {
   const response = await apiClient.post<OutreachDraftOut>(

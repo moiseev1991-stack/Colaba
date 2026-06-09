@@ -26,6 +26,7 @@ import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
   adminReclusterNiche,
+  adminReclusterNicheDiagnostic,
   draftEmailForCompany,
   enrichCompaniesTeam,
   exportSearchCsvUrl,
@@ -34,6 +35,7 @@ import {
   listMapCompanies,
   type CompanyOut,
   type MapsAiProgressOut,
+  type MapsReclusterDiagnosticOut,
   type MapSearchFilter,
   type MapSearchOut,
   type OutreachDraftOut,
@@ -219,6 +221,9 @@ export function MapsSearchResults({
   // pain_tags_total так и 0 при 100% эмбеддингов, скорее всего recluster
   // упал тихо и нужно дать юзеру кнопку retry.
   const [reclusterStartedAt, setReclusterStartedAt] = useState<number | null>(null);
+  // Результат синхронного diagnostic-вызова, чтобы показать его юзеру в stuck-плашке.
+  const [diagnostic, setDiagnostic] = useState<MapsReclusterDiagnosticOut | null>(null);
+  const [diagnosticRunning, setDiagnosticRunning] = useState(false);
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -755,19 +760,53 @@ export function MapsSearchResults({
               <AiPainProgressBar
                 progress={aiProgress}
                 startedAt={reclusterStartedAt}
+                diagnostic={diagnostic}
+                diagnosticRunning={diagnosticRunning}
                 onDismiss={() => {
                   setReclusterState('idle');
                   setAiProgress(null);
                   setReclusterStartedAt(null);
+                  setDiagnostic(null);
                   stopAiProgressPolling();
                 }}
                 onRestart={() => {
                   setReclusterState('idle');
                   setAiProgress(null);
                   setReclusterStartedAt(null);
+                  setDiagnostic(null);
                   stopAiProgressPolling();
-                  // Сразу заново ставим в очередь — юзер хочет повторить
                   void handleReclusterNiche();
+                }}
+                onRunDiagnostic={async () => {
+                  setDiagnosticRunning(true);
+                  setDiagnostic(null);
+                  try {
+                    const r = await adminReclusterNicheDiagnostic(search.id);
+                    setDiagnostic(r);
+                    // Если diagnostic создал теги — сразу подтянем выдачу
+                    if (r.companies_with_pains_after > 0) {
+                      void refreshCompanies(filter);
+                    }
+                  } catch (e) {
+                    const err = e as { response?: { data?: { detail?: unknown } } };
+                    const detail = err?.response?.data?.detail;
+                    setDiagnostic({
+                      search_id: search.id,
+                      niche: search.niche,
+                      city: search.city,
+                      companies_total: 0,
+                      reviews_with_embedding: 0,
+                      clusters_found: 0,
+                      pain_tags_upserted: 0,
+                      companies_with_pains_after: 0,
+                      error:
+                        typeof detail === 'string'
+                          ? detail
+                          : 'Не удалось выполнить diagnostic (timeout/500)',
+                    });
+                  } finally {
+                    setDiagnosticRunning(false);
+                  }
                 }}
               />
             )}
@@ -1257,13 +1296,19 @@ export function MapsSearchResults({
 function AiPainProgressBar({
   progress,
   startedAt,
+  diagnostic,
+  diagnosticRunning,
   onDismiss,
   onRestart,
+  onRunDiagnostic,
 }: {
   progress: MapsAiProgressOut | null;
   startedAt: number | null;
+  diagnostic: MapsReclusterDiagnosticOut | null;
+  diagnosticRunning: boolean;
   onDismiss: () => void;
   onRestart: () => void;
+  onRunDiagnostic: () => void;
 }) {
   const stage = progress?.stage ?? 'analyzing';
   const percent = progress?.percent ?? 5;
@@ -1388,10 +1433,72 @@ function AiPainProgressBar({
         </div>
       )}
       {isStuck && (
-        <div className={`mt-1.5 text-[11px] ${muteCls}`}>
-          Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты.
-          Скорее всего сорвался ProxyAPI на этапе именования кластеров — нажми
-          «Запустить заново», чтобы повторить.
+        <div className={`mt-1.5 space-y-1.5 text-[11px] ${muteCls}`}>
+          <div>
+            Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты.
+            Скорее всего celery-задача зависла или кластеризация даёт 0 кластеров.
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={diagnosticRunning}
+              onClick={onRunDiagnostic}
+              className="rounded-md border border-rose-300 bg-white px-2 py-0.5 text-[11px] font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 dark:bg-transparent dark:text-rose-200"
+              title="Запустит синхронный recluster прямо сейчас и покажет точную причину (займёт до 1-2 минут)"
+            >
+              {diagnosticRunning
+                ? '🔬 Диагностика выполняется… (до 2 мин)'
+                : '🔬 Запустить диагностику'}
+            </button>
+            <span className="text-[11px] opacity-80">
+              Синхронно прогонит кластеризацию и покажет точную причину
+            </span>
+          </div>
+          {diagnostic && (
+            <div className="rounded-md border border-rose-200 bg-white/80 px-2.5 py-1.5 text-[11px] dark:bg-rose-950/40">
+              <div className="font-medium text-rose-900 dark:text-rose-100">
+                Результат диагностики:
+              </div>
+              <ul className="mt-1 space-y-0.5 text-rose-900/90 dark:text-rose-100/90">
+                <li>
+                  Отзывов с эмбеддингами:{' '}
+                  <b className="tabular-nums">{diagnostic.reviews_with_embedding}</b>
+                </li>
+                <li>
+                  Кластеров после HDBSCAN/k-means:{' '}
+                  <b className="tabular-nums">{diagnostic.clusters_found}</b>
+                </li>
+                <li>
+                  Pain-тегов upserted:{' '}
+                  <b className="tabular-nums">{diagnostic.pain_tags_upserted}</b>
+                </li>
+                <li>
+                  Компаний получили теги:{' '}
+                  <b className="tabular-nums">{diagnostic.companies_with_pains_after}</b>{' '}
+                  из {diagnostic.companies_total}
+                </li>
+                {diagnostic.error && (
+                  <li className="font-medium text-rose-800 dark:text-rose-200">
+                    Ошибка: {diagnostic.error}
+                  </li>
+                )}
+              </ul>
+              {diagnostic.companies_with_pains_after > 0 && (
+                <div className="mt-1 text-emerald-700 dark:text-emerald-300">
+                  Готово! Закрой плашку — плитки появились в карточках.
+                </div>
+              )}
+              {!diagnostic.error && diagnostic.companies_with_pains_after === 0 && (
+                <div className="mt-1 text-rose-800 dark:text-rose-200">
+                  {diagnostic.reviews_with_embedding === 0
+                    ? 'Не было отзывов с эмбеддингами — analyze не отрабатывал. Проверь ProxyAPI токены.'
+                    : diagnostic.clusters_found === 0
+                    ? 'Кластеризация дала 0 кластеров. Слишком разнородные/мало отзывов либо HDBSCAN + k-means оба сломались.'
+                    : 'Кластеры есть, но match не присвоил их компаниям. Скорее всего слишком высокий REVIEWS_AI_PAIN_MATCH_THRESHOLD.'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {stage === 'idle' && (
