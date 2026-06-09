@@ -25,6 +25,7 @@ import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDraw
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
+  adminReclusterNiche,
   draftEmailForCompany,
   enrichCompaniesTeam,
   exportSearchCsvUrl,
@@ -181,6 +182,14 @@ export function MapsSearchResults({
   // Сворачиваемая легенда бейджей карточки (🔥/💼/Nл). Юзер регулярно
   // путался что они значат — теперь рядом с шапкой есть «?»-кнопка.
   const [showBadgeLegend, setShowBadgeLegend] = useState(false);
+  // Recluster (AI-разбор болей ниши). Cron делает это раз в сутки только
+  // для top-30 ниш; для редких комбинаций типа «стоматология/Балашиха»
+  // company_pain_scores оставался пуст → карточки в fallback. Кнопка
+  // даёт юзеру вручную поставить recluster в очередь.
+  const [reclusterState, setReclusterState] = useState<
+    'idle' | 'queueing' | 'queued' | 'error'
+  >('idle');
+  const [reclusterMsg, setReclusterMsg] = useState<string>('');
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -428,6 +437,30 @@ export function MapsSearchResults({
 
   // Останавливаем поллинг при размонтировании
   useEffect(() => stopAiPolling, [stopAiPolling]);
+
+  const handleReclusterNiche = useCallback(async () => {
+    if (reclusterState === 'queueing' || reclusterState === 'queued') return;
+    setReclusterState('queueing');
+    setReclusterMsg('');
+    try {
+      const result = await adminReclusterNiche(search.id);
+      setReclusterState('queued');
+      setReclusterMsg(result.hint);
+      // Через 90 секунд тихо перезагрузим компании — должно появиться top_pains.
+      window.setTimeout(() => {
+        void refreshCompanies(filter);
+      }, 90_000);
+    } catch (e) {
+      setReclusterState('error');
+      const err = e as { response?: { status?: number; data?: { detail?: unknown } } };
+      const detail = err?.response?.data?.detail;
+      setReclusterMsg(
+        typeof detail === 'string'
+          ? detail
+          : 'Не удалось поставить AI-разбор в очередь. Проверь логи.',
+      );
+    }
+  }, [reclusterState, search.id, refreshCompanies, filter]);
 
   // Автозапуск анализа, если пресет выбрали ещё на форме поиска (initialAiPreset).
   // Условия: пресет активен, парсинг завершён, есть видимые компании, ещё не
@@ -834,6 +867,31 @@ export function MapsSearchResults({
                 )}
               </div>
             )}
+            {/* Recluster — показываем когда выдача завершена, есть компании,
+                и хотя бы у одной нет top_pains. Если у всех уже разобрано,
+                кнопка не нужна. */}
+            {isTerminal &&
+              companies.length > 0 &&
+              companies.some((c) => !c.top_pains || c.top_pains.length === 0) && (
+                <button
+                  type="button"
+                  onClick={() => void handleReclusterNiche()}
+                  disabled={reclusterState === 'queueing' || reclusterState === 'queued'}
+                  title={
+                    reclusterMsg ||
+                    'AI разберёт отзывы и присвоит pain-теги. Занимает 1-3 минуты.'
+                  }
+                  className="rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-violet-600 dark:bg-violet-900/40 dark:text-violet-100 dark:hover:bg-violet-900/70"
+                >
+                  {reclusterState === 'queueing'
+                    ? 'Ставлю в очередь…'
+                    : reclusterState === 'queued'
+                      ? '🧠 AI запущен — ~1-3 мин'
+                      : reclusterState === 'error'
+                        ? '⚠ Не удалось — повторить'
+                        : '🧠 Разобрать боли AI'}
+                </button>
+              )}
             <button
               onClick={onNewSearch}
               className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"

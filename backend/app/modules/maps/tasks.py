@@ -303,6 +303,30 @@ async def _parse_map_search_async(search_id: int) -> None:
                 search.id, "done",
                 {"companies_found": total_found, "reviews_found": search.reviews_found},
             )
+
+            # Auto-trigger AI-разбора болей. Без этого новые ниши/города
+            # (которые не входят в top-30 для cron recluster_popular_niches)
+            # навсегда оставались без company_pain_scores → карточки
+            # показывали fallback NegativeSnippetsBlock вместо красивых
+            # pain-pills с лейблами и счётчиками. countdown=180с — даём
+            # analyze_reviews_for_company (sentiment + embeddings) сначала
+            # отработать на парсенных отзывах, иначе кластеризовать нечего.
+            if total_found > 0 and search.niche and search.city:
+                try:
+                    from app.modules.reviews_ai.tasks import recluster_pains_for_niche_task
+                    recluster_pains_for_niche_task.apply_async(
+                        args=[search.niche, search.city],
+                        countdown=180,
+                    )
+                    logger.info(
+                        "parse_map_search #%d: scheduled recluster for (%r, %r) in 180s",
+                        search.id, search.niche, search.city,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "parse_map_search #%d: failed to schedule recluster for (%r, %r): %s",
+                        search.id, search.niche, search.city, e,
+                    )
         except Exception as e:
             logger.exception("parse_map_search: unhandled error")
             search.status = "failed"
