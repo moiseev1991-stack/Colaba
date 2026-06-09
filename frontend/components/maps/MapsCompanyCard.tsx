@@ -19,7 +19,21 @@
  * сохранены — без них исчезает «фишка диагноза». Подписаны через title.
  */
 
-import { ExternalLink, ListPlus, Mail, MessageSquareQuote, Sparkles, Activity, Phone, Globe } from 'lucide-react';
+import {
+  ExternalLink,
+  ListPlus,
+  Mail,
+  MessageSquareQuote,
+  Sparkles,
+  Activity,
+  Phone,
+  Globe,
+  Star,
+  Flame,
+  Briefcase,
+  Calendar,
+  MessageCircle,
+} from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { CompanyOut, CompanyPainOut, PainTagShort } from '@/src/services/api/maps';
@@ -153,12 +167,12 @@ export function MapsCompanyCard({
         />
       )}
 
-      {/* Шапка: название (display) + рейтинг.
-          Мобайл (<sm): название переносится в 2 строки (line-clamp-2), правая
-          колонка ограничена max-w-[45%] и flex-wrap'ом — раньше длинные
-          бейджи «₽ 5.2М · 23л» с shrink-0 распирали карточку за вьюпорт
-          (см. ТЗ B.0 #1 «карточка обрезана справа»). */}
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
+      {/* Шапка v3: название слева, рейтинг справа крупно. Все остальные метрики
+          (температура, website-score, возраст, отзывы, негатив, сайт, источники)
+          — единым горизонтальным рядом ниже с иконками. Раньше плашки шли
+          вертикальной колонкой справа + ещё одна строка снизу = визуальный
+          хаос ("выглядит как черновик" — юзер 2026-06-09). */}
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-[15px] sm:text-[16px] font-semibold leading-snug tracking-tight text-[hsl(var(--text))] break-words line-clamp-2 sm:truncate">
             {company.name || '—'}
@@ -169,86 +183,97 @@ export function MapsCompanyCard({
             </div>
           )}
         </div>
-        <div className="flex max-w-[45%] flex-col items-end gap-1 shrink">
-          {rating != null && (
-            <RatingPill rating={Number(rating)} />
-          )}
-          {typeof company.lead_temperature === 'number' && (
-            <SignalPill
-              size="sm"
-              tone={tempTone(company.lead_temperature)}
-              title="Температура лида: рейтинг × отзывы × свежесть × контакты"
-            >
-              🔥 {company.lead_temperature}
-            </SignalPill>
-          )}
-          {typeof company.website_lead_score === 'number' && (
-            <SignalPill
-              size="sm"
-              tone={tempTone(company.website_lead_score)}
-              title="Website-score: «нужен сайт, а его нет» — кандидат на продажу сайта"
-            >
-              💼 {company.website_lead_score}
-            </SignalPill>
-          )}
-          {company.legal && (typeof company.legal.revenue === 'number' || typeof company.legal.age_years === 'number') && (
-            <SignalPill
-              size="sm"
-              tone="cool"
-              title={`ИНН: ${company.legal.inn ?? '—'} · ${company.legal.legal_short_name ?? company.legal.legal_name ?? ''}`}
-            >
-              {typeof company.legal.revenue === 'number' && company.legal.revenue > 0
-                ? `₽ ${(company.legal.revenue / 1_000_000).toFixed(1)}М`
-                : ''}
-              {typeof company.legal.revenue === 'number' && company.legal.revenue > 0 && typeof company.legal.age_years === 'number' ? ' · ' : ''}
-              {typeof company.legal.age_years === 'number' ? `${company.legal.age_years}л` : ''}
-            </SignalPill>
-          )}
-        </div>
+        {rating != null && <RatingPillV3 rating={Number(rating)} reviews={reviewsTotal} />}
       </div>
 
       {/* AI-анализ под выбранный пресет */}
       {aiAnalysis && <AiAnalysisRow analysis={aiAnalysis} />}
 
-      {/* SignalPill-ряд: единая шкала, «нет сайта» как accent */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <SignalPill tone="muted">{reviewsTotal} отзывов</SignalPill>
+      {/* Единая строка метрик с иконками. Каждая чипа = одна метрика,
+          одинаковый размер/радиус/паддинг. Скрываем нейтральные/нулевые
+          (например, не показываем «0 негатив» или «есть сайт» — это шум). */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12px]">
         {reviewsNeg > 0 && (
-          <SignalPill tone={reviewsNeg >= 5 ? 'hot' : 'warm'}>
-            негатив {reviewsNeg}
-          </SignalPill>
+          <MetricChip
+            tone={reviewsNeg >= 5 ? 'hot' : 'warm'}
+            icon={<MessageCircle />}
+            title="Негативных отзывов (1-3★ или sentiment=negative)"
+          >
+            {reviewsNeg} негатив
+          </MetricChip>
         )}
-        {ownerReplies === true ? (
-          <SignalPill tone="good">отвечает владелец</SignalPill>
-        ) : ownerReplies === false && reviewsTotal > 0 ? (
-          <SignalPill tone="warm">не отвечает</SignalPill>
-        ) : null}
-        {hasWebsite ? (
-          <SignalPill tone="muted">есть сайт</SignalPill>
-        ) : (
-          <SignalPill tone="accent" title="Нет сайта — горячий сигнал для продажи сайта">
-            нужен сайт
-          </SignalPill>
+        {ownerReplies === true && (
+          <MetricChip
+            tone="good"
+            icon={<MessageSquareQuote />}
+            title="Владелец отвечает на отзывы"
+          >
+            отвечает
+          </MetricChip>
         )}
+        {!hasWebsite && (
+          <MetricChip
+            tone="accent"
+            icon={<Globe />}
+            title="Нет сайта — горячий сигнал для продажи сайта"
+          >
+            нет сайта
+          </MetricChip>
+        )}
+        {typeof company.lead_temperature === 'number' && company.lead_temperature > 0 && (
+          <MetricChip
+            tone={tempTone(company.lead_temperature)}
+            icon={<Flame />}
+            title="Температура лида: рейтинг × отзывы × свежесть × контакты × ответы"
+          >
+            {company.lead_temperature}
+          </MetricChip>
+        )}
+        {typeof company.website_lead_score === 'number' && company.website_lead_score > 0 && (
+          <MetricChip
+            tone={tempTone(company.website_lead_score)}
+            icon={<Briefcase />}
+            title="Website-score: насколько компания — кандидат на продажу сайта"
+          >
+            {company.website_lead_score}
+          </MetricChip>
+        )}
+        {company.legal && typeof company.legal.age_years === 'number' && (
+          <MetricChip
+            tone="cool"
+            icon={<Calendar />}
+            title={`ИНН ${company.legal.inn ?? '—'}${
+              typeof company.legal.revenue === 'number' && company.legal.revenue > 0
+                ? ` · оборот ₽${(company.legal.revenue / 1_000_000).toFixed(1)}М`
+                : ''
+            }`}
+          >
+            {company.legal.age_years}л
+            {typeof company.legal.revenue === 'number' && company.legal.revenue > 0 && (
+              <span className="ml-1 text-[hsl(var(--muted))]">
+                · ₽{(company.legal.revenue / 1_000_000).toFixed(1)}М
+              </span>
+            )}
+          </MetricChip>
+        )}
+        {/* Источники: компактный текст, не плашка — это просто метаинформация */}
         {multiSourceList.length > 0 ? (
           <span
-            className="ml-auto inline-flex items-center gap-1 text-[11px]"
+            className="ml-auto inline-flex items-center gap-1 text-[11px] text-[hsl(var(--muted))]"
             title={
               activeSource && activeSource !== 'all'
-                ? `Фильтр: только ${sourceLabel(activeSource)}. Карточка фокусирует данные выбранного источника.`
-                : 'Компания найдена в нескольких источниках'
+                ? `Фильтр: только ${sourceLabel(activeSource)}.`
+                : 'Найдена в нескольких источниках'
             }
           >
             {multiSourceList.map((s, idx) => (
               <span key={s.source} className="inline-flex items-center gap-1">
-                {idx > 0 && <span aria-hidden className="text-[hsl(var(--muted))]">·</span>}
+                {idx > 0 && <span aria-hidden>·</span>}
                 <span
                   className={
                     s.active
-                      ? 'rounded-pill bg-brand-500/15 px-1.5 py-0.5 font-semibold text-brand-700 dark:text-brand-300'
-                      : activeSource && activeSource !== 'all'
-                      ? 'font-medium text-[hsl(var(--muted))] opacity-70'
-                      : 'font-medium text-[hsl(var(--text))]'
+                      ? 'font-semibold text-brand-700 dark:text-brand-300'
+                      : 'font-medium'
                   }
                 >
                   {s.label}
@@ -411,67 +436,141 @@ export function MapsCompanyCard({
 
 /* ===== Сабкомпоненты ===== */
 
-function RatingPill({ rating }: { rating: number }) {
-  const tone: 'good' | 'warm' | 'hot' | 'muted' =
-    rating >= 4.3 ? 'good' : rating <= 3.5 ? 'hot' : 'warm';
+/** Крупный рейтинг-чип v3: ★ N.N с цветом по шкале + мелким «· N отзывов».
+ *  Заменяет «4 плашки колонкой справа» — теперь в правом верхнем углу одна
+ *  заметная плашка с главным сигналом (рейтинг). Остальные метрики
+ *  переехали в единый горизонтальный ряд под названием. */
+function RatingPillV3({ rating, reviews }: { rating: number; reviews: number }) {
+  const color =
+    rating >= 4.5 ? '#16a34a' : rating >= 4.0 ? '#ca8a04' : rating >= 3.5 ? '#ea580c' : '#dc2626';
+  const bg =
+    rating >= 4.5
+      ? 'rgba(22, 163, 74, 0.10)'
+      : rating >= 4.0
+        ? 'rgba(202, 138, 4, 0.12)'
+        : rating >= 3.5
+          ? 'rgba(234, 88, 12, 0.12)'
+          : 'rgba(220, 38, 38, 0.12)';
   return (
-    <SignalPill tone={tone} size="sm">
-      <span className="font-semibold">★ {rating.toFixed(1)}</span>
-    </SignalPill>
+    <div
+      className="flex shrink-0 flex-col items-end rounded-v2-sm px-2.5 py-1"
+      style={{ background: bg }}
+      title={`Рейтинг ${rating.toFixed(1)} · ${reviews} отзывов`}
+    >
+      <div className="flex items-center gap-1 leading-none" style={{ color }}>
+        <Star className="h-3.5 w-3.5" fill={color} stroke={color} />
+        <span className="text-[15px] font-bold tabular-nums">{rating.toFixed(1)}</span>
+      </div>
+      {reviews > 0 && (
+        <div className="mt-0.5 text-[10px] leading-none text-[hsl(var(--muted))]">
+          {reviews} {reviews === 1 ? 'отзыв' : reviews < 5 ? 'отзыва' : 'отзывов'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Унифицированный чип метрики: иконка + значение + (опционально) tone-цвет.
+ *  Все метрики в одной строке выглядят одинаково = аккуратно. */
+function MetricChip({
+  tone,
+  icon,
+  children,
+  title,
+}: {
+  tone: 'good' | 'warm' | 'hot' | 'muted' | 'cool' | 'accent';
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+  title?: string;
+}) {
+  const cls = (() => {
+    switch (tone) {
+      case 'good':
+        return 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] ring-[color:var(--signal-good)]/30';
+      case 'warm':
+        return 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] ring-[color:var(--signal-warm)]/30';
+      case 'hot':
+        return 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)] ring-[color:var(--signal-hot)]/30';
+      case 'cool':
+        return 'bg-[var(--signal-cool-bg)] text-[color:var(--signal-cool)] ring-[color:var(--signal-cool)]/30';
+      case 'accent':
+        return 'bg-brand-500/10 text-brand-700 ring-brand-500/30 dark:text-brand-300';
+      default:
+        return 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-[hsl(var(--border))]';
+    }
+  })();
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${cls}`}
+    >
+      {icon && (
+        <span className="inline-flex h-3 w-3 items-center justify-center [&_svg]:h-3 [&_svg]:w-3">
+          {icon}
+        </span>
+      )}
+      {children}
+    </span>
   );
 }
 
 function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
+  // v3: pain-pills рядом (как на промо SignalsTableDemo) + одна цитата по
+  // самой популярной боли в стиле blockquote. Заголовок мягче, без больших
+  // жёлтых fill-плашек по каждой боли.
   return (
-    <div className="mt-2.5 space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--muted))]">
         <Activity className="h-3 w-3 text-[color:var(--signal-warm)]" />
         Диагноз по отзывам
       </div>
-      {pains.slice(0, 3).map((p) => (
-        <div
-          key={p.pain_tag_id}
-          className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2.5 py-1.5"
-        >
-          <div className="flex items-center gap-2">
-            <span className="rounded-pill bg-[var(--signal-warm)]/20 px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)]">
-              {p.label}
-            </span>
+      <div className="flex flex-wrap gap-1.5">
+        {pains.slice(0, 5).map((p) => (
+          <span
+            key={p.pain_tag_id}
+            title={p.description ?? p.label}
+            className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-warm-bg)] px-2 py-0.5 text-[11.5px] font-medium text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30"
+          >
+            {p.label}
             {p.mention_count > 0 && (
-              <span className="text-[11px] text-[color:var(--signal-warm)]/80">
-                × {p.mention_count}
-              </span>
+              <span className="font-semibold opacity-80">×{p.mention_count}</span>
             )}
-          </div>
-          {p.top_quote && (
-            <div className="mt-1 flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
-              <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
-              <span className="line-clamp-2 italic">«{p.top_quote}»</span>
-            </div>
-          )}
+          </span>
+        ))}
+      </div>
+      {pains[0]?.top_quote && (
+        <div className="flex items-start gap-2 border-l-2 border-[color:var(--signal-warm)]/40 pl-2.5 text-[12.5px] leading-snug text-[hsl(var(--text))]">
+          <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]/70" />
+          <span className="line-clamp-2 italic">«{pains[0].top_quote}»</span>
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
 function NegativeSnippetsBlock({ snippets }: { snippets: string[] }) {
+  // v3: компактный блок цитат без больших розовых плашек. Заголовок
+  // мягче, цитаты — серый левый бордер вместо bg-fill (как blockquote
+  // в gmail/notion), не давит карточку.
   return (
-    <div className="mt-2.5 space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[color:var(--signal-hot)]">
+    <div className="mt-3 space-y-1.5">
+      <div
+        className="flex items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--muted))]"
+        title="AI ещё не разобрал боли — показаны фрагменты негативных отзывов"
+      >
         <Activity className="h-3 w-3" />
-        Жалобы клиентов
+        <span>Фрагменты негативных отзывов</span>
+        <span className="rounded-pill bg-[hsl(var(--surface-2))] px-1.5 py-0.5 text-[10px] font-normal">
+          AI ещё считает
+        </span>
       </div>
       {snippets.slice(0, 2).map((quote, idx) => (
         <div
           key={idx}
-          className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-2.5 py-1.5"
-          title="AI ещё не разобрал боли — показан кусок негативного отзыва"
+          className="flex items-start gap-2 border-l-2 border-[color:var(--signal-hot)]/40 pl-2.5 text-[12.5px] leading-snug text-[hsl(var(--text))]"
         >
-          <div className="flex items-start gap-1.5 text-[12px] text-[hsl(var(--text))]">
-            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-hot)]" />
-            <span className="line-clamp-2 italic">«{quote}»</span>
-          </div>
+          <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-hot)]/70" />
+          <span className="line-clamp-2 italic">«{quote}»</span>
         </div>
       ))}
     </div>

@@ -446,10 +446,12 @@ export function MapsSearchResults({
       const result = await adminReclusterNiche(search.id);
       setReclusterState('queued');
       setReclusterMsg(result.hint);
-      // Через 90 секунд тихо перезагрузим компании — должно появиться top_pains.
+      // Цепочка: analyze_reviews (sentiment+embeddings) ~1-2 мин + countdown 120с
+      // + recluster_pains_for_niche (LLM-naming N кластеров) ~1-2 мин = ~4 мин.
+      // Берём 4 минуты + запас.
       window.setTimeout(() => {
         void refreshCompanies(filter);
-      }, 90_000);
+      }, 240_000);
     } catch (e) {
       setReclusterState('error');
       const err = e as { response?: { status?: number; data?: { detail?: unknown } } };
@@ -886,7 +888,7 @@ export function MapsSearchResults({
                   {reclusterState === 'queueing'
                     ? 'Ставлю в очередь…'
                     : reclusterState === 'queued'
-                      ? '🧠 AI запущен — ~1-3 мин'
+                      ? '🧠 AI работает — ~4 мин'
                       : reclusterState === 'error'
                         ? '⚠ Не удалось — повторить'
                         : '🧠 Разобрать боли AI'}
