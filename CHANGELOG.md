@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.2...v1.71.3) (2026-06-09)
+
+
+### Bug Fixes
+
+* **maps:** recluster по company_ids — лечим зависший AI-разбор на 70% ([f02b298](https://github.com/moiseev1991-stack/Colaba/commit/f02b29844e776cdcc288767f85335a4825e548f0))
+
 ## [1.71.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.1...v1.71.2) (2026-06-09)
 
 
