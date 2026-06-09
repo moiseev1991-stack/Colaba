@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.0...v1.71.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* **maps:** полная цепочка AI-разбора + редизайн плашек карточки ([0024550](https://github.com/moiseev1991-stack/Colaba/commit/002455044eef14222bb8ee5f17467a66711c59f8))
+
 # [1.71.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.70.0...v1.71.0) (2026-06-09)
 
 
