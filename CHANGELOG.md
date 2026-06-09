@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.71.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.70.0...v1.71.0) (2026-06-09)
+
+
+### Features
+
+* **maps:** кнопка «Разобрать боли AI» в шапке выдачи + auto-trigger recluster ([edbfc42](https://github.com/moiseev1991-stack/Colaba/commit/edbfc429c779404ca529ae326184c7b959ee9742))
+
 # [1.70.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.69.0...v1.70.0) (2026-06-09)
 
 
