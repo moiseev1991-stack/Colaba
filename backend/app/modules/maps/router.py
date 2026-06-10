@@ -887,6 +887,8 @@ async def get_niche_pain_trend(
     pain_tag_id: int = Query(...),
     city: Optional[str] = Query(default=None),
     source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
+    date_from: Optional[str] = Query(default=None, alias="from"),
+    date_to: Optional[str] = Query(default=None, alias="to"),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -896,12 +898,34 @@ async def get_niche_pain_trend(
 
     Источник может быть отфильтрован (2GIS / Я.Карты / Google). Если future
     Google source появится — фронт уже различает его цветом в chart.
+
+    Период `from`/`to` (ISO date) сужает posted_at — для UI «последние 90 дней».
     """
+    from datetime import datetime
     from app.models.pain_tag import ReviewPainTag
+
+    def _parse(d: str | None) -> datetime | None:
+        if not d:
+            return None
+        try:
+            return datetime.fromisoformat(d)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=f"invalid date '{d}'") from exc
+
+    dt_from = _parse(date_from)
+    dt_to = _parse(date_to)
 
     company_filter = [Company.niche == niche]
     if city is not None:
         company_filter.append(Company.city == city)
+
+    review_window = [Review.posted_at.isnot(None)]
+    if source:
+        review_window.append(Review.source == source)
+    if dt_from is not None:
+        review_window.append(Review.posted_at >= dt_from)
+    if dt_to is not None:
+        review_window.append(Review.posted_at <= dt_to)
 
     base = (
         select(
@@ -913,14 +937,12 @@ async def get_niche_pain_trend(
         .join(Company, Company.id == Review.company_id)
         .where(
             ReviewPainTag.pain_tag_id == pain_tag_id,
-            Review.posted_at.isnot(None),
+            *review_window,
             *company_filter,
         )
         .group_by("month", Review.source)
         .order_by("month")
     )
-    if source:
-        base = base.where(Review.source == source)
     rows = list((await db.execute(base)).all())
     points = [
         {"month": r[0], "source": r[1], "count": int(r[2])}
@@ -929,6 +951,13 @@ async def get_niche_pain_trend(
     range_start = points[0]["month"] if points else None
     range_end = points[-1]["month"] if points else None
 
+    bounds_filters = [ReviewPainTag.pain_tag_id == pain_tag_id, *company_filter]
+    if source:
+        bounds_filters.append(Review.source == source)
+    if dt_from is not None:
+        bounds_filters.append(Review.posted_at >= dt_from)
+    if dt_to is not None:
+        bounds_filters.append(Review.posted_at <= dt_to)
     bounds_row = (
         await db.execute(
             select(
@@ -939,10 +968,7 @@ async def get_niche_pain_trend(
             )
             .join(ReviewPainTag, ReviewPainTag.review_id == Review.id)
             .join(Company, Company.id == Review.company_id)
-            .where(
-                ReviewPainTag.pain_tag_id == pain_tag_id,
-                *company_filter,
-            )
+            .where(*bounds_filters)
         )
     ).one()
     first_at, last_at, total, companies_affected = bounds_row
@@ -2297,21 +2323,79 @@ async def list_pain_tags(
     request: Request,
     niche: str = Query(..., min_length=1),
     city: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
+    date_from: Optional[str] = Query(default=None, alias="from"),
+    date_to: Optional[str] = Query(default=None, alias="to"),
     db: AsyncSession = Depends(get_db),
 ):
     """Активные pain_tags для (niche, city). Без city — глобальные теги ниши.
 
-    Сортировка по occurrences_count DESC — самые «горячие» болевые точки сверху.
+    Без фильтров — fast-path по PainTag.occurrences_count.
+
+    С фильтрами `source`/`from`/`to` — пересчитываем occurrences по подмножеству
+    отзывов через JOIN review_pain_tags → reviews (count distinct review_id с
+    указанным source и попадающим в диапазон posted_at). Теги с 0 occurrences
+    в окне фильтра не возвращаются.
     """
-    q = select(PainTag).where(PainTag.niche == niche, PainTag.status == "active")
+    from datetime import datetime
+    from app.models.pain_tag import ReviewPainTag
+
+    has_filters = source is not None or date_from is not None or date_to is not None
+
+    base_filter = [PainTag.niche == niche, PainTag.status == "active"]
     if city is None:
-        q = q.where(PainTag.city.is_(None))
+        base_filter.append(PainTag.city.is_(None))
     else:
-        # включаем и global (city=NULL), и city-specific
-        q = q.where((PainTag.city == city) | (PainTag.city.is_(None)))
-    q = q.order_by(PainTag.occurrences_count.desc())
-    tags = list((await db.execute(q)).scalars().all())
-    return [PainTagOut.model_validate(t) for t in tags]
+        base_filter.append((PainTag.city == city) | (PainTag.city.is_(None)))
+
+    if not has_filters:
+        q = (
+            select(PainTag)
+            .where(*base_filter)
+            .order_by(PainTag.occurrences_count.desc())
+        )
+        tags = list((await db.execute(q)).scalars().all())
+        return [PainTagOut.model_validate(t) for t in tags]
+
+    # Парсим даты лениво, чтобы 422 при невалидном вводе.
+    def _parse(d: str | None) -> datetime | None:
+        if not d:
+            return None
+        try:
+            return datetime.fromisoformat(d)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=f"invalid date '{d}'") from exc
+
+    dt_from = _parse(date_from)
+    dt_to = _parse(date_to)
+
+    occurrences_col = sa_func.count(sa_func.distinct(Review.id)).label("occ")
+    review_filter = []
+    if source is not None:
+        review_filter.append(Review.source == source)
+    if dt_from is not None:
+        review_filter.append(Review.posted_at >= dt_from)
+    if dt_to is not None:
+        review_filter.append(Review.posted_at <= dt_to)
+
+    q = (
+        select(PainTag, occurrences_col)
+        .join(ReviewPainTag, ReviewPainTag.pain_tag_id == PainTag.id)
+        .join(Review, Review.id == ReviewPainTag.review_id)
+        .where(*base_filter, *review_filter)
+        .group_by(PainTag.id)
+        .having(occurrences_col > 0)
+        .order_by(occurrences_col.desc())
+    )
+    rows = list((await db.execute(q)).all())
+    out: list[PainTagOut] = []
+    for tag, occ in rows:
+        item = PainTagOut.model_validate(tag)
+        # Подменяем агрегированный counter на отфильтрованный — фронт показывает
+        # «по выбранному источнику/периоду», не глобальное число.
+        item.occurrences_count = int(occ)
+        out.append(item)
+    return out
 
 
 @router.get("/health/providers", response_model=ProvidersHealthOut)

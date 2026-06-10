@@ -508,10 +508,14 @@ export async function getNichePainTrend(
   painTagId: number,
   city?: string | null,
   source?: '2gis' | 'yandex_maps' | 'google',
+  from?: string,
+  to?: string,
 ): Promise<NichePainTrendOut> {
   const params = new URLSearchParams({ niche, pain_tag_id: String(painTagId) });
   if (city) params.set('city', city);
   if (source) params.set('source', source);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
   const response = await apiClient.get<NichePainTrendOut>(
     `/maps/insights/pain-trend?${params.toString()}`,
   );
@@ -635,9 +639,25 @@ export async function getCompanyReviews(
   return response.data;
 }
 
-export async function listPainTags(niche: string, city?: string): Promise<PainTagOut[]> {
+export type PainTagsFilter = {
+  /** '2gis' | 'yandex_maps' | 'google' — пересчитывает occurrences по выбранному источнику. */
+  source?: string;
+  /** ISO дата ('YYYY-MM-DD') — нижняя граница posted_at. */
+  from?: string;
+  /** ISO дата ('YYYY-MM-DD') — верхняя граница posted_at. */
+  to?: string;
+};
+
+export async function listPainTags(
+  niche: string,
+  city?: string,
+  filter?: PainTagsFilter,
+): Promise<PainTagOut[]> {
   const params = new URLSearchParams({ niche });
   if (city) params.set('city', city);
+  if (filter?.source) params.set('source', filter.source);
+  if (filter?.from) params.set('from', filter.from);
+  if (filter?.to) params.set('to', filter.to);
   const response = await apiClient.get<PainTagOut[]>(`/maps/pain-tags?${params.toString()}`);
   return response.data;
 }
