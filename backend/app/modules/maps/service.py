@@ -471,9 +471,16 @@ async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> No
                     contacts.append((ctype, v, False))
 
     # UPSERT каждого. ON CONFLICT DO NOTHING — если такой контакт уже есть.
+    # Параллельно — собираем найденный website для пост-апдейта Company.website
+    # (см. ниже): на 2GIS Catalog API website часто NULL, Я.Карты его отдаёт
+    # отдельным контактом, но из-за этого `companies.website` оставался пустым
+    # и фронт показывал «нет сайта» при реально известном домене.
+    found_website: str | None = None
     for ctype, value, is_primary in contacts:
         # value лимит 500 — обрезаем чтобы не упереться в столбец
         v = value[:500]
+        if ctype == "website" and not found_website:
+            found_website = v
         contact_ins = pg_insert(CompanyContact).values(
             company_source_id=cs_id,
             company_id=company.id,
@@ -485,6 +492,20 @@ async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> No
             index_elements=["company_source_id", "type", "value"],
         )
         await db.execute(contact_ins)
+
+    # Если у компании website ещё не выставлен (агрегированное поле для
+    # фильтров «нет сайта» / website_lead_score), а в текущем источнике он
+    # нашёлся — подтягиваем. NULLIF + COALESCE гарантирует что мы НЕ
+    # перепишем уже непустой website (другой источник имеет приоритет
+    # «первый нашёл»).
+    if found_website:
+        await db.execute(
+            text(
+                "UPDATE companies SET website = :w "
+                "WHERE id = :id AND (website IS NULL OR website = '')"
+            ),
+            {"w": found_website, "id": company.id},
+        )
 
 
 # ---------------------------------------------------------------------------

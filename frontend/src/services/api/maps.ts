@@ -449,6 +449,40 @@ export interface ReviewQueryFilter {
   has_owner_reply?: boolean;
   /** Multi-source (Phase 4): фильтр по источнику для табов «2GIS / Я.Карты». */
   source?: '2gis' | 'yandex_maps' | 'google';
+  /** Юзер 2026-06-10: фильтр отзывов по конкретному pain-кластеру.
+   *  Клик по pain-плитке в карточке → drawer-таб «Отзывы по теме». */
+  pain_tag_id?: number;
+}
+
+export interface PainTrendPoint {
+  month: string;          // 'YYYY-MM'
+  source: string;         // '2gis' | 'yandex_maps' | 'google'
+  count: number;
+}
+
+export interface PainTrendOut {
+  company_id: number;
+  pain_tag_id: number;
+  source_filter: string | null;
+  first_review_at: string | null;
+  last_review_at: string | null;
+  total_reviews: number;
+  range_start: string | null;
+  range_end: string | null;
+  points: PainTrendPoint[];
+}
+
+export async function getCompanyPainTrend(
+  companyId: number,
+  painTagId: number,
+  source?: '2gis' | 'yandex_maps' | 'google',
+): Promise<PainTrendOut> {
+  const params = new URLSearchParams();
+  if (source) params.set('source', source);
+  const response = await apiClient.get<PainTrendOut>(
+    `/maps/companies/${companyId}/pain-tag/${painTagId}/trend?${params.toString()}`,
+  );
+  return response.data;
 }
 
 export async function getCompanyReviews(
@@ -473,6 +507,8 @@ export async function getCompanyReviews(
   if (filter.has_owner_reply !== undefined)
     params.set('has_owner_reply', String(filter.has_owner_reply));
   if (filter.source) params.set('source', filter.source);
+  if (filter.pain_tag_id !== undefined)
+    params.set('pain_tag_id', String(filter.pain_tag_id));
   params.set('limit', String(limit));
   params.set('offset', String(offset));
   const response = await apiClient.get<ReviewsListOut>(

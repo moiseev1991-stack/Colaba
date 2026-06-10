@@ -704,6 +704,9 @@ async def list_company_reviews(
     has_owner_reply: Optional[bool] = Query(default=None),
     # Phase 4 multi-source: фильтр для табов «Все / 2GIS / Я.Карты» в drawer.
     source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
+    # Юзер 2026-06-10: клик по pain-плитке в карточке → список отзывов
+    # этого кластера. Фильтрует через ReviewPainTag-join.
+    pain_tag_id: Optional[int] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -711,6 +714,11 @@ async def list_company_reviews(
 ):
     await _get_company_or_404(db, company_id)
     q = select(Review).where(Review.company_id == company_id)
+    if pain_tag_id is not None:
+        from app.models.pain_tag import ReviewPainTag
+        q = q.join(
+            ReviewPainTag, ReviewPainTag.review_id == Review.id
+        ).where(ReviewPainTag.pain_tag_id == pain_tag_id)
     if sentiment:
         q = q.where(Review.sentiment == sentiment)
     if text_contains and text_contains.strip():
@@ -735,6 +743,85 @@ async def list_company_reviews(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/companies/{company_id}/pain-tag/{pain_tag_id}/trend")
+@limiter.limit("60/minute")
+async def get_company_pain_trend(
+    request: Request,
+    company_id: int,
+    pain_tag_id: int,
+    source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Динамика конкретной боли по месяцам для одной компании.
+
+    Юзер 2026-06-10: нужно видеть когда жалобы по теме «Долгое ожидание»
+    участились — может конкретный месяц/квартал. С фильтром по источнику
+    (2GIS / Я.Карты / все) — графика показывает раздельно или вместе.
+
+    Возвращает массив точек {month, count, source} где month = 'YYYY-MM',
+    плюс range_start/range_end для оси X. Если данных нет — пустой массив.
+    """
+    await _get_company_or_404(db, company_id)
+    from app.models.pain_tag import ReviewPainTag
+    from sqlalchemy import func as sa_func2
+
+    base = (
+        select(
+            sa_func2.to_char(sa_func2.date_trunc("month", Review.posted_at), "YYYY-MM").label("month"),
+            Review.source.label("source"),
+            sa_func2.count(Review.id).label("count"),
+        )
+        .join(ReviewPainTag, ReviewPainTag.review_id == Review.id)
+        .where(
+            Review.company_id == company_id,
+            ReviewPainTag.pain_tag_id == pain_tag_id,
+            Review.posted_at.isnot(None),
+        )
+        .group_by("month", Review.source)
+        .order_by("month")
+    )
+    if source:
+        base = base.where(Review.source == source)
+    rows = list((await db.execute(base)).all())
+
+    points = [
+        {"month": r[0], "source": r[1], "count": int(r[2])}
+        for r in rows
+    ]
+    range_start = points[0]["month"] if points else None
+    range_end = points[-1]["month"] if points else None
+
+    # Также сразу даём диапазон first→last posted_at без агрегации по
+    # месяцам — для текстового «12.03–28.05» рядом с pain-плиткой (3-A).
+    bounds_row = (
+        await db.execute(
+            select(
+                sa_func2.min(Review.posted_at),
+                sa_func2.max(Review.posted_at),
+                sa_func2.count(Review.id),
+            )
+            .join(ReviewPainTag, ReviewPainTag.review_id == Review.id)
+            .where(
+                Review.company_id == company_id,
+                ReviewPainTag.pain_tag_id == pain_tag_id,
+            )
+        )
+    ).one()
+    first_at, last_at, total = bounds_row
+    return {
+        "company_id": company_id,
+        "pain_tag_id": pain_tag_id,
+        "source_filter": source,
+        "first_review_at": first_at.isoformat() if first_at else None,
+        "last_review_at": last_at.isoformat() if last_at else None,
+        "total_reviews": int(total or 0),
+        "range_start": range_start,
+        "range_end": range_end,
+        "points": points,
+    }
 
 
 # ---------------------------------------------------------------------------
