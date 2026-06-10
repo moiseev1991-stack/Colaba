@@ -1311,7 +1311,13 @@ function AiPainProgressBar({
   onRunDiagnostic: () => void;
 }) {
   const stage = progress?.stage ?? 'analyzing';
-  const percent = progress?.percent ?? 5;
+  const rawPercent = progress?.percent ?? 5;
+  // На stage='ready' бэк отдаёт companies_with_pains/total*100 — это «доля
+  // охваченных компаний», а не «прогресс работы». UI показывал «Готово · 75%»,
+  // что путало: «готово» подразумевает финал, а 75% — «недоделано».
+  // Здесь нормализуем: при stage='ready' прогресс это 100% (работа сделана),
+  // а соотношение N/M отображаем отдельной строкой ниже.
+  const percent = stage === 'ready' ? 100 : rawPercent;
   const elapsedSec =
     startedAt != null ? Math.floor((Date.now() - startedAt) / 1000) : 0;
 
@@ -1335,8 +1341,16 @@ function AiPainProgressBar({
         return progress && progress.pain_tags_total > 0
           ? 'Шаг 2 из 2 · привязываю кластеры к компаниям'
           : 'Шаг 2 из 2 · собираю кластеры болей';
-      case 'ready':
-        return 'Готово · показываю плитки болей в карточках';
+      case 'ready': {
+        // Когда recluster завершился, но pain-тегов хватило не на всех компаний —
+        // объясняем явно, чтобы юзер не думал что прогресс «застрял».
+        const total = progress?.companies_total ?? 0;
+        const done = progress?.companies_with_pains ?? 0;
+        if (total > 0 && done < total) {
+          return `Готово · pain-теги есть у ${done} из ${total} компаний (у остальных мало негатива)`;
+        }
+        return 'Готово · pain-теги собраны для всех компаний';
+      }
       default:
         return 'AI работает…';
     }
@@ -1405,7 +1419,11 @@ function AiPainProgressBar({
           <span title="Сколько кластеров болей создано для этой ниши">
             Кластеры: <b className="tabular-nums">{progress.pain_tags_total}</b>
           </span>
-          {startedAt && (
+          {startedAt && stage !== 'ready' && (
+            // Таймер скрываем на финальной фазе: работа уже сделана, время не
+            // показатель прогресса. Иначе при кэш-загрузке (bekend сразу
+            // отдаёт 'ready') юзер видел «· 0:00» рядом с «Готово» — выглядело
+            // как зависший таймер.
             <span title="Прошло времени с момента запуска AI-разбора">
               · {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
             </span>
