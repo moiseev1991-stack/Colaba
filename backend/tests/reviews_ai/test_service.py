@@ -216,3 +216,67 @@ async def test_recluster_creates_tags_and_archives_unused(monkeypatch):
         )).scalars().all())
         assert len(new_tags) == n_tags
         assert all(t.label.startswith("label-") for t in new_tags)
+
+
+@pytest.mark.asyncio
+async def test_recluster_excludes_positive_reviews(monkeypatch):
+    """Регрессия: positive-отзывы не должны попадать в кластеризацию pain-тегов.
+    Без фильтра HDBSCAN создавал кластеры из благодарностей → LLM давал им
+    позитивный label → они отображались в блоке БОЛИ под красной рамкой."""
+    niche = _u("niche-pos")
+    city = _u("city-pos")
+
+    counter = {"n": 0}
+
+    async def fake_naming(_db, _niche, _samples):
+        counter["n"] += 1
+        return {"label": f"label-{counter['n']}", "description": "x"}
+
+    monkeypatch.setattr(ai_service.llm, "call_llm_cluster_naming", fake_naming)
+
+    async with AsyncSessionLocal() as db:
+        co = await _setup_user_and_company(db, niche=niche, city=city)
+
+        from sqlalchemy import text as sa_text
+
+        # 8 negative-отзывов (rating=2 → sentiment='negative') в направлении X
+        # + 8 positive-отзывов (rating=5 → sentiment='positive') в направлении Y.
+        # min_cluster_size=8: без фильтра было бы 2 кластера, с фильтром — 1.
+        groups = [
+            (2, [1.0, 0.0, 0.0]),  # негатив
+            (5, [0.0, 1.0, 0.0]),  # позитив
+        ]
+        idx = 0
+        for rating, direction in groups:
+            for _ in range(8):
+                txt = f"rev-{idx}-{uuid.uuid4()}"
+                await maps_service.save_reviews_batch(db, co.id, [
+                    ReviewRaw(source="2gis", rating=rating, raw_text=txt),
+                ])
+                review = (await db.execute(
+                    select(Review).where(Review.company_id == co.id, Review.raw_text == txt)
+                )).scalar_one()
+                jitter = [v + ((-1) ** idx) * 0.001 for v in direction]
+                await db.execute(
+                    sa_text("UPDATE reviews SET embedding = :v WHERE id = :id"),
+                    {"v": str(_vec(jitter)), "id": review.id},
+                )
+                idx += 1
+        await db.commit()
+
+        n_tags = await ai_service.recluster_pains_for_niche(
+            db, niche, city, min_cluster_size=8,
+        )
+
+        # Должен получиться ровно один кластер — из 8 негативных отзывов.
+        # 8 позитивных отфильтрованы и в HDBSCAN не пошли.
+        assert n_tags == 1, f"ожидали 1 кластер (только negative), получили {n_tags}"
+
+        # У оставшегося тега cluster_size == 8 (а не 16).
+        tag = (await db.execute(
+            select(PainTag).where(
+                PainTag.niche == niche, PainTag.city == city,
+                PainTag.status == "active",
+            )
+        )).scalar_one()
+        assert tag.cluster_size == 8
