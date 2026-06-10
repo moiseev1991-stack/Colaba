@@ -53,11 +53,17 @@ export function NicheBenchmarkOverviewBlock({
   }, [niche, city]);
 
   if (loading) return null;
-  if (!data || data.items.length === 0 || data.note === 'small_sample') return null;
+  if (
+    !data ||
+    !Array.isArray(data.items) ||
+    data.items.length === 0 ||
+    data.note === 'small_sample'
+  ) return null;
 
   const cityLabel = data.city ? ` · ${data.city}` : '';
   const top = data.items.slice(0, 6);
   const active = new Set(activePainTagIds ?? []);
+  const companiesTotal = data.companies_total ?? 0;
 
   return (
     <div className="mt-2 rounded border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900">
@@ -75,7 +81,12 @@ export function NicheBenchmarkOverviewBlock({
 
       <ul className="space-y-1">
         {top.map((it) => {
-          const sharePct = Math.round(it.share_of_companies * 100);
+          const share = typeof it.share_of_companies === 'number' ? it.share_of_companies : 0;
+          const avgPerCompany = typeof it.niche_avg_per_company === 'number'
+            ? it.niche_avg_per_company
+            : 0;
+          const affected = typeof it.companies_affected === 'number' ? it.companies_affected : 0;
+          const sharePct = Math.round(share * 100);
           const widthPct = Math.min(100, Math.max(6, sharePct));
           const isActive = active.has(it.pain_tag_id);
           const clickable = !!onPainClick;
@@ -99,10 +110,10 @@ export function NicheBenchmarkOverviewBlock({
                 </span>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                {it.companies_affected}/{data.companies_total} комп.
+                {affected}/{companiesTotal} комп.
               </span>
               <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                ср. {it.niche_avg_per_company.toFixed(1)}
+                ср. {avgPerCompany.toFixed(1)}
               </span>
             </>
           );
