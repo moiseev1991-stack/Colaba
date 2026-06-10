@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.74.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.73.0...v1.74.0) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** шапка топ-болей выглядит более кликабельно ([f06e3ce](https://github.com/moiseev1991-stack/Colaba/commit/f06e3cedd7284f603cc6bc0dc47ac75bcc1b7826))
+
+
+### Features
+
+* **maps:** кликабельная шапка топ-болей + chart по нише ([5e315e7](https://github.com/moiseev1991-stack/Colaba/commit/5e315e74c70697a562de054fde901e75a8f1921e))
+
 # [1.73.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.72.1...v1.73.0) (2026-06-10)
 
 
