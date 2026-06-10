@@ -15,9 +15,14 @@ import { getCompanyDigest, type CompanyDigestOut } from '@/src/services/api/maps
 interface Props {
   companyId: number;
   days?: number;
+  /** Юзер 2026-06-10: клик по плитке боли → drawer выставляет
+   *  activePainTagId (фильтр reviews + chart-блок). */
+  onPainClick?: (painTagId: number, label: string) => void;
+  /** Подсветка активной плитки. */
+  activePainTagId?: number | null;
 }
 
-export function CompanyDigestBlock({ companyId, days = 30 }: Props) {
+export function CompanyDigestBlock({ companyId, days = 30, onPainClick, activePainTagId }: Props) {
   const [data, setData] = useState<CompanyDigestOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,30 +105,76 @@ export function CompanyDigestBlock({ companyId, days = 30 }: Props) {
 
       {data.top_pains.length > 0 && (
         <div className="space-y-1.5">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-            Топ-боли клиентов
-          </div>
-          {data.top_pains.slice(0, 3).map((p) => (
-            <div
-              key={p.pain_tag_id}
-              className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2 py-1.5"
-            >
-              <div className="flex items-center gap-2">
-                <span className="rounded-pill bg-[var(--signal-warm)]/20 px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)]">
-                  {p.label}
-                </span>
-                {p.mention_count > 0 && (
-                  <span className="text-[11px] text-[color:var(--signal-warm)]/80">× {p.mention_count}</span>
-                )}
-              </div>
-              {p.top_quote && (
-                <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700">
-                  <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
-                  <span className="italic">«{p.top_quote}»</span>
-                </div>
-              )}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              Топ-боли клиентов · клик = отзывы темы
             </div>
-          ))}
+            {activePainTagId != null && onPainClick && (
+              <button
+                type="button"
+                onClick={() => onPainClick(-1, '')}
+                className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50"
+              >
+                × снять
+              </button>
+            )}
+          </div>
+          {data.top_pains.slice(0, 3).map((p) => {
+            const active = activePainTagId === p.pain_tag_id;
+            const clickable = !!onPainClick;
+            const baseCls =
+              'block w-full text-left rounded border px-2 py-1.5 transition-colors';
+            const stateCls = active
+              ? 'border-rose-500 bg-rose-50 dark:border-rose-400 dark:bg-rose-900/30'
+              : 'border-amber-300 bg-amber-50/70 hover:border-rose-400 hover:bg-rose-50/40 dark:border-amber-700/60 dark:bg-amber-900/20';
+            const Inner = (
+              <>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11.5px] font-medium ' +
+                      (active
+                        ? 'border-rose-500 bg-white text-rose-900 dark:bg-slate-900 dark:text-rose-100'
+                        : 'border-amber-300 bg-white text-amber-900 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-100')
+                    }
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
+                    {p.label}
+                  </span>
+                  {p.mention_count > 0 && (
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                      × {p.mention_count}
+                    </span>
+                  )}
+                </div>
+                {p.top_quote && (
+                  <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
+                    <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                    <span className="italic">«{p.top_quote}»</span>
+                  </div>
+                )}
+              </>
+            );
+            return clickable ? (
+              <button
+                key={p.pain_tag_id}
+                type="button"
+                onClick={() => onPainClick!(p.pain_tag_id, p.label)}
+                className={baseCls + ' ' + stateCls + ' cursor-pointer'}
+                title={
+                  active
+                    ? 'Клик ещё раз — снять фильтр'
+                    : 'Открыть отзывы этой темы + chart динамики'
+                }
+              >
+                {Inner}
+              </button>
+            ) : (
+              <div key={p.pain_tag_id} className={baseCls + ' ' + stateCls}>
+                {Inner}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -222,30 +222,45 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             />
           </div>
 
-          {/* Дайджест за 30 дней — лента метрик + топ-боли с цитатами */}
-          <CompanyDigestBlock companyId={detail.id} days={30} />
+          {/* Дайджест за 30 дней — лента метрик + кликабельные топ-боли.
+              Клик по плитке боли → activePainTagId → ниже появляется
+              PainTrendBlock (даты + chart) + reviews-список фильтруется. */}
+          <CompanyDigestBlock
+            companyId={detail.id}
+            days={30}
+            activePainTagId={activePainTagId}
+            onPainClick={(painTagId, label) => {
+              if (painTagId === -1 || activePainTagId === painTagId) {
+                setActivePainTagId(null);
+                setActivePainLabel('');
+                setPainTrend(null);
+              } else {
+                setActivePainTagId(painTagId);
+                setActivePainLabel(label);
+                setTab('all');
+              }
+            }}
+          />
+          {activePainTagId != null && painTrend && (
+            <PainTrendBlock
+              trend={painTrend}
+              label={activePainLabel}
+              hasSourceTabs={showSourceTabs}
+              sourceTab={sourceTab}
+            />
+          )}
 
+          {/* Полный список pain_tags компании — выводим как нейтральные
+              metadata-чипы (не кликабельные). Главный clickable-UX живёт
+              выше в CompanyDigestBlock (Топ-3 за 30 дней) — два кликабельных
+              блока со одним и тем же эффектом сбивают с толку. */}
           {Array.isArray(detail.pain_tags) && detail.pain_tags.length > 0 && (
             <div>
-              <div className="mb-1 flex items-center justify-between gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span>Боли клиентов · клик = отзывы только этой темы</span>
-                {activePainTagId != null && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActivePainTagId(null);
-                      setActivePainLabel('');
-                      setPainTrend(null);
-                    }}
-                    className="rounded border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    × снять фильтр
-                  </button>
-                )}
+              <div className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                Все темы болей компании
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {(() => {
-                  // Дедуп по нормализованному label
                   const seen = new Set<string>();
                   return detail.pain_tags.filter((t) => {
                     const k = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -253,45 +268,16 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                     seen.add(k);
                     return true;
                   });
-                })().map((t) => {
-                  const active = activePainTagId === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        if (active) {
-                          setActivePainTagId(null);
-                          setActivePainLabel('');
-                        } else {
-                          setActivePainTagId(t.id);
-                          setActivePainLabel(t.label);
-                          // сбрасываем sentiment-фильтр, иначе пересечение
-                          // pain-тег ∩ sentiment может дать 0
-                          setTab('all');
-                        }
-                      }}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11.5px] font-medium transition-colors',
-                        active
-                          ? 'border-rose-500 bg-rose-50 text-rose-900 dark:border-rose-400 dark:bg-rose-900/30 dark:text-rose-100'
-                          : 'border-slate-300 bg-white text-slate-800 hover:border-rose-400 hover:bg-rose-50/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-rose-500 dark:hover:bg-rose-900/20'
-                      )}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
-                      <span className="leading-tight">{t.label}</span>
-                    </button>
-                  );
-                })}
+                })().map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11.5px] text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
+                    {t.label}
+                  </span>
+                ))}
               </div>
-              {activePainTagId != null && painTrend && (
-                <PainTrendBlock
-                  trend={painTrend}
-                  label={activePainLabel}
-                  hasSourceTabs={showSourceTabs}
-                  sourceTab={sourceTab}
-                />
-              )}
             </div>
           )}
 
