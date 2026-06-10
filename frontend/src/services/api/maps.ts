@@ -496,6 +496,28 @@ export async function getCompanyPainTrend(
   return response.data;
 }
 
+/** Тот же shape что PainTrendOut, но scope=niche — chart по всей нише+городу. */
+export interface NichePainTrendOut extends Omit<PainTrendOut, 'company_id'> {
+  niche: string;
+  city: string | null;
+  companies_affected: number;
+}
+
+export async function getNichePainTrend(
+  niche: string,
+  painTagId: number,
+  city?: string | null,
+  source?: '2gis' | 'yandex_maps' | 'google',
+): Promise<NichePainTrendOut> {
+  const params = new URLSearchParams({ niche, pain_tag_id: String(painTagId) });
+  if (city) params.set('city', city);
+  if (source) params.set('source', source);
+  const response = await apiClient.get<NichePainTrendOut>(
+    `/maps/insights/pain-trend?${params.toString()}`,
+  );
+  return response.data;
+}
+
 export interface PainBenchmarkItem {
   pain_tag_id: number;
   label: string;

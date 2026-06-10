@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Brain, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
+import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
@@ -837,7 +837,27 @@ export function MapsSearchResults({
               />
             )}
             {regionPainTags.length > 0 && (
-              <RegionPainSummary tags={regionPainTags} niche={search.niche} city={search.city} />
+              <RegionPainSummary
+                tags={regionPainTags}
+                niche={search.niche}
+                city={search.city}
+                activeIds={filter.pain_tag_ids ?? []}
+                onToggle={(id) => {
+                  const current = filter.pain_tag_ids ?? [];
+                  const next = current.includes(id)
+                    ? current.filter((x) => x !== id)
+                    : [...current, id];
+                  setFilter((prev) => ({
+                    ...prev,
+                    pain_tag_ids: next.length > 0 ? next : null,
+                  }));
+                  setFilterDirty(true);
+                }}
+                onClear={() => {
+                  setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
+                  setFilterDirty(true);
+                }}
+              />
             )}
             {activeAiPreset && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
@@ -1319,10 +1339,19 @@ function RegionPainSummary({
   tags,
   niche,
   city,
+  activeIds,
+  onToggle,
+  onClear,
 }: {
   tags: PainTagOut[];
   niche: string;
   city: string | null;
+  /** Текущий фильтр pain_tag_ids — для подсветки активных плиток. */
+  activeIds: number[];
+  /** Клик по плитке: toggle id в фильтре списка компаний. */
+  onToggle: (id: number) => void;
+  /** Снять все pain-фильтры. */
+  onClear: () => void;
 }) {
   // Дедуп по нормализованному label — на проде встречаются почти-дубли
   // («Качество услуг», «Качество услуг и цены») из несовершенного
@@ -1335,32 +1364,71 @@ function RegionPainSummary({
     return true;
   });
   if (unique.length === 0) return null;
-  const top = unique.slice(0, 5);
+  const top = unique.slice(0, 6);
+  const hasActive = activeIds.length > 0;
 
   return (
     <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2">
         <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          <span>Чаще всего жалуются в нише</span>
+          <span>Топ-боли ниши — нажмите плитку, чтобы отфильтровать список</span>
           <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
             {niche}{city ? ` · ${city}` : ''}
           </span>
+          {hasActive && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              × снять фильтр
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {top.map((t) => (
-            <span
-              key={t.id}
-              title={t.description ?? t.label}
-              className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11.5px] font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
-              <span className="leading-tight">{t.label}</span>
-              <span className="rounded-sm bg-slate-100 px-1 text-[10px] tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                {t.occurrences_count}
-              </span>
-            </span>
-          ))}
+          {top.map((t) => {
+            const active = activeIds.includes(t.id);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onToggle(t.id)}
+                title={
+                  active
+                    ? 'Клик ещё раз — снять фильтр по этой боли'
+                    : t.description ?? 'Показать только компании с этой болью'
+                }
+                className={
+                  'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-[11.5px] font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-1 dark:focus:ring-rose-700 dark:focus:ring-offset-slate-900 ' +
+                  (active
+                    ? 'border-rose-500 bg-rose-50 text-rose-900 ring-1 ring-rose-300 dark:border-rose-400 dark:bg-rose-900/30 dark:text-rose-100 dark:ring-rose-700'
+                    : 'border-slate-300 bg-white text-slate-800 hover:border-rose-400 hover:bg-rose-50/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-rose-500 dark:hover:bg-rose-900/20')
+                }
+              >
+                <Filter
+                  className={
+                    'h-3 w-3 shrink-0 transition-colors ' +
+                    (active
+                      ? 'text-rose-600 dark:text-rose-300'
+                      : 'text-slate-400 group-hover:text-rose-500 dark:text-slate-500 dark:group-hover:text-rose-400')
+                  }
+                  aria-hidden
+                />
+                <span className="leading-tight">{t.label}</span>
+                <span
+                  className={
+                    'rounded-sm px-1 text-[10px] tabular-nums ' +
+                    (active
+                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-800/40 dark:text-rose-100'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300')
+                  }
+                >
+                  {t.occurrences_count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
