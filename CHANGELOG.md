@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.72.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.12...v1.72.0) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** website из company_contacts → Company.website ([c508e51](https://github.com/moiseev1991-stack/Colaba/commit/c508e5132cfc0b1de0a9ac1a2de82649b1719c88))
+
+
+### Features
+
+* **maps:** pain-tag → отзывы темы + chart динамики + ТОП-боли региона ([20da36d](https://github.com/moiseev1991-stack/Colaba/commit/20da36ddfea72ecdd4e8d74f6324d6499418ff27))
+
 ## [1.71.12](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.11...v1.71.12) (2026-06-10)
 
 
