@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.10](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.9...v1.71.10) (2026-06-10)
+
+
+### Bug Fixes
+
+* **reviews_ai:** pain-label = конкретная боль, не «Качество X» ([e272df3](https://github.com/moiseev1991-stack/Colaba/commit/e272df3335d835c07d0264f8d337781079836943))
+
 ## [1.71.9](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.8...v1.71.9) (2026-06-10)
 
 
