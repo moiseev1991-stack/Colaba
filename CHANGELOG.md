@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.77.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.77.0...v1.77.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** NicheBenchmarkOverviewBlock — защита от undefined полей ([d81171a](https://github.com/moiseev1991-stack/Colaba/commit/d81171a431efeb101c1e784c6a96619fba79dccc))
+
 # [1.77.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.76.0...v1.77.0) (2026-06-10)
 
 
