@@ -824,6 +824,138 @@ async def get_company_pain_trend(
     }
 
 
+@router.get("/companies/{company_id}/pain-benchmark")
+@limiter.limit("30/minute")
+async def get_company_pain_benchmark(
+    request: Request,
+    company_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """§1 ТЗ 2026-06-10: сравнение профиля болей компании со средним по нише+городу.
+
+    Для каждого активного pain_tag этой ниши/города возвращает:
+      - company_mentions      — упоминания у ЭТОЙ компании
+      - niche_avg_per_company — среднее на компанию по нише
+      - ratio                 — company_mentions / max(0.25, niche_avg)
+      - verdict               — worse (>= 1.5×) / on_par / better (< 0.66×)
+      - niche_total_mentions  — суммарно по нише
+      - niche_companies_total — размер выборки (для честности UI)
+
+    Используется в drawer-блоке «Сравнение с нишей» — аргумент в письме лиду
+    и сигнал для платных отчётов в дальнейшем. Все агрегаты по уже
+    собранным CompanyPainScore — без нового парсинга.
+    """
+    company = await _get_company_or_404(db, company_id)
+    if not company.niche:
+        return {
+            "company_id": company_id,
+            "niche": None,
+            "city": None,
+            "niche_companies_total": 0,
+            "items": [],
+        }
+
+    from app.models.pain_tag import CompanyPainScore, PainTag
+
+    # Кол-во компаний этой ниши+города (для расчёта среднего на компанию).
+    siblings_q = select(sa_func.count(Company.id)).where(Company.niche == company.niche)
+    if company.city is not None:
+        siblings_q = siblings_q.where(Company.city == company.city)
+    niche_companies_total = int((await db.execute(siblings_q)).scalar_one() or 0)
+    if niche_companies_total == 0:
+        return {
+            "company_id": company_id,
+            "niche": company.niche,
+            "city": company.city,
+            "niche_companies_total": 0,
+            "items": [],
+        }
+
+    # Одна CTE-выборка: pain_tags ниши + сумма по нише + значение этой компании.
+    # niche_avg рассчитываем в Python (делим на niche_companies_total) —
+    # внутри SQL потребовался бы CROSS JOIN на скаляр, не выигрывает в clarity.
+    pain_rows = (
+        await db.execute(
+            select(
+                PainTag.id,
+                PainTag.label,
+                PainTag.description,
+                sa_func.coalesce(
+                    select(CompanyPainScore.mention_count)
+                    .where(
+                        CompanyPainScore.company_id == company_id,
+                        CompanyPainScore.pain_tag_id == PainTag.id,
+                    )
+                    .correlate(PainTag)
+                    .scalar_subquery(),
+                    0,
+                ).label("company_mentions"),
+                sa_func.coalesce(
+                    select(sa_func.sum(CompanyPainScore.mention_count))
+                    .join(Company, Company.id == CompanyPainScore.company_id)
+                    .where(
+                        CompanyPainScore.pain_tag_id == PainTag.id,
+                        Company.niche == company.niche,
+                        *([Company.city == company.city] if company.city is not None else []),
+                    )
+                    .correlate(PainTag)
+                    .scalar_subquery(),
+                    0,
+                ).label("niche_total_mentions"),
+            )
+            .where(
+                PainTag.niche == company.niche,
+                PainTag.status == "active",
+                # включаем и city-specific, и global (city=NULL).
+                ((PainTag.city == company.city) | (PainTag.city.is_(None)))
+                if company.city is not None
+                else PainTag.city.is_(None),
+            )
+        )
+    ).all()
+
+    items = []
+    for tag_id, label, description, company_mentions, niche_total in pain_rows:
+        comp_m = int(company_mentions or 0)
+        nt_m = int(niche_total or 0)
+        if comp_m == 0 and nt_m == 0:
+            continue
+        niche_avg = nt_m / niche_companies_total if niche_companies_total > 0 else 0.0
+        # Защита от деления на «ноль из-за маленькой ниши»: avg<0.25 трактуем
+        # как 0.25, иначе любая компания с 1 жалобой выглядит «в 10 раз хуже».
+        denom = max(0.25, niche_avg)
+        ratio = comp_m / denom
+        if ratio >= 1.5:
+            verdict = "worse"
+        elif ratio <= 0.66:
+            verdict = "better"
+        else:
+            verdict = "on_par"
+        items.append({
+            "pain_tag_id": int(tag_id),
+            "label": label,
+            "description": description,
+            "company_mentions": comp_m,
+            "niche_total_mentions": nt_m,
+            "niche_avg_per_company": round(niche_avg, 2),
+            "ratio": round(ratio, 2),
+            "verdict": verdict,
+        })
+
+    # Сортировка: сначала «хуже рынка» по убыванию ratio, потом on_par, потом better.
+    verdict_order = {"worse": 0, "on_par": 1, "better": 2}
+    items.sort(key=lambda x: (verdict_order[x["verdict"]], -x["ratio"]))
+
+    return {
+        "company_id": company_id,
+        "niche": company.niche,
+        "city": company.city,
+        "niche_companies_total": niche_companies_total,
+        "items": items[:20],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Company digest (агрегат отзывов за период)
 # ---------------------------------------------------------------------------

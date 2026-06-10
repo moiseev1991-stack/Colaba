@@ -485,6 +485,34 @@ export async function getCompanyPainTrend(
   return response.data;
 }
 
+export interface PainBenchmarkItem {
+  pain_tag_id: number;
+  label: string;
+  description: string | null;
+  company_mentions: number;
+  niche_total_mentions: number;
+  niche_avg_per_company: number;
+  ratio: number;
+  verdict: 'worse' | 'on_par' | 'better';
+}
+
+export interface PainBenchmarkOut {
+  company_id: number;
+  niche: string | null;
+  city: string | null;
+  niche_companies_total: number;
+  items: PainBenchmarkItem[];
+}
+
+export async function getCompanyPainBenchmark(
+  companyId: number,
+): Promise<PainBenchmarkOut> {
+  const response = await apiClient.get<PainBenchmarkOut>(
+    `/maps/companies/${companyId}/pain-benchmark`,
+  );
+  return response.data;
+}
+
 export async function getCompanyReviews(
   id: number,
   filterOrSentiment?: ReviewQueryFilter | 'positive' | 'negative' | 'neutral',

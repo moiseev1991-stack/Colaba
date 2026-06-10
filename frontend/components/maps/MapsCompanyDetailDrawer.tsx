@@ -30,6 +30,7 @@ import {
 
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
 import { OutreachDraftBlock } from '@/components/maps/OutreachDraftBlock';
+import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -249,6 +250,10 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               sourceTab={sourceTab}
             />
           )}
+
+          {/* §1 ТЗ 2026-06-10: профиль болей компании vs средние по нише+городу.
+              Аргумент в письме лиду + база для будущих платных отчётов. */}
+          <PainBenchmarkBlock companyId={detail.id} />
 
           {/* Полный список pain_tags компании — выводим как нейтральные
               metadata-чипы (не кликабельные). Главный clickable-UX живёт
