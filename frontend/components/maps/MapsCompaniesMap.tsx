@@ -27,9 +27,11 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 
 import {
   getSearchHeatmap,
+  getSearchPainTags,
   type CompanyOut,
   type HeatmapLayer,
   type HeatmapOut,
+  type PainTagOut,
 } from '@/src/services/api/maps';
 import type { CompanyAnalysisOut } from '@/src/services/api/reviews-ai';
 
@@ -55,6 +57,7 @@ const LAYER_LABELS: Record<LayerOption, string> = {
   website: 'Нужен сайт',
   rating: 'Низкий рейтинг',
   wealth: '₽ платёжеспособные',
+  pain_type: 'По теме боли',
 };
 
 const LAYER_HINTS: Record<LayerOption, string> = {
@@ -64,6 +67,7 @@ const LAYER_HINTS: Record<LayerOption, string> = {
   website: 'Где плотность лидов «нужен сайт» (без своего сайта)',
   rating: 'Где низкие рейтинги — проблемы с репутацией',
   wealth: 'Где сидят денежные компании по DaData',
+  pain_type: 'Тепло по конкретной боли (выбери из списка ниже)',
 };
 
 function hasCoords(c: CompanyOut): c is CompanyOut & { lat: number; lng: number } {
@@ -195,10 +199,45 @@ export default function MapsCompaniesMap({
   const [heatData, setHeatData] = useState<HeatmapOut | null>(null);
   const [heatLoading, setHeatLoading] = useState(false);
   const [heatError, setHeatError] = useState<string | null>(null);
+  // §2 ТЗ 2026-06-10: для слоя pain_type — список pain-тегов поиска + выбор.
+  const [painTags, setPainTags] = useState<PainTagOut[]>([]);
+  const [selectedPainTagId, setSelectedPainTagId] = useState<number | null>(null);
+
+  // Подгружаем список pain-тегов поиска один раз при появлении searchId —
+  // нужен для селектора pain_type-слоя.
+  useEffect(() => {
+    if (!searchId) {
+      setPainTags([]);
+      return;
+    }
+    let cancelled = false;
+    getSearchPainTags(searchId)
+      .then((d) => {
+        if (cancelled) return;
+        setPainTags(d);
+        // Дефолтный выбор — топ-1, чтобы при переключении на pain_type сразу
+        // была картинка, без «пустого» состояния.
+        if (selectedPainTagId == null && d.length > 0) {
+          setSelectedPainTagId(d[0].id);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPainTags([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchId]);
 
   // Запрашиваем точки тепла когда юзер сменил слой (включил heatmap).
   useEffect(() => {
     if (layer === 'off' || !searchId) {
+      setHeatData(null);
+      setHeatError(null);
+      return;
+    }
+    if (layer === 'pain_type' && selectedPainTagId == null) {
       setHeatData(null);
       setHeatError(null);
       return;
@@ -208,7 +247,12 @@ export default function MapsCompaniesMap({
     setHeatError(null);
     void (async () => {
       try {
-        const data = await getSearchHeatmap(searchId, layer, activeSource);
+        const data = await getSearchHeatmap(
+          searchId,
+          layer,
+          activeSource,
+          layer === 'pain_type' ? selectedPainTagId : null,
+        );
         if (!cancelled) setHeatData(data);
       } catch (e) {
         if (!cancelled) {
@@ -222,7 +266,7 @@ export default function MapsCompaniesMap({
     return () => {
       cancelled = true;
     };
-  }, [layer, searchId, activeSource]);
+  }, [layer, searchId, activeSource, selectedPainTagId]);
 
   if (withCoords.length === 0) {
     return (
@@ -234,7 +278,15 @@ export default function MapsCompaniesMap({
     );
   }
 
-  const layerOptions: LayerOption[] = ['off', 'density', 'pain', 'website', 'rating', 'wealth'];
+  const layerOptions: LayerOption[] = [
+    'off',
+    'density',
+    'pain',
+    'pain_type',
+    'website',
+    'rating',
+    'wealth',
+  ];
 
   return (
     <div className="space-y-2">
@@ -277,6 +329,30 @@ export default function MapsCompaniesMap({
           </span>
         )}
       </div>
+
+      {/* §2 ТЗ 2026-06-10: селектор конкретной боли для слоя pain_type */}
+      {layer === 'pain_type' && (
+        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+          <span className="text-slate-500 dark:text-slate-400">Боль:</span>
+          {painTags.length === 0 ? (
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              AI ещё не разобрал боли в этой нише — слой пуст.
+            </span>
+          ) : (
+            <select
+              value={selectedPainTagId ?? ''}
+              onChange={(e) => setSelectedPainTagId(Number(e.target.value) || null)}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-[12px] text-slate-800 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {painTags.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label} · {t.occurrences_count}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       <div
         className="overflow-hidden rounded-md border border-slate-200"

@@ -32,8 +32,15 @@ export function isClientOnlySort(s: SortBy | undefined | null): boolean {
   return s === 'ai_score_desc' || s === 'ai_score_asc';
 }
 
-/** Блок 5 ТЗ 2026-06-02: переключаемые слои тепловой карты по нишам. */
-export type HeatmapLayer = 'density' | 'pain' | 'website' | 'rating' | 'wealth';
+/** Блок 5 ТЗ 2026-06-02 + §2 ТЗ 2026-06-10: переключаемые слои тепловой карты.
+ *  pain_type — слой по конкретному pain_tag_id (требует доп. query-param). */
+export type HeatmapLayer =
+  | 'density'
+  | 'pain'
+  | 'website'
+  | 'rating'
+  | 'wealth'
+  | 'pain_type';
 
 export interface HeatmapPoint {
   lat: number;
@@ -54,10 +61,14 @@ export async function getSearchHeatmap(
   searchId: number,
   layer: HeatmapLayer,
   source_filter?: 'all' | '2gis' | 'yandex_maps' | null,
+  painTagId?: number | null,
 ): Promise<HeatmapOut> {
   const params = new URLSearchParams({ layer });
   if (source_filter && source_filter !== 'all') {
     params.set('source_filter', source_filter);
+  }
+  if (layer === 'pain_type' && painTagId != null) {
+    params.set('pain_tag_id', String(painTagId));
   }
   const resp = await apiClient.get<HeatmapOut>(
     `/maps/search/${searchId}/heatmap?${params.toString()}`,
@@ -481,6 +492,91 @@ export async function getCompanyPainTrend(
   if (source) params.set('source', source);
   const response = await apiClient.get<PainTrendOut>(
     `/maps/companies/${companyId}/pain-tag/${painTagId}/trend?${params.toString()}`,
+  );
+  return response.data;
+}
+
+export interface PainBenchmarkItem {
+  pain_tag_id: number;
+  label: string;
+  description: string | null;
+  company_mentions: number;
+  niche_total_mentions: number;
+  niche_avg_per_company: number;
+  ratio: number;
+  verdict: 'worse' | 'on_par' | 'better';
+}
+
+export interface PainBenchmarkOut {
+  company_id: number;
+  niche: string | null;
+  city: string | null;
+  niche_companies_total: number;
+  items: PainBenchmarkItem[];
+}
+
+export async function getCompanyPainBenchmark(
+  companyId: number,
+): Promise<PainBenchmarkOut> {
+  const response = await apiClient.get<PainBenchmarkOut>(
+    `/maps/companies/${companyId}/pain-benchmark`,
+  );
+  return response.data;
+}
+
+export interface NegativeTrendOut {
+  company_id: number;
+  last_30d: number;
+  prev_30d: number;
+  prev_60d: number;
+  verdict: 'rising' | 'stable' | 'falling' | 'no_data';
+}
+
+export async function getCompanyNegativeTrend(
+  companyId: number,
+): Promise<NegativeTrendOut> {
+  const response = await apiClient.get<NegativeTrendOut>(
+    `/maps/companies/${companyId}/negative-trend`,
+  );
+  return response.data;
+}
+
+export interface InsightsNicheOut {
+  niche: string;
+  companies_count: number;
+}
+
+export async function listInsightsNiches(): Promise<InsightsNicheOut[]> {
+  const response = await apiClient.get<InsightsNicheOut[]>('/maps/insights/niches');
+  return response.data;
+}
+
+export interface DemandIndexItem {
+  pain_tag_id: number;
+  label: string;
+  description: string | null;
+  total_mentions: number;
+  companies_affected: number;
+  share_of_companies: number;
+}
+
+export interface DemandIndexOut {
+  niche: string;
+  city: string | null;
+  companies_total: number;
+  items: DemandIndexItem[];
+  note: 'ok' | 'small_sample';
+  hint: string | null;
+}
+
+export async function getDemandIndex(
+  niche: string,
+  city?: string | null,
+): Promise<DemandIndexOut> {
+  const params = new URLSearchParams({ niche });
+  if (city) params.set('city', city);
+  const response = await apiClient.get<DemandIndexOut>(
+    `/maps/insights/demand-index?${params.toString()}`,
   );
   return response.data;
 }

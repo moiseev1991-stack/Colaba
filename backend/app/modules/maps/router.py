@@ -23,7 +23,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import case as sa_case, func as sa_func, select
+from sqlalchemy import and_, case as sa_case, func as sa_func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -366,8 +366,10 @@ async def list_search_companies(
 async def get_search_heatmap(
     request: Request,
     search_id: int,
-    layer: str = Query(default="density", regex="^(density|pain|website|rating|wealth)$"),
+    layer: str = Query(default="density", regex="^(density|pain|website|rating|wealth|pain_type)$"),
     source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
+    # §2 ТЗ 2026-06-10: pain_type-слой требует конкретный pain_tag_id.
+    pain_tag_id: Optional[int] = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -470,6 +472,59 @@ async def get_search_heatmap(
             weight = min(1.0, math.log10(float(revenue) / 1000.0 + 1.0) / 8.0)
             points.append(
                 HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight)
+            )
+            contributing += 1
+        max_intensity = 1.0
+
+    elif layer == "pain_type":
+        # §2 ТЗ 2026-06-10. Тепло по конкретной боли: где компании с
+        # большим числом упоминаний этого pain-кластера. Без pain_tag_id —
+        # возвращаем пустой результат (UI должен выставить значение).
+        if pain_tag_id is None:
+            return HeatmapOut(
+                layer=layer,
+                points=[],
+                max_intensity=1.0,
+                total_companies=total,
+                contributing=0,
+            )
+        from app.models.pain_tag import CompanyPainScore
+        ids = [c.id for c in items if c.lat is not None and c.lng is not None]
+        if not ids:
+            return HeatmapOut(
+                layer=layer,
+                points=[],
+                max_intensity=1.0,
+                total_companies=total,
+                contributing=0,
+            )
+        rows = (await db.execute(
+            select(CompanyPainScore.company_id, CompanyPainScore.mention_count).where(
+                CompanyPainScore.pain_tag_id == pain_tag_id,
+                CompanyPainScore.company_id.in_(ids),
+                CompanyPainScore.mention_count > 0,
+            )
+        )).all()
+        if not rows:
+            return HeatmapOut(
+                layer=layer,
+                points=[],
+                max_intensity=1.0,
+                total_companies=total,
+                contributing=0,
+            )
+        by_company = {int(cid): int(mc) for cid, mc in rows}
+        peak = max(by_company.values()) if by_company else 1
+        for c in items:
+            mc = by_company.get(c.id, 0)
+            if mc <= 0 or c.lat is None or c.lng is None:
+                continue
+            points.append(
+                HeatmapPoint(
+                    lat=float(c.lat),
+                    lng=float(c.lng),
+                    weight=mc / peak,
+                )
             )
             contributing += 1
         max_intensity = 1.0
@@ -821,6 +876,198 @@ async def get_company_pain_trend(
         "range_start": range_start,
         "range_end": range_end,
         "points": points,
+    }
+
+
+@router.get("/companies/{company_id}/negative-trend")
+@limiter.limit("60/minute")
+async def get_company_negative_trend(
+    request: Request,
+    company_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """§3 ТЗ 2026-06-10: «у кого негатив растёт — горячий лид сейчас».
+
+    Возвращает count негативных/нейтральных отзывов за последние 30, 60, 90
+    дней + verdict тренда (rising / stable / falling / no_data).
+
+    Логика:
+      - rising  — last30 >= 3 И last30 > prev30 * 1.5
+      - falling — last30 < prev30 * 0.5 И prev30 >= 3
+      - stable  — иначе если есть хоть какие-то данные
+      - no_data — если < 3 негативных за 90 дней
+
+    Используется в drawer-блоке «Тренд негатива» как сильный сигнал
+    «писать сейчас, проблема свежая».
+    """
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    await _get_company_or_404(db, company_id)
+    now = _dt.now(_tz.utc)
+
+    async def count_neg(since: _dt, until: _dt | None) -> int:
+        q = select(sa_func.count(Review.id)).where(
+            Review.company_id == company_id,
+            Review.posted_at >= since,
+            or_(Review.sentiment.in_(["negative", "neutral"]),
+                and_(Review.sentiment.is_(None), Review.rating <= 3)),
+        )
+        if until is not None:
+            q = q.where(Review.posted_at < until)
+        return int((await db.execute(q)).scalar_one() or 0)
+
+    last30 = await count_neg(now - _td(days=30), None)
+    prev30 = await count_neg(now - _td(days=60), now - _td(days=30))
+    prev60 = await count_neg(now - _td(days=90), now - _td(days=60))
+    total90 = last30 + prev30 + prev60
+
+    if total90 < 3:
+        verdict = "no_data"
+    elif last30 >= 3 and last30 > prev30 * 1.5:
+        verdict = "rising"
+    elif prev30 >= 3 and last30 < prev30 * 0.5:
+        verdict = "falling"
+    else:
+        verdict = "stable"
+
+    return {
+        "company_id": company_id,
+        "last_30d": last30,
+        "prev_30d": prev30,
+        "prev_60d": prev60,
+        "verdict": verdict,
+    }
+
+
+@router.get("/companies/{company_id}/pain-benchmark")
+@limiter.limit("30/minute")
+async def get_company_pain_benchmark(
+    request: Request,
+    company_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """§1 ТЗ 2026-06-10: сравнение профиля болей компании со средним по нише+городу.
+
+    Для каждого активного pain_tag этой ниши/города возвращает:
+      - company_mentions      — упоминания у ЭТОЙ компании
+      - niche_avg_per_company — среднее на компанию по нише
+      - ratio                 — company_mentions / max(0.25, niche_avg)
+      - verdict               — worse (>= 1.5×) / on_par / better (< 0.66×)
+      - niche_total_mentions  — суммарно по нише
+      - niche_companies_total — размер выборки (для честности UI)
+
+    Используется в drawer-блоке «Сравнение с нишей» — аргумент в письме лиду
+    и сигнал для платных отчётов в дальнейшем. Все агрегаты по уже
+    собранным CompanyPainScore — без нового парсинга.
+    """
+    company = await _get_company_or_404(db, company_id)
+    if not company.niche:
+        return {
+            "company_id": company_id,
+            "niche": None,
+            "city": None,
+            "niche_companies_total": 0,
+            "items": [],
+        }
+
+    from app.models.pain_tag import CompanyPainScore, PainTag
+
+    # Кол-во компаний этой ниши+города (для расчёта среднего на компанию).
+    siblings_q = select(sa_func.count(Company.id)).where(Company.niche == company.niche)
+    if company.city is not None:
+        siblings_q = siblings_q.where(Company.city == company.city)
+    niche_companies_total = int((await db.execute(siblings_q)).scalar_one() or 0)
+    if niche_companies_total == 0:
+        return {
+            "company_id": company_id,
+            "niche": company.niche,
+            "city": company.city,
+            "niche_companies_total": 0,
+            "items": [],
+        }
+
+    # Одна CTE-выборка: pain_tags ниши + сумма по нише + значение этой компании.
+    # niche_avg рассчитываем в Python (делим на niche_companies_total) —
+    # внутри SQL потребовался бы CROSS JOIN на скаляр, не выигрывает в clarity.
+    pain_rows = (
+        await db.execute(
+            select(
+                PainTag.id,
+                PainTag.label,
+                PainTag.description,
+                sa_func.coalesce(
+                    select(CompanyPainScore.mention_count)
+                    .where(
+                        CompanyPainScore.company_id == company_id,
+                        CompanyPainScore.pain_tag_id == PainTag.id,
+                    )
+                    .correlate(PainTag)
+                    .scalar_subquery(),
+                    0,
+                ).label("company_mentions"),
+                sa_func.coalesce(
+                    select(sa_func.sum(CompanyPainScore.mention_count))
+                    .join(Company, Company.id == CompanyPainScore.company_id)
+                    .where(
+                        CompanyPainScore.pain_tag_id == PainTag.id,
+                        Company.niche == company.niche,
+                        *([Company.city == company.city] if company.city is not None else []),
+                    )
+                    .correlate(PainTag)
+                    .scalar_subquery(),
+                    0,
+                ).label("niche_total_mentions"),
+            )
+            .where(
+                PainTag.niche == company.niche,
+                PainTag.status == "active",
+                # включаем и city-specific, и global (city=NULL).
+                ((PainTag.city == company.city) | (PainTag.city.is_(None)))
+                if company.city is not None
+                else PainTag.city.is_(None),
+            )
+        )
+    ).all()
+
+    items = []
+    for tag_id, label, description, company_mentions, niche_total in pain_rows:
+        comp_m = int(company_mentions or 0)
+        nt_m = int(niche_total or 0)
+        if comp_m == 0 and nt_m == 0:
+            continue
+        niche_avg = nt_m / niche_companies_total if niche_companies_total > 0 else 0.0
+        # Защита от деления на «ноль из-за маленькой ниши»: avg<0.25 трактуем
+        # как 0.25, иначе любая компания с 1 жалобой выглядит «в 10 раз хуже».
+        denom = max(0.25, niche_avg)
+        ratio = comp_m / denom
+        if ratio >= 1.5:
+            verdict = "worse"
+        elif ratio <= 0.66:
+            verdict = "better"
+        else:
+            verdict = "on_par"
+        items.append({
+            "pain_tag_id": int(tag_id),
+            "label": label,
+            "description": description,
+            "company_mentions": comp_m,
+            "niche_total_mentions": nt_m,
+            "niche_avg_per_company": round(niche_avg, 2),
+            "ratio": round(ratio, 2),
+            "verdict": verdict,
+        })
+
+    # Сортировка: сначала «хуже рынка» по убыванию ratio, потом on_par, потом better.
+    verdict_order = {"worse": 0, "on_par": 1, "better": 2}
+    items.sort(key=lambda x: (verdict_order[x["verdict"]], -x["ratio"]))
+
+    return {
+        "company_id": company_id,
+        "niche": company.niche,
+        "city": company.city,
+        "niche_companies_total": niche_companies_total,
+        "items": items[:20],
     }
 
 

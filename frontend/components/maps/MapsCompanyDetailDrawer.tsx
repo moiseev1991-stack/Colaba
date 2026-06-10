@@ -29,7 +29,9 @@ import {
 } from 'lucide-react';
 
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
+import { NegativeTrendBadge } from '@/components/maps/NegativeTrendBadge';
 import { OutreachDraftBlock } from '@/components/maps/OutreachDraftBlock';
+import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -222,6 +224,11 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             />
           </div>
 
+          {/* §3 ТЗ 2026-06-10: «негатив растёт» — сигнал «писать сейчас». */}
+          <div className="flex flex-wrap gap-2">
+            <NegativeTrendBadge companyId={detail.id} />
+          </div>
+
           {/* Дайджест за 30 дней — лента метрик + кликабельные топ-боли.
               Клик по плитке боли → activePainTagId → ниже появляется
               PainTrendBlock (даты + chart) + reviews-список фильтруется. */}
@@ -249,6 +256,10 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               sourceTab={sourceTab}
             />
           )}
+
+          {/* §1 ТЗ 2026-06-10: профиль болей компании vs средние по нише+городу.
+              Аргумент в письме лиду + база для будущих платных отчётов. */}
+          <PainBenchmarkBlock companyId={detail.id} />
 
           {/* Полный список pain_tags компании — выводим как нейтральные
               metadata-чипы (не кликабельные). Главный clickable-UX живёт
