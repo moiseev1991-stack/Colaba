@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.8](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.7...v1.71.8) (2026-06-10)
+
+
+### Bug Fixes
+
+* **reviews_ai:** recluster исключает positive-отзывы из кластеризации ([ada1f18](https://github.com/moiseev1991-stack/Colaba/commit/ada1f1848a5fe984ff8e2cf139bbf672d2af7b5d))
+
 ## [1.71.7](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.6...v1.71.7) (2026-06-09)
 
 
