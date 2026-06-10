@@ -15,7 +15,7 @@
  *  - подсветка совпадений с поисковой подстрокой
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ExternalLink,
   Globe,
@@ -70,6 +70,10 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   // §B 2026-06-10: chart умеет переключаться между «эта компания» и
   // «вся ниша» — общий тренд по нише через /maps/insights/pain-trend.
   const [trendScope, setTrendScope] = useState<'company' | 'niche'>('company');
+  // Якорь на секцию отзывов — при клике на pain-плитку прокручиваем сюда,
+  // иначе юзер видит «×3» на плитке, но не понимает где сами отзывы
+  // (они НИЖЕ benchmark + tabs, нужно скроллить).
+  const reviewsAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // drawer-level фильтры (применяются к /maps/companies/{id}/reviews)
   const [textQuery, setTextQuery] = useState('');
@@ -253,6 +257,16 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                 setActivePainTagId(painTagId);
                 setActivePainLabel(label);
                 setTab('all');
+                setTextQuery('');
+                setOnlyWithOwnerReply(false);
+                // Прокручиваем drawer к списку отзывов через 50ms —
+                // даём reviews-фильтру успеть refetch'нуть.
+                setTimeout(() => {
+                  reviewsAnchorRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  });
+                }, 50);
               }
             }}
           />
@@ -348,7 +362,25 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             const totalPos =
               activeProfile?.reviews_positive_count ?? detail.reviews_positive_count;
             return (
-          <div>
+          <div ref={reviewsAnchorRef}>
+            {activePainTagId != null && (
+              <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-rose-200 bg-rose-50/60 px-2 py-1.5 text-[12px] dark:border-rose-700/60 dark:bg-rose-900/20">
+                <span className="text-slate-700 dark:text-slate-200">
+                  Отзывы темы <strong>«{activePainLabel}»</strong>
+                  {reviews.length > 0 ? ` · найдено ${reviews.length}` : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePainTagId(null);
+                    setActivePainLabel('');
+                  }}
+                  className="ml-auto rounded border border-rose-300 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 hover:bg-rose-100 dark:border-rose-700 dark:text-rose-200 dark:hover:bg-rose-900/40"
+                >
+                  × снять фильтр темы
+                </button>
+              </div>
+            )}
             <div className="mb-2 flex gap-2 border-b border-slate-200 dark:border-slate-700">
               {(['all', 'negative', 'positive'] as Tab[]).map((t) => (
                 <button
