@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.72.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.72.0...v1.72.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** кликабельный pain-tag — в правильном блоке ([bcfb595](https://github.com/moiseev1991-stack/Colaba/commit/bcfb5950896b88562ef81fc0fd4fb63d3483bba6))
+
 # [1.72.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.12...v1.72.0) (2026-06-10)
 
 
