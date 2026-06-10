@@ -541,6 +541,46 @@ export async function getCompanyNegativeTrend(
   return response.data;
 }
 
+export interface InsightsNicheOut {
+  niche: string;
+  companies_count: number;
+}
+
+export async function listInsightsNiches(): Promise<InsightsNicheOut[]> {
+  const response = await apiClient.get<InsightsNicheOut[]>('/maps/insights/niches');
+  return response.data;
+}
+
+export interface DemandIndexItem {
+  pain_tag_id: number;
+  label: string;
+  description: string | null;
+  total_mentions: number;
+  companies_affected: number;
+  share_of_companies: number;
+}
+
+export interface DemandIndexOut {
+  niche: string;
+  city: string | null;
+  companies_total: number;
+  items: DemandIndexItem[];
+  note: 'ok' | 'small_sample';
+  hint: string | null;
+}
+
+export async function getDemandIndex(
+  niche: string,
+  city?: string | null,
+): Promise<DemandIndexOut> {
+  const params = new URLSearchParams({ niche });
+  if (city) params.set('city', city);
+  const response = await apiClient.get<DemandIndexOut>(
+    `/maps/insights/demand-index?${params.toString()}`,
+  );
+  return response.data;
+}
+
 export async function getCompanyReviews(
   id: number,
   filterOrSentiment?: ReviewQueryFilter | 'positive' | 'negative' | 'neutral',
