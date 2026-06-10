@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.12](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.11...v1.71.12) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** UI карточки и шапки прогресса в Pipedrive-стиле ([50df987](https://github.com/moiseev1991-stack/Colaba/commit/50df9874d8962a2a46cbcba2fd143fcbd93d12cb))
+
 ## [1.71.11](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.10...v1.71.11) (2026-06-10)
 
 
