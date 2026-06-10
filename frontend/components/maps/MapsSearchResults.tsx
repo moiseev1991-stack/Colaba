@@ -32,6 +32,7 @@ import {
   exportSearchCsvUrl,
   getMapSearch,
   getMapsAiProgress,
+  getSearchPainTags,
   listMapCompanies,
   type CompanyOut,
   type MapsAiProgressOut,
@@ -39,6 +40,7 @@ import {
   type MapSearchFilter,
   type MapSearchOut,
   type OutreachDraftOut,
+  type PainTagOut,
 } from '@/src/services/api/maps';
 import {
   getCompanyAnalyses,
@@ -224,6 +226,10 @@ export function MapsSearchResults({
   // Результат синхронного diagnostic-вызова, чтобы показать его юзеру в stuck-плашке.
   const [diagnostic, setDiagnostic] = useState<MapsReclusterDiagnosticOut | null>(null);
   const [diagnosticRunning, setDiagnosticRunning] = useState(false);
+  // ТОП-боли региона (для всей ниши+города поиска). Показываем компактной
+  // строкой в шапке: «В этой нише чаще всего жалуются на: …». Юзер просил
+  // 2026-06-10 — даёт быстрый «срез» болей региона до раскрытия карточек.
+  const [regionPainTags, setRegionPainTags] = useState<PainTagOut[]>([]);
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -537,6 +543,26 @@ export function MapsSearchResults({
 
   useEffect(() => stopAiProgressPolling, [stopAiProgressPolling]);
 
+  // Подтягиваем pain-теги (niche, city) для шапки «ТОП-боли региона».
+  // Источник — /maps/search/{id}/pain-tags (фильтрует по реальным компаниям
+  // поиска). Перезапрашиваем при изменении aiProgress.pain_tags_total —
+  // сразу после того, как recluster закончил, список обновляется без
+  // ручного refresh.
+  useEffect(() => {
+    let mounted = true;
+    if (!search?.id) return;
+    getSearchPainTags(search.id)
+      .then((data) => {
+        if (mounted) setRegionPainTags(data);
+      })
+      .catch(() => {
+        if (mounted) setRegionPainTags([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [search?.id, aiProgress?.pain_tags_total]);
+
   // Автозапуск анализа, если пресет выбрали ещё на форме поиска (initialAiPreset).
   // Условия: пресет активен, парсинг завершён, есть видимые компании, ещё не
   // запускали (ref-флаг + aiLastRun null), сейчас не триггерим.
@@ -809,6 +835,9 @@ export function MapsSearchResults({
                   }
                 }}
               />
+            )}
+            {regionPainTags.length > 0 && (
+              <RegionPainSummary tags={regionPainTags} niche={search.niche} city={search.city} />
             )}
             {activeAiPreset && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
@@ -1275,6 +1304,65 @@ export function MapsSearchResults({
         error={draftError}
         onClose={() => setDraftOpen(false)}
       />
+    </div>
+  );
+}
+
+/**
+ * Компактная сводка топ-болей региона. Pipedrive-style, нейтральный slate
+ * фон, без декоративных эмодзи. Показывает первые 5 pain-тегов для
+ * (niche, city) по occurrences_count — чтобы юзер сразу видел «о чём
+ * чаще всего жалуются в этой нише в этом городе» ещё до раскрытия
+ * списка компаний.
+ */
+function RegionPainSummary({
+  tags,
+  niche,
+  city,
+}: {
+  tags: PainTagOut[];
+  niche: string;
+  city: string | null;
+}) {
+  // Дедуп по нормализованному label — на проде встречаются почти-дубли
+  // («Качество услуг», «Качество услуг и цены») из несовершенного
+  // LLM-naming на ранних recluster-прогонах.
+  const seen = new Set<string>();
+  const unique = tags.filter((t) => {
+    const key = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (unique.length === 0) return null;
+  const top = unique.slice(0, 5);
+
+  return (
+    <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2">
+        <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span>Чаще всего жалуются в нише</span>
+          <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            {niche}{city ? ` · ${city}` : ''}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {top.map((t) => (
+            <span
+              key={t.id}
+              title={t.description ?? t.label}
+              className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11.5px] font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
+              <span className="leading-tight">{t.label}</span>
+              <span className="rounded-sm bg-slate-100 px-1 text-[10px] tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                {t.occurrences_count}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
