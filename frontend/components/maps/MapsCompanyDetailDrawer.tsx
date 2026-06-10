@@ -39,6 +39,7 @@ import {
   getCompanyDetail,
   getCompanyPainTrend,
   getCompanyReviews,
+  getNichePainTrend,
   type CompanyDetailOut,
   type DecisionMakerOut,
   type PainTrendOut,
@@ -66,6 +67,9 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   const [activePainTagId, setActivePainTagId] = useState<number | null>(null);
   const [activePainLabel, setActivePainLabel] = useState<string>('');
   const [painTrend, setPainTrend] = useState<PainTrendOut | null>(null);
+  // §B 2026-06-10: chart умеет переключаться между «эта компания» и
+  // «вся ниша» — общий тренд по нише через /maps/insights/pain-trend.
+  const [trendScope, setTrendScope] = useState<'company' | 'niche'>('company');
 
   // drawer-level фильтры (применяются к /maps/companies/{id}/reviews)
   const [textQuery, setTextQuery] = useState('');
@@ -143,8 +147,8 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   }, [tab, debouncedText, onlyWithOwnerReply, sourceTab, activePainTagId, companyId, detail, loadReviews]);
 
   // Fetch chart-данных по выбранной боли (диапазон дат + помесячный count
-  // по источникам). Перезапрашиваем при смене sourceTab чтобы chart
-  // соответствовал текущему source-фильтру.
+  // по источникам). Перезапрашиваем при смене sourceTab/trendScope чтобы
+  // chart соответствовал текущему source-фильтру и scope (компания vs ниша).
   useEffect(() => {
     if (companyId == null || activePainTagId == null) {
       setPainTrend(null);
@@ -152,9 +156,13 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
     }
     let mounted = true;
     const sourceArg = sourceTab === 'all' ? undefined : sourceTab;
-    getCompanyPainTrend(companyId, activePainTagId, sourceArg)
+    const fetcher =
+      trendScope === 'niche' && detail?.niche
+        ? getNichePainTrend(detail.niche, activePainTagId, detail.city ?? null, sourceArg)
+        : getCompanyPainTrend(companyId, activePainTagId, sourceArg);
+    fetcher
       .then((d) => {
-        if (mounted) setPainTrend(d);
+        if (mounted) setPainTrend(d as PainTrendOut);
       })
       .catch(() => {
         if (mounted) setPainTrend(null);
@@ -162,7 +170,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
     return () => {
       mounted = false;
     };
-  }, [companyId, activePainTagId, sourceTab]);
+  }, [companyId, activePainTagId, sourceTab, trendScope, detail?.niche, detail?.city]);
 
   const open = companyId != null;
   const hasActiveFilters =
@@ -254,6 +262,10 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               label={activePainLabel}
               hasSourceTabs={showSourceTabs}
               sourceTab={sourceTab}
+              scope={trendScope}
+              onScopeChange={setTrendScope}
+              niche={detail.niche ?? null}
+              city={detail.city ?? null}
             />
           )}
 
@@ -1179,12 +1191,24 @@ function PainTrendBlock({
   label,
   hasSourceTabs,
   sourceTab,
+  scope,
+  onScopeChange,
+  niche,
+  city,
 }: {
   trend: PainTrendOut;
   label: string;
   hasSourceTabs: boolean;
   sourceTab: SourceTab;
+  /** §B 2026-06-10: scope chart — компания vs вся ниша+город. */
+  scope: 'company' | 'niche';
+  onScopeChange: (next: 'company' | 'niche') => void;
+  niche: string | null;
+  city: string | null;
 }) {
+  // Когда trend пришёл из niche-endpoint у него есть companies_affected —
+  // показываем его в шапке.
+  const companiesAffected = (trend as unknown as { companies_affected?: number }).companies_affected;
   const fmt = (iso: string | null) => {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -1242,7 +1266,40 @@ function PainTrendBlock({
         </span>
         <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
           {fmt(trend.first_review_at)} — {fmt(trend.last_review_at)} · {trend.total_reviews} отз.
+          {scope === 'niche' && typeof companiesAffected === 'number' && companiesAffected > 0 && (
+            <> · {companiesAffected} комп.</>
+          )}
         </span>
+        {niche && (
+          <div className="ml-auto inline-flex overflow-hidden rounded border border-slate-300 text-[10.5px] dark:border-slate-600">
+            <button
+              type="button"
+              onClick={() => onScopeChange('company')}
+              className={
+                'px-2 py-0.5 font-medium ' +
+                (scope === 'company'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200')
+              }
+              title="График по этой компании"
+            >
+              Компания
+            </button>
+            <button
+              type="button"
+              onClick={() => onScopeChange('niche')}
+              className={
+                'border-l border-slate-300 px-2 py-0.5 font-medium dark:border-slate-600 ' +
+                (scope === 'niche'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200')
+              }
+              title={`Общий график боли по всей нише${city ? ` · ${city}` : ''}`}
+            >
+              Вся ниша{city ? ` · ${city}` : ''}
+            </button>
+          </div>
+        )}
       </div>
 
       {months.length === 0 ? (

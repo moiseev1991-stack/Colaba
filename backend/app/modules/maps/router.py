@@ -879,6 +879,226 @@ async def get_company_pain_trend(
     }
 
 
+@router.get("/insights/pain-trend")
+@limiter.limit("60/minute")
+async def get_niche_pain_trend(
+    request: Request,
+    niche: str = Query(..., min_length=1),
+    pain_tag_id: int = Query(...),
+    city: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """§B (юзер 2026-06-10): динамика боли по ВСЕЙ нише+городу, не только
+    одной компании. Аналог /companies/{id}/pain-tag/{painId}/trend, но JOIN
+    не ограничен company_id — берёт reviews всех компаний этой ниши.
+
+    Источник может быть отфильтрован (2GIS / Я.Карты / Google). Если future
+    Google source появится — фронт уже различает его цветом в chart.
+    """
+    from app.models.pain_tag import ReviewPainTag
+
+    company_filter = [Company.niche == niche]
+    if city is not None:
+        company_filter.append(Company.city == city)
+
+    base = (
+        select(
+            sa_func.to_char(sa_func.date_trunc("month", Review.posted_at), "YYYY-MM").label("month"),
+            Review.source.label("source"),
+            sa_func.count(Review.id).label("count"),
+        )
+        .join(ReviewPainTag, ReviewPainTag.review_id == Review.id)
+        .join(Company, Company.id == Review.company_id)
+        .where(
+            ReviewPainTag.pain_tag_id == pain_tag_id,
+            Review.posted_at.isnot(None),
+            *company_filter,
+        )
+        .group_by("month", Review.source)
+        .order_by("month")
+    )
+    if source:
+        base = base.where(Review.source == source)
+    rows = list((await db.execute(base)).all())
+    points = [
+        {"month": r[0], "source": r[1], "count": int(r[2])}
+        for r in rows
+    ]
+    range_start = points[0]["month"] if points else None
+    range_end = points[-1]["month"] if points else None
+
+    bounds_row = (
+        await db.execute(
+            select(
+                sa_func.min(Review.posted_at),
+                sa_func.max(Review.posted_at),
+                sa_func.count(Review.id),
+                sa_func.count(sa_func.distinct(Review.company_id)),
+            )
+            .join(ReviewPainTag, ReviewPainTag.review_id == Review.id)
+            .join(Company, Company.id == Review.company_id)
+            .where(
+                ReviewPainTag.pain_tag_id == pain_tag_id,
+                *company_filter,
+            )
+        )
+    ).one()
+    first_at, last_at, total, companies_affected = bounds_row
+    return {
+        "niche": niche,
+        "city": city,
+        "pain_tag_id": pain_tag_id,
+        "source_filter": source,
+        "first_review_at": first_at.isoformat() if first_at else None,
+        "last_review_at": last_at.isoformat() if last_at else None,
+        "total_reviews": int(total or 0),
+        "companies_affected": int(companies_affected or 0),
+        "range_start": range_start,
+        "range_end": range_end,
+        "points": points,
+    }
+
+
+@router.get("/insights/niches")
+@limiter.limit("30/minute")
+async def list_insights_niches(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """§4 ТЗ 2026-06-10: список ниш с количеством компаний — для селектора
+    на странице demand-index. Сортировка по убыванию выборки."""
+    rows = (
+        await db.execute(
+            select(
+                Company.niche,
+                sa_func.count(Company.id).label("companies_count"),
+            )
+            .where(Company.niche.isnot(None), Company.niche != "")
+            .group_by(Company.niche)
+            .order_by(sa_func.count(Company.id).desc())
+            .limit(200)
+        )
+    ).all()
+    return [
+        {"niche": r[0], "companies_count": int(r[1])}
+        for r in rows
+        if r[0]
+    ]
+
+
+@router.get("/insights/demand-index")
+@limiter.limit("30/minute")
+async def get_demand_index(
+    request: Request,
+    niche: str = Query(..., min_length=1),
+    city: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """§4 ТЗ 2026-06-10: индекс спроса по нише+городу.
+
+    Агрегат CompanyPainScore: для каждого active pain_tag доля компаний,
+    у которых эта боль упоминается, + суммарное mention_count. Сортировка
+    по числу упоминаний.
+
+    Размер выборки (companies_total, with_pain_scores) показывается явно —
+    юзер видит честно «по 73 компаниям» вместо подвешенной статистики
+    на малых данных. Если выборка <5 компаний — возвращаем пустой items
+    с note='small_sample'.
+
+    Без auth — endpoint планируется как публичный контент-магнит (SEO).
+    Кэш — не делаем здесь, для тяжёлых ниш ставится либо Redis cache,
+    либо Celery+materialized view как cron-job (отдельный PR).
+    """
+    from app.models.pain_tag import CompanyPainScore, PainTag
+
+    companies_q = select(sa_func.count(Company.id)).where(Company.niche == niche)
+    if city is not None:
+        companies_q = companies_q.where(Company.city == city)
+    companies_total = int((await db.execute(companies_q)).scalar_one() or 0)
+
+    if companies_total < 5:
+        return {
+            "niche": niche,
+            "city": city,
+            "companies_total": companies_total,
+            "items": [],
+            "note": "small_sample",
+            "hint": "Слишком маленькая выборка (<5 компаний) — статистика недостоверна. Дождись больше парсингов в этой нише и городе.",
+        }
+
+    # Агрегат по pain_tag: суммарные упоминания + сколько компаний затронуто.
+    pain_rows = (
+        await db.execute(
+            select(
+                PainTag.id,
+                PainTag.label,
+                PainTag.description,
+                sa_func.coalesce(
+                    select(sa_func.sum(CompanyPainScore.mention_count))
+                    .join(Company, Company.id == CompanyPainScore.company_id)
+                    .where(
+                        CompanyPainScore.pain_tag_id == PainTag.id,
+                        Company.niche == niche,
+                        *([Company.city == city] if city is not None else []),
+                    )
+                    .correlate(PainTag)
+                    .scalar_subquery(),
+                    0,
+                ).label("total_mentions"),
+                sa_func.coalesce(
+                    select(sa_func.count(sa_func.distinct(CompanyPainScore.company_id)))
+                    .join(Company, Company.id == CompanyPainScore.company_id)
+                    .where(
+                        CompanyPainScore.pain_tag_id == PainTag.id,
+                        CompanyPainScore.mention_count > 0,
+                        Company.niche == niche,
+                        *([Company.city == city] if city is not None else []),
+                    )
+                    .correlate(PainTag)
+                    .scalar_subquery(),
+                    0,
+                ).label("companies_affected"),
+            )
+            .where(
+                PainTag.niche == niche,
+                PainTag.status == "active",
+                ((PainTag.city == city) | (PainTag.city.is_(None)))
+                if city is not None
+                else PainTag.city.is_(None),
+            )
+        )
+    ).all()
+
+    items = []
+    for tag_id, label, description, total_mentions, companies_affected in pain_rows:
+        tm = int(total_mentions or 0)
+        ca = int(companies_affected or 0)
+        if tm == 0 and ca == 0:
+            continue
+        share_of_companies = ca / companies_total if companies_total > 0 else 0.0
+        items.append({
+            "pain_tag_id": int(tag_id),
+            "label": label,
+            "description": description,
+            "total_mentions": tm,
+            "companies_affected": ca,
+            "share_of_companies": round(share_of_companies, 3),
+        })
+
+    items.sort(key=lambda x: (-x["total_mentions"], -x["companies_affected"]))
+
+    return {
+        "niche": niche,
+        "city": city,
+        "companies_total": companies_total,
+        "items": items[:30],
+        "note": "ok",
+        "hint": None,
+    }
+
+
 @router.get("/companies/{company_id}/negative-trend")
 @limiter.limit("60/minute")
 async def get_company_negative_trend(
