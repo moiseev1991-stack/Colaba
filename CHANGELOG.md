@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.73.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.72.1...v1.73.0) (2026-06-10)
+
+
+### Features
+
+* **insights:** §4 demand-index — индекс спроса по нишам ([e773359](https://github.com/moiseev1991-stack/Colaba/commit/e773359f8454fbbba67dc93b34a7ced542c7fdc1))
+* **maps:** §1 сравнение компании с нишей по pain-профилю ([f4c1d2b](https://github.com/moiseev1991-stack/Colaba/commit/f4c1d2b9b3b1d44eae2a359582127383f95c445e))
+* **maps:** §2 heatmap pain_type — тепло по конкретной боли ([bb8190c](https://github.com/moiseev1991-stack/Colaba/commit/bb8190cf80a827c94c8bc52b6cb0c2a73d780d5d))
+* **maps:** §3 тренд негатива — горячий лид сейчас ([c454ce3](https://github.com/moiseev1991-stack/Colaba/commit/c454ce3bb2e23c0394ab3eaee60f7ffbc5c66c71))
+
 ## [1.72.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.72.0...v1.72.1) (2026-06-10)
 
 
