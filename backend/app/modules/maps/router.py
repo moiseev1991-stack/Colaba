@@ -23,7 +23,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import case as sa_case, func as sa_func, select
+from sqlalchemy import and_, case as sa_case, func as sa_func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -876,6 +876,66 @@ async def get_company_pain_trend(
         "range_start": range_start,
         "range_end": range_end,
         "points": points,
+    }
+
+
+@router.get("/companies/{company_id}/negative-trend")
+@limiter.limit("60/minute")
+async def get_company_negative_trend(
+    request: Request,
+    company_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """§3 ТЗ 2026-06-10: «у кого негатив растёт — горячий лид сейчас».
+
+    Возвращает count негативных/нейтральных отзывов за последние 30, 60, 90
+    дней + verdict тренда (rising / stable / falling / no_data).
+
+    Логика:
+      - rising  — last30 >= 3 И last30 > prev30 * 1.5
+      - falling — last30 < prev30 * 0.5 И prev30 >= 3
+      - stable  — иначе если есть хоть какие-то данные
+      - no_data — если < 3 негативных за 90 дней
+
+    Используется в drawer-блоке «Тренд негатива» как сильный сигнал
+    «писать сейчас, проблема свежая».
+    """
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    await _get_company_or_404(db, company_id)
+    now = _dt.now(_tz.utc)
+
+    async def count_neg(since: _dt, until: _dt | None) -> int:
+        q = select(sa_func.count(Review.id)).where(
+            Review.company_id == company_id,
+            Review.posted_at >= since,
+            or_(Review.sentiment.in_(["negative", "neutral"]),
+                and_(Review.sentiment.is_(None), Review.rating <= 3)),
+        )
+        if until is not None:
+            q = q.where(Review.posted_at < until)
+        return int((await db.execute(q)).scalar_one() or 0)
+
+    last30 = await count_neg(now - _td(days=30), None)
+    prev30 = await count_neg(now - _td(days=60), now - _td(days=30))
+    prev60 = await count_neg(now - _td(days=90), now - _td(days=60))
+    total90 = last30 + prev30 + prev60
+
+    if total90 < 3:
+        verdict = "no_data"
+    elif last30 >= 3 and last30 > prev30 * 1.5:
+        verdict = "rising"
+    elif prev30 >= 3 and last30 < prev30 * 0.5:
+        verdict = "falling"
+    else:
+        verdict = "stable"
+
+    return {
+        "company_id": company_id,
+        "last_30d": last30,
+        "prev_30d": prev30,
+        "prev_60d": prev60,
+        "verdict": verdict,
     }
 
 

@@ -524,6 +524,23 @@ export async function getCompanyPainBenchmark(
   return response.data;
 }
 
+export interface NegativeTrendOut {
+  company_id: number;
+  last_30d: number;
+  prev_30d: number;
+  prev_60d: number;
+  verdict: 'rising' | 'stable' | 'falling' | 'no_data';
+}
+
+export async function getCompanyNegativeTrend(
+  companyId: number,
+): Promise<NegativeTrendOut> {
+  const response = await apiClient.get<NegativeTrendOut>(
+    `/maps/companies/${companyId}/negative-trend`,
+  );
+  return response.data;
+}
+
 export async function getCompanyReviews(
   id: number,
   filterOrSentiment?: ReviewQueryFilter | 'positive' | 'negative' | 'neutral',

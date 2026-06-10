@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
+import { NegativeTrendBadge } from '@/components/maps/NegativeTrendBadge';
 import { OutreachDraftBlock } from '@/components/maps/OutreachDraftBlock';
 import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
 import { Dialog } from '@/components/ui/dialog';
@@ -221,6 +222,11 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               label="Ответы владельца"
               value={detail.has_owner_replies ? `да (${detail.owner_replies_count})` : 'нет'}
             />
+          </div>
+
+          {/* §3 ТЗ 2026-06-10: «негатив растёт» — сигнал «писать сейчас». */}
+          <div className="flex flex-wrap gap-2">
+            <NegativeTrendBadge companyId={detail.id} />
           </div>
 
           {/* Дайджест за 30 дней — лента метрик + кликабельные топ-боли.
