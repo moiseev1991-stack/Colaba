@@ -366,8 +366,10 @@ async def list_search_companies(
 async def get_search_heatmap(
     request: Request,
     search_id: int,
-    layer: str = Query(default="density", regex="^(density|pain|website|rating|wealth)$"),
+    layer: str = Query(default="density", regex="^(density|pain|website|rating|wealth|pain_type)$"),
     source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
+    # §2 ТЗ 2026-06-10: pain_type-слой требует конкретный pain_tag_id.
+    pain_tag_id: Optional[int] = Query(default=None),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -470,6 +472,59 @@ async def get_search_heatmap(
             weight = min(1.0, math.log10(float(revenue) / 1000.0 + 1.0) / 8.0)
             points.append(
                 HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight)
+            )
+            contributing += 1
+        max_intensity = 1.0
+
+    elif layer == "pain_type":
+        # §2 ТЗ 2026-06-10. Тепло по конкретной боли: где компании с
+        # большим числом упоминаний этого pain-кластера. Без pain_tag_id —
+        # возвращаем пустой результат (UI должен выставить значение).
+        if pain_tag_id is None:
+            return HeatmapOut(
+                layer=layer,
+                points=[],
+                max_intensity=1.0,
+                total_companies=total,
+                contributing=0,
+            )
+        from app.models.pain_tag import CompanyPainScore
+        ids = [c.id for c in items if c.lat is not None and c.lng is not None]
+        if not ids:
+            return HeatmapOut(
+                layer=layer,
+                points=[],
+                max_intensity=1.0,
+                total_companies=total,
+                contributing=0,
+            )
+        rows = (await db.execute(
+            select(CompanyPainScore.company_id, CompanyPainScore.mention_count).where(
+                CompanyPainScore.pain_tag_id == pain_tag_id,
+                CompanyPainScore.company_id.in_(ids),
+                CompanyPainScore.mention_count > 0,
+            )
+        )).all()
+        if not rows:
+            return HeatmapOut(
+                layer=layer,
+                points=[],
+                max_intensity=1.0,
+                total_companies=total,
+                contributing=0,
+            )
+        by_company = {int(cid): int(mc) for cid, mc in rows}
+        peak = max(by_company.values()) if by_company else 1
+        for c in items:
+            mc = by_company.get(c.id, 0)
+            if mc <= 0 or c.lat is None or c.lng is None:
+                continue
+            points.append(
+                HeatmapPoint(
+                    lat=float(c.lat),
+                    lng=float(c.lng),
+                    weight=mc / peak,
+                )
             )
             contributing += 1
         max_intensity = 1.0

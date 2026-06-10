@@ -32,8 +32,15 @@ export function isClientOnlySort(s: SortBy | undefined | null): boolean {
   return s === 'ai_score_desc' || s === 'ai_score_asc';
 }
 
-/** Блок 5 ТЗ 2026-06-02: переключаемые слои тепловой карты по нишам. */
-export type HeatmapLayer = 'density' | 'pain' | 'website' | 'rating' | 'wealth';
+/** Блок 5 ТЗ 2026-06-02 + §2 ТЗ 2026-06-10: переключаемые слои тепловой карты.
+ *  pain_type — слой по конкретному pain_tag_id (требует доп. query-param). */
+export type HeatmapLayer =
+  | 'density'
+  | 'pain'
+  | 'website'
+  | 'rating'
+  | 'wealth'
+  | 'pain_type';
 
 export interface HeatmapPoint {
   lat: number;
@@ -54,10 +61,14 @@ export async function getSearchHeatmap(
   searchId: number,
   layer: HeatmapLayer,
   source_filter?: 'all' | '2gis' | 'yandex_maps' | null,
+  painTagId?: number | null,
 ): Promise<HeatmapOut> {
   const params = new URLSearchParams({ layer });
   if (source_filter && source_filter !== 'all') {
     params.set('source_filter', source_filter);
+  }
+  if (layer === 'pain_type' && painTagId != null) {
+    params.set('pain_tag_id', String(painTagId));
   }
   const resp = await apiClient.get<HeatmapOut>(
     `/maps/search/${searchId}/heatmap?${params.toString()}`,
