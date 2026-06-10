@@ -1,6 +1,6 @@
 {
   "name": "leadgen-constructor-frontend",
-  "version": "1.71.10",
+  "version": "1.71.11",
   "private": true,
   "scripts": {
     "dev": "next dev -p 4000",

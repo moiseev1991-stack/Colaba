@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.11](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.10...v1.71.11) (2026-06-10)
+
+
+### Bug Fixes
+
+* **reviews_ai:** серверный guard абстрактных pain-label ([554e141](https://github.com/moiseev1991-stack/Colaba/commit/554e141cb63d75a5b20b0fed3ab8057585c49e3d))
+
 ## [1.71.10](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.9...v1.71.10) (2026-06-10)
 
 
