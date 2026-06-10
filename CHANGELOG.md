@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.75.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.74.0...v1.75.0) (2026-06-10)
+
+
+### Features
+
+* **maps:** топ-боли — фильтр источника и периода + chart динамики ([885fe39](https://github.com/moiseev1991-stack/Colaba/commit/885fe39fee39900b3bc3e42e43dcb32d4c727ed0))
+
 # [1.74.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.73.0...v1.74.0) (2026-06-10)
 
 
