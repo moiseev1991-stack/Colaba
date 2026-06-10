@@ -1355,176 +1355,208 @@ function AiPainProgressBar({
         return 'AI работает…';
     }
   })();
-  const tone = isStuck
-    ? 'hot'
+  // v5 Pipedrive-style status bar: solid border-left status indicator,
+  // нейтральный slate-фон, чёткий status pill. Никаких violet-glassmorphism.
+  const accent = isStuck
+    ? 'rose'
     : stage === 'ready'
-    ? 'good'
-    : stage === 'idle'
-    ? 'muted'
-    : 'warm';
-  const barCls =
-    tone === 'good'
-      ? 'bg-emerald-500'
-      : tone === 'muted'
-      ? 'bg-slate-400'
-      : tone === 'hot'
-      ? 'bg-rose-500'
-      : 'bg-violet-500';
+      ? 'emerald'
+      : stage === 'idle'
+        ? 'slate'
+        : 'blue';
   const wrapCls = isStuck
-    ? 'border-rose-200 bg-rose-50/70 dark:border-rose-700/50 dark:bg-rose-900/30'
-    : 'border-violet-200 bg-violet-50/70 dark:border-violet-700/50 dark:bg-violet-900/30';
-  const labelCls = isStuck
-    ? 'text-rose-900 dark:text-rose-100'
-    : 'text-violet-900 dark:text-violet-100';
-  const muteCls = isStuck
-    ? 'text-rose-800/80 dark:text-rose-200/80'
-    : 'text-violet-800/80 dark:text-violet-200/80';
+    ? 'border-rose-300 bg-white dark:border-rose-700 dark:bg-slate-900'
+    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
+  const stageBarColor =
+    accent === 'rose'
+      ? 'bg-rose-500'
+      : accent === 'emerald'
+        ? 'bg-emerald-500'
+        : accent === 'slate'
+          ? 'bg-slate-400'
+          : 'bg-blue-500';
+  const stagePillCls =
+    accent === 'rose'
+      ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200'
+      : accent === 'emerald'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-200'
+        : accent === 'slate'
+          ? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+          : 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-200';
+  const stagePillText =
+    accent === 'rose'
+      ? 'Завис'
+      : accent === 'emerald'
+        ? 'Готово'
+        : accent === 'slate'
+          ? 'Простой'
+          : 'В работе';
 
   return (
-    <div className={`mt-2 rounded-md border px-3 py-2 text-[12px] ${wrapCls}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center gap-1.5 font-medium ${labelCls}`}>
-          <Brain className="h-3.5 w-3.5" />
-          {isStuck ? 'AI-разбор завис' : 'AI разбирает отзывы'}
-        </span>
-        <span className={muteCls}>{stageLabel}</span>
-        <span
-          className={`ml-auto tabular-nums text-[11px] font-semibold ${labelCls}`}
-        >
-          {percent}%
-        </span>
-      </div>
-      <div
-        className={`mt-1.5 h-1.5 w-full overflow-hidden rounded-full ${
-          isStuck ? 'bg-rose-200/60 dark:bg-rose-900/60' : 'bg-violet-200/60 dark:bg-violet-900/60'
-        }`}
-      >
-        <div
-          className={`h-full ${barCls} transition-[width] duration-700`}
-          style={{ width: `${Math.max(3, Math.min(100, percent))}%` }}
-        />
-      </div>
-      {progress && (
-        <div className={`mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] ${muteCls}`}>
-          <span title="Сколько компаний поиска уже получили pain-теги">
-            Готовы: <b className="tabular-nums">{progress.companies_with_pains}</b> из{' '}
-            <b className="tabular-nums">{progress.companies_total}</b> компаний
+    <div
+      className={`mt-2 flex overflow-hidden rounded border text-[12px] ${wrapCls}`}
+    >
+      <div aria-hidden className={`w-1 shrink-0 ${stageBarColor}`} />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Brain className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+          <span className="font-semibold text-slate-900 dark:text-slate-100">
+            AI-разбор отзывов
           </span>
-          {progress.reviews_total > 0 && (
-            <span title="Сколько отзывов уже прошло через AI-эмбеддинги">
-              Отзывы: <b className="tabular-nums">{progress.reviews_with_embedding}</b> /{' '}
-              <b className="tabular-nums">{progress.reviews_total}</b>
-            </span>
-          )}
-          <span title="Сколько кластеров болей создано для этой ниши">
-            Кластеры: <b className="tabular-nums">{progress.pain_tags_total}</b>
+          <span
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ${stagePillCls}`}
+          >
+            {stagePillText}
           </span>
-          {startedAt && stage !== 'ready' && (
-            // Таймер скрываем на финальной фазе: работа уже сделана, время не
-            // показатель прогресса. Иначе при кэш-загрузке (bekend сразу
-            // отдаёт 'ready') юзер видел «· 0:00» рядом с «Готово» — выглядело
-            // как зависший таймер.
-            <span title="Прошло времени с момента запуска AI-разбора">
-              · {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
+          <span className="text-slate-600 dark:text-slate-300">{stageLabel}</span>
+          <span className="ml-auto tabular-nums text-[12px] font-semibold text-slate-700 dark:text-slate-200">
+            {percent}%
+          </span>
+        </div>
+        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            className={`h-full ${stageBarColor} transition-[width] duration-700`}
+            style={{ width: `${Math.max(3, Math.min(100, percent))}%` }}
+          />
+        </div>
+        {progress && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-slate-600 dark:text-slate-400">
+            <span title="Сколько компаний поиска уже получили pain-теги">
+              <span className="text-slate-500 dark:text-slate-500">Готовы:</span>{' '}
+              <b className="tabular-nums text-slate-900 dark:text-slate-100">
+                {progress.companies_with_pains}
+              </b>
+              <span className="mx-1 text-slate-400">/</span>
+              <b className="tabular-nums text-slate-700 dark:text-slate-300">
+                {progress.companies_total}
+              </b>{' '}
+              компаний
             </span>
-          )}
-          <span className="ml-auto inline-flex items-center gap-2">
-            {isStuck && (
+            {progress.reviews_total > 0 && (
+              <span title="Сколько отзывов уже прошло через AI-эмбеддинги">
+                <span className="text-slate-500 dark:text-slate-500">Отзывы:</span>{' '}
+                <b className="tabular-nums text-slate-900 dark:text-slate-100">
+                  {progress.reviews_with_embedding}
+                </b>
+                <span className="mx-1 text-slate-400">/</span>
+                <b className="tabular-nums text-slate-700 dark:text-slate-300">
+                  {progress.reviews_total}
+                </b>
+              </span>
+            )}
+            <span title="Сколько кластеров болей создано для этой ниши">
+              <span className="text-slate-500 dark:text-slate-500">Кластеры:</span>{' '}
+              <b className="tabular-nums text-slate-900 dark:text-slate-100">
+                {progress.pain_tags_total}
+              </b>
+            </span>
+            {startedAt && stage !== 'ready' && (
+              <span
+                title="Прошло времени с момента запуска AI-разбора"
+                className="tabular-nums"
+              >
+                {Math.floor(elapsedSec / 60)}:
+                {(elapsedSec % 60).toString().padStart(2, '0')}
+              </span>
+            )}
+            <span className="ml-auto inline-flex items-center gap-2">
+              {isStuck && (
+                <button
+                  type="button"
+                  onClick={onRestart}
+                  className="rounded bg-rose-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-rose-700"
+                  title="Поставить AI-разбор в очередь повторно"
+                >
+                  Запустить заново
+                </button>
+              )}
               <button
                 type="button"
-                onClick={onRestart}
-                className="rounded-md bg-rose-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-rose-700"
-                title="Поставить AI-разбор в очередь повторно"
+                onClick={onDismiss}
+                className="text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+                title="Скрыть прогресс-плашку. Запустить AI снова можно кнопкой выше."
               >
-                Запустить заново
+                скрыть
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="underline-offset-2 hover:underline"
-              title="Скрыть прогресс-плашку. Запустить AI снова можно кнопкой выше."
-            >
-              скрыть
-            </button>
-          </span>
-        </div>
-      )}
-      {isStuck && (
-        <div className={`mt-1.5 space-y-1.5 text-[11px] ${muteCls}`}>
-          <div>
-            Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты.
-            Скорее всего celery-задача зависла или кластеризация даёт 0 кластеров.
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={diagnosticRunning}
-              onClick={onRunDiagnostic}
-              className="rounded-md border border-rose-300 bg-white px-2 py-0.5 text-[11px] font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 dark:bg-transparent dark:text-rose-200"
-              title="Запустит синхронный recluster прямо сейчас и покажет точную причину (займёт до 1-2 минут)"
-            >
-              {diagnosticRunning
-                ? '🔬 Диагностика выполняется… (до 2 мин)'
-                : '🔬 Запустить диагностику'}
-            </button>
-            <span className="text-[11px] opacity-80">
-              Синхронно прогонит кластеризацию и покажет точную причину
             </span>
           </div>
-          {diagnostic && (
-            <div className="rounded-md border border-rose-200 bg-white/80 px-2.5 py-1.5 text-[11px] dark:bg-rose-950/40">
-              <div className="font-medium text-rose-900 dark:text-rose-100">
-                Результат диагностики:
-              </div>
-              <ul className="mt-1 space-y-0.5 text-rose-900/90 dark:text-rose-100/90">
-                <li>
-                  Отзывов с эмбеддингами:{' '}
-                  <b className="tabular-nums">{diagnostic.reviews_with_embedding}</b>
-                </li>
-                <li>
-                  Кластеров после HDBSCAN/k-means:{' '}
-                  <b className="tabular-nums">{diagnostic.clusters_found}</b>
-                </li>
-                <li>
-                  Pain-тегов upserted:{' '}
-                  <b className="tabular-nums">{diagnostic.pain_tags_upserted}</b>
-                </li>
-                <li>
-                  Компаний получили теги:{' '}
-                  <b className="tabular-nums">{diagnostic.companies_with_pains_after}</b>{' '}
-                  из {diagnostic.companies_total}
-                </li>
-                {diagnostic.error && (
-                  <li className="font-medium text-rose-800 dark:text-rose-200">
-                    Ошибка: {diagnostic.error}
-                  </li>
-                )}
-              </ul>
-              {diagnostic.companies_with_pains_after > 0 && (
-                <div className="mt-1 text-emerald-700 dark:text-emerald-300">
-                  Готово! Закрой плашку — плитки появились в карточках.
-                </div>
-              )}
-              {!diagnostic.error && diagnostic.companies_with_pains_after === 0 && (
-                <div className="mt-1 text-rose-800 dark:text-rose-200">
-                  {diagnostic.reviews_with_embedding === 0
-                    ? 'Не было отзывов с эмбеддингами — analyze не отрабатывал. Проверь ProxyAPI токены.'
-                    : diagnostic.clusters_found === 0
-                    ? 'Кластеризация дала 0 кластеров. Слишком разнородные/мало отзывов либо HDBSCAN + k-means оба сломались.'
-                    : 'Кластеры есть, но match не присвоил их компаниям. Скорее всего слишком высокий REVIEWS_AI_PAIN_MATCH_THRESHOLD.'}
-                </div>
-              )}
+        )}
+        {isStuck && (
+          <div className="space-y-1.5 border-t border-rose-200 pt-2 text-[11.5px] text-rose-800 dark:border-rose-800/60 dark:text-rose-200">
+            <div>
+              Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты.
+              Скорее всего celery-задача зависла или кластеризация даёт 0 кластеров.
             </div>
-          )}
-        </div>
-      )}
-      {stage === 'idle' && (
-        <div className={`mt-1.5 text-[11px] ${muteCls}`}>
-          У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу
-          или подожди, пока подтянутся отзывы.
-        </div>
-      )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={diagnosticRunning}
+                onClick={onRunDiagnostic}
+                className="inline-flex items-center gap-1 rounded border border-rose-300 bg-white px-2 py-1 text-[11.5px] font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-200 dark:hover:bg-slate-800"
+                title="Запустит синхронный recluster прямо сейчас и покажет точную причину (займёт до 1-2 минут)"
+              >
+                {diagnosticRunning
+                  ? 'Диагностика выполняется… (до 2 мин)'
+                  : 'Запустить диагностику'}
+              </button>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Синхронно прогонит кластеризацию и покажет точную причину
+              </span>
+            </div>
+            {diagnostic && (
+              <div className="rounded border border-rose-200 bg-white px-2.5 py-1.5 text-[11.5px] dark:border-rose-700 dark:bg-slate-900">
+                <div className="font-semibold text-rose-900 dark:text-rose-100">
+                  Результат диагностики:
+                </div>
+                <ul className="mt-1 space-y-0.5 text-slate-700 dark:text-slate-200">
+                  <li>
+                    Отзывов с эмбеддингами:{' '}
+                    <b className="tabular-nums">{diagnostic.reviews_with_embedding}</b>
+                  </li>
+                  <li>
+                    Кластеров после HDBSCAN/k-means:{' '}
+                    <b className="tabular-nums">{diagnostic.clusters_found}</b>
+                  </li>
+                  <li>
+                    Pain-тегов upserted:{' '}
+                    <b className="tabular-nums">{diagnostic.pain_tags_upserted}</b>
+                  </li>
+                  <li>
+                    Компаний получили теги:{' '}
+                    <b className="tabular-nums">{diagnostic.companies_with_pains_after}</b>{' '}
+                    из {diagnostic.companies_total}
+                  </li>
+                  {diagnostic.error && (
+                    <li className="font-medium text-rose-800 dark:text-rose-200">
+                      Ошибка: {diagnostic.error}
+                    </li>
+                  )}
+                </ul>
+                {diagnostic.companies_with_pains_after > 0 && (
+                  <div className="mt-1 text-emerald-700 dark:text-emerald-300">
+                    Готово! Закрой плашку — плитки появились в карточках.
+                  </div>
+                )}
+                {!diagnostic.error && diagnostic.companies_with_pains_after === 0 && (
+                  <div className="mt-1 text-rose-800 dark:text-rose-200">
+                    {diagnostic.reviews_with_embedding === 0
+                      ? 'Не было отзывов с эмбеддингами — analyze не отрабатывал. Проверь ProxyAPI токены.'
+                      : diagnostic.clusters_found === 0
+                        ? 'Кластеризация дала 0 кластеров. Слишком разнородные/мало отзывов либо HDBSCAN + k-means оба сломались.'
+                        : 'Кластеры есть, но match не присвоил их компаниям. Скорее всего слишком высокий REVIEWS_AI_PAIN_MATCH_THRESHOLD.'}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {stage === 'idle' && (
+          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+            У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу
+            или подожди, пока подтянутся отзывы.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
