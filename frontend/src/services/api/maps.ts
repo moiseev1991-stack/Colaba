@@ -584,6 +584,8 @@ export interface DemandIndexItem {
   total_mentions: number;
   companies_affected: number;
   share_of_companies: number;
+  /** total_mentions / companies_total — среднее упоминаний на компанию по нише. */
+  niche_avg_per_company: number;
 }
 
 export interface DemandIndexOut {

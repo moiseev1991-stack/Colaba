@@ -1104,6 +1104,9 @@ async def get_demand_index(
         if tm == 0 and ca == 0:
             continue
         share_of_companies = ca / companies_total if companies_total > 0 else 0.0
+        # niche_avg_per_company — то же, что в /pain-benchmark, но без привязки
+        # к компании. Используется в шапке выдачи как baseline «среднее по нише».
+        niche_avg = tm / companies_total if companies_total > 0 else 0.0
         items.append({
             "pain_tag_id": int(tag_id),
             "label": label,
@@ -1111,6 +1114,7 @@ async def get_demand_index(
             "total_mentions": tm,
             "companies_affected": ca,
             "share_of_companies": round(share_of_companies, 3),
+            "niche_avg_per_company": round(niche_avg, 2),
         })
 
     items.sort(key=lambda x: (-x["total_mentions"], -x["companies_affected"]))
