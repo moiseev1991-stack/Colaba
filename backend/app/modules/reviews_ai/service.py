@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from sqlalchemy import case, func, or_, select, update, text
+from sqlalchemy import and_, case, func, or_, select, update, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -389,9 +389,23 @@ async def recluster_pains_for_niche(
     min_cs = min_cluster_size if min_cluster_size is not None else settings.REVIEWS_AI_MIN_CLUSTER_SIZE
 
     # 1. Reviews этой ниши+города с embedding (либо по company_ids — см. docstring)
+    #
+    # ВАЖНО: исключаем позитивные отзывы из кластеризации. Иначе HDBSCAN/kmeans
+    # создаёт кластеры из благодарностей → LLM-naming даёт им позитивные label
+    # («Качество стоматологических услуг», «Профессионализм врачей»), и эти теги
+    # попадают в БЛОК БОЛИ под красной рамкой. Полный бред в UI.
+    #
+    # Условие: sentiment явно negative/neutral, либо sentiment ещё NULL
+    # (AI-пайплайн не отработал), но rating ≤ 3 как fallback. Так мы не теряем
+    # старые отзывы без AI-разметки, но и не пускаем явные «5 звёзд → positive»
+    # в кластеризацию.
+    pain_filter = or_(
+        Review.sentiment.in_(["negative", "neutral"]),
+        and_(Review.sentiment.is_(None), Review.rating <= 3),
+    )
     base = (
         select(Review.id, Review.raw_text, Review.embedding, Review.company_id)
-        .where(Review.embedding.isnot(None))
+        .where(Review.embedding.isnot(None), pain_filter)
     )
     if company_ids:
         # Явный список компаний: фильтруем без JOIN на Company.niche/city
@@ -404,7 +418,7 @@ async def recluster_pains_for_niche(
             base = base.where(Company.city == city)
     rows = list((await db.execute(base)).all())
     logger.info(
-        "recluster %r/%r: взяли %d reviews с embedding (company_ids=%s, min_cs=%d)",
+        "recluster %r/%r: взяли %d non-positive reviews с embedding (company_ids=%s, min_cs=%d)",
         niche, city, len(rows),
         f"{len(company_ids)} ids" if company_ids else "by Company.niche",
         min_cs,
