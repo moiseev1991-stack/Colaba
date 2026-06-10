@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.76.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.75.0...v1.76.0) (2026-06-10)
+
+
+### Features
+
+* **ux+docs:** компактнее chart, скролл к отзывам, PROJECT_OVERVIEW ([2a78099](https://github.com/moiseev1991-stack/Colaba/commit/2a78099193c5a037c93c91cb0822e51f396c5791))
+
 # [1.75.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.74.0...v1.75.0) (2026-06-10)
 
 
