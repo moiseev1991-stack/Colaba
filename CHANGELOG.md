@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.77.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.76.0...v1.77.0) (2026-06-10)
+
+
+### Features
+
+* **maps:** «Сравнение с нишей» в шапке выдачи ([f5b1a72](https://github.com/moiseev1991-stack/Colaba/commit/f5b1a72dd16a134e71b49546d4444acd9515688b))
+
 # [1.76.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.75.0...v1.76.0) (2026-06-10)
 
 
