@@ -1621,8 +1621,8 @@ function RegionPainTrendInline({
   const maxCount = Math.max(1, ...(trend?.points ?? []).map((p) => p.count));
 
   const W = 720;
-  const H = 160;
-  const PAD = { top: 12, right: 12, bottom: 24, left: 28 };
+  const H = 100;
+  const PAD = { top: 8, right: 8, bottom: 18, left: 22 };
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
   const groupWidth = months.length > 0 ? innerW / months.length : innerW;
@@ -1632,12 +1632,12 @@ function RegionPainTrendInline({
   );
 
   return (
-    <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+    <div className="mt-1.5 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2">
-        <div className="flex flex-wrap items-baseline gap-2 text-[11px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 px-2.5 py-1.5">
+        <div className="flex flex-wrap items-baseline gap-2 text-[10.5px]">
           <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Динамика боли по месяцам
+            Динамика по месяцам
           </span>
           <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
             {tag.label}
