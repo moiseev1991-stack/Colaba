@@ -23,6 +23,7 @@ import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
+import { NicheBenchmarkOverviewBlock } from '@/components/maps/NicheBenchmarkOverviewBlock';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
   adminReclusterNiche,
@@ -939,6 +940,25 @@ export function MapsSearchResults({
                 onClose={() => setPainTagForChart(null)}
               />
             )}
+            {/* Сравнение с нишей — как в drawer, но без привязки к компании.
+                Показывает топ болей с долей компаний и средним на компанию.
+                Кликабельные строки — фильтрует список по pain_tag_id. */}
+            <NicheBenchmarkOverviewBlock
+              niche={search.niche}
+              city={search.city}
+              activePainTagIds={filter.pain_tag_ids ?? []}
+              onPainClick={(id) => {
+                const current = filter.pain_tag_ids ?? [];
+                const next = current.includes(id)
+                  ? current.filter((x) => x !== id)
+                  : [...current, id];
+                setFilter((prev) => ({
+                  ...prev,
+                  pain_tag_ids: next.length > 0 ? next : null,
+                }));
+                setFilterDirty(true);
+              }}
+            />
             {activeAiPreset && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
                 <span className="inline-flex items-center gap-1 font-medium text-violet-900 dark:text-violet-200">
