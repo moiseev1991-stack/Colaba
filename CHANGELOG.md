@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.72.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.12...v1.72.0) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** website из company_contacts → Company.website ([c508e51](https://github.com/moiseev1991-stack/Colaba/commit/c508e5132cfc0b1de0a9ac1a2de82649b1719c88))
+
+
+### Features
+
+* **maps:** pain-tag → отзывы темы + chart динамики + ТОП-боли региона ([20da36d](https://github.com/moiseev1991-stack/Colaba/commit/20da36ddfea72ecdd4e8d74f6324d6499418ff27))
+
+## [1.71.12](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.11...v1.71.12) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** UI карточки и шапки прогресса в Pipedrive-стиле ([50df987](https://github.com/moiseev1991-stack/Colaba/commit/50df9874d8962a2a46cbcba2fd143fcbd93d12cb))
+
+## [1.71.11](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.10...v1.71.11) (2026-06-10)
+
+
+### Bug Fixes
+
+* **reviews_ai:** серверный guard абстрактных pain-label ([554e141](https://github.com/moiseev1991-stack/Colaba/commit/554e141cb63d75a5b20b0fed3ab8057585c49e3d))
+
+## [1.71.10](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.9...v1.71.10) (2026-06-10)
+
+
+### Bug Fixes
+
+* **reviews_ai:** pain-label = конкретная боль, не «Качество X» ([e272df3](https://github.com/moiseev1991-stack/Colaba/commit/e272df3335d835c07d0264f8d337781079836943))
+
 ## [1.71.9](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.8...v1.71.9) (2026-06-10)
 
 
