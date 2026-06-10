@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.71.9](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.8...v1.71.9) (2026-06-10)
+
+
+### Bug Fixes
+
+* **maps:** прогресс-бар на 'ready' = 100%, без таймера ([de1764c](https://github.com/moiseev1991-stack/Colaba/commit/de1764c73fcd583047d41b2cac5a43d1baf01bd7))
+
 ## [1.71.8](https://github.com/moiseev1991-stack/Colaba/compare/v1.71.7...v1.71.8) (2026-06-10)
 
 
