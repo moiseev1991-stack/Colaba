@@ -32,13 +32,15 @@ import {
   exportSearchCsvUrl,
   getMapSearch,
   getMapsAiProgress,
-  getSearchPainTags,
+  getNichePainTrend,
   listMapCompanies,
+  listPainTags,
   type CompanyOut,
   type MapsAiProgressOut,
   type MapsReclusterDiagnosticOut,
   type MapSearchFilter,
   type MapSearchOut,
+  type NichePainTrendOut,
   type OutreachDraftOut,
   type PainTagOut,
 } from '@/src/services/api/maps';
@@ -230,6 +232,18 @@ export function MapsSearchResults({
   // строкой в шапке: «В этой нише чаще всего жалуются на: …». Юзер просил
   // 2026-06-10 — даёт быстрый «срез» болей региона до раскрытия карточек.
   const [regionPainTags, setRegionPainTags] = useState<PainTagOut[]>([]);
+  // Шапка топ-болей: фильтры по источнику отзыва (null = все) и периоду posted_at.
+  // Default — последние 90 дней; null source = объединённый агрегат, считается
+  // через fast-path (без JOIN reviews).
+  type PainSourceFilter = '2gis' | 'yandex_maps' | 'google' | null;
+  const [painSourceFilter, setPainSourceFilter] = useState<PainSourceFilter>(null);
+  const [painPeriodDays, setPainPeriodDays] = useState<number | null>(90);
+  // Pain-tag, по которому ниже шапки развёрнут inline-chart с динамикой.
+  // null = chart скрыт. Кликать в плитке шапки → toggle одновременно
+  // фильтра выдачи и видимости chart.
+  const [painTagForChart, setPainTagForChart] = useState<PainTagOut | null>(null);
+  const [painTrend, setPainTrend] = useState<NichePainTrendOut | null>(null);
+  const [painTrendLoading, setPainTrendLoading] = useState(false);
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -544,14 +558,20 @@ export function MapsSearchResults({
   useEffect(() => stopAiProgressPolling, [stopAiProgressPolling]);
 
   // Подтягиваем pain-теги (niche, city) для шапки «ТОП-боли региона».
-  // Источник — /maps/search/{id}/pain-tags (фильтрует по реальным компаниям
-  // поиска). Перезапрашиваем при изменении aiProgress.pain_tags_total —
-  // сразу после того, как recluster закончил, список обновляется без
-  // ручного refresh.
+  // Источник — /maps/pain-tags (niche+city с опциональным source/from/to —
+  // пересчёт occurrences по подмножеству отзывов). Перезапрашиваем при
+  // изменении aiProgress.pain_tags_total — после recluster обновляется без
+  // ручного refresh. Также при смене source/period.
   useEffect(() => {
     let mounted = true;
-    if (!search?.id) return;
-    getSearchPainTags(search.id)
+    if (!search?.niche) return;
+    const from = painPeriodDays != null
+      ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
+      : undefined;
+    listPainTags(search.niche, search.city ?? undefined, {
+      source: painSourceFilter ?? undefined,
+      from,
+    })
       .then((data) => {
         if (mounted) setRegionPainTags(data);
       })
@@ -561,7 +581,51 @@ export function MapsSearchResults({
     return () => {
       mounted = false;
     };
-  }, [search?.id, aiProgress?.pain_tags_total]);
+  }, [
+    search?.niche,
+    search?.city,
+    aiProgress?.pain_tags_total,
+    painSourceFilter,
+    painPeriodDays,
+  ]);
+
+  // Подтягиваем trend для inline-chart, когда юзер кликнул плитку.
+  useEffect(() => {
+    if (!painTagForChart || !search?.niche) {
+      setPainTrend(null);
+      return;
+    }
+    let mounted = true;
+    setPainTrendLoading(true);
+    const from = painPeriodDays != null
+      ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
+      : undefined;
+    getNichePainTrend(
+      search.niche,
+      painTagForChart.id,
+      search.city ?? null,
+      painSourceFilter ?? undefined,
+      from,
+    )
+      .then((d) => {
+        if (mounted) setPainTrend(d);
+      })
+      .catch(() => {
+        if (mounted) setPainTrend(null);
+      })
+      .finally(() => {
+        if (mounted) setPainTrendLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [
+    painTagForChart,
+    search?.niche,
+    search?.city,
+    painSourceFilter,
+    painPeriodDays,
+  ]);
 
   // Автозапуск анализа, если пресет выбрали ещё на форме поиска (initialAiPreset).
   // Условия: пресет активен, парсинг завершён, есть видимые компании, ещё не
@@ -842,6 +906,10 @@ export function MapsSearchResults({
                 niche={search.niche}
                 city={search.city}
                 activeIds={filter.pain_tag_ids ?? []}
+                sourceFilter={painSourceFilter}
+                onSourceFilterChange={setPainSourceFilter}
+                periodDays={painPeriodDays}
+                onPeriodChange={setPainPeriodDays}
                 onToggle={(id) => {
                   const current = filter.pain_tag_ids ?? [];
                   const next = current.includes(id)
@@ -852,11 +920,23 @@ export function MapsSearchResults({
                     pain_tag_ids: next.length > 0 ? next : null,
                   }));
                   setFilterDirty(true);
+                  // Открываем/закрываем inline chart на том же кликe.
+                  const tag = regionPainTags.find((t) => t.id === id) ?? null;
+                  setPainTagForChart((prev) => (prev?.id === id ? null : tag));
                 }}
                 onClear={() => {
                   setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
                   setFilterDirty(true);
+                  setPainTagForChart(null);
                 }}
+              />
+            )}
+            {painTagForChart && (
+              <RegionPainTrendInline
+                tag={painTagForChart}
+                trend={painTrend}
+                loading={painTrendLoading}
+                onClose={() => setPainTagForChart(null)}
               />
             )}
             {activeAiPreset && (
@@ -1340,6 +1420,10 @@ function RegionPainSummary({
   niche,
   city,
   activeIds,
+  sourceFilter,
+  onSourceFilterChange,
+  periodDays,
+  onPeriodChange,
   onToggle,
   onClear,
 }: {
@@ -1348,6 +1432,12 @@ function RegionPainSummary({
   city: string | null;
   /** Текущий фильтр pain_tag_ids — для подсветки активных плиток. */
   activeIds: number[];
+  /** null = все источники. Сужает выборку отзывов для пересчёта occurrences. */
+  sourceFilter: '2gis' | 'yandex_maps' | 'google' | null;
+  onSourceFilterChange: (next: '2gis' | 'yandex_maps' | 'google' | null) => void;
+  /** null = за всё время. По умолчанию 90 дней. */
+  periodDays: number | null;
+  onPeriodChange: (next: number | null) => void;
   /** Клик по плитке: toggle id в фильтре списка компаний. */
   onToggle: (id: number) => void;
   /** Снять все pain-фильтры. */
@@ -1385,6 +1475,63 @@ function RegionPainSummary({
               × снять фильтр
             </button>
           )}
+        </div>
+        {/* Контролы: источник отзывов + период. Меняют пересчёт occurrences. */}
+        <div className="flex flex-wrap items-center gap-2 text-[11px] normal-case tracking-normal">
+          <span className="text-slate-500 dark:text-slate-400">Источник:</span>
+          <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+            {([
+              { v: null, label: 'Все' },
+              { v: '2gis' as const, label: '2GIS' },
+              { v: 'yandex_maps' as const, label: 'Я.Карты' },
+              { v: 'google' as const, label: 'Google' },
+            ]).map(({ v, label }) => {
+              const active = sourceFilter === v;
+              return (
+                <button
+                  key={String(v)}
+                  type="button"
+                  onClick={() => onSourceFilterChange(v)}
+                  className={
+                    'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
+                    (active
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
+                    ' border-slate-300 dark:border-slate-600'
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <span className="text-slate-500 dark:text-slate-400">Период:</span>
+          <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+            {([
+              { v: 30, label: '30д' },
+              { v: 90, label: '90д' },
+              { v: 365, label: 'год' },
+              { v: null, label: 'всё' },
+            ]).map(({ v, label }) => {
+              const active = periodDays === v;
+              return (
+                <button
+                  key={String(v)}
+                  type="button"
+                  onClick={() => onPeriodChange(v)}
+                  className={
+                    'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
+                    (active
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
+                    ' border-slate-300 dark:border-slate-600'
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {top.map((t) => {
@@ -1430,6 +1577,182 @@ function RegionPainSummary({
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Inline-блок с барчартом динамики выбранной боли (по источникам).
+ * Появляется под шапкой топ-болей, когда юзер кликнул на плитку.
+ * Источник данных — /maps/insights/pain-trend (агрегат по всей нише+городу).
+ */
+function RegionPainTrendInline({
+  tag,
+  trend,
+  loading,
+  onClose,
+}: {
+  tag: PainTagOut;
+  trend: NichePainTrendOut | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const sourceColor: Record<string, string> = {
+    '2gis': '#0ea5e9',
+    'yandex_maps': '#f43f5e',
+    'google': '#a855f7',
+  };
+  const sourceShortLabel: Record<string, string> = {
+    '2gis': '2GIS',
+    'yandex_maps': 'Я.Карты',
+    'google': 'Google',
+  };
+
+  // Группировка по месяцу × источнику.
+  const byMonth = new Map<string, Record<string, number>>();
+  for (const p of trend?.points ?? []) {
+    const row = byMonth.get(p.month) ?? {};
+    row[p.source] = (row[p.source] ?? 0) + p.count;
+    byMonth.set(p.month, row);
+  }
+  const months = Array.from(byMonth.keys()).sort();
+  const allSources = Array.from(new Set((trend?.points ?? []).map((p) => p.source)));
+  const maxCount = Math.max(1, ...(trend?.points ?? []).map((p) => p.count));
+
+  const W = 720;
+  const H = 160;
+  const PAD = { top: 12, right: 12, bottom: 24, left: 28 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const groupWidth = months.length > 0 ? innerW / months.length : innerW;
+  const barWidth = Math.max(
+    2,
+    Math.min(24, (groupWidth - 4) / Math.max(1, allSources.length)),
+  );
+
+  return (
+    <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2">
+        <div className="flex flex-wrap items-baseline gap-2 text-[11px]">
+          <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Динамика боли по месяцам
+          </span>
+          <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
+            {tag.label}
+          </span>
+          {trend && (
+            <span className="text-slate-500 dark:text-slate-400 tabular-nums">
+              {trend.total_reviews} отз. · {trend.companies_affected} комп.
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            × закрыть
+          </button>
+        </div>
+        {loading && !trend ? (
+          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">Загружаем динамику…</div>
+        ) : months.length === 0 ? (
+          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+            Нет отзывов с датами в выбранном окне — попробуй расширить период.
+          </div>
+        ) : (
+          <>
+            <svg
+              width="100%"
+              viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="none"
+              className="block"
+              role="img"
+              aria-label={`Динамика «${tag.label}» по месяцам`}
+            >
+              <line
+                x1={PAD.left}
+                y1={PAD.top + innerH}
+                x2={PAD.left + innerW}
+                y2={PAD.top + innerH}
+                stroke="currentColor"
+                className="text-slate-300 dark:text-slate-600"
+                strokeWidth={1}
+              />
+              <text
+                x={PAD.left - 4}
+                y={PAD.top + 4}
+                textAnchor="end"
+                fontSize={9}
+                className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+              >
+                {maxCount}
+              </text>
+              <text
+                x={PAD.left - 4}
+                y={PAD.top + innerH}
+                textAnchor="end"
+                fontSize={9}
+                className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+              >
+                0
+              </text>
+              {months.map((m, mi) => {
+                const groupX = PAD.left + mi * groupWidth + 2;
+                const monthRow = byMonth.get(m) ?? {};
+                return (
+                  <g key={m}>
+                    {allSources.map((src, si) => {
+                      const count = monthRow[src] ?? 0;
+                      const h = (count / maxCount) * innerH;
+                      const x = groupX + si * barWidth;
+                      const y = PAD.top + innerH - h;
+                      return (
+                        <rect
+                          key={src}
+                          x={x}
+                          y={y}
+                          width={Math.max(1, barWidth - 1)}
+                          height={Math.max(0, h)}
+                          fill={sourceColor[src] ?? '#94a3b8'}
+                          opacity={0.9}
+                        >
+                          <title>
+                            {m} · {sourceShortLabel[src] ?? src} · {count}
+                          </title>
+                        </rect>
+                      );
+                    })}
+                    {(mi === 0 || mi === months.length - 1 || mi % Math.ceil(months.length / 8) === 0) && (
+                      <text
+                        x={groupX + (allSources.length * barWidth) / 2}
+                        y={PAD.top + innerH + 12}
+                        textAnchor="middle"
+                        fontSize={9}
+                        className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+                      >
+                        {m.slice(2)}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-600 dark:text-slate-300">
+              {allSources.map((src) => (
+                <span key={src} className="inline-flex items-center gap-1">
+                  <span
+                    aria-hidden
+                    className="inline-block h-2 w-2 rounded-sm"
+                    style={{ background: sourceColor[src] ?? '#94a3b8' }}
+                  />
+                  {sourceShortLabel[src] ?? src}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
