@@ -202,7 +202,13 @@ async def call_llm_cluster_naming(
     niche: str,
     sample_reviews: list[str],
 ) -> dict[str, str] | None:
-    """Возвращает {"label": "...", "description": "..."} или None."""
+    """Возвращает {"label": "...", "description": "..."} или None.
+
+    Гарантирует, что label НЕ начинается с абстрактных слов «Качество»,
+    «Обслуживание», «Клиентский опыт» — даже если LLM упрётся. Если первый
+    вызов выдаёт абстракцию, делаем retry с критикой; если и retry не
+    помог — извлекаем конкретное keyword из description через regex.
+    """
     assistant_id = await pick_assistant_id(db, "naming")
     if assistant_id is None:
         logger.info("call_llm_cluster_naming: no assistant available")
@@ -235,7 +241,137 @@ async def call_llm_cluster_naming(
         return None
     label = _soften_pain_label(label)
     desc = _soften_pain_label(desc)
+
+    # Guard: «Качество X», «Обслуживание X», «Клиентский опыт» — отвергаем,
+    # это пустые категории. Пробуем retry с критикой LLM.
+    if _is_abstract_label(label):
+        logger.info("cluster_naming: '%s' слишком абстрактно, retry", label)
+        retry = await _retry_concrete_label(db, assistant_id, niche, label, desc, sample_str)
+        if retry and not _is_abstract_label(retry):
+            label = _soften_pain_label(retry)
+        else:
+            # LLM упрямый — fallback на keyword из description.
+            kw_label = _label_from_description(desc, niche)
+            if kw_label:
+                logger.info("cluster_naming: fallback label из desc: '%s'", kw_label)
+                label = kw_label
+
     return {"label": label[:200], "description": desc}
+
+
+# Префиксы и обороты, на которые НЕ должны начинаться pain-label-ы.
+# «Качество услуг» / «Обслуживание клиентов» — это категория, а не боль:
+# продавец-копирайтер не сможет на этом построить outreach.
+_ABSTRACT_LABEL_PATTERNS = (
+    "качество ",
+    "качества ",
+    "обслуживани",       # «Обслуживание», «Обслуживания»
+    "клиентский опыт",
+    "клиентского опыта",
+    "подход ",
+    "подхода ",
+    "сервис ",
+    "сервиса ",
+)
+
+
+def _is_abstract_label(label: str) -> bool:
+    if not label:
+        return True
+    low = label.lower().strip()
+    for p in _ABSTRACT_LABEL_PATTERNS:
+        if low.startswith(p):
+            return True
+    return False
+
+
+# Ключевые слова в description → конкретный pain-label. Порядок имеет
+# значение: первое совпадение выигрывает. Покрывает основные ниши B2C —
+# стоматология, косметология, медицина, ресторан, авто, фитнес.
+_DESC_KEYWORD_TO_LABEL: tuple[tuple[str, str], ...] = (
+    ("завышен", "Завышенные цены"),
+    ("переплат", "Переплата за лечение"),
+    ("допработ", "Допработы сверх договора"),
+    ("доплат", "Спорные доплаты"),
+    ("цен", "Цены и допработы"),
+    ("дозвон", "Не дозвониться"),
+    ("не отвеч", "Не отвечают на звонки"),
+    ("ожидани", "Долгое ожидание"),
+    ("очеред", "Очереди и долгое ожидание"),
+    ("опаздыв", "Опоздания приёма"),
+    ("задержк", "Задержки приёма"),
+    ("запис", "Сложно записаться"),
+    ("отмен", "Отмены записи"),
+    ("перенос", "Переносы записи"),
+    ("груб", "Грубость персонала"),
+    ("хам", "Грубое отношение"),
+    ("невнимат", "Невнимательность специалистов"),
+    ("равнодуш", "Равнодушие персонала"),
+    ("администратор", "Проблемы с администраторами"),
+    ("ресепшен", "Проблемы на ресепшен"),
+    ("регистратур", "Проблемы в регистратуре"),
+    ("переделыва", "Переделывание лечения"),
+    ("повторн", "Повторное лечение"),
+    ("неэффективн", "Лечение не помогло"),
+    ("боль после", "Боль после процедуры"),
+    ("осложнен", "Осложнения после процедуры"),
+    ("диагност", "Проблемы с диагностикой"),
+    ("неаккуратн", "Неаккуратное выполнение"),
+    ("гаранти", "Сложности с гарантией"),
+)
+
+
+def _label_from_description(desc: str, niche: str) -> str | None:
+    """Извлекает конкретный pain-label из description, если LLM выдал
+    абстракцию вроде «Качество услуг». Если ни одного keyword нет — None
+    (caller тогда оставит исходный label LLM как есть)."""
+    if not desc:
+        return None
+    low = desc.lower()
+    for kw, mapped in _DESC_KEYWORD_TO_LABEL:
+        if kw in low:
+            return mapped
+    return None
+
+
+async def _retry_concrete_label(
+    db: AsyncSession,
+    assistant_id: int,
+    niche: str,
+    bad_label: str,
+    desc: str,
+    sample_str: str,
+) -> str | None:
+    """Просит LLM переименовать абстрактный label в конкретную боль.
+    Возвращает строку нового label или None."""
+    retry_prompt = (
+        f"Ты выдал label «{bad_label}» — это слишком абстрактно. "
+        f"Это категория, а не конкретная боль клиентов.\n\n"
+        f"Описание кластера: {desc}\n\n"
+        f"Отзывы:\n{sample_str}\n\n"
+        f"Перечитай и выдай ОДИН конкретный pain-label (2-5 слов на русском). "
+        f"НЕ начинай со слова «Качество», «Обслуживание», «Подход», «Клиентский». "
+        f"Выбирай конкретный симптом: что ИМЕННО раздражает клиентов "
+        f"(долгое ожидание, завышенные цены, грубость, не дозвониться, "
+        f"переделывание лечения, опоздания, отмены записи и т.п.).\n\n"
+        f"Верни ТОЛЬКО JSON: {{\"label\": \"...\"}}"
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": retry_prompt}],
+            db=db,
+            max_tokens=80,
+            temperature=0.2,
+        )
+    except Exception as e:
+        logger.warning("cluster_naming retry: chat() failed: %s", e)
+        return None
+    data = _extract_json(raw)
+    if not isinstance(data, dict):
+        return None
+    new_label = (data.get("label") or "").strip()
+    return new_label or None
 
 
 # Блок-лист обвинительных/юридически чувствительных слов в pain-label'ах.
