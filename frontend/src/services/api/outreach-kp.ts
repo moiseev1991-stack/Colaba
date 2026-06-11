@@ -31,6 +31,12 @@ export interface KpArgumentsUsed {
   benchmark_ratio: number | null;
   benchmark_phrase: string | null;
   source: string | null;
+  /** Эпик F: поля для КП по сайту (заполнены только если KpDraft по
+   *  site_lead_id, а не по company_id). */
+  site_url?: string | null;
+  site_domain?: string | null;
+  entry?: string | null;
+  entry_meaning?: string | null;
   sender_profile: string;
   offer_hint: string;
   tone: string;
@@ -39,7 +45,9 @@ export interface KpArgumentsUsed {
 
 export interface KpDraft {
   id: number;
-  company_id: number;
+  /** Эпик F: либо company_id, либо site_lead_id (XOR). */
+  company_id: number | null;
+  site_lead_id?: number | null;
   template_key: string;
   subject: string;
   body: string;
@@ -52,7 +60,10 @@ export interface KpDraft {
 export type KpTone = 'neutral' | 'bold';
 
 export interface KpGenerateRequest {
-  company_id: number;
+  /** XOR с site_lead_id. Бэк model_validator гарантирует ровно одно из двух. */
+  company_id?: number | null;
+  /** Эпик F: КП по найденному web-search'ем сайту. */
+  site_lead_id?: number | null;
   template_key: string;
   tone?: KpTone;
   /** Для template_key='custom' — текст профиля отправителя. */

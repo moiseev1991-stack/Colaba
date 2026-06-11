@@ -45,7 +45,13 @@ import {
 
 interface Props {
   open: boolean;
-  companyId: number | null;
+  /** Принимает ЛИБО companyId (КП по компании из maps), ЛИБО siteLeadId
+   *  (КП по найденному сайту, Эпик F). Бэк-валидатор XOR — мы тут не
+   *  жёстко форсируем чтобы parent мог переключаться, но передаём в
+   *  /outreach/kp/generate именно то, что не null. */
+  companyId?: number | null;
+  siteLeadId?: number | null;
+  /** Имя компании или домен — для шапки модалки. */
   companyName?: string;
   onClose: () => void;
   /** Опционально: какой шаблон выставить по умолчанию (если юзер выбрал
@@ -61,10 +67,14 @@ const TONE_OPTIONS: { value: KpTone; label: string }[] = [
 export function KpModal({
   open,
   companyId,
+  siteLeadId,
   companyName,
   onClose,
   defaultTemplateKey,
 }: Props) {
+  const targetCompanyId = companyId ?? null;
+  const targetSiteLeadId = siteLeadId ?? null;
+  const hasTarget = targetCompanyId != null || targetSiteLeadId != null;
   const [templates, setTemplates] = useState<KpTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -129,7 +139,7 @@ export function KpModal({
   }, [open]);
 
   async function handleGenerate() {
-    if (!companyId || !selectedKey || generating) return;
+    if (!hasTarget || !selectedKey || generating) return;
     if (isCustom && !customSenderProfile.trim()) {
       setError(
         'Для шаблона «Свой вариант» опиши, кто ты — 1-2 предложения. ' +
@@ -142,7 +152,11 @@ export function KpModal({
     setCopied(null);
     try {
       const res = await generateKp({
-        company_id: companyId,
+        // Бэк XOR-валидатор примет ровно одно из двух. parent должен
+        // не передавать оба сразу — на тип-уровне мы это не форсим,
+        // т.к. parent'у удобнее держать их параллельно.
+        company_id: targetCompanyId,
+        site_lead_id: targetSiteLeadId,
         template_key: selectedKey,
         tone,
         custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
@@ -291,7 +305,7 @@ export function KpModal({
               type="button"
               onClick={handleGenerate}
               disabled={
-                !companyId || !selectedKey || generating || templatesLoading
+                !hasTarget || !selectedKey || generating || templatesLoading
               }
               className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-600 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
