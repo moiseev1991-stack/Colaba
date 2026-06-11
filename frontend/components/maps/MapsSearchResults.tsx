@@ -19,7 +19,7 @@ import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-r
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { AddToListModal } from '@/components/maps/AddToListModal';
-import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
+import { KpModal } from '@/components/maps/KpModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
@@ -28,7 +28,6 @@ import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
   adminReclusterNiche,
   adminReclusterNicheDiagnostic,
-  draftEmailForCompany,
   enrichCompaniesTeam,
   exportSearchCsvUrl,
   getMapSearch,
@@ -42,7 +41,6 @@ import {
   type MapSearchFilter,
   type MapSearchOut,
   type NichePainTrendOut,
-  type OutreachDraftOut,
   type PainTagOut,
 } from '@/src/services/api/maps';
 import {
@@ -179,11 +177,12 @@ export function MapsSearchResults({
   const [lprBulkBusy, setLprBulkBusy] = useState(false);
   const [lprBulkMsg, setLprBulkMsg] = useState<string | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [draftOpen, setDraftOpen] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(false);
-  const [draftLoadingCompanyId, setDraftLoadingCompanyId] = useState<number | null>(null);
-  const [draftData, setDraftData] = useState<OutreachDraftOut | null>(null);
-  const [draftError, setDraftError] = useState<string | null>(null);
+  // 2026-06-12 КП-конвейер: вместо preload-генерации и старой DraftEmailModal
+  // открываем KpModal с company_id, и модалка сама грузит шаблоны и зовёт
+  // /outreach/kp/generate по клику «Сгенерировать». companyName кэшируем
+  // в стейт чтобы заголовок модалки сразу был с названием.
+  const [kpCompanyId, setKpCompanyId] = useState<number | null>(null);
+  const [kpCompanyName, setKpCompanyName] = useState<string | undefined>(undefined);
   // True после первого успешного listMapCompanies. Нужно, чтобы фильтр,
   // который вернул 0 компаний, не подменялся тихо на live-ленту (без
   // фильтра) — раньше юзер выбирал «Стабильный» и видел все 80 карточек
@@ -309,24 +308,11 @@ export function MapsSearchResults({
     setSelectedIds(new Set());
   }, []);
 
-  const onDraftEmail = useCallback(async (c: any) => {
+  const onDraftEmail = useCallback((c: any) => {
     const id = c.id ?? c.company_id;
     if (id == null) return;
-    setDraftOpen(true);
-    setDraftLoading(true);
-    setDraftLoadingCompanyId(id);
-    setDraftData(null);
-    setDraftError(null);
-    try {
-      const draft = await draftEmailForCompany(id);
-      setDraftData(draft);
-    } catch (e: any) {
-      const detail = e?.response?.data?.detail || e?.message || 'Не удалось сгенерировать письмо';
-      setDraftError(typeof detail === 'string' ? detail : JSON.stringify(detail));
-    } finally {
-      setDraftLoading(false);
-      setDraftLoadingCompanyId(null);
-    }
+    setKpCompanyId(id);
+    setKpCompanyName(c.name ?? undefined);
   }, []);
 
   const stream = useSearchStream(
@@ -1398,7 +1384,7 @@ export function MapsSearchResults({
                     onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
                     onAddToList={id != null ? onAddToList : undefined}
                     onDraftEmail={id != null ? onDraftEmail : undefined}
-                    draftEmailLoading={draftLoadingCompanyId === id}
+                    draftEmailLoading={false}
                     aiAnalysis={aiAnalysis}
                     selected={typeof id === 'number' && selectedIds.has(id)}
                     onToggleSelect={typeof id === 'number' ? toggleSelect : undefined}
@@ -1447,12 +1433,14 @@ export function MapsSearchResults({
         }}
       />
 
-      <DraftEmailModal
-        open={draftOpen}
-        draft={draftData}
-        loading={draftLoading}
-        error={draftError}
-        onClose={() => setDraftOpen(false)}
+      <KpModal
+        open={kpCompanyId != null}
+        companyId={kpCompanyId}
+        companyName={kpCompanyName}
+        onClose={() => {
+          setKpCompanyId(null);
+          setKpCompanyName(undefined);
+        }}
       />
     </div>
   );

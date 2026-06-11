@@ -30,7 +30,7 @@ import {
 
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
 import { NegativeTrendBadge } from '@/components/maps/NegativeTrendBadge';
-import { OutreachDraftBlock } from '@/components/maps/OutreachDraftBlock';
+import { KpQuickBlock } from '@/components/maps/KpQuickBlock';
 import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -221,6 +221,16 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             <ContactsBlock detail={detail} />
           )}
 
+          {/* 2026-06-12 КП-конвейер: блок КП поднят на первый экран drawer'а
+              (выше юр.данных, ЛПР, дайджеста и benchmark). Старый
+              OutreachDraftBlock жёг токены на каждом open drawer'а; новый
+              KpQuickBlock ничего не грузит до клика «КП». */}
+          <KpQuickBlock
+            companyId={detail.id}
+            companyName={detail.name}
+            hasPains={Array.isArray(detail.top_pains) && detail.top_pains.length > 0}
+          />
+
           {/* Юр.данные из DaData (блок 2 ТЗ). Показываем только если матч найден. */}
           <LegalBlock legal={detail.legal} />
 
@@ -228,12 +238,6 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               пуст и legal.director_name тоже null — блок не рендерится. */}
           <DecisionMakersBlock
             decisionMakers={detail.decision_makers ?? []}
-          />
-
-          {/* Aha-moment блок 1: драфт холодного письма по компании */}
-          <OutreachDraftBlock
-            companyId={detail.id}
-            companyEmails={detail.emails ?? []}
           />
 
           <div className="flex flex-wrap gap-3 text-xs">

@@ -419,20 +419,20 @@ export function MapsCompanyCard({
             {onDraftEmail && (
               <button
                 type="button"
-                disabled={draftEmailLoading}
+                disabled={draftEmailLoading || topPains.length === 0}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDraftEmail(company);
                 }}
                 title={
                   topPains.length === 0
-                    ? 'AI ещё не подсчитал боли — драфт будет общий'
-                    : ''
+                    ? 'У компании нет проанализированных отзывов — сначала запусти AI-анализ'
+                    : 'Сгенерировать коммерческое предложение под боль клиентов'
                 }
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-blue-600 px-3 text-[13px] font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60 dark:bg-blue-500 dark:hover:bg-blue-600"
+                className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-600"
               >
-                <Mail className="h-4 w-4" />
-                {draftEmailLoading ? 'Готовлю…' : 'Письмо'}
+                <Sparkles className="h-4 w-4" />
+                {draftEmailLoading ? 'Готовлю…' : 'КП'}
               </button>
             )}
           </div>
