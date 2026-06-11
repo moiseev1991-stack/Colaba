@@ -35,6 +35,7 @@ from app.models.kp_draft import KpDraft
 from app.models.kp_template import KpTemplate
 from app.models.maps import Company, Review
 from app.models.organization import user_organizations
+from app.models.site_lead import SiteLead
 from app.modules.ai_assistants.client import chat
 from app.modules.outreach.kp_phrases import (
     benchmark_phrase,
@@ -47,12 +48,15 @@ from app.modules.outreach.kp_prompts import (
     KP_FACT_QUOTE_LINE,
     KP_FACT_RATING_LINE,
     KP_FACT_RATING_NO_AVG_LINE,
+    KP_FACT_SITE_ENTRY_LINE,
+    KP_FACT_SITE_URL_LINE,
     KP_FACT_TREND_LINE,
     KP_FACT_WEBSITE_LINE,
     KP_PROMPT_HEADER,
     KP_PROMPT_RECIPIENT,
     KP_PROMPT_TAIL,
     TONE_HINTS,
+    lookup_entry_meaning,
 )
 from app.modules.reviews_ai.llm import pick_assistant_id
 
@@ -265,7 +269,7 @@ def build_kp_prompt(
     rating: float | None,
     niche_avg_rating: float | None,
 ) -> str:
-    """Чистая функция: собирает итоговый текст промпта.
+    """Чистая функция: собирает итоговый текст промпта для КП по компании.
 
     Строки факт-блока, по которым данных нет, пропускаются — это
     требование Эпика D («без натянутых аргументов»).
@@ -306,6 +310,59 @@ def build_kp_prompt(
             facts.append(KP_FACT_RATING_NO_AVG_LINE.format(rating=rating))
 
     parts.append("\n".join(facts))
+    parts.append(
+        KP_PROMPT_TAIL.format(
+            offer_hint=offer_hint or "—",
+            tone=TONE_HINTS.get(tone, tone),
+        )
+    )
+    return "".join(parts)
+
+
+def build_kp_prompt_for_site(
+    *,
+    sender_profile: str,
+    offer_hint: str,
+    tone: str,
+    url: str,
+    domain: str,
+    title: str | None,
+    entry: str | None,
+    entry_meaning: str | None,
+) -> str:
+    """Промпт для КП по найденному сайту (Эпик F, ТЗ 2026-06-12).
+
+    Альтернативная ветка к build_kp_prompt: получатель идентифицируется
+    доменом и url (не company_name + niche + city). Контекст:
+      - URL (обязательно)
+      - title из поисковой выдачи (если есть — добавляем в «получатель»)
+      - найденное вхождение + его трактовка через словарь ENTRY_MEANINGS
+        (если трактовки нет — строка про признак пропускается).
+
+    Эти данные приходят из SiteLead (миграция 034).
+    """
+    parts: list[str] = []
+    parts.append(KP_PROMPT_HEADER.format(sender_profile=sender_profile))
+
+    # «Получатель»-блок для сайта — используем доменное имя + title,
+    # без niche/city (мы не знаем нишу из web-поиска). KP_PROMPT_RECIPIENT
+    # не подходит как есть — формируем строку отдельно.
+    if title:
+        receiver_line = f"Получатель: {domain} ({title})."
+    else:
+        receiver_line = f"Получатель: {domain}."
+    parts.append(
+        "\n" + receiver_line + "\n"
+        "Факты о получателе (используй ТОЛЬКО их, ничего не выдумывай):\n"
+    )
+
+    facts: list[str] = [KP_FACT_SITE_URL_LINE.format(url=url)]
+    if entry and entry_meaning:
+        facts.append(
+            KP_FACT_SITE_ENTRY_LINE.format(entry=entry, entry_meaning=entry_meaning)
+        )
+    parts.append("\n".join(facts))
+
     parts.append(
         KP_PROMPT_TAIL.format(
             offer_hint=offer_hint or "—",
@@ -440,6 +497,150 @@ async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int |
     return int(row[0])
 
 
+async def _call_llm_with_retry(
+    db: AsyncSession,
+    assistant_id: int,
+    prompt_text: str,
+) -> dict[str, str]:
+    """Один вызов LLM + 1 ретрай с строгой JSON-инструкцией.
+    Бросает KpGenerationError(422) если ни первый, ни ретрай не дали
+    валидный {subject, body}. Поднята из generate_kp для переиспользования
+    в site-варианте."""
+    parsed: dict[str, str] | None = None
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt_text}],
+            db=db,
+            max_tokens=900,
+            temperature=0.6,
+        )
+        parsed = extract_kp_json(raw)
+    except Exception as e:
+        logger.warning("generate_kp: first chat() failed: %s", e)
+        parsed = None
+
+    if parsed is None:
+        retry_prompt = (
+            prompt_text
+            + "\n\nВажно: твой предыдущий ответ не удалось распарсить. "
+            "Верни СТРОГО валидный JSON в одну строку, без markdown-fence "
+            "и без префиксов: {\"subject\": \"...\", \"body\": \"...\"}"
+        )
+        try:
+            raw = await chat(
+                assistant_id=assistant_id,
+                messages=[{"role": "user", "content": retry_prompt}],
+                db=db,
+                max_tokens=900,
+                temperature=0.3,
+            )
+            parsed = extract_kp_json(raw)
+        except Exception as e:
+            logger.warning("generate_kp: retry chat() failed: %s", e)
+            parsed = None
+
+    if parsed is None:
+        raise KpGenerationError(
+            "LLM вернула невалидный ответ дважды. Попробуй ещё раз через минуту "
+            "или смени шаблон.",
+            status_code=422,
+        )
+    return parsed
+
+
+async def generate_kp_for_site(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    site_lead_id: int,
+    template_key: str,
+    tone: str = "neutral",
+    custom_sender_profile: str | None = None,
+) -> GeneratedKp:
+    """Эпик F: генерация КП по найденному сайту (SiteLead).
+
+    Отличается от обычного generate_kp:
+      - вместо Company грузим SiteLead
+      - вместо болей/тренда/бенчмарка — site URL + entry + entry_meaning
+      - persist в kp_drafts с company_id=None, site_lead_id=site_lead.id
+        (CHECK ck_kp_drafts_company_xor_site_lead это разрешает)
+    """
+    site_lead = await db.get(SiteLead, site_lead_id)
+    if site_lead is None:
+        raise KpGenerationError("Site-лид не найден.", status_code=404)
+    if site_lead.user_id != user_id:
+        # Не отдаём 403 чтобы не палить факт существования id чужому юзеру.
+        raise KpGenerationError("Site-лид не найден.", status_code=404)
+
+    sender_profile, offer_hint = await _resolve_template(
+        db, template_key, custom_sender_profile
+    )
+
+    entry_meaning = lookup_entry_meaning(site_lead.entry)
+
+    prompt_text = build_kp_prompt_for_site(
+        sender_profile=sender_profile,
+        offer_hint=offer_hint,
+        tone=tone,
+        url=site_lead.url,
+        domain=site_lead.domain,
+        title=site_lead.title,
+        entry=site_lead.entry or None,
+        entry_meaning=entry_meaning,
+    )
+
+    assistant_id = await pick_assistant_id(db, "outreach_draft")
+    if assistant_id is None:
+        raise KpGenerationError(
+            "LLM-ассистент для генерации КП не настроен. Проверь "
+            "OPENAI_API_KEY / OPENAI_BASE_URL и наличие ассистента "
+            "'reviews_ai_outreach_draft'.",
+            status_code=503,
+        )
+
+    parsed = await _call_llm_with_retry(db, assistant_id, prompt_text)
+
+    arguments_used = {
+        # Поля компании пусты — это site-вариант.
+        "pain_label": None,
+        "quote": None,
+        "mention_count": None,
+        "trend": None,
+        "trend_phrase": None,
+        "benchmark_ratio": None,
+        "benchmark_phrase": None,
+        "source": None,
+        # Site-специфичные поля. UI-блок «Аргументы» рендерит их вместо
+        # компании, если site_url != None.
+        "site_url": site_lead.url,
+        "site_domain": site_lead.domain,
+        "entry": site_lead.entry or None,
+        "entry_meaning": entry_meaning,
+        "sender_profile": sender_profile,
+        "offer_hint": offer_hint,
+        "tone": tone,
+        "template_key": template_key,
+    }
+
+    organization_id = await _resolve_user_organization_id(db, user_id)
+    draft = KpDraft(
+        user_id=user_id,
+        organization_id=organization_id,
+        company_id=None,
+        site_lead_id=site_lead.id,
+        template_key=template_key,
+        subject=parsed["subject"][:500],
+        body=parsed["body"],
+        arguments_used=arguments_used,
+    )
+    db.add(draft)
+    await db.commit()
+    await db.refresh(draft)
+
+    return GeneratedKp(draft_row=draft, arguments_used=arguments_used)
+
+
 async def generate_kp(
     db: AsyncSession,
     *,
@@ -512,47 +713,7 @@ async def generate_kp(
             status_code=503,
         )
 
-    parsed: dict[str, str] | None = None
-    try:
-        raw = await chat(
-            assistant_id=assistant_id,
-            messages=[{"role": "user", "content": prompt_text}],
-            db=db,
-            max_tokens=900,
-            temperature=0.6,
-        )
-        parsed = extract_kp_json(raw)
-    except Exception as e:
-        logger.warning("generate_kp: first chat() failed: %s", e)
-        parsed = None
-
-    # Ретрай: попросим строго JSON.
-    if parsed is None:
-        retry_prompt = (
-            prompt_text
-            + "\n\nВажно: твой предыдущий ответ не удалось распарсить. "
-            "Верни СТРОГО валидный JSON в одну строку, без markdown-fence "
-            "и без префиксов: {\"subject\": \"...\", \"body\": \"...\"}"
-        )
-        try:
-            raw = await chat(
-                assistant_id=assistant_id,
-                messages=[{"role": "user", "content": retry_prompt}],
-                db=db,
-                max_tokens=900,
-                temperature=0.3,
-            )
-            parsed = extract_kp_json(raw)
-        except Exception as e:
-            logger.warning("generate_kp: retry chat() failed: %s", e)
-            parsed = None
-
-    if parsed is None:
-        raise KpGenerationError(
-            "LLM вернула невалидный ответ дважды. Попробуй ещё раз через минуту "
-            "или смени шаблон.",
-            status_code=422,
-        )
+    parsed = await _call_llm_with_retry(db, assistant_id, prompt_text)
 
     # 7. Persist. Поля с pain/quote/source — None если у компании не было
     # проанализированных болей. UI блок «Аргументы» рендерит только

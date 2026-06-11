@@ -45,34 +45,52 @@ async def generate_kp(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> KpDraftOut:
-    """Сгенерировать КП под конкретную компанию + шаблон.
+    """Сгенерировать КП. Принимает либо company_id, либо site_lead_id (XOR).
 
     Возможные ошибки (понятные сообщения для UI):
-      404 — компания/шаблон не найдены.
-      400 — для custom-шаблона не пришёл custom_sender_profile.
-      409 — у компании нет проанализированных болей с цитатой
-            (нужен AI-анализ отзывов).
+      404 — компания/site-лид/шаблон не найдены.
+      400 — для custom-шаблона не пришёл custom_sender_profile,
+            либо передано и company_id и site_lead_id одновременно
+            (валидируется в pydantic).
       503 — LLM-ассистент не настроен.
       422 — LLM дважды вернула невалидный JSON.
+
+    Эпик A (2026-06-12): если у компании нет проанализированных болей —
+    больше не бросаем 409, генерим «общее» КП по шаблону.
+
+    Эпик F (2026-06-12): site_lead_id → ветка build_kp_prompt_for_site
+    с контекстом (url + entry + entry_meaning).
 
     remaining_free пока всегда None — счётчик месячных лимитов
     появится в Эпике E.
     """
     try:
-        result = await kp_service.generate_kp(
-            db,
-            user_id=user_id,
-            company_id=payload.company_id,
-            template_key=payload.template_key,
-            tone=payload.tone,
-            custom_sender_profile=payload.custom_sender_profile,
-        )
+        if payload.site_lead_id is not None:
+            result = await kp_service.generate_kp_for_site(
+                db,
+                user_id=user_id,
+                site_lead_id=payload.site_lead_id,
+                template_key=payload.template_key,
+                tone=payload.tone,
+                custom_sender_profile=payload.custom_sender_profile,
+            )
+        else:
+            assert payload.company_id is not None  # гарантировано валидатором
+            result = await kp_service.generate_kp(
+                db,
+                user_id=user_id,
+                company_id=payload.company_id,
+                template_key=payload.template_key,
+                tone=payload.tone,
+                custom_sender_profile=payload.custom_sender_profile,
+            )
     except kp_service.KpGenerationError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
     return KpDraftOut(
         id=result.draft_row.id,
         company_id=result.draft_row.company_id,
+        site_lead_id=result.draft_row.site_lead_id,
         template_key=result.draft_row.template_key,
         subject=result.draft_row.subject,
         body=result.draft_row.body,
