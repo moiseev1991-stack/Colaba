@@ -40,7 +40,12 @@ def _format_event(event_type: str, data: dict[str, Any]) -> str:
 
 
 def _company_to_event(company: Company, position: int | None) -> dict[str, Any]:
-    """Сериализация Company в payload event=company."""
+    """Сериализация Company в payload event=company.
+
+    2026-06-12: добавлено `website` — без него клиент не мог корректно
+    показывать карточки live-stream'а под фильтром «Только без сайта»
+    (поле было всегда undefined → safety-фильтр давал ложный результат).
+    """
     return {
         "company_id": company.id,
         "name": company.name,
@@ -49,6 +54,7 @@ def _company_to_event(company: Company, position: int | None) -> dict[str, Any]:
         "reviews_negative_count": company.reviews_negative_count or 0,
         "source": company.source,
         "position": position,
+        "website": company.website,
     }
 
 

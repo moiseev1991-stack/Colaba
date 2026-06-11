@@ -11,7 +11,7 @@
  * MapsCompanyDetailDrawer и экспорт — шаг 16.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
@@ -407,30 +407,17 @@ export function MapsSearchResults({
   // live-ленту и юзер думал бы, что фильтр не работает.
   // Live-стрим используется только пока companies ещё ни разу не приходили
   // (первоначальная загрузка — пока парсер ещё не дошёл до terminal-статуса).
+  //
+  // 2026-06-12: ранее тут стоял client-side safety filter по filter.has_website
+  // — но SSE-event компании НЕ содержит поля website (см. sse._company_to_event),
+  // поэтому фильтр для has_website=true НА live-stream скрывал ВСЕ карточки,
+  // а для has_website=false — пропускал все включая компании с сайтом. Убран.
+  // Полагаемся на серверный applyFilters (filters.py:91-100), который
+  // фильтрует корректно через btrim(coalesce(website, '')) = ''. Live-stream
+  // используется только пока бэк ещё не отработал — после listMapCompanies
+  // мы переключаемся на серверную выдачу.
   const liveCompanies = stream.companies;
-  const rawBaseList: any[] = companiesEverLoaded ? companies : liveCompanies;
-
-  // Client-side safety фильтры: бэк всегда применяет filter, но live-стрим
-  // (SSE) фильтрацию НЕ применяет. До 2026-06-12 юзер с пресетом «Нет сайта»
-  // мог видеть в выдаче компанию с website, пока listMapCompanies ещё не
-  // отработал — потому что render шёл из live-stream. Применяем критичные
-  // фильтры (has_website, min_rating) ещё раз на клиенте — это даёт согласие
-  // с серверной выдачей в переходных состояниях.
-  const baseList: any[] = useMemo(() => {
-    let list = rawBaseList;
-    if (filter.has_website === false) {
-      list = list.filter((c: any) => {
-        const w = (c.website ?? '').toString().trim();
-        return w === '';
-      });
-    } else if (filter.has_website === true) {
-      list = list.filter((c: any) => {
-        const w = (c.website ?? '').toString().trim();
-        return w !== '';
-      });
-    }
-    return list;
-  }, [rawBaseList, filter.has_website]);
+  const baseList: any[] = companiesEverLoaded ? companies : liveCompanies;
   const renderTotal = baseList.length;
 
   // 2026-06-12: выбранные id (Set<number>) дрейфовали относительно реально
