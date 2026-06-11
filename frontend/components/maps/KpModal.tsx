@@ -38,6 +38,10 @@ import {
   type KpTemplate,
   type KpTone,
 } from '@/src/services/api/outreach-kp';
+import {
+  getStoredKpTemplateKey,
+  recordOnboardingEvent,
+} from '@/lib/onboarding-storage';
 
 interface Props {
   open: boolean;
@@ -90,10 +94,13 @@ export function KpModal({
       .then((list) => {
         if (cancelled) return;
         setTemplates(list);
-        // Дефолт: defaultTemplateKey → если есть в списке, иначе первый
-        // системный (обычно webstudio).
+        // Дефолт: prop defaultTemplateKey → онбординг localStorage →
+        // первый системный (обычно webstudio). Эпик B сохраняет выбор
+        // профессии в colaba.kp.default_template_key, мы его подбираем.
+        const fromOnboarding = getStoredKpTemplateKey();
         const def =
           (defaultTemplateKey && list.find((t) => t.key === defaultTemplateKey)) ||
+          (fromOnboarding && list.find((t) => t.key === fromOnboarding)) ||
           list[0] ||
           null;
         setSelectedKey(def?.key ?? null);
@@ -141,6 +148,8 @@ export function KpModal({
         custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
       });
       setDraft(res);
+      // Аналитика «время до первого КП» — фиксируется один раз.
+      recordOnboardingEvent('first_kp_generated');
     } catch (e: any) {
       const detail =
         e?.response?.data?.detail ||
