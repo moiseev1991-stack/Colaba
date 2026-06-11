@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.83.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.82.0...v1.83.0) (2026-06-11)
+
+
+### Features
+
+* **onboarding:** Эпик B — 3 шага до КП + demo-режим + автоактивация профессии ([265b04c](https://github.com/moiseev1991-stack/Colaba/commit/265b04ce6a732118815e4785b37f01d73d64771d))
+
 # [1.82.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.81.0...v1.82.0) (2026-06-11)
 
 
