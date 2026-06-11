@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.83.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.83.0...v1.83.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* **kp:** КП работает и для компаний без проанализированных болей ([e04cfe5](https://github.com/moiseev1991-stack/Colaba/commit/e04cfe5a1c2f7ddd24f19285ea50ad6a37cd4c43))
+
 # [1.83.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.82.0...v1.83.0) (2026-06-11)
 
 
