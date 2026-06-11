@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.82.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.81.0...v1.82.0) (2026-06-11)
+
+
+### Features
+
+* **maps:** Эпик C — chips «Под профессию» над выдачей (Для веб-студий / SEO / маркетологов) ([2e61431](https://github.com/moiseev1991-stack/Colaba/commit/2e61431d7c4bb5f422759455dec08498f12dd4c3))
+
 # [1.81.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.80.0...v1.81.0) (2026-06-11)
 
 
