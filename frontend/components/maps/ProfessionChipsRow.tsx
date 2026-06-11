@@ -21,7 +21,7 @@
  */
 
 import { Briefcase, RotateCcw, Search, Wrench } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 import {
@@ -30,6 +30,7 @@ import {
   type ProfessionPreset,
   type ProfessionPresetKey,
 } from '@/components/maps/professionPresets';
+import { getStoredProfession } from '@/lib/onboarding-storage';
 import type { MapSearchFilter } from '@/src/services/api/maps';
 
 const ICONS: Record<ProfessionPresetKey, ReactNode> = {
@@ -61,6 +62,41 @@ function clearProfessionFields(filter: MapSearchFilter): MapSearchFilter {
 export function ProfessionChipsRow({ filter, onChange }: Props) {
   const activeKey: ProfessionPresetKey | null =
     PROFESSION_PRESETS.find((p) => isChipActive(filter, p))?.key ?? null;
+
+  // Эпик B: при первом рендере проверяем, выбрана ли профессия на онбординге.
+  // Если да — автоматически применяем соответствующий chip. Делается ровно
+  // один раз за жизнь компонента (autoApplied ref) и только если у юзера
+  // НЕ выставлено вручную никакого профессионального фильтра (activeKey == null
+  // и поля чистые). Иначе мы перетёрли бы его ручную правку.
+  const autoApplied = useRef(false);
+  useEffect(() => {
+    if (autoApplied.current) return;
+    if (activeKey != null) {
+      autoApplied.current = true;
+      return;
+    }
+    // Юзер уже что-то выставил в этих полях вручную — не вмешиваемся.
+    const hasManual = PROFESSION_PRESET_FIELDS.some(
+      (k) => (filter as any)[k] != null,
+    );
+    if (hasManual) {
+      autoApplied.current = true;
+      return;
+    }
+    const stored = getStoredProfession();
+    if (!stored) {
+      autoApplied.current = true;
+      return;
+    }
+    const preset = PROFESSION_PRESETS.find((p) => p.key === stored);
+    if (!preset) {
+      autoApplied.current = true;
+      return;
+    }
+    autoApplied.current = true;
+    onChange({ ...filter, ...preset.filter });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggle(preset: ProfessionPreset) {
     if (activeKey === preset.key) {
