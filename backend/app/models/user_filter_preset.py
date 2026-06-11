@@ -75,6 +75,12 @@ class UserFilterPreset(Base):
     # company_ai_analyses (миграция 022).
     ai_prompt = Column(Text)
 
+    # Системный пресет (создан миграцией, юзер удалить не может).
+    # Миграция 033. Сидируется отдельной миграцией Эпика C — те самые
+    # «Для веб-студий / SEO / маркетологов», которые подсвечиваются
+    # chips над выдачей. Юзерские пресеты создаются с is_system=False.
+    is_system = Column(Boolean, nullable=False, default=False)
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime(timezone=True),

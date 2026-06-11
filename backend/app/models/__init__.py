@@ -38,6 +38,8 @@ from app.models.company_ai_analysis import CompanyAiAnalysis
 from app.models.company_outreach_draft import CompanyOutreachDraft
 from app.models.company_legal import CompanyLegal
 from app.models.company_decision_maker import CompanyDecisionMaker
+from app.models.kp_template import KpTemplate
+from app.models.kp_draft import KpDraft
 
 __all__ = [
     "User",
@@ -80,4 +82,6 @@ __all__ = [
     "CompanyOutreachDraft",
     "CompanyLegal",
     "CompanyDecisionMaker",
+    "KpTemplate",
+    "KpDraft",
 ]
