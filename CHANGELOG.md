@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.78.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.2...v1.78.3) (2026-06-11)
+
+
+### Bug Fixes
+
+* **maps:** пресет «Нет сайта» меняет только has_website + компактнее блок болей ([569f1b9](https://github.com/moiseev1991-stack/Colaba/commit/569f1b9617b8f4230bf0d99c8cb6bcaccfd27a5e))
+
 ## [1.78.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.1...v1.78.2) (2026-06-11)
 
 
