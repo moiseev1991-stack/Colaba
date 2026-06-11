@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.78.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.1...v1.78.2) (2026-06-11)
+
+
+### Bug Fixes
+
+* **maps:** убран сломанный client-фильтр has_website + добавлен website в SSE ([37442e2](https://github.com/moiseev1991-stack/Colaba/commit/37442e2e7fcd91b41a29655aa1afe7ced02eafd3))
+
 ## [1.78.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.0...v1.78.1) (2026-06-11)
 
 
