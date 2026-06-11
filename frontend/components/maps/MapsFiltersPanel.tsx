@@ -1010,19 +1010,23 @@ export function MapsFiltersPanel({
         )}
       </div>
 
-      {/* Pain-cloud: открыт по умолчанию когда есть выбранные теги или
-          когда нашлись теги в нише — иначе свёрнут, чтобы не показывать
-          пустой блок «AI ещё не разобрал». */}
+      {/* Pain-cloud. 2026-06-12 переработана вёрстка по жалобе юзера:
+          раньше заголовок «🧠 БОЛИ КЛИЕНТОВ (AI-ТЕГИ)» был UPPERCASE +
+          tracking-wide и переносился на 2 строки в узкой панели, а
+          круглый бейдж «1 ВЫБРАНО» был огромным. Теперь: заголовок в
+          одну строку («Боли клиентов» без скобочного хвоста), счётчик —
+          компактный pill, плитки тегов — обычной плотности (см. PainTagsCloud). */}
       <details
         className="group rounded-md border border-violet-200 bg-violet-50/40 p-2 open:pb-3 dark:border-violet-700/40 dark:bg-violet-900/20"
         open={Boolean(value.pain_tag_ids?.length)}
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">
-          <span className="inline-flex items-center gap-1.5">
-            🧠 Боли клиентов (AI-теги)
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-violet-800 dark:text-violet-200">
+            <span aria-hidden>🧠</span>
+            <span className="truncate">Боли клиентов</span>
             {(value.pain_tag_ids?.length ?? 0) > 0 && (
-              <span className="rounded-full bg-violet-200 px-1.5 py-0.5 text-[9px] font-semibold text-violet-800 dark:bg-violet-500/30 dark:text-violet-200">
-                {value.pain_tag_ids?.length} выбрано
+              <span className="rounded bg-violet-200 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-violet-800 dark:bg-violet-500/30 dark:text-violet-100">
+                {value.pain_tag_ids?.length}
               </span>
             )}
           </span>
