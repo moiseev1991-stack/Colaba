@@ -12,8 +12,10 @@ import { Bookmark, ListPlus } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useState } from 'react';
 
-import LegacyLeadsPanel from './_components/LegacyLeadsPanel';
+// LegacyLeadsPanel оставлен в _components/ как fallback на случай отката
+// Эпика F. Здесь не используется — текущий «По сайтам» отдаёт SiteLeadsPanel.
 import { MapsSearchPanel } from '@/components/maps/MapsSearchPanel';
+import { SiteLeadsPanel } from '@/components/sites/SiteLeadsPanel';
 import { cn } from '@/lib/utils';
 
 type Tab = 'sites' | 'maps';
@@ -68,7 +70,15 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {tab === 'sites' && <LegacyLeadsPanel />}
+      {tab === 'sites' && (
+        <div className="mx-auto w-full max-w-[1000px] px-3 sm:px-6 pb-10">
+          {/* 2026-06-12 Эпик F КП-конвейера: вкладка «По сайтам» переключена
+              на SiteLeadsPanel — поиск по вхождению + кнопка «КП» на
+              карточках. Старый LegacyLeadsPanel оставлен в репо в
+              _components/ как fallback. */}
+          <SiteLeadsPanel />
+        </div>
+      )}
       {tab === 'maps' && (
         <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pb-10">
           {/* Suspense нужен потому что MapsSearchPanel читает useSearchParams
