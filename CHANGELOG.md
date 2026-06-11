@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.78.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.77.1...v1.78.0) (2026-06-11)
+
+
+### Features
+
+* **maps:** окно дайджеста + превью топ-негатива в drawer'е ([80d7e92](https://github.com/moiseev1991-stack/Colaba/commit/80d7e92d07719860431eec241fecc6ab07ae9d71))
+
 ## [1.77.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.77.0...v1.77.1) (2026-06-10)
 
 
