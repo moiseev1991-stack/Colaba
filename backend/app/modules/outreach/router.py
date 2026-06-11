@@ -7,8 +7,13 @@ from app.core.database import get_db
 from app.modules.auth.router import get_current_user_id
 from app.modules.email.service import email_service
 from app.modules.outreach import schemas, service
+from app.modules.outreach.kp_router import router as kp_router
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
+
+# Эпик A фокус-релиза «КП-конвейер» (ТЗ 2026-06-12): подмонтируем
+# поддерево /outreach/kp/* (templates + generate). См. kp_router.py.
+router.include_router(kp_router)
 
 
 @router.get("/config", response_model=schemas.SmtpConfigResponse)
