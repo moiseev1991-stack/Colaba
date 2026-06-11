@@ -1331,7 +1331,12 @@ async def get_company_pain_benchmark(
 async def get_company_digest(
     request: Request,
     company_id: int,
-    days: int = Query(default=30, ge=1, le=365),
+    days: int = Query(
+        default=30,
+        ge=0,
+        le=3650,
+        description="Окно в днях. 0 = за всё время (фильтр по posted_at снимается).",
+    ),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1341,11 +1346,24 @@ async def get_company_digest(
     Используется в drawer'е компании, чтобы юзер одним взглядом понял
     «как сейчас себя чувствует» эта компания — нужно ли её включать в outreach,
     стоит ли использовать конкретную боль в письме.
+
+    Юзер может переключать окно (30/90/180/365/all) — последний пункт
+    шлёт days=0 и в этом случае мы не фильтруем по posted_at.
+
+    Отдельно от агрегатов отдаём top_negative_reviews_all_time —
+    топ-3 самых ярких негативных отзыва за всё время (по rating asc +
+    sentiment_score asc). Не зависит от `days`, чтобы у компаний без
+    свежих отзывов превью цитат всё равно появилось.
     """
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
 
     company = await _get_company_or_404(db, company_id)
-    since = _dt.now(_tz.utc) - _td(days=days)
+
+    all_time = days == 0
+    date_filter = []
+    if not all_time:
+        since = _dt.now(_tz.utc) - _td(days=days)
+        date_filter = [Review.posted_at >= since]
 
     # Агрегаты по sentiment / rating / owner_reply одним запросом.
     # ВАЖНО: case() — это standalone-функция SQLAlchemy 2.0, импортируется из
@@ -1361,7 +1379,7 @@ async def get_company_digest(
             sa_func.avg(Review.rating),
             sa_func.sum(sa_case((Review.has_owner_reply.is_(True), 1), else_=0)),
         )
-        .where(Review.company_id == company_id, Review.posted_at >= since)
+        .where(Review.company_id == company_id, *date_filter)
     )).one()
     total, pos, neg, neu, avg_r, owner_r = aggregate_row
 
@@ -1371,9 +1389,36 @@ async def get_company_digest(
     pains_map = await service.get_top_pains_for_companies(db, [company_id], limit_per_company=5)
     pains = [CompanyPainOut(**p) for p in pains_map.get(company_id, [])]
 
+    # Топ-3 негатива за всё время. Берём sentiment='negative' или
+    # (sentiment IS NULL AND rating <= 3) — чтобы у компаний, где AI
+    # ещё не размечал отзывы, тоже находить негатив по рейтингу.
+    # raw_text != NULL — без текста смысла нет показывать. Сортировка:
+    # rating asc (1★ выше 3★), sentiment_score asc (более негативные
+    # первыми), длина текста desc (предпочитаем содержательные).
+    negatives_rows = (await db.execute(
+        select(Review)
+        .where(
+            Review.company_id == company_id,
+            Review.raw_text.isnot(None),
+            sa_func.length(sa_func.coalesce(Review.raw_text, "")) > 0,
+            or_(
+                Review.sentiment == "negative",
+                and_(Review.sentiment.is_(None), Review.rating <= 3),
+            ),
+        )
+        .order_by(
+            Review.rating.asc().nullslast(),
+            Review.sentiment_score.asc().nullslast(),
+            sa_func.length(Review.raw_text).desc(),
+            Review.posted_at.desc().nullslast(),
+        )
+        .limit(3)
+    )).scalars().all()
+    top_negatives = [ReviewOut.model_validate(r) for r in negatives_rows]
+
     return CompanyDigestOut(
         company_id=company.id,
-        days=days,
+        days=None if all_time else days,
         total_reviews=total_int,
         positive_count=int(pos or 0),
         negative_count=int(neg or 0),
@@ -1381,6 +1426,7 @@ async def get_company_digest(
         avg_rating=float(avg_r) if avg_r is not None else None,
         owner_reply_rate=owner_rate,
         top_pains=pains,
+        top_negative_reviews_all_time=top_negatives,
     )
 
 

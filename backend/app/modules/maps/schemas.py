@@ -536,12 +536,24 @@ class CompanyDigestOut(BaseModel):
     Для drawer'а — даёт юзеру одним взглядом понять «как сейчас себя
     чувствует компания»: упал ли рейтинг, что чаще всего критикуют,
     отвечает ли владелец.
+
+    days == 0 (или None в payload-параметре) интерпретируется как «за всё
+    время» — фильтр по posted_at снимается. Это нужно, чтобы юзер мог
+    видеть полную картину по компаниям, где новых отзывов за месяц
+    объективно нет.
+
+    top_negative_reviews_all_time — независимый от окна `days` блок:
+    топ-3 самых ярких негативных отзыва за всё время. Раньше превью
+    цитат было только за окно digest'а, поэтому у позитивных-only
+    компаний негатив-превью не появлялось никогда; этот блок чинит это.
     """
 
     model_config = ConfigDict(extra="ignore")
 
     company_id: int
-    days: int = 30
+    # None в ответе = «за всё время» (запрос пришёл с days=0). Фронт
+    # рендерит подпись «за всё время» вместо «за N дней».
+    days: int | None = 30
     total_reviews: int = 0
     positive_count: int = 0
     negative_count: int = 0
@@ -549,3 +561,4 @@ class CompanyDigestOut(BaseModel):
     avg_rating: float | None = None
     owner_reply_rate: float | None = None  # 0..1, доля отзывов с ответом владельца
     top_pains: list[CompanyPainOut] = Field(default_factory=list)
+    top_negative_reviews_all_time: list[ReviewOut] = Field(default_factory=list)
