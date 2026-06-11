@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.79.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.3...v1.79.0) (2026-06-11)
+
+
+### Features
+
+* **kp:** миграция 033 — kp_templates с сидом + kp_drafts + is_system на пресетах ([49b3c74](https://github.com/moiseev1991-stack/Colaba/commit/49b3c74ce5373302a5d812c57afecae9e9e77376))
+
 ## [1.78.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.2...v1.78.3) (2026-06-11)
 
 
