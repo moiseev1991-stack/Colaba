@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.80.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.79.0...v1.80.0) (2026-06-11)
+
+
+### Bug Fixes
+
+* **kp:** close-to-integer проверка на исходном ratio, не на round(ratio,1) ([b6d1abd](https://github.com/moiseev1991-stack/Colaba/commit/b6d1abdb70921e461ba4f1d3b5c62fe4e914bda4))
+
+
+### Features
+
+* **kp:** Эпик A backend — /outreach/kp/{templates,generate} + контекст + LLM ([729a10d](https://github.com/moiseev1991-stack/Colaba/commit/729a10d1ba4ed753035b84d221c9dd231da1796e)), closes [#47](https://github.com/moiseev1991-stack/Colaba/issues/47) [#47](https://github.com/moiseev1991-stack/Colaba/issues/47)
+
 # [1.79.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.3...v1.79.0) (2026-06-11)
 
 
