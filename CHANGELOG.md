@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.86.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.85.0...v1.86.0) (2026-06-11)
+
+
+### Features
+
+* **sites:** Эпик F шард 3 — вкладка «Сайты» с КП по найденным сайтам ([4cfcf62](https://github.com/moiseev1991-stack/Colaba/commit/4cfcf62c4d731cdd66470a5c5168db7372a39a92))
+
 # [1.85.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.84.0...v1.85.0) (2026-06-11)
 
 
