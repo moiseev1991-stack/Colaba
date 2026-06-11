@@ -64,8 +64,22 @@ export function PainTagsCloud({ niche, city, searchId, value, onChange }: Props)
     );
   }
 
+  // 2026-06-12 компактнее: rounded-md вместо rounded-full, меньше padding,
+  // text-[11.5px] — иначе в узкой боковой панели «Спорные доплаты за лечение»
+  // занимает три-четыре строки и выглядит огромным «зубчиком». В одну
+  // строку влезают 1-2 тега, поэтому делаем плотнее.
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1">
+      {value.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-700/50 dark:bg-slate-900 dark:text-rose-300"
+          title="Снять все выбранные теги"
+        >
+          × сбросить
+        </button>
+      )}
       {tags.map((t) => {
         const selected = value.includes(t.id);
         return (
@@ -75,13 +89,21 @@ export function PainTagsCloud({ niche, city, searchId, value, onChange }: Props)
             onClick={() => toggle(t.id)}
             title={t.description ?? undefined}
             className={cn(
-              'cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              'cursor-pointer rounded-md border px-2 py-0.5 text-[11.5px] font-medium leading-snug transition-colors',
               selected
-                ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
+                ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500',
             )}
           >
-            {t.label} · {t.occurrences_count}
+            {t.label}
+            <span
+              className={cn(
+                'ml-1 text-[10px] font-normal',
+                selected ? 'text-slate-300 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400',
+              )}
+            >
+              {t.occurrences_count}
+            </span>
           </button>
         );
       })}
