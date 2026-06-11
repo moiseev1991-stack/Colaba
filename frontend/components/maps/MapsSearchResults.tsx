@@ -20,6 +20,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { KpModal } from '@/components/maps/KpModal';
+import { ProfessionChipsRow } from '@/components/maps/ProfessionChipsRow';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
@@ -1212,6 +1213,12 @@ export function MapsSearchResults({
             </button>
           </div>
         </div>
+
+        {/* Эпик C ТЗ 2026-06-12: chips «Под профессию» — быстрые фильтры
+            под цель юзера (веб-студия / SEO / маркетинг). На онбординге
+            (Эпик B) выбранная профессия автоматически активирует свой
+            chip. См. ProfessionChipsRow.tsx + professionPresets.ts. */}
+        <ProfessionChipsRow filter={filter} onChange={handleFilterChange} />
 
         {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
           <div className="rounded-v2-sm bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
