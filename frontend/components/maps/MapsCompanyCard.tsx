@@ -419,17 +419,17 @@ export function MapsCompanyCard({
             {onDraftEmail && (
               <button
                 type="button"
-                disabled={draftEmailLoading || topPains.length === 0}
+                disabled={draftEmailLoading}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDraftEmail(company);
                 }}
                 title={
                   topPains.length === 0
-                    ? 'У компании нет проанализированных отзывов — сначала запусти AI-анализ'
-                    : 'Сгенерировать коммерческое предложение под боль клиентов'
+                    ? 'Сгенерировать общее КП по шаблону (у компании ещё нет проанализированных болей в отзывах)'
+                    : 'Сгенерировать КП под боль клиентов из отзывов'
                 }
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-600"
+                className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
               >
                 <Sparkles className="h-4 w-4" />
                 {draftEmailLoading ? 'Готовлю…' : 'КП'}

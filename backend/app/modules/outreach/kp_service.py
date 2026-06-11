@@ -464,21 +464,27 @@ async def generate_kp(
         db, template_key, custom_sender_profile
     )
 
-    # 3. Топ-боль
+    # 3. Топ-боль (опционально — Юзер 2026-06-12 #2: КП должна работать и
+    #    у компаний без проанализированных болей, генерируя «общее» письмо
+    #    по шаблону. Раньше тут стоял 409 «нет болей» — это блокировало
+    #    UX-кейс «я уверен, что хочу написать этой компании», особенно
+    #    для компаний из списков, у которых AI-анализ ещё не успел добежать).
     top_pain = await load_top_pain(db, company_id)
-    if top_pain is None or not top_pain.top_quote:
-        raise KpGenerationError(
-            "У этой компании ещё нет проанализированных болей с цитатой. "
-            "Запусти AI-анализ отзывов и попробуй снова.",
-            status_code=409,
-        )
+    has_pain_with_quote = top_pain is not None and bool(top_pain.top_quote)
 
     # 4. Тренд + бенчмарк + средний рейтинг ниши
     trend_verdict = await compute_negative_trend_verdict(db, company_id)
-    ratio = await compute_benchmark_ratio(db, company, top_pain.pain_tag_id)
+    ratio = (
+        await compute_benchmark_ratio(db, company, top_pain.pain_tag_id)
+        if top_pain is not None
+        else None
+    )
     niche_avg_rating = await compute_niche_avg_rating(db, company)
 
-    # 5. Промпт
+    # 5. Промпт. build_kp_prompt уже умеет пропускать строки факт-блока,
+    # по которым нет данных (см. test_build_prompt_no_pain_skips_pain_lines).
+    # В отсутствие боли LLM получает только контекст по компании + sender_profile
+    # + offer_hint и пишет «общее» предложение по шаблону.
     prompt_text = build_kp_prompt(
         sender_profile=sender_profile,
         offer_hint=offer_hint,
@@ -486,9 +492,9 @@ async def generate_kp(
         company_name=company.name or "",
         niche=company.niche or "",
         city=company.city or "",
-        pain_label=top_pain.label,
-        pain_mention_count=top_pain.mention_count,
-        top_quote=top_pain.top_quote,
+        pain_label=top_pain.label if has_pain_with_quote else None,
+        pain_mention_count=top_pain.mention_count if has_pain_with_quote else None,
+        top_quote=top_pain.top_quote if has_pain_with_quote else None,
         trend_verdict=trend_verdict,
         benchmark_ratio=ratio,
         website=company.website,
@@ -548,16 +554,19 @@ async def generate_kp(
             status_code=422,
         )
 
-    # 7. Persist
+    # 7. Persist. Поля с pain/quote/source — None если у компании не было
+    # проанализированных болей. UI блок «Аргументы» рендерит только
+    # ненулевые значения, так что «общее» КП визуально отличимо от
+    # «КП по конкретной боли».
     arguments_used = {
-        "pain_label": top_pain.label,
-        "quote": top_pain.top_quote,
-        "mention_count": top_pain.mention_count,
+        "pain_label": top_pain.label if has_pain_with_quote else None,
+        "quote": top_pain.top_quote if has_pain_with_quote else None,
+        "mention_count": top_pain.mention_count if has_pain_with_quote else None,
         "trend": trend_verdict,
         "trend_phrase": trend_phrase(trend_verdict),
         "benchmark_ratio": ratio,
         "benchmark_phrase": benchmark_phrase(ratio),
-        "source": top_pain.source,
+        "source": top_pain.source if has_pain_with_quote else None,
         "sender_profile": sender_profile,
         "offer_hint": offer_hint,
         "tone": tone,

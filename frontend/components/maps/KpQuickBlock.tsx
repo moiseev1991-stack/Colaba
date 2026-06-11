@@ -22,17 +22,18 @@ import { KpModal } from '@/components/maps/KpModal';
 interface Props {
   companyId: number;
   companyName?: string;
-  /** Есть ли у компании топ-боли с цитатами. Если нет — кнопка disabled. */
+  /** Есть ли у компании топ-боли с цитатами. От этого зависит только
+   *  пояснение в карточке — кнопка КП доступна и без болей (генерируем
+   *  общее письмо по шаблону). */
   hasPains: boolean;
 }
 
 export function KpQuickBlock({ companyId, companyName, hasPains }: Props) {
   const [open, setOpen] = useState(false);
 
-  const disabled = !hasPains;
-  const tooltip = disabled
-    ? 'У компании нет проанализированных отзывов — сначала запусти AI-анализ из шапки выдачи'
-    : 'Сгенерировать коммерческое предложение под боль клиентов из отзывов';
+  const tooltip = hasPains
+    ? 'Сгенерировать КП под главную боль клиентов с цитатой из отзыва'
+    : 'Сгенерировать общее КП по шаблону (у компании ещё нет разобранных болей)';
 
   return (
     <div className="rounded-md border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-3 dark:border-violet-700/40 dark:from-violet-900/30 dark:to-slate-900">
@@ -43,17 +44,16 @@ export function KpQuickBlock({ companyId, companyName, hasPains }: Props) {
             Коммерческое предложение
           </div>
           <p className="mt-0.5 text-[11.5px] text-slate-600 dark:text-slate-300">
-            {disabled
-              ? 'AI ещё не разобрал отзывы — без них письмо будет общим.'
-              : 'Холодное письмо под главную боль клиентов с цитатой из отзыва.'}
+            {hasPains
+              ? 'Холодное письмо под главную боль клиентов с цитатой из отзыва.'
+              : 'Общее письмо по шаблону. Боли клиентов появятся после AI-анализа отзывов.'}
           </p>
         </div>
         <button
           type="button"
-          disabled={disabled}
           onClick={() => setOpen(true)}
           title={tooltip}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-600"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600"
         >
           <Sparkles className="h-4 w-4" />
           КП
