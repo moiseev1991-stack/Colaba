@@ -47,10 +47,20 @@ class KpDraft(Base):
         ForeignKey("organizations.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Миграция 034 (Эпик F): company_id стал nullable. KP может быть
+    # либо по компании из maps (company_id заполнен), либо по найденному
+    # сайту из web-search'а (site_lead_id заполнен). CHECK constraint
+    # ck_kp_drafts_company_xor_site_lead гарантирует, что ровно одно
+    # из двух заполнено.
     company_id = Column(
         BigInteger,
         ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+    )
+    site_lead_id = Column(
+        BigInteger,
+        ForeignKey("site_leads.id", ondelete="CASCADE"),
+        nullable=True,
     )
     template_key = Column(String(40), nullable=False)
     subject = Column(String(500), nullable=False)
