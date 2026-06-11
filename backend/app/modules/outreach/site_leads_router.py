@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -74,14 +74,22 @@ async def get_site_lead(
     return SiteLeadOut.model_validate(lead)
 
 
-@router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{lead_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # response_class=Response — иначе FastAPI ругается «Status code 204 must
+    # not have a response body» при наличии `-> None` или дефолтного
+    # response_model. См. fastapi/routing.py is_body_allowed_for_status_code.
+    response_class=Response,
+)
 async def delete_site_lead(
     lead_id: int,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     ok = await site_leads_service.delete_site_lead(
         db, user_id=user_id, lead_id=lead_id
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Site-лид не найден.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
