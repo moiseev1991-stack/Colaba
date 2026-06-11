@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.78.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.78.0...v1.78.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* **maps:** читаемые tabs sentiment, source-toggle в топ-негативе, синк selectedIds, has_website safety ([856f67c](https://github.com/moiseev1991-stack/Colaba/commit/856f67c1ee45841330403a2973c0897bd352250c))
+
 # [1.78.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.77.1...v1.78.0) (2026-06-11)
 
 
