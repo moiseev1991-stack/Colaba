@@ -64,10 +64,18 @@ def benchmark_phrase(ratio: float | None) -> str:
     if ratio >= 1.5:
         # «в 1.5 раза» звучит коряво — округляем до 1 знака. Если
         # совсем близко к целому — берём целое («в 2 раза», не «в 2.0»).
-        rounded = round(ratio, 1)
-        if abs(rounded - round(rounded)) < 0.05:
-            rounded_str = str(int(round(rounded)))
+        #
+        # ВАЖНО: проверку «близко к целому» делаем на ИСХОДНОМ ratio,
+        # а не на round(ratio, 1), потому что 1.95 в double = 1.949999…
+        # и round(1.95, 1) = 1.9, а не 2.0 (банкирское округление +
+        # float-погрешность). Поэтому брать close-to-integer от уже
+        # округлённого значения — баг: 1.95 уходило бы в строку «1.9»
+        # вместо «2».
+        nearest_int = round(ratio)
+        if abs(ratio - nearest_int) < 0.1:
+            rounded_str = str(int(nearest_int))
         else:
+            rounded = round(ratio, 1)
             rounded_str = f"{rounded:.1f}".rstrip("0").rstrip(".")
         return (
             f"эта проблема у них упоминается в {rounded_str} раза чаще, "
