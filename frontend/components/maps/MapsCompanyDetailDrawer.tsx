@@ -79,6 +79,11 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   const [textQuery, setTextQuery] = useState('');
   const [onlyWithOwnerReply, setOnlyWithOwnerReply] = useState(false);
 
+  // Юзер 2026-06-11: окно для дайджеста отзывов в шапке drawer'а.
+  // null = «за всё время» (бэк снимает фильтр по posted_at). По умолчанию
+  // 30 — оставляем привычное поведение для свежих компаний.
+  const [digestDays, setDigestDays] = useState<30 | 90 | 180 | 365 | null>(30);
+
   // debounce для текстового поиска (300мс)
   const [debouncedText, setDebouncedText] = useState('');
   useEffect(() => {
@@ -241,12 +246,14 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             <NegativeTrendBadge companyId={detail.id} />
           </div>
 
-          {/* Дайджест за 30 дней — лента метрик + кликабельные топ-боли.
+          {/* Дайджест с переключаемым окном — лента метрик + кликабельные
+              топ-боли + независимый блок «Топ-негатив за всё время».
               Клик по плитке боли → activePainTagId → ниже появляется
               PainTrendBlock (даты + chart) + reviews-список фильтруется. */}
           <CompanyDigestBlock
             companyId={detail.id}
-            days={30}
+            days={digestDays}
+            onDaysChange={setDigestDays}
             activePainTagId={activePainTagId}
             onPainClick={(painTagId, label) => {
               if (painTagId === -1 || activePainTagId === painTagId) {

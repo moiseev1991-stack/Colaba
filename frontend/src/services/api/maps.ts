@@ -789,7 +789,8 @@ export async function generateOutreachDraft(
 
 export interface CompanyDigestOut {
   company_id: number;
-  days: number;
+  /** null = «за всё время» (запрос пришёл с days=0). */
+  days: number | null;
   total_reviews: number;
   positive_count: number;
   negative_count: number;
@@ -797,15 +798,21 @@ export interface CompanyDigestOut {
   avg_rating: number | null;
   owner_reply_rate: number | null;
   top_pains: CompanyPainOut[];
+  /** Топ-3 самых ярких негативных отзыва за всё время. Не зависит от `days`. */
+  top_negative_reviews_all_time: ReviewOut[];
 }
 
-/** GET /maps/companies/{id}/digest — сводка отзывов за N дней. */
+/**
+ * GET /maps/companies/{id}/digest — сводка отзывов за N дней.
+ * `days === null` (или 0) → «за всё время», бэк снимает фильтр по posted_at.
+ */
 export async function getCompanyDigest(
   companyId: number,
-  days: number = 30
+  days: number | null = 30
 ): Promise<CompanyDigestOut> {
+  const dParam = days == null ? 0 : days;
   const response = await apiClient.get<CompanyDigestOut>(
-    `/maps/companies/${companyId}/digest?days=${days}`
+    `/maps/companies/${companyId}/digest?days=${dParam}`
   );
   return response.data;
 }
