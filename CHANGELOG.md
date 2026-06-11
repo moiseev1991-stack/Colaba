@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.85.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.84.0...v1.85.0) (2026-06-11)
+
+
+### Bug Fixes
+
+* **kp:** DELETE /site-leads/{id} — response_class=Response, не дефолтный ([c1ea482](https://github.com/moiseev1991-stack/Colaba/commit/c1ea482aa6efb7548200c8101dfd17434b41369d))
+
+
+### Features
+
+* **kp:** Эпик F шард 2 — backend site-leads + KP по найденным сайтам ([06e7ee8](https://github.com/moiseev1991-stack/Colaba/commit/06e7ee8a27c280bff7b437fe6b51d0dfbb56db95)), closes [#53](https://github.com/moiseev1991-stack/Colaba/issues/53)
+
 # [1.84.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.83.1...v1.84.0) (2026-06-11)
 
 
