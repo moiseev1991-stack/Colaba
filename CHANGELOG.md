@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.81.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.80.0...v1.81.0) (2026-06-11)
+
+
+### Features
+
+* **kp:** Эпик A frontend — кнопка КП в выдаче + KpModal + KpQuickBlock в drawer ([5c02166](https://github.com/moiseev1991-stack/Colaba/commit/5c02166f207e42a5b486026ceaddffcd3b4e2d70)), closes [#48](https://github.com/moiseev1991-stack/Colaba/issues/48)
+
 # [1.80.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.79.0...v1.80.0) (2026-06-11)
 
 
