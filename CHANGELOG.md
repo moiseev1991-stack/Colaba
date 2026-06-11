@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.84.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.83.1...v1.84.0) (2026-06-11)
+
+
+### Features
+
+* **kp:** миграция 034 — site_leads + kp_drafts.company_id nullable + site_lead_id ([3ca0306](https://github.com/moiseev1991-stack/Colaba/commit/3ca03066cfdcc5ecb1060e279876a7151f80b06e))
+
 ## [1.83.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.83.0...v1.83.1) (2026-06-11)
 
 
