@@ -11,7 +11,7 @@
  * MapsCompanyDetailDrawer и экспорт — шаг 16.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
@@ -408,8 +408,51 @@ export function MapsSearchResults({
   // Live-стрим используется только пока companies ещё ни разу не приходили
   // (первоначальная загрузка — пока парсер ещё не дошёл до terminal-статуса).
   const liveCompanies = stream.companies;
-  const baseList: any[] = companiesEverLoaded ? companies : liveCompanies;
-  const renderTotal = companiesEverLoaded ? companies.length : liveCompanies.length;
+  const rawBaseList: any[] = companiesEverLoaded ? companies : liveCompanies;
+
+  // Client-side safety фильтры: бэк всегда применяет filter, но live-стрим
+  // (SSE) фильтрацию НЕ применяет. До 2026-06-12 юзер с пресетом «Нет сайта»
+  // мог видеть в выдаче компанию с website, пока listMapCompanies ещё не
+  // отработал — потому что render шёл из live-stream. Применяем критичные
+  // фильтры (has_website, min_rating) ещё раз на клиенте — это даёт согласие
+  // с серверной выдачей в переходных состояниях.
+  const baseList: any[] = useMemo(() => {
+    let list = rawBaseList;
+    if (filter.has_website === false) {
+      list = list.filter((c: any) => {
+        const w = (c.website ?? '').toString().trim();
+        return w === '';
+      });
+    } else if (filter.has_website === true) {
+      list = list.filter((c: any) => {
+        const w = (c.website ?? '').toString().trim();
+        return w !== '';
+      });
+    }
+    return list;
+  }, [rawBaseList, filter.has_website]);
+  const renderTotal = baseList.length;
+
+  // 2026-06-12: выбранные id (Set<number>) дрейфовали относительно реально
+  // видимых карточек — юзер снимал pain-фильтр, компания вылетала из
+  // выдачи, а «Выбрано: 1» в шапке оставалось (плюс рамка-обводка на
+  // подтянувшейся карточке с другим id). Чистим selectedIds, оставляя
+  // только те, что реально присутствуют в baseList.
+  useEffect(() => {
+    if (selectedIds.size === 0) return;
+    const visibleIds = new Set<number>();
+    for (const c of baseList) {
+      const id = (c as any).id ?? (c as any).company_id;
+      if (typeof id === 'number') visibleIds.add(id);
+    }
+    let changed = false;
+    const next = new Set<number>();
+    for (const id of selectedIds) {
+      if (visibleIds.has(id)) next.add(id);
+      else changed = true;
+    }
+    if (changed) setSelectedIds(next);
+  }, [baseList, selectedIds]);
 
   // ----------- AI-анализ под кастомный промпт пресета -----------
   const visibleCompanyIds = baseList

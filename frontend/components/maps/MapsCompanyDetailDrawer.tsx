@@ -184,9 +184,15 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
   const open = companyId != null;
   const hasActiveFilters =
     tab !== 'all' || sourceTab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
-  // Phase 5: показываем вкладку «По источнику» только если у компании ≥2 профиля.
   const sourcesProfiles = detail?.sources_profiles ?? [];
-  const showSourceTabs = sourcesProfiles.length >= 2;
+  // 2026-06-12: source-toggle теперь рендерится ВСЕГДА (юзер не видел
+  // переключателя источников у одноисточниковых компаний и думал, что
+  // фильтра вообще нет). Если у компании только один источник —
+  // вторая кнопка просто не имеет «активного» количества и не кликабельна.
+  // showMultiSourceMeta остаётся прежним признаком для блока «метрики
+  // и контакты разнесены по источникам» — там нет смысла раздваивать,
+  // если источник один.
+  const showMultiSourceMeta = sourcesProfiles.length >= 2;
 
   return (
     <Dialog
@@ -206,7 +212,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
 
           {/* Phase 5 multi-source: метрики и контакты по каждому источнику раздельно.
               Одноисточниковые компании fall-back на старый ContactsBlock без секций. */}
-          {showSourceTabs ? (
+          {showMultiSourceMeta ? (
             <>
               <SourceMetricsBlock profiles={sourcesProfiles} />
               <MultiSourceContactsBlock profiles={sourcesProfiles} />
@@ -281,7 +287,7 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             <PainTrendBlock
               trend={painTrend}
               label={activePainLabel}
-              hasSourceTabs={showSourceTabs}
+              hasSourceTabs={showMultiSourceMeta}
               sourceTab={sourceTab}
               scope={trendScope}
               onScopeChange={setTrendScope}
@@ -325,33 +331,51 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             </div>
           )}
 
-          {/* === Tabs по источнику (Phase 5 multi-source) === */}
-          {showSourceTabs && (
-            <div className="mb-1 flex gap-2 border-b border-slate-200 dark:border-slate-700">
+          {/* === Tabs по источнику отзывов ===
+              Phase 5 multi-source. 2026-06-12: рендерим ВСЕГДА — даже у
+              одноисточниковых компаний, чтобы юзер сразу видел из какого
+              источника отзывы и понимал что фильтр работает. Кнопки
+              недоступных у компании источников рендерим как disabled
+              серый pill (без перехода). */}
+          <div className="mb-2 rounded-md border border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-800/40">
+            <div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Источник отзывов
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {(['all', '2gis', 'yandex_maps'] as SourceTab[]).map((st) => {
                 const sp = sourcesProfiles.find((s) => s.source === st);
                 const count = sp?.reviews_count ?? 0;
                 const label =
                   st === 'all' ? 'Все' : st === '2gis' ? '2GIS' : 'Я.Карты';
+                const available = st === 'all' || sp != null;
+                const active = sourceTab === st;
                 return (
                   <button
                     key={st}
                     type="button"
-                    onClick={() => setSourceTab(st)}
+                    disabled={!available}
+                    onClick={() => available && setSourceTab(st)}
                     className={cn(
-                      'border-b-2 px-2 py-1 text-xs font-medium transition-colors',
-                      sourceTab === st
-                        ? 'border-brand-500 text-brand-700 dark:border-brand-400 dark:text-brand-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                      'rounded px-2 py-1 text-[12px] font-semibold transition-colors',
+                      active
+                        ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                        : available
+                          ? 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700'
+                          : 'bg-slate-100 text-slate-400 ring-1 ring-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:ring-slate-700',
                     )}
+                    title={
+                      available
+                        ? `Показать отзывы: ${label}`
+                        : `${label}: у компании нет отзывов из этого источника`
+                    }
                   >
                     {label}
-                    {st !== 'all' && count > 0 ? ` (${count})` : ''}
+                    {st !== 'all' && count > 0 ? ` · ${count}` : ''}
                   </button>
                 );
               })}
             </div>
-          )}
+          </div>
 
           {/* === Tabs sentiment ===
               Счётчики динамически зависят от sourceTab: когда выбран 2GIS или
@@ -388,26 +412,45 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
                 </button>
               </div>
             )}
-            <div className="mb-2 flex gap-2 border-b border-slate-200 dark:border-slate-700">
-              {(['all', 'negative', 'positive'] as Tab[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    'border-b-2 px-2 py-1 text-xs font-medium transition-colors',
-                    tab === t
-                      ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                  )}
-                >
-                  {t === 'all'
-                    ? `Все${totalAll > 0 ? ` (${totalAll})` : ''}`
+            {/* Sentiment-tabs. 2026-06-12: повышен контраст неактивных
+                (text-slate-700 вместо text-slate-500) — юзер жаловался
+                «нихуя не читаем». Активная подсвечена тёмным фоном +
+                bold border, чтобы было очевидно что таб кликабельный. */}
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {(['all', 'negative', 'positive'] as Tab[]).map((t) => {
+                const active = tab === t;
+                const label =
+                  t === 'all'
+                    ? `Все${totalAll > 0 ? ` · ${totalAll}` : ''}`
                     : t === 'negative'
-                      ? `Негатив${totalNeg > 0 ? ` (${totalNeg})` : ''}`
-                      : `Позитив${totalPos > 0 ? ` (${totalPos})` : ''}`}
-                </button>
-              ))}
+                      ? `Негатив${totalNeg > 0 ? ` · ${totalNeg}` : ''}`
+                      : `Позитив${totalPos > 0 ? ` · ${totalPos}` : ''}`;
+                const tone =
+                  t === 'negative'
+                    ? active
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'bg-white text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 dark:bg-slate-900 dark:text-rose-300 dark:ring-rose-900/50'
+                    : t === 'positive'
+                      ? active
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:ring-emerald-900/50'
+                      : active
+                        ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                        : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700';
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTab(t)}
+                    className={cn(
+                      'rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors',
+                      tone,
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* === Drawer filter row: text search + has_owner_reply === */}

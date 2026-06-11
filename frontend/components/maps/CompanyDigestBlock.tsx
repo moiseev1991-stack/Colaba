@@ -12,10 +12,19 @@
  * чтобы у компаний без новых отзывов цитаты всё равно показывались.
  */
 
-import { useEffect, useState } from 'react';
-import { MessageSquareQuote, ThumbsDown, ThumbsUp, Reply, Star } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ExternalLink,
+  MessageSquareQuote,
+  Reply,
+  Star,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react';
 
 import { getCompanyDigest, type CompanyDigestOut, type ReviewOut } from '@/src/services/api/maps';
+
+type NegativeSourceFilter = 'all' | '2gis' | 'yandex_maps' | 'google';
 
 type DaysOption = 30 | 90 | 180 | 365 | null;
 
@@ -97,6 +106,11 @@ export function CompanyDigestBlock({
 
   const negatives = data.top_negative_reviews_all_time ?? [];
   const hasNegatives = negatives.length > 0;
+  // Какие источники реально встречаются среди топ-негатива — для тогглера.
+  // Если у компании есть только Я.Карты в списке негатива, нет смысла
+  // показывать кнопки 2GIS/Google. Без useMemo (после early-return ниже —
+  // нельзя вызывать хуки; вычисление лёгкое, на 3 элементах).
+  const availableNegativeSources = computeAvailableSources(negatives);
 
   return (
     <div className="rounded-md border border-slate-200 bg-white p-3 space-y-3">
@@ -235,6 +249,7 @@ export function CompanyDigestBlock({
       {hasNegatives && (
         <TopNegativeReviewsPreview
           reviews={negatives}
+          availableSources={availableNegativeSources}
           // у компаний без свежих отзывов раздел становится главным
           emphasize={data.total_reviews === 0}
         />
@@ -282,24 +297,85 @@ function DaysRangeToggle({
   );
 }
 
+function sourceLabel(source: string | null | undefined): string | null {
+  if (source === '2gis') return '2GIS';
+  if (source === 'yandex_maps') return 'Я.Карты';
+  if (source === 'google') return 'Google';
+  return null;
+}
+
+function computeAvailableSources(reviews: ReviewOut[]): NegativeSourceFilter[] {
+  const set = new Set<NegativeSourceFilter>(['all']);
+  for (const r of reviews) {
+    if (r.source === '2gis' || r.source === 'yandex_maps' || r.source === 'google') {
+      set.add(r.source as NegativeSourceFilter);
+    }
+  }
+  return (['all', '2gis', 'yandex_maps', 'google'] as NegativeSourceFilter[]).filter((s) =>
+    set.has(s),
+  );
+}
+
 function TopNegativeReviewsPreview({
   reviews,
+  availableSources,
   emphasize,
 }: {
   reviews: ReviewOut[];
+  availableSources: NegativeSourceFilter[];
   emphasize: boolean;
 }) {
+  // Юзер 2026-06-12: внутри топ-негатива хочет переключаться между
+  // источниками, чтобы читать отзывы 2GIS отдельно от Я.Карт. Фильтр
+  // живёт на клиенте (бэк отдал все 3 топ-негатива за всё время).
+  const [sourceFilter, setSourceFilter] = useState<NegativeSourceFilter>('all');
+  const filtered = useMemo(
+    () => (sourceFilter === 'all' ? reviews : reviews.filter((r) => r.source === sourceFilter)),
+    [reviews, sourceFilter],
+  );
+
   return (
     <div className="space-y-1.5">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-        {emphasize
-          ? 'Самые яркие негативные отзывы (за всё время)'
-          : 'Топ-негатив за всё время'}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          {emphasize
+            ? 'Самые яркие негативные отзывы (за всё время)'
+            : 'Топ-негатив за всё время'}
+        </div>
+        {availableSources.length > 2 && (
+          <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-[10.5px] font-medium">
+            {availableSources.map((src) => {
+              const active = src === sourceFilter;
+              const label =
+                src === 'all' ? 'Все' : sourceLabel(src) ?? src;
+              return (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSourceFilter(src)}
+                  className={
+                    'rounded px-1.5 py-0.5 transition-colors ' +
+                    (active
+                      ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
+                      : 'text-slate-500 hover:text-slate-700')
+                  }
+                  title={`Только из источника: ${label}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div className="space-y-1.5">
-        {reviews.slice(0, 3).map((r) => (
-          <NegativeReviewSnippet key={r.id} review={r} />
-        ))}
+        {filtered.length === 0 ? (
+          <div className="rounded border border-dashed border-slate-300 bg-slate-50 px-2 py-1.5 text-[11.5px] text-slate-500">
+            Нет негативных отзывов из этого источника.
+          </div>
+        ) : (
+          filtered.slice(0, 3).map((r) => <NegativeReviewSnippet key={r.id} review={r} />)
+        )}
       </div>
     </div>
   );
@@ -310,17 +386,32 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
   const truncated =
     text.length > 220 ? text.slice(0, 220).trimEnd() + '…' : text;
   const date = review.posted_at ? formatShortDate(review.posted_at) : null;
-  const sourceLabel =
-    review.source === '2gis'
-      ? '2GIS'
-      : review.source === 'yandex_maps'
-      ? 'Я.Карты'
-      : review.source === 'google'
-      ? 'Google'
-      : null;
+  const srcLabel = sourceLabel(review.source);
+  const href = review.source_url || null;
+
+  // Юзер 2026-06-12: вся карточка отзыва должна быть кликабельной — открывать
+  // источник (Я.Карты/2GIS/Google) в новой вкладке. Без явного линка юзер
+  // не понимал, что цитата ведёт на оригинал.
+  const Outer: React.ElementType = href ? 'a' : 'div';
+  const outerProps = href
+    ? {
+        href,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        title: 'Открыть оригинал отзыва в новой вкладке',
+      }
+    : {};
 
   return (
-    <div className="rounded border border-rose-200 bg-rose-50/50 px-2 py-1.5 dark:border-rose-900/60 dark:bg-rose-900/20">
+    <Outer
+      {...outerProps}
+      className={
+        'block rounded border border-rose-200 bg-rose-50/50 px-2 py-1.5 transition-colors dark:border-rose-900/60 dark:bg-rose-900/20 ' +
+        (href
+          ? 'cursor-pointer hover:border-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40'
+          : '')
+      }
+    >
       <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-slate-500">
         {review.rating != null && (
           <span className="inline-flex items-center gap-0.5 font-medium text-rose-700 dark:text-rose-300">
@@ -328,9 +419,9 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
             {review.rating}/5
           </span>
         )}
-        {sourceLabel && (
+        {srcLabel && (
           <span className="rounded bg-slate-100 px-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            {sourceLabel}
+            {srcLabel}
           </span>
         )}
         {date && <span>· {date}</span>}
@@ -339,12 +430,17 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
             · есть ответ владельца
           </span>
         )}
+        {href && (
+          <span className="ml-auto inline-flex items-center gap-0.5 text-rose-700 dark:text-rose-300">
+            открыть <ExternalLink className="h-3 w-3" />
+          </span>
+        )}
       </div>
       <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
         <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
         <span className="italic">«{truncated || '(текст отсутствует)'}»</span>
       </div>
-    </div>
+    </Outer>
   );
 }
 
