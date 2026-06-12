@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.87.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.86.1...v1.87.0) (2026-06-12)
+
+
+### Features
+
+* **maps:** убрана chip-row «Под профессию» из шапки выдачи ([e6c0fc5](https://github.com/moiseev1991-stack/Colaba/commit/e6c0fc5ff557fa7b2ed3ac97d64b1dbed884a4b0))
+
 ## [1.86.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.86.0...v1.86.1) (2026-06-12)
 
 
