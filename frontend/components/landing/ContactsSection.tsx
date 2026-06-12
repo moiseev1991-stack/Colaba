@@ -14,7 +14,7 @@ export function ContactsSection() {
         </h2>
         <p className="l-contact__sub reveal">
           Регистрация за 30 секунд. Без кредитной карты.<br />
-          Первые 500 лидов и 5 кампаний КП — бесплатно.
+          1 полный поиск ниши и 5 КП — бесплатно.
         </p>
         <div className="l-contact__actions reveal">
           <a href="#register" className="l-btn l-btn--primary l-btn--large">

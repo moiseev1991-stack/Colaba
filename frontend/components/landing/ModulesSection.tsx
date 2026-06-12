@@ -91,18 +91,6 @@ export function ModulesSection() {
             </div>
           ))}
         </div>
-        <p
-          className="reveal"
-          style={{
-            marginTop: '32px',
-            textAlign: 'center',
-            fontSize: '13px',
-            color: 'var(--landing-muted)',
-          }}
-        >
-          В кабинете также есть SEO-аудит сайтов и мониторинг госзакупок —
-          но главная фишка SpinLid здесь, выше.
-        </p>
       </div>
     </section>
   );
