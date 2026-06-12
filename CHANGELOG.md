@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.90.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.89.1...v1.90.0) (2026-06-12)
+
+
+### Bug Fixes
+
+* **kp:** третий уровень фолбэка — если LLM не вернула JSON, парсим текст ([9c86aa7](https://github.com/moiseev1991-stack/Colaba/commit/9c86aa7f58d1189c05876778d436ee4f63a087e0))
+
+
+### Features
+
+* **maps:** ЛПР в CSV, общая динамика отзывов, чистка лишних pill'ов ([7098398](https://github.com/moiseev1991-stack/Colaba/commit/7098398c432cf665d315d0460393af621e4fcb35))
+* **promo:** таймер обратного отсчёта до запуска на главной (45 дней) ([b840900](https://github.com/moiseev1991-stack/Colaba/commit/b8409004dbd03ebe3260adebea10613d14f59ae3))
+
 ## [1.89.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.89.0...v1.89.1) (2026-06-12)
 
 
