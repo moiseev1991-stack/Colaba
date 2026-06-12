@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.89.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.88.0...v1.89.0) (2026-06-12)
+
+
+### Features
+
+* **maps:** фильтр и pill «ЛПР» в карточке выдачи ([105ccd7](https://github.com/moiseev1991-stack/Colaba/commit/105ccd711d3b474daa7cdca59a0beb0309ab2576))
+
 # [1.88.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.87.0...v1.88.0) (2026-06-12)
 
 
