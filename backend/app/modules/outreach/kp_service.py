@@ -378,39 +378,81 @@ def build_kp_prompt_for_site(
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
 
 
+def _escape_unescaped_newlines_in_json_strings(s: str) -> str:
+    """Костыль для LLM-JSON: модели часто кладут literal '\\n' в строковые
+    значения (вместо escape-последовательности), и json.loads падает с
+    'Invalid control character'. Проходим по строке, отслеживаем кавычки
+    и backslash-escape, и заменяем raw newline на '\\n' только внутри
+    string-литералов.
+
+    Не идеально (не обрабатываем все случаи), но снимает 90% LLM-битых JSON.
+    """
+    out: list[str] = []
+    in_string = False
+    escape = False
+    for ch in s:
+        if escape:
+            out.append(ch)
+            escape = False
+            continue
+        if ch == "\\":
+            out.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            out.append(ch)
+            continue
+        if in_string and ch == "\n":
+            out.append("\\n")
+            continue
+        if in_string and ch == "\r":
+            out.append("\\r")
+            continue
+        if in_string and ch == "\t":
+            out.append("\\t")
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
 def extract_kp_json(raw: str) -> dict[str, str] | None:
-    """Тянет {subject, body} из ответа LLM. Терпим к ```json fence``` и
-    к строкам-обёрткам типа 'Готово: {...}'. Если subject или body не
-    str — возвращает None.
+    """Тянет {subject, body} из ответа LLM. Терпим к ```json fence```,
+    к строкам-обёрткам типа 'Готово: {...}', и к unescaped newlines
+    внутри строковых значений (классика LLM-JSON). Если subject или
+    body не str — возвращает None.
     """
     if not raw:
         return None
     raw = raw.strip()
 
+    def _try_parse(s: str) -> Any:
+        try:
+            return json.loads(s)
+        except Exception:
+            pass
+        # Lossy: LLM любит класть literal \n вместо \\n. Эскейпим и
+        # пробуем повторно. Только текст внутри string-литералов.
+        try:
+            return json.loads(_escape_unescaped_newlines_in_json_strings(s))
+        except Exception:
+            return None
+
     # 1. Прямой парс.
-    try:
-        obj = json.loads(raw)
-    except Exception:
-        obj = None
+    obj = _try_parse(raw)
 
     # 2. Из fence.
     if obj is None:
         m = _JSON_FENCE_RE.search(raw)
         if m:
-            try:
-                obj = json.loads(m.group(1))
-            except Exception:
-                obj = None
+            obj = _try_parse(m.group(1))
 
     # 3. Поиск первой `{...}` пары.
     if obj is None:
         start = raw.find("{")
         end = raw.rfind("}")
         if start != -1 and end != -1 and end > start:
-            try:
-                obj = json.loads(raw[start : end + 1])
-            except Exception:
-                obj = None
+            obj = _try_parse(raw[start : end + 1])
 
     if not isinstance(obj, dict):
         return None
@@ -505,40 +547,64 @@ async def _call_llm_with_retry(
     """Один вызов LLM + 1 ретрай с строгой JSON-инструкцией.
     Бросает KpGenerationError(422) если ни первый, ни ретрай не дали
     валидный {subject, body}. Поднята из generate_kp для переиспользования
-    в site-варианте."""
+    в site-варианте.
+
+    2026-06-12: max_tokens 900 → 2200 (русское письмо 110-160 слов плюс
+    JSON-обёртка плюс возможный markdown-fence не помещалось, ответ
+    обрезался, JSON оставался битым). Temperature первой попытки 0.6 → 0.35
+    (для structured-output меньше галлюцинаций формата). Raw-ответ при
+    неудаче логгируется первыми 800 символами — иначе в проде непонятно,
+    что именно вернула модель.
+    """
     parsed: dict[str, str] | None = None
+    raw_first: str | None = None
     try:
-        raw = await chat(
+        raw_first = await chat(
             assistant_id=assistant_id,
             messages=[{"role": "user", "content": prompt_text}],
             db=db,
-            max_tokens=900,
-            temperature=0.6,
+            max_tokens=2200,
+            temperature=0.35,
         )
-        parsed = extract_kp_json(raw)
+        parsed = extract_kp_json(raw_first)
     except Exception as e:
         logger.warning("generate_kp: first chat() failed: %s", e)
         parsed = None
+    if parsed is None and raw_first is not None:
+        logger.warning(
+            "generate_kp: first response unparseable (len=%d): %r",
+            len(raw_first),
+            raw_first[:800],
+        )
 
     if parsed is None:
         retry_prompt = (
             prompt_text
             + "\n\nВажно: твой предыдущий ответ не удалось распарсить. "
-            "Верни СТРОГО валидный JSON в одну строку, без markdown-fence "
-            "и без префиксов: {\"subject\": \"...\", \"body\": \"...\"}"
+            "Верни СТРОГО валидный JSON в одну строку, без markdown-fence, "
+            "без префиксов и без комментариев после JSON. Внутри строковых "
+            "значений переносы строк экранируй как \\n. "
+            "Формат: {\"subject\": \"...\", \"body\": \"...\"}"
         )
+        raw_retry: str | None = None
         try:
-            raw = await chat(
+            raw_retry = await chat(
                 assistant_id=assistant_id,
                 messages=[{"role": "user", "content": retry_prompt}],
                 db=db,
-                max_tokens=900,
-                temperature=0.3,
+                max_tokens=2200,
+                temperature=0.2,
             )
-            parsed = extract_kp_json(raw)
+            parsed = extract_kp_json(raw_retry)
         except Exception as e:
             logger.warning("generate_kp: retry chat() failed: %s", e)
             parsed = None
+        if parsed is None and raw_retry is not None:
+            logger.warning(
+                "generate_kp: retry response unparseable (len=%d): %r",
+                len(raw_retry),
+                raw_retry[:800],
+            )
 
     if parsed is None:
         raise KpGenerationError(
