@@ -255,6 +255,7 @@ async def list_search_companies(
     min_negative: Optional[int] = Query(default=None, ge=0),
     has_owner_replies: Optional[bool] = Query(default=None),
     has_website: Optional[bool] = Query(default=None),
+    has_lpr: Optional[bool] = Query(default=None),
     pain_tag_ids: Optional[list[int]] = Query(default=None),
     min_pain_mentions: int = Query(default=1, ge=1),
     sort_by: SortBy = Query(default="rating_desc"),
@@ -278,6 +279,7 @@ async def list_search_companies(
         min_negative=min_negative,
         has_owner_replies=has_owner_replies,
         has_website=has_website,
+        has_lpr=has_lpr,
         pain_tag_ids=pain_tag_ids or None,
         min_pain_mentions=min_pain_mentions,
         sort_by=sort_by,
@@ -308,6 +310,18 @@ async def list_search_companies(
             select(CompanyLegal).where(CompanyLegal.company_id.in_(ids))
         )).scalars().all()
         legal_map = {int(l.company_id): l for l in legals}
+    # 2026-06-12: батчевая загрузка «есть ли decision_maker'ы на сайте» —
+    # для pill «ЛПР» в карточке. Один запрос на страницу + dedup в set.
+    from app.models.company_decision_maker import CompanyDecisionMaker
+    dm_company_ids: set[int] = set()
+    if items:
+        ids = [c.id for c in items]
+        dm_rows = (await db.execute(
+            select(CompanyDecisionMaker.company_id).where(
+                CompanyDecisionMaker.company_id.in_(ids)
+            )
+        )).all()
+        dm_company_ids = {int(r[0]) for r in dm_rows}
     # Phase 4 multi-source: источники + контакты per-source одним батчем.
     sources_map = await service.attach_sources_for_companies(db, [c.id for c in items])
     out_items: list[CompanyOut] = []
@@ -320,6 +334,15 @@ async def list_search_companies(
         # длина 1, у склеенных 2gis+yandex — 2 (после Phase 2/3).
         out.sources_profiles = [CompanySourceOut(**s) for s in sources_map.get(c.id, [])]
         legal = legal_map.get(c.id)
+        # ЛПР есть, если либо DaData отдала директора, либо парсер сайта
+        # положил хотя бы одну запись decision_maker.
+        legal_has_director = bool(
+            legal
+            and legal.status == "ok"
+            and legal.director_name
+            and legal.director_name.strip()
+        )
+        out.has_lpr = legal_has_director or (c.id in dm_company_ids)
         if legal and legal.status == "ok":
             out.legal = CompanyLegalOut(
                 inn=legal.inn,
@@ -549,6 +572,7 @@ async def export_search_csv(
     min_negative: Optional[int] = Query(default=None, ge=0),
     has_owner_replies: Optional[bool] = Query(default=None),
     has_website: Optional[bool] = Query(default=None),
+    has_lpr: Optional[bool] = Query(default=None),
     pain_tag_ids: Optional[list[int]] = Query(default=None),
     sort_by: SortBy = Query(default="rating_desc"),
     review_text_contains: Optional[str] = Query(default=None, max_length=200),
@@ -586,6 +610,7 @@ async def export_search_csv(
             min_reviews=min_reviews, min_negative=min_negative,
             has_owner_replies=has_owner_replies,
             has_website=has_website,
+            has_lpr=has_lpr,
             pain_tag_ids=pain_tag_ids or None,
             sort_by=sort_by,
             review_text_contains=review_text_contains,
@@ -744,6 +769,13 @@ async def get_company(
         )
         for r in dm_rows
     ]
+    # has_lpr: DaData-директор или хоть один decision_maker со страниц сайта.
+    legal_has_director = bool(
+        detail.legal
+        and detail.legal.director_name
+        and detail.legal.director_name.strip()
+    )
+    detail.has_lpr = legal_has_director or bool(dm_rows)
     return detail
 
 

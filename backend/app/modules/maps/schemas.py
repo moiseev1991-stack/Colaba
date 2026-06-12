@@ -127,6 +127,12 @@ class MapSearchFilter(BaseModel):
     # соответствующим source-профилем (склеенные мульти-компании остаются).
     source_filter: Literal["all", "2gis", "yandex_maps"] | None = None
 
+    # 2026-06-12: фильтр «есть ЛПР» (юзер просил видеть в сайдбаре).
+    # True — компания должна иметь руководителя: либо CompanyLegal.director_name
+    # (DaData), либо хотя бы одна запись CompanyDecisionMaker (со страниц
+    # сайта). False — ни того, ни другого. None — фильтр не накладывается.
+    has_lpr: bool | None = None
+
 
 # ---------------------------------------------------------------------------
 # API request/response schemas
@@ -292,6 +298,11 @@ class CompanyOut(BaseModel):
     # тестов/моков). Для списка прогружается batch'ем через attach_sources_for_companies,
     # для детали — single-shot.
     sources_profiles: list[CompanySourceOut] = Field(default_factory=list)
+    # 2026-06-12: фронт показывает pill «ЛПР» в карточке выдачи. True если
+    # есть либо CompanyLegal.director_name (DaData), либо хотя бы одна запись
+    # CompanyDecisionMaker (парсер /team на сайте). Заполняется в роутере
+    # batch'ем через attach_has_lpr_for_companies.
+    has_lpr: bool = False
 
 
 class ReviewOut(BaseModel):

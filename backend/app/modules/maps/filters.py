@@ -99,6 +99,36 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         else:
             query = query.where(trimmed == "")
 
+    # 2026-06-12: фильтр «есть ЛПР». ЛПР хранится в двух местах:
+    #   1) CompanyLegal.director_name (DaData)
+    #   2) CompanyDecisionMaker (парсер /team на сайте)
+    # has_lpr=True пропускает компанию, если есть ЛИБО непустой
+    # director_name, ЛИБО хотя бы один decision_maker. False — обратное.
+    if filters.has_lpr is not None:
+        try:
+            from app.models.company_legal import CompanyLegal
+            from app.models.company_decision_maker import CompanyDecisionMaker
+            from sqlalchemy import and_, func as _func
+
+            legal_dir_exists = exists(
+                select(CompanyLegal.id).where(
+                    CompanyLegal.company_id == Company.id,
+                    CompanyLegal.director_name.isnot(None),
+                    _func.btrim(_func.coalesce(CompanyLegal.director_name, "")) != "",
+                )
+            )
+            dm_exists = exists(
+                select(CompanyDecisionMaker.id).where(
+                    CompanyDecisionMaker.company_id == Company.id,
+                )
+            )
+            if filters.has_lpr:
+                query = query.where(or_(legal_dir_exists, dm_exists))
+            else:
+                query = query.where(and_(~legal_dir_exists, ~dm_exists))
+        except ImportError:
+            logger.info("apply_filters: has_lpr задан, но модели CompanyLegal/CompanyDecisionMaker недоступны — фильтр игнорируется")
+
     # ---- WHERE: тексты отзывов (EXISTS-подзапрос на reviews)
     # Объединяем legacy single-форму и новую *_any-форму в один список.
     # contains: компания пройдёт, если у неё ЕСТЬ отзыв с ЛЮБЫМ из слов (OR).

@@ -90,6 +90,9 @@ export interface MapSearchFilter {
   has_owner_replies?: boolean | null;
   /** true — только компании с сайтом, false — только без сайта, null — не важно. */
   has_website?: boolean | null;
+  /** 2026-06-12: true — компании с известным ЛПР (DaData director_name
+   *  или decision_makers со страниц сайта), false — без, null — не важно. */
+  has_lpr?: boolean | null;
   pain_tag_ids?: number[] | null;
   min_pain_mentions?: number;
   sort_by?: SortBy;
@@ -252,6 +255,9 @@ export interface CompanyOut {
    *  enrich_company_team. Пустой массив = краулер ещё не отработал или сайт
    *  без явных страниц команды. */
   decision_makers?: DecisionMakerOut[];
+  /** 2026-06-12: true если у компании известен ЛПР (DaData director_name или
+   *  хотя бы один decision_maker). Pill в карточке выдачи + фильтр в сайдбаре. */
+  has_lpr?: boolean;
 }
 
 /** ЛПР, извлечённый LLM-ом со страницы сайта /команда /о-нас /контакты
@@ -420,6 +426,8 @@ export async function listMapCompanies(
     params.set('has_owner_replies', String(filter.has_owner_replies));
   if (filter.has_website !== undefined && filter.has_website !== null)
     params.set('has_website', String(filter.has_website));
+  if (filter.has_lpr !== undefined && filter.has_lpr !== null)
+    params.set('has_lpr', String(filter.has_lpr));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length) {
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
   }
@@ -872,6 +880,8 @@ export function exportSearchCsvUrl(
     params.set('has_owner_replies', String(filter.has_owner_replies));
   if (filter.has_website !== undefined && filter.has_website !== null)
     params.set('has_website', String(filter.has_website));
+  if (filter.has_lpr !== undefined && filter.has_lpr !== null)
+    params.set('has_lpr', String(filter.has_lpr));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length)
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
   params.set('sort_by', backendSortBy(filter.sort_by));

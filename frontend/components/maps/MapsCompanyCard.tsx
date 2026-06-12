@@ -33,6 +33,8 @@ import {
   Briefcase,
   Calendar,
   MessageCircle,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -229,6 +231,28 @@ export function MapsCompanyCard({
               title="Нет сайта — горячий сигнал для продажи сайта"
             >
               нет сайта
+            </StatusPill>
+          )}
+          {/* 2026-06-12: pill «ЛПР». has_lpr приходит с бэка — true если есть
+              director_name из DaData или хотя бы один decision_maker со страниц
+              сайта. Зелёный значок «есть», серый «нет данных» — чтобы юзер
+              видел разницу «не нашлось» от «не загружено». */}
+          {company.has_lpr === true && (
+            <StatusPill
+              tone="good"
+              icon={<UserCheck />}
+              title="ЛПР известен (DaData или со страницы /team)"
+            >
+              ЛПР есть
+            </StatusPill>
+          )}
+          {company.has_lpr === false && (
+            <StatusPill
+              tone="neutral"
+              icon={<UserX />}
+              title="ЛПР не найден ни в DaData, ни на сайте"
+            >
+              ЛПР: нет данных
             </StatusPill>
           )}
           {typeof company.lead_temperature === 'number' && company.lead_temperature > 0 && (
