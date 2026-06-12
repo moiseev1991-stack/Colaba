@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
+import { AUTOSERVICE_NICHE } from '@/components/seo-landing/niches';
 
 export const metadata: Metadata = {
   title: 'Парсинг отзывов с карт + AI-анализ болей клиентов',
@@ -18,6 +19,9 @@ export default function ParsingOtzyvovPage() {
   return (
     <SeoLandingShell
       decorTheme="reviews"
+      showBeforeAfter
+      showDemoCompanyCard
+      niche={AUTOSERVICE_NICHE}
       h1="Парсинг и AI-анализ отзывов: боли клиентов любого бизнеса"
       lead="Соберём отзывы компаний с 2GIS и Яндекс.Карт и через AI выделим конкретные боли клиентов с цитатами. Это не статистика «средний балл 4.2», а готовый повод для письма — диагноз, после которого холодная рассылка перестаёт быть холодной."
       problemSolutionParagraphs={[

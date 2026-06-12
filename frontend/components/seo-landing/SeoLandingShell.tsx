@@ -64,6 +64,79 @@ export interface HowItWorksItem {
   body: string;
 }
 
+/**
+ * Уникальные примеры по нише страницы — ТЗ КП-фокус §1.4.
+ * Каждая SEO-страница подаёт СВОЮ нишу в примерах (автосервисы /
+ * салоны красоты / фитнес-клубы / ремонт / клиники / доставка),
+ * чтобы цитаты и pain-теги уникализировались. Если не задано —
+ * фолбэк на стоматологию «Улыбка+» (старый дефолт).
+ */
+export interface NicheExamples {
+  /** Карточка компании (показывается в hero + в Screens). */
+  company: {
+    name: string;
+    address: string;
+    rating: string;
+    reviewsCount: number;
+    negativeCount: number;
+    phone: string;
+    email?: string;
+    painTags: { label: string; count: number; quote: string }[];
+  };
+  /** 8 строк отзывов для BeforeAfter «Было: 200 строк в Excel». */
+  reviewSnippets?: string[];
+  /** Pain-теги для AFTER-блока BeforeAfter. */
+  painTagsSummary?: { label: string; count: number }[];
+  /** Mock-письмо для /holodnaya-rassylka. */
+  letter?: {
+    to: string;
+    subject: string;
+    body: string[];
+  };
+}
+
+const FALLBACK_NICHE: NicheExamples = {
+  company: {
+    name: 'Стоматология «Улыбка+»',
+    address: 'Москва, ул. Ленина 12',
+    rating: '3.8',
+    reviewsCount: 142,
+    negativeCount: 31,
+    phone: '+7 (495) 123-45-67',
+    email: 'info@ulybka-plus.ru',
+    painTags: [
+      { label: 'Долгое ожидание', count: 12, quote: '«Записала ребёнка на 10:00, приняли в 11:20.»' },
+      { label: 'Непрозрачные цены', count: 7, quote: '«На сайте от 1500 ₽, по факту чек 4800.»' },
+      { label: 'Не перезванивают', count: 5, quote: '«Оставила заявку три дня назад — ни звонка, ни SMS.»' },
+    ],
+  },
+  reviewSnippets: [
+    'Долго ждала ребенка с приема...',
+    'Хорошие врачи, рекомендую.',
+    'Очень удобное расписание.',
+    'Сказали 1500, заплатила 4800!',
+    'Записалась за неделю, всё ок.',
+    'Не позвонили после заявки.',
+    'Спасибо доктору Иванову...',
+    'Пришла к 10, приняли в 11:20.',
+  ],
+  painTagsSummary: [
+    { label: 'Долгое ожидание', count: 12 },
+    { label: 'Непрозрачные цены', count: 7 },
+    { label: 'Не перезванивают', count: 5 },
+  ],
+  letter: {
+    to: 'info@ulybka-plus.ru',
+    subject: 'Долгое ожидание клиентов — решаемо',
+    body: [
+      'Здравствуйте, Иван!',
+      'Заметил в отзывах вашей клиники жалобу клиента: «Записала ребёнка на 10:00, приняли в 11:20». 12 раз упоминается похожее.',
+      'У нас инструмент онлайн-записи с автоматическим напоминанием за день и за час. Снижает простои регистратуры до 30%.',
+      '10 минут на демо в Zoom?',
+    ],
+  },
+};
+
 interface SeoLandingShellProps {
   h1: string;
   lead: string;
@@ -79,6 +152,33 @@ interface SeoLandingShellProps {
    * контакты, юр.данные, рассылки). Если не задано — общий микс.
    */
   decorTheme?: keyof typeof HERO_DECOR;
+  /**
+   * Анти-дубликация (ТЗ КП-фокус 2026-06-12 §1.4): каждый крупный блок
+   * живёт только на одной странице. Все show* по умолчанию false —
+   * соответствующая страница включает свой блок явно.
+   *
+   * showSignalsShowcase — большая таблица выдачи (только на главной).
+   * showBeforeAfter — «200 отзывов → 3 боли» (только на /parsing-otzyvov).
+   * showSources — «5 источников данных» (только на /baza-klientov).
+   * showDemoCompanyCard — полная карточка «Улыбка+» в Screens (только на /parsing-otzyvov).
+   * showMockLetterDraft — полный пример драфта письма (только на /holodnaya-rassylka).
+   * showCompareTable — «обычный парсер vs SpinLid» (только на /parser-2gis).
+   */
+  showSignalsShowcase?: boolean;
+  showBeforeAfter?: boolean;
+  showSources?: boolean;
+  showDemoCompanyCard?: boolean;
+  showMockLetterDraft?: boolean;
+  showCompareTable?: boolean;
+  /** Уникальные примеры по нише — ТЗ §1.4. См. NicheExamples. */
+  niche?: NicheExamples;
+  /**
+   * Уникальный для страницы блок (ТЗ §2.3-2.7). Рендерится после
+   * problemSolution и до HowItWorks. Каждая решенческая страница
+   * подаёт сюда свой собственный контент — таблицу полей 2GIS,
+   * схему «зачем второй источник», таблицу колонок выгрузки, и т.п.
+   */
+  customBlock?: React.ReactNode;
 }
 
 export function SeoLandingShell({
@@ -91,6 +191,14 @@ export function SeoLandingShell({
   faq,
   related,
   decorTheme = 'mixed',
+  showSignalsShowcase = false,
+  showBeforeAfter = false,
+  showSources = false,
+  showDemoCompanyCard = false,
+  showMockLetterDraft = false,
+  showCompareTable = false,
+  niche = FALLBACK_NICHE,
+  customBlock,
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
@@ -115,18 +223,18 @@ export function SeoLandingShell({
       <SeoHeader isAuthed={isAuthed} />
 
       <main className="flex-1">
-        {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка) === */}
-        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} />}
+        {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
+        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} niche={niche} />}
 
-        {/* Trust-strip */}
+        {/* Trust-strip — короткие маркетинговые числа. На всех страницах. */}
         <Reveal><TrustStrip /></Reveal>
 
-        {/* Выдача с диагнозом по нескольким нишам — идеологическая фишка
-            «не контакты, а боли», сразу после кредибилити-цифр. */}
-        <Reveal><SignalsTableShowcase /></Reveal>
+        {/* Большая демо-таблица выдачи — ТОЛЬКО на главной. Включается
+            флагом showSignalsShowcase. */}
+        {showSignalsShowcase && <Reveal><SignalsTableShowcase /></Reveal>}
 
-        {/* «Было / стало» — визуальная схема вместо текстовых абзацев */}
-        <Reveal><BeforeAfterDiagram /></Reveal>
+        {/* «200 отзывов → 3 боли» — ТОЛЬКО на /parsing-otzyvov. */}
+        {showBeforeAfter && <Reveal><BeforeAfterDiagram niche={niche} /></Reveal>}
 
         {/* Проблема → решение (плотные параграфы, max-width 640) */}
         <Reveal>
@@ -141,17 +249,32 @@ export function SeoLandingShell({
           </section>
         </Reveal>
 
-        {/* Как это работает — 4 шага с иконками */}
+        {/* Уникальный блок страницы — ТЗ §2.3-2.7. Каждая решенческая
+            страница даёт свою таблицу полей / схему / список. */}
+        {customBlock && <Reveal>{customBlock}</Reveal>}
+
+        {/* Как это работает — 4 шага с иконками. На всех страницах. */}
         <Reveal><HowItWorksSection title={howItWorksTitle} items={howItWorks} /></Reveal>
 
-        {/* Источники данных — логотипы */}
-        <Reveal><SourcesSection /></Reveal>
+        {/* «5 источников данных» — ТОЛЬКО на /baza-klientov. */}
+        {showSources && <Reveal><SourcesSection /></Reveal>}
 
-        {/* Скриншоты кабинета (mock-блоки) */}
-        <Reveal><ScreensSection /></Reveal>
+        {/* Скриншоты кабинета — каждый кусок под своим флагом.
+            Карточка «Улыбка+» — /parsing-otzyvov. Драфт письма —
+            /holodnaya-rassylka. MockListView полностью убран
+            (он есть на главной в SignalsTableShowcase, дублирует). */}
+        {(showDemoCompanyCard || showMockLetterDraft) && (
+          <Reveal>
+            <ScreensSection
+              showDemoCompanyCard={showDemoCompanyCard}
+              showMockLetterDraft={showMockLetterDraft}
+              niche={niche}
+            />
+          </Reveal>
+        )}
 
-        {/* Сравнение «обычный парсер vs SpinLid» */}
-        <Reveal><CompareTable /></Reveal>
+        {/* «Парсер vs SpinLid» — ТОЛЬКО на /parser-2gis. */}
+        {showCompareTable && <Reveal><CompareTable /></Reveal>}
 
         {/* Фишка-блок (брендовая плашка) */}
         <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
@@ -175,7 +298,7 @@ export function SeoLandingShell({
 // HERO — две колонки: H1+CTA слева, демо-карточка с диагнозом справа
 // ============================================================================
 
-function GuestHero({ h1, lead, decorTheme }: { h1: string; lead: string; decorTheme: keyof typeof HERO_DECOR }) {
+function GuestHero({ h1, lead, decorTheme, niche }: { h1: string; lead: string; decorTheme: keyof typeof HERO_DECOR; niche: NicheExamples }) {
   return (
     <section
       style={{
@@ -251,8 +374,8 @@ function GuestHero({ h1, lead, decorTheme }: { h1: string; lead: string; decorTh
           </div>
         </div>
 
-        {/* Демо-карточка в hero (перенесена с самого низа сюда) */}
-        <DemoCompanyCard variant="hero" />
+        {/* Демо-карточка в hero — данные подаёт страница через пропс niche.company. */}
+        <DemoCompanyCard variant="hero" company={niche.company} />
       </div>
     </section>
   );
@@ -425,7 +548,13 @@ function CompactAuthedHero({ h1, lead }: { h1: string; lead: string }) {
 // Demo company card — главное доказательство
 // ============================================================================
 
-function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }) {
+function DemoCompanyCard({
+  variant = 'inline',
+  company,
+}: {
+  variant?: 'hero' | 'inline';
+  company: NicheExamples['company'];
+}) {
   const inHero = variant === 'hero';
   return (
     <div
@@ -456,21 +585,22 @@ function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }
               className="font-display font-semibold"
               style={{ color: '#0f172a', fontSize: '18px' }}
             >
-              Стоматология «Улыбка+»
+              {company.name}
             </div>
             <div className="text-sm mt-0.5" style={{ color: '#64748b' }}>
-              Москва, ул. Ленина 12 · ★ 3.8 · 142 отзыва
+              {company.address} · ★ {company.rating} · {company.reviewsCount} отзыва
             </div>
           </div>
           <span
             className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
             style={{ background: '#fee2e2', color: '#b91c1c' }}
           >
-            31 негатив
+            {company.negativeCount} негатив
           </span>
         </div>
         <div className="text-sm mb-3" style={{ color: '#64748b' }}>
-          +7 (495) 123-45-67 · info@ulybka-plus.ru
+          {company.phone}
+          {company.email ? ` · ${company.email}` : ''}
         </div>
         <div
           className="text-[11px] font-semibold uppercase tracking-wide mb-3"
@@ -479,21 +609,9 @@ function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }
           Диагноз по отзывам
         </div>
         <div className="space-y-2">
-          <DemoPainTag
-            label="Долгое ожидание"
-            count={12}
-            quote="«Записала ребёнка на 10:00, приняли в 11:20.»"
-          />
-          <DemoPainTag
-            label="Непрозрачные цены"
-            count={7}
-            quote="«На сайте от 1500 ₽, по факту чек 4800.»"
-          />
-          <DemoPainTag
-            label="Не перезванивают"
-            count={5}
-            quote="«Оставила заявку три дня назад — ни звонка, ни SMS.»"
-          />
+          {company.painTags.map((p) => (
+            <DemoPainTag key={p.label} label={p.label} count={p.count} quote={p.quote} />
+          ))}
         </div>
         <div className="mt-4 flex gap-2">
           <button
@@ -571,7 +689,7 @@ function TrustStrip() {
         >
           <TrustCell value="5" label="источников данных" hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData" />
           <TrustCell value="~60 сек" label="до результата" hint="первый поиск" />
-          <TrustCell value="500" label="лидов бесплатно" hint="без кредитной карты" />
+          <TrustCell value="1 поиск" label="и 5 КП бесплатно" hint="без кредитной карты" />
           <TrustCell value="0 ₽" label="за старт" hint="платный тариф — при росте" />
         </div>
       </div>
@@ -661,7 +779,9 @@ function SignalsTableShowcase() {
 // Before / After diagram — визуальная схема
 // ============================================================================
 
-function BeforeAfterDiagram() {
+function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
+  const snippets = niche.reviewSnippets ?? FALLBACK_NICHE.reviewSnippets!;
+  const tagsSummary = niche.painTagsSummary ?? FALLBACK_NICHE.painTagsSummary!;
   return (
     <section className="py-14 md:py-20">
       <div className="max-w-5xl mx-auto px-6">
@@ -694,16 +814,7 @@ function BeforeAfterDiagram() {
               Было: 200 отзывов в Excel
             </div>
             <div className="space-y-1.5">
-              {[
-                'Долго ждала ребенка с приема...',
-                'Хорошие врачи, рекомендую.',
-                'Очень удобное расписание.',
-                'Сказали 1500, заплатила 4800!',
-                'Записалась за неделю, всё ок.',
-                'Не позвонили после заявки.',
-                'Спасибо доктору Иванову...',
-                'Пришла к 10, приняли в 11:20.',
-              ].map((t, i) => (
+              {snippets.map((t, i) => (
                 <div
                   key={i}
                   className="text-[12px] px-2 py-1 rounded truncate"
@@ -719,7 +830,7 @@ function BeforeAfterDiagram() {
                 className="text-[11px] text-center mt-2 italic"
                 style={{ color: 'hsl(var(--muted))' }}
               >
-                ... и ещё 192 строки
+                ... и ещё {Math.max(0, 200 - snippets.length)} строки
               </div>
             </div>
           </div>
@@ -756,12 +867,12 @@ function BeforeAfterDiagram() {
               className="text-[11px] font-semibold uppercase tracking-wider mb-3"
               style={{ color: '#0891b2' }}
             >
-              Стало: 3 боли с цитатами
+              Стало: {tagsSummary.length} {tagsSummary.length === 1 ? 'боль с цитатой' : 'боли с цитатами'}
             </div>
             <div className="space-y-2">
-              <AfterPainTag label="Долгое ожидание × 12" />
-              <AfterPainTag label="Непрозрачные цены × 7" />
-              <AfterPainTag label="Не перезванивают × 5" />
+              {tagsSummary.map((t) => (
+                <AfterPainTag key={t.label} label={`${t.label} × ${t.count}`} />
+              ))}
             </div>
             <div
               className="mt-3 text-[12px] leading-snug"
@@ -935,7 +1046,19 @@ function SourcesSection() {
 // Mock-скриншоты кабинета — стилизованные UI блоки
 // ============================================================================
 
-function ScreensSection() {
+function ScreensSection({
+  showDemoCompanyCard,
+  showMockLetterDraft,
+  niche,
+}: {
+  showDemoCompanyCard: boolean;
+  showMockLetterDraft: boolean;
+  niche: NicheExamples;
+}) {
+  // Каждый кусок — под своим флагом. Сетка адаптивная: 1 блок —
+  // на всю ширину, 2 — две колонки.
+  const cols = [showDemoCompanyCard, showMockLetterDraft].filter(Boolean).length;
+  const gridCols = cols === 1 ? 'md:grid-cols-1 max-w-xl mx-auto' : 'md:grid-cols-2';
   return (
     <section
       className="py-16 md:py-20"
@@ -948,22 +1071,21 @@ function ScreensSection() {
         >
           Как это выглядит в кабинете
         </h2>
-        <div className="grid gap-5 md:grid-cols-3">
-          <ScreenMock
-            title="Выдача со списком"
-            sub="Бейджи источника, рейтинг, негатив, контакты"
-            inner={<MockListView />}
-          />
-          <ScreenMock
-            title="Карточка с диагнозом"
-            sub="Pain-теги, цитаты, юр.данные, кнопка письма"
-            inner={<DemoCompanyCard variant="inline" />}
-          />
-          <ScreenMock
-            title="Драфт письма"
-            sub="AI пишет с конкретной цитатой клиента"
-            inner={<MockLetterDraft />}
-          />
+        <div className={`grid gap-5 ${gridCols}`}>
+          {showDemoCompanyCard && (
+            <ScreenMock
+              title="Карточка с диагнозом"
+              sub="Pain-теги, цитаты, юр.данные, кнопка КП"
+              inner={<DemoCompanyCard variant="inline" company={niche.company} />}
+            />
+          )}
+          {showMockLetterDraft && (
+            <ScreenMock
+              title="Драфт письма"
+              sub="AI пишет с конкретной цитатой клиента"
+              inner={<MockLetterDraft letter={niche.letter ?? FALLBACK_NICHE.letter!} />}
+            />
+          )}
         </div>
       </div>
     </section>
@@ -997,56 +1119,11 @@ function ScreenMock({
   );
 }
 
-function MockListView() {
-  return (
-    <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ background: '#fff', borderColor: '#e2e8f0', color: '#0f172a' }}
-    >
-      <div
-        className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide border-b"
-        style={{ background: '#f8fafc', borderColor: '#e2e8f0', color: '#64748b' }}
-      >
-        Найдено · 89 компаний
-      </div>
-      {[
-        { name: 'Дента-Профит', rating: '4.7', src: '2GIS' },
-        { name: 'Улыбка+', rating: '3.8', src: 'оба', neg: 31 },
-        { name: 'Стома-Эксперт', rating: '4.2', src: 'Я.К' },
-        { name: 'Дентал Люкс', rating: '4.5', src: '2GIS' },
-      ].map((r, i) => (
-        <div
-          key={i}
-          className="px-4 py-2.5 flex items-center justify-between text-sm border-b last:border-b-0"
-          style={{ borderColor: '#f1f5f9' }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-              style={{ background: '#e0f2fe', color: '#0369a1' }}
-            >
-              {r.src}
-            </span>
-            <span className="truncate font-medium">{r.name}</span>
-          </div>
-          <div className="flex items-center gap-2 text-[12px] shrink-0">
-            <span>★ {r.rating}</span>
-            {r.neg && (
-              <span
-                className="px-1.5 py-0 rounded text-[10px] font-semibold"
-                style={{ background: '#fee2e2', color: '#b91c1c' }}
-              >
-                −{r.neg}
-              </span>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MockLetterDraft() {
+function MockLetterDraft({
+  letter,
+}: {
+  letter: NonNullable<NicheExamples['letter']>;
+}) {
   return (
     <div
       className="rounded-2xl border p-4"
@@ -1056,25 +1133,18 @@ function MockLetterDraft() {
         className="text-[10px] font-semibold uppercase tracking-wide mb-1.5"
         style={{ color: '#64748b' }}
       >
-        Кому: info@ulybka-plus.ru
+        Кому: {letter.to}
       </div>
       <div
         className="text-[12px] font-semibold mb-2 pb-2 border-b"
         style={{ borderColor: '#f1f5f9' }}
       >
-        Тема: Долгое ожидание клиентов — решаемо
+        Тема: {letter.subject}
       </div>
       <div className="text-[12px] leading-relaxed space-y-2">
-        <p>Здравствуйте, Иван!</p>
-        <p>
-          Заметил в отзывах вашей клиники жалобу клиента: «Записала ребёнка на
-          10:00, приняли в 11:20». 12 раз упоминается похожее.
-        </p>
-        <p>
-          У нас инструмент онлайн-записи с автоматическим напоминанием за день
-          и за час. Снижает простои регистратуры до 30%.
-        </p>
-        <p>10 минут на демо в Zoom?</p>
+        {letter.body.map((p, i) => (
+          <p key={i}>{p}</p>
+        ))}
       </div>
     </div>
   );

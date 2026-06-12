@@ -50,6 +50,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
 
     {
+      url: `${SITE}/klienty-dlya-web-studii`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE}/klienty-dlya-seo`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE}/klienty-dlya-marketing-agentstva`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+
+    {
       url: `${SITE}/terms`,
       lastModified: now,
       changeFrequency: 'yearly',

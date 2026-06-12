@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
+import { FOOD_DELIVERY_NICHE } from '@/components/seo-landing/niches';
+import { MailHygieneBlock } from '@/components/seo-landing/UniqueBlocks';
 
 export const metadata: Metadata = {
   title: 'Холодная рассылка и база email для КП — с отслеживанием',
@@ -18,6 +20,9 @@ export default function HolodnayaRassylkaPage() {
   return (
     <SeoLandingShell
       decorTheme="mailing"
+      showMockLetterDraft
+      niche={FOOD_DELIVERY_NICHE}
+      customBlock={<MailHygieneBlock />}
       h1="Холодная рассылка КП: от базы до статусов доставки"
       lead="Соберите базу для рассылки, отправьте КП и смотрите, что происходит: доставлено, открыто, кликнули по ссылке. Шаблоны под нишу с подстановкой болей клиентов, отписка одной кнопкой, автоматический blacklist. Полный цикл в одном инструменте."
       problemSolutionParagraphs={[
@@ -59,11 +64,11 @@ export default function HolodnayaRassylkaPage() {
         },
         {
           q: 'Можно использовать свой SMTP / свой домен?',
-          a: 'На тарифе Pro и Team — да, можно подключить свой SMTP или транзакционный сервис (Postmark, SendGrid, аналоги). На Starter используется встроенный отправитель SpinLid.',
+          a: 'На тарифе Pro и Agency — да, можно подключить свой SMTP или транзакционный сервис (Postmark, SendGrid, аналоги). На Free используется встроенный отправитель SpinLid.',
         },
         {
           q: 'Сколько писем в день можно отправлять?',
-          a: 'Зависит от тарифа и от прогретости отправителя. Starter — до 200 писем/день для теста. Pro — до 2000/день. Team — обсуждается отдельно, до 20000+ при правильной настройке.',
+          a: 'Зависит от тарифа и от прогретости отправителя. Free — до 200 писем/день для теста. Pro — до 2 000/день. Agency — обсуждается отдельно, до 20 000+ при правильной настройке.',
         },
         {
           q: 'Что с базой email для рассылки?',
