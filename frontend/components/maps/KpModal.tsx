@@ -150,26 +150,52 @@ export function KpModal({
     setGenerating(true);
     setError(null);
     setCopied(null);
+    const payload = {
+      // Бэк XOR-валидатор примет ровно одно из двух. parent должен
+      // не передавать оба сразу — на тип-уровне мы это не форсим,
+      // т.к. parent'у удобнее держать их параллельно.
+      company_id: targetCompanyId,
+      site_lead_id: targetSiteLeadId,
+      template_key: selectedKey,
+      tone,
+      custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
+    };
     try {
-      const res = await generateKp({
-        // Бэк XOR-валидатор примет ровно одно из двух. parent должен
-        // не передавать оба сразу — на тип-уровне мы это не форсим,
-        // т.к. parent'у удобнее держать их параллельно.
-        company_id: targetCompanyId,
-        site_lead_id: targetSiteLeadId,
-        template_key: selectedKey,
-        tone,
-        custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
-      });
+      const res = await generateKp(payload);
       setDraft(res);
       // Аналитика «время до первого КП» — фиксируется один раз.
       recordOnboardingEvent('first_kp_generated');
     } catch (e: any) {
-      const detail =
-        e?.response?.data?.detail ||
-        e?.message ||
-        'Не удалось сгенерировать КП. Попробуй ещё раз.';
-      setError(typeof detail === 'string' ? detail : 'Ошибка генерации КП');
+      // FastAPI отдаёт детали валидации в response.data.detail —
+      // у 422 это массив [{loc,msg,type},...]. Раньше мы показывали
+      // общее «Ошибка генерации КП» и юзер не видел конкретики.
+      // Теперь склеиваем поле + сообщение в одну строку для UI и
+      // дублируем raw payload + response в console.error чтобы можно
+      // было быстро посмотреть Network → Console.
+      const respData = e?.response?.data;
+      const status = e?.response?.status;
+      // eslint-disable-next-line no-console
+      console.error('[KpModal] /outreach/kp/generate failed', {
+        status,
+        payload,
+        response: respData,
+      });
+      let msg = '';
+      if (respData && Array.isArray(respData.detail)) {
+        msg = respData.detail
+          .map((d: any) => {
+            const path = Array.isArray(d?.loc) ? d.loc.filter((p: any) => p !== 'body').join('.') : '';
+            return path ? `${path}: ${d?.msg ?? ''}` : d?.msg ?? '';
+          })
+          .filter(Boolean)
+          .join('; ');
+      } else if (typeof respData?.detail === 'string') {
+        msg = respData.detail;
+      } else if (typeof e?.message === 'string') {
+        msg = e.message;
+      }
+      const prefix = status ? `Ошибка ${status}: ` : '';
+      setError((prefix + (msg || 'не удалось сгенерировать КП.')).slice(0, 600));
     } finally {
       setGenerating(false);
     }
