@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
 import { FITNESS_NICHE } from '@/components/seo-landing/niches';
+import { TwoSourcesBlock } from '@/components/seo-landing/UniqueBlocks';
 
 export const metadata: Metadata = {
   title: 'Парсер Яндекс.Карт — сбор компаний, контактов и отзывов',
@@ -20,6 +21,7 @@ export default function ParserYandexMapsPage() {
     <SeoLandingShell
       decorTheme="maps-yandex"
       niche={FITNESS_NICHE}
+      customBlock={<TwoSourcesBlock />}
       h1="Парсер Яндекс.Карт: компании и отзывы по нише и городу"
       lead="Выгрузка организаций из Яндекс.Карт: рейтинги, контакты, отзывы клиентов. AI выделяет боли клиентов из отзывов — и они автоматически встраиваются в драфт письма. Старт бесплатно."
       problemSolutionParagraphs={[

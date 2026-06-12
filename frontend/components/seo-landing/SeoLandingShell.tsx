@@ -172,6 +172,13 @@ interface SeoLandingShellProps {
   showCompareTable?: boolean;
   /** Уникальные примеры по нише — ТЗ §1.4. См. NicheExamples. */
   niche?: NicheExamples;
+  /**
+   * Уникальный для страницы блок (ТЗ §2.3-2.7). Рендерится после
+   * problemSolution и до HowItWorks. Каждая решенческая страница
+   * подаёт сюда свой собственный контент — таблицу полей 2GIS,
+   * схему «зачем второй источник», таблицу колонок выгрузки, и т.п.
+   */
+  customBlock?: React.ReactNode;
 }
 
 export function SeoLandingShell({
@@ -191,6 +198,7 @@ export function SeoLandingShell({
   showMockLetterDraft = false,
   showCompareTable = false,
   niche = FALLBACK_NICHE,
+  customBlock,
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
@@ -240,6 +248,10 @@ export function SeoLandingShell({
             </div>
           </section>
         </Reveal>
+
+        {/* Уникальный блок страницы — ТЗ §2.3-2.7. Каждая решенческая
+            страница даёт свою таблицу полей / схему / список. */}
+        {customBlock && <Reveal>{customBlock}</Reveal>}
 
         {/* Как это работает — 4 шага с иконками. На всех страницах. */}
         <Reveal><HowItWorksSection title={howItWorksTitle} items={howItWorks} /></Reveal>

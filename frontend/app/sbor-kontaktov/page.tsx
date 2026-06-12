@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
 import { CLINIC_NICHE } from '@/components/seo-landing/niches';
+import { ContactsSourcesBlock } from '@/components/seo-landing/UniqueBlocks';
 
 export const metadata: Metadata = {
   title: 'Сбор контактов и email компаний с сайтов и карт',
@@ -20,6 +21,7 @@ export default function SborKontaktovPage() {
     <SeoLandingShell
       decorTheme="contacts"
       niche={CLINIC_NICHE}
+      customBlock={<ContactsSourcesBlock />}
       h1="Сбор контактов компаний: email и телефоны из открытых источников"
       lead="Соберём email и телефоны компаний с сайтов, 2GIS и Яндекс.Карт. Автоматическая нормализация формата, фильтры по нише и городу, экспорт в Excel. Без ручной чистки и без устаревших баз."
       problemSolutionParagraphs={[

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
 import { RENOVATION_NICHE } from '@/components/seo-landing/niches';
+import { BaseRowFieldsBlock } from '@/components/seo-landing/UniqueBlocks';
 
 export const metadata: Metadata = {
   title: 'База клиентов и компаний под нишу — с контактами',
@@ -21,6 +22,7 @@ export default function BazaKlientovPage() {
       decorTheme="database"
       showSources
       niche={RENOVATION_NICHE}
+      customBlock={<BaseRowFieldsBlock />}
       h1="База клиентов под вашу нишу — с контактами и диагнозом"
       lead="Не покупка устаревшего CSV из 100 000 строк, в котором половина телефонов уже не работает. SpinLid собирает актуальную базу под вашу нишу и город прямо сейчас — из открытых источников. С контактами, юр.данными и болями клиентов из отзывов."
       problemSolutionParagraphs={[
