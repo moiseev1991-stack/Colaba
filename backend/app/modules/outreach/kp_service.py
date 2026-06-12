@@ -416,11 +416,98 @@ def _escape_unescaped_newlines_in_json_strings(s: str) -> str:
     return "".join(out)
 
 
+_PLAIN_SUBJECT_LABELS = ("тема:", "тема письма:", "subject:", "тема —", "тема -")
+
+
+def _extract_kp_plaintext(raw: str) -> dict[str, str] | None:
+    """Финальный фолбэк: LLM полностью забила на JSON и вернула голый
+    текст письма. Пытаемся вытащить тему и тело эвристикой.
+
+    Стратегии (по приоритету):
+    1. Строка «Тема: ...» / «Subject: ...» где-то в начале → subject,
+       остальное → body.
+    2. Первая короткая строка (≤120 символов, нет точки в конце предложения)
+       → subject. Остальное (после её следующего абзаца) → body.
+    3. Если в тексте есть «Здравствуйте,» — всё до неё считается мусором,
+       subject = первая строка, body = от «Здравствуйте,» до конца.
+
+    Возвращает None если в raw меньше 40 символов содержательного текста.
+    """
+    if not raw:
+        return None
+    text = raw.strip()
+    # Срезаем markdown-fence/префиксные комментарии.
+    text = re.sub(r"^```\w*\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    text = text.strip()
+    if len(text) < 40:
+        return None
+
+    lines = [ln.rstrip() for ln in text.split("\n")]
+
+    # Стратегия 1: явная метка «Тема: ...»
+    subject_line_idx = -1
+    subject_value: str | None = None
+    for i, ln in enumerate(lines[:8]):  # ищем только в первых 8 строках
+        low = ln.lstrip().lower()
+        for lab in _PLAIN_SUBJECT_LABELS:
+            if low.startswith(lab):
+                subject_value = ln.lstrip()[len(lab):].strip(" \"'«»–—-")
+                subject_line_idx = i
+                break
+        if subject_value:
+            break
+
+    if subject_value:
+        # body = всё после строки темы, отбрасываем подряд идущие
+        # «Тело:»/«Body:» метки в начале.
+        rest = "\n".join(lines[subject_line_idx + 1:]).strip()
+        rest = re.sub(r"^(тело|body|текст письма|письмо)[:\-—]\s*", "", rest, flags=re.IGNORECASE).strip()
+        if rest:
+            return {"subject": subject_value[:500], "body": rest}
+
+    # Стратегия 2: первая непустая короткая строка как subject,
+    # дальше — body. Подходит когда LLM пишет «Заголовок\n\nТело письма».
+    non_empty = [(i, ln.strip()) for i, ln in enumerate(lines) if ln.strip()]
+    if non_empty:
+        first_idx, first_line = non_empty[0]
+        # Subject должен быть короткой однострочной строкой (тема письма)
+        # — если первая строка длинная, она скорее всего часть body
+        # «Здравствуйте, Иван! Заметил...».
+        is_greeting = first_line.lower().startswith(("здравствуйте", "добрый день", "приветствую", "уважаем"))
+        if not is_greeting and len(first_line) <= 120 and not first_line.endswith("."):
+            rest = "\n".join(lines[first_idx + 1:]).strip()
+            if len(rest) >= 30:  # body должен быть содержательным
+                return {"subject": first_line[:500], "body": rest}
+
+    # Стратегия 3: есть «Здравствуйте» — берём тему как первую строку
+    # перед ним, тело как «Здравствуйте» и всё что после.
+    greet_match = re.search(r"(?im)^(здравствуйте|добрый день|приветствую|уважаем)", text)
+    if greet_match:
+        body_start = greet_match.start()
+        before = text[:body_start].strip()
+        body_part = text[body_start:].strip()
+        if body_part:
+            subject = before.splitlines()[-1].strip() if before else "Холодное письмо"
+            subject = subject.lstrip("# ").strip(" \"'«»–—-")
+            if not subject:
+                subject = "Холодное письмо"
+            return {"subject": subject[:500], "body": body_part}
+
+    # Если ничего не вышло — отдаём всё как body, subject — generic.
+    # Это самый last-resort, лучше показать юзеру что-то, чем 422.
+    if len(text) >= 80:
+        return {"subject": "Холодное письмо под боль клиентов", "body": text}
+
+    return None
+
+
 def extract_kp_json(raw: str) -> dict[str, str] | None:
     """Тянет {subject, body} из ответа LLM. Терпим к ```json fence```,
-    к строкам-обёрткам типа 'Готово: {...}', и к unescaped newlines
-    внутри строковых значений (классика LLM-JSON). Если subject или
-    body не str — возвращает None.
+    к строкам-обёрткам типа 'Готово: {...}', к unescaped newlines внутри
+    строковых значений (классика LLM-JSON) и к голому тексту без JSON
+    вообще (LLM забила на формат — парсим эвристикой). Если в raw нет
+    минимально-содержательного текста — возвращает None.
     """
     if not raw:
         return None
@@ -454,17 +541,20 @@ def extract_kp_json(raw: str) -> dict[str, str] | None:
         if start != -1 and end != -1 and end > start:
             obj = _try_parse(raw[start : end + 1])
 
-    if not isinstance(obj, dict):
-        return None
-    subject = obj.get("subject")
-    body = obj.get("body")
-    if not isinstance(subject, str) or not isinstance(body, str):
-        return None
-    subject = subject.strip()
-    body = body.strip()
-    if not subject or not body:
-        return None
-    return {"subject": subject, "body": body}
+    if isinstance(obj, dict):
+        subject = obj.get("subject")
+        body = obj.get("body")
+        if isinstance(subject, str) and isinstance(body, str):
+            subject = subject.strip()
+            body = body.strip()
+            if subject and body:
+                return {"subject": subject, "body": body}
+
+    # 4. Финальный фолбэк: голый текст. Юзер 2026-06-12 упёрся в «422
+    # дважды» — теперь даже если LLM полностью забила на JSON и пишет
+    # plaintext-письмо, мы его разберём эвристически. Лучше показать
+    # что-то, что юзер сможет поправить, чем глухое «не получилось».
+    return _extract_kp_plaintext(raw)
 
 
 # --- Главная корутина -------------------------------------------------------
