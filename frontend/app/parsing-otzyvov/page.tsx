@@ -18,6 +18,8 @@ export default function ParsingOtzyvovPage() {
   return (
     <SeoLandingShell
       decorTheme="reviews"
+      showBeforeAfter
+      showDemoCompanyCard
       h1="Парсинг и AI-анализ отзывов: боли клиентов любого бизнеса"
       lead="Соберём отзывы компаний с 2GIS и Яндекс.Карт и через AI выделим конкретные боли клиентов с цитатами. Это не статистика «средний балл 4.2», а готовый повод для письма — диагноз, после которого холодная рассылка перестаёт быть холодной."
       problemSolutionParagraphs={[

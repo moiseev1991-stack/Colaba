@@ -79,6 +79,24 @@ interface SeoLandingShellProps {
    * контакты, юр.данные, рассылки). Если не задано — общий микс.
    */
   decorTheme?: keyof typeof HERO_DECOR;
+  /**
+   * Анти-дубликация (ТЗ КП-фокус 2026-06-12 §1.4): каждый крупный блок
+   * живёт только на одной странице. Все show* по умолчанию false —
+   * соответствующая страница включает свой блок явно.
+   *
+   * showSignalsShowcase — большая таблица выдачи (только на главной).
+   * showBeforeAfter — «200 отзывов → 3 боли» (только на /parsing-otzyvov).
+   * showSources — «5 источников данных» (только на /baza-klientov).
+   * showDemoCompanyCard — полная карточка «Улыбка+» в Screens (только на /parsing-otzyvov).
+   * showMockLetterDraft — полный пример драфта письма (только на /holodnaya-rassylka).
+   * showCompareTable — «обычный парсер vs SpinLid» (только на /parser-2gis).
+   */
+  showSignalsShowcase?: boolean;
+  showBeforeAfter?: boolean;
+  showSources?: boolean;
+  showDemoCompanyCard?: boolean;
+  showMockLetterDraft?: boolean;
+  showCompareTable?: boolean;
 }
 
 export function SeoLandingShell({
@@ -91,6 +109,12 @@ export function SeoLandingShell({
   faq,
   related,
   decorTheme = 'mixed',
+  showSignalsShowcase = false,
+  showBeforeAfter = false,
+  showSources = false,
+  showDemoCompanyCard = false,
+  showMockLetterDraft = false,
+  showCompareTable = false,
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
@@ -118,15 +142,15 @@ export function SeoLandingShell({
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка) === */}
         {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} />}
 
-        {/* Trust-strip */}
+        {/* Trust-strip — короткие маркетинговые числа. На всех страницах. */}
         <Reveal><TrustStrip /></Reveal>
 
-        {/* Выдача с диагнозом по нескольким нишам — идеологическая фишка
-            «не контакты, а боли», сразу после кредибилити-цифр. */}
-        <Reveal><SignalsTableShowcase /></Reveal>
+        {/* Большая демо-таблица выдачи — ТОЛЬКО на главной. Включается
+            флагом showSignalsShowcase. */}
+        {showSignalsShowcase && <Reveal><SignalsTableShowcase /></Reveal>}
 
-        {/* «Было / стало» — визуальная схема вместо текстовых абзацев */}
-        <Reveal><BeforeAfterDiagram /></Reveal>
+        {/* «200 отзывов → 3 боли» — ТОЛЬКО на /parsing-otzyvov. */}
+        {showBeforeAfter && <Reveal><BeforeAfterDiagram /></Reveal>}
 
         {/* Проблема → решение (плотные параграфы, max-width 640) */}
         <Reveal>
@@ -141,17 +165,27 @@ export function SeoLandingShell({
           </section>
         </Reveal>
 
-        {/* Как это работает — 4 шага с иконками */}
+        {/* Как это работает — 4 шага с иконками. На всех страницах. */}
         <Reveal><HowItWorksSection title={howItWorksTitle} items={howItWorks} /></Reveal>
 
-        {/* Источники данных — логотипы */}
-        <Reveal><SourcesSection /></Reveal>
+        {/* «5 источников данных» — ТОЛЬКО на /baza-klientov. */}
+        {showSources && <Reveal><SourcesSection /></Reveal>}
 
-        {/* Скриншоты кабинета (mock-блоки) */}
-        <Reveal><ScreensSection /></Reveal>
+        {/* Скриншоты кабинета — каждый кусок под своим флагом.
+            Карточка «Улыбка+» — /parsing-otzyvov. Драфт письма —
+            /holodnaya-rassylka. MockListView полностью убран
+            (он есть на главной в SignalsTableShowcase, дублирует). */}
+        {(showDemoCompanyCard || showMockLetterDraft) && (
+          <Reveal>
+            <ScreensSection
+              showDemoCompanyCard={showDemoCompanyCard}
+              showMockLetterDraft={showMockLetterDraft}
+            />
+          </Reveal>
+        )}
 
-        {/* Сравнение «обычный парсер vs SpinLid» */}
-        <Reveal><CompareTable /></Reveal>
+        {/* «Парсер vs SpinLid» — ТОЛЬКО на /parser-2gis. */}
+        {showCompareTable && <Reveal><CompareTable /></Reveal>}
 
         {/* Фишка-блок (брендовая плашка) */}
         <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
@@ -571,7 +605,7 @@ function TrustStrip() {
         >
           <TrustCell value="5" label="источников данных" hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData" />
           <TrustCell value="~60 сек" label="до результата" hint="первый поиск" />
-          <TrustCell value="500" label="лидов бесплатно" hint="без кредитной карты" />
+          <TrustCell value="1 поиск" label="и 5 КП бесплатно" hint="без кредитной карты" />
           <TrustCell value="0 ₽" label="за старт" hint="платный тариф — при росте" />
         </div>
       </div>
@@ -935,7 +969,17 @@ function SourcesSection() {
 // Mock-скриншоты кабинета — стилизованные UI блоки
 // ============================================================================
 
-function ScreensSection() {
+function ScreensSection({
+  showDemoCompanyCard,
+  showMockLetterDraft,
+}: {
+  showDemoCompanyCard: boolean;
+  showMockLetterDraft: boolean;
+}) {
+  // Каждый кусок — под своим флагом. Сетка адаптивная: 1 блок —
+  // на всю ширину, 2 — две колонки.
+  const cols = [showDemoCompanyCard, showMockLetterDraft].filter(Boolean).length;
+  const gridCols = cols === 1 ? 'md:grid-cols-1 max-w-xl mx-auto' : 'md:grid-cols-2';
   return (
     <section
       className="py-16 md:py-20"
@@ -948,22 +992,21 @@ function ScreensSection() {
         >
           Как это выглядит в кабинете
         </h2>
-        <div className="grid gap-5 md:grid-cols-3">
-          <ScreenMock
-            title="Выдача со списком"
-            sub="Бейджи источника, рейтинг, негатив, контакты"
-            inner={<MockListView />}
-          />
-          <ScreenMock
-            title="Карточка с диагнозом"
-            sub="Pain-теги, цитаты, юр.данные, кнопка письма"
-            inner={<DemoCompanyCard variant="inline" />}
-          />
-          <ScreenMock
-            title="Драфт письма"
-            sub="AI пишет с конкретной цитатой клиента"
-            inner={<MockLetterDraft />}
-          />
+        <div className={`grid gap-5 ${gridCols}`}>
+          {showDemoCompanyCard && (
+            <ScreenMock
+              title="Карточка с диагнозом"
+              sub="Pain-теги, цитаты, юр.данные, кнопка КП"
+              inner={<DemoCompanyCard variant="inline" />}
+            />
+          )}
+          {showMockLetterDraft && (
+            <ScreenMock
+              title="Драфт письма"
+              sub="AI пишет с конкретной цитатой клиента"
+              inner={<MockLetterDraft />}
+            />
+          )}
         </div>
       </div>
     </section>
@@ -993,55 +1036,6 @@ function ScreenMock({
         </div>
       </div>
       <div>{inner}</div>
-    </div>
-  );
-}
-
-function MockListView() {
-  return (
-    <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ background: '#fff', borderColor: '#e2e8f0', color: '#0f172a' }}
-    >
-      <div
-        className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide border-b"
-        style={{ background: '#f8fafc', borderColor: '#e2e8f0', color: '#64748b' }}
-      >
-        Найдено · 89 компаний
-      </div>
-      {[
-        { name: 'Дента-Профит', rating: '4.7', src: '2GIS' },
-        { name: 'Улыбка+', rating: '3.8', src: 'оба', neg: 31 },
-        { name: 'Стома-Эксперт', rating: '4.2', src: 'Я.К' },
-        { name: 'Дентал Люкс', rating: '4.5', src: '2GIS' },
-      ].map((r, i) => (
-        <div
-          key={i}
-          className="px-4 py-2.5 flex items-center justify-between text-sm border-b last:border-b-0"
-          style={{ borderColor: '#f1f5f9' }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-              style={{ background: '#e0f2fe', color: '#0369a1' }}
-            >
-              {r.src}
-            </span>
-            <span className="truncate font-medium">{r.name}</span>
-          </div>
-          <div className="flex items-center gap-2 text-[12px] shrink-0">
-            <span>★ {r.rating}</span>
-            {r.neg && (
-              <span
-                className="px-1.5 py-0 rounded text-[10px] font-semibold"
-                style={{ background: '#fee2e2', color: '#b91c1c' }}
-              >
-                −{r.neg}
-              </span>
-            )}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

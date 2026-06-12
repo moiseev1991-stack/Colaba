@@ -18,6 +18,7 @@ export default function HolodnayaRassylkaPage() {
   return (
     <SeoLandingShell
       decorTheme="mailing"
+      showMockLetterDraft
       h1="Холодная рассылка КП: от базы до статусов доставки"
       lead="Соберите базу для рассылки, отправьте КП и смотрите, что происходит: доставлено, открыто, кликнули по ссылке. Шаблоны под нишу с подстановкой болей клиентов, отписка одной кнопкой, автоматический blacklist. Полный цикл в одном инструменте."
       problemSolutionParagraphs={[
