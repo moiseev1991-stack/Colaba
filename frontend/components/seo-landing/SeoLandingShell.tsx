@@ -64,6 +64,79 @@ export interface HowItWorksItem {
   body: string;
 }
 
+/**
+ * Уникальные примеры по нише страницы — ТЗ КП-фокус §1.4.
+ * Каждая SEO-страница подаёт СВОЮ нишу в примерах (автосервисы /
+ * салоны красоты / фитнес-клубы / ремонт / клиники / доставка),
+ * чтобы цитаты и pain-теги уникализировались. Если не задано —
+ * фолбэк на стоматологию «Улыбка+» (старый дефолт).
+ */
+export interface NicheExamples {
+  /** Карточка компании (показывается в hero + в Screens). */
+  company: {
+    name: string;
+    address: string;
+    rating: string;
+    reviewsCount: number;
+    negativeCount: number;
+    phone: string;
+    email?: string;
+    painTags: { label: string; count: number; quote: string }[];
+  };
+  /** 8 строк отзывов для BeforeAfter «Было: 200 строк в Excel». */
+  reviewSnippets?: string[];
+  /** Pain-теги для AFTER-блока BeforeAfter. */
+  painTagsSummary?: { label: string; count: number }[];
+  /** Mock-письмо для /holodnaya-rassylka. */
+  letter?: {
+    to: string;
+    subject: string;
+    body: string[];
+  };
+}
+
+const FALLBACK_NICHE: NicheExamples = {
+  company: {
+    name: 'Стоматология «Улыбка+»',
+    address: 'Москва, ул. Ленина 12',
+    rating: '3.8',
+    reviewsCount: 142,
+    negativeCount: 31,
+    phone: '+7 (495) 123-45-67',
+    email: 'info@ulybka-plus.ru',
+    painTags: [
+      { label: 'Долгое ожидание', count: 12, quote: '«Записала ребёнка на 10:00, приняли в 11:20.»' },
+      { label: 'Непрозрачные цены', count: 7, quote: '«На сайте от 1500 ₽, по факту чек 4800.»' },
+      { label: 'Не перезванивают', count: 5, quote: '«Оставила заявку три дня назад — ни звонка, ни SMS.»' },
+    ],
+  },
+  reviewSnippets: [
+    'Долго ждала ребенка с приема...',
+    'Хорошие врачи, рекомендую.',
+    'Очень удобное расписание.',
+    'Сказали 1500, заплатила 4800!',
+    'Записалась за неделю, всё ок.',
+    'Не позвонили после заявки.',
+    'Спасибо доктору Иванову...',
+    'Пришла к 10, приняли в 11:20.',
+  ],
+  painTagsSummary: [
+    { label: 'Долгое ожидание', count: 12 },
+    { label: 'Непрозрачные цены', count: 7 },
+    { label: 'Не перезванивают', count: 5 },
+  ],
+  letter: {
+    to: 'info@ulybka-plus.ru',
+    subject: 'Долгое ожидание клиентов — решаемо',
+    body: [
+      'Здравствуйте, Иван!',
+      'Заметил в отзывах вашей клиники жалобу клиента: «Записала ребёнка на 10:00, приняли в 11:20». 12 раз упоминается похожее.',
+      'У нас инструмент онлайн-записи с автоматическим напоминанием за день и за час. Снижает простои регистратуры до 30%.',
+      '10 минут на демо в Zoom?',
+    ],
+  },
+};
+
 interface SeoLandingShellProps {
   h1: string;
   lead: string;
@@ -97,6 +170,8 @@ interface SeoLandingShellProps {
   showDemoCompanyCard?: boolean;
   showMockLetterDraft?: boolean;
   showCompareTable?: boolean;
+  /** Уникальные примеры по нише — ТЗ §1.4. См. NicheExamples. */
+  niche?: NicheExamples;
 }
 
 export function SeoLandingShell({
@@ -115,6 +190,7 @@ export function SeoLandingShell({
   showDemoCompanyCard = false,
   showMockLetterDraft = false,
   showCompareTable = false,
+  niche = FALLBACK_NICHE,
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
@@ -139,8 +215,8 @@ export function SeoLandingShell({
       <SeoHeader isAuthed={isAuthed} />
 
       <main className="flex-1">
-        {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка) === */}
-        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} />}
+        {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
+        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} niche={niche} />}
 
         {/* Trust-strip — короткие маркетинговые числа. На всех страницах. */}
         <Reveal><TrustStrip /></Reveal>
@@ -150,7 +226,7 @@ export function SeoLandingShell({
         {showSignalsShowcase && <Reveal><SignalsTableShowcase /></Reveal>}
 
         {/* «200 отзывов → 3 боли» — ТОЛЬКО на /parsing-otzyvov. */}
-        {showBeforeAfter && <Reveal><BeforeAfterDiagram /></Reveal>}
+        {showBeforeAfter && <Reveal><BeforeAfterDiagram niche={niche} /></Reveal>}
 
         {/* Проблема → решение (плотные параграфы, max-width 640) */}
         <Reveal>
@@ -180,6 +256,7 @@ export function SeoLandingShell({
             <ScreensSection
               showDemoCompanyCard={showDemoCompanyCard}
               showMockLetterDraft={showMockLetterDraft}
+              niche={niche}
             />
           </Reveal>
         )}
@@ -209,7 +286,7 @@ export function SeoLandingShell({
 // HERO — две колонки: H1+CTA слева, демо-карточка с диагнозом справа
 // ============================================================================
 
-function GuestHero({ h1, lead, decorTheme }: { h1: string; lead: string; decorTheme: keyof typeof HERO_DECOR }) {
+function GuestHero({ h1, lead, decorTheme, niche }: { h1: string; lead: string; decorTheme: keyof typeof HERO_DECOR; niche: NicheExamples }) {
   return (
     <section
       style={{
@@ -285,8 +362,8 @@ function GuestHero({ h1, lead, decorTheme }: { h1: string; lead: string; decorTh
           </div>
         </div>
 
-        {/* Демо-карточка в hero (перенесена с самого низа сюда) */}
-        <DemoCompanyCard variant="hero" />
+        {/* Демо-карточка в hero — данные подаёт страница через пропс niche.company. */}
+        <DemoCompanyCard variant="hero" company={niche.company} />
       </div>
     </section>
   );
@@ -459,7 +536,13 @@ function CompactAuthedHero({ h1, lead }: { h1: string; lead: string }) {
 // Demo company card — главное доказательство
 // ============================================================================
 
-function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }) {
+function DemoCompanyCard({
+  variant = 'inline',
+  company,
+}: {
+  variant?: 'hero' | 'inline';
+  company: NicheExamples['company'];
+}) {
   const inHero = variant === 'hero';
   return (
     <div
@@ -490,21 +573,22 @@ function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }
               className="font-display font-semibold"
               style={{ color: '#0f172a', fontSize: '18px' }}
             >
-              Стоматология «Улыбка+»
+              {company.name}
             </div>
             <div className="text-sm mt-0.5" style={{ color: '#64748b' }}>
-              Москва, ул. Ленина 12 · ★ 3.8 · 142 отзыва
+              {company.address} · ★ {company.rating} · {company.reviewsCount} отзыва
             </div>
           </div>
           <span
             className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
             style={{ background: '#fee2e2', color: '#b91c1c' }}
           >
-            31 негатив
+            {company.negativeCount} негатив
           </span>
         </div>
         <div className="text-sm mb-3" style={{ color: '#64748b' }}>
-          +7 (495) 123-45-67 · info@ulybka-plus.ru
+          {company.phone}
+          {company.email ? ` · ${company.email}` : ''}
         </div>
         <div
           className="text-[11px] font-semibold uppercase tracking-wide mb-3"
@@ -513,21 +597,9 @@ function DemoCompanyCard({ variant = 'inline' }: { variant?: 'hero' | 'inline' }
           Диагноз по отзывам
         </div>
         <div className="space-y-2">
-          <DemoPainTag
-            label="Долгое ожидание"
-            count={12}
-            quote="«Записала ребёнка на 10:00, приняли в 11:20.»"
-          />
-          <DemoPainTag
-            label="Непрозрачные цены"
-            count={7}
-            quote="«На сайте от 1500 ₽, по факту чек 4800.»"
-          />
-          <DemoPainTag
-            label="Не перезванивают"
-            count={5}
-            quote="«Оставила заявку три дня назад — ни звонка, ни SMS.»"
-          />
+          {company.painTags.map((p) => (
+            <DemoPainTag key={p.label} label={p.label} count={p.count} quote={p.quote} />
+          ))}
         </div>
         <div className="mt-4 flex gap-2">
           <button
@@ -695,7 +767,9 @@ function SignalsTableShowcase() {
 // Before / After diagram — визуальная схема
 // ============================================================================
 
-function BeforeAfterDiagram() {
+function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
+  const snippets = niche.reviewSnippets ?? FALLBACK_NICHE.reviewSnippets!;
+  const tagsSummary = niche.painTagsSummary ?? FALLBACK_NICHE.painTagsSummary!;
   return (
     <section className="py-14 md:py-20">
       <div className="max-w-5xl mx-auto px-6">
@@ -728,16 +802,7 @@ function BeforeAfterDiagram() {
               Было: 200 отзывов в Excel
             </div>
             <div className="space-y-1.5">
-              {[
-                'Долго ждала ребенка с приема...',
-                'Хорошие врачи, рекомендую.',
-                'Очень удобное расписание.',
-                'Сказали 1500, заплатила 4800!',
-                'Записалась за неделю, всё ок.',
-                'Не позвонили после заявки.',
-                'Спасибо доктору Иванову...',
-                'Пришла к 10, приняли в 11:20.',
-              ].map((t, i) => (
+              {snippets.map((t, i) => (
                 <div
                   key={i}
                   className="text-[12px] px-2 py-1 rounded truncate"
@@ -753,7 +818,7 @@ function BeforeAfterDiagram() {
                 className="text-[11px] text-center mt-2 italic"
                 style={{ color: 'hsl(var(--muted))' }}
               >
-                ... и ещё 192 строки
+                ... и ещё {Math.max(0, 200 - snippets.length)} строки
               </div>
             </div>
           </div>
@@ -790,12 +855,12 @@ function BeforeAfterDiagram() {
               className="text-[11px] font-semibold uppercase tracking-wider mb-3"
               style={{ color: '#0891b2' }}
             >
-              Стало: 3 боли с цитатами
+              Стало: {tagsSummary.length} {tagsSummary.length === 1 ? 'боль с цитатой' : 'боли с цитатами'}
             </div>
             <div className="space-y-2">
-              <AfterPainTag label="Долгое ожидание × 12" />
-              <AfterPainTag label="Непрозрачные цены × 7" />
-              <AfterPainTag label="Не перезванивают × 5" />
+              {tagsSummary.map((t) => (
+                <AfterPainTag key={t.label} label={`${t.label} × ${t.count}`} />
+              ))}
             </div>
             <div
               className="mt-3 text-[12px] leading-snug"
@@ -972,9 +1037,11 @@ function SourcesSection() {
 function ScreensSection({
   showDemoCompanyCard,
   showMockLetterDraft,
+  niche,
 }: {
   showDemoCompanyCard: boolean;
   showMockLetterDraft: boolean;
+  niche: NicheExamples;
 }) {
   // Каждый кусок — под своим флагом. Сетка адаптивная: 1 блок —
   // на всю ширину, 2 — две колонки.
@@ -997,14 +1064,14 @@ function ScreensSection({
             <ScreenMock
               title="Карточка с диагнозом"
               sub="Pain-теги, цитаты, юр.данные, кнопка КП"
-              inner={<DemoCompanyCard variant="inline" />}
+              inner={<DemoCompanyCard variant="inline" company={niche.company} />}
             />
           )}
           {showMockLetterDraft && (
             <ScreenMock
               title="Драфт письма"
               sub="AI пишет с конкретной цитатой клиента"
-              inner={<MockLetterDraft />}
+              inner={<MockLetterDraft letter={niche.letter ?? FALLBACK_NICHE.letter!} />}
             />
           )}
         </div>
@@ -1040,7 +1107,11 @@ function ScreenMock({
   );
 }
 
-function MockLetterDraft() {
+function MockLetterDraft({
+  letter,
+}: {
+  letter: NonNullable<NicheExamples['letter']>;
+}) {
   return (
     <div
       className="rounded-2xl border p-4"
@@ -1050,25 +1121,18 @@ function MockLetterDraft() {
         className="text-[10px] font-semibold uppercase tracking-wide mb-1.5"
         style={{ color: '#64748b' }}
       >
-        Кому: info@ulybka-plus.ru
+        Кому: {letter.to}
       </div>
       <div
         className="text-[12px] font-semibold mb-2 pb-2 border-b"
         style={{ borderColor: '#f1f5f9' }}
       >
-        Тема: Долгое ожидание клиентов — решаемо
+        Тема: {letter.subject}
       </div>
       <div className="text-[12px] leading-relaxed space-y-2">
-        <p>Здравствуйте, Иван!</p>
-        <p>
-          Заметил в отзывах вашей клиники жалобу клиента: «Записала ребёнка на
-          10:00, приняли в 11:20». 12 раз упоминается похожее.
-        </p>
-        <p>
-          У нас инструмент онлайн-записи с автоматическим напоминанием за день
-          и за час. Снижает простои регистратуры до 30%.
-        </p>
-        <p>10 минут на демо в Zoom?</p>
+        {letter.body.map((p, i) => (
+          <p key={i}>{p}</p>
+        ))}
       </div>
     </div>
   );

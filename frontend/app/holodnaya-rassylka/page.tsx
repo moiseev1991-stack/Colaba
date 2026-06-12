@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
+import { FOOD_DELIVERY_NICHE } from '@/components/seo-landing/niches';
 
 export const metadata: Metadata = {
   title: 'Холодная рассылка и база email для КП — с отслеживанием',
@@ -19,6 +20,7 @@ export default function HolodnayaRassylkaPage() {
     <SeoLandingShell
       decorTheme="mailing"
       showMockLetterDraft
+      niche={FOOD_DELIVERY_NICHE}
       h1="Холодная рассылка КП: от базы до статусов доставки"
       lead="Соберите базу для рассылки, отправьте КП и смотрите, что происходит: доставлено, открыто, кликнули по ссылке. Шаблоны под нишу с подстановкой болей клиентов, отписка одной кнопкой, автоматический blacklist. Полный цикл в одном инструменте."
       problemSolutionParagraphs={[

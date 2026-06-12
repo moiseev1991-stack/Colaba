@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
+import { BEAUTY_SALON_NICHE } from '@/components/seo-landing/niches';
 
 export const metadata: Metadata = {
   title: 'Парсер 2ГИС — выгрузка компаний с контактами и анализом отзывов',
@@ -19,6 +20,7 @@ export default function Parser2gisPage() {
     <SeoLandingShell
       decorTheme="maps"
       showCompareTable
+      niche={BEAUTY_SALON_NICHE}
       h1="Парсер 2GIS: компании, контакты и боли клиентов из отзывов"
       lead="Соберите компании из 2GIS по нише и городу — с телефонами, сайтами, рейтингами и диагнозом болей клиентов из отзывов. Выгрузите в Excel или CSV. Не просто список карточек, а готовый материал для холодной рассылки."
       problemSolutionParagraphs={[
