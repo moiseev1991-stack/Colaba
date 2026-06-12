@@ -530,6 +530,27 @@ export async function getNichePainTrend(
   return response.data;
 }
 
+/** 2026-06-12: динамика всех отзывов в нише+городе (без фильтра pain_tag).
+ *  Юзер просил видеть общую динамику в шапке выдачи всегда — независимо
+ *  от того, выбрана ли плитка боли. Shape тот же что у pain-trend. */
+export async function getNicheReviewsTrend(
+  niche: string,
+  city?: string | null,
+  source?: '2gis' | 'yandex_maps' | 'google',
+  from?: string,
+  to?: string,
+): Promise<NichePainTrendOut> {
+  const params = new URLSearchParams({ niche });
+  if (city) params.set('city', city);
+  if (source) params.set('source', source);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const response = await apiClient.get<NichePainTrendOut>(
+    `/maps/insights/reviews-trend?${params.toString()}`,
+  );
+  return response.data;
+}
+
 export interface PainBenchmarkItem {
   pain_tag_id: number;
   label: string;

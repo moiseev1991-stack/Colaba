@@ -16,6 +16,8 @@ import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
+
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { AddToListModal } from '@/components/maps/AddToListModal';
@@ -33,6 +35,7 @@ import {
   getMapSearch,
   getMapsAiProgress,
   getNichePainTrend,
+  getNicheReviewsTrend,
   listMapCompanies,
   listPainTags,
   type CompanyOut,
@@ -244,6 +247,11 @@ export function MapsSearchResults({
   const [painTagForChart, setPainTagForChart] = useState<PainTagOut | null>(null);
   const [painTrend, setPainTrend] = useState<NichePainTrendOut | null>(null);
   const [painTrendLoading, setPainTrendLoading] = useState(false);
+  // 2026-06-12: общая динамика отзывов в нише — всегда висит в шапке выдачи.
+  // Юзер: «всегда хочу видеть динамику просто комментариев, неважно
+  // негативных или позитивных».
+  const [reviewsTrend, setReviewsTrend] = useState<NichePainTrendOut | null>(null);
+  const [reviewsTrendLoading, setReviewsTrendLoading] = useState(false);
   // §4.1 ТЗ редизайна — на мобайле фильтр-панель открывается через
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
@@ -606,6 +614,38 @@ export function MapsSearchResults({
     painPeriodDays,
   ]);
 
+  // 2026-06-12: общая динамика отзывов в нише — грузим всегда, не зависит
+  // от выбранной плитки. Перезагружается при смене ниши/города/источника/окна.
+  useEffect(() => {
+    if (!search?.niche) {
+      setReviewsTrend(null);
+      return;
+    }
+    let mounted = true;
+    setReviewsTrendLoading(true);
+    const from = painPeriodDays != null
+      ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
+      : undefined;
+    getNicheReviewsTrend(
+      search.niche,
+      search.city ?? null,
+      painSourceFilter ?? undefined,
+      from,
+    )
+      .then((d) => {
+        if (mounted) setReviewsTrend(d);
+      })
+      .catch(() => {
+        if (mounted) setReviewsTrend(null);
+      })
+      .finally(() => {
+        if (mounted) setReviewsTrendLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [search?.niche, search?.city, painSourceFilter, painPeriodDays]);
+
   // Подтягиваем trend для inline-chart, когда юзер кликнул плитку.
   useEffect(() => {
     if (!painTagForChart || !search?.niche) {
@@ -948,6 +988,14 @@ export function MapsSearchResults({
                 }}
               />
             )}
+            {/* 2026-06-12: общая динамика отзывов в нише — всегда видна,
+                независимо от выбранной плитки. По запросу юзера. */}
+            <RegionPainTrendInline
+              tag={null}
+              trend={reviewsTrend}
+              loading={reviewsTrendLoading}
+              headline="Динамика отзывов в нише"
+            />
             {painTagForChart && (
               <RegionPainTrendInline
                 tag={painTagForChart}
@@ -1340,11 +1388,22 @@ export function MapsSearchResults({
                       setLprBulkMsg(null);
                       try {
                         const r = await enrichCompaniesTeam(search.id, ids);
+                        // 2026-06-12: формулировки переписаны под живой
+                        // язык юзера — «N карточек получат ЛПР через ~2 мин»,
+                        // вместо технического «N в очереди».
                         const parts: string[] = [];
-                        if (r.queued > 0) parts.push(`${r.queued} ЛПР в очереди`);
-                        if (r.skipped_already_has_lpr > 0) parts.push(`${r.skipped_already_has_lpr} уже есть`);
-                        if (r.skipped_no_website > 0) parts.push(`${r.skipped_no_website} без сайта`);
-                        setLprBulkMsg(parts.join(' · ') || 'нечего обогащать');
+                        if (r.queued > 0) {
+                          parts.push(
+                            `Ищу директора на ${r.queued} сайт${r.queued === 1 ? 'е' : 'ах'} — пиллы «ЛПР есть» обновятся через ~2 мин`,
+                          );
+                        }
+                        if (r.skipped_already_has_lpr > 0) {
+                          parts.push(`${r.skipped_already_has_lpr} уже с ЛПР`);
+                        }
+                        if (r.skipped_no_website > 0) {
+                          parts.push(`${r.skipped_no_website} без сайта (искать негде)`);
+                        }
+                        setLprBulkMsg(parts.join(' · ') || 'У всех выбранных компаний ЛПР уже найден.');
                         // Через ~2 минуты ЛПР должны появиться в БД — перезагружаем список.
                         setTimeout(() => void refreshCompanies(filter), 90_000);
                       } catch (e: any) {
@@ -1353,10 +1412,10 @@ export function MapsSearchResults({
                         setLprBulkBusy(false);
                       }
                     }}
-                    title="Найти ЛПР (директор/маркетолог) на сайтах выбранных компаний. Идёт в фоне ~2 мин, результат появится в карточках сам."
+                    title="Запустить фоновый парсер сайтов выбранных компаний — ищем страницы /team /о-нас /контакты и тянем оттуда ФИО директора. Через ~2 минуты карточки получают зелёный пилл «ЛПР есть»."
                     className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
-                    {lprBulkBusy ? 'Ставлю в очередь…' : '🧑‍💼 Найти ЛПР'}
+                    {lprBulkBusy ? 'Ставлю в очередь…' : 'Найти ЛПР на сайтах'}
                   </button>
                   <button
                     type="button"
@@ -1621,20 +1680,26 @@ function RegionPainSummary({
 }
 
 /**
- * Inline-блок с барчартом динамики выбранной боли (по источникам).
- * Появляется под шапкой топ-болей, когда юзер кликнул на плитку.
- * Источник данных — /maps/insights/pain-trend (агрегат по всей нише+городу).
+ * Inline-блок с барчартом динамики отзывов (по источникам).
+ * Два режима:
+ *   - tag != null: динамика конкретной боли (по клику на pain-плитку).
+ *   - tag == null: общая динамика всех отзывов в нише+городе (всегда видна
+ *     в шапке выдачи по запросу юзера 2026-06-12).
+ * Источник данных — /maps/insights/pain-trend или /maps/insights/reviews-trend.
  */
 function RegionPainTrendInline({
   tag,
   trend,
   loading,
   onClose,
+  headline,
 }: {
-  tag: PainTagOut;
+  tag?: PainTagOut | null;
   trend: NichePainTrendOut | null;
   loading: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  /** Подпись блока. По умолчанию «Динамика по месяцам». */
+  headline?: string;
 }) {
   const sourceColor: Record<string, string> = {
     '2gis': '#0ea5e9',
@@ -1671,27 +1736,31 @@ function RegionPainTrendInline({
 
   return (
     <div className="mt-1.5 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
+      <div aria-hidden className={cn('w-1 shrink-0', tag ? 'bg-rose-500' : 'bg-slate-400')} />
       <div className="flex min-w-0 flex-1 flex-col gap-1 px-2.5 py-1.5">
         <div className="flex flex-wrap items-baseline gap-2 text-[10.5px]">
           <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Динамика по месяцам
+            {headline ?? 'Динамика по месяцам'}
           </span>
-          <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
-            {tag.label}
-          </span>
+          {tag && (
+            <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
+              {tag.label}
+            </span>
+          )}
           {trend && (
             <span className="text-slate-500 dark:text-slate-400 tabular-nums">
               {trend.total_reviews} отз. · {trend.companies_affected} комп.
             </span>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            × закрыть
-          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              × закрыть
+            </button>
+          )}
         </div>
         {loading && !trend ? (
           <div className="text-[11.5px] text-slate-500 dark:text-slate-400">Загружаем динамику…</div>
@@ -1707,7 +1776,7 @@ function RegionPainTrendInline({
               preserveAspectRatio="none"
               className="block"
               role="img"
-              aria-label={`Динамика «${tag.label}» по месяцам`}
+              aria-label={tag ? `Динамика «${tag.label}» по месяцам` : 'Динамика всех отзывов по месяцам'}
             >
               <line
                 x1={PAD.left}
