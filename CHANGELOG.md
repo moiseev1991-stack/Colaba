@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.88.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.87.0...v1.88.0) (2026-06-12)
+
+
+### Bug Fixes
+
+* **kp:** показывать настоящий ответ Pydantic при ошибке генерации КП ([6d33fc5](https://github.com/moiseev1991-stack/Colaba/commit/6d33fc569031a075e367e9e8e7cb0555a1f962ae))
+
+
+### Features
+
+* **promo:** 3 аудиторные страницы + блок «Под вашу профессию» на главной ([d92dfac](https://github.com/moiseev1991-stack/Colaba/commit/d92dfac39c1e315978a432630f3cd632b6336d63))
+* **promo:** дедупликация — каждый крупный блок только на одной странице ([55e8fee](https://github.com/moiseev1991-stack/Colaba/commit/55e8feea85dd3153b00aa7d942122cbba1dd2756))
+* **promo:** уникализация ниш по страницам — своя ниша на каждой ([4cf9fa8](https://github.com/moiseev1991-stack/Colaba/commit/4cf9fa80accb453b4bc630f0255935d7d9626522))
+* **promo:** уникальный блок на каждой решенческой странице ([aa0754d](https://github.com/moiseev1991-stack/Colaba/commit/aa0754dd958be93a43614af06968d7aea851c057))
+* **promo:** этап 1 КП-фокус-рефакта — терминология, аудитория, тарифы ([b198b02](https://github.com/moiseev1991-stack/Colaba/commit/b198b02ef1d32e61ddbdd5a308c34f63a42ac4f5))
+
 # [1.87.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.86.1...v1.87.0) (2026-06-12)
 
 
