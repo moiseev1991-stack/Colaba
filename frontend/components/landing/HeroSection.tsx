@@ -1,6 +1,7 @@
 'use client';
 
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
+import { CountdownTimer } from '@/components/landing/CountdownTimer';
 
 // ТЗ лендинг-рефакта 2026-06-03 §2+§6: переориентация с «парсер контактов» на
 // «компании с диагнозом». Бейдж описывает фишку (диагноз из отзывов), заголовок
@@ -61,21 +62,11 @@ export function HeroSection({
             </button>
           </div>
 
-          {/* Продуктовые факты вместо выдуманных клиентских цифр */}
-          <div className="l-hero__stats reveal">
-            <div>
-              <div className="l-hero__stat-val">2<span>мин</span></div>
-              <div className="l-hero__stat-label">Первые 50 компаний</div>
-            </div>
-            <div>
-              <div className="l-hero__stat-val">500</div>
-              <div className="l-hero__stat-label">Лидов в месяц бесплатно</div>
-            </div>
-            <div>
-              <div className="l-hero__stat-val">AI</div>
-              <div className="l-hero__stat-label">Анализ отзывов и черновик письма</div>
-            </div>
-          </div>
+          {/* 2026-06-12: блок статистики «2мин / 500 лидов / AI» заменён
+              на квадратный таймер обратного отсчёта до запуска. ТЗ юзера —
+              45 дней до запуска SpinLid, стилистика парная с floating-cards
+              «Боли / Цитаты / Письмо» справа. */}
+          <CountdownTimer />
         </div>
 
         {/* Floating cards — продуктовые «фишки», не клиентские цифры */}
