@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.90.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.0...v1.90.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **promo:** таймер перенесён внутрь hero — 4 квадратные glassy-плитки ([36521b4](https://github.com/moiseev1991-stack/Colaba/commit/36521b4c424e056572596eaa39f2b9d6919ab468))
+
 # [1.90.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.89.1...v1.90.0) (2026-06-12)
 
 
