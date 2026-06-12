@@ -1,10 +1,12 @@
 'use client';
 
-// Обратный отсчёт до запуска SpinLid (2026-06-12 + 45 дней = 2026-07-27 00:00 МСК).
-// Висит сверху главной страницы между LandingHeader и HeroSection.
-// SSR-safe: первый рендер на сервере показывает «—» во всех слотах, чтобы
-// не было гидрационного mismatch'а между сервером и клиентом (на сервере
-// new Date() даёт время сервера, на клиенте — пользователя).
+// Обратный отсчёт до запуска SpinLid (цель: 2026-07-27 00:00 МСК,
+// = 2026-06-12 + 45 дней). Висит внутри hero на главной — четыре
+// квадратные glassy-плитки в одной строке (стилистически парные к
+// floating-cards «Боли / Цитаты / Письмо»).
+//
+// SSR-safe: первый рендер на сервере показывает «—», после хидрейта
+// useEffect стартует setInterval и обновляет каждую секунду.
 
 import { useEffect, useState } from 'react';
 
@@ -45,59 +47,36 @@ export function CountdownTimer() {
   }, []);
 
   return (
-    <section
-      aria-label="Обратный отсчёт до запуска"
-      style={{
-        background: 'linear-gradient(90deg, #0b1220 0%, #1e293b 60%, #0b1220 100%)',
-        borderBottom: '1px solid rgba(45, 212, 191, 0.30)',
-        color: '#fff',
-        padding: '14px 16px',
-      }}
-    >
+    <div className="reveal" style={{ marginTop: '24px' }}>
       <div
         style={{
-          maxWidth: '1100px',
-          margin: '0 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '24px',
-          flexWrap: 'wrap',
+          fontSize: '11px',
+          fontWeight: 700,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: '#2dd4bf',
+          marginBottom: '10px',
         }}
       >
-        <div
-          style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            color: '#2dd4bf',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {parts?.done ? 'SpinLid запущен' : 'До запуска SpinLid'}
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: '8px',
-            fontVariantNumeric: 'tabular-nums',
-            alignItems: 'baseline',
-          }}
-        >
-          <TimerCell value={parts?.days} label="дни" />
-          <Sep />
-          <TimerCell value={parts?.hours} label="часы" pad={2} />
-          <Sep />
-          <TimerCell value={parts?.minutes} label="минуты" pad={2} />
-          <Sep />
-          <TimerCell value={parts?.seconds} label="секунды" pad={2} />
-        </div>
+        {parts?.done ? 'SpinLid запущен' : 'До запуска SpinLid'}
       </div>
-    </section>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(64px, 92px))',
+          gap: '10px',
+        }}
+      >
+        <TimerTile value={parts?.days} label="дни" />
+        <TimerTile value={parts?.hours} label="часы" pad={2} />
+        <TimerTile value={parts?.minutes} label="минуты" pad={2} />
+        <TimerTile value={parts?.seconds} label="секунды" pad={2} />
+      </div>
+    </div>
   );
 }
 
-function TimerCell({
+function TimerTile({
   value,
   label,
   pad = 0,
@@ -115,47 +94,52 @@ function TimerCell({
   return (
     <div
       style={{
+        aspectRatio: '1 / 1',
+        position: 'relative',
+        background:
+          'linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(30,41,59,0.65) 100%)',
+        border: '1px solid rgba(45, 212, 191, 0.30)',
+        borderRadius: '14px',
+        boxShadow:
+          '0 12px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        minWidth: '52px',
+        justifyContent: 'center',
+        padding: '8px 4px',
       }}
     >
       <span
         style={{
-          fontSize: '24px',
-          fontWeight: 700,
+          fontFamily: 'var(--font-display), system-ui, sans-serif',
+          fontSize: 'clamp(22px, 3.4vw, 34px)',
+          fontWeight: 800,
+          lineHeight: 1,
           color: '#fff',
-          lineHeight: 1.1,
+          letterSpacing: '-0.02em',
+          fontVariantNumeric: 'tabular-nums',
+          background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
         }}
       >
         {text}
       </span>
       <span
         style={{
-          fontSize: '10px',
+          marginTop: '6px',
+          fontSize: '9.5px',
+          fontWeight: 600,
           color: 'rgba(255,255,255,0.55)',
           textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          marginTop: '2px',
+          letterSpacing: '0.10em',
         }}
       >
         {label}
       </span>
     </div>
-  );
-}
-
-function Sep() {
-  return (
-    <span
-      style={{
-        fontSize: '22px',
-        color: 'rgba(45, 212, 191, 0.50)',
-        fontWeight: 600,
-      }}
-    >
-      :
-    </span>
   );
 }

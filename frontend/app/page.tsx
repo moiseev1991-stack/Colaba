@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import '@/components/landing/landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
-import { CountdownTimer } from '@/components/landing/CountdownTimer';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { SignalsTableSection } from '@/components/landing/SignalsTableSection';
 import { DiagnosisSection } from '@/components/landing/DiagnosisSection';
@@ -78,7 +77,6 @@ export default function LandingPage() {
   return (
     <div className="landing-light min-h-screen">
       <LandingHeader />
-      <CountdownTimer />
       <main>
         <HeroSection
           onCtaRegister={() => scrollTo('register', true)}
