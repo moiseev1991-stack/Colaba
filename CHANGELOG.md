@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.89.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.89.0...v1.89.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **kp:** LLM возвращала битый JSON — токены, температура, lossy-парсер ([f3b6030](https://github.com/moiseev1991-stack/Colaba/commit/f3b603043986aed1ac21f979afc902fb5cae9117))
+
 # [1.89.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.88.0...v1.89.0) (2026-06-12)
 
 
