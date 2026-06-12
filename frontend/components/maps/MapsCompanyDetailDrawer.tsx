@@ -231,7 +231,9 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
             hasPains={Array.isArray(detail.top_pains) && detail.top_pains.length > 0}
           />
 
-          {/* Юр.данные из DaData (блок 2 ТЗ). Показываем только если матч найден. */}
+          {/* Юр.данные из DaData (блок 2 ТЗ). Рендерим всегда: если матч
+              не найден — плашка «не найдено в DaData»; если матч есть, но
+              отдельное поле пустое — «нет данных» серым, не молча. */}
           <LegalBlock legal={detail.legal} />
 
           {/* ЛПР со страниц сайта (ТЗ A.2 2026-06-04). Если decision_makers
@@ -564,26 +566,75 @@ function normalizePhone(p: string): string {
 }
 
 function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
-  // Блок 2 ТЗ 2026-06-02 — юр.данные из DaData. Показываем только если
-  // матч нашёлся (legal != null). На free-тарифе DaData revenue и
-  // employee_count всегда null — для них фолбэк «нет данных».
-  if (!legal) return null;
+  // Блок 2 ТЗ 2026-06-02 — юр.данные из DaData. На free-тарифе DaData
+  // revenue и employee_count всегда null — их вообще не показываем,
+  // чтобы не пугать юзера «нет данных» там, где их и не будет.
+  //
+  // 2026-06-12: даже если матч не нашёлся (legal === null) — рендерим
+  // блок с плашкой «не найдено в DaData», иначе юзер не понимает разницу
+  // «не загружено» vs «нет в реестре». А когда матч есть, но конкретное
+  // поле пусто — пишем «нет данных» серым, а не молча скрываем.
 
-  const items: { label: string; value: React.ReactNode; mono?: boolean }[] = [];
-  if (legal.inn) items.push({ label: 'ИНН', value: legal.inn, mono: true });
-  if (legal.ogrn) items.push({ label: 'ОГРН', value: legal.ogrn, mono: true });
-  if (legal.legal_short_name || legal.legal_name) {
-    items.push({
+  const missing = <span className="text-slate-400 italic">нет данных</span>;
+
+  if (!legal) {
+    return (
+      <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
+        <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
+          Юр.данные (DaData)
+        </div>
+        <div className="text-[12px] text-slate-600 dark:text-slate-300">
+          Не найдено в DaData — возможно, у компании нет юр.лица (самозанятый/ИП без OГРН) или название/адрес не совпали.
+        </div>
+      </div>
+    );
+  }
+
+  // Опорный набор полей — рисуем всегда, даже когда поле пустое.
+  // Юзер видит «есть данные / нет данных» по каждому ключевому полю
+  // вместо «куда оно делось».
+  const items: { label: string; value: React.ReactNode; mono?: boolean }[] = [
+    { label: 'ИНН', value: legal.inn || missing, mono: !!legal.inn },
+    { label: 'ОГРН', value: legal.ogrn || missing, mono: !!legal.ogrn },
+    {
       label: 'Юр.лицо',
-      value: legal.legal_short_name || legal.legal_name || '—',
-    });
-  }
-  if (typeof legal.age_years === 'number') {
-    items.push({ label: 'Возраст', value: `${legal.age_years} лет` });
-  }
-  if (legal.registration_date) {
-    items.push({ label: 'Зарегистрирована', value: legal.registration_date });
-  }
+      value: legal.legal_short_name || legal.legal_name || missing,
+    },
+    {
+      label: 'Возраст',
+      value: typeof legal.age_years === 'number' ? `${legal.age_years} лет` : missing,
+    },
+    {
+      label: 'Зарегистрирована',
+      value: legal.registration_date || missing,
+    },
+    {
+      label: 'Статус',
+      value: legal.legal_status
+        ? legal.legal_status === 'active'
+          ? 'действующая'
+          : legal.legal_status
+        : missing,
+    },
+    {
+      label: 'ОКВЭД',
+      value: legal.okved_name
+        ? `${legal.okved ?? ''} ${legal.okved_name}`.trim()
+        : missing,
+    },
+    // ЛПР: ФИО + должность руководителя. Если у юр.лица нет руководителя
+    // в реестре (бывает у ИП) — пишем «нет данных», чтобы юзер не думал
+    // что мы потеряли данные.
+    {
+      label: 'ЛПР',
+      value: legal.director_name
+        ? `${legal.director_name}${legal.director_post ? `, ${legal.director_post}` : ''}`
+        : missing,
+    },
+  ];
+
+  // Опциональные поля (платный тариф DaData) — показываем только если
+  // есть значение. Их отсутствие — норма, а не «потеряли данные».
   if (typeof legal.revenue === 'number' && legal.revenue > 0) {
     items.push({
       label: 'Оборот',
@@ -593,33 +644,6 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   if (typeof legal.employee_count === 'number' && legal.employee_count > 0) {
     items.push({ label: 'Сотрудников', value: legal.employee_count });
   }
-  if (legal.legal_status) {
-    items.push({
-      label: 'Статус',
-      value:
-        legal.legal_status === 'active'
-          ? 'действующая'
-          : legal.legal_status,
-    });
-  }
-  if (legal.okved_name) {
-    items.push({
-      label: 'ОКВЭД',
-      value: `${legal.okved ?? ''} ${legal.okved_name}`.trim(),
-    });
-  }
-  // ЛПР (ТЗ A.1 2026-06-04): ФИО + должность руководителя из DaData.
-  // Юзер видит «ЛПР: Иванов Иван Иванович, Генеральный директор» и
-  // может писать письмо на конкретное имя, а не в info@.
-  if (legal.director_name) {
-    const post = legal.director_post ? `, ${legal.director_post}` : '';
-    items.push({
-      label: 'ЛПР',
-      value: `${legal.director_name}${post}`,
-    });
-  }
-
-  if (items.length === 0) return null;
 
   // Человечий вид способа матча: показываем рядом с %, чтобы юзеру было
   // понятно «почему именно эти юр.данные» без раскрытия tooltip.
