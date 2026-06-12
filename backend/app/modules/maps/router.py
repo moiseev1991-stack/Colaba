@@ -632,8 +632,62 @@ async def export_search_csv(
         "rating", "reviews_count", "reviews_positive", "reviews_negative",
         "reviews_neutral", "has_owner_replies", "owner_replies_count",
         "last_review_at", "source",
+        # 2026-06-12: ЛПР в экспорте — юзер просил.
+        # lpr_name + lpr_post: ФИО + должность директора. Источник:
+        #   1) CompanyLegal.director_name (DaData) — приоритет, точные данные
+        #      по ИНН.
+        #   2) первый is_decision_maker=True из CompanyDecisionMaker (сайт)
+        #      — fallback если DaData не нашла матч.
+        # lpr_source: 'dadata' / 'website' / '' — чтобы юзер видел откуда.
+        "lpr_name", "lpr_post", "lpr_source",
     ])
+
+    # Батчевая загрузка ЛПР: DaData director_name + первый decision_maker.
+    # Один запрос на всю выгрузку, не N+1.
+    from app.models.company_legal import CompanyLegal
+    from app.models.company_decision_maker import CompanyDecisionMaker
+
+    item_ids = [c.id for c in items]
+    legal_by_company: dict[int, CompanyLegal] = {}
+    dm_by_company: dict[int, CompanyDecisionMaker] = {}
+    if item_ids:
+        legals = (await db.execute(
+            select(CompanyLegal).where(CompanyLegal.company_id.in_(item_ids))
+        )).scalars().all()
+        legal_by_company = {int(l.company_id): l for l in legals}
+        # Берём всех is_decision_maker=True, упорядоченных по confidence —
+        # первый на компанию это «самый уверенный» ЛПР.
+        dms = (await db.execute(
+            select(CompanyDecisionMaker)
+            .where(
+                CompanyDecisionMaker.company_id.in_(item_ids),
+                CompanyDecisionMaker.is_decision_maker.is_(True),
+            )
+            .order_by(
+                CompanyDecisionMaker.company_id.asc(),
+                CompanyDecisionMaker.confidence.desc().nullslast(),
+                CompanyDecisionMaker.id.asc(),
+            )
+        )).scalars().all()
+        for dm in dms:
+            if int(dm.company_id) not in dm_by_company:
+                dm_by_company[int(dm.company_id)] = dm
+
     for c in items:
+        legal = legal_by_company.get(c.id)
+        dm = dm_by_company.get(c.id)
+        lpr_name = ""
+        lpr_post = ""
+        lpr_source = ""
+        if legal and legal.status == "ok" and legal.director_name and legal.director_name.strip():
+            lpr_name = legal.director_name.strip()
+            lpr_post = (legal.director_post or "").strip()
+            lpr_source = "dadata"
+        elif dm:
+            lpr_name = (dm.name or "").strip()
+            lpr_post = (dm.post or "").strip()
+            lpr_source = "website"
+
         writer.writerow([
             c.id, c.name or "", c.niche or "", c.city or "", c.address or "",
             c.phone or "", c.website or "",
@@ -644,6 +698,7 @@ async def export_search_csv(
             c.owner_replies_count or 0,
             c.last_review_at.isoformat() if c.last_review_at else "",
             c.source or "",
+            lpr_name, lpr_post, lpr_source,
         ])
     output.seek(0)
     filename = f"maps_search_{search_id}.csv"
@@ -1008,6 +1063,101 @@ async def get_niche_pain_trend(
         "niche": niche,
         "city": city,
         "pain_tag_id": pain_tag_id,
+        "source_filter": source,
+        "first_review_at": first_at.isoformat() if first_at else None,
+        "last_review_at": last_at.isoformat() if last_at else None,
+        "total_reviews": int(total or 0),
+        "companies_affected": int(companies_affected or 0),
+        "range_start": range_start,
+        "range_end": range_end,
+        "points": points,
+    }
+
+
+@router.get("/insights/reviews-trend")
+@limiter.limit("60/minute")
+async def get_niche_reviews_trend(
+    request: Request,
+    niche: str = Query(..., min_length=1),
+    city: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
+    date_from: Optional[str] = Query(default=None, alias="from"),
+    date_to: Optional[str] = Query(default=None, alias="to"),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Динамика ВСЕХ отзывов в нише+городе по месяцам (юзер 2026-06-12).
+
+    То же что /insights/pain-trend, но без фильтра pain_tag_id — показывает
+    общую активность отзывов (позитив + негатив + нейтрал) по нише. Юзер
+    хочет видеть его в шапке выдачи всегда, чтобы понимать общую динамику
+    интереса к нише, а не только когда выбрана конкретная боль.
+
+    Shape ответа совпадает с pain-trend — фронт переиспользует тот же
+    компонент chart'а.
+    """
+    from datetime import datetime
+
+    def _parse(d: str | None) -> datetime | None:
+        if not d:
+            return None
+        try:
+            return datetime.fromisoformat(d)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=f"invalid date '{d}'") from exc
+
+    dt_from = _parse(date_from)
+    dt_to = _parse(date_to)
+
+    company_filter = [Company.niche == niche]
+    if city is not None:
+        company_filter.append(Company.city == city)
+
+    review_window = [Review.posted_at.isnot(None)]
+    if source:
+        review_window.append(Review.source == source)
+    if dt_from is not None:
+        review_window.append(Review.posted_at >= dt_from)
+    if dt_to is not None:
+        review_window.append(Review.posted_at <= dt_to)
+
+    base = (
+        select(
+            sa_func.to_char(sa_func.date_trunc("month", Review.posted_at), "YYYY-MM").label("month"),
+            Review.source.label("source"),
+            sa_func.count(Review.id).label("count"),
+        )
+        .join(Company, Company.id == Review.company_id)
+        .where(*review_window, *company_filter)
+        .group_by("month", Review.source)
+        .order_by("month")
+    )
+    rows = list((await db.execute(base)).all())
+    points = [
+        {"month": r[0], "source": r[1], "count": int(r[2])}
+        for r in rows
+    ]
+    range_start = points[0]["month"] if points else None
+    range_end = points[-1]["month"] if points else None
+
+    bounds_filters = [*company_filter, *review_window]
+    bounds_row = (
+        await db.execute(
+            select(
+                sa_func.min(Review.posted_at),
+                sa_func.max(Review.posted_at),
+                sa_func.count(Review.id),
+                sa_func.count(sa_func.distinct(Review.company_id)),
+            )
+            .join(Company, Company.id == Review.company_id)
+            .where(*bounds_filters)
+        )
+    ).one()
+    first_at, last_at, total, companies_affected = bounds_row
+    return {
+        "niche": niche,
+        "city": city,
+        "pain_tag_id": None,
         "source_filter": source,
         "first_review_at": first_at.isoformat() if first_at else None,
         "last_review_at": last_at.isoformat() if last_at else None,

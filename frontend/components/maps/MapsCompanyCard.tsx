@@ -29,8 +29,6 @@ import {
   Phone,
   Globe,
   Star,
-  Flame,
-  Briefcase,
   Calendar,
   MessageCircle,
   UserCheck,
@@ -255,24 +253,10 @@ export function MapsCompanyCard({
               ЛПР: нет данных
             </StatusPill>
           )}
-          {typeof company.lead_temperature === 'number' && company.lead_temperature > 0 && (
-            <StatusPill
-              tone={tempTone(company.lead_temperature)}
-              icon={<Flame />}
-              title="Температура лида: рейтинг × отзывы × свежесть × контакты × ответы"
-            >
-              {company.lead_temperature}
-            </StatusPill>
-          )}
-          {typeof company.website_lead_score === 'number' && company.website_lead_score > 0 && (
-            <StatusPill
-              tone={tempTone(company.website_lead_score)}
-              icon={<Briefcase />}
-              title="Website-score: насколько компания — кандидат на продажу сайта"
-            >
-              {company.website_lead_score}
-            </StatusPill>
-          )}
+          {/* 2026-06-12: убраны pill'ы lead_temperature и website_lead_score.
+              Юзер: «не понимаю смысла этих 65/66, зачем они нам». Сами
+              скоры остаются в БД и применяются в сортировках/фильтрах —
+              просто не дублируют визуал карточки. */}
           {company.legal && typeof company.legal.age_years === 'number' && (
             <StatusPill
               tone="neutral"
@@ -606,12 +590,6 @@ function AiAnalysisRow({ analysis }: { analysis: CompanyAnalysisOut }) {
 }
 
 /* ===== Utils ===== */
-
-function tempTone(t: number): 'hot' | 'warm' | 'neutral' {
-  if (t >= 70) return 'hot';
-  if (t >= 40) return 'warm';
-  return 'neutral';
-}
 
 function sourceLabel(source: string | null | undefined): string {
   if (source === '2gis') return '2GIS';
