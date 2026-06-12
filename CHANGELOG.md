@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.86.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.86.0...v1.86.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **maps:** пресеты репутации работают в малых нишах + «нет данных» в DaData ([66f01bc](https://github.com/moiseev1991-stack/Colaba/commit/66f01bce6804b614a5e8c914e044e5e429b83202))
+
 # [1.86.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.85.0...v1.86.0) (2026-06-11)
 
 
