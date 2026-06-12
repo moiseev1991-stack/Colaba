@@ -8,6 +8,7 @@ import { SignalsTableSection } from '@/components/landing/SignalsTableSection';
 import { DiagnosisSection } from '@/components/landing/DiagnosisSection';
 import { ImpactSection } from '@/components/landing/ImpactSection';
 import { ModulesSection } from '@/components/landing/ModulesSection';
+import { ProfessionsSection } from '@/components/landing/ProfessionsSection';
 import { SolutionsSection } from '@/components/landing/SolutionsSection';
 import { BenefitsSection } from '@/components/landing/BenefitsSection';
 import { RegisterSection } from '@/components/landing/RegisterSection';
@@ -89,6 +90,7 @@ export default function LandingPage() {
         <ImpactSection />
         <BenefitsSection />
         <ModulesSection />
+        <ProfessionsSection />
         <SolutionsSection />
         <RegisterSection />
         <AudienceSection />
