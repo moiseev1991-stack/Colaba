@@ -304,6 +304,7 @@ export function MapsFiltersPanel({
       min_negative: null,
       has_owner_replies: null,
       has_website: null,
+      has_lpr: null,
       pain_tag_ids: null,
       sort_by: 'rating_desc',
       review_text_contains: null,
@@ -324,6 +325,7 @@ export function MapsFiltersPanel({
     value.min_negative != null ||
     value.has_owner_replies != null ||
     value.has_website != null ||
+    value.has_lpr != null ||
     (value.pain_tag_ids?.length ?? 0) > 0 ||
     !!value.review_text_contains ||
     !!value.review_text_excludes ||
@@ -794,6 +796,34 @@ export function MapsFiltersPanel({
           <option value="any">Не важно</option>
           <option value="yes">Только с сайтом</option>
           <option value="no">Только без сайта</option>
+        </Select>
+      </div>
+
+      {/* 2026-06-12: ЛПР. Источники — DaData (CompanyLegal.director_name)
+          и парсер /team на сайте (CompanyDecisionMaker). Есть хотя бы один
+          из двух → has_lpr=true. */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+          ЛПР
+        </label>
+        <Select
+          value={
+            value.has_lpr === true
+              ? 'yes'
+              : value.has_lpr === false
+                ? 'no'
+                : 'any'
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            const next = v === 'yes' ? true : v === 'no' ? false : null;
+            recordManualOverride('has_lpr', next);
+            onChange({ ...value, has_lpr: next });
+          }}
+        >
+          <option value="any">Не важно</option>
+          <option value="yes">Только с ЛПР</option>
+          <option value="no">Только без ЛПР</option>
         </Select>
       </div>
 
