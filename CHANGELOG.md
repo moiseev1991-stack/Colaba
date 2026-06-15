@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.90.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.2...v1.90.3) (2026-06-15)
+
+
+### Bug Fixes
+
+* **kp:** пиним httpx<0.28 — KP /generate отдавал 422 на openai/anthropic ([fd5e0f7](https://github.com/moiseev1991-stack/Colaba/commit/fd5e0f704792331397a8f2caeeb42fd3e13aff08))
+
 ## [1.90.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.1...v1.90.2) (2026-06-15)
 
 
