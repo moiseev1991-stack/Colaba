@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.90.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.1...v1.90.2) (2026-06-15)
+
+
+### Bug Fixes
+
+* **compose:** пробрасываем SERPAPI_KEY в backend/celery-worker(-search) ([7eacb77](https://github.com/moiseev1991-stack/Colaba/commit/7eacb775858d10f3a4ebb044b5e92065e993393d))
+
 ## [1.90.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.0...v1.90.1) (2026-06-12)
 
 
