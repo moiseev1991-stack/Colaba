@@ -37,8 +37,13 @@ email-validator==2.1.0
 # OAuth
 fastapi-sso>=0.21.0
 
-# HTTP Client (>=0.27 для yandex-cloud-ml-sdk)
-httpx>=0.27,<1
+# HTTP Client (>=0.27 для yandex-cloud-ml-sdk).
+# Верхний bound <0.28 — иначе httpx 0.28 убрал параметр `proxies=` у
+# AsyncClient, а openai 1.55 и anthropic 0.39 его ещё передают.
+# Симптом: KP /outreach/kp/generate возвращает 422, в логах backend —
+# "generate_kp: first/retry chat() failed: AsyncClient.__init__() got
+# an unexpected keyword argument 'proxies'".
+httpx>=0.27,<0.28
 aiosmtplib>=3.0.0
 aiohttp==3.9.1
 beautifulsoup4==4.12.2
