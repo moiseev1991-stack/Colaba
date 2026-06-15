@@ -80,6 +80,9 @@ services:
       # Достаётся из DevTools на 2gis.ru (Network → reviews → key=...).
       TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
+      # SerpAPI ключ для источника Google Maps (см. backend/app/modules/maps/providers/google_maps.py).
+      # Без него health/providers.google_maps вернёт "no_api_key".
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,6 +120,9 @@ services:
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
+      # SerpAPI ключ для источника Google Maps (см. backend/app/modules/maps/providers/google_maps.py).
+      # Без него health/providers.google_maps вернёт "no_api_key".
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
       # LLM для reviews_ai (sentiment + naming + embeddings) — через ProxyAPI.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -157,6 +163,9 @@ services:
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
       TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
+      # SerpAPI ключ для источника Google Maps (см. backend/app/modules/maps/providers/google_maps.py).
+      # Без него health/providers.google_maps вернёт "no_api_key".
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
       # Блок 2 ТЗ 2026-06-02: DaData (для enrich_company_legal-таски).
       DADATA_API_KEY: ${DADATA_API_KEY:-}
       DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
