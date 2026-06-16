@@ -1202,6 +1202,10 @@ async def get_demand_index(
     request: Request,
     niche: str = Query(..., min_length=1),
     city: Optional[str] = Query(default=None),
+    # 2026-06-16: sentiment toggle. Default 'negative' = старое поведение
+    # «Сравнение с нишей: боли клиентов». 'positive' = «Сравнение с нишей:
+    # сильные стороны / что хвалят».
+    sentiment: str = Query(default="negative", regex="^(negative|positive)$"),
     db: AsyncSession = Depends(get_db),
 ):
     """§4 ТЗ 2026-06-10: индекс спроса по нише+городу.
@@ -1272,6 +1276,7 @@ async def get_demand_index(
             .where(
                 PainTag.niche == niche,
                 PainTag.status == "active",
+                PainTag.sentiment == sentiment,
                 ((PainTag.city == city) | (PainTag.city.is_(None)))
                 if city is not None
                 else PainTag.city.is_(None),
@@ -2558,9 +2563,13 @@ async def list_pain_tags(
     source: Optional[str] = Query(default=None, regex="^(2gis|yandex_maps|google)$"),
     date_from: Optional[str] = Query(default=None, alias="from"),
     date_to: Optional[str] = Query(default=None, alias="to"),
+    # 2026-06-16: позитивные теги. Default 'negative' — поведение
+    # эндпоинта обратно-совместимо для всех существующих фронт-вызовов
+    # без параметра sentiment.
+    sentiment: str = Query(default="negative", regex="^(negative|positive)$"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Активные pain_tags для (niche, city). Без city — глобальные теги ниши.
+    """Активные pain_tags для (niche, city, sentiment). Без city — глобальные теги ниши.
 
     Без фильтров — fast-path по PainTag.occurrences_count.
 
@@ -2568,13 +2577,20 @@ async def list_pain_tags(
     отзывов через JOIN review_pain_tags → reviews (count distinct review_id с
     указанным source и попадающим в диапазон posted_at). Теги с 0 occurrences
     в окне фильтра не возвращаются.
+
+    `sentiment='positive'` отдаёт теги-«сильные стороны» (хвалят клиенты).
+    До запуска recluster_pain_tags по позитиву возвращается пустой список.
     """
     from datetime import datetime
     from app.models.pain_tag import ReviewPainTag
 
     has_filters = source is not None or date_from is not None or date_to is not None
 
-    base_filter = [PainTag.niche == niche, PainTag.status == "active"]
+    base_filter = [
+        PainTag.niche == niche,
+        PainTag.status == "active",
+        PainTag.sentiment == sentiment,
+    ]
     if city is None:
         base_filter.append(PainTag.city.is_(None))
     else:

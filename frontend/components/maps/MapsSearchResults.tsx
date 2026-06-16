@@ -254,6 +254,10 @@ export function MapsSearchResults({
   type PainSourceFilter = '2gis' | 'yandex_maps' | 'google' | null;
   const [painSourceFilter, setPainSourceFilter] = useState<PainSourceFilter>(null);
   const [painPeriodDays, setPainPeriodDays] = useState<number | null>(90);
+  // 2026-06-16: toggle Боли / Сильные стороны. Меняет sentiment в запросах
+  // /maps/pain-tags и /maps/insights/demand-index. До прогона recluster по
+  // позитиву (отдельный PR) выбор 'positive' покажет пустой список.
+  const [painSentiment, setPainSentiment] = useState<'negative' | 'positive'>('negative');
   // Pain-tag, по которому ниже шапки развёрнут inline-chart с динамикой.
   // null = chart скрыт. Кликать в плитке шапки → toggle одновременно
   // фильтра выдачи и видимости chart.
@@ -622,6 +626,7 @@ export function MapsSearchResults({
     listPainTags(search.niche, search.city ?? undefined, {
       source: painSourceFilter ?? undefined,
       from,
+      sentiment: painSentiment,
     })
       .then((data) => {
         if (mounted) setRegionPainTags(data);
@@ -638,6 +643,7 @@ export function MapsSearchResults({
     aiProgress?.pain_tags_total,
     painSourceFilter,
     painPeriodDays,
+    painSentiment,
   ]);
 
   // 2026-06-12: общая динамика отзывов в нише — грузим всегда, не зависит
@@ -987,12 +993,16 @@ export function MapsSearchResults({
                 компактной полосой над блоком ТОП-БОЛИ. Сам блок плиток рендерится
                 ниже только при наличии тегов — без пустого empty-state'а, чтобы
                 не создавать визуальный пробел. Клик по источнику меняет и
-                pain-tags, и фильтр выдачи компаний (см. handlePainSourceChange). */}
+                pain-tags, и фильтр выдачи компаний (см. handlePainSourceChange).
+                Toggle «Боли / Сильные стороны» — рядом, меняет sentiment в
+                запросах /maps/pain-tags и /maps/insights/demand-index. */}
             <PainHeaderControlsBar
               sourceFilter={painSourceFilter}
               onSourceFilterChange={handlePainSourceChange}
               periodDays={painPeriodDays}
               onPeriodChange={setPainPeriodDays}
+              sentiment={painSentiment}
+              onSentimentChange={setPainSentiment}
             />
             {regionPainTags.length > 0 && (
               <RegionPainSummary
@@ -1044,6 +1054,7 @@ export function MapsSearchResults({
               niche={search.niche}
               city={search.city}
               activePainTagIds={filter.pain_tag_ids ?? []}
+              sentiment={painSentiment}
               onPainClick={(id) => {
                 const current = filter.pain_tag_ids ?? [];
                 const next = current.includes(id)
@@ -1656,14 +1667,47 @@ function PainHeaderControlsBar({
   onSourceFilterChange,
   periodDays,
   onPeriodChange,
+  sentiment,
+  onSentimentChange,
 }: {
   sourceFilter: '2gis' | 'yandex_maps' | 'google' | null;
   onSourceFilterChange: (next: '2gis' | 'yandex_maps' | 'google' | null) => void;
   periodDays: number | null;
   onPeriodChange: (next: number | null) => void;
+  sentiment: 'negative' | 'positive';
+  onSentimentChange: (next: 'negative' | 'positive') => void;
 }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1.5 text-[11px] dark:border-slate-700 dark:bg-slate-900">
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        Тип:
+      </span>
+      <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+        {([
+          { v: 'negative' as const, label: 'Боли' },
+          { v: 'positive' as const, label: 'Сильные стороны' },
+        ]).map(({ v, label }) => {
+          const active = sentiment === v;
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onSentimentChange(v)}
+              className={
+                'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
+                (active
+                  ? (v === 'positive'
+                      ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-900'
+                      : 'bg-rose-600 text-white dark:bg-rose-500 dark:text-slate-900')
+                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
+                ' border-slate-300 dark:border-slate-600'
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
       <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Источник:
       </span>
