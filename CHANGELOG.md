@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.90.5](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.4...v1.90.5) (2026-06-16)
+
+
+### Bug Fixes
+
+* **ai:** симметрия env-fallback для Anthropic + teardown в тестах ассистентов ([82b6877](https://github.com/moiseev1991-stack/Colaba/commit/82b6877b2ec01a53ab944abff94136de058cd4c9))
+* **kp:** отсекаем неконфигурированных ассистентов в pick_assistant_id ([c0065ff](https://github.com/moiseev1991-stack/Colaba/commit/c0065ffd4da11700bcc92a6e7d0e9cd91cc00ca7))
+* **tests:** добавить fake api_key в _new_assistant_kwargs ([658371b](https://github.com/moiseev1991-stack/Colaba/commit/658371bc976c83d2dfd86037a41f3d30a4a8e6fd))
+
 ## [1.90.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.3...v1.90.4) (2026-06-16)
 
 
