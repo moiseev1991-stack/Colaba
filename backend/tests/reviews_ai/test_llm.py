@@ -17,11 +17,14 @@ from app.modules.reviews_ai import llm
 
 
 def _new_assistant_kwargs(name: str, provider_type: str = "anthropic", model: str = "claude-haiku-4-5"):
+    # config.api_key обязателен — pick_assistant_id теперь отсекает
+    # «полу-настроенных» ассистентов (PR fix/kp-skip-unconfigured-assistants).
+    # Без фейкового ключа тест-кандидаты были бы отфильтрованы и pick вернул бы None.
     return dict(
         name=name,
         provider_type=provider_type,
         model=model,
-        config={},
+        config={"api_key": "test-fake-key"},
     )
 
 
