@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.91.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.6...v1.91.0) (2026-06-16)
+
+
+### Features
+
+* **maps:** объединить переключатель источника + поддержка Google в фильтре выдачи ([ebe0af1](https://github.com/moiseev1991-stack/Colaba/commit/ebe0af199bbbfb0e1a6bfe02af0d15ce4c043cf6))
+
 ## [1.90.6](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.5...v1.90.6) (2026-06-16)
 
 
