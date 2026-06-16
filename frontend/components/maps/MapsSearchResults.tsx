@@ -1004,6 +1004,24 @@ export function MapsSearchResults({
               sentiment={painSentiment}
               onSentimentChange={setPainSentiment}
             />
+            {/* 2026-06-17: empty-state для positive-sentiment. До запуска
+                позитивного recluster (отдельная задача) тегов в БД нет —
+                блок ТОП-БОЛИ и «Сравнение с нишей» просто исчезают.
+                Показываем дружелюбное объяснение вместо пустоты. */}
+            {painSentiment === 'positive' && regionPainTags.length === 0 && (
+              <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-[12.5px] text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                <div className="font-semibold">
+                  Анализ сильных сторон ниши скоро будет
+                </div>
+                <div className="mt-1 text-emerald-800/90 dark:text-emerald-200/80">
+                  AI пока кластеризует только жалобы клиентов. Анализ того,
+                  что клиенты <span className="font-medium">хвалят</span>, — в
+                  работе и появится автоматически после следующего перепрогона
+                  отзывов. Переключись на «Боли», чтобы посмотреть текущую
+                  картину негатива.
+                </div>
+              </div>
+            )}
             {regionPainTags.length > 0 && (
               <RegionPainSummary
                 tags={regionPainTags}
