@@ -70,6 +70,19 @@ export function Dialog({ open, onClose, title, children, className, position = '
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  // Body scroll lock при открытом диалоге. Без него прокрутка колесом
+  // в зоне позади drawer'а (или когда курсор выходит за его границы)
+  // скроллит саму страницу — визуально выглядит как «контент налезает
+  // на шапку». Восстанавливаем предыдущее значение overflow при close.
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   if (position === 'right') {
@@ -78,7 +91,7 @@ export function Dialog({ open, onClose, title, children, className, position = '
         {/* Backdrop — менее тёмный чем у центрального, чтобы карта/список
             под ним оставались читаемыми. Клик закрывает. */}
         <div
-          className="fixed inset-0 bg-black/25"
+          className="fixed inset-0 bg-black/40"
           onClick={onClose}
         />
         <div
