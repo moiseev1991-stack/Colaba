@@ -63,8 +63,20 @@ def upgrade() -> None:
         ["sentiment"],
     )
 
+    # 4. Частичный UNIQUE для глобальных тегов (city IS NULL) тоже расширяем
+    #    sentiment — иначе positive- и negative-теги с одним label по нише
+    #    будут конфликтовать в UPSERT.
+    op.execute("DROP INDEX IF EXISTS ux_pain_tags_global")
+    op.execute(
+        "CREATE UNIQUE INDEX ux_pain_tags_global ON pain_tags (niche, label, sentiment) WHERE city IS NULL"
+    )
+
 
 def downgrade() -> None:
+    op.execute("DROP INDEX IF EXISTS ux_pain_tags_global")
+    op.execute(
+        "CREATE UNIQUE INDEX ux_pain_tags_global ON pain_tags (niche, label) WHERE city IS NULL"
+    )
     op.drop_index("ix_pain_tags_sentiment", table_name="pain_tags")
     op.drop_constraint(
         "uq_pain_tags_niche_city_label_sentiment", "pain_tags", type_="unique"
