@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.93.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.92.0...v1.93.0) (2026-06-16)
+
+
+### Features
+
+* **insights:** empty-state для «Сильных сторон» до запуска позитивного recluster ([2d4be0a](https://github.com/moiseev1991-stack/Colaba/commit/2d4be0abcfca9a7b8b714d55124a13554fd41f0f)), closes [#69](https://github.com/moiseev1991-stack/Colaba/issues/69)
+
 # [1.92.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.91.0...v1.92.0) (2026-06-16)
 
 
