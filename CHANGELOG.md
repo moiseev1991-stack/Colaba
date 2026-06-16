@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.90.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.3...v1.90.4) (2026-06-16)
+
+
+### Bug Fixes
+
+* **maps:** переключатели «Источник/Период» не пропадают при пустых pain-тегах ([6c45ff2](https://github.com/moiseev1991-stack/Colaba/commit/6c45ff22c881c8c9f44d4a0b92116d61ee90e944))
+
 ## [1.90.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.2...v1.90.3) (2026-06-15)
 
 
