@@ -112,8 +112,11 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
         key = ((cfg or {}).get("api_key") or "").strip()
         if key:
             return True
-        # env-fallback в client.py есть только для openai-веток.
-        if (provider_type or "").lower() == "openai" and settings.OPENAI_API_KEY:
+        # env-fallback в client.py: openai → OPENAI_API_KEY, anthropic → ANTHROPIC_API_KEY.
+        pt = (provider_type or "").lower()
+        if pt == "openai" and settings.OPENAI_API_KEY:
+            return True
+        if pt == "anthropic" and settings.ANTHROPIC_API_KEY:
             return True
         return False
 

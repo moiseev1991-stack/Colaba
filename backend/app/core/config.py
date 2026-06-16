@@ -59,6 +59,11 @@ class Settings(BaseSettings):
         default="https://api.openai.com/v1",
         description="OpenAI API base URL. Override на https://api.proxyapi.ru/openai/v1 для работы из РФ.",
     )
+    ANTHROPIC_API_KEY: str = Field(default="", description="Anthropic API key (optional)")
+    ANTHROPIC_BASE_URL: str = Field(
+        default="",
+        description="Anthropic API base URL (override). Для работы из РФ — https://api.proxyapi.ru/anthropic",
+    )
 
     # Proxy for HTML providers (Yandex, Google) — bypass blocks
     USE_PROXY: bool = Field(default=False, description="Use proxy for HTML search providers")

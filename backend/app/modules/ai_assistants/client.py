@@ -152,8 +152,12 @@ async def _vision_ollama(model: str, cfg: dict, image_b64: str, prompt: str) -> 
 async def _chat_anthropic(model: str, cfg: dict, messages: list, max_tokens: int, temperature: float) -> str:
     from anthropic import AsyncAnthropic
 
-    api_key = cfg.get("api_key") or ""
-    c = AsyncAnthropic(api_key=api_key)
+    # Симметрия с OpenAI-веткой: при пустом config.api_key падаем на env
+    # (ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL). Иначе Anthropic SDK кидает
+    # «Could not resolve authentication method» — это ронит KP /generate 422.
+    api_key = (cfg.get("api_key") or settings.ANTHROPIC_API_KEY or "")
+    base_url = cfg.get("base_url") or (settings.ANTHROPIC_BASE_URL or None)
+    c = AsyncAnthropic(api_key=api_key, base_url=base_url)
     # Anthropic: system + user/assistant. We map messages to the last user and prior assistant.
     system = ""
     last = []
@@ -178,8 +182,9 @@ async def _chat_anthropic(model: str, cfg: dict, messages: list, max_tokens: int
 async def _vision_anthropic(model: str, cfg: dict, image_b64: str, prompt: str) -> str:
     from anthropic import AsyncAnthropic
 
-    api_key = cfg.get("api_key") or ""
-    c = AsyncAnthropic(api_key=api_key)
+    api_key = (cfg.get("api_key") or settings.ANTHROPIC_API_KEY or "")
+    base_url = cfg.get("base_url") or (settings.ANTHROPIC_BASE_URL or None)
+    c = AsyncAnthropic(api_key=api_key, base_url=base_url)
     content = [
         {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": image_b64}},
         {"type": "text", "text": prompt or "Напиши только текст с картинки, без кавычек и пояснений."},

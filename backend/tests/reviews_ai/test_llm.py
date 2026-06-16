@@ -67,18 +67,29 @@ async def test_pick_assistant_id_auto_picks_haiku_for_sentiment(monkeypatch):
     monkeypatch.setitem(llm._KIND_HINTS, "sentiment", [f"isol-haiku-{uuid.uuid4().hex[:6]}"])
     haiku_marker = llm._KIND_HINTS["sentiment"][0]
 
+    # Teardown через try/finally: leftover тестовых ассистентов ранее протёк
+    # в прод-БД (id=5..8) и сломал auto-pick для KP — см. PR fix/kp-skip-unconfigured-assistants.
+    created_ids: list[int] = []
     async with AsyncSessionLocal() as db:
-        a_sonnet = AiAssistant(**_new_assistant_kwargs(
-            f"isol-sonnet-{uuid.uuid4().hex[:8]}", model="some-sonnet-model"))
-        a_haiku = AiAssistant(**_new_assistant_kwargs(
-            f"isol-target-{uuid.uuid4().hex[:8]}", model=haiku_marker))
-        db.add_all([a_sonnet, a_haiku])
-        await db.commit()
-        await db.refresh(a_haiku)
+        try:
+            a_sonnet = AiAssistant(**_new_assistant_kwargs(
+                f"isol-sonnet-{uuid.uuid4().hex[:8]}", model="some-sonnet-model"))
+            a_haiku = AiAssistant(**_new_assistant_kwargs(
+                f"isol-target-{uuid.uuid4().hex[:8]}", model=haiku_marker))
+            db.add_all([a_sonnet, a_haiku])
+            await db.commit()
+            await db.refresh(a_sonnet)
+            await db.refresh(a_haiku)
+            created_ids = [a_sonnet.id, a_haiku.id]
 
-        picked = await llm.pick_assistant_id(db, "sentiment")
-        # должен взять именно нашего haiku (никто другой с этим уникальным маркером не существует)
-        assert picked == a_haiku.id
+            picked = await llm.pick_assistant_id(db, "sentiment")
+            # должен взять именно нашего haiku (никто другой с этим уникальным маркером не существует)
+            assert picked == a_haiku.id
+        finally:
+            if created_ids:
+                from sqlalchemy import delete
+                await db.execute(delete(AiAssistant).where(AiAssistant.id.in_(created_ids)))
+                await db.commit()
 
 
 @pytest.mark.asyncio
@@ -87,16 +98,25 @@ async def test_pick_assistant_id_respects_explicit_env_name(monkeypatch):
     suffix = uuid.uuid4().hex[:8]
     target_name = f"my-favorite-{suffix}"
 
+    created_ids: list[int] = []
     async with AsyncSessionLocal() as db:
-        other = AiAssistant(**_new_assistant_kwargs(f"other-{suffix}", model="claude-haiku-4-5"))
-        target = AiAssistant(**_new_assistant_kwargs(target_name, model="some-random-model"))
-        db.add_all([other, target])
-        await db.commit()
-        await db.refresh(target)
+        try:
+            other = AiAssistant(**_new_assistant_kwargs(f"other-{suffix}", model="claude-haiku-4-5"))
+            target = AiAssistant(**_new_assistant_kwargs(target_name, model="some-random-model"))
+            db.add_all([other, target])
+            await db.commit()
+            await db.refresh(other)
+            await db.refresh(target)
+            created_ids = [other.id, target.id]
 
-        monkeypatch.setattr(settings, "REVIEWS_AI_SENTIMENT_ASSISTANT_NAME", target_name, raising=False)
-        picked = await llm.pick_assistant_id(db, "sentiment")
-        assert picked == target.id
+            monkeypatch.setattr(settings, "REVIEWS_AI_SENTIMENT_ASSISTANT_NAME", target_name, raising=False)
+            picked = await llm.pick_assistant_id(db, "sentiment")
+            assert picked == target.id
+        finally:
+            if created_ids:
+                from sqlalchemy import delete
+                await db.execute(delete(AiAssistant).where(AiAssistant.id.in_(created_ids)))
+                await db.commit()
 
 
 # ---------------------------------------------------------------------------
