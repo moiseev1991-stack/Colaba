@@ -97,16 +97,40 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
         logger.info("reviews_ai: ассистент по имени %r не найден, переключаюсь на auto-pick", explicit)
 
     hints = _KIND_HINTS[kind]
-    # выбираем первый assistant с подходящей моделью
-    candidates = list((await db.execute(
-        select(AiAssistant.id, AiAssistant.model).where(AiAssistant.model.isnot(None))
+    # выбираем первый assistant с подходящей моделью.
+    # Отсекаем «полу-настроенных»: без api_key в config И без env-fallback,
+    # они гарантированно упадут в client.py с «Could not resolve authentication
+    # method» (Anthropic) или 401 (другие). Раньше auto-pick мог выбрать
+    # тестовую запись `isol-sonnet-xxx` (provider=anthropic, api_key="") по
+    # хинту "sonnet" → KP отдавал 422 на ровном месте.
+    candidates_raw = list((await db.execute(
+        select(AiAssistant.id, AiAssistant.model, AiAssistant.provider_type, AiAssistant.config)
+        .where(AiAssistant.model.isnot(None))
     )).all())
+
+    def _is_configured(provider_type: str | None, cfg: dict | None) -> bool:
+        key = ((cfg or {}).get("api_key") or "").strip()
+        if key:
+            return True
+        # env-fallback в client.py: openai → OPENAI_API_KEY, anthropic → ANTHROPIC_API_KEY.
+        pt = (provider_type or "").lower()
+        if pt == "openai" and settings.OPENAI_API_KEY:
+            return True
+        if pt == "anthropic" and settings.ANTHROPIC_API_KEY:
+            return True
+        return False
+
+    candidates = [
+        (cid, model)
+        for cid, model, pt, cfg in candidates_raw
+        if _is_configured(pt, cfg)
+    ]
     for hint in hints:
         for cid, model in candidates:
             if model and hint in str(model).lower():
                 return int(cid)
 
-    # fallback — просто первый существующий
+    # fallback — просто первый сконфигурированный
     if candidates:
         return int(candidates[0][0])
     return None
