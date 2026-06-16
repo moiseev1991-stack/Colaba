@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.90.6](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.5...v1.90.6) (2026-06-16)
+
+
+### Bug Fixes
+
+* **dialog:** блокируем скролл body и затемняем backdrop у right-drawer ([b2543e2](https://github.com/moiseev1991-stack/Colaba/commit/b2543e2017fb3278ea8ba2b6ebabda28c47bbf02))
+
 ## [1.90.5](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.4...v1.90.5) (2026-06-16)
 
 
