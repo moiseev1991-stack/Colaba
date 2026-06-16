@@ -58,7 +58,7 @@ interface Props {
   aiAnalysis?: CompanyAnalysisOut | null;
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
-  activeSource?: 'all' | '2gis' | 'yandex_maps' | null;
+  activeSource?: 'all' | '2gis' | 'yandex_maps' | 'google_maps' | null;
 }
 
 export function MapsCompanyCard({

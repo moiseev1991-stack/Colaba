@@ -78,10 +78,23 @@ interface Props {
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'from_cache']);
 const DEFAULT_FILTER: MapSearchFilter = { sort_by: 'rating_desc' };
 
-const SOURCE_FILTER_VALUES = new Set(['all', '2gis', 'yandex_maps']);
+const SOURCE_FILTER_VALUES = new Set(['all', '2gis', 'yandex_maps', 'google_maps']);
 function parseSourceFilter(raw: string | null): MapSearchFilter['source_filter'] | undefined {
   if (!raw) return undefined;
-  return SOURCE_FILTER_VALUES.has(raw) ? (raw as 'all' | '2gis' | 'yandex_maps') : undefined;
+  return SOURCE_FILTER_VALUES.has(raw)
+    ? (raw as 'all' | '2gis' | 'yandex_maps' | 'google_maps')
+    : undefined;
+}
+
+// Маппинг шапочного источника отзывов (PainSourceFilter) в источник
+// company_sources для фильтра выдачи: 'google' (Review.source) → 'google_maps'
+// (CompanySource.source). null → 'all'. Остальные — 1:1.
+function painSourceToCompanyFilter(
+  raw: '2gis' | 'yandex_maps' | 'google' | null,
+): 'all' | '2gis' | 'yandex_maps' | 'google_maps' {
+  if (raw === null) return 'all';
+  if (raw === 'google') return 'google_maps';
+  return raw;
 }
 
 function initialFilter(
@@ -260,6 +273,19 @@ export function MapsSearchResults({
   // Используется чтобы скрыть зелёный баннер «Применён пресет с формы поиска»
   // как только юзер начал крутить фильтры (иначе баннер «застрял» и врал).
   const [filterDirty, setFilterDirty] = useState(false);
+
+  // 2026-06-16: смена источника в шапке Top-pains теперь меняет ОБА state'а —
+  // painSourceFilter (срез pain-tags) и filter.source_filter (фильтр выдачи
+  // компаний). Раньше юзер жал «Google» в шапке, ожидая увидеть Google-карточки,
+  // а в выдаче оставались 2GIS — фильтры жили независимо.
+  const handlePainSourceChange = useCallback((next: '2gis' | 'yandex_maps' | 'google' | null) => {
+    setPainSourceFilter(next);
+    setFilter((prev) => ({
+      ...prev,
+      source_filter: painSourceToCompanyFilter(next),
+    }));
+    setFilterDirty(true);
+  }, []);
 
   const handleFilterChange = useCallback((next: MapSearchFilter) => {
     setFilter(next);
@@ -957,39 +983,44 @@ export function MapsSearchResults({
                 }}
               />
             )}
-            {/* Блок ТОП-БОЛИ рендерится всегда, даже если в текущем срезе
-                источник×период не дал ни одного pain-тега — иначе переключатели
-                «Источник/Период» исчезают вместе с блоком, и юзер не может
-                переключиться обратно. Empty-state живёт внутри блока. */}
-            <RegionPainSummary
-              tags={regionPainTags}
-              niche={search.niche}
-              city={search.city}
-              activeIds={filter.pain_tag_ids ?? []}
+            {/* 2026-06-16: переключатели Источник/Период вынесены отдельной
+                компактной полосой над блоком ТОП-БОЛИ. Сам блок плиток рендерится
+                ниже только при наличии тегов — без пустого empty-state'а, чтобы
+                не создавать визуальный пробел. Клик по источнику меняет и
+                pain-tags, и фильтр выдачи компаний (см. handlePainSourceChange). */}
+            <PainHeaderControlsBar
               sourceFilter={painSourceFilter}
-              onSourceFilterChange={setPainSourceFilter}
+              onSourceFilterChange={handlePainSourceChange}
               periodDays={painPeriodDays}
               onPeriodChange={setPainPeriodDays}
-              onToggle={(id) => {
-                const current = filter.pain_tag_ids ?? [];
-                const next = current.includes(id)
-                  ? current.filter((x) => x !== id)
-                  : [...current, id];
-                setFilter((prev) => ({
-                  ...prev,
-                  pain_tag_ids: next.length > 0 ? next : null,
-                }));
-                setFilterDirty(true);
-                // Открываем/закрываем inline chart на том же кликe.
-                const tag = regionPainTags.find((t) => t.id === id) ?? null;
-                setPainTagForChart((prev) => (prev?.id === id ? null : tag));
-              }}
-              onClear={() => {
-                setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
-                setFilterDirty(true);
-                setPainTagForChart(null);
-              }}
             />
+            {regionPainTags.length > 0 && (
+              <RegionPainSummary
+                tags={regionPainTags}
+                niche={search.niche}
+                city={search.city}
+                activeIds={filter.pain_tag_ids ?? []}
+                onToggle={(id) => {
+                  const current = filter.pain_tag_ids ?? [];
+                  const next = current.includes(id)
+                    ? current.filter((x) => x !== id)
+                    : [...current, id];
+                  setFilter((prev) => ({
+                    ...prev,
+                    pain_tag_ids: next.length > 0 ? next : null,
+                  }));
+                  setFilterDirty(true);
+                  // Открываем/закрываем inline chart на том же кликe.
+                  const tag = regionPainTags.find((t) => t.id === id) ?? null;
+                  setPainTagForChart((prev) => (prev?.id === id ? null : tag));
+                }}
+                onClear={() => {
+                  setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
+                  setFilterDirty(true);
+                  setPainTagForChart(null);
+                }}
+              />
+            )}
             {/* 2026-06-12: общая динамика отзывов в нише — всегда видна,
                 независимо от выбранной плитки. По запросу юзера. */}
             <RegionPainTrendInline
@@ -1519,10 +1550,6 @@ function RegionPainSummary({
   niche,
   city,
   activeIds,
-  sourceFilter,
-  onSourceFilterChange,
-  periodDays,
-  onPeriodChange,
   onToggle,
   onClear,
 }: {
@@ -1531,12 +1558,6 @@ function RegionPainSummary({
   city: string | null;
   /** Текущий фильтр pain_tag_ids — для подсветки активных плиток. */
   activeIds: number[];
-  /** null = все источники. Сужает выборку отзывов для пересчёта occurrences. */
-  sourceFilter: '2gis' | 'yandex_maps' | 'google' | null;
-  onSourceFilterChange: (next: '2gis' | 'yandex_maps' | 'google' | null) => void;
-  /** null = за всё время. По умолчанию 90 дней. */
-  periodDays: number | null;
-  onPeriodChange: (next: number | null) => void;
   /** Клик по плитке: toggle id в фильтре списка компаний. */
   onToggle: (id: number) => void;
   /** Снять все pain-фильтры. */
@@ -1552,13 +1573,9 @@ function RegionPainSummary({
     seen.add(key);
     return true;
   });
-  // Раньше при unique.length === 0 возвращали null — блок исчезал вместе с
-  // переключателями «Источник/Период», и юзер не мог переключиться обратно
-  // на «Все» (тогглы жили внутри блока). Теперь блок остаётся, плитки
-  // подменяются empty-state'ом.
   const top = unique.slice(0, 6);
   const hasActive = activeIds.length > 0;
-  const isEmpty = top.length === 0;
+  if (top.length === 0) return null;
 
   return (
     <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -1579,85 +1596,6 @@ function RegionPainSummary({
             </button>
           )}
         </div>
-        {/* Контролы: источник отзывов + период. Меняют пересчёт occurrences. */}
-        <div className="flex flex-wrap items-center gap-2 text-[11px] normal-case tracking-normal">
-          <span className="text-slate-500 dark:text-slate-400">Источник:</span>
-          <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
-            {([
-              { v: null, label: 'Все' },
-              { v: '2gis' as const, label: '2GIS' },
-              { v: 'yandex_maps' as const, label: 'Я.Карты' },
-              { v: 'google' as const, label: 'Google' },
-            ]).map(({ v, label }) => {
-              const active = sourceFilter === v;
-              return (
-                <button
-                  key={String(v)}
-                  type="button"
-                  onClick={() => onSourceFilterChange(v)}
-                  className={
-                    'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
-                    (active
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
-                    ' border-slate-300 dark:border-slate-600'
-                  }
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <span className="text-slate-500 dark:text-slate-400">Период:</span>
-          <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
-            {([
-              { v: 30, label: '30д' },
-              { v: 90, label: '90д' },
-              { v: 365, label: 'год' },
-              { v: null, label: 'всё' },
-            ]).map(({ v, label }) => {
-              const active = periodDays === v;
-              return (
-                <button
-                  key={String(v)}
-                  type="button"
-                  onClick={() => onPeriodChange(v)}
-                  className={
-                    'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
-                    (active
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
-                    ' border-slate-300 dark:border-slate-600'
-                  }
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {isEmpty ? (
-          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-slate-300 bg-slate-50/50 px-3 py-2 text-[12px] text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
-            <span>
-              Для выбранного источника
-              {sourceFilter ? ` («${sourceFilter === '2gis' ? '2GIS' : sourceFilter === 'yandex_maps' ? 'Я.Карты' : 'Google'}»)` : ''}
-              {periodDays != null ? ` за последние ${periodDays} дн.` : ' за всё время'}
-              {' '}пока нет pain-тегов.
-            </span>
-            {(sourceFilter || periodDays !== null) && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (sourceFilter) onSourceFilterChange(null);
-                  if (periodDays !== null) onPeriodChange(null);
-                }}
-                className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                Сбросить источник и период
-              </button>
-            )}
-          </div>
-        ) : (
         <div className="flex flex-wrap gap-1.5">
           {top.map((t) => {
             const active = activeIds.includes(t.id);
@@ -1702,7 +1640,87 @@ function RegionPainSummary({
             );
           })}
         </div>
-        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 2026-06-16: компактная полоса с переключателями «Источник / Период».
+ * Вынесена из блока «ТОП-БОЛИ», чтобы оставаться видимой даже когда
+ * для выбранного среза нет pain-тегов (раньше тогглы исчезали вместе
+ * с блоком, и юзер не мог переключиться обратно).
+ */
+function PainHeaderControlsBar({
+  sourceFilter,
+  onSourceFilterChange,
+  periodDays,
+  onPeriodChange,
+}: {
+  sourceFilter: '2gis' | 'yandex_maps' | 'google' | null;
+  onSourceFilterChange: (next: '2gis' | 'yandex_maps' | 'google' | null) => void;
+  periodDays: number | null;
+  onPeriodChange: (next: number | null) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1.5 text-[11px] dark:border-slate-700 dark:bg-slate-900">
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        Источник:
+      </span>
+      <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+        {([
+          { v: null, label: 'Все' },
+          { v: '2gis' as const, label: '2GIS' },
+          { v: 'yandex_maps' as const, label: 'Я.Карты' },
+          { v: 'google' as const, label: 'Google' },
+        ]).map(({ v, label }) => {
+          const active = sourceFilter === v;
+          return (
+            <button
+              key={String(v)}
+              type="button"
+              onClick={() => onSourceFilterChange(v)}
+              className={
+                'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
+                (active
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
+                ' border-slate-300 dark:border-slate-600'
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        Период:
+      </span>
+      <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+        {([
+          { v: 30, label: '30д' },
+          { v: 90, label: '90д' },
+          { v: 365, label: 'год' },
+          { v: null, label: 'всё' },
+        ]).map(({ v, label }) => {
+          const active = periodDays === v;
+          return (
+            <button
+              key={String(v)}
+              type="button"
+              onClick={() => onPeriodChange(v)}
+              className={
+                'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
+                (active
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
+                ' border-slate-300 dark:border-slate-600'
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

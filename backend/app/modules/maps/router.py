@@ -264,7 +264,7 @@ async def list_search_companies(
     review_text_contains_any: Optional[list[str]] = Query(default=None),
     review_text_excludes_any: Optional[list[str]] = Query(default=None),
     # Multi-source фильтр (ТЗ 2026-06-04): сегмент-переключатель в шапке.
-    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
+    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps|google_maps)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -390,7 +390,7 @@ async def get_search_heatmap(
     request: Request,
     search_id: int,
     layer: str = Query(default="density", regex="^(density|pain|website|rating|wealth|pain_type)$"),
-    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps)$"),
+    source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps|google_maps)$"),
     # §2 ТЗ 2026-06-10: pain_type-слой требует конкретный pain_tag_id.
     pain_tag_id: Optional[int] = Query(default=None),
     user_id: int = Depends(get_current_user_id),
