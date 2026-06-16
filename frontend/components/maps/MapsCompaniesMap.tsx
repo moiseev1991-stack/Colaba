@@ -45,7 +45,7 @@ interface Props {
   searchId?: number;
   /** Source-фильтр из шапки выдачи — пробрасываем в /heatmap для синхронизации
    *  набора компаний между маркерами и тепловой картой. */
-  activeSource?: 'all' | '2gis' | 'yandex_maps' | null;
+  activeSource?: 'all' | '2gis' | 'yandex_maps' | 'google_maps' | null;
 }
 
 type LayerOption = HeatmapLayer | 'off';

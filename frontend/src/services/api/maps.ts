@@ -60,7 +60,7 @@ export interface HeatmapOut {
 export async function getSearchHeatmap(
   searchId: number,
   layer: HeatmapLayer,
-  source_filter?: 'all' | '2gis' | 'yandex_maps' | null,
+  source_filter?: 'all' | '2gis' | 'yandex_maps' | 'google_maps' | null,
   painTagId?: number | null,
 ): Promise<HeatmapOut> {
   const params = new URLSearchParams({ layer });
@@ -113,10 +113,10 @@ export interface MapSearchFilter {
   min_revenue?: number | null;
   /** Возраст компании в полных годах от registration_date. */
   min_age_years?: number | null;
-  /** Multi-source (ТЗ 2026-06-04): сегмент-переключатель в шапке выдачи.
-   *  'all' / null — все источники. '2gis'/'yandex_maps' — EXISTS-фильтр
+  /** Multi-source (ТЗ 2026-06-04, расш. 2026-06-16): сегмент-переключатель в шапке выдачи.
+   *  'all' / null — все источники. '2gis'/'yandex_maps'/'google_maps' — EXISTS-фильтр
    *  по company_sources. Склеенные мультисурс-компании остаются в обоих. */
-  source_filter?: 'all' | '2gis' | 'yandex_maps' | null;
+  source_filter?: 'all' | '2gis' | 'yandex_maps' | 'google_maps' | null;
 }
 
 export type SearchMode = 'city' | 'radius';

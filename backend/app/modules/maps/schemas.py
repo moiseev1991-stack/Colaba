@@ -122,10 +122,10 @@ class MapSearchFilter(BaseModel):
     min_age_years: int | None = None
 
     # Multi-source фильтр (ТЗ 2026-06-04): глобальный переключатель
-    # в шапке выдачи «Все · 2GIS · Я.Карты». EXISTS-фильтр по company_sources.
-    # 'all'/None — без фильтра. '2gis'/'yandex_maps' — только компании с
+    # в шапке выдачи «Все · 2GIS · Я.Карты · Google». EXISTS-фильтр по company_sources.
+    # 'all'/None — без фильтра. '2gis'/'yandex_maps'/'google_maps' — только компании с
     # соответствующим source-профилем (склеенные мульти-компании остаются).
-    source_filter: Literal["all", "2gis", "yandex_maps"] | None = None
+    source_filter: Literal["all", "2gis", "yandex_maps", "google_maps"] | None = None
 
     # 2026-06-12: фильтр «есть ЛПР» (юзер просил видеть в сайдбаре).
     # True — компания должна иметь руководителя: либо CompanyLegal.director_name

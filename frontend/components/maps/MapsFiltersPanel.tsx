@@ -838,7 +838,7 @@ export function MapsFiltersPanel({
         <Select
           value={value.source_filter ?? 'all'}
           onChange={(e) => {
-            const v = e.target.value as 'all' | '2gis' | 'yandex_maps';
+            const v = e.target.value as 'all' | '2gis' | 'yandex_maps' | 'google_maps';
             recordManualOverride('source_filter', v);
             onChange({ ...value, source_filter: v });
           }}
@@ -846,6 +846,7 @@ export function MapsFiltersPanel({
           <option value="all">Все источники</option>
           <option value="2gis">Только 2GIS</option>
           <option value="yandex_maps">Только Я.Карты</option>
+          <option value="google_maps">Только Google</option>
         </Select>
       </div>
 
