@@ -23,6 +23,8 @@ interface Props {
   onPainClick?: (painTagId: number) => void;
   /** Текущие активные pain_tag_ids — для подсветки строк. */
   activePainTagIds?: number[];
+  /** 2026-06-16: 'negative' (default) = боли клиентов; 'positive' = сильные стороны. */
+  sentiment?: 'negative' | 'positive';
 }
 
 export function NicheBenchmarkOverviewBlock({
@@ -30,6 +32,7 @@ export function NicheBenchmarkOverviewBlock({
   city,
   onPainClick,
   activePainTagIds,
+  sentiment = 'negative',
 }: Props) {
   const [data, setData] = useState<DemandIndexOut | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +40,7 @@ export function NicheBenchmarkOverviewBlock({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getDemandIndex(niche, city)
+    getDemandIndex(niche, city, sentiment)
       .then((d) => {
         if (!cancelled) setData(d);
       })
@@ -50,7 +53,7 @@ export function NicheBenchmarkOverviewBlock({
     return () => {
       cancelled = true;
     };
-  }, [niche, city]);
+  }, [niche, city, sentiment]);
 
   if (loading) return null;
   if (
@@ -69,7 +72,9 @@ export function NicheBenchmarkOverviewBlock({
     <div className="mt-2 rounded border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
         <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Сравнение с нишей
+          {sentiment === 'positive'
+            ? 'Сравнение с нишей · сильные стороны'
+            : 'Сравнение с нишей · боли'}
         </span>
         <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
           {data.niche}{cityLabel}

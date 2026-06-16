@@ -34,7 +34,10 @@ class PainTag(Base):
 
     __tablename__ = "pain_tags"
     __table_args__ = (
-        UniqueConstraint("niche", "city", "label", name="uq_pain_tags_niche_city_label"),
+        UniqueConstraint(
+            "niche", "city", "label", "sentiment",
+            name="uq_pain_tags_niche_city_label_sentiment",
+        ),
     )
 
     id = Column(Integer, primary_key=True)
@@ -50,6 +53,11 @@ class PainTag(Base):
     examples = Column(JSONB)
 
     status = Column(String(20), nullable=False, default="active")
+    # 'negative' = боль / жалоба клиента. 'positive' = сильная сторона /
+    # то, что хвалят. Добавлено миграцией 035 (2026-06-16). До неё все
+    # теги были негативные (recluster кластеризовал только отзывы с
+    # sentiment='negative').
+    sentiment = Column(String(10), nullable=False, server_default="negative")
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

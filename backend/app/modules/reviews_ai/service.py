@@ -483,14 +483,17 @@ async def recluster_pains_for_niche(
             cluster_size=len(member_idx),
             examples=examples,
             status="active",
+            sentiment="negative",
             created_at=now, updated_at=now,
         )
         # ON CONFLICT по основному UNIQUE — если city не NULL
-        # NB: для (niche, city=NULL, label) используется частичный индекс ux_pain_tags_global;
+        # NB: для (niche, city=NULL, label, sentiment) используется частичный индекс ux_pain_tags_global;
         # SQLAlchemy/pg_insert с on_conflict не умеет красиво работать с частичными индексами по-разному
         # для двух случаев, поэтому для упрощения — на конфликт основного UNIQUE.
+        # После миграции 035 (2026-06-16) основной UNIQUE расширен sentiment-колонкой,
+        # чтобы один и тот же label мог сосуществовать в negative- и positive-наборах.
         ins = ins.on_conflict_do_update(
-            index_elements=["niche", "city", "label"],
+            index_elements=["niche", "city", "label", "sentiment"],
             set_={
                 "description": ins.excluded.description,
                 "centroid": centroid.tolist(),

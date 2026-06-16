@@ -629,9 +629,11 @@ export interface DemandIndexOut {
 export async function getDemandIndex(
   niche: string,
   city?: string | null,
+  sentiment: 'negative' | 'positive' = 'negative',
 ): Promise<DemandIndexOut> {
   const params = new URLSearchParams({ niche });
   if (city) params.set('city', city);
+  if (sentiment !== 'negative') params.set('sentiment', sentiment);
   const response = await apiClient.get<DemandIndexOut>(
     `/maps/insights/demand-index?${params.toString()}`,
   );
@@ -677,6 +679,8 @@ export type PainTagsFilter = {
   from?: string;
   /** ISO дата ('YYYY-MM-DD') — верхняя граница posted_at. */
   to?: string;
+  /** 'negative' (default) = боли клиентов. 'positive' = сильные стороны / что хвалят. */
+  sentiment?: 'negative' | 'positive';
 };
 
 export async function listPainTags(
@@ -689,6 +693,9 @@ export async function listPainTags(
   if (filter?.source) params.set('source', filter.source);
   if (filter?.from) params.set('from', filter.from);
   if (filter?.to) params.set('to', filter.to);
+  if (filter?.sentiment && filter.sentiment !== 'negative') {
+    params.set('sentiment', filter.sentiment);
+  }
   const response = await apiClient.get<PainTagOut[]>(`/maps/pain-tags?${params.toString()}`);
   return response.data;
 }
