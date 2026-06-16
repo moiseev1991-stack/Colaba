@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.92.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.91.0...v1.92.0) (2026-06-16)
+
+
+### Bug Fixes
+
+* **reviews_ai:** обновить on_conflict в recluster под новый UNIQUE с sentiment ([98d1f08](https://github.com/moiseev1991-stack/Colaba/commit/98d1f08df0e5ca4975559478129d566791a71b08))
+
+
+### Features
+
+* **insights:** каркас позитивных pain-tags (sentiment toggle Боли/Сильные стороны) ([7be1c36](https://github.com/moiseev1991-stack/Colaba/commit/7be1c363fed644d0354e3bb02dd0176751a1d04e))
+
 # [1.91.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.90.6...v1.91.0) (2026-06-16)
 
 
