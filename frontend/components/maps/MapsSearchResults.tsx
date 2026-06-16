@@ -957,37 +957,39 @@ export function MapsSearchResults({
                 }}
               />
             )}
-            {regionPainTags.length > 0 && (
-              <RegionPainSummary
-                tags={regionPainTags}
-                niche={search.niche}
-                city={search.city}
-                activeIds={filter.pain_tag_ids ?? []}
-                sourceFilter={painSourceFilter}
-                onSourceFilterChange={setPainSourceFilter}
-                periodDays={painPeriodDays}
-                onPeriodChange={setPainPeriodDays}
-                onToggle={(id) => {
-                  const current = filter.pain_tag_ids ?? [];
-                  const next = current.includes(id)
-                    ? current.filter((x) => x !== id)
-                    : [...current, id];
-                  setFilter((prev) => ({
-                    ...prev,
-                    pain_tag_ids: next.length > 0 ? next : null,
-                  }));
-                  setFilterDirty(true);
-                  // Открываем/закрываем inline chart на том же кликe.
-                  const tag = regionPainTags.find((t) => t.id === id) ?? null;
-                  setPainTagForChart((prev) => (prev?.id === id ? null : tag));
-                }}
-                onClear={() => {
-                  setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
-                  setFilterDirty(true);
-                  setPainTagForChart(null);
-                }}
-              />
-            )}
+            {/* Блок ТОП-БОЛИ рендерится всегда, даже если в текущем срезе
+                источник×период не дал ни одного pain-тега — иначе переключатели
+                «Источник/Период» исчезают вместе с блоком, и юзер не может
+                переключиться обратно. Empty-state живёт внутри блока. */}
+            <RegionPainSummary
+              tags={regionPainTags}
+              niche={search.niche}
+              city={search.city}
+              activeIds={filter.pain_tag_ids ?? []}
+              sourceFilter={painSourceFilter}
+              onSourceFilterChange={setPainSourceFilter}
+              periodDays={painPeriodDays}
+              onPeriodChange={setPainPeriodDays}
+              onToggle={(id) => {
+                const current = filter.pain_tag_ids ?? [];
+                const next = current.includes(id)
+                  ? current.filter((x) => x !== id)
+                  : [...current, id];
+                setFilter((prev) => ({
+                  ...prev,
+                  pain_tag_ids: next.length > 0 ? next : null,
+                }));
+                setFilterDirty(true);
+                // Открываем/закрываем inline chart на том же кликe.
+                const tag = regionPainTags.find((t) => t.id === id) ?? null;
+                setPainTagForChart((prev) => (prev?.id === id ? null : tag));
+              }}
+              onClear={() => {
+                setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
+                setFilterDirty(true);
+                setPainTagForChart(null);
+              }}
+            />
             {/* 2026-06-12: общая динамика отзывов в нише — всегда видна,
                 независимо от выбранной плитки. По запросу юзера. */}
             <RegionPainTrendInline
@@ -1550,9 +1552,13 @@ function RegionPainSummary({
     seen.add(key);
     return true;
   });
-  if (unique.length === 0) return null;
+  // Раньше при unique.length === 0 возвращали null — блок исчезал вместе с
+  // переключателями «Источник/Период», и юзер не мог переключиться обратно
+  // на «Все» (тогглы жили внутри блока). Теперь блок остаётся, плитки
+  // подменяются empty-state'ом.
   const top = unique.slice(0, 6);
   const hasActive = activeIds.length > 0;
+  const isEmpty = top.length === 0;
 
   return (
     <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -1630,6 +1636,28 @@ function RegionPainSummary({
             })}
           </div>
         </div>
+        {isEmpty ? (
+          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-slate-300 bg-slate-50/50 px-3 py-2 text-[12px] text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
+            <span>
+              Для выбранного источника
+              {sourceFilter ? ` («${sourceFilter === '2gis' ? '2GIS' : sourceFilter === 'yandex_maps' ? 'Я.Карты' : 'Google'}»)` : ''}
+              {periodDays != null ? ` за последние ${periodDays} дн.` : ' за всё время'}
+              {' '}пока нет pain-тегов.
+            </span>
+            {(sourceFilter || periodDays !== null) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (sourceFilter) onSourceFilterChange(null);
+                  if (periodDays !== null) onPeriodChange(null);
+                }}
+                className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Сбросить источник и период
+              </button>
+            )}
+          </div>
+        ) : (
         <div className="flex flex-wrap gap-1.5">
           {top.map((t) => {
             const active = activeIds.includes(t.id);
@@ -1674,6 +1702,7 @@ function RegionPainSummary({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );
