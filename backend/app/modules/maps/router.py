@@ -2133,10 +2133,15 @@ async def admin_recompute_lead_temperature(
 async def admin_recluster_niche(
     request: Request,
     search_id: int = Query(...),
+    sentiment: str = Query(
+        "negative",
+        regex="^(negative|positive)$",
+        description="negative = боли, positive = сильные стороны",
+    ),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Ручной триггер AI-разбора болей для ниши/города поиска.
+    """Ручной триггер AI-разбора болей/сильных сторон для ниши/города поиска.
 
     Зачем: cron `recluster_popular_niches` запускает recluster раз в сутки
     только для top-30 (niche, city) по reviews. Для редких или свежих
@@ -2147,6 +2152,12 @@ async def admin_recluster_niche(
     Этот endpoint дёргает `recluster_pains_for_niche_task` для конкретной
     ниши/города поиска. После завершения (1-3 мин) `top_pains` у всех
     компаний этой ниши заполнится и UI покажет pain-tags.
+
+    sentiment='positive' (2026-06-18): аналогично для сильных сторон —
+    отдельный набор LLM-кластеров с STRENGTH_NAMING_PROMPT. UI toggle
+    «Боли / Сильные стороны» (миграция 035) подтянет нужный набор
+    автоматически. positive-теги хранятся отдельно от negative и не
+    конфликтуют по UNIQUE (расширенный констрейнт включает sentiment).
     """
     search = await _get_owned_search(db, search_id, user_id)
     if not search.niche or not search.city:
@@ -2207,6 +2218,7 @@ async def admin_recluster_niche(
                 "niche": search.niche,
                 "city": search.city,
                 "company_ids": company_ids,
+                "sentiment": sentiment,
             },
             countdown=countdown_sec,
         )
@@ -2221,10 +2233,12 @@ async def admin_recluster_niche(
         "queued": True,
         "niche": search.niche,
         "city": search.city,
+        "sentiment": sentiment,
         "companies_queued_for_analyze": len(company_ids),
         "hint": (
             f"Запущено: sentiment + embeddings, затем через {countdown_sec}с — "
-            f"кластеризация. Общее время ~{2 if countdown_sec < 30 else 4} минуты."
+            f"кластеризация {'сильных сторон' if sentiment == 'positive' else 'болей'}. "
+            f"Общее время ~{2 if countdown_sec < 30 else 4} минуты."
         ),
     }
 

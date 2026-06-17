@@ -121,13 +121,24 @@ async def compute_embeddings(db: AsyncSession, review_ids: list[int]) -> int:
 # ---------------------------------------------------------------------------
 
 
-async def _pain_tags_for_niche(db: AsyncSession, niche: str, city: str | None) -> list[PainTag]:
-    """Активные pain_tags для (niche, city) — а также глобальные (city=NULL) для этой ниши."""
+async def _pain_tags_for_niche(
+    db: AsyncSession,
+    niche: str,
+    city: str | None,
+    sentiment: str = "negative",
+) -> list[PainTag]:
+    """Активные pain_tags для (niche, city, sentiment) — а также глобальные
+    (city=NULL) для этой ниши и sentiment.
+
+    2026-06-18: фильтр по sentiment добавлен для positive-recluster'а —
+    иначе match positive-отзывов вытаскивал бы и negative-теги.
+    """
     q = (
         select(PainTag)
         .where(
             PainTag.niche == niche,
             PainTag.status == "active",
+            PainTag.sentiment == sentiment,
         )
     )
     if city is not None:
@@ -143,6 +154,7 @@ async def match_reviews_to_pain_tags(
     threshold: float | None = None,
     force_niche: str | None = None,
     force_city: str | None = None,
+    force_sentiment: str = "negative",
 ) -> dict[int, list[int]]:
     """Для каждого review_id, для которого есть embedding, ищет ближайшие pain_tags
     той же ниши (и города компании или глобальные для ниши) через cosine similarity.
@@ -157,23 +169,34 @@ async def match_reviews_to_pain_tags(
     не совпадает с search.niche («стоматология»), и без переопределения
     match сматчит отзывы только с тегами «старой» ниши, а свежесозданные
     теги нужной ниши останутся неприсвоенными.
+
+    force_sentiment ('negative' | 'positive') — какой набор тегов матчим.
+    Для positive-режима reviews-фильтр инвертируется: пропускаем только
+    Review.sentiment='positive' (без NULL/neutral), чтобы в positive
+    company_pain_scores не лезли «4 звезды + жалоба в тексте».
     """
     if not review_ids:
         return {}
+    if force_sentiment not in ("negative", "positive"):
+        raise ValueError(f"match: invalid force_sentiment={force_sentiment!r}")
     threshold = threshold if threshold is not None else settings.REVIEWS_AI_PAIN_MATCH_THRESHOLD
+    is_positive = force_sentiment == "positive"
 
     # Берём reviews с embedding + niche/city компании + raw_text (для top_quote).
     #
-    # ВАЖНО: пропускаем positive-отзывы. Pain-теги — это «боли клиентов», и
-    # позитивные отзывы туда привязываться не должны: cosine-similarity по
-    # embedding'у легко даёт высокий sim между pain-тегом «Качество еды и
-    # сервиса» и позитивным «Очень вкусная кухня, вежливый персонал», и тогда
-    # такой positive-отзыв становится top_quote pain-тега → в UI карточки
-    # под красным «негатив 19» висит благодарственная цитата. Аудит ловил.
+    # negative-режим: пропускаем positive-отзывы (см. историю — на проде
+    # ловили «благодарственная цитата под красным негативом»). NULL-sentiment
+    # пускаем как раньше.
     #
-    # Условие `sentiment != 'positive'` — а не `IN ('negative','neutral')`,
-    # потому что у части старых отзывов sentiment ещё NULL (AI-пайплайн не
-    # прогонял), и их terять нельзя — пусть проходят как раньше.
+    # positive-режим: строго sentiment='positive' — без NULL/neutral. Иначе
+    # «4 звезды + жалоба» окажется под positive-тегом и сломает достоверность
+    # «сильных сторон».
+    if is_positive:
+        review_sentiment_filter = Review.sentiment == "positive"
+    else:
+        review_sentiment_filter = or_(
+            Review.sentiment.is_(None), Review.sentiment != "positive"
+        )
     rows = list((await db.execute(
         select(
             Review.id, Review.company_id, Review.embedding, Review.raw_text,
@@ -183,7 +206,7 @@ async def match_reviews_to_pain_tags(
         .where(
             Review.id.in_(review_ids),
             Review.embedding.isnot(None),
-            or_(Review.sentiment.is_(None), Review.sentiment != "positive"),
+            review_sentiment_filter,
         )
     )).all())
     if not rows:
@@ -203,7 +226,7 @@ async def match_reviews_to_pain_tags(
     for (niche, city), bucket in by_niche_city.items():
         if not niche:
             continue
-        tags = await _pain_tags_for_niche(db, niche, city)
+        tags = await _pain_tags_for_niche(db, niche, city, sentiment=force_sentiment)
         tags_with_c = [(t, np.asarray(list(t.centroid), dtype=np.float64))
                        for t in tags if t.centroid is not None]
         if not tags_with_c:
@@ -348,11 +371,23 @@ async def _archive_unused_pain_tags(
     niche: str,
     city: str | None,
     keep_ids: set[int],
+    sentiment: str = "negative",
 ) -> None:
-    """Помечает archived все active pain_tags данной (niche, city) кроме keep_ids."""
+    """Помечает archived все active pain_tags данной (niche, city, sentiment)
+    кроме keep_ids.
+
+    2026-06-18: фильтр по sentiment добавлен для positive-recluster'а.
+    Без него запуск positive-recluster архивировал бы все negative pain-tags
+    (и наоборот) — UI бы лишился существующих болей при первом же прогоне
+    «Сильных сторон».
+    """
     q = (
         update(PainTag)
-        .where(PainTag.niche == niche, PainTag.status == "active")
+        .where(
+            PainTag.niche == niche,
+            PainTag.status == "active",
+            PainTag.sentiment == sentiment,
+        )
         .values(status="archived", updated_at=datetime.now(timezone.utc))
     )
     if city is None:
@@ -370,12 +405,13 @@ async def recluster_pains_for_niche(
     city: str | None = None,
     min_cluster_size: int | None = None,
     company_ids: list[int] | None = None,
+    sentiment: str = "negative",
 ) -> int:
-    """1. Берём все reviews этой ниши+города с embeddings.
+    """1. Берём все reviews этой ниши+города с embeddings (фильтр по sentiment).
     2. HDBSCAN.
     3. Для каждого кластера: centroid + sample + LLM-name → UPSERT pain_tags.
-    4. Старые активные pain_tags этой ниши (не в новом наборе) → archived.
-    5. Сбрасываем review_pain_tags / company_pain_scores этой ниши и матчим заново.
+    4. Старые активные pain_tags этой ниши+sentiment (не в новом наборе) → archived.
+    5. Сбрасываем review_pain_tags / company_pain_scores этой ниши+sentiment и матчим заново.
 
     Если передан `company_ids` — фильтруем reviews ровно по этим компаниям
     (а не по Company.niche). Это нужно когда admin/recluster-niche
@@ -384,25 +420,40 @@ async def recluster_pains_for_niche(
     а юзер искал «стоматология») — фильтр по niche в этом случае давал 0
     отзывов, recluster тихо ничего не создавал, UI висел на 70%.
 
+    2026-06-18: параметр `sentiment` ('negative' | 'positive') разделяет
+    «боли» и «сильные стороны». При sentiment='positive':
+      - фильтр reviews: только Review.sentiment='positive' (без rating-fallback,
+        чтобы не пускать «4 звезды + жалоба в тексте» в позитив)
+      - LLM-naming: STRENGTH_NAMING_PROMPT через call_llm_strength_naming
+      - PainTag.sentiment='positive', архив затрагивает только positive-теги
+        этой ниши, negative остаются нетронутыми
+    UI с toggle «Боли / Сильные стороны» (PR #69) сам подтянет нужный
+    набор по query-param `sentiment` в /maps/pain-tags.
+
     Возвращает количество созданных/обновлённых тегов.
     """
+    if sentiment not in ("negative", "positive"):
+        raise ValueError(f"recluster: invalid sentiment={sentiment!r}")
+    is_positive = sentiment == "positive"
     min_cs = min_cluster_size if min_cluster_size is not None else settings.REVIEWS_AI_MIN_CLUSTER_SIZE
 
     # 1. Reviews этой ниши+города с embedding (либо по company_ids — см. docstring)
     #
-    # ВАЖНО: исключаем позитивные отзывы из кластеризации. Иначе HDBSCAN/kmeans
-    # создаёт кластеры из благодарностей → LLM-naming даёт им позитивные label
-    # («Качество стоматологических услуг», «Профессионализм врачей»), и эти теги
-    # попадают в БЛОК БОЛИ под красной рамкой. Полный бред в UI.
-    #
-    # Условие: sentiment явно negative/neutral, либо sentiment ещё NULL
+    # negative-режим: sentiment явно negative/neutral, либо sentiment ещё NULL
     # (AI-пайплайн не отработал), но rating ≤ 3 как fallback. Так мы не теряем
     # старые отзывы без AI-разметки, но и не пускаем явные «5 звёзд → positive»
-    # в кластеризацию.
-    pain_filter = or_(
-        Review.sentiment.in_(["negative", "neutral"]),
-        and_(Review.sentiment.is_(None), Review.rating <= 3),
-    )
+    # в кластеризацию болей.
+    #
+    # positive-режим: строго Review.sentiment='positive'. rating-fallback тут
+    # был бы опаснее — отзыв «5 звёзд, но в тексте «спасибо что не убили»»
+    # содержит негатив, который сломает позитивный кластер.
+    if is_positive:
+        pain_filter = Review.sentiment == "positive"
+    else:
+        pain_filter = or_(
+            Review.sentiment.in_(["negative", "neutral"]),
+            and_(Review.sentiment.is_(None), Review.rating <= 3),
+        )
     base = (
         select(Review.id, Review.raw_text, Review.embedding, Review.company_id)
         .where(Review.embedding.isnot(None), pain_filter)
@@ -418,15 +469,15 @@ async def recluster_pains_for_niche(
             base = base.where(Company.city == city)
     rows = list((await db.execute(base)).all())
     logger.info(
-        "recluster %r/%r: взяли %d non-positive reviews с embedding (company_ids=%s, min_cs=%d)",
-        niche, city, len(rows),
+        "recluster %r/%r [%s]: взяли %d reviews с embedding (company_ids=%s, min_cs=%d)",
+        niche, city, sentiment, len(rows),
         f"{len(company_ids)} ids" if company_ids else "by Company.niche",
         min_cs,
     )
     if len(rows) < min_cs:
         logger.warning(
-            "recluster %r/%r: ABORT — только %d reviews с embedding, нужно ≥%d",
-            niche, city, len(rows), min_cs,
+            "recluster %r/%r [%s]: ABORT — только %d reviews с embedding, нужно ≥%d",
+            niche, city, sentiment, len(rows), min_cs,
         )
         return 0
 
@@ -436,15 +487,17 @@ async def recluster_pains_for_niche(
     cluster_ids = sorted({int(l) for l in labels if l >= 0})
     if not cluster_ids:
         logger.warning(
-            "recluster %r/%r: ABORT — кластеризация (HDBSCAN+kmeans fallback) вернула 0 кластеров на %d embeddings",
-            niche, city, len(rows),
+            "recluster %r/%r [%s]: ABORT — кластеризация (HDBSCAN+kmeans fallback) вернула 0 кластеров на %d embeddings",
+            niche, city, sentiment, len(rows),
         )
-        await _archive_unused_pain_tags(db, niche, city, keep_ids=set())
+        await _archive_unused_pain_tags(
+            db, niche, city, keep_ids=set(), sentiment=sentiment
+        )
         await db.commit()
         return 0
     logger.info(
-        "recluster %r/%r: нашли %d кластеров (размеры: %s)",
-        niche, city, len(cluster_ids),
+        "recluster %r/%r [%s]: нашли %d кластеров (размеры: %s)",
+        niche, city, sentiment, len(cluster_ids),
         ", ".join(str(int(np.sum(labels == cid))) for cid in cluster_ids[:10]),
     )
 
@@ -462,13 +515,17 @@ async def recluster_pains_for_niche(
         sample_indices = member_idx if len(member_idx) <= 10 else rng.sample(member_idx, 10)
         sample_texts = [rows[i][1] for i in sample_indices if rows[i][1]]
 
-        named = await llm.call_llm_cluster_naming(db, niche, sample_texts)
+        if is_positive:
+            named = await llm.call_llm_strength_naming(db, niche, sample_texts)
+        else:
+            named = await llm.call_llm_cluster_naming(db, niche, sample_texts)
         if named:
             label = named["label"]
             description = named.get("description") or None
         else:
             # Fallback label, если LLM недоступен
-            label = f"Кластер {cidx + 1}"
+            prefix = "Сильная сторона" if is_positive else "Кластер"
+            label = f"{prefix} {cidx + 1}"
             description = None
 
         examples = [
@@ -483,7 +540,7 @@ async def recluster_pains_for_niche(
             cluster_size=len(member_idx),
             examples=examples,
             status="active",
-            sentiment="negative",
+            sentiment=sentiment,
             created_at=now, updated_at=now,
         )
         # ON CONFLICT по основному UNIQUE — если city не NULL
@@ -515,27 +572,40 @@ async def recluster_pains_for_niche(
         )
         upserted_ids.add(int(tag_id))
 
-    # 4. Архивируем неиспользуемые теги этой (niche, city)
-    await _archive_unused_pain_tags(db, niche, city, keep_ids=upserted_ids)
+    # 4. Архивируем неиспользуемые теги этой (niche, city, sentiment).
+    # negative-recluster не трогает positive-теги и наоборот — каждый
+    # набор живёт своей жизнью.
+    await _archive_unused_pain_tags(
+        db, niche, city, keep_ids=upserted_ids, sentiment=sentiment
+    )
 
-    # 5. Чистим связки для этой ниши и матчим заново
+    # 5. Чистим связки для этой ниши+sentiment и матчим заново.
+    # review_pain_tags чистим только для связок с тегами текущего sentiment —
+    # negative-связки positive-recluster'а уцелеют (и наоборот).
     review_ids = [int(r[0]) for r in rows]
     if review_ids:
         await db.execute(
-            text("DELETE FROM review_pain_tags WHERE review_id = ANY(:ids)"),
-            {"ids": review_ids},
+            text(
+                "DELETE FROM review_pain_tags WHERE review_id = ANY(:ids) "
+                "AND pain_tag_id IN ("
+                "  SELECT id FROM pain_tags WHERE niche = :n AND sentiment = :s"
+                ")"
+            ),
+            {"ids": review_ids, "n": niche, "s": sentiment},
         )
         # company_pain_scores: чистим по компаниям, чьи отзывы кластеризовали,
-        # — связки с pain_tags этой search-niche, чтобы пересчитать.
+        # — связки с pain_tags этой search-niche+sentiment, чтобы пересчитать.
         # (Локальное имя — отдельное от параметра company_ids, который пришёл
         # в функцию извне; именно reviews-set даёт нам правильный список.)
         member_company_ids = list({int(r[3]) for r in rows})
         await db.execute(
             text(
                 "DELETE FROM company_pain_scores WHERE company_id = ANY(:ids) "
-                "AND pain_tag_id IN (SELECT id FROM pain_tags WHERE niche = :n)"
+                "AND pain_tag_id IN ("
+                "  SELECT id FROM pain_tags WHERE niche = :n AND sentiment = :s"
+                ")"
             ),
-            {"ids": member_company_ids, "n": niche},
+            {"ids": member_company_ids, "n": niche, "s": sentiment},
         )
 
     await db.commit()
@@ -549,10 +619,11 @@ async def recluster_pains_for_niche(
         review_ids,
         force_niche=niche if company_ids else None,
         force_city=city if company_ids else None,
+        force_sentiment=sentiment,
     )
     logger.info(
-        "recluster %r/%r: DONE — %d тегов upserted, %d reviews сматчено к тегам",
-        niche, city, len(upserted_ids), len(assigned),
+        "recluster %r/%r [%s]: DONE — %d тегов upserted, %d reviews сматчено к тегам",
+        niche, city, sentiment, len(upserted_ids), len(assigned),
     )
 
     return len(upserted_ids)

@@ -32,6 +32,7 @@ from app.modules.reviews_ai.prompts import (
     OUTREACH_LANGUAGE_HINTS,
     OUTREACH_TONE_HINTS,
     SENTIMENT_PROMPT,
+    STRENGTH_NAMING_PROMPT,
     TEAM_EXTRACT_PROMPT,
 )
 
@@ -279,6 +280,119 @@ async def call_llm_cluster_naming(
             if kw_label:
                 logger.info("cluster_naming: fallback label из desc: '%s'", kw_label)
                 label = kw_label
+
+    return {"label": label[:200], "description": desc}
+
+
+# Префиксы абстрактных positive-label'ов — отвергаем как пустые усиления.
+_ABSTRACT_STRENGTH_PATTERNS = (
+    "качество ",
+    "качества ",
+    "хорошее ",
+    "хороший ",
+    "хорошая ",
+    "отличное ",
+    "отличный ",
+    "отличная ",
+    "положительные отзывы",
+    "положительный отзыв",
+    "обслуживани",
+    "клиентский опыт",
+    "клиентского опыта",
+    "сервис ",
+    "сервиса ",
+)
+
+
+def _is_abstract_strength_label(label: str) -> bool:
+    if not label:
+        return True
+    low = label.lower().strip()
+    if not low:
+        # whitespace-only label: после strip пустая строка — считаем
+        # абстрактной (нечего показывать юзеру).
+        return True
+    for p in _ABSTRACT_STRENGTH_PATTERNS:
+        if low.startswith(p):
+            return True
+    return False
+
+
+async def call_llm_strength_naming(
+    db: AsyncSession,
+    niche: str,
+    sample_reviews: list[str],
+) -> dict[str, str] | None:
+    """Аналог call_llm_cluster_naming, но для POSITIVE-кластеров —
+    «сильных сторон» компаний ниши. Возвращает {"label", "description"}
+    или None при недоступности ассистента.
+
+    Используется в service.recluster_pains_for_niche(sentiment='positive').
+    Если LLM выдал абстрактный label («Хорошее обслуживание», «Качество
+    услуг» и т.п.) — один retry с критикой. Дальше отдаём как есть —
+    fallback на keywords из description не делаем: positive-словарь
+    сильно ширее negative и легко ошибётся.
+    """
+    assistant_id = await pick_assistant_id(db, "naming")
+    if assistant_id is None:
+        logger.info("call_llm_strength_naming: no assistant available")
+        return None
+
+    sample_str = "\n".join(f"- {t.strip()[:300]}" for t in sample_reviews if t)
+    prompt = STRENGTH_NAMING_PROMPT.format(
+        count=len(sample_reviews),
+        niche=niche,
+        reviews_sample=sample_str,
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt}],
+            db=db,
+            max_tokens=400,
+            temperature=0.3,
+        )
+    except Exception as e:
+        logger.warning("call_llm_strength_naming: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, dict):
+        return None
+    label = (data.get("label") or "").strip()
+    desc = (data.get("description") or "").strip()
+    if not label:
+        return None
+
+    if _is_abstract_strength_label(label):
+        logger.info("strength_naming: '%s' слишком абстрактно, retry", label)
+        retry_prompt = (
+            f"Ты выдал label «{label}» — это слишком абстрактно. "
+            f"Это категория, а не конкретная сильная сторона.\n\n"
+            f"Описание кластера: {desc}\n\n"
+            f"Отзывы:\n{sample_str}\n\n"
+            f"Перечитай и выдай ОДИН конкретный label (2-5 слов на русском). "
+            f"НЕ начинай со слова «Качество», «Хорошее», «Отличное», "
+            f"«Обслуживание», «Клиентский». Выбирай конкретное свойство: "
+            f"что ИМЕННО хвалят клиенты (безболезненное лечение, чистота, "
+            f"внимательные администраторы, честные цены, подробное объяснение).\n\n"
+            f'Верни ТОЛЬКО JSON: {{"label": "..."}}'
+        )
+        try:
+            retry_raw = await chat(
+                assistant_id=assistant_id,
+                messages=[{"role": "user", "content": retry_prompt}],
+                db=db,
+                max_tokens=80,
+                temperature=0.2,
+            )
+            retry_data = _extract_json(retry_raw)
+            if isinstance(retry_data, dict):
+                new_label = (retry_data.get("label") or "").strip()
+                if new_label and not _is_abstract_strength_label(new_label):
+                    label = new_label
+        except Exception as e:
+            logger.warning("strength_naming retry chat() failed: %s", e)
 
     return {"label": label[:200], "description": desc}
 
