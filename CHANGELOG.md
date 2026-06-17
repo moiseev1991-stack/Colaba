@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.96.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.95.0...v1.96.0) (2026-06-17)
+
+
+### Features
+
+* **kp:** редактируемые поля subject/body в KpModal + сохранение в БД ([96dd61e](https://github.com/moiseev1991-stack/Colaba/commit/96dd61e007908f66140e14d94149d12e6d08cde5))
+
 # [1.95.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.94.0...v1.95.0) (2026-06-17)
 
 
