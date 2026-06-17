@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import {
   generateKp,
   listKpTemplates,
+  updateKpDraft,
   type KpArgumentsUsed,
   type KpDraft,
   type KpTemplate,
@@ -87,6 +88,21 @@ export function KpModal({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'subject' | 'body' | 'both' | null>(null);
+  // Edit-режим: subject/body можно править прямо в модалке поверх
+  // AI-генерации. editSubject/editBody — локальные значения textarea;
+  // dirty=true если есть несохранённые изменения; saveState управляет
+  // кнопкой «Сохранить» (idle/saving/saved/error).
+  const [editSubject, setEditSubject] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [saveState, setSaveState] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const dirty =
+    draft != null &&
+    (editSubject.trim() !== (draft.subject || '').trim() ||
+      editBody.trim() !== (draft.body || '').trim());
 
   const isCustom = selectedKey === 'custom';
   const selectedTemplate = useMemo(
@@ -135,8 +151,22 @@ export function KpModal({
       setError(null);
       setCopied(null);
       setGenerating(false);
+      setEditSubject('');
+      setEditBody('');
+      setSaveState('idle');
+      setSaveError(null);
     }
   }, [open]);
+
+  // При смене draft — синхронизируем edit-поля с сервером.
+  useEffect(() => {
+    if (draft) {
+      setEditSubject(draft.subject || '');
+      setEditBody(draft.body || '');
+      setSaveState('idle');
+      setSaveError(null);
+    }
+  }, [draft]);
 
   async function handleGenerate() {
     if (!hasTarget || !selectedKey || generating) return;
@@ -198,6 +228,35 @@ export function KpModal({
       setError((prefix + (msg || 'не удалось сгенерировать КП.')).slice(0, 600));
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!draft || !dirty || saveState === 'saving') return;
+    const subjectClean = editSubject.trim();
+    const bodyClean = editBody.trim();
+    if (!subjectClean || !bodyClean) {
+      setSaveState('error');
+      setSaveError('Тема и тело не должны быть пустыми.');
+      return;
+    }
+    setSaveState('saving');
+    setSaveError(null);
+    try {
+      const updated = await updateKpDraft(draft.id, {
+        subject: subjectClean,
+        body: bodyClean,
+      });
+      setDraft(updated);
+      setSaveState('saved');
+      // через 2 сек прячем «Сохранено» и возвращаем idle, чтобы юзер
+      // мог нажать «Сохранить» снова после новой правки.
+      setTimeout(() => setSaveState('idle'), 2000);
+    } catch (e: any) {
+      const detail =
+        e?.response?.data?.detail || e?.message || 'Не удалось сохранить.';
+      setSaveState('error');
+      setSaveError(detail);
     }
   }
 
@@ -365,42 +424,83 @@ export function KpModal({
           {/* Result */}
           {draft && !generating && (
             <div className="mt-4 space-y-3">
-              {/* Subject */}
+              {/* Subject — editable input */}
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Тема
+                    Тема · можно править
                   </label>
                   <button
-                    onClick={() => copy(draft.subject, 'subject')}
+                    onClick={() => copy(editSubject, 'subject')}
                     className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'subject' ? 'скопировано' : 'копировать'}
                   </button>
                 </div>
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                  {draft.subject}
-                </div>
+                <input
+                  type="text"
+                  value={editSubject}
+                  onChange={(e) => setEditSubject(e.target.value)}
+                  maxLength={500}
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
               </div>
 
-              {/* Body */}
+              {/* Body — editable textarea */}
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Текст
+                    Текст · можно править
                   </label>
                   <button
-                    onClick={() => copy(draft.body, 'body')}
+                    onClick={() => copy(editBody, 'body')}
                     className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'body' ? 'скопировано' : 'копировать'}
                   </button>
                 </div>
-                <pre className="whitespace-pre-wrap rounded-md border border-slate-200 bg-white px-3 py-2 font-sans text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-                  {draft.body}
-                </pre>
+                <textarea
+                  value={editBody}
+                  onChange={(e) => setEditBody(e.target.value)}
+                  rows={Math.min(20, Math.max(8, editBody.split('\n').length + 1))}
+                  className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 font-sans text-sm leading-relaxed text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              {/* Save bar */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!dirty || saveState === 'saving'}
+                  onClick={handleSave}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-[12.5px] font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saveState === 'saving' ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Сохраняю…
+                    </>
+                  ) : saveState === 'saved' ? (
+                    <>Сохранено ✓</>
+                  ) : (
+                    <>Сохранить правки</>
+                  )}
+                </button>
+                {dirty && saveState !== 'saving' && (
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Есть несохранённые изменения
+                  </span>
+                )}
+                {saveState === 'error' && saveError && (
+                  <span className="text-[11px] text-rose-700 dark:text-rose-300">
+                    {saveError}
+                  </span>
+                )}
+                <span className="ml-auto text-[11px] text-slate-500 dark:text-slate-400">
+                  Сохранённая версия попадёт в Историю → КП.
+                </span>
               </div>
 
               {/* Arguments block */}
@@ -420,7 +520,7 @@ export function KpModal({
             {draft && (
               <button
                 onClick={() =>
-                  copy(`${draft.subject}\n\n${draft.body}`, 'both')
+                  copy(`${editSubject}\n\n${editBody}`, 'both')
                 }
                 className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >

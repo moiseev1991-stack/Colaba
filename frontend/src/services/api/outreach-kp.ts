@@ -80,6 +80,25 @@ export async function generateKp(req: KpGenerateRequest): Promise<KpDraft> {
   return r.data;
 }
 
+export interface KpDraftUpdateRequest {
+  subject?: string;
+  body?: string;
+}
+
+/** PATCH /outreach/kp/drafts/{id} — сохранить правки темы/тела поверх
+ *  AI-генерации. arguments_used не меняется (это снимок исходного LLM-
+ *  контекста). */
+export async function updateKpDraft(
+  draftId: number,
+  patch: KpDraftUpdateRequest,
+): Promise<KpDraft> {
+  const r = await apiClient.patch<KpDraft>(
+    `/outreach/kp/drafts/${draftId}`,
+    patch,
+  );
+  return r.data;
+}
+
 // --- Bulk-генерация КП (миграция 036) --------------------------------------
 
 export type KpBulkJobStatus =
