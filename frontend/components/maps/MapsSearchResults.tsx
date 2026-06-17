@@ -1219,8 +1219,14 @@ export function MapsSearchResults({
                           {fallbackSaved} из ~{expected} ·{' '}
                           <span className="font-semibold">{pct}%</span>
                         </>
-                      ) : (
+                      ) : fallbackSaved > 0 ? (
                         <>Уже найдено {fallbackSaved}</>
+                      ) : (
+                        // 2026-06-18: первые секунды парсинга — companies=0
+                        // и progress ещё не пришёл. Раньше юзер видел «Уже
+                        // найдено 0» и считал что парсер сломан. Теперь
+                        // явная подсказка что идёт инициализация.
+                        <>Запускаю парсер, ждём первых ответов источника…</>
                       )}
                     </span>
                   </div>
