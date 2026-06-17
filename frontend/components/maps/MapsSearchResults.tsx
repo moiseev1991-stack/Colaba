@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { AddToListModal } from '@/components/maps/AddToListModal';
+import { BulkKpModal } from '@/components/maps/BulkKpModal';
 import { KpModal } from '@/components/maps/KpModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
@@ -199,6 +200,12 @@ export function MapsSearchResults({
   // в стейт чтобы заголовок модалки сразу был с названием.
   const [kpCompanyId, setKpCompanyId] = useState<number | null>(null);
   const [kpCompanyName, setKpCompanyName] = useState<string | undefined>(undefined);
+  // Bulk-генерация КП по выделению (миграция 036). Открываем BulkKpModal
+  // со снимком selectedIds: модалка спрашивает шаблон/тон, запускает
+  // /outreach/kp/bulk-generate и показывает прогресс с возможностью
+  // отмены. Закрытие окна job не прерывает — он крутится в фоне.
+  const [bulkKpOpen, setBulkKpOpen] = useState(false);
+  const [bulkKpIds, setBulkKpIds] = useState<number[]>([]);
   // True после первого успешного listMapCompanies. Нужно, чтобы фильтр,
   // который вернул 0 компаний, не подменялся тихо на live-ленту (без
   // фильтра) — раньше юзер выбирал «Стабильный» и видел все 80 карточек
@@ -1443,6 +1450,21 @@ export function MapsSearchResults({
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      // Снимок выбранных id — чтобы после старта юзер мог
+                      // продолжать кликать чекбоксы под другую партию, а
+                      // запущенный job работал со своим списком.
+                      setBulkKpIds(Array.from(selectedIds));
+                      setBulkKpOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 font-medium text-violet-700 hover:border-violet-400 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/40"
+                    title="Сгенерировать КП для всех выделенных компаний — параллельно в фоне, прогресс будет виден в окне"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Сформировать КП
+                  </button>
+                  <button
+                    type="button"
                     disabled={lprBulkBusy}
                     onClick={async () => {
                       const ids = Array.from(selectedIds);
@@ -1562,6 +1584,12 @@ export function MapsSearchResults({
           setKpCompanyId(null);
           setKpCompanyName(undefined);
         }}
+      />
+
+      <BulkKpModal
+        open={bulkKpOpen}
+        companyIds={bulkKpIds}
+        onClose={() => setBulkKpOpen(false)}
       />
     </div>
   );

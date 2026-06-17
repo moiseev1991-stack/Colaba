@@ -122,3 +122,71 @@ class KpDraftOut(BaseModel):
     # только когда != None — на старте просто скрыт.
     remaining_free: int | None = None
     created_at: datetime
+
+
+class KpBulkGenerateRequest(BaseModel):
+    """Тело POST /outreach/kp/bulk-generate. Только по company_ids — bulk
+    по найденным сайтам сейчас не нужен (вкладка «Сайты» уже работает
+    одиночными генерациями)."""
+
+    company_ids: list[int] = Field(..., min_length=1, max_length=500)
+    template_key: str = Field(..., min_length=1, max_length=40)
+    tone: Literal["neutral", "bold"] = "neutral"
+    custom_sender_profile: str | None = Field(default=None, max_length=600)
+
+
+class KpBulkDraftPreview(BaseModel):
+    """Лёгкое превью КП для live-списка в модалке прогресса."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    company_id: int | None = None
+    subject: str
+    created_at: datetime
+
+
+class KpDraftListItem(BaseModel):
+    """Лёгкая строка для вкладки «КП» в History — без полного body, с
+    распакованным именем компании.
+    """
+
+    id: int
+    company_id: int | None = None
+    site_lead_id: int | None = None
+    company_name: str | None = None
+    company_city: str | None = None
+    template_key: str
+    subject: str
+    body_preview: str
+    created_at: datetime
+
+
+class KpDraftListResponse(BaseModel):
+    items: list[KpDraftListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class KpBulkJobOut(BaseModel):
+    """Ответ POST /outreach/kp/bulk-generate, GET /outreach/kp/jobs/{id},
+    POST /outreach/kp/jobs/{id}/cancel.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: Literal["queued", "running", "done", "cancelled", "failed"]
+    template_key: str
+    tone: str
+    total: int
+    generated: int
+    failed: int
+    last_company_id: int | None = None
+    cancel_requested: bool
+    error_message: str | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    recent_drafts: list[KpBulkDraftPreview] = []

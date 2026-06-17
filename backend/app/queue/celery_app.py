@@ -39,6 +39,7 @@ celery_app = Celery(
         "app.queue.tasks",
         "app.modules.maps.tasks",
         "app.modules.reviews_ai.tasks",
+        "app.modules.outreach.tasks",
     ],
 )
 
