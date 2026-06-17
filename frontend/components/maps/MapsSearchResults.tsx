@@ -239,6 +239,15 @@ export function MapsSearchResults({
     'idle' | 'queueing' | 'queued' | 'error'
   >('idle');
   const [reclusterMsg, setReclusterMsg] = useState<string>('');
+  // 2026-06-18: позитивный recluster (sentiment='positive'). Отдельный
+  // state, потому что юзер может запустить его параллельно с обычным
+  // negative-recluster'ом — это разные celery-задачи и разные наборы
+  // тегов. UI «Сильные стороны» опирается на эту кнопку чтобы юзер
+  // мог триггернуть генерацию из пустого toggle, без админ-консоли.
+  const [positiveReclusterState, setPositiveReclusterState] = useState<
+    'idle' | 'queueing' | 'queued' | 'error'
+  >('idle');
+  const [positiveReclusterMsg, setPositiveReclusterMsg] = useState<string>('');
   // Live-прогресс AI-цепочки. Полл каждые 5 сек после клика «Разобрать боли»,
   // чтобы юзер видел реальный прогресс (раньше 4 минуты молча ждали setTimeout).
   // null = не запрашивали; полностью обнуляется при 'ready' с pains > 0.
@@ -1021,11 +1030,54 @@ export function MapsSearchResults({
                   Анализ сильных сторон ниши скоро будет
                 </div>
                 <div className="mt-1 text-emerald-800/90 dark:text-emerald-200/80">
-                  AI пока кластеризует только жалобы клиентов. Анализ того,
-                  что клиенты <span className="font-medium">хвалят</span>, — в
-                  работе и появится автоматически после следующего перепрогона
-                  отзывов. Переключись на «Боли», чтобы посмотреть текущую
-                  картину негатива.
+                  AI кластеризует позитивные отзывы отдельно от негативных.
+                  Если кнопка ниже неактивна — кластер ещё не запущен; нажми
+                  «Запустить», и через 2-4 минуты появятся «сильные стороны»
+                  ниши: за что клиенты хвалят компании в этом городе.
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={
+                      positiveReclusterState === 'queueing' ||
+                      positiveReclusterState === 'queued'
+                    }
+                    onClick={async () => {
+                      setPositiveReclusterState('queueing');
+                      setPositiveReclusterMsg('');
+                      try {
+                        const r = await adminReclusterNiche(search.id, 'positive');
+                        setPositiveReclusterState('queued');
+                        setPositiveReclusterMsg(r.hint || 'Поставлено в очередь.');
+                      } catch (e: any) {
+                        setPositiveReclusterState('error');
+                        setPositiveReclusterMsg(
+                          e?.response?.data?.detail ||
+                            e?.message ||
+                            'Не удалось поставить задачу.',
+                        );
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {positiveReclusterState === 'queueing'
+                      ? 'Ставлю в очередь…'
+                      : positiveReclusterState === 'queued'
+                        ? 'Запущено · обнови страницу через 3 мин'
+                        : 'Запустить кластеризацию сильных сторон'}
+                  </button>
+                  {positiveReclusterMsg && (
+                    <span
+                      className={
+                        'text-[11px] ' +
+                        (positiveReclusterState === 'error'
+                          ? 'text-rose-700 dark:text-rose-300'
+                          : 'text-emerald-800/80 dark:text-emerald-200/70')
+                      }
+                    >
+                      {positiveReclusterMsg}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -1128,16 +1180,69 @@ export function MapsSearchResults({
                 )}
               </div>
             )}
-            {!isTerminal && (
-              <div className="mt-1 flex items-center gap-2">
-                <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div className="h-full w-1/3 animate-pulse bg-brand-gradient" />
+            {!isTerminal && (() => {
+              // 2026-06-18: крупный прогресс-индикатор парсинга. Раньше
+              // была декоративная 1.5px полоска с animate-pulse — юзер
+              // не понимал, парсер начал или 80% уже. Теперь:
+              //   - реальный процент из stream.progress (saved/expected
+              //     либо processed/total, оба варианта прилетают с бэка)
+              //   - крупная (h-2.5) полоса на всю ширину блока
+              //   - текст «Парсинг: 192 из ~250 · 2GIS» (источник из event)
+              const p = stream.progress;
+              const saved = p?.saved ?? p?.companies_processed ?? p?.processed;
+              const expected = p?.expected ?? p?.companies_total ?? p?.total;
+              // Fallback: пока бэк не прислал прогресса — берём кол-во
+              // компаний из стрима (companies.length растёт по мере
+              // прихода event=company).
+              const fallbackSaved =
+                typeof saved === 'number' && saved > 0
+                  ? saved
+                  : stream.companies.length;
+              const pct =
+                typeof expected === 'number' && expected > 0
+                  ? Math.min(100, Math.round((fallbackSaved / expected) * 100))
+                  : null;
+              return (
+                <div className="mt-2 space-y-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 text-[12px]">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      Парсер собирает компании
+                      {p?.source && (
+                        <span className="ml-1 text-slate-500 dark:text-slate-400">
+                          · {p.source}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      {pct != null ? (
+                        <>
+                          {fallbackSaved} из ~{expected} ·{' '}
+                          <span className="font-semibold">{pct}%</span>
+                        </>
+                      ) : (
+                        <>Уже найдено {fallbackSaved}</>
+                      )}
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                    {pct != null ? (
+                      <div
+                        className="h-full bg-brand-gradient transition-all duration-500"
+                        style={{ width: `${Math.max(2, pct)}%` }}
+                      />
+                    ) : (
+                      <div className="h-full w-1/3 animate-pulse bg-brand-gradient" />
+                    )}
+                  </div>
+                  {stream.reconnectAttempt > 0 && !stream.error && (
+                    <div className="text-[11px] text-amber-700 dark:text-amber-400">
+                      Связь временно прервана, переподключаюсь… (попытка{' '}
+                      {stream.reconnectAttempt}). Парсер продолжает работу в фоне.
+                    </div>
+                  )}
                 </div>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  карточки появляются по мере парсинга
-                </span>
-              </div>
-            )}
+              );
+            })()}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {/* §4.1 редизайн: мобильная кнопка «Фильтры» открывает BottomSheet.
@@ -1331,8 +1436,14 @@ export function MapsSearchResults({
         </div>
 
         {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
-          <div className="rounded-v2-sm bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
-            Ошибка стрима: {stream.error}
+          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-sm text-[color:var(--signal-warm)]">
+            <div className="font-medium">Live-обновление приостановлено</div>
+            <div className="mt-0.5 text-[12px] opacity-90">
+              Сервер закрыл long-poll после 3 попыток переподключения.
+              Парсер продолжает работу в фоне — нажми «Обновить страницу»
+              когда статус станет «готово» в шапке, либо подожди ~2 минуты
+              и обнови сам.
+            </div>
           </div>
         )}
 

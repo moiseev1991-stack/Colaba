@@ -79,10 +79,11 @@ async def _recluster_async(
     niche: str,
     city: Optional[str],
     company_ids: Optional[list[int]] = None,
+    sentiment: str = "negative",
 ) -> int:
     async with AsyncSessionLocal() as db:
         return await service.recluster_pains_for_niche(
-            db, niche, city, company_ids=company_ids,
+            db, niche, city, company_ids=company_ids, sentiment=sentiment,
         )
 
 
@@ -92,6 +93,7 @@ def recluster_pains_for_niche_task(
     niche: str,
     city: Optional[str] = None,
     company_ids: Optional[list[int]] = None,
+    sentiment: str = "negative",
 ):
     """Обёртка над service.recluster_pains_for_niche. time_limit 15 мин (LLM-naming N кластеров может быть медленным).
 
@@ -100,11 +102,18 @@ def recluster_pains_for_niche_task(
     конкретному поиску: парсер мог записать у Company.niche другую формулировку
     («стоматологическая клиника» вместо «стоматология»), и фильтр по niche
     выдавал 0 отзывов → recluster тихо ничего не делал.
+
+    sentiment ('negative' | 'positive') — какой набор тегов пересчитываем.
+    'positive' использует STRENGTH_NAMING_PROMPT и фильтрует Review.sentiment=
+    'positive'. negative-теги при positive-recluster'е не трогаются (и наоборот).
     """
     try:
-        return asyncio.run(_recluster_async(niche, city, company_ids))
+        return asyncio.run(_recluster_async(niche, city, company_ids, sentiment))
     except Exception as exc:
-        logger.warning("recluster_pains_for_niche_task retrying %r/%r: %s", niche, city, exc)
+        logger.warning(
+            "recluster_pains_for_niche_task retrying %r/%r [%s]: %s",
+            niche, city, sentiment, exc,
+        )
         raise self.retry(exc=exc, countdown=300, max_retries=1)
 
 
@@ -126,11 +135,18 @@ async def _top_niches_by_reviews_async(top_n: int = 30) -> list[tuple[str, str]]
 @celery_app.task(name="recluster_popular_niches", queue="maps_ai")
 def recluster_popular_niches():
     """Cron: раз в сутки. Для top-30 (niche, city) комбинаций ставит
-    recluster_pains_for_niche_task в очередь."""
+    recluster_pains_for_niche_task в очередь — отдельно для болей
+    (sentiment='negative') и для сильных сторон (sentiment='positive').
+
+    2026-06-18: до этого positive-теги создавались только вручную через
+    admin endpoint. Теперь cron поддерживает их актуальность вместе с
+    негативом — UI «Сильные стороны» больше не пустеет со временем.
+    """
     pairs = asyncio.run(_top_niches_by_reviews_async(30))
     for niche, city in pairs:
-        recluster_pains_for_niche_task.delay(niche, city)
-    return len(pairs)
+        recluster_pains_for_niche_task.delay(niche, city, None, "negative")
+        recluster_pains_for_niche_task.delay(niche, city, None, "positive")
+    return len(pairs) * 2
 
 
 # ---------------------------------------------------------------------------

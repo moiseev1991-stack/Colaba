@@ -728,16 +728,25 @@ export interface ReclusterNicheResponse {
   queued: boolean;
   niche: string;
   city: string;
+  /** 2026-06-18: backend echoes selected sentiment. */
+  sentiment?: 'negative' | 'positive';
   hint: string;
 }
 
 /** POST /maps/admin/recluster-niche — ручной триггер AI-разбора болей
  *  ниши/города поиска. Cron делает это раз в сутки только для top-30
  *  ниш по reviews; для редких ниш карточки навсегда оставались без
- *  pain-pills и показывали fallback NegativeSnippetsBlock. */
-export async function adminReclusterNiche(searchId: number): Promise<ReclusterNicheResponse> {
+ *  pain-pills и показывали fallback NegativeSnippetsBlock.
+ *
+ *  sentiment='positive' (2026-06-18) — запускает кластеризацию «сильных
+ *  сторон» по позитивным отзывам через STRENGTH_NAMING_PROMPT. positive-
+ *  и negative-наборы pain-тегов живут независимо. */
+export async function adminReclusterNiche(
+  searchId: number,
+  sentiment: 'negative' | 'positive' = 'negative',
+): Promise<ReclusterNicheResponse> {
   const response = await apiClient.post<ReclusterNicheResponse>(
-    `/maps/admin/recluster-niche?search_id=${searchId}`,
+    `/maps/admin/recluster-niche?search_id=${searchId}&sentiment=${sentiment}`,
     {}
   );
   return response.data;
