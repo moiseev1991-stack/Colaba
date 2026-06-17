@@ -169,6 +169,20 @@ class KpDraftListResponse(BaseModel):
     offset: int
 
 
+class KpDraftUpdateRequest(BaseModel):
+    """Тело PATCH /outreach/kp/drafts/{id} — юзер правит сгенерированный
+    AI-черновик прямо в модалке.
+
+    Оба поля опциональны: если пришло только subject — body не трогаем
+    (и наоборот). Хотя бы одно должно быть непустым; пустые строки
+    отвергаются на уровне роутера, чтобы случайный ctrl+A+del не стёр
+    письмо.
+    """
+
+    subject: str | None = Field(default=None, max_length=500)
+    body: str | None = Field(default=None, min_length=1)
+
+
 class KpBulkJobOut(BaseModel):
     """Ответ POST /outreach/kp/bulk-generate, GET /outreach/kp/jobs/{id},
     POST /outreach/kp/jobs/{id}/cancel.

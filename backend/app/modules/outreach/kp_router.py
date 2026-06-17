@@ -21,6 +21,7 @@ from app.modules.outreach.kp_schemas import (
     KpDraftListItem,
     KpDraftListResponse,
     KpDraftOut,
+    KpDraftUpdateRequest,
     KpGenerateRequest,
     KpTemplateOut,
 )
@@ -190,6 +191,57 @@ async def get_bulk_job(
     if view is None:
         raise HTTPException(status_code=404, detail="Задача не найдена.")
     return _job_to_out(view.job, recent_drafts=view.recent_drafts)
+
+
+@router.patch("/drafts/{draft_id}", response_model=KpDraftOut)
+async def update_draft(
+    draft_id: int,
+    payload: KpDraftUpdateRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> KpDraftOut:
+    """Сохранить правки subject/body черновика КП.
+
+    Юзер открывает модалку, правит тему/тело руками поверх AI-генерации
+    и жмёт «Сохранить». arguments_used не трогаем — это снимок входных
+    данных для LLM, и его изменение исказит аудит «на чём построено письмо».
+    """
+    from app.models.kp_draft import KpDraft
+
+    draft = await db.get(KpDraft, draft_id)
+    if draft is None or draft.user_id != user_id:
+        # Не палим существование чужого draft_id.
+        raise HTTPException(status_code=404, detail="КП не найден.")
+
+    new_subject = payload.subject.strip() if payload.subject is not None else None
+    new_body = payload.body.strip() if payload.body is not None else None
+    if (new_subject is None or new_subject == "") and (
+        new_body is None or new_body == ""
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Нужно передать хотя бы одно непустое поле (subject или body).",
+        )
+
+    if new_subject:
+        draft.subject = new_subject[:500]
+    if new_body:
+        draft.body = new_body
+
+    await db.commit()
+    await db.refresh(draft)
+
+    return KpDraftOut(
+        id=draft.id,
+        company_id=draft.company_id,
+        site_lead_id=draft.site_lead_id,
+        template_key=draft.template_key,
+        subject=draft.subject,
+        body=draft.body,
+        arguments_used=KpArgumentsUsed(**(draft.arguments_used or {})),
+        remaining_free=None,
+        created_at=draft.created_at,
+    )
 
 
 @router.get("/drafts", response_model=KpDraftListResponse)
