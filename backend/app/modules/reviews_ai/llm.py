@@ -308,6 +308,10 @@ def _is_abstract_strength_label(label: str) -> bool:
     if not label:
         return True
     low = label.lower().strip()
+    if not low:
+        # whitespace-only label: после strip пустая строка — считаем
+        # абстрактной (нечего показывать юзеру).
+        return True
     for p in _ABSTRACT_STRENGTH_PATTERNS:
         if low.startswith(p):
             return True
