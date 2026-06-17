@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.95.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.94.0...v1.95.0) (2026-06-17)
+
+
+### Bug Fixes
+
+* **reviews_ai:** _is_abstract_strength_label считает whitespace-only пустым ([146b39e](https://github.com/moiseev1991-stack/Colaba/commit/146b39e08f5393c5f69c6729d0de2ff8d6565175))
+
+
+### Features
+
+* **maps,insights:** SSE-reconnect + крупный прогресс парсинга + positive recluster ([02f15e4](https://github.com/moiseev1991-stack/Colaba/commit/02f15e434f05757e87d33096b58fa986231fc86b)), closes [#69](https://github.com/moiseev1991-stack/Colaba/issues/69)
+
 # [1.94.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.93.0...v1.94.0) (2026-06-17)
 
 
