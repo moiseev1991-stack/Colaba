@@ -40,6 +40,7 @@ from app.models.company_legal import CompanyLegal
 from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.kp_template import KpTemplate
 from app.models.kp_draft import KpDraft
+from app.models.kp_generation_job import KpGenerationJob
 from app.models.site_lead import SiteLead
 
 __all__ = [
@@ -85,5 +86,6 @@ __all__ = [
     "CompanyDecisionMaker",
     "KpTemplate",
     "KpDraft",
+    "KpGenerationJob",
     "SiteLead",
 ]

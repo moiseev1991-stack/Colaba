@@ -79,3 +79,97 @@ export async function generateKp(req: KpGenerateRequest): Promise<KpDraft> {
   const r = await apiClient.post<KpDraft>('/outreach/kp/generate', req);
   return r.data;
 }
+
+// --- Bulk-генерация КП (миграция 036) --------------------------------------
+
+export type KpBulkJobStatus =
+  | 'queued'
+  | 'running'
+  | 'done'
+  | 'cancelled'
+  | 'failed';
+
+export interface KpBulkDraftPreview {
+  id: number;
+  company_id: number | null;
+  subject: string;
+  created_at: string;
+}
+
+export interface KpBulkJob {
+  id: number;
+  status: KpBulkJobStatus;
+  template_key: string;
+  tone: string;
+  total: number;
+  generated: number;
+  failed: number;
+  last_company_id: number | null;
+  cancel_requested: boolean;
+  error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  recent_drafts: KpBulkDraftPreview[];
+}
+
+export interface KpBulkGenerateRequest {
+  company_ids: number[];
+  template_key: string;
+  tone?: KpTone;
+  custom_sender_profile?: string | null;
+}
+
+export async function startBulkKpGeneration(
+  req: KpBulkGenerateRequest,
+): Promise<KpBulkJob> {
+  const r = await apiClient.post<KpBulkJob>('/outreach/kp/bulk-generate', req);
+  return r.data;
+}
+
+export async function getBulkKpJob(jobId: number): Promise<KpBulkJob> {
+  const r = await apiClient.get<KpBulkJob>(`/outreach/kp/jobs/${jobId}`);
+  return r.data;
+}
+
+export async function cancelBulkKpJob(jobId: number): Promise<KpBulkJob> {
+  const r = await apiClient.post<KpBulkJob>(
+    `/outreach/kp/jobs/${jobId}/cancel`,
+    {},
+  );
+  return r.data;
+}
+
+// --- Список всех КП юзера (для вкладки «КП» в History) ---------------------
+
+export interface KpDraftListItem {
+  id: number;
+  company_id: number | null;
+  site_lead_id: number | null;
+  company_name: string | null;
+  company_city: string | null;
+  template_key: string;
+  subject: string;
+  body_preview: string;
+  created_at: string;
+}
+
+export interface KpDraftListResponse {
+  items: KpDraftListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function listKpDrafts(params: {
+  limit?: number;
+  offset?: number;
+} = {}): Promise<KpDraftListResponse> {
+  const r = await apiClient.get<KpDraftListResponse>('/outreach/kp/drafts', {
+    params: {
+      limit: params.limit ?? 50,
+      offset: params.offset ?? 0,
+    },
+  });
+  return r.data;
+}

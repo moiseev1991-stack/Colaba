@@ -1,27 +1,51 @@
 'use client';
 
 /**
- * §4.3 ТЗ редизайна 2026-06-03 — История поисков.
- * Карточки на CardV2 с hover-lift, display-шрифт на запросе,
- * SignalPill для статуса, reveal-stack для появления.
- * max-w-7xl чтобы убрать пустоту по бокам на десктопе.
+ * §4.3 ТЗ редизайна 2026-06-03 — История поисков лидов.
+ *
+ * 2026-06-17: разнесли по табам — «По картам», «По сайтам», «КП». До этого
+ * секции висели одна под другой и юзер искал страницу с КП глазами. Теперь
+ * Bulk-генерация КП из выдачи кладёт письма в БД, а здесь — единая точка
+ * посмотреть все накопленные КП с поиском по компании/теме.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { listSearches, deleteSearch } from '@/src/services/api/search';
-import type { SearchResponse } from '@/src/services/api/search';
-import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
-import { Eye, Trash2, Download, Loader2, MoreVertical, Map } from 'lucide-react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Download, Eye, Loader2, Map, MoreVertical, Sparkles, Trash2 } from 'lucide-react';
 
+import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
+import {
+  deleteSearch,
+  listSearches,
+  type SearchResponse,
+} from '@/src/services/api/search';
+import {
+  listKpDrafts,
+  type KpDraftListItem,
+} from '@/src/services/api/outreach-kp';
+import { cn } from '@/lib/utils';
+
+type Tab = 'maps' | 'sites' | 'kp';
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'maps', label: 'По картам' },
+  { value: 'sites', label: 'По сайтам' },
+  { value: 'kp', label: 'КП' },
+];
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function statusLabel(s: string): string {
@@ -38,13 +62,171 @@ function statusTone(s: string): 'good' | 'hot' | 'warm' | 'muted' {
   return 'muted';
 }
 
+const TEMPLATE_LABELS: Record<string, string> = {
+  webstudio: 'Веб-студия',
+  seo: 'SEO',
+  marketing: 'Маркетинг',
+  custom: 'Свой',
+};
+
+function templateLabel(key: string): string {
+  return TEMPLATE_LABELS[key] || key;
+}
+
 export default function LeadsHistoryPage() {
+  // useSearchParams требует Suspense-границу при статической генерации,
+  // иначе Next.js падает на prerender. Оборачиваем внутренний компонент.
+  return (
+    <Suspense fallback={null}>
+      <LeadsHistoryInner />
+    </Suspense>
+  );
+}
+
+function LeadsHistoryInner() {
   const router = useRouter();
-  const [runs, setRuns] = useState<SearchResponse[]>([]);
-  const [mapSearches, setMapSearches] = useState<MapSearchOut[]>([]);
+  const searchParams = useSearchParams();
+  const initialTab = useMemo<Tab>(() => {
+    const raw = searchParams?.get('tab');
+    if (raw === 'sites' || raw === 'kp' || raw === 'maps') return raw;
+    return 'maps';
+  }, [searchParams]);
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <h1
+          className="font-display font-semibold tracking-tight"
+          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        >
+          История поисков лидов
+        </h1>
+      </div>
+
+      <div
+        className="mb-4 flex flex-wrap gap-1 border-b"
+        style={{ borderColor: 'hsl(var(--border))' }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => setTab(t.value)}
+            className={cn(
+              '-mb-px border-b-2 px-3 py-2 text-[13px] font-medium transition-colors',
+              tab === t.value
+                ? 'border-[hsl(var(--accent))] text-[hsl(var(--accent))]'
+                : 'border-transparent text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]',
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'maps' && <MapsHistoryTab router={router} />}
+      {tab === 'sites' && <SitesHistoryTab router={router} />}
+      {tab === 'kp' && <KpHistoryTab router={router} />}
+    </div>
+  );
+}
+
+// --- Tab: По картам --------------------------------------------------------
+
+function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
+  const [items, setItems] = useState<MapSearchOut[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    listMyMapSearches(50, 0)
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[72px]" rounded="lg" />
+        ))}
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+        Карт-поисков ещё нет — запусти первый поиск по нише и городу.
+      </CardV2>
+    );
+  }
+
+  return (
+    <ul className="reveal-stack space-y-2">
+      {items.map((m) => (
+        <li key={`maps-${m.id}`}>
+          <CardV2
+            interactive
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/app/leads?map_search_id=${m.id}`)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter')
+                router.push(`/app/leads?map_search_id=${m.id}`);
+            }}
+            className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
+          >
+            <Map className="h-4 w-4 shrink-0 text-[hsl(var(--accent))]" />
+            <div className="min-w-0 flex-1">
+              <div
+                className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                title={`${m.niche} ${m.city}`}
+              >
+                {m.niche} · {m.city}
+              </div>
+              <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                {formatDateTime(m.created_at)} · {m.sources} ·{' '}
+                {m.companies_found ?? 0}{' '}
+                {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
+              </div>
+            </div>
+            <SignalPill tone={statusTone(m.status)} size="sm">
+              {statusLabel(m.status)}
+            </SignalPill>
+            <a
+              href={`/api/v1/maps/website-leads/export?search_id=${m.id}&only_website_leads=false`}
+              onClick={(e) => e.stopPropagation()}
+              title="Скачать Excel (все компании)"
+              className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
+            >
+              <Download className="h-4 w-4" />
+            </a>
+          </CardV2>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// --- Tab: По сайтам --------------------------------------------------------
+
+function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
+  const [runs, setRuns] = useState<SearchResponse[]>([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const PAGE_SIZE = 20;
@@ -52,23 +234,21 @@ export default function LeadsHistoryPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const [legacyData, mapsData] = await Promise.all([
-        listSearches({ limit: PAGE_SIZE, offset: p * PAGE_SIZE }),
-        // Maps-поиски только на первой странице — их обычно немного,
-        // пагинация не нужна, на 2-й странице легаси показываем без них.
-        p === 0 ? listMyMapSearches(20, 0).catch(() => [] as MapSearchOut[]) : Promise.resolve([] as MapSearchOut[]),
-      ]);
-      setRuns(legacyData);
-      setMapSearches(mapsData);
+      const data = await listSearches({
+        limit: PAGE_SIZE,
+        offset: p * PAGE_SIZE,
+      });
+      setRuns(data);
     } catch {
       setRuns([]);
-      setMapSearches([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(page); }, [load, page]);
+  useEffect(() => {
+    load(page);
+  }, [load, page]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -91,184 +271,273 @@ export default function LeadsHistoryPage() {
     }
   };
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display font-semibold tracking-tight"
-            style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}>
-          История поисков лидов
-        </h1>
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[72px]" rounded="lg" />
+        ))}
       </div>
+    );
+  }
+  if (runs.length === 0) {
+    return (
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+        Поисков по сайтам ещё нет — запусти первый через провайдер.
+      </CardV2>
+    );
+  }
 
-      {/* Секция «По картам» — поиски через MapsSearchPanel. Только на
-          первой странице (p=0). Раньше maps-поиски нигде не отображались
-          списком и юзер не мог их найти. */}
-      {!loading && mapSearches.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--accent))]">
-            <Map className="h-3.5 w-3.5" />
-            По картам · {mapSearches.length}
-          </div>
-          <ul className="space-y-2">
-            {mapSearches.map((m) => (
-              <li key={`maps-${m.id}`}>
-                <CardV2
-                  interactive
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/app/leads?map_search_id=${m.id}`)}
-                  onKeyDown={(e: React.KeyboardEvent) => {
-                    if (e.key === 'Enter')
-                      router.push(`/app/leads?map_search_id=${m.id}`);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
+  return (
+    <>
+      <ul className="reveal-stack space-y-2" ref={menuRef}>
+        {runs.map((r, idx) => (
+          <li key={r.id}>
+            <CardV2
+              interactive
+              reveal
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push(`/runs/${r.id}`)}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === 'Enter') router.push(`/runs/${r.id}`);
+              }}
+              className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
+            >
+              <span className="hidden w-10 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+                #{String(page * PAGE_SIZE + idx + 1).padStart(2, '0')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div
+                  className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                  title={r.query}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
-                      title={`${m.niche} ${m.city}`}
-                    >
-                      {m.niche} · {m.city}
-                    </div>
-                    <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                      {formatDateTime(m.created_at)} · {m.sources} ·{' '}
-                      {m.companies_found ?? 0}{' '}
-                      {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
-                    </div>
-                  </div>
-                  <SignalPill tone={statusTone(m.status)} size="sm">
-                    {statusLabel(m.status)}
-                  </SignalPill>
-                  <a
-                    href={`/api/v1/maps/website-leads/export?search_id=${m.id}&only_website_leads=false`}
-                    onClick={(e) => e.stopPropagation()}
-                    title="Скачать Excel (все компании)"
-                    className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
-                  >
-                    <Download className="h-4 w-4" />
-                  </a>
-                </CardV2>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[72px]" rounded="lg" />)}
-        </div>
-      ) : runs.length === 0 && mapSearches.length === 0 ? (
-        <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
-          История пустая — запустите первый поиск
-        </CardV2>
-      ) : runs.length === 0 ? null : (
-        <div>
-          {mapSearches.length > 0 && (
-            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted))]">
-              По сайтам (через провайдер)
-            </div>
-          )}
-        <ul className="reveal-stack space-y-2" ref={menuRef}>
-          {runs.map((r, idx) => (
-            <li key={r.id}>
-              <CardV2
-                interactive
-                reveal
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push(`/runs/${r.id}`)}
-                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') router.push(`/runs/${r.id}`); }}
-                className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
-              >
-                <span className="hidden w-10 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
-                  #{String(page * PAGE_SIZE + idx + 1).padStart(2, '0')}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]" title={r.query}>
-                    {r.query}
-                  </div>
-                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                    {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0} {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
-                  </div>
+                  {r.query}
                 </div>
-                <SignalPill tone={statusTone(r.status)} size="sm">{statusLabel(r.status)}</SignalPill>
-                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                  {formatDateTime(r.created_at)} · {r.search_provider} ·{' '}
+                  {r.result_count ?? 0}{' '}
+                  {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
+                </div>
+              </div>
+              <SignalPill tone={statusTone(r.status)} size="sm">
+                {statusLabel(r.status)}
+              </SignalPill>
+              <div
+                className="flex items-center gap-1.5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => router.push(`/runs/${r.id}`)}
+                  className="hidden min-h-9 items-center gap-1 px-2 text-[13px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                >
+                  <Eye className="h-4 w-4" />
+                  Открыть
+                </button>
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => router.push(`/runs/${r.id}`)}
-                    className="hidden min-h-9 items-center gap-1 px-2 text-[13px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                    onClick={() =>
+                      setOpenMenuId(openMenuId === r.id ? null : r.id)
+                    }
+                    className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
+                    aria-label="Меню"
                   >
-                    <Eye className="h-4 w-4" />
-                    Открыть
+                    <MoreVertical className="h-4 w-4" />
                   </button>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
-                      className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
-                      aria-label="Меню"
+                  {openMenuId === r.id && (
+                    <div
+                      className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-v2 border bg-[hsl(var(--surface))] py-1 shadow-v2"
+                      style={{ borderColor: 'hsl(var(--border))' }}
                     >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                    {openMenuId === r.id && (
-                      <div
-                        className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-v2 border bg-[hsl(var(--surface))] py-1 shadow-v2"
-                        style={{ borderColor: 'hsl(var(--border))' }}
-                      >
-                        {r.status === 'completed' && (
-                          <a
-                            href={`/api/v1/searches/${r.id}/results/export/csv`}
-                            download
-                            onClick={() => setOpenMenuId(null)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--text))] hover:bg-[hsl(var(--surface-2))]"
-                          >
-                            <Download className="h-4 w-4" /> Скачать CSV
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => { setOpenMenuId(null); handleDelete(r.id); }}
-                          disabled={deletingId === r.id}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[color:var(--signal-hot)] hover:bg-[var(--signal-hot-bg)] disabled:opacity-40"
+                      {r.status === 'completed' && (
+                        <a
+                          href={`/api/v1/searches/${r.id}/results/export/csv`}
+                          download
+                          onClick={() => setOpenMenuId(null)}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--text))] hover:bg-[hsl(var(--surface-2))]"
                         >
-                          {deletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          Удалить
-                        </button>
-                      </div>
-                    )}
+                          <Download className="h-4 w-4" /> Скачать CSV
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenMenuId(null);
+                          handleDelete(r.id);
+                        }}
+                        disabled={deletingId === r.id}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[color:var(--signal-hot)] hover:bg-[var(--signal-hot-bg)] disabled:opacity-40"
+                      >
+                        {deletingId === r.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        Удалить
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardV2>
+          </li>
+        ))}
+      </ul>
+      <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
+        <span>Страница {page + 1}</span>
+        <div className="flex gap-2">
+          <ButtonV2
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            ← Назад
+          </ButtonV2>
+          <ButtonV2
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={runs.length < PAGE_SIZE}
+          >
+            Вперёд →
+          </ButtonV2>
+        </div>
+      </CardV2>
+    </>
+  );
+}
+
+// --- Tab: КП ---------------------------------------------------------------
+
+const KP_PAGE_SIZE = 30;
+
+function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
+  const [items, setItems] = useState<KpDraftListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [openId, setOpenId] = useState<number | null>(null);
+
+  const load = useCallback(async (p: number) => {
+    setLoading(true);
+    try {
+      const r = await listKpDrafts({
+        limit: KP_PAGE_SIZE,
+        offset: p * KP_PAGE_SIZE,
+      });
+      setItems(r.items);
+      setTotal(r.total);
+    } catch {
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(page);
+  }, [load, page]);
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[72px]" rounded="lg" />
+        ))}
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+        Сгенерированных КП пока нет. Выбери компании в выдаче поиска и нажми
+        «Сформировать КП» — все письма появятся здесь.
+      </CardV2>
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">
+        Всего КП: {total}
+      </div>
+      <ul className="reveal-stack space-y-2">
+        {items.map((d) => (
+          <li key={d.id}>
+            <CardV2 className="px-4 py-3 sm:px-5">
+              <button
+                type="button"
+                onClick={() => setOpenId(openId === d.id ? null : d.id)}
+                className="flex w-full items-start gap-3 text-left"
+              >
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                    title={d.subject}
+                  >
+                    {d.subject}
+                  </div>
+                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                    {formatDateTime(d.created_at)} · {templateLabel(d.template_key)}
+                    {d.company_name ? ` · ${d.company_name}` : ''}
+                    {d.company_city ? ` · ${d.company_city}` : ''}
                   </div>
                 </div>
-              </CardV2>
-            </li>
-          ))}
-        </ul>
-        </div>
-      )}
+                {d.company_id && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/app/leads?open_company_id=${d.company_id}`);
+                    }}
+                    className="hidden min-h-9 items-center gap-1 px-2 text-[13px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                    title="Открыть карточку компании"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Компания
+                  </button>
+                )}
+              </button>
+              {openId === d.id && (
+                <div className="mt-3 whitespace-pre-wrap rounded-v2-sm border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[13px] leading-relaxed text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                  {d.body_preview}
+                  {d.body_preview.length >= 240 && '…'}
+                </div>
+              )}
+            </CardV2>
+          </li>
+        ))}
+      </ul>
 
-      {!loading && runs.length > 0 && (
-        <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
-          <span>Страница {page + 1}</span>
-          <div className="flex gap-2">
-            <ButtonV2
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              ← Назад
-            </ButtonV2>
-            <ButtonV2
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage(p => p + 1)}
-              disabled={runs.length < PAGE_SIZE}
-            >
-              Вперёд →
-            </ButtonV2>
-          </div>
-        </CardV2>
-      )}
-    </div>
+      <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
+        <span>
+          Показано {page * KP_PAGE_SIZE + 1}–
+          {Math.min((page + 1) * KP_PAGE_SIZE, total)} из {total}
+        </span>
+        <div className="flex gap-2">
+          <ButtonV2
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            ← Назад
+          </ButtonV2>
+          <ButtonV2
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={(page + 1) * KP_PAGE_SIZE >= total}
+          >
+            Вперёд →
+          </ButtonV2>
+        </div>
+      </CardV2>
+    </>
   );
 }
