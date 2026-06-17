@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.94.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.93.0...v1.94.0) (2026-06-17)
+
+
+### Features
+
+* **kp:** bulk-генерация КП по выделению с прогрессом и отменой ([e93f3ed](https://github.com/moiseev1991-stack/Colaba/commit/e93f3ed516bbb341fd45e0bf211e183e746d6dfe))
+
 # [1.93.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.92.0...v1.93.0) (2026-06-16)
 
 
