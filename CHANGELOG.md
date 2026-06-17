@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.96.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.96.0...v1.96.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **kp,maps:** диагностический 422 + понятный текст «парсер=0» ([1f669fb](https://github.com/moiseev1991-stack/Colaba/commit/1f669fbeb23ff83f238ced0f9c07aecea2bdc392)), closes [#73](https://github.com/moiseev1991-stack/Colaba/issues/73)
+
 # [1.96.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.95.0...v1.96.0) (2026-06-17)
 
 
