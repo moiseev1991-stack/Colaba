@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.98.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.97.1...v1.98.0) (2026-06-18)
+
+
+### Features
+
+* **kp-bulk:** кнопка «Просмотреть →» рядом с каждой КП в модалке прогресса ([3396747](https://github.com/moiseev1991-stack/Colaba/commit/339674714057c3998a7fee0f8b2200a08876653e))
+
 ## [1.97.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.97.0...v1.97.1) (2026-06-18)
 
 
