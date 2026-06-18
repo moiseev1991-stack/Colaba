@@ -438,16 +438,31 @@ export function BulkKpModal({ open, companyIds, onClose }: Props) {
                     {job.recent_drafts.map((d) => (
                       <li
                         key={d.id}
-                        className="flex flex-col gap-0.5 px-3 py-2 text-slate-700 dark:text-slate-200"
+                        className="flex items-center gap-3 px-3 py-2 text-slate-700 dark:text-slate-200"
                       >
-                        <div className="truncate font-medium">{d.subject}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {new Date(d.created_at).toLocaleTimeString('ru-RU', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{d.subject}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {new Date(d.created_at).toLocaleTimeString('ru-RU', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
+                          </div>
                         </div>
+                        {/* 2026-06-19: кнопка «Просмотреть» рядом с каждой КП.
+                            Пока disabled — карточка-просмотр одной КП с этого
+                            экрана появится отдельной задачей (нужно открыть
+                            KpModal по draft_id). Юзер просил видеть кнопку
+                            заранее, чтобы понимать что переход появится. */}
+                        <button
+                          type="button"
+                          disabled
+                          title="Скоро: откроется карточка КП с темой/телом для правки"
+                          className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+                        >
+                          Просмотреть →
+                        </button>
                       </li>
                     ))}
                   </ul>
