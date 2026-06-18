@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.97.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.96.1...v1.97.0) (2026-06-18)
+
+
+### Features
+
+* тип юр.лица + фикс позитивных плиток + раскраска тогглов ([7763eae](https://github.com/moiseev1991-stack/Colaba/commit/7763eae61fe06a42476fe39e051f93dae719d1f2))
+
 ## [1.96.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.96.0...v1.96.1) (2026-06-17)
 
 
