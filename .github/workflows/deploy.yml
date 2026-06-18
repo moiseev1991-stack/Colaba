@@ -71,6 +71,9 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.image_tag }}
             ${{ steps.meta.outputs.frontend_image }}:latest
+          build-args: |
+            GIT_SHA=${{ github.event.workflow_run.head_sha || github.sha }}
+            BUILD_TIME=${{ github.event.workflow_run.updated_at || github.event.head_commit.timestamp }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

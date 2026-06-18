@@ -231,6 +231,22 @@ export function MapsCompanyCard({
               нет сайта
             </StatusPill>
           )}
+          {/* 2026-06-19: тип юр.лица из DaData (data.opf.short).
+              Помогает быстро отделить ИП от ООО на глаз без открытия
+              drawer'а — полезно для сегментации (ИП = чаще принимает
+              решения сам, ООО = нужен ЛПР). */}
+          {company.legal?.opf && (
+            <StatusPill
+              tone="neutral"
+              title={
+                company.legal.legal_short_name
+                  ? `${company.legal.legal_short_name}${company.legal.inn ? ` · ИНН ${company.legal.inn}` : ''}`
+                  : `Тип юр.лица: ${company.legal.opf}`
+              }
+            >
+              {company.legal.opf}
+            </StatusPill>
+          )}
           {/* 2026-06-12: pill «ЛПР». has_lpr приходит с бэка — true если есть
               director_name из DaData или хотя бы один decision_maker со страниц
               сайта. Зелёный значок «есть», серый «нет данных» — чтобы юзер

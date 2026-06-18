@@ -33,6 +33,15 @@ export function VersionBadge() {
     color: 'hsl(var(--text))',
   } as const;
 
+  // 2026-06-19: SHA приходит как 'unknown' или 'local', когда build
+  // не прокинул --build-arg GIT_SHA (актуально в Coolify / dev / local
+  // docker build без CI). В этом случае нет смысла показывать «code
+  // badge» — это шум, юзер уже видел рядом с версией. Скрываем.
+  const hasRealSha =
+    versionInfo.gitSha &&
+    versionInfo.gitSha !== 'unknown' &&
+    versionInfo.gitSha !== 'local';
+
   return (
     <div className="text-xs td-muted">
       {expanded ? (
@@ -41,12 +50,14 @@ export function VersionBadge() {
           style={{ background: 'hsl(var(--surface-2))' }}
         >
           <div className="font-medium">v{versionInfo.version}</div>
-          <div className="flex items-center gap-1">
-            <span style={{ color: 'hsl(var(--muted))' }}>Commit:</span>
-            <code className="px-1 rounded text-[10px]" style={codeStyle}>
-              {versionInfo.gitSha.substring(0, 7)}
-            </code>
-          </div>
+          {hasRealSha && (
+            <div className="flex items-center gap-1">
+              <span style={{ color: 'hsl(var(--muted))' }}>Commit:</span>
+              <code className="px-1 rounded text-[10px]" style={codeStyle}>
+                {versionInfo.gitSha.substring(0, 7)}
+              </code>
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <span style={{ color: 'hsl(var(--muted))' }}>Build:</span>
             <span>{formatBuildTime(versionInfo.buildTime)}</span>
@@ -65,9 +76,11 @@ export function VersionBadge() {
           title="Нажмите для подробностей"
         >
           <span>v{versionInfo.version}</span>
-          <code className="px-1 rounded text-[10px]" style={codeStyle}>
-            {versionInfo.gitSha.substring(0, 7)}
-          </code>
+          {hasRealSha && (
+            <code className="px-1 rounded text-[10px]" style={codeStyle}>
+              {versionInfo.gitSha.substring(0, 7)}
+            </code>
+          )}
         </button>
       )}
     </div>

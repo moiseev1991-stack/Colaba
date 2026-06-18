@@ -121,6 +121,12 @@ class MapSearchFilter(BaseModel):
     min_revenue: float | None = None
     min_age_years: int | None = None
 
+    # 2026-06-19: фильтр «Тип юр.лица» — массив аббревиатур (ООО / ИП / АО).
+    # OR между значениями: ['ООО','ИП'] = «ООО или ИП». Пустой/None — без
+    # фильтра. Спец-значение '__unknown__' = компании, у которых opf пуст
+    # (либо нет CompanyLegal, либо DaData не отдала тип).
+    opf_in: list[str] | None = None
+
     # Multi-source фильтр (ТЗ 2026-06-04): глобальный переключатель
     # в шапке выдачи «Все · 2GIS · Я.Карты · Google». EXISTS-фильтр по company_sources.
     # 'all'/None — без фильтра. '2gis'/'yandex_maps'/'google_maps' — только компании с
@@ -464,6 +470,9 @@ class CompanyLegalOut(BaseModel):
     ogrn: str | None = None
     legal_name: str | None = None
     legal_short_name: str | None = None
+    # Аббревиатура типа юр.лица: ООО / ИП / АО / ПАО / ... — для пилла
+    # в карточке выдачи и фильтра «Тип юр.лица».
+    opf: str | None = None
     registration_date: str | None = None
     revenue: float | None = None
     employee_count: int | None = None

@@ -265,6 +265,9 @@ async def list_search_companies(
     review_text_excludes_any: Optional[list[str]] = Query(default=None),
     # Multi-source фильтр (ТЗ 2026-06-04): сегмент-переключатель в шапке.
     source_filter: Optional[str] = Query(default=None, regex="^(all|2gis|yandex_maps|google_maps)$"),
+    # 2026-06-19: фильтр «Тип юр.лица» (multi-select). Спец-значение
+    # '__unknown__' = «компании без opf». OR между значениями.
+    opf_in: Optional[list[str]] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -288,6 +291,7 @@ async def list_search_companies(
         review_text_contains_any=review_text_contains_any or None,
         review_text_excludes_any=review_text_excludes_any or None,
         source_filter=source_filter,
+        opf_in=opf_in or None,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
@@ -349,6 +353,7 @@ async def list_search_companies(
                 ogrn=legal.ogrn,
                 legal_name=legal.legal_name,
                 legal_short_name=legal.legal_short_name,
+                opf=legal.opf,
                 registration_date=legal.registration_date.isoformat() if legal.registration_date else None,
                 revenue=float(legal.revenue) if legal.revenue is not None else None,
                 employee_count=legal.employee_count,
@@ -786,6 +791,7 @@ async def get_company(
             ogrn=legal.ogrn,
             legal_name=legal.legal_name,
             legal_short_name=legal.legal_short_name,
+            opf=legal.opf,
             registration_date=legal.registration_date.isoformat() if legal.registration_date else None,
             revenue=float(legal.revenue) if legal.revenue is not None else None,
             employee_count=legal.employee_count,
