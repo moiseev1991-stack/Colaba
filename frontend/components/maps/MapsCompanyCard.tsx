@@ -234,19 +234,32 @@ export function MapsCompanyCard({
           {/* 2026-06-19: тип юр.лица из DaData (data.opf.short).
               Помогает быстро отделить ИП от ООО на глаз без открытия
               drawer'а — полезно для сегментации (ИП = чаще принимает
-              решения сам, ООО = нужен ЛПР). */}
-          {company.legal?.opf && (
-            <StatusPill
-              tone="neutral"
-              title={
-                company.legal.legal_short_name
-                  ? `${company.legal.legal_short_name}${company.legal.inn ? ` · ИНН ${company.legal.inn}` : ''}`
-                  : `Тип юр.лица: ${company.legal.opf}`
-              }
-            >
-              {company.legal.opf}
-            </StatusPill>
-          )}
+              решения сам, ООО = нужен ЛПР).
+              Fallback: если миграция 037 ещё не накатилась или backfill
+              regex не сработал, opf=null — тогда вытаскиваем тип из
+              legal_short_name прямо в браузере. Формы: ООО, ИП, АО,
+              ПАО, ОАО, ЗАО, НП, НКО, ГК, КФХ, ТСЖ, АНО, ФГБУ, МУП, ГУП. */}
+          {(() => {
+            const opfFromShort = (() => {
+              if (company.legal?.opf) return company.legal.opf;
+              const sn = company.legal?.legal_short_name || '';
+              const m = sn.match(/^([А-ЯЁ]{2,})\s/);
+              return m ? m[1] : null;
+            })();
+            if (!opfFromShort) return null;
+            return (
+              <StatusPill
+                tone="neutral"
+                title={
+                  company.legal?.legal_short_name
+                    ? `${company.legal.legal_short_name}${company.legal.inn ? ` · ИНН ${company.legal.inn}` : ''}`
+                    : `Тип юр.лица: ${opfFromShort}`
+                }
+              >
+                {opfFromShort}
+              </StatusPill>
+            );
+          })()}
           {/* 2026-06-12: pill «ЛПР». has_lpr приходит с бэка — true если есть
               director_name из DaData или хотя бы один decision_maker со страниц
               сайта. Зелёный значок «есть», серый «нет данных» — чтобы юзер
