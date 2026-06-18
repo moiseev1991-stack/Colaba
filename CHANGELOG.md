@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.97.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.97.0...v1.97.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **maps:** пилл opf — fallback на legal_short_name на фронте ([fa872e0](https://github.com/moiseev1991-stack/Colaba/commit/fa872e0e1d0f879e0532458fd46dab5a7d526e55))
+
 # [1.97.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.96.1...v1.97.0) (2026-06-18)
 
 
