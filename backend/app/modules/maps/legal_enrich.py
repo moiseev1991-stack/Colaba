@@ -54,6 +54,7 @@ class LegalMatch:
     kpp: str | None = None
     legal_name: str | None = None
     legal_short_name: str | None = None
+    opf: str | None = None
     registration_date: date | None = None
     revenue: Decimal | None = None
     employee_count: int | None = None
@@ -156,6 +157,14 @@ def _build_match_from_suggestion(
     legal_name = name.get("full_with_opf") or name.get("full") or s.get("value")
     short_name = name.get("short_with_opf") or name.get("short")
 
+    # Тип юр.лица: ООО / ИП / АО / ПАО / НП / ...
+    # DaData кладёт его в data.opf: {"type":"LEGAL"|"INDIVIDUAL","short":"ООО","full":"..."}.
+    opf_obj = data.get("opf") or {}
+    opf_short = None
+    if isinstance(opf_obj, dict):
+        opf_short = opf_obj.get("short")
+    opf_value = str(opf_short).strip()[:50] if opf_short else None
+
     revenue_raw = finance.get("income")
     revenue: Decimal | None = None
     if revenue_raw is not None:
@@ -213,6 +222,7 @@ def _build_match_from_suggestion(
         kpp=str(data.get("kpp") or "")[:12] or None,
         legal_name=str(legal_name)[:500] if legal_name else None,
         legal_short_name=str(short_name)[:300] if short_name else None,
+        opf=opf_value,
         registration_date=_parse_date(state.get("registration_date")),
         revenue=revenue,
         employee_count=employee_count,
@@ -360,6 +370,7 @@ async def upsert_legal(
             "kpp": match.kpp,
             "legal_name": match.legal_name,
             "legal_short_name": match.legal_short_name,
+            "opf": match.opf,
             "registration_date": match.registration_date,
             "revenue": match.revenue,
             "employee_count": match.employee_count,

@@ -46,6 +46,10 @@ class CompanyLegal(Base):
     kpp = Column(String(12))
     legal_name = Column(String(500))
     legal_short_name = Column(String(300))
+    # Тип юр.лица из DaData data.opf.short: ООО / ИП / АО / ПАО / НП / ...
+    # Используется для пилла на карточке выдачи и фильтра «Тип юр.лица».
+    # NULL если DaData не отдала / компания ещё не обогащена.
+    opf = Column(String(50), index=True)
 
     # Метрики бизнеса.
     registration_date = Column(Date)

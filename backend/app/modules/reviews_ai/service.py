@@ -444,11 +444,19 @@ async def recluster_pains_for_niche(
     # старые отзывы без AI-разметки, но и не пускаем явные «5 звёзд → positive»
     # в кластеризацию болей.
     #
-    # positive-режим: строго Review.sentiment='positive'. rating-fallback тут
-    # был бы опаснее — отзыв «5 звёзд, но в тексте «спасибо что не убили»»
-    # содержит негатив, который сломает позитивный кластер.
+    # positive-режим: предпочитаем Review.sentiment='positive', но падаем
+    # назад к rating>=5 если sentiment не размечен (NULL). Без fallback'а
+    # positive recluster молча возвращал 0 для ниш, у которых отзывы
+    # были обработаны до миграции 015 (embedding есть, sentiment IS NULL),
+    # или для свежих отзывов между запуском embedding-таски и sentiment-таски.
+    # Берём rating>=5 (не 4★) — на пятёрке вероятность скрытого негатива
+    # внутри текста минимальна, тогда как «4★ с критикой» — частый
+    # анти-паттерн, который мог бы засорить позитивный кластер.
     if is_positive:
-        pain_filter = Review.sentiment == "positive"
+        pain_filter = or_(
+            Review.sentiment == "positive",
+            and_(Review.sentiment.is_(None), Review.rating >= 5),
+        )
     else:
         pain_filter = or_(
             Review.sentiment.in_(["negative", "neutral"]),

@@ -99,6 +99,40 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         else:
             query = query.where(trimmed == "")
 
+    # 2026-06-19: фильтр «Тип юр.лица» (ООО/ИП/АО/...). Спец-значение
+    # '__unknown__' в списке = «компании без opf» (нет CompanyLegal или
+    # status!=ok или opf is NULL). OR между значениями.
+    if filters.opf_in:
+        try:
+            from app.models.company_legal import CompanyLegal as _CL
+            from sqlalchemy import and_ as _and, or_ as _or
+            normal = [v for v in filters.opf_in if v and v != "__unknown__"]
+            include_unknown = "__unknown__" in filters.opf_in
+            conds = []
+            if normal:
+                conds.append(
+                    exists(
+                        select(_CL.id).where(
+                            _CL.company_id == Company.id,
+                            _CL.status == "ok",
+                            _CL.opf.in_(normal),
+                        )
+                    )
+                )
+            if include_unknown:
+                has_known_opf = exists(
+                    select(_CL.id).where(
+                        _CL.company_id == Company.id,
+                        _CL.status == "ok",
+                        _CL.opf.isnot(None),
+                    )
+                )
+                conds.append(~has_known_opf)
+            if conds:
+                query = query.where(_or(*conds))
+        except ImportError:
+            logger.info("apply_filters: opf_in указан, но CompanyLegal недоступен — фильтр игнорируется")
+
     # 2026-06-12: фильтр «есть ЛПР». ЛПР хранится в двух местах:
     #   1) CompanyLegal.director_name (DaData)
     #   2) CompanyDecisionMaker (парсер /team на сайте)

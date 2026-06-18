@@ -117,6 +117,9 @@ export interface MapSearchFilter {
    *  'all' / null — все источники. '2gis'/'yandex_maps'/'google_maps' — EXISTS-фильтр
    *  по company_sources. Склеенные мультисурс-компании остаются в обоих. */
   source_filter?: 'all' | '2gis' | 'yandex_maps' | 'google_maps' | null;
+  /** 2026-06-19: фильтр по типу юр.лица. Массив аббревиатур ('ООО','ИП','АО',...).
+   *  Спец-значение '__unknown__' = «компании без opf». OR между значениями. */
+  opf_in?: string[] | null;
 }
 
 export type SearchMode = 'city' | 'radius';
@@ -278,6 +281,9 @@ export interface CompanyLegalShort {
   ogrn?: string | null;
   legal_name?: string | null;
   legal_short_name?: string | null;
+  /** 2026-06-19: тип юр.лица (ООО/ИП/АО/...). null если DaData не отдала
+   *  или компания не обогащена. Используется в пилле карточки и фильтре. */
+  opf?: string | null;
   registration_date?: string | null;
   revenue?: number | null;
   employee_count?: number | null;
@@ -444,6 +450,9 @@ export async function listMapCompanies(
   // Multi-source (ТЗ 2026-06-04). 'all' и null отправлять не надо — на сервере дефолт.
   if (filter.source_filter && filter.source_filter !== 'all')
     params.set('source_filter', filter.source_filter);
+  // 2026-06-19: фильтр «Тип юр.лица» — массив значений (multi-select).
+  if (filter.opf_in?.length)
+    for (const v of filter.opf_in) params.append('opf_in', v);
   params.set('sort_by', backendSortBy(filter.sort_by));
   params.set('limit', String(limit));
   params.set('offset', String(offset));

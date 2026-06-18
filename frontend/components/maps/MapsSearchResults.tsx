@@ -245,9 +245,16 @@ export function MapsSearchResults({
   // тегов. UI «Сильные стороны» опирается на эту кнопку чтобы юзер
   // мог триггернуть генерацию из пустого toggle, без админ-консоли.
   const [positiveReclusterState, setPositiveReclusterState] = useState<
-    'idle' | 'queueing' | 'queued' | 'error'
+    'idle' | 'queueing' | 'queued' | 'done' | 'timeout' | 'error'
   >('idle');
   const [positiveReclusterMsg, setPositiveReclusterMsg] = useState<string>('');
+  // 2026-06-19: количество попыток polling'а после «Запущено». Каждая
+  // попытка — listPainTags с sentiment=positive. Когда возвращает >0 →
+  // state='done' и плашка empty-state скрывается (тэги уже подтянутся в
+  // regionPainTags через основной useEffect). MAX_POSITIVE_POLLS=12 ×
+  // 30 сек = 6 минут. Достаточно для типичного recluster (1-3 мин) +
+  // запас на quick.
+  const [positivePollAttempt, setPositivePollAttempt] = useState<number>(0);
   // Live-прогресс AI-цепочки. Полл каждые 5 сек после клика «Разобрать боли»,
   // чтобы юзер видел реальный прогресс (раньше 4 минуты молча ждали setTimeout).
   // null = не запрашивали; полностью обнуляется при 'ready' с pains > 0.
@@ -660,7 +667,62 @@ export function MapsSearchResults({
     painSourceFilter,
     painPeriodDays,
     painSentiment,
+    // 2026-06-19: после positive-recluster нужно перезапросить регионные
+    // теги, чтобы плитки «Сильные стороны» появились без F5.
+    positivePollAttempt,
   ]);
+
+  // 2026-06-19: автополлинг positive recluster. После клика «Запустить»
+  // (state='queued') каждые 30 сек дёргаем listPainTags для positive.
+  // Когда возвращает ≥1 — state='done', плашка empty-state скрывается.
+  // Через 6 минут (12 попыток) — state='timeout' с подсказкой проверить
+  // вручную / попробовать ещё раз.
+  useEffect(() => {
+    if (positiveReclusterState !== 'queued') return;
+    if (!search?.niche) return;
+    const MAX_POSITIVE_POLLS = 12;
+    const POSITIVE_POLL_MS = 30_000;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const tags = await listPainTags(search.niche, search.city ?? undefined, {
+          sentiment: 'positive',
+        });
+        if (cancelled) return;
+        if (tags.length > 0) {
+          setPositiveReclusterState('done');
+          setPositiveReclusterMsg(
+            `Готово · создано ${tags.length} плиток сильных сторон. Можно листать выдачу.`,
+          );
+          // Триггерим перезагрузку regionPainTags — увеличиваем счётчик,
+          // основной useEffect его читает в deps.
+          setPositivePollAttempt((x) => x + 1);
+          return;
+        }
+      } catch {
+        // тихо — следующая попытка попробует ещё раз
+      }
+      setPositivePollAttempt((x) => {
+        const next = x + 1;
+        if (next >= MAX_POSITIVE_POLLS) {
+          setPositiveReclusterState('timeout');
+          setPositiveReclusterMsg(
+            'Не дождались плиток за 6 минут. Возможно recluster ' +
+              'упал (мало позитивных отзывов или LLM не ответил). ' +
+              'Попробуй нажать «Запустить» ещё раз.',
+          );
+        }
+        return next;
+      });
+    };
+    const id = setInterval(tick, POSITIVE_POLL_MS);
+    // первый тик через 30 сек (не сразу — бэку нужно время посчитать)
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [positiveReclusterState, search?.niche, search?.city]);
 
   // 2026-06-12: общая динамика отзывов в нише — грузим всегда, не зависит
   // от выбранной плитки. Перезагружается при смене ниши/города/источника/окна.
@@ -1045,6 +1107,7 @@ export function MapsSearchResults({
                     onClick={async () => {
                       setPositiveReclusterState('queueing');
                       setPositiveReclusterMsg('');
+                      setPositivePollAttempt(0);
                       try {
                         const r = await adminReclusterNiche(search.id, 'positive');
                         setPositiveReclusterState('queued');
@@ -1063,8 +1126,12 @@ export function MapsSearchResults({
                     {positiveReclusterState === 'queueing'
                       ? 'Ставлю в очередь…'
                       : positiveReclusterState === 'queued'
-                        ? 'Запущено · обнови страницу через 3 мин'
-                        : 'Запустить кластеризацию сильных сторон'}
+                        ? `Жду плитки · попытка ${positivePollAttempt + 1}/12`
+                        : positiveReclusterState === 'done'
+                          ? 'Готово ✓'
+                          : positiveReclusterState === 'timeout'
+                            ? 'Запустить ещё раз'
+                            : 'Запустить кластеризацию сильных сторон'}
                   </button>
                   {positiveReclusterMsg && (
                     <span
@@ -1851,6 +1918,17 @@ function PainHeaderControlsBar({
           { v: 'positive' as const, label: 'Сильные стороны' },
         ]).map(({ v, label }) => {
           const active = sentiment === v;
+          // 2026-06-19: семантический цвет тогглов всегда, не только в
+          // active-состоянии. Юзер: «Боли» должны быть красноватые,
+          // «Сильные стороны» — зелёные — чтобы по цвету было сразу
+          // видно, какой срез сейчас доступен.
+          const cls = active
+            ? v === 'positive'
+              ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-900'
+              : 'bg-rose-600 text-white dark:bg-rose-500 dark:text-slate-900'
+            : v === 'positive'
+              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50'
+              : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/50';
           return (
             <button
               key={v}
@@ -1858,11 +1936,7 @@ function PainHeaderControlsBar({
               onClick={() => onSentimentChange(v)}
               className={
                 'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
-                (active
-                  ? (v === 'positive'
-                      ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-900'
-                      : 'bg-rose-600 text-white dark:bg-rose-500 dark:text-slate-900')
-                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
+                cls +
                 ' border-slate-300 dark:border-slate-600'
               }
             >

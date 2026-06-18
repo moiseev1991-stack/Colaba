@@ -313,6 +313,7 @@ export function MapsFiltersPanel({
       review_text_excludes_any: null,
       min_revenue: null,
       min_age_years: null,
+      opf_in: null,
       source_filter: 'all',
     });
   }, [onChange]);
@@ -333,6 +334,7 @@ export function MapsFiltersPanel({
     (value.review_text_excludes_any?.length ?? 0) > 0 ||
     value.min_revenue != null ||
     value.min_age_years != null ||
+    (value.opf_in?.length ?? 0) > 0 ||
     (value.source_filter != null && value.source_filter !== 'all');
 
   function commitWords(kind: 'contains' | 'excludes', raw: string) {
@@ -919,6 +921,74 @@ export function MapsFiltersPanel({
           подтянутыми юр.данными.
         </div>
       </details>
+
+      {/* 2026-06-19: фильтр «Тип юр.лица» (ООО/ИП/АО/прочие/нет данных).
+          Источник — CompanyLegal.opf, заполняется DaData при обогащении
+          и backfill'ится регулярным выражением из legal_short_name.
+          Свёрнут по умолчанию — отдельная семантика от «Платёжеспособных»
+          (там фильтр по обороту/возрасту, здесь — по форме собственности). */}
+      {(() => {
+        const opfOptions: { value: string; label: string; hint?: string }[] = [
+          { value: 'ООО', label: 'ООО', hint: 'Общество с ограниченной ответственностью' },
+          { value: 'ИП', label: 'ИП', hint: 'Индивидуальный предприниматель' },
+          { value: 'АО', label: 'АО', hint: 'Акционерное общество' },
+          { value: 'ПАО', label: 'ПАО', hint: 'Публичное акционерное общество' },
+          { value: '__unknown__', label: 'Нет данных', hint: 'DaData не нашла или не отдала тип' },
+        ];
+        const selected = new Set(value.opf_in ?? []);
+        const active = selected.size > 0;
+        return (
+          <details
+            className="group rounded-v2-sm border border-slate-200 bg-slate-50/40 p-2 open:pb-3 dark:border-slate-700 dark:bg-slate-800/40"
+            open={active}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1.5">
+                🏛 Тип юр.лица
+                {active && (
+                  <span className="rounded-full bg-slate-300/60 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-600/60 dark:text-slate-200">
+                    {selected.size}
+                  </span>
+                )}
+              </span>
+              <span className="text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+            </summary>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {opfOptions.map((opt) => {
+                const on = selected.has(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(selected);
+                      if (on) next.delete(opt.value);
+                      else next.add(opt.value);
+                      const arr = Array.from(next);
+                      const nextVal = arr.length > 0 ? arr : null;
+                      recordManualOverride('opf_in', nextVal);
+                      onChange({ ...value, opf_in: nextVal });
+                    }}
+                    title={opt.hint}
+                    className={
+                      'rounded-full border px-2.5 py-0.5 text-[11.5px] font-medium transition-colors ' +
+                      (on
+                        ? 'border-slate-700 bg-slate-700 text-white dark:border-slate-300 dark:bg-slate-200 dark:text-slate-900'
+                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200')
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+              Тянется из DaData при обогащении (поле opf). «Нет данных» —
+              для компаний без CompanyLegal или с пустым opf.
+            </div>
+          </details>
+        );
+      })()}
 
       {/* Слова в отзывах — тоже свёрнут по умолчанию, экономит ~200px. */}
       <details
