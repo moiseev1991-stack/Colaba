@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.100.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.1...v1.100.2) (2026-06-19)
+
+
+### Bug Fixes
+
+* **kp-jobs-new:** обернуть useSearchParams в Suspense — ломал next build ([7cd3a5d](https://github.com/moiseev1991-stack/Colaba/commit/7cd3a5d6c7632a296e9aebdfdd1897f6feab767c))
+
 ## [1.100.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.0...v1.100.1) (2026-06-19)
 
 
