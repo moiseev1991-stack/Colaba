@@ -285,7 +285,15 @@ export default function KpJobPage({ params }: PageProps) {
         <CardV2 className="overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
-              <thead>
+              <colgroup>
+                <col className="w-12" />
+                <col />
+                <col className="w-32" />
+                <col className="w-36" />
+                <col />
+                <col className="w-20" />
+              </colgroup>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-2))] text-left text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
                   <th className="px-4 py-2 font-medium">#</th>
                   <th className="px-4 py-2 font-medium">Компания</th>
@@ -318,22 +326,30 @@ export default function KpJobPage({ params }: PageProps) {
                       <td className="px-4 py-2.5 text-[11px] tabular-nums text-[hsl(var(--muted))]">
                         {idx + 1}
                       </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-1.5">
+                      <td className="max-w-0 px-4 py-2.5">
+                        <div className="flex min-w-0 items-center gap-1.5">
                           {it.company_legal_short && (
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            <span
+                              className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                              title={it.company_legal_short}
+                            >
                               {it.company_legal_short}
                             </span>
                           )}
-                          <span className="font-medium text-[hsl(var(--text))]">
+                          <span
+                            className="truncate font-medium text-[hsl(var(--text))]"
+                            title={it.company_name || undefined}
+                          >
                             {it.company_name || `Компания #${it.company_id}`}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-[hsl(var(--muted))]">
-                        {it.company_city || '—'}
+                        <span className="truncate" title={it.company_city || ''}>
+                          {it.company_city || '—'}
+                        </span>
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="whitespace-nowrap px-4 py-2.5">
                         <span
                           className={cn(
                             'inline-flex items-center gap-1.5 font-medium',
@@ -346,10 +362,10 @@ export default function KpJobPage({ params }: PageProps) {
                           {meta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-[hsl(var(--text))]">
+                      <td className="max-w-0 px-4 py-2.5 text-[hsl(var(--text))]">
                         {it.subject ? (
                           <span
-                            className="line-clamp-1 max-w-[28ch] truncate"
+                            className="block truncate"
                             title={it.subject}
                           >
                             {it.subject}
@@ -358,9 +374,9 @@ export default function KpJobPage({ params }: PageProps) {
                           <span className="text-[hsl(var(--muted))]">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right">
                         {clickable && (
-                          <span className="text-[12px] text-violet-700 underline-offset-2 hover:underline">
+                          <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
                             Открыть →
                           </span>
                         )}
@@ -372,6 +388,37 @@ export default function KpJobPage({ params }: PageProps) {
             </table>
           </div>
         </CardV2>
+      )}
+
+      {/* Post-done CTA. Кнопки disabled — заготовки под отправку/выгрузку.
+          Появятся работающими отдельной задачей; пока юзер видит,
+          куда дальше пойдёт поток после готовности всех КП. */}
+      {!loading && !error && job?.status === 'done' && items.length > 0 && (
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[12px] text-[hsl(var(--muted))]">
+            Все {items.filter((it) => it.status === 'done').length} КП готовы. Можно
+            бегло пробежать по строкам, поправить и&nbsp;— дальше отправить.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <ButtonV2
+              variant="secondary"
+              size="md"
+              disabled
+              title="Скоро: выгрузка партии в .xlsx со всеми темами и телами писем"
+            >
+              Скачать .xlsx
+            </ButtonV2>
+            <ButtonV2
+              variant="primary"
+              size="md"
+              disabled
+              iconLeft={<Sparkles />}
+              title="Скоро: отправка всех КП по email из этой партии. История отправок появится отдельной вкладкой в /history."
+            >
+              Отправить всем письма
+            </ButtonV2>
+          </div>
+        </div>
       )}
 
       {/* Drawer */}
