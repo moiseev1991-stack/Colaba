@@ -23,8 +23,10 @@ from app.modules.outreach.kp_schemas import (
     KpDraftOut,
     KpDraftUpdateRequest,
     KpGenerateRequest,
-    KpJobDetailResponse,
-    KpJobDraftDetail,
+    KpJobItem,
+    KpJobItemsResponse,
+    KpJobListItem,
+    KpJobListResponse,
     KpTemplateOut,
 )
 
@@ -195,42 +197,56 @@ async def get_bulk_job(
     return _job_to_out(view.job, recent_drafts=view.recent_drafts)
 
 
-@router.get("/jobs/{job_id}/drafts", response_model=KpJobDetailResponse)
-async def get_job_drafts(
+@router.get("/jobs", response_model=KpJobListResponse)
+async def list_jobs(
+    limit: int = Query(50, ge=1, le=200),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> KpJobListResponse:
+    """Список всех bulk-партий юзера — для вкладки «Партии КП» в History."""
+    jobs = await kp_bulk_service.list_user_jobs(db, user_id=user_id, limit=limit)
+    return KpJobListResponse(
+        items=[KpJobListItem.model_validate(j) for j in jobs]
+    )
+
+
+@router.get("/jobs/{job_id}/items", response_model=KpJobItemsResponse)
+async def get_job_items(
     job_id: int,
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> KpJobDetailResponse:
-    """Все КП конкретного bulk-job'а — для страницы /outreach/kp/jobs/{id}
-    (массовый просмотр/правка после bulk-генерации).
+) -> KpJobItemsResponse:
+    """Табличный вид страницы партии: ВСЕ компании job'а с per-row статусом
+    (queued/running/done/failed) + (если готов) draft с полным body.
 
-    Отдаёт полное body (а не preview), потому что юзер на этой странице
-    редактирует письма прямо на месте через PATCH /outreach/kp/drafts/{id}.
-    Список не пагинирует — лимит bulk = 500, body ~1.5KB на письмо
-    (~750KB max), укладывается в один payload.
+    Используется на /app/leads/kp-jobs/{id}. Фронт поллит этот эндпоинт
+    раз в ~2-3 сек пока job в running/queued — таблица сама подгружается.
+
+    Список не пагинирует: bulk-лимит 500, payload ~1.5KB на компанию,
+    укладывается в один запрос.
     """
-    result = await kp_bulk_service.list_job_drafts(
+    result = await kp_bulk_service.list_job_items(
         db, user_id=user_id, job_id=job_id
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Задача не найдена.")
-    job, draft_rows = result
-    return KpJobDetailResponse(
+    job, item_rows = result
+    return KpJobItemsResponse(
         job=_job_to_out(job),
-        drafts=[
-            KpJobDraftDetail(
-                id=row.draft.id,
-                company_id=row.draft.company_id,
-                site_lead_id=row.draft.site_lead_id,
+        items=[
+            KpJobItem(
+                company_id=row.company_id,
                 company_name=row.company_name,
                 company_city=row.company_city,
                 company_legal_short=row.company_legal_short,
-                template_key=row.draft.template_key,
-                subject=row.draft.subject,
-                body=row.draft.body or "",
-                created_at=row.draft.created_at,
+                status=row.status,  # type: ignore[arg-type]
+                draft_id=row.draft.id if row.draft else None,
+                template_key=row.draft.template_key if row.draft else None,
+                subject=row.draft.subject if row.draft else None,
+                body=(row.draft.body or "") if row.draft else None,
+                draft_created_at=row.draft.created_at if row.draft else None,
             )
-            for row in draft_rows
+            for row in item_rows
         ],
     )
 

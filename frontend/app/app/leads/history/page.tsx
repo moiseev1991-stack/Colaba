@@ -25,16 +25,19 @@ import {
 } from '@/src/services/api/search';
 import {
   listKpDrafts,
+  listKpJobs,
   type KpDraftListItem,
+  type KpJobListItem,
 } from '@/src/services/api/outreach-kp';
 import { cn } from '@/lib/utils';
 
-type Tab = 'maps' | 'sites' | 'kp';
+type Tab = 'maps' | 'sites' | 'kp' | 'kp-jobs';
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'maps', label: 'По картам' },
   { value: 'sites', label: 'По сайтам' },
   { value: 'kp', label: 'КП' },
+  { value: 'kp-jobs', label: 'Партии КП' },
 ];
 
 function formatDateTime(iso: string): string {
@@ -88,7 +91,13 @@ function LeadsHistoryInner() {
   const searchParams = useSearchParams();
   const initialTab = useMemo<Tab>(() => {
     const raw = searchParams?.get('tab');
-    if (raw === 'sites' || raw === 'kp' || raw === 'maps') return raw;
+    if (
+      raw === 'sites' ||
+      raw === 'kp' ||
+      raw === 'kp-jobs' ||
+      raw === 'maps'
+    )
+      return raw;
     return 'maps';
   }, [searchParams]);
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -128,6 +137,7 @@ function LeadsHistoryInner() {
       {tab === 'maps' && <MapsHistoryTab router={router} />}
       {tab === 'sites' && <SitesHistoryTab router={router} />}
       {tab === 'kp' && <KpHistoryTab router={router} />}
+      {tab === 'kp-jobs' && <KpJobsHistoryTab router={router} />}
     </div>
   );
 }
@@ -539,5 +549,148 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
         </div>
       </CardV2>
     </>
+  );
+}
+
+// --- Tab: Партии КП -------------------------------------------------------
+
+function jobStatusBadge(status: KpJobListItem['status']): {
+  label: string;
+  cls: string;
+} {
+  switch (status) {
+    case 'queued':
+      return { label: 'В очереди', cls: 'bg-slate-100 text-slate-700' };
+    case 'running':
+      return { label: 'Идёт генерация', cls: 'bg-violet-100 text-violet-700' };
+    case 'done':
+      return { label: 'Готово', cls: 'bg-emerald-100 text-emerald-700' };
+    case 'cancelled':
+      return { label: 'Отменено', cls: 'bg-amber-100 text-amber-700' };
+    case 'failed':
+      return { label: 'Ошибка', cls: 'bg-rose-100 text-rose-700' };
+    default:
+      return { label: status, cls: 'bg-slate-100 text-slate-700' };
+  }
+}
+
+function KpJobsHistoryTab({
+  router,
+}: {
+  router: ReturnType<typeof useRouter>;
+}) {
+  const [items, setItems] = useState<KpJobListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await listKpJobs(50);
+      setItems(r.items);
+    } catch (e: any) {
+      setError(e?.message || 'Не удалось загрузить партии.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[64px]" rounded="lg" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">
+        {error}
+      </CardV2>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+        Партий КП пока нет. Выбери компании в выдаче поиска и нажми
+        «Сформировать КП» — каждая партия попадёт сюда отдельной строкой.
+      </CardV2>
+    );
+  }
+
+  return (
+    <ul className="space-y-2">
+      {items.map((j) => {
+        const badge = jobStatusBadge(j.status);
+        const total = j.total || 0;
+        const progressPct =
+          total > 0
+            ? Math.min(
+                100,
+                Math.round(((j.generated + j.failed) / total) * 100),
+              )
+            : 0;
+        return (
+          <li key={j.id}>
+            <CardV2 className="overflow-hidden">
+              <button
+                type="button"
+                onClick={() => router.push(`/app/leads/kp-jobs/${j.id}`)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[hsl(var(--surface-2))]"
+              >
+                <Sparkles className="h-4 w-4 shrink-0 text-violet-600" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-display text-[14px] font-semibold text-[hsl(var(--text))]">
+                      Партия #{j.id}
+                    </span>
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        badge.cls,
+                      )}
+                    >
+                      {badge.label}
+                    </span>
+                    <span className="text-[12px] text-[hsl(var(--muted))]">
+                      {templateLabel(j.template_key)}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                    {formatDateTime(j.created_at)} ·{' '}
+                    {j.generated + j.failed}/{total}
+                    {j.failed > 0 && (
+                      <span className="ml-1 text-rose-600">
+                        · ошибок {j.failed}
+                      </span>
+                    )}
+                  </div>
+                  {(j.status === 'queued' || j.status === 'running') && (
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div
+                        className="h-full bg-violet-600 transition-all"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <span className="shrink-0 text-[12px] font-medium text-violet-700">
+                  Открыть →
+                </span>
+              </button>
+            </CardV2>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
