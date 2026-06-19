@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.101.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.3...v1.101.0) (2026-06-19)
+
+
+### Features
+
+* **kp-jobs:** полировка таблицы партии + disabled CTA «Отправить всем» ([6720337](https://github.com/moiseev1991-stack/Colaba/commit/6720337c1dfa17cf701267f95e5c98a3c3e53bf8))
+
 ## [1.100.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.2...v1.100.3) (2026-06-19)
 
 
