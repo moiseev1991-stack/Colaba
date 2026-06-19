@@ -15,7 +15,7 @@
  *     и кнопкой «Сохранить» (PATCH /outreach/kp/drafts/{id}).
  */
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Check,
@@ -105,12 +105,14 @@ const ROW_STATUS_META: Record<
 };
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  // Next.js 14: params — обычный объект, без Promise. В Next 15 пришлось бы
+  // оборачивать в use(params) — но проект на 14.2.20, и use(non-Promise)
+  // бросает throw → AppErrorBoundary показывает «Что-то пошло не так».
+  params: { id: string };
 }
 
 export default function KpJobPage({ params }: PageProps) {
-  const { id } = use(params);
-  const jobId = Number(id);
+  const jobId = Number(params.id);
 
   const [job, setJob] = useState<KpBulkJob | null>(null);
   const [items, setItems] = useState<KpJobItem[]>([]);
