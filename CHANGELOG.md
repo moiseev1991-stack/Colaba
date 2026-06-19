@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.102.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.102.0...v1.102.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* **kp-jobs:** send-bar sticky внутри потока + явные чекбоксы каналов ([31646e7](https://github.com/moiseev1991-stack/Colaba/commit/31646e7e48017a374eabddfdd565322b23da7967))
+
 # [1.102.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.101.0...v1.102.0) (2026-06-19)
 
 
