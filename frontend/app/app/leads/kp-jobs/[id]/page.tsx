@@ -21,7 +21,10 @@ import {
   Check,
   Copy,
   Loader2,
+  Mail,
+  MessageCircle,
   Pencil,
+  Send,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -376,9 +379,22 @@ export default function KpJobPage({ params }: PageProps) {
                       </td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-right">
                         {clickable && (
-                          <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
-                            Открыть →
-                          </span>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
+                              Открыть
+                            </span>
+                            {/* Заготовка под одиночную отправку этой КП.
+                                Stop-propagation чтобы клик не открывал drawer. */}
+                            <button
+                              type="button"
+                              disabled
+                              onClick={(e) => e.stopPropagation()}
+                              title="Скоро: отправить эту одну КП — Email/Telegram/WhatsApp/MAX"
+                              className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800"
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -390,35 +406,13 @@ export default function KpJobPage({ params }: PageProps) {
         </CardV2>
       )}
 
-      {/* Post-done CTA. Кнопки disabled — заготовки под отправку/выгрузку.
-          Появятся работающими отдельной задачей; пока юзер видит,
-          куда дальше пойдёт поток после готовности всех КП. */}
+      {/* Sticky bottom bar. Появляется при job.status === 'done' — всегда
+          в зоне видимости даже на длинных таблицах. Кнопки и каналы пока
+          disabled — заготовки под будущий feature email/IM-рассылки.
+          padding-bottom основного контента компенсирует высоту bar'а
+          (через space занимаемый bottom-0 fixed). */}
       {!loading && !error && job?.status === 'done' && items.length > 0 && (
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px] text-[hsl(var(--muted))]">
-            Все {items.filter((it) => it.status === 'done').length} КП готовы. Можно
-            бегло пробежать по строкам, поправить и&nbsp;— дальше отправить.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <ButtonV2
-              variant="secondary"
-              size="md"
-              disabled
-              title="Скоро: выгрузка партии в .xlsx со всеми темами и телами писем"
-            >
-              Скачать .xlsx
-            </ButtonV2>
-            <ButtonV2
-              variant="primary"
-              size="md"
-              disabled
-              iconLeft={<Sparkles />}
-              title="Скоро: отправка всех КП по email из этой партии. История отправок появится отдельной вкладкой в /history."
-            >
-              Отправить всем письма
-            </ButtonV2>
-          </div>
-        </div>
+        <SendBar doneCount={items.filter((it) => it.status === 'done').length} />
       )}
 
       {/* Drawer */}
@@ -433,6 +427,97 @@ export default function KpJobPage({ params }: PageProps) {
         />
       )}
     </div>
+  );
+}
+
+// --- Sticky bottom send bar -------------------------------------------------
+
+type SendChannel = 'email' | 'telegram' | 'whatsapp' | 'max';
+
+const CHANNELS: {
+  key: SendChannel;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { key: 'email', label: 'Email', Icon: Mail },
+  { key: 'telegram', label: 'Telegram', Icon: Send },
+  { key: 'whatsapp', label: 'WhatsApp', Icon: MessageCircle },
+  { key: 'max', label: 'MAX', Icon: MessageCircle },
+];
+
+function SendBar({ doneCount }: { doneCount: number }) {
+  // Локальный toggle каналов — даже в disabled-режиме юзер видит, что
+  // умеет (мульти-выбор). По умолчанию выбран Email — самый «безопасный»
+  // дефолт, для остальных мессенджеров нужен будет коннектор.
+  const [channels, setChannels] = useState<Set<SendChannel>>(
+    () => new Set(['email']),
+  );
+
+  function toggle(key: SendChannel) {
+    setChannels((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  return (
+    <>
+      {/* Распорка под высоту фиксированной панели — чтобы таблица не
+          уезжала под bar и нижние строки не закрывались. */}
+      <div className="h-24 sm:h-20" aria-hidden />
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[0_-4px_12px_rgba(15,23,42,0.04)] backdrop-blur">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-1">
+            <div className="text-[12px] font-medium text-[hsl(var(--text))]">
+              Готово {doneCount} КП — можно отправлять
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {CHANNELS.map(({ key, label, Icon }) => {
+                const active = channels.has(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggle(key)}
+                    title="Канал-заготовка: реально отправлять пока нельзя"
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                      active
+                        ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <ButtonV2
+              variant="secondary"
+              size="md"
+              disabled
+              title="Скоро: выгрузка партии в .xlsx со всеми темами и телами писем."
+            >
+              Скачать .xlsx
+            </ButtonV2>
+            <ButtonV2
+              variant="primary"
+              size="md"
+              disabled
+              iconLeft={<Send />}
+              title="Скоро: отправка всех КП по выбранным каналам. История отправок появится отдельной вкладкой «Отправки» в /history."
+            >
+              Отправить ({doneCount})
+            </ButtonV2>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
