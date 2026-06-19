@@ -16,7 +16,7 @@
  * с кнопкой «Вернуться в выдачу».
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 
@@ -40,7 +40,19 @@ const TONE_OPTIONS: { value: KpTone; label: string }[] = [
   { value: 'bold', label: 'Уверенный' },
 ];
 
+// 2026-06-19: useSearchParams требует Suspense-границу при статической
+// генерации, иначе next build падает с «missing-suspense-with-csr-bailout»
+// и ломает GHA build_images. Default-экспорт оборачивает реальный
+// компонент в Suspense, аналогично паттерну в /app/leads/history/page.tsx.
 export default function KpJobNewPage() {
+  return (
+    <Suspense fallback={null}>
+      <KpJobNewInner />
+    </Suspense>
+  );
+}
+
+function KpJobNewInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
