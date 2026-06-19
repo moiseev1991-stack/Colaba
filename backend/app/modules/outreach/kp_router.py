@@ -23,6 +23,8 @@ from app.modules.outreach.kp_schemas import (
     KpDraftOut,
     KpDraftUpdateRequest,
     KpGenerateRequest,
+    KpJobDetailResponse,
+    KpJobDraftDetail,
     KpTemplateOut,
 )
 
@@ -191,6 +193,46 @@ async def get_bulk_job(
     if view is None:
         raise HTTPException(status_code=404, detail="Задача не найдена.")
     return _job_to_out(view.job, recent_drafts=view.recent_drafts)
+
+
+@router.get("/jobs/{job_id}/drafts", response_model=KpJobDetailResponse)
+async def get_job_drafts(
+    job_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> KpJobDetailResponse:
+    """Все КП конкретного bulk-job'а — для страницы /outreach/kp/jobs/{id}
+    (массовый просмотр/правка после bulk-генерации).
+
+    Отдаёт полное body (а не preview), потому что юзер на этой странице
+    редактирует письма прямо на месте через PATCH /outreach/kp/drafts/{id}.
+    Список не пагинирует — лимит bulk = 500, body ~1.5KB на письмо
+    (~750KB max), укладывается в один payload.
+    """
+    result = await kp_bulk_service.list_job_drafts(
+        db, user_id=user_id, job_id=job_id
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Задача не найдена.")
+    job, draft_rows = result
+    return KpJobDetailResponse(
+        job=_job_to_out(job),
+        drafts=[
+            KpJobDraftDetail(
+                id=row.draft.id,
+                company_id=row.draft.company_id,
+                site_lead_id=row.draft.site_lead_id,
+                company_name=row.company_name,
+                company_city=row.company_city,
+                company_legal_short=row.company_legal_short,
+                template_key=row.draft.template_key,
+                subject=row.draft.subject,
+                body=row.draft.body or "",
+                created_at=row.draft.created_at,
+            )
+            for row in draft_rows
+        ],
+    )
 
 
 @router.patch("/drafts/{draft_id}", response_model=KpDraftOut)

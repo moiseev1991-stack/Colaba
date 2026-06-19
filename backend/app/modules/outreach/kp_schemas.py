@@ -204,3 +204,31 @@ class KpBulkJobOut(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     recent_drafts: list[KpBulkDraftPreview] = []
+
+
+class KpJobDraftDetail(BaseModel):
+    """Полная карточка КП для страницы /outreach/kp/jobs/{id}:
+    subject+body+company-метаданные. Отличается от KpDraftListItem
+    тем, что отдаёт полное body (юзер хочет редактировать), а не
+    обрезанный preview.
+    """
+
+    id: int
+    company_id: int | None = None
+    site_lead_id: int | None = None
+    company_name: str | None = None
+    company_city: str | None = None
+    company_legal_short: str | None = None  # опф-пилл: «ООО»/«ИП» и т.п.
+    template_key: str
+    subject: str
+    body: str
+    created_at: datetime
+
+
+class KpJobDetailResponse(BaseModel):
+    """Ответ GET /outreach/kp/jobs/{job_id}/drafts — страница массового
+    просмотра/правки.
+    """
+
+    job: KpBulkJobOut
+    drafts: list[KpJobDraftDetail]

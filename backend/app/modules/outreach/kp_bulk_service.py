@@ -16,6 +16,7 @@ from sqlalchemy import func as sa_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.company_legal import CompanyLegal
 from app.models.kp_draft import KpDraft
 from app.models.kp_generation_job import KpGenerationJob
 from app.models.maps import Company
@@ -189,6 +190,17 @@ class DraftListRow:
     company_city: str | None
 
 
+@dataclass
+class JobDraftDetailRow:
+    """Полная карточка КП конкретного job'а: draft + company-метаданные +
+    opf-пилл."""
+
+    draft: KpDraft
+    company_name: str | None
+    company_city: str | None
+    company_legal_short: str | None
+
+
 async def list_user_drafts(
     db: AsyncSession, *, user_id: int, limit: int = 50, offset: int = 0
 ) -> tuple[list[DraftListRow], int]:
@@ -216,6 +228,53 @@ async def list_user_drafts(
         DraftListRow(draft=r[0], company_name=r[1], company_city=r[2]) for r in rows
     ]
     return items, total
+
+
+async def list_job_drafts(
+    db: AsyncSession, *, user_id: int, job_id: int
+) -> tuple[KpGenerationJob, list[JobDraftDetailRow]] | None:
+    """Все КП конкретного bulk-job'а с полным body + company_name/city/opf —
+    для страницы /outreach/kp/jobs/{id}.
+
+    Фильтр draft↔job сейчас по (user_id, created_at >= started_at,
+    company_id IN job.company_ids). Точная FK draft→job не нужна — bulk-task
+    использует существующий generate_kp, который не знает о job-id, а
+    company_ids ограничивает выборку достаточно строго.
+    """
+    job = await db.get(KpGenerationJob, job_id)
+    if job is None or job.user_id != user_id:
+        return None
+
+    since = job.started_at or job.created_at
+    company_ids = list(job.company_ids or [])
+
+    if not company_ids:
+        return job, []
+
+    rows = (
+        await db.execute(
+            select(KpDraft, Company.name, Company.city, CompanyLegal.legal_short_name)
+            .outerjoin(Company, Company.id == KpDraft.company_id)
+            .outerjoin(CompanyLegal, CompanyLegal.company_id == KpDraft.company_id)
+            .where(
+                KpDraft.user_id == user_id,
+                KpDraft.created_at >= since,
+                KpDraft.company_id.in_(company_ids),
+            )
+            .order_by(KpDraft.created_at.asc())
+        )
+    ).all()
+
+    items = [
+        JobDraftDetailRow(
+            draft=r[0],
+            company_name=r[1],
+            company_city=r[2],
+            company_legal_short=r[3],
+        )
+        for r in rows
+    ]
+    return job, items
 
 
 async def list_user_jobs(
