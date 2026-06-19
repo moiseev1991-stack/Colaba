@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.100.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.0...v1.100.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* **maps:** pain-теги на карточке только sentiment='negative' + приоритет выбранной плитки ([d97d3e2](https://github.com/moiseev1991-stack/Colaba/commit/d97d3e266c3039b09cd0e9dc8e7827726836a0d1))
+
 # [1.100.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.99.0...v1.100.0) (2026-06-19)
 
 
