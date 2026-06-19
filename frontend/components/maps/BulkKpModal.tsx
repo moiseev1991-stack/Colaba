@@ -13,8 +13,9 @@
  * крутиться в фоне. Готовые КП появятся во вкладке «КП» истории.
  */
 
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Loader2, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -62,6 +63,7 @@ function statusLabel(status: KpBulkJob['status']) {
 }
 
 export function BulkKpModal({ open, companyIds, onClose }: Props) {
+  const router = useRouter();
   // --- 1. Шаблоны: подгружаем один раз при первом открытии.
   const [templates, setTemplates] = useState<KpTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -382,7 +384,7 @@ export function BulkKpModal({ open, companyIds, onClose }: Props) {
               {isTerminal && (
                 <div
                   className={cn(
-                    'rounded-md border px-3 py-2 text-sm',
+                    'rounded-md border px-3 py-3 text-sm',
                     job.status === 'done' &&
                       'border-emerald-200 bg-emerald-50 text-emerald-800',
                     job.status === 'cancelled' &&
@@ -392,37 +394,61 @@ export function BulkKpModal({ open, companyIds, onClose }: Props) {
                   )}
                 >
                   {job.status === 'done' && (
-                    <>
-                      Готово. Сгенерировано {job.generated} КП
-                      {job.failed > 0 && `, ${job.failed} пропущено`}. Все письма
-                      — на вкладке{' '}
-                      <Link
-                        href="/app/leads/history?tab=kp"
-                        className="font-medium underline"
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                      <span>
+                        Готово. Сгенерировано {job.generated} КП
+                        {job.failed > 0 && `, ${job.failed} пропущено`}.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          router.push(`/app/leads/kp-jobs/${job.id}`);
+                        }}
+                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-emerald-700"
                       >
-                        История → КП
-                      </Link>
-                      .
-                    </>
+                        Открыть все КП
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
                   )}
                   {job.status === 'cancelled' && (
-                    <>
-                      Отменено. Успели сгенерировать {job.generated} КП
-                      {job.failed > 0 && `, ${job.failed} пропущено`}. Готовые
-                      письма лежат в{' '}
-                      <Link
-                        href="/app/leads/history?tab=kp"
-                        className="font-medium underline"
-                      >
-                        Истории → КП
-                      </Link>
-                      .
-                    </>
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                      <span>
+                        Отменено. Успели сгенерировать {job.generated} КП
+                        {job.failed > 0 && `, ${job.failed} пропущено`}.
+                      </span>
+                      {job.generated > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            router.push(`/app/leads/kp-jobs/${job.id}`);
+                          }}
+                          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-[13px] font-medium text-amber-700 hover:bg-amber-50"
+                        >
+                          Открыть готовые
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   )}
                   {job.status === 'failed' && (
                     <>
-                      Ошибка: {job.error_message || 'неизвестная ошибка'}. Часть
-                      КП могла сохраниться — проверь Историю.
+                      Ошибка: {job.error_message || 'неизвестная ошибка'}.
+                      {job.generated > 0 && (
+                        <>
+                          {' '}
+                          Часть КП успела сохраниться —{' '}
+                          <Link
+                            href={`/app/leads/kp-jobs/${job.id}`}
+                            className="font-medium underline"
+                          >
+                            открыть готовые
+                          </Link>
+                          .
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -450,16 +476,17 @@ export function BulkKpModal({ open, companyIds, onClose }: Props) {
                             })}
                           </div>
                         </div>
-                        {/* 2026-06-19: кнопка «Просмотреть» рядом с каждой КП.
-                            Пока disabled — карточка-просмотр одной КП с этого
-                            экрана появится отдельной задачей (нужно открыть
-                            KpModal по draft_id). Юзер просил видеть кнопку
-                            заранее, чтобы понимать что переход появится. */}
+                        {/* 2026-06-20: активна — ведёт на страницу job'а
+                            с якорем #draft-{id}, страница скроллит к этой КП
+                            и сразу даёт inline-редактировать subject/body. */}
                         <button
                           type="button"
-                          disabled
-                          title="Скоро: откроется карточка КП с темой/телом для правки"
-                          className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+                          onClick={() => {
+                            onClose();
+                            router.push(`/app/leads/kp-jobs/${job.id}#draft-${d.id}`);
+                          }}
+                          title="Открыть карточку КП с темой/телом для правки"
+                          className="shrink-0 rounded-md border border-violet-200 bg-white px-2 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-slate-800"
                         >
                           Просмотреть →
                         </button>

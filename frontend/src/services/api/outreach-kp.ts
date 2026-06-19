@@ -192,3 +192,33 @@ export async function listKpDrafts(params: {
   });
   return r.data;
 }
+
+// --- Страница массового просмотра/правки КП после bulk-job ----------------
+
+/** Полная карточка КП для страницы /outreach/kp/jobs/{id}: с полным body
+ *  (для in-place правки) + company-метаданными + opf-пиллом. */
+export interface KpJobDraftDetail {
+  id: number;
+  company_id: number | null;
+  site_lead_id: number | null;
+  company_name: string | null;
+  company_city: string | null;
+  /** «ООО» / «ИП» / «АО» — для пилла-OPF на карточке. */
+  company_legal_short: string | null;
+  template_key: string;
+  subject: string;
+  body: string;
+  created_at: string;
+}
+
+export interface KpJobDetailResponse {
+  job: KpBulkJob;
+  drafts: KpJobDraftDetail[];
+}
+
+export async function getKpJobDrafts(jobId: number): Promise<KpJobDetailResponse> {
+  const r = await apiClient.get<KpJobDetailResponse>(
+    `/outreach/kp/jobs/${jobId}/drafts`,
+  );
+  return r.data;
+}
