@@ -21,7 +21,44 @@ const PUBLIC_PATHS = new Set<string>([
   '/baza-klientov',
   '/sbor-kontaktov',
   '/holodnaya-rassylka',
+  // 2026-06-20: три ниш-лендинга, попавшие в sitemap, но забытые здесь.
+  // Без них бот без cookies получал редирект на /auth/login и страница
+  // выпадала из индекса.
+  '/klienty-dlya-web-studii',
+  '/klienty-dlya-seo',
+  '/klienty-dlya-marketing-agentstva',
 ]);
+
+/** Публичные страницы, которые поисковикам можно индексировать.
+ *  Для всех остальных middleware выставляет X-Robots-Tag: noindex —
+ *  дополнительная защита поверх robots.txt (на случай если бот его
+ *  проигнорировал или попал на страницу по прямой ссылке). */
+const INDEXABLE_PATHS = new Set<string>([
+  '/',
+  '/terms',
+  '/policy',
+  '/consent',
+  '/offer',
+  '/data-sources',
+  '/parsing-otzyvov',
+  '/parser-2gis',
+  '/parser-yandex-maps',
+  '/baza-klientov',
+  '/sbor-kontaktov',
+  '/holodnaya-rassylka',
+  '/klienty-dlya-web-studii',
+  '/klienty-dlya-seo',
+  '/klienty-dlya-marketing-agentstva',
+]);
+
+function isIndexable(pathname: string): boolean {
+  return INDEXABLE_PATHS.has(pathname);
+}
+
+function withNoindexHeader(response: NextResponse): NextResponse {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
+}
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname);
@@ -63,17 +100,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (isPublicPath(pathname)) return NextResponse.next();
-  if (!isAuthed && pathname === '/') return NextResponse.next();
+  // На непубличных страницах (кабинет, dashboard, settings, etc.) добавляем
+  // X-Robots-Tag: noindex — это страховка поверх robots.txt. Поисковику
+  // достаточно одного из двух сигналов, но оба — надёжнее.
+  const response =
+    isPublicPath(pathname) || (!isAuthed && pathname === '/')
+      ? NextResponse.next()
+      : !isAuthed
+        ? (() => {
+            const url = request.nextUrl.clone();
+            url.pathname = '/auth/login';
+            url.searchParams.set('next', safeNextPath(pathname, search));
+            return NextResponse.redirect(url);
+          })()
+        : NextResponse.next();
 
-  if (!isAuthed) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    url.searchParams.set('next', safeNextPath(pathname, search));
-    return NextResponse.redirect(url);
+  if (!isIndexable(pathname)) {
+    return withNoindexHeader(response);
   }
-
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
