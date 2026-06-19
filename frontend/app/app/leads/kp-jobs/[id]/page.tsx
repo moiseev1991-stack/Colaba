@@ -463,15 +463,16 @@ function SendBar({ doneCount }: { doneCount: number }) {
   }
 
   return (
-    <>
-      {/* Распорка под высоту фиксированной панели — чтобы таблица не
-          уезжала под bar и нижние строки не закрывались. */}
-      <div className="h-24 sm:h-20" aria-hidden />
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[0_-4px_12px_rgba(15,23,42,0.04)] backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-1">
-            <div className="text-[12px] font-medium text-[hsl(var(--text))]">
-              Готово {doneCount} КП — можно отправлять
+    // sticky bottom-0 внутри потока страницы (не fixed) — bar прилипает
+    // к низу viewport'а пока таблица длиннее экрана и плавно «отпускается»
+    // на сайт-футер. fixed раньше уезжал под глобальный footer сайта
+    // (Соглашение/Политика/Оферта) — каналы и кнопка терялись из виду.
+    <div className="sticky bottom-3 z-30 mt-5">
+      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-2">
+            <div className="text-[13px] font-semibold text-[hsl(var(--text))]">
+              Готово {doneCount} КП — выбери каналы и отправляй
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {CHANNELS.map(({ key, label, Icon }) => {
@@ -480,23 +481,36 @@ function SendBar({ doneCount }: { doneCount: number }) {
                   <button
                     key={key}
                     type="button"
+                    role="checkbox"
+                    aria-checked={active}
                     onClick={() => toggle(key)}
                     title="Канал-заготовка: реально отправлять пока нельзя"
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
                       active
                         ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
                         : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
                     )}
                   >
-                    <Icon className="h-3 w-3" />
+                    {/* Явный «чекбокс» слева — юзер просил галочки. */}
+                    <span
+                      className={cn(
+                        'grid h-3.5 w-3.5 place-items-center rounded-sm border',
+                        active
+                          ? 'border-violet-500 bg-violet-500 text-white'
+                          : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900',
+                      )}
+                    >
+                      {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                    </span>
+                    <Icon className="h-3.5 w-3.5" />
                     {label}
                   </button>
                 );
               })}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
             <ButtonV2
               variant="secondary"
               size="md"
@@ -517,7 +531,7 @@ function SendBar({ doneCount }: { doneCount: number }) {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
