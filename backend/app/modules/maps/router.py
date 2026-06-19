@@ -295,7 +295,15 @@ async def list_search_companies(
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
-    pains_by_company = await service.get_top_pains_for_companies(db, [c.id for c in items], limit_per_company=3)
+    # Если юзер кликнул конкретную плитку «топ-болей» (pain_tag_ids в URL) —
+    # эта боль показывается в карточке первой, иначе сортировка по
+    # mention_count DESC.
+    pains_by_company = await service.get_top_pains_for_companies(
+        db,
+        [c.id for c in items],
+        limit_per_company=3,
+        priority_pain_tag_ids=pain_tag_ids or None,
+    )
     # Fallback для карточек без AI-pain-анализа: 1-2 куска негативных отзывов.
     # Дёргаем только для тех, у кого top_pains пуст И есть негативы (иначе
     # лишняя SQL-нагрузка).

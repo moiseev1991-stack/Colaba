@@ -835,6 +835,7 @@ async def get_top_pains_for_companies(
     db: AsyncSession,
     company_ids: list[int],
     limit_per_company: int = 3,
+    priority_pain_tag_ids: list[int] | None = None,
 ) -> dict[int, list[dict[str, Any]]]:
     """Для каждой компании возвращает топ-N её болей с цитатами.
 
@@ -844,11 +845,31 @@ async def get_top_pains_for_companies(
     Реализация: PARTITION BY company_id ORDER BY mention_count DESC, поверх
     JOIN с pain_tags для label/description. Так быстрее чем дергать по
     каждой компании отдельно.
+
+    Фильтр `pt.sentiment = 'negative'` критичен — без него в результат
+    попадали положительные теги (как «вежливый персонал»), и карточка
+    показывала их в блоке «БОЛИ КЛИЕНТОВ ИЗ ОТЗЫВОВ».
+
+    Если переданы `priority_pain_tag_ids` (юзер выбрал конкретную боль
+    в топ-плитке) — она поднимается наверх в порядке вывода, чтобы
+    карточка показывала именно ту боль, по которой шёл отбор.
     """
     if not company_ids:
         return {}
+    params: dict[str, Any] = {
+        "ids": list(company_ids),
+        "limit": int(limit_per_company),
+    }
+    if priority_pain_tag_ids:
+        params["priority_ids"] = list(priority_pain_tag_ids)
+        priority_order_sql = (
+            "CASE WHEN cps.pain_tag_id = ANY(:priority_ids) THEN 0 ELSE 1 END, "
+        )
+    else:
+        priority_order_sql = ""
+
     sql = text(
-        """
+        f"""
         SELECT company_id, pain_tag_id, label, description, mention_count,
                top_quote, top_quote_similarity
         FROM (
@@ -862,17 +883,23 @@ async def get_top_pains_for_companies(
                 cps.top_quote_similarity,
                 ROW_NUMBER() OVER (
                     PARTITION BY cps.company_id
-                    ORDER BY cps.mention_count DESC, cps.last_mention_at DESC NULLS LAST
+                    ORDER BY
+                        {priority_order_sql}
+                        cps.mention_count DESC,
+                        cps.last_mention_at DESC NULLS LAST
                 ) AS rn
             FROM company_pain_scores cps
-            JOIN pain_tags pt ON pt.id = cps.pain_tag_id AND pt.status = 'active'
+            JOIN pain_tags pt
+              ON pt.id = cps.pain_tag_id
+             AND pt.status = 'active'
+             AND pt.sentiment = 'negative'
             WHERE cps.company_id = ANY(:ids)
         ) ranked
         WHERE rn <= :limit
         """
     )
     rows = list(
-        (await db.execute(sql, {"ids": list(company_ids), "limit": int(limit_per_company)})).mappings().all()
+        (await db.execute(sql, params)).mappings().all()
     )
     by_company: dict[int, list[dict[str, Any]]] = {}
     for r in rows:
