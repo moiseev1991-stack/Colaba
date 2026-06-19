@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.102.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.101.0...v1.102.0) (2026-06-19)
+
+
+### Features
+
+* **kp-jobs:** sticky send-bar с мультиселектом каналов + per-row кнопка ([c4a5dc3](https://github.com/moiseev1991-stack/Colaba/commit/c4a5dc3deea9f3ae9f7832f5fa416457072c4f26))
+
 # [1.101.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.3...v1.101.0) (2026-06-19)
 
 
