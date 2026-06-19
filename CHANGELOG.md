@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.100.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.99.0...v1.100.0) (2026-06-19)
+
+
+### Features
+
+* **seo:** верификация Google/Yandex/Bing webmasters + защита админки от индексации ([96cd33c](https://github.com/moiseev1991-stack/Colaba/commit/96cd33c76263908ca565e2d19e5897dcd2e277b1))
+
 # [1.99.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.98.0...v1.99.0) (2026-06-19)
 
 
