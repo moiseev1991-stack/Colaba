@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.100.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.2...v1.100.3) (2026-06-19)
+
+
+### Bug Fixes
+
+* **kp-jobs:** params как объект (Next.js 14), не Promise — ломало рантайм ([41e3a83](https://github.com/moiseev1991-stack/Colaba/commit/41e3a83c866e064feec2ef2e3b0311ba994efb46))
+
 ## [1.100.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.100.1...v1.100.2) (2026-06-19)
 
 
