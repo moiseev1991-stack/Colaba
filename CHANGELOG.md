@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.99.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.98.0...v1.99.0) (2026-06-19)
+
+
+### Features
+
+* **kp-bulk:** страница массового просмотра/правки КП после bulk-job ([a7217fa](https://github.com/moiseev1991-stack/Colaba/commit/a7217fac4f753388cd16d5439ac4ffeb877f00e2))
+
 # [1.98.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.97.1...v1.98.0) (2026-06-18)
 
 
