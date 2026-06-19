@@ -263,9 +263,12 @@ async def list_job_items(
     since = job.started_at or job.created_at
 
     # 1. Резолвим имена/города/OPF для всех компаний job'а одним запросом.
+    # company_legal_short = CompanyLegal.opf («ООО»/«ИП»/«АО»/«ПАО»),
+    # а не legal_short_name (это полное наименование без ИП/ООО) —
+    # последнее даёт длинные пиллы и ломает таблицу.
     company_rows = (
         await db.execute(
-            select(Company.id, Company.name, Company.city, CompanyLegal.legal_short_name)
+            select(Company.id, Company.name, Company.city, CompanyLegal.opf)
             .outerjoin(CompanyLegal, CompanyLegal.company_id == Company.id)
             .where(Company.id.in_(company_ids))
         )
