@@ -34,6 +34,18 @@ export const metadata: Metadata = {
       'Сбор компаний из 2GIS и Яндекс.Карт, контакты и AI-анализ отзывов.',
   },
   robots: { index: true, follow: true },
+  // 2026-06-20: верификация владельца сайта для трёх вебмастеров.
+  // Next.js рендерит соответствующие <meta name="..."> в <head>.
+  // Bing идёт через other.msvalidate.01, потому что у Next.js нет
+  // отдельного поля. Удалять эти строки нельзя — иначе подтверждение
+  // владения отзовётся, и аналитика/Search Console перестанут собирать данные.
+  verification: {
+    google: 'Zg_MbVjRv09xuKAhJooGelz95V_FBZFUS0ns99WKkEM',
+    yandex: '6121019083c110c9',
+    other: {
+      'msvalidate.01': 'CE786B4895642D0D8F4F389F90B18CC6',
+    },
+  },
 };
 
 // §1.2 ТЗ редизайна 2026-06-03: подключаем шрифты через next/font.
