@@ -193,32 +193,60 @@ export async function listKpDrafts(params: {
   return r.data;
 }
 
-// --- Страница массового просмотра/правки КП после bulk-job ----------------
+// --- Страница партии КП (табличный вид всех компаний + per-row статус) ----
 
-/** Полная карточка КП для страницы /outreach/kp/jobs/{id}: с полным body
- *  (для in-place правки) + company-метаданными + opf-пиллом. */
-export interface KpJobDraftDetail {
-  id: number;
+export type KpJobItemStatus = 'queued' | 'running' | 'done' | 'failed';
+
+/** Строка таблицы на странице партии: компания + статус + (если готов) draft. */
+export interface KpJobItem {
   company_id: number | null;
-  site_lead_id: number | null;
   company_name: string | null;
   company_city: string | null;
-  /** «ООО» / «ИП» / «АО» — для пилла-OPF на карточке. */
   company_legal_short: string | null;
-  template_key: string;
-  subject: string;
-  body: string;
-  created_at: string;
+  status: KpJobItemStatus;
+  /** Заполнено при status='done' (и иногда 'failed' с уцелевшим draft'ом). */
+  draft_id: number | null;
+  template_key: string | null;
+  subject: string | null;
+  body: string | null;
+  draft_created_at: string | null;
 }
 
-export interface KpJobDetailResponse {
+export interface KpJobItemsResponse {
   job: KpBulkJob;
-  drafts: KpJobDraftDetail[];
+  items: KpJobItem[];
 }
 
-export async function getKpJobDrafts(jobId: number): Promise<KpJobDetailResponse> {
-  const r = await apiClient.get<KpJobDetailResponse>(
-    `/outreach/kp/jobs/${jobId}/drafts`,
+/** GET /outreach/kp/jobs/{id}/items — таблица всех компаний партии + прогресс. */
+export async function getKpJobItems(jobId: number): Promise<KpJobItemsResponse> {
+  const r = await apiClient.get<KpJobItemsResponse>(
+    `/outreach/kp/jobs/${jobId}/items`,
   );
+  return r.data;
+}
+
+// --- Список партий (вкладка «Партии КП» в History) ------------------------
+
+export interface KpJobListItem {
+  id: number;
+  status: KpBulkJobStatus;
+  template_key: string;
+  tone: string;
+  total: number;
+  generated: number;
+  failed: number;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface KpJobListResponse {
+  items: KpJobListItem[];
+}
+
+export async function listKpJobs(limit = 50): Promise<KpJobListResponse> {
+  const r = await apiClient.get<KpJobListResponse>('/outreach/kp/jobs', {
+    params: { limit },
+  });
   return r.data;
 }

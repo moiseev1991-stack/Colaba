@@ -191,14 +191,17 @@ class DraftListRow:
 
 
 @dataclass
-class JobDraftDetailRow:
-    """Полная карточка КП конкретного job'а: draft + company-метаданные +
-    opf-пилл."""
+class JobItemRow:
+    """Строка таблицы на странице партии: компания + per-row статус
+    + (если готов) поля draft'а. Используется в list_job_items.
+    """
 
-    draft: KpDraft
+    company_id: int | None
     company_name: str | None
     company_city: str | None
     company_legal_short: str | None
+    status: str  # queued | running | done | failed
+    draft: KpDraft | None
 
 
 async def list_user_drafts(
@@ -230,50 +233,114 @@ async def list_user_drafts(
     return items, total
 
 
-async def list_job_drafts(
+async def list_job_items(
     db: AsyncSession, *, user_id: int, job_id: int
-) -> tuple[KpGenerationJob, list[JobDraftDetailRow]] | None:
-    """Все КП конкретного bulk-job'а с полным body + company_name/city/opf —
-    для страницы /outreach/kp/jobs/{id}.
+) -> tuple[KpGenerationJob, list[JobItemRow]] | None:
+    """Все компании bulk-job'а в их исходном порядке + per-row статус
+    (queued/running/done/failed) + (если готов) draft. Используется на
+    странице партии /app/leads/kp-jobs/{id} — табличный вид.
 
-    Фильтр draft↔job сейчас по (user_id, created_at >= started_at,
-    company_id IN job.company_ids). Точная FK draft→job не нужна — bulk-task
-    использует существующий generate_kp, который не знает о job-id, а
-    company_ids ограничивает выборку достаточно строго.
+    Статус компании выводится из:
+      - наличия KpDraft на эту company_id, созданного после job.started_at
+        (значит, юзер сгенерировал это письмо именно в рамках этого job'а),
+      - позиции company_id в job.company_ids относительно job.last_company_id
+        (всё, что левее last — task уже прошёл; всё, что правее — в очереди),
+      - терминального состояния job'а (cancelled/failed/done).
+
+    Точная FK draft→job не ведётся — bulk-task использует существующий
+    generate_kp, который не знает про job_id. company_id-окно достаточно
+    строго фильтрует «свои» драфты.
     """
     job = await db.get(KpGenerationJob, job_id)
     if job is None or job.user_id != user_id:
         return None
 
-    since = job.started_at or job.created_at
-    company_ids = list(job.company_ids or [])
+    company_ids = [int(c) for c in (job.company_ids or [])]
 
     if not company_ids:
         return job, []
 
-    rows = (
+    since = job.started_at or job.created_at
+
+    # 1. Резолвим имена/города/OPF для всех компаний job'а одним запросом.
+    company_rows = (
         await db.execute(
-            select(KpDraft, Company.name, Company.city, CompanyLegal.legal_short_name)
-            .outerjoin(Company, Company.id == KpDraft.company_id)
-            .outerjoin(CompanyLegal, CompanyLegal.company_id == KpDraft.company_id)
-            .where(
-                KpDraft.user_id == user_id,
-                KpDraft.created_at >= since,
-                KpDraft.company_id.in_(company_ids),
-            )
-            .order_by(KpDraft.created_at.asc())
+            select(Company.id, Company.name, Company.city, CompanyLegal.legal_short_name)
+            .outerjoin(CompanyLegal, CompanyLegal.company_id == Company.id)
+            .where(Company.id.in_(company_ids))
         )
     ).all()
+    company_meta: dict[int, tuple[str | None, str | None, str | None]] = {
+        int(r[0]): (r[1], r[2], r[3]) for r in company_rows
+    }
 
-    items = [
-        JobDraftDetailRow(
-            draft=r[0],
-            company_name=r[1],
-            company_city=r[2],
-            company_legal_short=r[3],
+    # 2. Драфты, относящиеся к этому job'у — по company_id ∈ список + окно времени.
+    draft_rows = list(
+        (
+            await db.execute(
+                select(KpDraft)
+                .where(
+                    KpDraft.user_id == user_id,
+                    KpDraft.created_at >= since,
+                    KpDraft.company_id.in_(company_ids),
+                )
+                .order_by(KpDraft.created_at.asc())
+            )
+        ).scalars().all()
+    )
+    # Если на одну компанию вдруг несколько драфтов (юзер перегенерил
+    # вручную одиночной кнопкой между итерациями) — берём первый,
+    # принадлежащий именно этому проходу.
+    draft_by_company: dict[int, KpDraft] = {}
+    for d in draft_rows:
+        if d.company_id is None:
+            continue
+        if d.company_id not in draft_by_company:
+            draft_by_company[int(d.company_id)] = d
+
+    # 3. Позиция last_company_id — для определения «уже прошли» vs «ещё впереди».
+    last_idx = -1
+    if job.last_company_id is not None:
+        try:
+            last_idx = company_ids.index(int(job.last_company_id))
+        except ValueError:
+            last_idx = -1
+
+    job_status = job.status
+
+    items: list[JobItemRow] = []
+    for i, cid in enumerate(company_ids):
+        meta = company_meta.get(cid)
+        draft = draft_by_company.get(cid)
+        if draft is not None:
+            status = "done"
+        elif job_status in ("done", "cancelled", "failed"):
+            # Job уже завершён, а draft нет — компания пропущена/упала.
+            status = "failed"
+        elif job_status == "queued":
+            status = "queued"
+        else:
+            # job_status == 'running'. Опираемся на last_company_id.
+            if i < last_idx:
+                # Task уже прошёл мимо этой компании, drafts нет — fail.
+                status = "failed"
+            elif i == last_idx:
+                # Текущая итерация: draft ещё не успел записаться.
+                status = "running"
+            else:
+                status = "queued"
+
+        items.append(
+            JobItemRow(
+                company_id=cid,
+                company_name=meta[0] if meta else None,
+                company_city=meta[1] if meta else None,
+                company_legal_short=meta[2] if meta else None,
+                status=status,
+                draft=draft,
+            )
         )
-        for r in rows
-    ]
+
     return job, items
 
 

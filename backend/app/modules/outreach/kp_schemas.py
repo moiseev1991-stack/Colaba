@@ -206,29 +206,56 @@ class KpBulkJobOut(BaseModel):
     recent_drafts: list[KpBulkDraftPreview] = []
 
 
-class KpJobDraftDetail(BaseModel):
-    """Полная карточка КП для страницы /outreach/kp/jobs/{id}:
-    subject+body+company-метаданные. Отличается от KpDraftListItem
-    тем, что отдаёт полное body (юзер хочет редактировать), а не
-    обрезанный preview.
+class KpJobItem(BaseModel):
+    """Строка таблицы на странице партии КП: компания + статус + (если
+    готов) сам draft. Status вычисляется на бэке по позиции company_id
+    в job.company_ids относительно job.last_company_id и факту наличия
+    KpDraft на эту компанию в окне created_at >= job.started_at.
+
+    Заполнение draft-полей:
+      - status='done'  → draft_id/template_key/subject/body/draft_created_at заполнены.
+      - status='failed' с уцелевшим draft → тоже заполнены (редкий случай).
+      - status='queued'/'running'/'failed' без draft → draft-поля null.
     """
 
-    id: int
     company_id: int | None = None
-    site_lead_id: int | None = None
     company_name: str | None = None
     company_city: str | None = None
-    company_legal_short: str | None = None  # опф-пилл: «ООО»/«ИП» и т.п.
-    template_key: str
-    subject: str
-    body: str
-    created_at: datetime
+    company_legal_short: str | None = None
+    status: Literal["queued", "running", "done", "failed"]
+    draft_id: int | None = None
+    template_key: str | None = None
+    subject: str | None = None
+    body: str | None = None
+    draft_created_at: datetime | None = None
 
 
-class KpJobDetailResponse(BaseModel):
-    """Ответ GET /outreach/kp/jobs/{job_id}/drafts — страница массового
-    просмотра/правки.
+class KpJobItemsResponse(BaseModel):
+    """Ответ GET /outreach/kp/jobs/{job_id}/items — страница партии:
+    шапка job'а + полный список всех компаний (а не только готовых),
+    чтобы юзер видел таблицу с прогрессом.
     """
 
     job: KpBulkJobOut
-    drafts: list[KpJobDraftDetail]
+    items: list[KpJobItem]
+
+
+class KpJobListItem(BaseModel):
+    """Строка списка партий для вкладки «Партии КП» в History."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: Literal["queued", "running", "done", "cancelled", "failed"]
+    template_key: str
+    tone: str
+    total: int
+    generated: int
+    failed: int
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class KpJobListResponse(BaseModel):
+    items: list[KpJobListItem]
