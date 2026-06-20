@@ -24,7 +24,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func as sa_func, select
+from sqlalchemy import and_, func as sa_func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.kp_draft import KpDraft
@@ -57,13 +57,23 @@ class EnqueueResult:
     skipped: int  # из них skipped (без адреса / канал недоступен)
 
 
-def pick_first_email(emails: list | None) -> str | None:
-    """Первый валидный email из company.emails (JSONB list).
+def _looks_like_email(value: str) -> bool:
+    if "@" not in value:
+        return False
+    domain = value.split("@", 1)[1]
+    return "." in domain
 
-    Шарится между kp_send_service (реальная отправка) и kp_bulk_service
-    (preview-список адресатов на странице партии). Логика выбора должна
-    совпадать здесь и в UI, иначе в drawer'е будет один адрес, а в
-    отправке — другой.
+
+def pick_first_email(emails: list | None) -> str | None:
+    """Первый валидный email из переданного списка (JSONB list или
+    объединённого списка из company_contacts).
+
+    Без БД — чистая функция. Используется когда у нас уже на руках список
+    кандидатов (см. collect_company_emails). История: до 2026-06-21 эта
+    функция читала только company.emails JSONB — но реальные контакты
+    у большинства компаний лежат в company_contacts (per-source scrape).
+    Из-за этого preview показывал «нет email-а», а на карточке компании
+    адрес был. Теперь источник кандидатов — внешний.
     """
     if not isinstance(emails, list):
         return None
@@ -71,22 +81,67 @@ def pick_first_email(emails: list | None) -> str | None:
         if not raw:
             continue
         value = str(raw).strip()
-        if "@" in value and "." in value.split("@", 1)[1]:
+        if _looks_like_email(value):
             return value
     return None
 
 
-def _pick_recipient(company: Company | None, channel: str) -> str | None:
-    """Адресат для отправки.
+async def collect_company_emails(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, list[str]]:
+    """company_id → объединённый и дедуплицированный список email-кандидатов.
 
-    Для email — первый валидный email из company.emails (JSONB list).
-    Для остальных каналов сейчас всегда None (нет коннекторов).
+    Берёт из двух источников:
+      1. companies.emails JSONB (легаси-кэш, заполняется крауллером 2GIS).
+      2. company_contacts.value WHERE type='email' (per-source, заполняется
+         тасками 2GIS / Яндекс / Google, актуальнее всего).
+
+    Если компания есть в обоих источниках — мерджим, сохраняя порядок
+    (сначала JSONB-кэш, потом per-source). is_primary=true в
+    company_contacts поднимаем наверх — обычно это email из карточки на
+    карте, а не из футера сайта.
     """
-    if company is None:
-        return None
-    if channel == "email":
-        return pick_first_email(company.emails)
-    return None
+    if not company_ids:
+        return {}
+
+    out: dict[int, list[str]] = {cid: [] for cid in company_ids}
+
+    rows = (
+        await db.execute(
+            select(Company.id, Company.emails).where(Company.id.in_(company_ids))
+        )
+    ).all()
+    for cid, emails in rows:
+        if not isinstance(emails, list):
+            continue
+        for raw in emails:
+            if not raw:
+                continue
+            value = str(raw).strip()
+            if value and _looks_like_email(value) and value not in out[int(cid)]:
+                out[int(cid)].append(value)
+
+    contact_rows = (
+        await db.execute(
+            text(
+                """
+                SELECT company_id, value, COALESCE(is_primary, false) AS is_primary
+                FROM company_contacts
+                WHERE company_id = ANY(:ids) AND type = 'email'
+                ORDER BY is_primary DESC, id ASC
+                """
+            ),
+            {"ids": list(company_ids)},
+        )
+    ).all()
+    for cid, value, _is_primary in contact_rows:
+        if not value:
+            continue
+        s = str(value).strip()
+        if s and _looks_like_email(s) and s not in out[int(cid)]:
+            out[int(cid)].append(s)
+
+    return out
 
 
 async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int | None:
@@ -192,17 +247,29 @@ async def enqueue_job_send(
 
     organization_id = await _resolve_user_organization_id(db, user_id)
 
+    # Адресаты для всех компаний партии — берём из обоих источников
+    # (companies.emails JSONB + company_contacts). Раньше брали только
+    # JSONB и для половины компаний возвращали None, хотя email лежал
+    # в company_contacts (карточка компании показывала, KP — нет).
+    emails_by_company = await collect_company_emails(
+        db, [int(cid) for cid in drafts_by_company.keys()]
+    )
+
     created = 0
     queued = 0
     skipped = 0
     rows_to_add: list[KpSend] = []
 
-    for cid, (draft, company) in drafts_by_company.items():
+    for cid, (draft, _company) in drafts_by_company.items():
         for channel in channels:
             if (int(draft.id), channel) in existing_pairs:
                 # Уже отправлено / в очереди — не дублим.
                 continue
-            recipient = _pick_recipient(company, channel)
+            recipient = (
+                pick_first_email(emails_by_company.get(int(cid)))
+                if channel == "email"
+                else None
+            )
             status = "queued"
             error_code: str | None = None
             error_message: str | None = None

@@ -927,14 +927,27 @@ function DraftDrawer({
                 : ''}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
-            aria-label="Закрыть"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {item.draft_id !== null && !editing && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                title="Редактировать тему и тело письма"
+                className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-[12px] font-medium text-violet-700 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/60"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Редактировать
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+              aria-label="Закрыть"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
@@ -969,30 +982,63 @@ function DraftDrawer({
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-              Тема
-            </label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                Тема
+              </label>
+              {!editing && item.draft_id !== null && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-[11px] font-medium text-violet-700 hover:underline dark:text-violet-300"
+                >
+                  Изменить
+                </button>
+              )}
+            </div>
             {editing ? (
               <input
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 maxLength={500}
+                autoFocus
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[14px] font-medium text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             ) : (
-              <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-[14px] font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              <button
+                type="button"
+                onClick={() => item.draft_id !== null && setEditing(true)}
+                disabled={item.draft_id === null}
+                title={
+                  item.draft_id !== null
+                    ? 'Клик — отредактировать тему'
+                    : undefined
+                }
+                className="w-full rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[14px] font-medium text-slate-800 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+              >
                 {subject || (
                   <span className="italic text-slate-400">Тема пустая.</span>
                 )}
-              </div>
+              </button>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-              Тело письма
-            </label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                Тело письма
+              </label>
+              {!editing && item.draft_id !== null && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-[11px] font-medium text-violet-700 hover:underline dark:text-violet-300"
+                >
+                  Изменить
+                </button>
+              )}
+            </div>
             {editing ? (
               <textarea
                 value={body}
@@ -1001,13 +1047,23 @@ function DraftDrawer({
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-[13px] leading-relaxed text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             ) : (
-              <div className="whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[13px] leading-relaxed text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+              <button
+                type="button"
+                onClick={() => item.draft_id !== null && setEditing(true)}
+                disabled={item.draft_id === null}
+                title={
+                  item.draft_id !== null
+                    ? 'Клик — отредактировать тело письма'
+                    : undefined
+                }
+                className="w-full whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-left text-[13px] leading-relaxed text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+              >
                 {body || (
                   <span className="italic text-slate-400">
                     Тело письма пустое.
                   </span>
                 )}
-              </div>
+              </button>
             )}
           </div>
 
