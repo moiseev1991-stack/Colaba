@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.104.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.103.1...v1.104.0) (2026-06-20)
+
+
+### Features
+
+* **kp-jobs:** §1 полировка таблицы партии + §4 адресат в превью ([ee6e06d](https://github.com/moiseev1991-stack/Colaba/commit/ee6e06d79b4e9efad4c691863fb6e76ae2bc2b0e))
+
 ## [1.103.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.103.0...v1.103.1) (2026-06-20)
 
 
