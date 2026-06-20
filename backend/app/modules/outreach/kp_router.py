@@ -251,6 +251,7 @@ async def get_job_items(
                 draft_created_at=row.draft.created_at if row.draft else None,
                 recipient_email=row.recipient_email,
                 company_logo_url=row.company_logo_url,
+                company_phone=row.company_phone,
             )
             for row in item_rows
         ],

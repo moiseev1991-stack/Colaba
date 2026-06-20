@@ -236,6 +236,10 @@ class KpJobItem(BaseModel):
     # URL логотипа компании (из 2GIS raw_data). Для аватарки в таблице
     # партии и в шапке drawer'а. None → фронт рисует инициалы из company_name.
     company_logo_url: str | None = None
+    # Основной телефон компании (companies.phone, как пришёл из источника).
+    # Фронт нормализует и подставляет в wa.me/{phone}-линк когда email
+    # отсутствует — даёт юзеру ручной канал для «нет контакта»-строк.
+    company_phone: str | None = None
 
 
 class KpJobItemsResponse(BaseModel):

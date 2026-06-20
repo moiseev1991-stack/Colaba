@@ -216,6 +216,10 @@ export interface KpJobItem {
   /** URL логотипа компании (из 2GIS raw_data). null → UI рисует
    *  инициалы из company_name. */
   company_logo_url: string | null;
+  /** Основной телефон компании (как лежит в companies.phone). Используется
+   *  фронтом как fallback-канал «нет email → wa.me/{phone}». Нормализация
+   *  на фронте (utils/phone). */
+  company_phone: string | null;
 }
 
 export interface KpJobItemsResponse {
