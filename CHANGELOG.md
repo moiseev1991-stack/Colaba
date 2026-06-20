@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.104.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.104.0...v1.104.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* **kp-jobs:** email из company_contacts + edit-кнопка в шапке drawer'а ([d5f604c](https://github.com/moiseev1991-stack/Colaba/commit/d5f604cc416b29d25cdf3bb6e0f650a1f8ab95f5))
+
 # [1.104.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.103.1...v1.104.0) (2026-06-20)
 
 
