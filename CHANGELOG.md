@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.106.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.105.0...v1.106.0) (2026-06-20)
+
+
+### Bug Fixes
+
+* **kp-jobs:** убрал per-row кнопку «✈» — путала на «нет контакта» ([96cd918](https://github.com/moiseev1991-stack/Colaba/commit/96cd9181f54a75eda3f89019411607f7f8a9884f))
+
+
+### Features
+
+* **kp-jobs:** калькулятор «что выжмем» + превью КП по каналам ([031c0b3](https://github.com/moiseev1991-stack/Colaba/commit/031c0b30afffedbb15bc37f07f21fe1752c96fba))
+
 # [1.105.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.104.1...v1.105.0) (2026-06-20)
 
 
