@@ -407,20 +407,9 @@ export default function KpJobPage({ params }: PageProps) {
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
                           {clickable && (
-                            <div className="flex items-center justify-end gap-2">
-                              <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
-                                Открыть
-                              </span>
-                              <button
-                                type="button"
-                                disabled
-                                onClick={(e) => e.stopPropagation()}
-                                title="Скоро: отправить эту одну КП отдельно"
-                                className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800"
-                              >
-                                <Send className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
+                            <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
+                              Открыть
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -1089,6 +1078,14 @@ function DraftDrawer({
             )}
           </div>
 
+          {/* Превью по каналам (§3 минимум): один body — три рендера.
+              Полезно сейчас (видишь длину, влезает ли в TG/WA) и работает
+              сразу, когда коннекторы появятся. В edit-режиме скрываем,
+              чтобы не отвлекать от правки. */}
+          {!editing && (item.draft_id !== null) && (
+            <ChannelPreviewBlock subject={subject} body={body} />
+          )}
+
           {saveError && (
             <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
               {saveError}
@@ -1174,5 +1171,132 @@ function DraftDrawer({
         </div>
       </aside>
     </>
+  );
+}
+
+// --- Превью КП по каналам (§3 минимум, 2026-06-21) ---------------------------
+//
+// Один и тот же body, три варианта рендера + лимит длины канала. Email
+// сейчас единственный реально подключённый — но юзер уже сможет на этапе
+// генерации увидеть «для Telegram это слишком длинно, надо урезать»,
+// потому что когда TG-коннектор подключим (бот через chat_id владельца),
+// тексты будут готовы.
+//
+// Лимиты:
+//   - Telegram: 4096 символов в одном sendMessage. Длиннее — Bot API
+//     обрезает / возвращает 400.
+//   - WhatsApp Business API: ~1024 для template-сообщений, поэтому
+//     ставим строгий предел и предупреждаем за ~10% до.
+//   - Email: без жёсткого лимита, показываем общий счётчик.
+
+type PreviewChannel = 'email' | 'telegram' | 'whatsapp';
+
+const CHANNEL_META: Record<
+  PreviewChannel,
+  { label: string; limit: number | null; warnAt: number | null }
+> = {
+  email:    { label: 'Email',    limit: null, warnAt: null },
+  telegram: { label: 'Telegram', limit: 4096, warnAt: 3500 },
+  whatsapp: { label: 'WhatsApp', limit: 1024, warnAt: 900 },
+};
+
+function ChannelPreviewBlock({
+  subject,
+  body,
+}: {
+  subject: string;
+  body: string;
+}) {
+  const [channel, setChannel] = useState<PreviewChannel>('email');
+  const meta = CHANNEL_META[channel];
+
+  // TG/WA — обычно plain-text без сабжекта; склеиваем заголовок в первую
+  // строку, чтобы получатель видел тему. В Email сабжект отдельный.
+  const rendered = useMemo(() => {
+    if (channel === 'email') return body;
+    const prefix = subject ? `${subject}\n\n` : '';
+    return prefix + body;
+  }, [channel, subject, body]);
+
+  const length = rendered.length;
+  const overLimit = meta.limit !== null && length > meta.limit;
+  const warn = meta.warnAt !== null && length > meta.warnAt && !overLimit;
+
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+        Как это будет выглядеть в…
+      </label>
+      <div className="mb-2 flex flex-wrap gap-1">
+        {(Object.keys(CHANNEL_META) as PreviewChannel[]).map((key) => {
+          const active = key === channel;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setChannel(key)}
+              className={cn(
+                'rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
+                active
+                  ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
+                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+              )}
+            >
+              {CHANNEL_META[key].label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className={cn(
+          'rounded-md border px-3 py-2 text-[12.5px] leading-relaxed',
+          overLimit
+            ? 'border-rose-300 bg-rose-50 dark:border-rose-700/50 dark:bg-rose-950/30'
+            : warn
+              ? 'border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-950/30'
+              : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900',
+        )}
+      >
+        {channel === 'email' && subject && (
+          <div className="mb-1.5 border-b border-slate-200 pb-1.5 text-[12px] dark:border-slate-700">
+            <span className="font-medium text-[hsl(var(--muted))]">Тема: </span>
+            <span className="text-[hsl(var(--text))]">{subject}</span>
+          </div>
+        )}
+        <pre className="whitespace-pre-wrap font-sans text-[hsl(var(--text))]">
+          {rendered || (
+            <span className="italic text-slate-400">Тело пустое</span>
+          )}
+        </pre>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+        <span className="text-[hsl(var(--muted))]">
+          {channel === 'email'
+            ? 'В письме уйдут шапка с лого и подпись из настроек.'
+            : channel === 'telegram'
+              ? 'Канал в работе — пока шлём только Email. Превью для проверки длины.'
+              : 'Канал в работе — пока шлём только Email. Превью для проверки длины.'}
+        </span>
+        <span
+          className={cn(
+            'font-mono tabular-nums',
+            overLimit
+              ? 'text-rose-700 dark:text-rose-300'
+              : warn
+                ? 'text-amber-700 dark:text-amber-300'
+                : 'text-[hsl(var(--muted))]',
+          )}
+        >
+          {length.toLocaleString('ru-RU')}
+          {meta.limit !== null ? ` / ${meta.limit.toLocaleString('ru-RU')}` : ''}
+        </span>
+      </div>
+      {overLimit && meta.limit !== null && (
+        <p className="mt-1 text-[11px] text-rose-700 dark:text-rose-300">
+          Превышен лимит {meta.label} на {(length - meta.limit).toLocaleString('ru-RU')}{' '}
+          симв. — урежь тело перед отправкой через этот канал.
+        </p>
+      )}
+    </div>
   );
 }
