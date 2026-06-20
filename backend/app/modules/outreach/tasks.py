@@ -1,9 +1,15 @@
 """Celery-задачи модуля outreach.
 
-Сейчас тут только bulk-генерация КП (generate_kp_bulk_task). Очередь
-maps_ai — туда же ходят reviews_ai.tasks, потому что и там, и тут LLM
-(один пул ассистентов outreach_draft) и неважно, чья задача займёт
-worker'а первой.
+Очередь maps_ai — туда же ходят reviews_ai.tasks, потому что и там, и
+тут LLM (один пул ассистентов outreach_draft) и неважно, чья задача
+займёт worker'а первой.
+
+Задачи:
+  - generate_kp_bulk_task — bulk-генерация КП по списку company_ids
+    (миграция 036).
+  - send_kp_batch_task — отправка пачки KpSend в статусе 'queued' по
+    job_id через EmailService (миграция 038, 2026-06-21). Запускается
+    после POST /outreach/kp/jobs/{job_id}/send.
 """
 
 from __future__ import annotations
@@ -13,7 +19,8 @@ import logging
 
 from app.core.database import AsyncSessionLocal
 from app.models.kp_generation_job import KpGenerationJob
-from app.modules.outreach import kp_bulk_service, kp_service
+from app.modules.email.service import EmailServiceError, email_service
+from app.modules.outreach import kp_bulk_service, kp_send_service, kp_service
 from app.queue.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -105,6 +112,127 @@ async def _generate_kp_bulk_async(job_id: int) -> dict:
             "failed": job.failed,
             "total": job.total,
         }
+
+
+# --- Отправка КП -----------------------------------------------------------
+
+# Пачка KpSend, которую один прогон task'а вытягивает за раз. На бывших
+# bulk-партиях у Димы максимум ~150 строк (75 компаний × до 2 каналов),
+# 20 за раз даёт ~8 прогонов и не блокирует SMTP'шный пул.
+_SEND_BATCH_SIZE = 20
+
+# Пауза между отправками внутри пачки. Hyvor сам rate-limit'ит на 10/sec,
+# SMTP-сервер юзера обычно ещё медленнее — 0.4 сек даёт ~150 писем/мин,
+# хватит для типовой партии в 75 шт.
+_PER_SEND_SLEEP_SEC = 0.4
+
+
+async def _send_one(db, send_row) -> None:
+    from app.models.kp_draft import KpDraft
+
+    draft = await db.get(KpDraft, send_row.draft_id)
+    if draft is None:
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message="Черновик КП исчез — отправка невозможна.",
+            error_code="draft_missing",
+        )
+        return
+
+    if send_row.channel != "email":
+        # Сейчас не должно случаться (enqueue для не-email сразу пишет
+        # 'skipped'), но если канал расширится — без падений.
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message="Канал ещё не подключен.",
+            error_code="channel_unavailable",
+        )
+        return
+
+    if not send_row.recipient:
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message="Адрес получателя пуст.",
+            error_code="no_recipient",
+        )
+        return
+
+    try:
+        result = await email_service.send_email(
+            to_email=send_row.recipient,
+            subject=draft.subject or "Предложение",
+            body=draft.body or "",
+            db=db,
+        )
+        kp_send_service.mark_send_sent(
+            send_row,
+            provider_message_id=(result.get("external_message_id") or result.get("message_id")),
+        )
+    except EmailServiceError as e:
+        kp_send_service.mark_send_failed(send_row, error_message=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception(
+            "send_kp_batch_task: unexpected error send_id=%s draft_id=%s: %s",
+            send_row.id,
+            send_row.draft_id,
+            e,
+        )
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message=f"Внутренняя ошибка отправки: {e}"[:1000],
+            error_code="internal",
+        )
+
+
+async def _send_kp_batch_async(job_id: int) -> dict:
+    total_sent = 0
+    total_failed = 0
+
+    # Несколько итераций по _SEND_BATCH_SIZE — обрабатываем всю очередь
+    # за один прогон task'а, чтобы не плодить chain'ы Celery-ретвитов.
+    while True:
+        async with AsyncSessionLocal() as db:
+            claimed = await kp_send_service.claim_queued_sends_for_job(
+                db, job_id=job_id, batch_size=_SEND_BATCH_SIZE
+            )
+            if not claimed:
+                break
+
+            for send_row in claimed:
+                await _send_one(db, send_row)
+                await asyncio.sleep(_PER_SEND_SLEEP_SEC)
+                if send_row.status == "sent":
+                    total_sent += 1
+                elif send_row.status == "failed":
+                    total_failed += 1
+
+            await db.commit()
+
+    return {"job_id": job_id, "sent": total_sent, "failed": total_failed}
+
+
+@celery_app.task(
+    name="send_kp_batch_task",
+    queue="maps_ai",
+    bind=True,
+    max_retries=0,
+)
+def send_kp_batch_task(self, job_id: int):
+    """Отправляет все KpSend в статусе 'queued' для job_id.
+
+    Идемпотентна по дизайну: claim переводит row в 'sending' под FOR
+    UPDATE SKIP LOCKED, второй параллельный воркер не подхватит уже
+    взятые. Если что-то упало посередине — следующий запуск довыгребет
+    оставшиеся queued. max_retries=0 — task сам ловит ошибки и пишет
+    их в строку (status=failed), снова дёргать смысла нет.
+    """
+    try:
+        return asyncio.run(_send_kp_batch_async(job_id))
+    except Exception as exc:
+        logger.error(
+            "send_kp_batch_task job=%d crashed: %s", job_id, exc, exc_info=True
+        )
+        raise
 
 
 @celery_app.task(name="generate_kp_bulk_task", queue="maps_ai", bind=True, max_retries=0)

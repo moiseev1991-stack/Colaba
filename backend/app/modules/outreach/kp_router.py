@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.modules.auth.router import get_current_user_id
-from app.modules.outreach import kp_bulk_service, kp_service
+from app.modules.outreach import kp_bulk_service, kp_send_service, kp_service
 from app.modules.outreach.kp_schemas import (
     KpArgumentsUsed,
     KpBulkDraftPreview,
@@ -27,6 +27,10 @@ from app.modules.outreach.kp_schemas import (
     KpJobItemsResponse,
     KpJobListItem,
     KpJobListResponse,
+    KpJobSendRequest,
+    KpJobSendStatusOut,
+    KpSendListItem,
+    KpSendListResponse,
     KpTemplateOut,
 )
 
@@ -329,6 +333,112 @@ async def list_drafts(
                 subject=row.draft.subject,
                 body_preview=(row.draft.body or "")[:240],
                 created_at=row.draft.created_at,
+            )
+            for row in items
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/jobs/{job_id}/send", response_model=KpJobSendStatusOut)
+async def send_bulk_job(
+    job_id: int,
+    payload: KpJobSendRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> KpJobSendStatusOut:
+    """Отправить все готовые КП партии по выбранным каналам.
+
+    Записывает KpSend на каждую пару (draft × канал): queued если есть
+    адрес и канал подключен, skipped иначе. Затем ставит Celery-task
+    `send_kp_batch_task`, который реально шлёт через EmailService.
+
+    Идемпотентно: повторный POST с тем же набором каналов НЕ создаёт
+    дубликаты для уже sent/sending/queued строк. Failed-строки можно
+    «пересоздать» повторным запросом — это запланированный ретрай-флоу.
+
+    Возвращает свежий status (счётчики по статусам), чтобы UI сразу
+    перешёл в режим поллинга без дополнительного GET'а.
+    """
+    try:
+        await kp_send_service.enqueue_job_send(
+            db,
+            user_id=user_id,
+            job_id=job_id,
+            channels=list(payload.channels),
+        )
+    except kp_send_service.SendError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    # Запускаем worker. Импортим лениво — на CI без redis импорт tasks
+    # может падать (см. ту же логику в bulk_generate_kp).
+    try:
+        from app.modules.outreach.tasks import send_kp_batch_task
+
+        send_kp_batch_task.delay(job_id)
+    except Exception as e:  # noqa: BLE001
+        logger.error("send_bulk_job: failed to enqueue send job=%d: %s", job_id, e)
+        # Не падаем: строки KpSend уже созданы, юзер увидит их в History.
+        # Следующий вызов /send или ручной retry допишет.
+
+    status = await kp_send_service.get_job_send_status(
+        db, user_id=user_id, job_id=job_id
+    )
+    assert status is not None  # job уже проверен внутри enqueue_job_send
+    return KpJobSendStatusOut(**status)
+
+
+@router.get("/jobs/{job_id}/send-status", response_model=KpJobSendStatusOut)
+async def get_bulk_send_status(
+    job_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> KpJobSendStatusOut:
+    """Сводка по отправкам конкретной партии — UI поллит во время
+    рассылки, чтобы показать прогресс «отправлено N из M».
+    """
+    status = await kp_send_service.get_job_send_status(
+        db, user_id=user_id, job_id=job_id
+    )
+    if status is None:
+        raise HTTPException(status_code=404, detail="Партия не найдена.")
+    return KpJobSendStatusOut(**status)
+
+
+@router.get("/sends", response_model=KpSendListResponse)
+async def list_sends(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> KpSendListResponse:
+    """Все отправки юзера — для вкладки «Отправки» в /history.
+
+    Сортировка — по дате создания строки убыванием (свежие сверху).
+    """
+    items, total = await kp_send_service.list_user_sends(
+        db, user_id=user_id, limit=limit, offset=offset
+    )
+    return KpSendListResponse(
+        items=[
+            KpSendListItem(
+                id=row.send.id,
+                job_id=row.send.job_id,
+                draft_id=row.send.draft_id,
+                company_id=row.send.company_id,
+                company_name=row.company_name,
+                company_city=row.company_city,
+                subject=row.subject,
+                template_key=row.template_key,
+                channel=row.send.channel,  # type: ignore[arg-type]
+                recipient=row.send.recipient,
+                status=row.send.status,  # type: ignore[arg-type]
+                error_code=row.send.error_code,
+                error_message=row.send.error_message,
+                created_at=row.send.created_at,
+                sent_at=row.send.sent_at,
             )
             for row in items
         ],
