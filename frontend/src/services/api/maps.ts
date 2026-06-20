@@ -174,6 +174,10 @@ export interface PainTagOut {
   cluster_size?: number | null;
   examples?: Array<{ text_hash?: string | null; text_preview?: string }>;
   status: string;
+  /** 'negative' = боль / жалоба (UI рисует красным),
+   *  'positive' = сильная сторона / то, что хвалят (UI рисует зелёным).
+   *  Backend defaults to 'negative' для обратной совместимости. */
+  sentiment?: 'negative' | 'positive';
 }
 
 export interface CompanyPainOut {

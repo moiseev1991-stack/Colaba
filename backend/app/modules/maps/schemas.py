@@ -206,6 +206,11 @@ class PainTagOut(BaseModel):
     cluster_size: int | None = None
     examples: list[dict] | None = None
     status: str = "active"
+    # 'negative' = боль / жалоба, 'positive' = сильная сторона. Дефолт
+    # 'negative' для обратной совместимости со старыми клиентами, ходившими
+    # за тегами без sentiment-фильтра. UI красит плитки по этому полю:
+    # негативные — красные, позитивные — зелёные.
+    sentiment: str = "negative"
 
 
 class CompanyContactOut(BaseModel):

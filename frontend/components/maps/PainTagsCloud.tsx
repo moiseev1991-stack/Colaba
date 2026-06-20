@@ -82,6 +82,10 @@ export function PainTagsCloud({ niche, city, searchId, value, onChange }: Props)
       )}
       {tags.map((t) => {
         const selected = value.includes(t.id);
+        // 2026-06-21: красим по sentiment. Negative — красным (боль),
+        // positive — зелёным (сильная сторона). Default неизвестен
+        // (старые теги без sentiment) → красный, как было исторически.
+        const positive = t.sentiment === 'positive';
         return (
           <button
             type="button"
@@ -92,14 +96,20 @@ export function PainTagsCloud({ niche, city, searchId, value, onChange }: Props)
               'cursor-pointer rounded-md border px-2 py-0.5 text-[11.5px] font-medium leading-snug transition-colors',
               selected
                 ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
-                : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500',
+                : positive
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500 dark:border-emerald-700/60 dark:bg-emerald-900/20 dark:text-emerald-200 dark:hover:border-emerald-500'
+                  : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200 dark:hover:border-rose-500',
             )}
           >
             {t.label}
             <span
               className={cn(
                 'ml-1 text-[10px] font-normal',
-                selected ? 'text-slate-300 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400',
+                selected
+                  ? 'text-slate-300 dark:text-slate-500'
+                  : positive
+                    ? 'text-emerald-700/80 dark:text-emerald-300/80'
+                    : 'text-rose-700/80 dark:text-rose-300/80',
               )}
             >
               {t.occurrences_count}
