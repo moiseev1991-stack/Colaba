@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.105.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.104.1...v1.105.0) (2026-06-20)
+
+
+### Features
+
+* **kp-jobs:** §2 HTML-обвязка КП-писем + аватарки компаний в UI ([0167eb3](https://github.com/moiseev1991-stack/Colaba/commit/0167eb3bc960dd030ae77cf5fe671f554c18886f)), closes [#RRGGBB](https://github.com/moiseev1991-stack/Colaba/issues/RRGGBB) [#RGB](https://github.com/moiseev1991-stack/Colaba/issues/RGB)
+
 ## [1.104.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.104.0...v1.104.1) (2026-06-20)
 
 
