@@ -22,6 +22,7 @@ import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
+import { ColdEmailCalculator } from '@/components/ColdEmailCalculator';
 import { cn } from '@/lib/utils';
 import {
   clearBulkKpPending,
@@ -302,6 +303,11 @@ function KpJobNewInner() {
               })}
             </div>
           </div>
+
+          {/* Калькулятор «что выжмем» — независимый блок, не влияет на старт.
+              Юзеру нужен сразу до отправки, чтобы понять, имеет ли смысл
+              катать партию из N компаний или поднять/опустить лимит. */}
+          <ColdEmailCalculator letterCount={companyIds.length} />
 
           {startError && (
             <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
