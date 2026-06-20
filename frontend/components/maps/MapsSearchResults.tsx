@@ -1175,22 +1175,23 @@ export function MapsSearchResults({
                 }}
               />
             )}
-            {/* 2026-06-12: общая динамика отзывов в нише — всегда видна,
-                независимо от выбранной плитки. По запросу юзера. */}
+            {/* 2026-06-21: один график вместо двух — переключается между
+                общей динамикой ниши и динамикой по выбранной боли. До
+                этого «Динамика отзывов в нише» и «Динамика по месяцам»
+                висели одна под другой и дублировали друг друга по форме.
+                Сейчас: пока боль не выбрана — общая; кликнул на pain-
+                плитку выше — тот же график переключается на её серию,
+                рядом с заголовком появляется pain-пилл и «× закрыть». */}
             <RegionPainTrendInline
-              tag={null}
-              trend={reviewsTrend}
-              loading={reviewsTrendLoading}
+              tag={painTagForChart}
+              trend={painTagForChart ? painTrend : reviewsTrend}
+              loading={painTagForChart ? painTrendLoading : reviewsTrendLoading}
               headline="Динамика отзывов в нише"
+              onClose={
+                painTagForChart ? () => setPainTagForChart(null) : undefined
+              }
             />
-            {painTagForChart && (
-              <RegionPainTrendInline
-                tag={painTagForChart}
-                trend={painTrend}
-                loading={painTrendLoading}
-                onClose={() => setPainTagForChart(null)}
-              />
-            )}
+
             {/* Сравнение с нишей — как в drawer, но без привязки к компании.
                 Показывает топ болей с долей компаний и средним на компанию.
                 Кликабельные строки — фильтрует список по pain_tag_id. */}
