@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.103.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.102.1...v1.103.0) (2026-06-20)
+
+
+### Features
+
+* **kp-jobs:** рабочая email-отправка + вкладка «Отправки» в /history ([13cb2da](https://github.com/moiseev1991-stack/Colaba/commit/13cb2da24ba87028674a26a4fb9253fe25bdfb06))
+
 ## [1.102.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.102.0...v1.102.1) (2026-06-19)
 
 
