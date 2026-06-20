@@ -407,20 +407,9 @@ export default function KpJobPage({ params }: PageProps) {
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
                           {clickable && (
-                            <div className="flex items-center justify-end gap-2">
-                              <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
-                                Открыть
-                              </span>
-                              <button
-                                type="button"
-                                disabled
-                                onClick={(e) => e.stopPropagation()}
-                                title="Скоро: отправить эту одну КП отдельно"
-                                className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800"
-                              >
-                                <Send className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
+                            <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
+                              Открыть
+                            </span>
                           )}
                         </td>
                       </tr>
