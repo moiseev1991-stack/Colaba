@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.103.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.103.0...v1.103.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* **kp-jobs:** TG/WA/MAX чекбоксы реально disabled — кликнуть нельзя ([314d1e1](https://github.com/moiseev1991-stack/Colaba/commit/314d1e14eb3ed703037b0352371bbe3e7899a497))
+
 # [1.103.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.102.1...v1.103.0) (2026-06-20)
 
 
