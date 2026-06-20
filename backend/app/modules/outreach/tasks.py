@@ -17,10 +17,14 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from sqlalchemy import select
+
 from app.core.database import AsyncSessionLocal
+from app.models.email_config import EmailConfig
 from app.models.kp_generation_job import KpGenerationJob
 from app.modules.email.service import EmailServiceError, email_service
 from app.modules.outreach import kp_bulk_service, kp_send_service, kp_service
+from app.modules.outreach.kp_html_renderer import render_kp_html
 from app.queue.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -127,6 +131,25 @@ _SEND_BATCH_SIZE = 20
 _PER_SEND_SLEEP_SEC = 0.4
 
 
+async def _load_email_branding(db) -> tuple[str | None, str | None, str | None]:
+    """Достаёт из EmailConfig поля для html-обёртки КП (миграция 039).
+
+    Возвращает (signature_html, logo_url, brand_color). Любое поле может быть
+    None/пустым — рендерер скрывает соответствующий блок. Если EmailConfig
+    вообще не создан (новая инсталляция) — отдаём (None, None, None).
+    """
+    row = (
+        await db.execute(select(EmailConfig).where(EmailConfig.id == 1))
+    ).scalar_one_or_none()
+    if row is None:
+        return None, None, None
+    return (
+        (row.sender_signature_html or None),
+        (row.sender_logo_url or None),
+        (row.sender_brand_color or None),
+    )
+
+
 async def _send_one(db, send_row) -> None:
     from app.models.kp_draft import KpDraft
 
@@ -157,11 +180,21 @@ async def _send_one(db, send_row) -> None:
         )
         return
 
+    signature_html, logo_url, brand_color = await _load_email_branding(db)
+    plain_body = draft.body or ""
+    html_body = render_kp_html(
+        body_md=plain_body,
+        logo_url=logo_url,
+        signature_html=signature_html,
+        brand_color=brand_color,
+    )
+
     try:
         result = await email_service.send_email(
             to_email=send_row.recipient,
             subject=draft.subject or "Предложение",
-            body=draft.body or "",
+            body=plain_body,
+            html_body=html_body,
             db=db,
         )
         kp_send_service.mark_send_sent(

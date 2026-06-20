@@ -11,7 +11,16 @@ import {
   getEmailStatus,
   type EmailSettingsDTO,
 } from '@/src/services/api/emailSettings';
-import { Loader2, Mail, Save, Server, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Loader2,
+  Mail,
+  Save,
+  Server,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+} from 'lucide-react';
 import { CardV2 } from '@/components/ui/CardV2';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 
@@ -111,6 +120,9 @@ export default function EmailSettingsPage() {
         imap_use_ssl: form.imap_use_ssl,
         imap_mailbox: form.imap_mailbox,
         reply_prefix: form.reply_prefix,
+        sender_signature_html: form.sender_signature_html,
+        sender_logo_url: form.sender_logo_url,
+        sender_brand_color: form.sender_brand_color,
       });
       setForm(updated);
       const st = await getEmailStatus();
@@ -493,6 +505,110 @@ export default function EmailSettingsPage() {
                   value={form.reply_to_email || ''}
                   onChange={(e) => updateField('reply_to_email', e.target.value)}
                 />
+              </div>
+            </div>
+          </CardV2>
+
+          <CardV2 as="section" className="mb-6 p-5">
+            <h2
+              className="font-display font-semibold tracking-tight text-[15px] mb-1 flex items-center gap-2"
+              style={{ color: 'hsl(var(--text))' }}
+            >
+              <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-400" />
+              Оформление КП-писем
+            </h2>
+            <p className="text-xs mb-4" style={{ color: 'hsl(var(--muted))' }}>
+              Шапка с логотипом и подвал с подписью попадают в каждое
+              письмо, которое уходит со страницы партии. Все поля опциональны
+              — пустое поле просто скрывает соответствующий блок.
+            </p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px] gap-3">
+                <div>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>
+                    Логотип (URL)
+                  </label>
+                  <input
+                    className={INPUT_CLS}
+                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
+                    value={form.sender_logo_url || ''}
+                    onChange={(e) => updateField('sender_logo_url', e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>
+                    Акцент-цвет (hex)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={form.sender_brand_color || '#3B82F6'}
+                      onChange={(e) =>
+                        updateField('sender_brand_color', e.target.value.toUpperCase())
+                      }
+                      className="h-9 w-12 rounded-v2-sm border cursor-pointer p-0"
+                      style={{ borderColor: 'hsl(var(--border))' }}
+                    />
+                    <input
+                      className={INPUT_CLS}
+                      style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
+                      value={form.sender_brand_color || ''}
+                      onChange={(e) => updateField('sender_brand_color', e.target.value)}
+                      placeholder="#3B82F6"
+                    />
+                  </div>
+                </div>
+              </div>
+              {form.sender_logo_url ? (
+                <div
+                  className="mt-1 inline-flex items-center gap-2 rounded-v2-sm border px-3 py-2"
+                  style={{
+                    borderColor: 'hsl(var(--border))',
+                    background: 'hsl(var(--surface-2))',
+                  }}
+                >
+                  {/* Чистая <img/> вместо next/image: внешний URL без
+                      сконфигурированного next-image-domain → next/image
+                      даст 400. Это превью, не layout-критичное место. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.sender_logo_url}
+                    alt="Превью логотипа"
+                    style={{
+                      maxHeight: 32,
+                      maxWidth: 120,
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                  />
+                  <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                    превью
+                  </span>
+                </div>
+              ) : null}
+              <div>
+                <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>
+                  Подпись (markdown)
+                </label>
+                <textarea
+                  rows={5}
+                  className={`${INPUT_CLS} font-mono text-[12.5px]`}
+                  style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
+                  value={form.sender_signature_html || ''}
+                  onChange={(e) =>
+                    updateField('sender_signature_html', e.target.value)
+                  }
+                  placeholder={
+                    '**Дима Моисеев**, Colaba\n' +
+                    '[colaba.ru](https://colaba.ru) · +7 999 000-00-00'
+                  }
+                />
+                <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                  Markdown: **жирный**, [ссылка](url), переносы строк
+                  сохраняются. HTML-теги допустимы, но не используйте
+                  &lt;script&gt;.
+                </p>
               </div>
             </div>
           </CardV2>

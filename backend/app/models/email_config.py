@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 
 from app.core.database import Base
 
@@ -32,6 +32,16 @@ class EmailConfig(Base):
 
     # --- Reply-to ---
     reply_to_email = Column(String(255), nullable=True, default="")
+
+    # --- HTML-обвязка КП-писем (миграция 039) ---
+    # Подпись (markdown/HTML) — рендерится в подвале каждого КП-письма.
+    # Пусто = подвал не показываем.
+    sender_signature_html = Column(Text, nullable=True, default="", server_default="")
+    # URL логотипа (http(s):// или data:image). Пусто = шапка с логотипом скрыта.
+    sender_logo_url = Column(String(500), nullable=True, default="", server_default="")
+    # Hex-цвет для тонкой акцент-полосы под шапкой (#RRGGBB). Пусто =
+    # рендерер использует мягкий серый.
+    sender_brand_color = Column(String(20), nullable=True, default="", server_default="")
 
     # --- IMAP (receiving replies) ---
     imap_host = Column(String(255), nullable=True, default="")

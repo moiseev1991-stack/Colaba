@@ -213,6 +213,9 @@ export interface KpJobItem {
   /** Первый валидный email из company.emails. null → у компании нет
    *  адресата, UI блокирует «Отправить» для этой строки. */
   recipient_email: string | null;
+  /** URL логотипа компании (из 2GIS raw_data). null → UI рисует
+   *  инициалы из company_name. */
+  company_logo_url: string | null;
 }
 
 export interface KpJobItemsResponse {

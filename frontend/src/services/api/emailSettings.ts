@@ -20,6 +20,15 @@ export interface EmailSettingsDTO {
   imap_use_ssl: boolean;
   imap_mailbox: string;
   reply_prefix: string;
+  /**
+   * Подпись для подвала КП-писем (markdown/HTML). Пусто → подвал
+   * не рендерится. Бэк: миграция 039 / email_config.sender_signature_html.
+   */
+  sender_signature_html: string;
+  /** URL логотипа для шапки КП-писем. Пусто → шапка скрыта. */
+  sender_logo_url: string;
+  /** Hex-цвет brand-полосы под шапкой (#RRGGBB). Пусто → дефолт. */
+  sender_brand_color: string;
   is_configured: boolean;
   last_test_at: string | null;
   last_test_result: string | null;
