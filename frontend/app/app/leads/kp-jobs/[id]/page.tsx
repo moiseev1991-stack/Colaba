@@ -467,6 +467,9 @@ function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
   const [error, setError] = useState<string | null>(null);
 
   function toggle(key: KpSendChannel) {
+    // Защита от того, чтобы случайно «выбрать» канал, по которому мы
+    // не шлём — дублирует disabled-кнопку, но безопаснее иметь и тут.
+    if (!WORKING_CHANNELS.includes(key)) return;
     setChannels((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -547,42 +550,57 @@ function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {CHANNELS.map(({ key, label, Icon }) => {
-                const active = channels.has(key);
                 const working = WORKING_CHANNELS.includes(key);
+                const active = working && channels.has(key);
+                // TG/WA/MAX полностью disabled — кликнуть нельзя ни в каком
+                // состоянии, чтобы юзер случайно не «выбрал» канал, на
+                // который мы пока не шлём. Email остаётся toggle'абельным.
+                const lockedSoon = !working;
+                const buttonDisabled =
+                  lockedSoon || submitting || isActive;
                 return (
                   <button
                     key={key}
                     type="button"
                     role="checkbox"
                     aria-checked={active}
-                    onClick={() => toggle(key)}
-                    disabled={submitting || isActive}
+                    aria-disabled={lockedSoon || undefined}
+                    onClick={lockedSoon ? undefined : () => toggle(key)}
+                    disabled={buttonDisabled}
                     title={
                       working
                         ? 'Отправка по email — через настроенный Hyvor/SMTP.'
-                        : 'Коннектор скоро: отметишь — на бэке появится строка ‘пропущено: канал в работе’.'
+                        : 'Коннектор скоро: пока шлём только по email.'
                     }
                     className={cn(
-                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-                      active
+                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
+                      lockedSoon
+                        ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
+                        : 'disabled:cursor-not-allowed disabled:opacity-60',
+                      !lockedSoon && active
                         ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
+                        : '',
+                      !lockedSoon && !active
+                        ? 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                        : '',
                     )}
                   >
                     <span
                       className={cn(
                         'grid h-3.5 w-3.5 place-items-center rounded-sm border',
-                        active
-                          ? 'border-violet-500 bg-violet-500 text-white'
-                          : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900',
+                        lockedSoon
+                          ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
+                          : active
+                            ? 'border-violet-500 bg-violet-500 text-white'
+                            : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900',
                       )}
                     >
                       {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
                     </span>
                     <Icon className="h-3.5 w-3.5" />
                     {label}
-                    {!working && (
-                      <span className="ml-0.5 rounded bg-slate-100 px-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    {lockedSoon && (
+                      <span className="ml-0.5 rounded bg-slate-200 px-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                         скоро
                       </span>
                     )}
