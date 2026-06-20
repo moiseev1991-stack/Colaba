@@ -67,6 +67,13 @@ google-generativeai==0.8.3
 # вкладками: «Лиды» (для продаж) + «Производство сайта» (для верстальщика).
 openpyxl>=3.1.0,<4
 
+# markdown → HTML для рендера КП-писем (миграция 039). Стандартная
+# python-markdown. Используется в outreach/kp_html_renderer.py: тело
+# kp_drafts.body (markdown) превращается в HTML и вкладывается в шаблон
+# с шапкой/подписью из email_config. Plain-text fallback остаётся как
+# было — поле body в send_email.
+markdown>=3.5,<4
+
 # Sentry — error tracking (опционально, активируется при наличии SENTRY_DSN).
 # Без DSN init no-op'ит и ничего не отправляет.
 sentry-sdk[fastapi]>=1.40,<3

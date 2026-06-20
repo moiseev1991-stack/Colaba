@@ -233,6 +233,9 @@ class KpJobItem(BaseModel):
     # отправку для компаний без recipient. См. kp_send_service._pick_recipient
     # — логика выбора первого валидного email тут и там должна совпадать.
     recipient_email: str | None = None
+    # URL логотипа компании (из 2GIS raw_data). Для аватарки в таблице
+    # партии и в шапке drawer'а. None → фронт рисует инициалы из company_name.
+    company_logo_url: str | None = None
 
 
 class KpJobItemsResponse(BaseModel):

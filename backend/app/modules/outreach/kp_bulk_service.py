@@ -49,6 +49,31 @@ class JobView:
     recent_drafts: list[KpDraft]
 
 
+def _extract_company_logo_url(raw_data: dict | None) -> str | None:
+    """Возвращает URL логотипа компании из Company.raw_data (2GIS).
+
+    Источники по убыванию приоритета: топ-уровневый `logo`/`logo_url`/`icon`,
+    либо вложенный `external_content.brand.{logo_url,url}`. Возвращаем None
+    если не нашли — фронт нарисует initials-аватарку. Дубликат логики из
+    maps/website_leads_export._extract_logo_url, чтобы не тянуть импорт
+    цепочки website-leads в outreach.
+    """
+    if not isinstance(raw_data, dict):
+        return None
+    for key in ("logo", "logo_url", "icon"):
+        v = raw_data.get(key)
+        if isinstance(v, str) and v.startswith("http"):
+            return v
+    ec = raw_data.get("external_content")
+    if isinstance(ec, dict):
+        brand = ec.get("brand")
+        if isinstance(brand, dict):
+            url = brand.get("logo_url") or brand.get("url")
+            if isinstance(url, str) and url.startswith("http"):
+                return url
+    return None
+
+
 async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int | None:
     row = (
         await db.execute(
@@ -207,6 +232,10 @@ class JobItemRow:
     status: str  # queued | running | done | failed
     draft: KpDraft | None
     recipient_email: str | None = None
+    # URL логотипа компании, если 2GIS его отдал в raw_data. Для UI-
+    # аватарки в таблице партии и в шапке drawer'а. None — фронт
+    # рисует инициалы из company_name (детерминированный цвет по hash).
+    company_logo_url: str | None = None
 
 
 async def list_user_drafts(
@@ -278,13 +307,17 @@ async def list_job_items(
                 Company.name,
                 Company.city,
                 CompanyLegal.opf,
+                Company.raw_data,
             )
             .outerjoin(CompanyLegal, CompanyLegal.company_id == Company.id)
             .where(Company.id.in_(company_ids))
         )
     ).all()
-    company_meta: dict[int, tuple[str | None, str | None, str | None]] = {
-        int(r[0]): (r[1], r[2], r[3]) for r in company_rows
+    company_meta: dict[
+        int, tuple[str | None, str | None, str | None, str | None]
+    ] = {
+        int(r[0]): (r[1], r[2], r[3], _extract_company_logo_url(r[4]))
+        for r in company_rows
     }
 
     # Адресаты считаем отдельно — берём из обоих источников
@@ -358,6 +391,7 @@ async def list_job_items(
                 status=status,
                 draft=draft,
                 recipient_email=pick_first_email(emails_by_company.get(cid)),
+                company_logo_url=meta[3] if meta else None,
             )
         )
 

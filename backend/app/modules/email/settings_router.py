@@ -41,6 +41,11 @@ class EmailSettingsResponse(BaseModel):
     imap_use_ssl: bool = True
     imap_mailbox: str = "INBOX"
     reply_prefix: str = "reply-"
+    # Брендинг HTML-писем КП (миграция 039). Все три поля опциональны —
+    # пустые поля скрывают шапку с лого / подвал с подписью.
+    sender_signature_html: str = ""
+    sender_logo_url: str = ""
+    sender_brand_color: str = ""
     is_configured: bool = False
     last_test_at: Optional[datetime] = None
     last_test_result: Optional[str] = None
@@ -66,7 +71,9 @@ class EmailSettingsUpdate(BaseModel):
     imap_use_ssl: Optional[bool] = None
     imap_mailbox: Optional[str] = None
     reply_prefix: Optional[str] = None
-    imap_mailbox: Optional[str] = None
+    sender_signature_html: Optional[str] = None
+    sender_logo_url: Optional[str] = None
+    sender_brand_color: Optional[str] = None
 
 
 class TestSmtpBody(BaseModel):
@@ -110,6 +117,9 @@ def row_to_response(row: EmailConfig) -> EmailSettingsResponse:
         imap_use_ssl=bool(row.imap_use_ssl),
         imap_mailbox=row.imap_mailbox or "INBOX",
         reply_prefix=row.reply_prefix or "reply-",
+        sender_signature_html=row.sender_signature_html or "",
+        sender_logo_url=row.sender_logo_url or "",
+        sender_brand_color=row.sender_brand_color or "",
         is_configured=bool(row.is_configured),
         last_test_at=row.last_test_at,
         last_test_result=row.last_test_result,
