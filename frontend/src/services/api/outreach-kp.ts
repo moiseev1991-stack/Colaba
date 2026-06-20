@@ -250,3 +250,90 @@ export async function listKpJobs(limit = 50): Promise<KpJobListResponse> {
   });
   return r.data;
 }
+
+// --- Отправка КП (миграция 038, 2026-06-21) -------------------------------
+
+export type KpSendChannel = 'email' | 'telegram' | 'whatsapp' | 'max';
+
+export type KpSendStatus =
+  | 'queued'
+  | 'sending'
+  | 'sent'
+  | 'failed'
+  | 'skipped';
+
+export interface KpJobSendStatus {
+  job_id: number;
+  total: number;
+  queued: number;
+  sending: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  /** true пока есть строки в queued/sending — UI оставляет спиннер. */
+  is_active: boolean;
+  /** Последняя ошибка отправки (если есть) — для toast'а в UI. */
+  last_error: string | null;
+}
+
+export interface KpSendListItem {
+  id: number;
+  job_id: number | null;
+  draft_id: number;
+  company_id: number | null;
+  company_name: string | null;
+  company_city: string | null;
+  subject: string | null;
+  template_key: string | null;
+  channel: KpSendChannel;
+  recipient: string | null;
+  status: KpSendStatus;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  sent_at: string | null;
+}
+
+export interface KpSendListResponse {
+  items: KpSendListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** POST /outreach/kp/jobs/{id}/send — поставить отправку КП партии в
+ * очередь по выбранным каналам. На канале email шлёт через EmailService;
+ * остальные пока создают строки 'skipped'. */
+export async function sendKpJob(
+  jobId: number,
+  channels: KpSendChannel[],
+): Promise<KpJobSendStatus> {
+  const r = await apiClient.post<KpJobSendStatus>(
+    `/outreach/kp/jobs/${jobId}/send`,
+    { channels },
+  );
+  return r.data;
+}
+
+/** GET /outreach/kp/jobs/{id}/send-status — поллинг прогресса рассылки. */
+export async function getKpJobSendStatus(
+  jobId: number,
+): Promise<KpJobSendStatus> {
+  const r = await apiClient.get<KpJobSendStatus>(
+    `/outreach/kp/jobs/${jobId}/send-status`,
+  );
+  return r.data;
+}
+
+/** GET /outreach/kp/sends — для вкладки «Отправки» в /history. */
+export async function listKpSends(
+  params: { limit?: number; offset?: number } = {},
+): Promise<KpSendListResponse> {
+  const r = await apiClient.get<KpSendListResponse>('/outreach/kp/sends', {
+    params: {
+      limit: params.limit ?? 50,
+      offset: params.offset ?? 0,
+    },
+  });
+  return r.data;
+}

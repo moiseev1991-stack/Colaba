@@ -259,3 +259,73 @@ class KpJobListItem(BaseModel):
 
 class KpJobListResponse(BaseModel):
     items: list[KpJobListItem]
+
+
+# --- Отправка КП -----------------------------------------------------------
+#
+# Добавлено 2026-06-21 (миграция 038): рабочая отправка с bulk-страницы
+# партии. Канал email — реально шлёт через EmailService (Hyvor/SMTP);
+# каналы telegram/whatsapp/max принимаются, но создают строки KpSend
+# со status='skipped' и error_code='channel_unavailable' до коннекторов.
+
+SendChannel = Literal["email", "telegram", "whatsapp", "max"]
+SendStatus = Literal["queued", "sending", "sent", "failed", "skipped"]
+
+
+class KpJobSendRequest(BaseModel):
+    """Тело POST /outreach/kp/jobs/{job_id}/send — отправить все готовые
+    КП партии по выбранным каналам.
+
+    channels — мульти-выбор. Хотя бы один обязателен. Дубликаты схлопываются.
+    """
+
+    channels: list[SendChannel] = Field(..., min_length=1, max_length=4)
+
+
+class KpJobSendStatusOut(BaseModel):
+    """Сводка по отправкам конкретной партии — то, что поллит SendBar
+    после нажатия «Отправить».
+
+    Cчётчики покрывают все KpSend для job_id юзера (включая 'skipped').
+    is_active=true пока есть строки в queued/sending — UI оставляет
+    спиннер; false — все отгружены или skipped, UI показывает «Готово».
+    """
+
+    job_id: int
+    total: int
+    queued: int
+    sending: int
+    sent: int
+    failed: int
+    skipped: int
+    is_active: bool
+    last_error: str | None = None
+
+
+class KpSendListItem(BaseModel):
+    """Строка для вкладки «Отправки» в /history — одна строка = одна
+    попытка отправить один draft в один канал.
+    """
+
+    id: int
+    job_id: int | None = None
+    draft_id: int
+    company_id: int | None = None
+    company_name: str | None = None
+    company_city: str | None = None
+    subject: str | None = None
+    template_key: str | None = None
+    channel: SendChannel
+    recipient: str | None = None
+    status: SendStatus
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: datetime
+    sent_at: datetime | None = None
+
+
+class KpSendListResponse(BaseModel):
+    items: list[KpSendListItem]
+    total: int
+    limit: int
+    offset: int

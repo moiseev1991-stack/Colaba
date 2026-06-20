@@ -11,7 +11,18 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Download, Eye, Loader2, Map, MoreVertical, Sparkles, Trash2 } from 'lucide-react';
+import {
+  Download,
+  Eye,
+  Loader2,
+  Mail,
+  Map,
+  MessageCircle,
+  MoreVertical,
+  Send,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
@@ -26,18 +37,23 @@ import {
 import {
   listKpDrafts,
   listKpJobs,
+  listKpSends,
   type KpDraftListItem,
   type KpJobListItem,
+  type KpSendChannel,
+  type KpSendListItem,
+  type KpSendStatus,
 } from '@/src/services/api/outreach-kp';
 import { cn } from '@/lib/utils';
 
-type Tab = 'maps' | 'sites' | 'kp' | 'kp-jobs';
+type Tab = 'maps' | 'sites' | 'kp' | 'kp-jobs' | 'sends';
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'maps', label: 'По картам' },
   { value: 'sites', label: 'По сайтам' },
   { value: 'kp', label: 'КП' },
   { value: 'kp-jobs', label: 'Партии КП' },
+  { value: 'sends', label: 'Отправки' },
 ];
 
 function formatDateTime(iso: string): string {
@@ -95,6 +111,7 @@ function LeadsHistoryInner() {
       raw === 'sites' ||
       raw === 'kp' ||
       raw === 'kp-jobs' ||
+      raw === 'sends' ||
       raw === 'maps'
     )
       return raw;
@@ -138,6 +155,7 @@ function LeadsHistoryInner() {
       {tab === 'sites' && <SitesHistoryTab router={router} />}
       {tab === 'kp' && <KpHistoryTab router={router} />}
       {tab === 'kp-jobs' && <KpJobsHistoryTab router={router} />}
+      {tab === 'sends' && <KpSendsHistoryTab router={router} />}
     </div>
   );
 }
@@ -692,5 +710,176 @@ function KpJobsHistoryTab({
         );
       })}
     </ul>
+  );
+}
+
+// --- Tab: Отправки ---------------------------------------------------------
+
+const SEND_PAGE_SIZE = 50;
+
+const CHANNEL_META: Record<
+  KpSendChannel,
+  { label: string; Icon: React.ComponentType<{ className?: string }> }
+> = {
+  email: { label: 'Email', Icon: Mail },
+  telegram: { label: 'Telegram', Icon: Send },
+  whatsapp: { label: 'WhatsApp', Icon: MessageCircle },
+  max: { label: 'MAX', Icon: MessageCircle },
+};
+
+const SEND_STATUS_META: Record<
+  KpSendStatus,
+  { label: string; tone: 'good' | 'hot' | 'warm' | 'muted' }
+> = {
+  queued: { label: 'В очереди', tone: 'muted' },
+  sending: { label: 'Идёт отправка', tone: 'warm' },
+  sent: { label: 'Отправлено', tone: 'good' },
+  failed: { label: 'Ошибка', tone: 'hot' },
+  skipped: { label: 'Пропущено', tone: 'muted' },
+};
+
+function KpSendsHistoryTab({
+  router,
+}: {
+  router: ReturnType<typeof useRouter>;
+}) {
+  const [items, setItems] = useState<KpSendListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (p: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await listKpSends({
+        limit: SEND_PAGE_SIZE,
+        offset: p * SEND_PAGE_SIZE,
+      });
+      setItems(r.items);
+      setTotal(r.total);
+    } catch (e: any) {
+      setError(e?.message || 'Не удалось загрузить отправки.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load(page);
+  }, [load, page]);
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[64px]" rounded="lg" />
+        ))}
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">
+        {error}
+      </CardV2>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+        Отправок пока нет. Открой партию КП в «Партиях КП», выбери каналы и
+        нажми «Отправить» — попытки появятся здесь.
+      </CardV2>
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">
+        Всего отправок: {total}
+      </div>
+      <ul className="space-y-2">
+        {items.map((s) => {
+          const ch = CHANNEL_META[s.channel];
+          const st = SEND_STATUS_META[s.status];
+          return (
+            <li key={s.id}>
+              <CardV2 className="px-4 py-3 sm:px-5">
+                <div className="flex flex-wrap items-start gap-3">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200">
+                    <ch.Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                        title={s.subject || ''}
+                      >
+                        {s.subject || `КП #${s.draft_id}`}
+                      </span>
+                      <SignalPill tone={st.tone} size="sm">
+                        {st.label}
+                      </SignalPill>
+                    </div>
+                    <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                      {formatDateTime(s.created_at)} · {ch.label}
+                      {s.recipient ? ` → ${s.recipient}` : ''}
+                      {s.company_name ? ` · ${s.company_name}` : ''}
+                      {s.company_city ? ` · ${s.company_city}` : ''}
+                    </div>
+                    {s.error_message && (
+                      <div
+                        className="mt-1 truncate text-[12px] text-rose-700"
+                        title={s.error_message}
+                      >
+                        {s.error_message}
+                      </div>
+                    )}
+                  </div>
+                  {s.job_id && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(`/app/leads/kp-jobs/${s.job_id}`)
+                      }
+                      className="shrink-0 text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline"
+                    >
+                      Партия #{s.job_id} →
+                    </button>
+                  )}
+                </div>
+              </CardV2>
+            </li>
+          );
+        })}
+      </ul>
+
+      <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
+        <span>
+          Показано {page * SEND_PAGE_SIZE + 1}–
+          {Math.min((page + 1) * SEND_PAGE_SIZE, total)} из {total}
+        </span>
+        <div className="flex gap-2">
+          <ButtonV2
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            ← Назад
+          </ButtonV2>
+          <ButtonV2
+            variant="secondary"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={(page + 1) * SEND_PAGE_SIZE >= total}
+          >
+            Вперёд →
+          </ButtonV2>
+        </div>
+      </CardV2>
+    </>
   );
 }

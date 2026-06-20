@@ -35,10 +35,14 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import {
   getKpJobItems,
+  getKpJobSendStatus,
+  sendKpJob,
   updateKpDraft,
   type KpBulkJob,
   type KpJobItem,
   type KpJobItemStatus,
+  type KpJobSendStatus,
+  type KpSendChannel,
 } from '@/src/services/api/outreach-kp';
 
 const TEMPLATE_LABELS: Record<string, string> = {
@@ -407,12 +411,14 @@ export default function KpJobPage({ params }: PageProps) {
       )}
 
       {/* Sticky bottom bar. Появляется при job.status === 'done' — всегда
-          в зоне видимости даже на длинных таблицах. Кнопки и каналы пока
-          disabled — заготовки под будущий feature email/IM-рассылки.
-          padding-bottom основного контента компенсирует высоту bar'а
-          (через space занимаемый bottom-0 fixed). */}
+          в зоне видимости даже на длинных таблицах. Email включён реально
+          через EmailService; остальные каналы (TG/WA/MAX) создают строки
+          'skipped' до коннекторов — UI помечает их как «в работе». */}
       {!loading && !error && job?.status === 'done' && items.length > 0 && (
-        <SendBar doneCount={items.filter((it) => it.status === 'done').length} />
+        <SendBar
+          jobId={jobId}
+          doneCount={items.filter((it) => it.status === 'done').length}
+        />
       )}
 
       {/* Drawer */}
@@ -432,10 +438,12 @@ export default function KpJobPage({ params }: PageProps) {
 
 // --- Sticky bottom send bar -------------------------------------------------
 
-type SendChannel = 'email' | 'telegram' | 'whatsapp' | 'max';
+// Каналы, которые реально шлют. Остальные показываем «в работе» — backend
+// создаст для них skipped-строки с error_code='channel_unavailable'.
+const WORKING_CHANNELS: KpSendChannel[] = ['email'];
 
 const CHANNELS: {
-  key: SendChannel;
+  key: KpSendChannel;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
 }[] = [
@@ -445,15 +453,20 @@ const CHANNELS: {
   { key: 'max', label: 'MAX', Icon: MessageCircle },
 ];
 
-function SendBar({ doneCount }: { doneCount: number }) {
-  // Локальный toggle каналов — даже в disabled-режиме юзер видит, что
-  // умеет (мульти-выбор). По умолчанию выбран Email — самый «безопасный»
-  // дефолт, для остальных мессенджеров нужен будет коннектор.
-  const [channels, setChannels] = useState<Set<SendChannel>>(
+function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
+  // Локальный toggle каналов. По умолчанию выбран Email — единственный
+  // реально подключенный, остальные после клика стартуют как 'skipped'
+  // на бэке (UI помечает их как «коннектор скоро»).
+  const [channels, setChannels] = useState<Set<KpSendChannel>>(
     () => new Set(['email']),
   );
 
-  function toggle(key: SendChannel) {
+  // Состояние реальной отправки.
+  const [status, setStatus] = useState<KpJobSendStatus | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggle(key: KpSendChannel) {
     setChannels((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -462,21 +475,80 @@ function SendBar({ doneCount }: { doneCount: number }) {
     });
   }
 
+  // Первичная загрузка статуса — если страница открыта после
+  // предыдущей отправки, сразу показываем «N из M отправлено».
+  useEffect(() => {
+    let cancelled = false;
+    getKpJobSendStatus(jobId)
+      .then((s) => {
+        if (!cancelled) setStatus(s);
+      })
+      .catch(() => {
+        // 404 / network — игнор, юзер увидит «Отправок ещё не было».
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId]);
+
+  // Поллинг пока есть активные отправки. 2.5 сек — баланс между «видно
+  // прогресс» и нагрузкой на бэк (тот же темп, что у генерации).
+  useEffect(() => {
+    if (!status?.is_active) return;
+    const t = setTimeout(() => {
+      getKpJobSendStatus(jobId)
+        .then(setStatus)
+        .catch(() => undefined);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [jobId, status]);
+
+  async function handleSend() {
+    if (channels.size === 0 || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const fresh = await sendKpJob(jobId, Array.from(channels));
+      setStatus(fresh);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setError(
+        typeof detail === 'string'
+          ? detail
+          : e?.message || 'Не удалось поставить отправку в очередь.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const sentCount = (status?.sent ?? 0) + (status?.failed ?? 0);
+  const inFlight = (status?.queued ?? 0) + (status?.sending ?? 0);
+  const isActive = !!status?.is_active;
+  const hasAnySend = (status?.total ?? 0) > 0;
+  const buttonDisabled = submitting || channels.size === 0 || isActive;
+
   return (
     // sticky bottom-0 внутри потока страницы (не fixed) — bar прилипает
     // к низу viewport'а пока таблица длиннее экрана и плавно «отпускается»
-    // на сайт-футер. fixed раньше уезжал под глобальный footer сайта
-    // (Соглашение/Политика/Оферта) — каналы и кнопка терялись из виду.
+    // на сайт-футер.
     <div className="sticky bottom-3 z-30 mt-5">
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-2">
             <div className="text-[13px] font-semibold text-[hsl(var(--text))]">
-              Готово {doneCount} КП — выбери каналы и отправляй
+              {isActive
+                ? `Отправляем: ${status!.sent} из ${status!.total}…`
+                : hasAnySend
+                  ? `Отправлено: ${status!.sent} · с ошибкой: ${status!.failed}${
+                      status!.skipped > 0 ? ` · пропущено: ${status!.skipped}` : ''
+                    }`
+                  : `Готово ${doneCount} КП — выбери каналы и отправляй`}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {CHANNELS.map(({ key, label, Icon }) => {
                 const active = channels.has(key);
+                const working = WORKING_CHANNELS.includes(key);
                 return (
                   <button
                     key={key}
@@ -484,15 +556,19 @@ function SendBar({ doneCount }: { doneCount: number }) {
                     role="checkbox"
                     aria-checked={active}
                     onClick={() => toggle(key)}
-                    title="Канал-заготовка: реально отправлять пока нельзя"
+                    disabled={submitting || isActive}
+                    title={
+                      working
+                        ? 'Отправка по email — через настроенный Hyvor/SMTP.'
+                        : 'Коннектор скоро: отметишь — на бэке появится строка ‘пропущено: канал в работе’.'
+                    }
                     className={cn(
-                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
+                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                       active
                         ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
                         : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400',
                     )}
                   >
-                    {/* Явный «чекбокс» слева — юзер просил галочки. */}
                     <span
                       className={cn(
                         'grid h-3.5 w-3.5 place-items-center rounded-sm border',
@@ -505,10 +581,26 @@ function SendBar({ doneCount }: { doneCount: number }) {
                     </span>
                     <Icon className="h-3.5 w-3.5" />
                     {label}
+                    {!working && (
+                      <span className="ml-0.5 rounded bg-slate-100 px-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        скоро
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
+            {error && (
+              <div className="text-[12px] text-rose-700">{error}</div>
+            )}
+            {status?.last_error && !error && (
+              <div
+                className="truncate text-[12px] text-rose-700"
+                title={status.last_error}
+              >
+                Последняя ошибка: {status.last_error}
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
             <ButtonV2
@@ -522,14 +614,47 @@ function SendBar({ doneCount }: { doneCount: number }) {
             <ButtonV2
               variant="primary"
               size="md"
-              disabled
-              iconLeft={<Send />}
-              title="Скоро: отправка всех КП по выбранным каналам. История отправок появится отдельной вкладкой «Отправки» в /history."
+              onClick={handleSend}
+              disabled={buttonDisabled}
+              iconLeft={
+                submitting || isActive ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Send />
+                )
+              }
+              title={
+                isActive
+                  ? 'Сейчас идёт рассылка — дождись окончания.'
+                  : 'Шлёт каждое готовое КП по выбранным каналам. История попадает в /history → «Отправки».'
+              }
             >
-              Отправить ({doneCount})
+              {isActive
+                ? `Отправляется… ${sentCount}/${status!.total}`
+                : hasAnySend
+                  ? `Дослать (${doneCount - (status?.sent ?? 0)})`
+                  : `Отправить (${doneCount})`}
             </ButtonV2>
           </div>
         </div>
+        {isActive && (
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="h-full bg-violet-600 transition-all duration-500"
+              style={{
+                width:
+                  status!.total > 0
+                    ? `${Math.min(100, Math.round((sentCount / status!.total) * 100))}%`
+                    : '0%',
+              }}
+            />
+          </div>
+        )}
+        {!isActive && hasAnySend && inFlight === 0 && (
+          <div className="mt-2 text-[11px] text-[hsl(var(--muted))]">
+            Полный лог — в <a className="underline" href="/app/leads/history?tab=sends">«Отправки»</a> на странице истории.
+          </div>
+        )}
       </div>
     </div>
   );
