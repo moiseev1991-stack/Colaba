@@ -26,6 +26,7 @@ import {
   MailX,
   MessageCircle,
   Pencil,
+  Phone,
   Send,
   Sparkles,
   X,
@@ -36,6 +37,11 @@ import { CardV2 } from '@/components/ui/CardV2';
 import { CompanyAvatar } from '@/components/CompanyAvatar';
 import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
+import {
+  buildWhatsappLink,
+  formatPhoneForDisplay,
+  normalizePhoneForWa,
+} from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import {
   getKpJobItems,
@@ -340,6 +346,19 @@ export default function KpJobPage({ params }: PageProps) {
                     const clickable =
                       it.status === 'done' || it.draft_id !== null;
                     const hasRecipient = !!it.recipient_email;
+                    const waLink = !hasRecipient
+                      ? buildWhatsappLink(
+                          it.company_phone,
+                          // КП ещё не готов — отправляем «голую» wa-ссылку
+                          // без текста, юзер сам напишет / скопирует позже.
+                          it.body
+                            ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}`
+                            : null,
+                        )
+                      : null;
+                    const waPhoneDisplay = !hasRecipient && it.company_phone
+                      ? formatPhoneForDisplay(it.company_phone)
+                      : '';
                     return (
                       <tr
                         key={`${it.company_id}-${idx}`}
@@ -426,10 +445,26 @@ export default function KpJobPage({ params }: PageProps) {
                                 {it.recipient_email}
                               </span>
                             </span>
+                          ) : waLink ? (
+                            // Email-а нет, но есть валидный номер —
+                            // показываем «WhatsApp»-линк с пред-заполненным
+                            // КП. Клик открывает wa.me в новой вкладке,
+                            // юзер докручивает руками (bulk-канала пока нет).
+                            <a
+                              href={waLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
+                              title={`Открыть WhatsApp: ${waPhoneDisplay}`}
+                            >
+                              <Phone className="h-3 w-3 shrink-0" />
+                              WhatsApp
+                            </a>
                           ) : (
                             <span
                               className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
-                              title="У компании не найден email — это КП пока не уйдёт"
+                              title="Ни email, ни валидного телефона — этот КП пока никак не уйдёт"
                             >
                               <MailX className="h-3 w-3 shrink-0" />
                               нет контакта
@@ -474,6 +509,14 @@ export default function KpJobPage({ params }: PageProps) {
               const clickable =
                 it.status === 'done' || it.draft_id !== null;
               const hasRecipient = !!it.recipient_email;
+              const waLink = !hasRecipient
+                ? buildWhatsappLink(
+                    it.company_phone,
+                    it.body
+                      ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}`
+                      : null,
+                  )
+                : null;
               return (
                 <CardV2
                   key={`m-${it.company_id}-${idx}`}
@@ -542,6 +585,17 @@ export default function KpJobPage({ params }: PageProps) {
                         <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
                         <span className="truncate">{it.recipient_email}</span>
                       </span>
+                    ) : waLink ? (
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200"
+                      >
+                        <Phone className="h-3 w-3" />
+                        WhatsApp
+                      </a>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
                         <MailX className="h-3 w-3" />
@@ -1140,15 +1194,55 @@ function DraftDrawer({
                   </span>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
-                <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                <div className="text-amber-800 dark:text-amber-200">
-                  У компании не найден email — этот КП не уйдёт. Добавь
-                  контакт в карточке компании, чтобы включить отправку.
+            ) : (() => {
+              // Email-а нет — пробуем WhatsApp по телефону компании (если
+              // нормализуется). Это ручной канал: ссылка открывает wa.me
+              // с пред-заполненным КП, юзер сам жмёт «Отправить» в WA.
+              // Если телефона тоже нет / битый — старый amber-warning.
+              const waLink = buildWhatsappLink(
+                item.company_phone,
+                body
+                  ? `${subject ? `${subject}\n\n` : ''}${body}`
+                  : null,
+              );
+              const phoneDigits = normalizePhoneForWa(item.company_phone);
+              if (waLink && phoneDigits) {
+                return (
+                  <div className="space-y-1.5">
+                    <a
+                      href={waLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[13px] transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/60"
+                    >
+                      <Phone className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                      <div className="min-w-0 flex-1 truncate">
+                        <span className="font-medium text-emerald-900 dark:text-emerald-100">
+                          {formatPhoneForDisplay(item.company_phone)}
+                        </span>
+                        <span className="ml-1.5 text-[11px] uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
+                          WhatsApp
+                        </span>
+                      </div>
+                    </a>
+                    <p className="text-[11px] leading-tight text-[hsl(var(--muted))]">
+                      Email не найден — клик откроет WhatsApp с
+                      пред-заполненным КП. Отправлять надо руками (bulk-
+                      коннектора WA пока нет).
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
+                  <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                  <div className="text-amber-800 dark:text-amber-200">
+                    Ни email, ни валидного телефона — этот КП пока никак
+                    не уйдёт. Добавь контакт в карточке компании.
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           <div>
