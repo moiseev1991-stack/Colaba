@@ -228,6 +228,11 @@ class KpJobItem(BaseModel):
     subject: str | None = None
     body: str | None = None
     draft_created_at: datetime | None = None
+    # Адресат для основной (email) рассылки. None — у компании нет валидного
+    # email-а в companies.emails. Фронт показывает «Кому: …» и блокирует
+    # отправку для компаний без recipient. См. kp_send_service._pick_recipient
+    # — логика выбора первого валидного email тут и там должна совпадать.
+    recipient_email: str | None = None
 
 
 class KpJobItemsResponse(BaseModel):

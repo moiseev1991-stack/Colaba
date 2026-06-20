@@ -18,10 +18,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  AtSign,
   Check,
   Copy,
   Loader2,
   Mail,
+  MailX,
   MessageCircle,
   Pencil,
   Send,
@@ -31,6 +33,7 @@ import {
 
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
+import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import {
@@ -87,28 +90,12 @@ function jobStatusLabel(status: KpBulkJob['status']): string {
 
 const ROW_STATUS_META: Record<
   KpJobItemStatus,
-  { label: string; dot: string; cls: string }
+  { label: string; tone: SignalTone; pulse?: boolean }
 > = {
-  queued: {
-    label: 'В очереди',
-    dot: 'bg-slate-300',
-    cls: 'text-slate-500',
-  },
-  running: {
-    label: 'Генерируется',
-    dot: 'bg-violet-500 animate-pulse',
-    cls: 'text-violet-700',
-  },
-  done: {
-    label: 'Готово',
-    dot: 'bg-emerald-500',
-    cls: 'text-emerald-700',
-  },
-  failed: {
-    label: 'Ошибка',
-    dot: 'bg-rose-500',
-    cls: 'text-rose-700',
-  },
+  queued:  { label: 'В очереди',    tone: 'muted' },
+  running: { label: 'Генерируется', tone: 'cool', pulse: true },
+  done:    { label: 'Готово',       tone: 'good' },
+  failed:  { label: 'Ошибка',       tone: 'hot' },
 };
 
 interface PageProps {
@@ -247,7 +234,7 @@ export default function KpJobPage({ params }: PageProps) {
                   ? 'bg-rose-500'
                   : job.status === 'cancelled'
                     ? 'bg-amber-500'
-                    : 'bg-violet-600',
+                    : 'bg-brand-gradient',
               )}
               style={{ width: `${progressPct}%` }}
             />
@@ -289,135 +276,260 @@ export default function KpJobPage({ params }: PageProps) {
       )}
 
       {!loading && !error && items.length > 0 && (
-        <CardV2 className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
-              <colgroup>
-                <col className="w-12" />
-                <col />
-                <col className="w-32" />
-                <col className="w-36" />
-                <col />
-                <col className="w-20" />
-              </colgroup>
-              <thead className="sticky top-0 z-10">
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-2))] text-left text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                  <th className="px-4 py-2 font-medium">#</th>
-                  <th className="px-4 py-2 font-medium">Компания</th>
-                  <th className="px-4 py-2 font-medium">Город</th>
-                  <th className="px-4 py-2 font-medium">Статус</th>
-                  <th className="px-4 py-2 font-medium">Тема КП</th>
-                  <th className="px-4 py-2 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it, idx) => {
-                  const meta = ROW_STATUS_META[it.status];
-                  const clickable = it.status === 'done' || (it.draft_id !== null);
-                  return (
-                    <tr
-                      key={`${it.company_id}-${idx}`}
-                      className={cn(
-                        'border-b border-[hsl(var(--border))] last:border-b-0 transition-colors',
-                        clickable
-                          ? 'cursor-pointer hover:bg-[hsl(var(--surface-2))]'
-                          : '',
-                        drawerCompanyId === it.company_id && 'bg-violet-50/60 dark:bg-violet-950/30',
-                      )}
-                      onClick={
-                        clickable
-                          ? () => setDrawerCompanyId(it.company_id)
-                          : undefined
-                      }
-                    >
-                      <td className="px-4 py-2.5 text-[11px] tabular-nums text-[hsl(var(--muted))]">
-                        {idx + 1}
-                      </td>
-                      <td className="max-w-0 px-4 py-2.5">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          {it.company_legal_short && (
+        <>
+          {/* Desktop / tablet — табличный вид. На <sm уходит на мобильные
+              карточки ниже (table prerender'ится, но скрыт). */}
+          <CardV2 className="hidden overflow-hidden p-0 sm:block">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <colgroup>
+                  <col className="w-10" />
+                  <col />
+                  <col className="w-28" />
+                  <col className="w-32" />
+                  <col />
+                  <col className="w-52" />
+                  <col className="w-24" />
+                </colgroup>
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-2))] text-left text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                    <th className="px-3 py-2 font-medium">#</th>
+                    <th className="px-3 py-2 font-medium">Компания</th>
+                    <th className="px-3 py-2 font-medium">Город</th>
+                    <th className="px-3 py-2 font-medium">Статус</th>
+                    <th className="px-3 py-2 font-medium">Тема КП</th>
+                    <th className="px-3 py-2 font-medium">Кому</th>
+                    <th className="px-3 py-2 font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, idx) => {
+                    const meta = ROW_STATUS_META[it.status];
+                    const clickable =
+                      it.status === 'done' || it.draft_id !== null;
+                    const hasRecipient = !!it.recipient_email;
+                    return (
+                      <tr
+                        key={`${it.company_id}-${idx}`}
+                        className={cn(
+                          'border-b border-[hsl(var(--border))] last:border-b-0 transition-colors',
+                          clickable
+                            ? 'cursor-pointer hover:bg-[hsl(var(--surface-2))]'
+                            : '',
+                          idx % 2 === 1 && 'bg-[hsl(var(--surface-2))]/40',
+                          drawerCompanyId === it.company_id &&
+                            'bg-violet-50/60 dark:bg-violet-950/30',
+                        )}
+                        onClick={
+                          clickable
+                            ? () => setDrawerCompanyId(it.company_id)
+                            : undefined
+                        }
+                      >
+                        <td className="px-3 py-2.5 text-[11px] tabular-nums text-[hsl(var(--muted))]">
+                          {idx + 1}
+                        </td>
+                        <td className="max-w-0 px-3 py-2.5">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            {it.company_legal_short && (
+                              <span
+                                className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                title={it.company_legal_short}
+                              >
+                                {it.company_legal_short}
+                              </span>
+                            )}
                             <span
-                              className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                              title={it.company_legal_short}
+                              className="truncate font-medium text-[hsl(var(--text))]"
+                              title={it.company_name || undefined}
                             >
-                              {it.company_legal_short}
+                              {it.company_name || `Компания #${it.company_id}`}
                             </span>
-                          )}
-                          <span
-                            className="truncate font-medium text-[hsl(var(--text))]"
-                            title={it.company_name || undefined}
-                          >
-                            {it.company_name || `Компания #${it.company_id}`}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-[hsl(var(--muted))]">
-                        <span className="truncate" title={it.company_city || ''}>
-                          {it.company_city || '—'}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2.5">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1.5 font-medium',
-                            meta.cls,
-                          )}
-                        >
-                          <span
-                            className={cn('h-1.5 w-1.5 rounded-full', meta.dot)}
-                          />
-                          {meta.label}
-                        </span>
-                      </td>
-                      <td className="max-w-0 px-4 py-2.5 text-[hsl(var(--text))]">
-                        {it.subject ? (
-                          <span
-                            className="block truncate"
-                            title={it.subject}
-                          >
-                            {it.subject}
-                          </span>
-                        ) : (
-                          <span className="text-[hsl(var(--muted))]">—</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                        {clickable && (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
-                              Открыть
-                            </span>
-                            {/* Заготовка под одиночную отправку этой КП.
-                                Stop-propagation чтобы клик не открывал drawer. */}
-                            <button
-                              type="button"
-                              disabled
-                              onClick={(e) => e.stopPropagation()}
-                              title="Скоро: отправить эту одну КП — Email/Telegram/WhatsApp/MAX"
-                              className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800"
-                            >
-                              <Send className="h-3.5 w-3.5" />
-                            </button>
                           </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-[hsl(var(--muted))]">
+                          <span
+                            className="truncate"
+                            title={it.company_city || ''}
+                          >
+                            {it.company_city || '—'}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5">
+                          <SignalPill
+                            tone={meta.tone}
+                            size="sm"
+                            className={meta.pulse ? 'animate-pulse' : ''}
+                          >
+                            {meta.label}
+                          </SignalPill>
+                        </td>
+                        <td className="max-w-0 px-3 py-2.5 text-[hsl(var(--text))]">
+                          {it.subject ? (
+                            <span
+                              className="block truncate"
+                              title={it.subject}
+                            >
+                              {it.subject}
+                            </span>
+                          ) : (
+                            <span className="text-[hsl(var(--muted))]">—</span>
+                          )}
+                        </td>
+                        <td className="max-w-0 px-3 py-2.5">
+                          {hasRecipient ? (
+                            <span
+                              className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              title={it.recipient_email!}
+                            >
+                              <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
+                              <span className="truncate">
+                                {it.recipient_email}
+                              </span>
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
+                              title="У компании не найден email — это КП пока не уйдёт"
+                            >
+                              <MailX className="h-3 w-3 shrink-0" />
+                              нет контакта
+                            </span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                          {clickable && (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
+                                Открыть
+                              </span>
+                              <button
+                                type="button"
+                                disabled
+                                onClick={(e) => e.stopPropagation()}
+                                title="Скоро: отправить эту одну КП отдельно"
+                                className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800"
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardV2>
+
+          {/* Mobile — карточки вместо таблицы (горизонтальный скролл уродует). */}
+          <div className="space-y-2 sm:hidden">
+            {items.map((it, idx) => {
+              const meta = ROW_STATUS_META[it.status];
+              const clickable =
+                it.status === 'done' || it.draft_id !== null;
+              const hasRecipient = !!it.recipient_email;
+              return (
+                <CardV2
+                  key={`m-${it.company_id}-${idx}`}
+                  interactive={clickable}
+                  onClick={
+                    clickable
+                      ? () => setDrawerCompanyId(it.company_id)
+                      : undefined
+                  }
+                  className={cn(
+                    'p-3',
+                    drawerCompanyId === it.company_id &&
+                      'border-violet-300 bg-violet-50/60 dark:bg-violet-950/30',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] tabular-nums text-[hsl(var(--muted))]">
+                          #{idx + 1}
+                        </span>
+                        {it.company_legal_short && (
+                          <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {it.company_legal_short}
+                          </span>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <span
+                          className="truncate font-medium text-[hsl(var(--text))]"
+                          title={it.company_name || undefined}
+                        >
+                          {it.company_name || `Компания #${it.company_id}`}
+                        </span>
+                      </div>
+                      {it.company_city && (
+                        <div className="mt-0.5 text-[11px] text-[hsl(var(--muted))]">
+                          {it.company_city}
+                        </div>
+                      )}
+                    </div>
+                    <SignalPill
+                      tone={meta.tone}
+                      size="sm"
+                      className={meta.pulse ? 'animate-pulse' : ''}
+                    >
+                      {meta.label}
+                    </SignalPill>
+                  </div>
+                  {it.subject && (
+                    <div className="mt-2 line-clamp-2 text-[12.5px] text-[hsl(var(--text))]">
+                      {it.subject}
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    {hasRecipient ? (
+                      <span
+                        className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        title={it.recipient_email!}
+                      >
+                        <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
+                        <span className="truncate">{it.recipient_email}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
+                        <MailX className="h-3 w-3" />
+                        нет контакта
+                      </span>
+                    )}
+                    {clickable && (
+                      <span className="shrink-0 text-[12px] font-medium text-violet-700">
+                        Открыть →
+                      </span>
+                    )}
+                  </div>
+                </CardV2>
+              );
+            })}
           </div>
-        </CardV2>
+        </>
       )}
 
       {/* Sticky bottom bar. Появляется при job.status === 'done' — всегда
           в зоне видимости даже на длинных таблицах. Email включён реально
           через EmailService; остальные каналы (TG/WA/MAX) создают строки
-          'skipped' до коннекторов — UI помечает их как «в работе». */}
+          'skipped' до коннекторов — UI помечает их как «в работе».
+          withRecipientCount: сколько готовых КП с валидным email — кнопка
+          «Отправить» дизейблится если ноль. */}
       {!loading && !error && job?.status === 'done' && items.length > 0 && (
         <SendBar
           jobId={jobId}
           doneCount={items.filter((it) => it.status === 'done').length}
+          withRecipientCount={
+            items.filter(
+              (it) => it.status === 'done' && !!it.recipient_email,
+            ).length
+          }
+          missingRecipientCount={
+            items.filter(
+              (it) => it.status === 'done' && !it.recipient_email,
+            ).length
+          }
         />
       )}
 
@@ -453,7 +565,20 @@ const CHANNELS: {
   { key: 'max', label: 'MAX', Icon: MessageCircle },
 ];
 
-function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
+function SendBar({
+  jobId,
+  doneCount,
+  withRecipientCount,
+  missingRecipientCount,
+}: {
+  jobId: number;
+  /** Сколько КП реально готово (status='done'). */
+  doneCount: number;
+  /** Из готовых — сколько с валидным email. По 0 «Отправить» дизейблится. */
+  withRecipientCount: number;
+  /** Из готовых — сколько без email (попадут как 'skipped' в kp_sends). */
+  missingRecipientCount: number;
+}) {
   // Локальный toggle каналов. По умолчанию выбран Email — единственный
   // реально подключенный, остальные после клика стартуют как 'skipped'
   // на бэке (UI помечает их как «коннектор скоро»).
@@ -529,13 +654,19 @@ function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
   const inFlight = (status?.queued ?? 0) + (status?.sending ?? 0);
   const isActive = !!status?.is_active;
   const hasAnySend = (status?.total ?? 0) > 0;
-  const buttonDisabled = submitting || channels.size === 0 || isActive;
+  // Защита от отправки «в пустоту»: блокируем кнопку если ни у одной
+  // готовой компании нет email-а. До этого юзер мог нажать «Отправить»
+  // и получить партию из 100% skipped — теперь видит причину сразу.
+  const noRecipients = withRecipientCount === 0;
+  const buttonDisabled =
+    submitting || channels.size === 0 || isActive || noRecipients;
 
   return (
     // sticky bottom-0 внутри потока страницы (не fixed) — bar прилипает
     // к низу viewport'а пока таблица длиннее экрана и плавно «отпускается»
-    // на сайт-футер.
-    <div className="sticky bottom-3 z-30 mt-5">
+    // на сайт-футер. pb-safe — учитываем нижнюю safe-area iPhone'а под
+    // home-indicator, иначе на мобильном bar частично уходит под полосу.
+    <div className="sticky bottom-3 z-30 mt-5 pb-[env(safe-area-inset-bottom)]">
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-2">
@@ -546,7 +677,13 @@ function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
                   ? `Отправлено: ${status!.sent} · с ошибкой: ${status!.failed}${
                       status!.skipped > 0 ? ` · пропущено: ${status!.skipped}` : ''
                     }`
-                  : `Готово ${doneCount} КП — выбери каналы и отправляй`}
+                  : noRecipients
+                    ? `Готово ${doneCount} КП, но ни у одной компании не найден email — отправка пока невозможна`
+                    : `Готово ${doneCount} КП · с контактом ${withRecipientCount}${
+                        missingRecipientCount > 0
+                          ? ` · без email-а: ${missingRecipientCount}`
+                          : ''
+                      }`}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {CHANNELS.map(({ key, label, Icon }) => {
@@ -644,21 +781,23 @@ function SendBar({ jobId, doneCount }: { jobId: number; doneCount: number }) {
               title={
                 isActive
                   ? 'Сейчас идёт рассылка — дождись окончания.'
-                  : 'Шлёт каждое готовое КП по выбранным каналам. История попадает в /history → «Отправки».'
+                  : noRecipients
+                    ? 'Ни у одной готовой КП нет email-а — отправка пока невозможна. Добавь контакты компаниям и попробуй снова.'
+                    : 'Шлёт каждое готовое КП по выбранным каналам. История попадает в /history → «Отправки».'
               }
             >
               {isActive
                 ? `Отправляется… ${sentCount}/${status!.total}`
                 : hasAnySend
-                  ? `Дослать (${doneCount - (status?.sent ?? 0)})`
-                  : `Отправить (${doneCount})`}
+                  ? `Дослать (${withRecipientCount - (status?.sent ?? 0)})`
+                  : `Отправить (${withRecipientCount})`}
             </ButtonV2>
           </div>
         </div>
         {isActive && (
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
             <div
-              className="h-full bg-violet-600 transition-all duration-500"
+              className="h-full bg-brand-gradient transition-all duration-500"
               style={{
                 width:
                   status!.total > 0
@@ -799,6 +938,36 @@ function DraftDrawer({
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {/* Кому уходит — критично, юзер должен видеть до клика
+              «Отправить», что КП реально дойдёт. Если email не найден,
+              показываем явное предупреждение, чтобы не отправить в пустоту. */}
+          <div>
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              Кому
+            </label>
+            {item.recipient_email ? (
+              <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[13px] dark:border-emerald-700/50 dark:bg-emerald-900/30">
+                <AtSign className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                <div className="min-w-0 flex-1 truncate">
+                  <span className="font-medium text-emerald-900 dark:text-emerald-100">
+                    {item.recipient_email}
+                  </span>
+                  <span className="ml-1.5 text-[11px] uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
+                    Email
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
+                <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                <div className="text-amber-800 dark:text-amber-200">
+                  У компании не найден email — этот КП не уйдёт. Добавь
+                  контакт в карточке компании, чтобы включить отправку.
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
               Тема

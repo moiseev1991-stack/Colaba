@@ -57,6 +57,25 @@ class EnqueueResult:
     skipped: int  # из них skipped (без адреса / канал недоступен)
 
 
+def pick_first_email(emails: list | None) -> str | None:
+    """Первый валидный email из company.emails (JSONB list).
+
+    Шарится между kp_send_service (реальная отправка) и kp_bulk_service
+    (preview-список адресатов на странице партии). Логика выбора должна
+    совпадать здесь и в UI, иначе в drawer'е будет один адрес, а в
+    отправке — другой.
+    """
+    if not isinstance(emails, list):
+        return None
+    for raw in emails:
+        if not raw:
+            continue
+        value = str(raw).strip()
+        if "@" in value and "." in value.split("@", 1)[1]:
+            return value
+    return None
+
+
 def _pick_recipient(company: Company | None, channel: str) -> str | None:
     """Адресат для отправки.
 
@@ -66,14 +85,7 @@ def _pick_recipient(company: Company | None, channel: str) -> str | None:
     if company is None:
         return None
     if channel == "email":
-        emails = company.emails if isinstance(company.emails, list) else []
-        for raw in emails:
-            if not raw:
-                continue
-            value = str(raw).strip()
-            if "@" in value and "." in value.split("@", 1)[1]:
-                return value
-        return None
+        return pick_first_email(company.emails)
     return None
 
 

@@ -210,6 +210,9 @@ export interface KpJobItem {
   subject: string | null;
   body: string | null;
   draft_created_at: string | null;
+  /** Первый валидный email из company.emails. null → у компании нет
+   *  адресата, UI блокирует «Отправить» для этой строки. */
+  recipient_email: string | null;
 }
 
 export interface KpJobItemsResponse {

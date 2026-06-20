@@ -21,6 +21,7 @@ from app.models.kp_draft import KpDraft
 from app.models.kp_generation_job import KpGenerationJob
 from app.models.maps import Company
 from app.models.organization import user_organizations
+from app.modules.outreach.kp_send_service import pick_first_email
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +203,7 @@ class JobItemRow:
     company_legal_short: str | None
     status: str  # queued | running | done | failed
     draft: KpDraft | None
+    recipient_email: str | None = None
 
 
 async def list_user_drafts(
@@ -262,19 +264,30 @@ async def list_job_items(
 
     since = job.started_at or job.created_at
 
-    # 1. Резолвим имена/города/OPF для всех компаний job'а одним запросом.
-    # company_legal_short = CompanyLegal.opf («ООО»/«ИП»/«АО»/«ПАО»),
-    # а не legal_short_name (это полное наименование без ИП/ООО) —
-    # последнее даёт длинные пиллы и ломает таблицу.
+    # 1. Резолвим имена/города/OPF/emails для всех компаний job'а одним
+    # запросом. company_legal_short = CompanyLegal.opf
+    # («ООО»/«ИП»/«АО»/«ПАО»), а не legal_short_name (это полное
+    # наименование без ИП/ООО) — последнее даёт длинные пиллы и ломает
+    # таблицу. Company.emails JSONB используется для preview-адресата:
+    # UI показывает первый валидный email под строкой и блокирует
+    # «Отправить» если у компании email'а нет.
     company_rows = (
         await db.execute(
-            select(Company.id, Company.name, Company.city, CompanyLegal.opf)
+            select(
+                Company.id,
+                Company.name,
+                Company.city,
+                CompanyLegal.opf,
+                Company.emails,
+            )
             .outerjoin(CompanyLegal, CompanyLegal.company_id == Company.id)
             .where(Company.id.in_(company_ids))
         )
     ).all()
-    company_meta: dict[int, tuple[str | None, str | None, str | None]] = {
-        int(r[0]): (r[1], r[2], r[3]) for r in company_rows
+    company_meta: dict[
+        int, tuple[str | None, str | None, str | None, str | None]
+    ] = {
+        int(r[0]): (r[1], r[2], r[3], pick_first_email(r[4])) for r in company_rows
     }
 
     # 2. Драфты, относящиеся к этому job'у — по company_id ∈ список + окно времени.
@@ -341,6 +354,7 @@ async def list_job_items(
                 company_legal_short=meta[2] if meta else None,
                 status=status,
                 draft=draft,
+                recipient_email=meta[3] if meta else None,
             )
         )
 
