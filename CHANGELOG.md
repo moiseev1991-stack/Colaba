@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.107.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.106.0...v1.107.0) (2026-06-21)
+
+
+### Features
+
+* **kp-jobs:** per-row кнопка «отправить эту КП» в таблице и drawer ([07279cb](https://github.com/moiseev1991-stack/Colaba/commit/07279cbb86995ceda0a4f7605021a2ef46d9bf92))
+
 # [1.106.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.105.0...v1.106.0) (2026-06-20)
 
 
