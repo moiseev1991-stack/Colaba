@@ -220,6 +220,10 @@ export interface KpJobItem {
    *  фронтом как fallback-канал «нет email → wa.me/{phone}». Нормализация
    *  на фронте (utils/phone). */
   company_phone: string | null;
+  /** Статус последней email-отправки этого draft'а. Используется чтобы
+   *  RowSendButton после reload показывал ✓ Отправлено и не давал
+   *  случайно отправить повторно. null — ещё не пытались. */
+  email_send_status: KpSendStatus | null;
 }
 
 export interface KpJobItemsResponse {

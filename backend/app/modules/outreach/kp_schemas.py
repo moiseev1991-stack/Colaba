@@ -240,6 +240,12 @@ class KpJobItem(BaseModel):
     # Фронт нормализует и подставляет в wa.me/{phone}-линк когда email
     # отсутствует — даёт юзеру ручной канал для «нет контакта»-строк.
     company_phone: str | None = None
+    # Статус последней email-отправки этого draft'а — для подсветки
+    # RowSendButton после reload, чтобы юзер не нажал send повторно.
+    # null → ещё не пытались отправить.
+    email_send_status: Literal[
+        "queued", "sending", "sent", "failed", "skipped"
+    ] | None = None
 
 
 class KpJobItemsResponse(BaseModel):

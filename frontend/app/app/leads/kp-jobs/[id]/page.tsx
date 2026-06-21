@@ -503,20 +503,22 @@ export default function KpJobPage({ params }: PageProps) {
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {it.draft_id !== null && hasRecipient && (
-                              <RowSendButton
-                                state={singleSend[it.draft_id]}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (
-                                    singleSend[it.draft_id!] === 'sending' ||
-                                    singleSend[it.draft_id!] === 'sent'
-                                  )
-                                    return;
-                                  void handleSendOne(it.draft_id!);
-                                }}
-                              />
-                            )}
+                            {it.draft_id !== null && hasRecipient && (() => {
+                              const eff = computeRowSendState(
+                                singleSend[it.draft_id],
+                                it.email_send_status,
+                              );
+                              return (
+                                <RowSendButton
+                                  state={eff}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (eff === 'sending' || eff === 'sent') return;
+                                    void handleSendOne(it.draft_id!);
+                                  }}
+                                />
+                              );
+                            })()}
                             {clickable && (
                               <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
                                 Открыть
@@ -650,20 +652,22 @@ export default function KpJobPage({ params }: PageProps) {
                       </a>
                     ) : null}
                     <div className="ml-auto flex shrink-0 items-center gap-2">
-                      {it.draft_id !== null && hasRecipient && (
-                        <RowSendButton
-                          state={singleSend[it.draft_id]}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              singleSend[it.draft_id!] === 'sending' ||
-                              singleSend[it.draft_id!] === 'sent'
-                            )
-                              return;
-                            void handleSendOne(it.draft_id!);
-                          }}
-                        />
-                      )}
+                      {it.draft_id !== null && hasRecipient && (() => {
+                        const eff = computeRowSendState(
+                          singleSend[it.draft_id],
+                          it.email_send_status,
+                        );
+                        return (
+                          <RowSendButton
+                            state={eff}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (eff === 'sending' || eff === 'sent') return;
+                              void handleSendOne(it.draft_id!);
+                            }}
+                          />
+                        );
+                      })()}
                       {clickable && (
                         <span className="text-[12px] font-medium text-violet-700">
                           Открыть →
@@ -723,11 +727,12 @@ export default function KpJobPage({ params }: PageProps) {
             drawerItem.company_id !== null &&
             handleItemPatched(drawerItem.company_id, updates)
           }
-          singleSendState={
+          singleSendState={computeRowSendState(
             drawerItem.draft_id !== null
               ? singleSend[drawerItem.draft_id]
-              : undefined
-          }
+              : undefined,
+            drawerItem.email_send_status,
+          )}
           onSendOne={
             drawerItem.draft_id !== null && drawerItem.recipient_email
               ? () => handleSendOne(drawerItem.draft_id!)
@@ -1084,11 +1089,42 @@ function SendBar({
 // Состояния:
 //   idle      → зелёный обводной ✈, hover-fill зелёным.
 //   sending   → spinner, disabled.
-//   sent      → галочка, disabled (в этой сессии повторно не шлём, чтобы
-//               не послать дубль; refresh страницы сбрасывает state).
+//   sent      → галочка, disabled. Залипает после reload благодаря
+//               persisted-статусу из БД (email_send_status), чтобы
+//               юзер случайно не отправил вторую копию.
 //   { error } → красная иконка, hover показывает текст ошибки в title.
 
 type RowSendState = 'sending' | 'sent' | { error: string } | undefined;
+
+/**
+ * Объединяет локальный per-row state (в рамках сессии) и persisted-статус
+ * последней email-отправки из БД. Persisted нужен чтобы после reload
+ * кнопка всё ещё показывала «✓ Отправлено» (или «failed»-ошибку) и не
+ * давала случайно отправить дубль.
+ *
+ * Правила:
+ *   - local 'sending'                 → 'sending'
+ *   - local 'sent' | persisted 'sent' → 'sent' (залипает приоритетно)
+ *   - local error                     → error (последняя попытка упала)
+ *   - persisted 'failed'              → error «прошлая попытка упала»
+ *   - persisted 'sending'|'queued'    → 'sending' (висит в очереди bulk-bar'а)
+ *   - persisted 'skipped'             → undefined (по этому каналу мы и не
+ *                                       пытались — например, no_recipient)
+ *   - иначе                           → undefined (idle, можно отправить)
+ */
+function computeRowSendState(
+  local: RowSendState,
+  persisted: KpJobItem['email_send_status'],
+): RowSendState {
+  if (local === 'sending') return 'sending';
+  if (local === 'sent' || persisted === 'sent') return 'sent';
+  if (local && typeof local === 'object' && 'error' in local) return local;
+  if (persisted === 'failed') {
+    return { error: 'Прошлая попытка не дошла — попробуй ещё раз.' };
+  }
+  if (persisted === 'sending' || persisted === 'queued') return 'sending';
+  return undefined;
+}
 
 function RowSendButton({
   state,
