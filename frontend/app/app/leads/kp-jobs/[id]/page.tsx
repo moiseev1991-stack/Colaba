@@ -330,8 +330,8 @@ export default function KpJobPage({ params }: PageProps) {
                   <col className="w-28" />
                   <col className="w-32" />
                   <col />
-                  <col className="w-44" />
-                  <col className="w-36" />
+                  <col className="w-32" />
+                  <col className="w-14" />
                   <col className="w-24" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
@@ -457,43 +457,43 @@ export default function KpJobPage({ params }: PageProps) {
                               </span>
                             </span>
                           ) : (
+                            // Раньше тут был длинный «нет email» текст —
+                            // вместе с колонкой «Телефон» отжирали полтаблицы.
+                            // Иконка + tooltip короче, тема КП наконец видна.
                             <span
-                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
-                              title="У компании не найден email — КП по почте не уйдёт"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
+                              title="Нет email — КП по почте не уйдёт"
+                              aria-label="Нет email"
                             >
-                              <MailX className="h-3 w-3 shrink-0" />
-                              нет email
+                              <MailX className="h-3 w-3" />
                             </span>
                           )}
                         </td>
                         <td className="px-3 py-2.5">
                           {waLink ? (
-                            // Мобильный номер РФ → wa.me с pre-filled телом КП.
-                            // Открывается в новой вкладке, юзер докручивает
-                            // руками (bulk-канала WhatsApp пока нет).
+                            // Мобильный РФ → wa.me с pre-filled телом КП.
+                            // Компактная иконка-пилл — номер в tooltip.
                             <a
                               href={waLink}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
-                              title={`Открыть WhatsApp: ${phoneDisplay}`}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-emerald-300 bg-emerald-50 text-emerald-700 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                              title={`WhatsApp: ${phoneDisplay}`}
+                              aria-label={`WhatsApp ${phoneDisplay}`}
                             >
-                              <Phone className="h-3 w-3 shrink-0" />
-                              <span className="truncate">{phoneDisplay}</span>
+                              <Phone className="h-3 w-3" />
                             </a>
                           ) : telLink ? (
-                            // Городской номер (8-495 и т.п.) — в WhatsApp его
-                            // нет, открываем звонилку tel:. На desktop без
-                            // SIP-клиента — просто покажет диалог.
+                            // Городской → tel:, в WhatsApp его нет.
                             <a
                               href={telLink}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                              title={`Позвонить: ${phoneDisplay}`}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-slate-50 text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                              title={`Звонок: ${phoneDisplay}`}
+                              aria-label={`Звонок ${phoneDisplay}`}
                             >
-                              <Phone className="h-3 w-3 shrink-0" />
-                              <span className="truncate">{phoneDisplay}</span>
+                              <Phone className="h-3 w-3" />
                             </a>
                           ) : (
                             <span className="text-[11px] text-[hsl(var(--muted))]">
