@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.108.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.107.0...v1.108.0) (2026-06-21)
+
+
+### Features
+
+* **kp-jobs:** WhatsApp-fallback по телефону для строк без email ([8587544](https://github.com/moiseev1991-stack/Colaba/commit/858754403a2d481402b6ec91c6f53ed6b51a9ad0))
+* **kp-jobs:** колонка «Телефон» в таблице + .xlsx «На обзвон» ([4a1fac3](https://github.com/moiseev1991-stack/Colaba/commit/4a1fac3892aabb00fd1e650429734cd6ae862373))
+
 # [1.107.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.106.0...v1.107.0) (2026-06-21)
 
 
