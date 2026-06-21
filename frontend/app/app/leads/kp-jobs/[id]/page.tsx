@@ -21,6 +21,7 @@ import {
   AtSign,
   Check,
   Copy,
+  Download,
   Loader2,
   Mail,
   MailX,
@@ -38,12 +39,15 @@ import { CompanyAvatar } from '@/components/CompanyAvatar';
 import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import {
+  buildTelLink,
   buildWhatsappLink,
   formatPhoneForDisplay,
+  isRussianMobile,
   normalizePhoneForWa,
 } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import {
+  downloadKpJobCallList,
   getKpJobItems,
   getKpJobSendStatus,
   sendKpJob,
@@ -326,7 +330,8 @@ export default function KpJobPage({ params }: PageProps) {
                   <col className="w-28" />
                   <col className="w-32" />
                   <col />
-                  <col className="w-52" />
+                  <col className="w-44" />
+                  <col className="w-36" />
                   <col className="w-24" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
@@ -336,7 +341,8 @@ export default function KpJobPage({ params }: PageProps) {
                     <th className="px-3 py-2 font-medium">Город</th>
                     <th className="px-3 py-2 font-medium">Статус</th>
                     <th className="px-3 py-2 font-medium">Тема КП</th>
-                    <th className="px-3 py-2 font-medium">Кому</th>
+                    <th className="px-3 py-2 font-medium">Email</th>
+                    <th className="px-3 py-2 font-medium">Телефон</th>
                     <th className="px-3 py-2 font-medium" />
                   </tr>
                 </thead>
@@ -346,17 +352,22 @@ export default function KpJobPage({ params }: PageProps) {
                     const clickable =
                       it.status === 'done' || it.draft_id !== null;
                     const hasRecipient = !!it.recipient_email;
-                    const waLink = !hasRecipient
+                    // Телефон обрабатываем независимо от email: даже если КП
+                    // уйдёт по email, юзеру полезно видеть номер компании в
+                    // отдельной колонке «Телефон» (быстрый звонок/WA).
+                    const hasMobile = isRussianMobile(it.company_phone);
+                    const waLink = hasMobile
                       ? buildWhatsappLink(
                           it.company_phone,
-                          // КП ещё не готов — отправляем «голую» wa-ссылку
-                          // без текста, юзер сам напишет / скопирует позже.
                           it.body
                             ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}`
                             : null,
                         )
                       : null;
-                    const waPhoneDisplay = !hasRecipient && it.company_phone
+                    const telLink = !hasMobile
+                      ? buildTelLink(it.company_phone)
+                      : null;
+                    const phoneDisplay = it.company_phone
                       ? formatPhoneForDisplay(it.company_phone)
                       : '';
                     return (
@@ -445,29 +456,48 @@ export default function KpJobPage({ params }: PageProps) {
                                 {it.recipient_email}
                               </span>
                             </span>
-                          ) : waLink ? (
-                            // Email-а нет, но есть валидный номер —
-                            // показываем «WhatsApp»-линк с пред-заполненным
-                            // КП. Клик открывает wa.me в новой вкладке,
-                            // юзер докручивает руками (bulk-канала пока нет).
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
+                              title="У компании не найден email — КП по почте не уйдёт"
+                            >
+                              <MailX className="h-3 w-3 shrink-0" />
+                              нет email
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {waLink ? (
+                            // Мобильный номер РФ → wa.me с pre-filled телом КП.
+                            // Открывается в новой вкладке, юзер докручивает
+                            // руками (bulk-канала WhatsApp пока нет).
                             <a
                               href={waLink}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
-                              title={`Открыть WhatsApp: ${waPhoneDisplay}`}
+                              title={`Открыть WhatsApp: ${phoneDisplay}`}
                             >
                               <Phone className="h-3 w-3 shrink-0" />
-                              WhatsApp
+                              <span className="truncate">{phoneDisplay}</span>
+                            </a>
+                          ) : telLink ? (
+                            // Городской номер (8-495 и т.п.) — в WhatsApp его
+                            // нет, открываем звонилку tel:. На desktop без
+                            // SIP-клиента — просто покажет диалог.
+                            <a
+                              href={telLink}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                              title={`Позвонить: ${phoneDisplay}`}
+                            >
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{phoneDisplay}</span>
                             </a>
                           ) : (
-                            <span
-                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
-                              title="Ни email, ни валидного телефона — этот КП пока никак не уйдёт"
-                            >
-                              <MailX className="h-3 w-3 shrink-0" />
-                              нет контакта
+                            <span className="text-[11px] text-[hsl(var(--muted))]">
+                              —
                             </span>
                           )}
                         </td>
@@ -509,7 +539,8 @@ export default function KpJobPage({ params }: PageProps) {
               const clickable =
                 it.status === 'done' || it.draft_id !== null;
               const hasRecipient = !!it.recipient_email;
-              const waLink = !hasRecipient
+              const hasMobile = isRussianMobile(it.company_phone);
+              const waLink = hasMobile
                 ? buildWhatsappLink(
                     it.company_phone,
                     it.body
@@ -517,6 +548,12 @@ export default function KpJobPage({ params }: PageProps) {
                       : null,
                   )
                 : null;
+              const telLink = !hasMobile
+                ? buildTelLink(it.company_phone)
+                : null;
+              const phoneDisplay = it.company_phone
+                ? formatPhoneForDisplay(it.company_phone)
+                : '';
               return (
                 <CardV2
                   key={`m-${it.company_id}-${idx}`}
@@ -576,7 +613,7 @@ export default function KpJobPage({ params }: PageProps) {
                       {it.subject}
                     </div>
                   )}
-                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {hasRecipient ? (
                       <span
                         className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -585,7 +622,13 @@ export default function KpJobPage({ params }: PageProps) {
                         <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
                         <span className="truncate">{it.recipient_email}</span>
                       </span>
-                    ) : waLink ? (
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
+                        <MailX className="h-3 w-3" />
+                        нет email
+                      </span>
+                    )}
+                    {waLink ? (
                       <a
                         href={waLink}
                         target="_blank"
@@ -594,15 +637,19 @@ export default function KpJobPage({ params }: PageProps) {
                         className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200"
                       >
                         <Phone className="h-3 w-3" />
-                        WhatsApp
+                        {phoneDisplay}
                       </a>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
-                        <MailX className="h-3 w-3" />
-                        нет контакта
-                      </span>
-                    )}
-                    <div className="flex shrink-0 items-center gap-2">
+                    ) : telLink ? (
+                      <a
+                        href={telLink}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <Phone className="h-3 w-3" />
+                        {phoneDisplay}
+                      </a>
+                    ) : null}
+                    <div className="ml-auto flex shrink-0 items-center gap-2">
                       {it.draft_id !== null && hasRecipient && (
                         <RowSendButton
                           state={singleSend[it.draft_id]}
@@ -649,6 +696,18 @@ export default function KpJobPage({ params }: PageProps) {
           missingRecipientCount={
             items.filter(
               (it) => it.status === 'done' && !it.recipient_email,
+            ).length
+          }
+          // Компании без email но с валидным телефоном — кандидаты на
+          // «На обзвон.xlsx». Логика нормализации зеркалит бэк
+          // (kp_call_list_export._normalize_phone). Если 0 — кнопка
+          // скачивания дизейблится с понятным title.
+          callableCount={
+            items.filter(
+              (it) =>
+                it.status === 'done' &&
+                !it.recipient_email &&
+                normalizePhoneForWa(it.company_phone) !== null,
             ).length
           }
           refetchToken={sendBump}
@@ -702,6 +761,7 @@ function SendBar({
   doneCount,
   withRecipientCount,
   missingRecipientCount,
+  callableCount,
   refetchToken,
 }: {
   jobId: number;
@@ -711,6 +771,8 @@ function SendBar({
   withRecipientCount: number;
   /** Из готовых — сколько без email (попадут как 'skipped' в kp_sends). */
   missingRecipientCount: number;
+  /** Из готовых без email — сколько имеют валидный телефон (можно обзвонить). */
+  callableCount: number;
   /** Bump-токен: после per-row отправки родитель инкрементит его, чтобы
    *  SendBar немедленно подтянул свежий счётчик (без ожидания следующего
    *  тика 2.5-сек поллинга). 0 на маунте — refetch не триггерим. */
@@ -727,6 +789,38 @@ function SendBar({
   const [status, setStatus] = useState<KpJobSendStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Скачивание call-list.xlsx — отдельный спиннер/ошибка, не мешает send.
+  const [callListDownloading, setCallListDownloading] = useState(false);
+  const [callListError, setCallListError] = useState<string | null>(null);
+
+  async function handleDownloadCallList() {
+    if (callListDownloading || callableCount === 0) return;
+    setCallListDownloading(true);
+    setCallListError(null);
+    try {
+      const { blob, filename } = await downloadKpJobCallList(jobId);
+      // Создаём временный <a download> — единственный кросс-браузерный
+      // способ начать загрузку blob'а. URL отзываем сразу после клика,
+      // иначе течёт память (Chrome держит до закрытия вкладки).
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setCallListError(
+        typeof detail === 'string'
+          ? detail
+          : e?.message || 'Не удалось скачать список.',
+      );
+    } finally {
+      setCallListDownloading(false);
+    }
+  }
 
   function toggle(key: KpSendChannel) {
     // Защита от того, чтобы случайно «выбрать» канал, по которому мы
@@ -895,6 +989,9 @@ function SendBar({
             {error && (
               <div className="text-[12px] text-rose-700">{error}</div>
             )}
+            {callListError && (
+              <div className="text-[12px] text-rose-700">{callListError}</div>
+            )}
             {status?.last_error && !error && (
               <div
                 className="truncate text-[12px] text-rose-700"
@@ -908,10 +1005,24 @@ function SendBar({
             <ButtonV2
               variant="secondary"
               size="md"
-              disabled
-              title="Скоро: выгрузка партии в .xlsx со всеми темами и телами писем."
+              disabled={callListDownloading || callableCount === 0}
+              onClick={handleDownloadCallList}
+              iconLeft={
+                callListDownloading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Download />
+                )
+              }
+              title={
+                callableCount === 0
+                  ? 'Нет компаний без email с валидным телефоном — обзванивать некого.'
+                  : 'Скачать .xlsx со всеми, кому КП по почте не уйдёт, но есть телефон. С болью и темой — для звонка/WhatsApp руками.'
+              }
             >
-              Скачать .xlsx
+              {callListDownloading
+                ? 'Готовлю…'
+                : `На обзвон${callableCount > 0 ? ` (${callableCount})` : ''}`}
             </ButtonV2>
             <ButtonV2
               variant="primary"
@@ -1175,12 +1286,12 @@ function DraftDrawer({
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {/* Кому уходит — критично, юзер должен видеть до клика
-              «Отправить», что КП реально дойдёт. Если email не найден,
-              показываем явное предупреждение, чтобы не отправить в пустоту. */}
+          {/* Email — основной канал. Если есть → зелёный пилл; нет →
+              предупреждение «нет email», но это уже не дед-энд — справа
+              рядом блок «Телефон» с альтернативными каналами. */}
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-              Кому
+              Email
             </label>
             {item.recipient_email ? (
               <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[13px] dark:border-emerald-700/50 dark:bg-emerald-900/30">
@@ -1189,25 +1300,43 @@ function DraftDrawer({
                   <span className="font-medium text-emerald-900 dark:text-emerald-100">
                     {item.recipient_email}
                   </span>
-                  <span className="ml-1.5 text-[11px] uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
-                    Email
-                  </span>
                 </div>
               </div>
-            ) : (() => {
-              // Email-а нет — пробуем WhatsApp по телефону компании (если
-              // нормализуется). Это ручной канал: ссылка открывает wa.me
-              // с пред-заполненным КП, юзер сам жмёт «Отправить» в WA.
-              // Если телефона тоже нет / битый — старый amber-warning.
-              const waLink = buildWhatsappLink(
-                item.company_phone,
-                body
-                  ? `${subject ? `${subject}\n\n` : ''}${body}`
-                  : null,
-              );
-              const phoneDigits = normalizePhoneForWa(item.company_phone);
-              if (waLink && phoneDigits) {
-                return (
+            ) : (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
+                <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                <div className="text-amber-800 dark:text-amber-200">
+                  Email не найден — добавь в карточке компании, чтобы
+                  включить отправку.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Телефон — независимый блок. Видно всегда (если есть номер),
+              даже когда email уже подключён — юзер может параллельно
+              позвонить или написать в WhatsApp. Мобильный РФ → wa.me с
+              pre-filled КП. Городской → tel:. Битый/нет → блок скрыт. */}
+          {(() => {
+            const phoneDigits = normalizePhoneForWa(item.company_phone);
+            if (!phoneDigits) return null;
+            const isMobile = isRussianMobile(item.company_phone);
+            const waLink = isMobile
+              ? buildWhatsappLink(
+                  item.company_phone,
+                  body
+                    ? `${subject ? `${subject}\n\n` : ''}${body}`
+                    : null,
+                )
+              : null;
+            const telLink = !isMobile ? buildTelLink(item.company_phone) : null;
+            const phoneDisplay = formatPhoneForDisplay(item.company_phone);
+            return (
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                  Телефон
+                </label>
+                {waLink ? (
                   <div className="space-y-1.5">
                     <a
                       href={waLink}
@@ -1218,7 +1347,7 @@ function DraftDrawer({
                       <Phone className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
                       <div className="min-w-0 flex-1 truncate">
                         <span className="font-medium text-emerald-900 dark:text-emerald-100">
-                          {formatPhoneForDisplay(item.company_phone)}
+                          {phoneDisplay}
                         </span>
                         <span className="ml-1.5 text-[11px] uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
                           WhatsApp
@@ -1226,24 +1355,29 @@ function DraftDrawer({
                       </div>
                     </a>
                     <p className="text-[11px] leading-tight text-[hsl(var(--muted))]">
-                      Email не найден — клик откроет WhatsApp с
-                      пред-заполненным КП. Отправлять надо руками (bulk-
-                      коннектора WA пока нет).
+                      Клик — wa.me с пред-заполненным КП. Шлём руками
+                      (bulk-коннектора WA пока нет).
                     </p>
                   </div>
-                );
-              }
-              return (
-                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
-                  <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                  <div className="text-amber-800 dark:text-amber-200">
-                    Ни email, ни валидного телефона — этот КП пока никак
-                    не уйдёт. Добавь контакт в карточке компании.
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+                ) : telLink ? (
+                  <a
+                    href={telLink}
+                    className="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-[13px] transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
+                  >
+                    <Phone className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+                    <div className="min-w-0 flex-1 truncate">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">
+                        {phoneDisplay}
+                      </span>
+                      <span className="ml-1.5 text-[11px] uppercase tracking-wider text-slate-600/80 dark:text-slate-400">
+                        Городской · звонок
+                      </span>
+                    </div>
+                  </a>
+                ) : null}
+              </div>
+            );
+          })()}
 
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">

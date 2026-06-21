@@ -8,11 +8,17 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.modules.auth.router import get_current_user_id
-from app.modules.outreach import kp_bulk_service, kp_send_service, kp_service
+from app.modules.outreach import (
+    kp_bulk_service,
+    kp_call_list_export,
+    kp_send_service,
+    kp_service,
+)
 from app.modules.outreach.kp_schemas import (
     KpArgumentsUsed,
     KpBulkDraftPreview,
@@ -255,6 +261,49 @@ async def get_job_items(
             )
             for row in item_rows
         ],
+    )
+
+
+@router.get("/jobs/{job_id}/call-list.xlsx")
+async def export_job_call_list(
+    job_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """xlsx «На обзвон»: только компании партии без email, но с валидным
+    телефоном. Для каждой строки — нормализованный номер, тип (мобильный/
+    городской), wa.me-ссылка (для мобильных), pain/цитата/тема КП/полное
+    тело — чтобы юзер мог звонить или писать в WA с готовым контекстом.
+
+    Возвращает 404 если партия не найдена или нет ни одной компании без
+    email с валидным телефоном (нечего скачивать). Иначе — application/
+    octet-stream-attachment с файлом.
+    """
+    xlsx_bytes, count = await kp_call_list_export.build_call_list_xlsx(
+        db, user_id=user_id, job_id=job_id
+    )
+    if count == -1:
+        raise HTTPException(status_code=404, detail="Партия не найдена.")
+    if count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Нет ни одной компании без email с валидным телефоном — "
+                "обзванивать некого."
+            ),
+        )
+    filename = kp_call_list_export.build_call_list_filename(job_id)
+    return StreamingResponse(
+        iter([xlsx_bytes]),
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Чтобы фронт мог прочитать имя файла через axios (без CORS
+            # этого хедера браузер не отдаёт).
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
     )
 
 

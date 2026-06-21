@@ -161,8 +161,8 @@ export function ColdEmailCalculator({
         <div className="space-y-4 border-t border-[hsl(var(--border))] px-4 py-4">
           {/* Слайдеры */}
           <SliderRow
-            label="Reply rate"
-            hint="Доля ответивших на cold-email. Cold B2B РФ: 1–3% — типично, 5%+ — топ."
+            label="Доля ответов"
+            hint="Кто ответит на холодное письмо. Cold B2B в РФ: 1–3% — типично, 5%+ — топ."
             value={prefs.reply_rate_pct}
             min={0.5}
             max={5}

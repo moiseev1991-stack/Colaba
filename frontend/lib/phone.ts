@@ -79,3 +79,25 @@ export function formatPhoneForDisplay(rawOrDigits: string | null | undefined): s
   }
   return `+${digits}`;
 }
+
+/**
+ * Является ли digits-only номер мобильным РФ (79XXXXXXXXX).
+ * Только мобильные регистрируются в WhatsApp — городские (8-495,
+ * 8-812 и т.п.) при клике на wa.me выдают «invalid phone number».
+ * Для городских используем tel: вместо wa.me.
+ */
+export function isRussianMobile(rawOrDigits: string | null | undefined): boolean {
+  const digits = normalizePhoneForWa(rawOrDigits);
+  if (!digits) return false;
+  return digits.length === 11 && digits.startsWith('79');
+}
+
+/**
+ * tel:-ссылка для desktop SIP / skype / мобильной звонилки. В отличие
+ * от wa.me работает для городских номеров.
+ */
+export function buildTelLink(rawOrDigits: string | null | undefined): string | null {
+  const digits = normalizePhoneForWa(rawOrDigits);
+  if (!digits) return null;
+  return `tel:+${digits}`;
+}
