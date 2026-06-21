@@ -164,12 +164,17 @@ async def enqueue_job_send(
     user_id: int,
     job_id: int,
     channels: list[str],
+    only_draft_ids: list[int] | None = None,
 ) -> EnqueueResult:
     """Создаёт KpSend-строки по всем готовым КП партии × выбранным каналам.
 
     Дублей не делает: если для пары (draft_id, channel) уже есть KpSend
     в статусе queued/sending/sent — пропускает. Failed/skipped считаем
     «можно ретраить», создаём новую строку.
+
+    only_draft_ids — если задан, фильтруем готовые драфты по этому списку
+    (per-row resend одной/нескольких КП после правки). None → все готовые
+    драфты партии (полный bulk-send из SendBar).
     """
     channels = list(dict.fromkeys(channels))  # dedup, сохраняем порядок
     if not channels:
@@ -229,6 +234,19 @@ async def enqueue_job_send(
         raise SendError(
             "В партии пока нет готовых КП для отправки.", status_code=400
         )
+
+    if only_draft_ids:
+        allowed = {int(i) for i in only_draft_ids if i is not None}
+        drafts_by_company = {
+            cid: pair
+            for cid, pair in drafts_by_company.items()
+            if int(pair[0].id) in allowed
+        }
+        if not drafts_by_company:
+            raise SendError(
+                "Указанные КП не найдены в этой партии или ещё не готовы.",
+                status_code=400,
+            )
 
     draft_ids = [kp.id for kp, _ in drafts_by_company.values()]
     # Уже существующие активные KpSend (queued/sending/sent) — не дублим.

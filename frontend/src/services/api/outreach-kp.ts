@@ -309,14 +309,23 @@ export interface KpSendListResponse {
 
 /** POST /outreach/kp/jobs/{id}/send — поставить отправку КП партии в
  * очередь по выбранным каналам. На канале email шлёт через EmailService;
- * остальные пока создают строки 'skipped'. */
+ * остальные пока создают строки 'skipped'.
+ *
+ * draftIds — опциональный фильтр: если передан, отправляем только эти
+ * конкретные драфты партии (per-row resend одной/нескольких строк).
+ * Если опущен/пуст — bulk: все готовые драфты партии. */
 export async function sendKpJob(
   jobId: number,
   channels: KpSendChannel[],
+  draftIds?: number[] | null,
 ): Promise<KpJobSendStatus> {
+  const body: { channels: KpSendChannel[]; draft_ids?: number[] } = {
+    channels,
+  };
+  if (draftIds && draftIds.length > 0) body.draft_ids = draftIds;
   const r = await apiClient.post<KpJobSendStatus>(
     `/outreach/kp/jobs/${jobId}/send`,
-    { channels },
+    body,
   );
   return r.data;
 }

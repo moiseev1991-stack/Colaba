@@ -281,13 +281,19 @@ SendStatus = Literal["queued", "sending", "sent", "failed", "skipped"]
 
 
 class KpJobSendRequest(BaseModel):
-    """Тело POST /outreach/kp/jobs/{job_id}/send — отправить все готовые
-    КП партии по выбранным каналам.
+    """Тело POST /outreach/kp/jobs/{job_id}/send — отправить готовые КП
+    партии по выбранным каналам.
 
     channels — мульти-выбор. Хотя бы один обязателен. Дубликаты схлопываются.
+
+    draft_ids — опциональный фильтр: если задан, отправляем только эти
+    конкретные драфты из партии (one-click resend конкретной строки после
+    правки темы/тела). null/пусто → шлём все готовые драфты партии (старое
+    bulk-поведение для совместимости с SendBar внизу страницы).
     """
 
     channels: list[SendChannel] = Field(..., min_length=1, max_length=4)
+    draft_ids: list[int] | None = Field(default=None, max_length=500)
 
 
 class KpJobSendStatusOut(BaseModel):
