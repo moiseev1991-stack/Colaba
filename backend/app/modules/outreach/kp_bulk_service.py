@@ -236,6 +236,11 @@ class JobItemRow:
     # аватарки в таблице партии и в шапке drawer'а. None — фронт
     # рисует инициалы из company_name (детерминированный цвет по hash).
     company_logo_url: str | None = None
+    # Основной телефон компании (как лежит в companies.phone — обычно
+    # spaced/dashes из 2GIS, без нормализации). Используется фронтом
+    # как fallback-канал «нет email → wa.me/{phone}»; нормализация
+    # делается на фронте, т.к. wa.me требует digits-only.
+    company_phone: str | None = None
 
 
 async def list_user_drafts(
@@ -308,15 +313,16 @@ async def list_job_items(
                 Company.city,
                 CompanyLegal.opf,
                 Company.raw_data,
+                Company.phone,
             )
             .outerjoin(CompanyLegal, CompanyLegal.company_id == Company.id)
             .where(Company.id.in_(company_ids))
         )
     ).all()
     company_meta: dict[
-        int, tuple[str | None, str | None, str | None, str | None]
+        int, tuple[str | None, str | None, str | None, str | None, str | None]
     ] = {
-        int(r[0]): (r[1], r[2], r[3], _extract_company_logo_url(r[4]))
+        int(r[0]): (r[1], r[2], r[3], _extract_company_logo_url(r[4]), r[5])
         for r in company_rows
     }
 
@@ -392,6 +398,7 @@ async def list_job_items(
                 draft=draft,
                 recipient_email=pick_first_email(emails_by_company.get(cid)),
                 company_logo_url=meta[3] if meta else None,
+                company_phone=meta[4] if meta else None,
             )
         )
 

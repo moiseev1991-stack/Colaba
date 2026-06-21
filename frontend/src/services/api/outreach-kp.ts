@@ -216,6 +216,10 @@ export interface KpJobItem {
   /** URL логотипа компании (из 2GIS raw_data). null → UI рисует
    *  инициалы из company_name. */
   company_logo_url: string | null;
+  /** Основной телефон компании (как лежит в companies.phone). Используется
+   *  фронтом как fallback-канал «нет email → wa.me/{phone}». Нормализация
+   *  на фронте (utils/phone). */
+  company_phone: string | null;
 }
 
 export interface KpJobItemsResponse {
@@ -338,6 +342,29 @@ export async function getKpJobSendStatus(
     `/outreach/kp/jobs/${jobId}/send-status`,
   );
   return r.data;
+}
+
+/**
+ * GET /outreach/kp/jobs/{id}/call-list.xlsx — качает xlsx «На обзвон»:
+ * только компании партии без email, но с валидным телефоном. Каждая
+ * строка содержит нормализованный номер + тип (мобильный/городской) +
+ * wa.me-ссылку + pain/цитату/тему/тело — для холодного звонка или WA-
+ * сообщения вручную.
+ *
+ * Возвращает Blob + предложенное имя файла из Content-Disposition.
+ * 404 при отсутствии партии или нулевом списке — UI показывает тост.
+ */
+export async function downloadKpJobCallList(
+  jobId: number,
+): Promise<{ blob: Blob; filename: string }> {
+  const r = await apiClient.get<Blob>(
+    `/outreach/kp/jobs/${jobId}/call-list.xlsx`,
+    { responseType: 'blob' },
+  );
+  const dispo = r.headers?.['content-disposition'] || '';
+  const match = /filename="?([^";]+)"?/i.exec(dispo);
+  const filename = match?.[1] || `kp-call-list_job-${jobId}.xlsx`;
+  return { blob: r.data, filename };
 }
 
 /** GET /outreach/kp/sends — для вкладки «Отправки» в /history. */
