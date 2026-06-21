@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.company_legal import CompanyLegal
 from app.models.kp_draft import KpDraft
 from app.models.kp_generation_job import KpGenerationJob
+from app.models.kp_send import KpSend
 from app.models.maps import Company
 from app.models.organization import user_organizations
 from app.modules.outreach.kp_send_service import (
@@ -241,6 +242,11 @@ class JobItemRow:
     # как fallback-канал «нет email → wa.me/{phone}»; нормализация
     # делается на фронте, т.к. wa.me требует digits-only.
     company_phone: str | None = None
+    # Статус последней email-отправки этого draft'а (sent/queued/sending/
+    # failed/skipped) — чтобы UI после reload показывал «✓ Отправлено»
+    # на RowSendButton и не давал случайно отправить второй раз. None —
+    # ещё не пытались отправить через bulk-bar или per-row send.
+    email_send_status: str | None = None
 
 
 async def list_user_drafts(
@@ -356,6 +362,35 @@ async def list_job_items(
         if d.company_id not in draft_by_company:
             draft_by_company[int(d.company_id)] = d
 
+    # 2.5. Последний статус email-отправки по каждому draft'у (для
+    # подсветки RowSendButton после reload, чтобы не давать случайный
+    # дубль). Берём самую свежую запись KpSend по (draft_id, email).
+    # Приоритет статусов: sent > sending > queued > failed > skipped —
+    # «sent» залипает, чтобы юзер не пытался переотправить успех.
+    draft_ids_list = [int(d.id) for d in draft_rows]
+    email_status_by_draft: dict[int, str] = {}
+    if draft_ids_list:
+        send_rows = (
+            await db.execute(
+                select(KpSend.draft_id, KpSend.status, KpSend.created_at)
+                .where(
+                    KpSend.user_id == user_id,
+                    KpSend.draft_id.in_(draft_ids_list),
+                    KpSend.channel == "email",
+                )
+                .order_by(KpSend.created_at.desc())
+            )
+        ).all()
+        _priority = {"sent": 5, "sending": 4, "queued": 3, "failed": 2, "skipped": 1}
+        for did, status, _created in send_rows:
+            did_int = int(did)
+            current = email_status_by_draft.get(did_int)
+            if current is None:
+                email_status_by_draft[did_int] = str(status)
+            else:
+                if _priority.get(str(status), 0) > _priority.get(current, 0):
+                    email_status_by_draft[did_int] = str(status)
+
     # 3. Позиция last_company_id — для определения «уже прошли» vs «ещё впереди».
     last_idx = -1
     if job.last_company_id is not None:
@@ -399,6 +434,11 @@ async def list_job_items(
                 recipient_email=pick_first_email(emails_by_company.get(cid)),
                 company_logo_url=meta[3] if meta else None,
                 company_phone=meta[4] if meta else None,
+                email_send_status=(
+                    email_status_by_draft.get(int(draft.id))
+                    if draft is not None
+                    else None
+                ),
             )
         )
 
