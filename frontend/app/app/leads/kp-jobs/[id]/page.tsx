@@ -15,7 +15,7 @@
  *     и кнопкой «Сохранить» (PATCH /outreach/kp/drafts/{id}).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import {
   AlertCircle,
   AtSign,
@@ -121,6 +121,37 @@ export default function KpJobPage({ params }: PageProps) {
         ? items.find((it) => it.company_id === drawerCompanyId) ?? null
         : null,
     [drawerCompanyId, items],
+  );
+
+  // Per-row send: локальный статус по draft_id ('sending' | 'sent' | error-msg).
+  // После reload страницы стирается — это OK, факт отправки виден в SendBar
+  // (общий счётчик) и в /history → «Отправки». Локальный state нужен только
+  // чтобы внутри одной сессии кнопка не звала send дважды и показывала «✓».
+  const [singleSend, setSingleSend] = useState<
+    Record<number, 'sending' | 'sent' | { error: string }>
+  >({});
+  // Bump-token, на который SendBar триггерит refetch — чтобы общий счётчик
+  // «Отправлено: N» обновился сразу после per-row отправки, не дожидаясь
+  // следующего тика поллинга.
+  const [sendBump, setSendBump] = useState(0);
+
+  const handleSendOne = useCallback(
+    async (draftId: number) => {
+      setSingleSend((prev) => ({ ...prev, [draftId]: 'sending' }));
+      try {
+        await sendKpJob(jobId, ['email'], [draftId]);
+        setSingleSend((prev) => ({ ...prev, [draftId]: 'sent' }));
+        setSendBump((n) => n + 1);
+      } catch (e: any) {
+        const detail = e?.response?.data?.detail;
+        const message =
+          typeof detail === 'string'
+            ? detail
+            : e?.message || 'Не удалось отправить.';
+        setSingleSend((prev) => ({ ...prev, [draftId]: { error: message } }));
+      }
+    },
+    [jobId],
   );
 
   const load = useCallback(async () => {
@@ -406,11 +437,27 @@ export default function KpJobPage({ params }: PageProps) {
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                          {clickable && (
-                            <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
-                              Открыть
-                            </span>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {it.draft_id !== null && hasRecipient && (
+                              <RowSendButton
+                                state={singleSend[it.draft_id]}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    singleSend[it.draft_id!] === 'sending' ||
+                                    singleSend[it.draft_id!] === 'sent'
+                                  )
+                                    return;
+                                  void handleSendOne(it.draft_id!);
+                                }}
+                              />
+                            )}
+                            {clickable && (
+                              <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
+                                Открыть
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -501,11 +548,27 @@ export default function KpJobPage({ params }: PageProps) {
                         нет контакта
                       </span>
                     )}
-                    {clickable && (
-                      <span className="shrink-0 text-[12px] font-medium text-violet-700">
-                        Открыть →
-                      </span>
-                    )}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {it.draft_id !== null && hasRecipient && (
+                        <RowSendButton
+                          state={singleSend[it.draft_id]}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              singleSend[it.draft_id!] === 'sending' ||
+                              singleSend[it.draft_id!] === 'sent'
+                            )
+                              return;
+                            void handleSendOne(it.draft_id!);
+                          }}
+                        />
+                      )}
+                      {clickable && (
+                        <span className="text-[12px] font-medium text-violet-700">
+                          Открыть →
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </CardV2>
               );
@@ -534,6 +597,7 @@ export default function KpJobPage({ params }: PageProps) {
               (it) => it.status === 'done' && !it.recipient_email,
             ).length
           }
+          refetchToken={sendBump}
         />
       )}
 
@@ -545,6 +609,16 @@ export default function KpJobPage({ params }: PageProps) {
           onPatched={(updates) =>
             drawerItem.company_id !== null &&
             handleItemPatched(drawerItem.company_id, updates)
+          }
+          singleSendState={
+            drawerItem.draft_id !== null
+              ? singleSend[drawerItem.draft_id]
+              : undefined
+          }
+          onSendOne={
+            drawerItem.draft_id !== null && drawerItem.recipient_email
+              ? () => handleSendOne(drawerItem.draft_id!)
+              : undefined
           }
         />
       )}
@@ -574,6 +648,7 @@ function SendBar({
   doneCount,
   withRecipientCount,
   missingRecipientCount,
+  refetchToken,
 }: {
   jobId: number;
   /** Сколько КП реально готово (status='done'). */
@@ -582,6 +657,10 @@ function SendBar({
   withRecipientCount: number;
   /** Из готовых — сколько без email (попадут как 'skipped' в kp_sends). */
   missingRecipientCount: number;
+  /** Bump-токен: после per-row отправки родитель инкрементит его, чтобы
+   *  SendBar немедленно подтянул свежий счётчик (без ожидания следующего
+   *  тика 2.5-сек поллинга). 0 на маунте — refetch не триггерим. */
+  refetchToken: number;
 }) {
   // Локальный toggle каналов. По умолчанию выбран Email — единственный
   // реально подключенный, остальные после клика стартуют как 'skipped'
@@ -634,6 +713,16 @@ function SendBar({
     }, 2500);
     return () => clearTimeout(t);
   }, [jobId, status]);
+
+  // Внеплановый refetch после per-row отправки: родитель инкрементит
+  // refetchToken, мы дёргаем send-status сразу, чтобы счётчик «Отправлено: N»
+  // обновился без задержки. 0 — маунтовое значение, пропускаем.
+  useEffect(() => {
+    if (refetchToken === 0) return;
+    getKpJobSendStatus(jobId)
+      .then(setStatus)
+      .catch(() => undefined);
+  }, [jobId, refetchToken]);
 
   async function handleSend() {
     if (channels.size === 0 || submitting) return;
@@ -821,16 +910,86 @@ function SendBar({
   );
 }
 
+// --- Per-row send button (✈) ------------------------------------------------
+//
+// Компактная иконка-кнопка для отправки ОДНОЙ КП в Email — рисуется в
+// последней колонке таблицы / mobile-карточки рядом с «Открыть» только когда
+// у строки status='done' и есть recipient_email.
+//
+// Состояния:
+//   idle      → зелёный обводной ✈, hover-fill зелёным.
+//   sending   → spinner, disabled.
+//   sent      → галочка, disabled (в этой сессии повторно не шлём, чтобы
+//               не послать дубль; refresh страницы сбрасывает state).
+//   { error } → красная иконка, hover показывает текст ошибки в title.
+
+type RowSendState = 'sending' | 'sent' | { error: string } | undefined;
+
+function RowSendButton({
+  state,
+  onClick,
+}: {
+  state: RowSendState;
+  onClick: (e: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const isSending = state === 'sending';
+  const isSent = state === 'sent';
+  const error =
+    state && typeof state === 'object' && 'error' in state ? state.error : null;
+  const disabled = isSending || isSent;
+  const title = isSent
+    ? 'Отправлено. Чтобы переслать — обнови страницу.'
+    : isSending
+      ? 'Отправляется…'
+      : error
+        ? `Не удалось отправить: ${error}`
+        : 'Отправить эту КП на email компании';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className={cn(
+        'inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors',
+        isSent
+          ? 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : isSending
+            ? 'cursor-wait border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+            : error
+              ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-300'
+              : 'border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700/60 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30',
+      )}
+    >
+      {isSending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : isSent ? (
+        <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+      ) : (
+        <Send className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
+
 // --- Drawer одной КП ---------------------------------------------------------
 
 function DraftDrawer({
   item,
   onClose,
   onPatched,
+  singleSendState,
+  onSendOne,
 }: {
   item: KpJobItem;
   onClose: () => void;
   onPatched: (updates: Partial<KpJobItem>) => void;
+  /** Состояние per-row отправки для этого draft_id (см. RowSendButton). */
+  singleSendState: RowSendState;
+  /** Триггер отправки этой одной КП. undefined → нет draft_id или email,
+   *  кнопка в футере не рисуется. */
+  onSendOne?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState(item.subject ?? '');
@@ -1126,7 +1285,7 @@ function DraftDrawer({
               </ButtonV2>
               {item.draft_id !== null && (
                 <ButtonV2
-                  variant="primary"
+                  variant="ghost"
                   size="sm"
                   iconLeft={<Pencil />}
                   onClick={() => setEditing(true)}
@@ -1134,8 +1293,50 @@ function DraftDrawer({
                   Редактировать
                 </ButtonV2>
               )}
+              {/* Per-row send из drawer'а — самое полезное место для
+                  «отправил, посмотрел, поправил, отправил ещё раз» цикла.
+                  Не рисуем если у компании нет email-а (родитель не
+                  прокинет onSendOne). */}
+              {item.draft_id !== null && onSendOne && (
+                <ButtonV2
+                  variant="primary"
+                  size="sm"
+                  iconLeft={
+                    singleSendState === 'sending' ? (
+                      <Loader2 className="animate-spin" />
+                    ) : singleSendState === 'sent' ? (
+                      <Check />
+                    ) : (
+                      <Send />
+                    )
+                  }
+                  disabled={
+                    singleSendState === 'sending' || singleSendState === 'sent'
+                  }
+                  onClick={onSendOne}
+                  title={
+                    singleSendState === 'sent'
+                      ? 'Отправлено. Обнови страницу, чтобы переслать.'
+                      : 'Отправить эту одну КП на email компании.'
+                  }
+                >
+                  {singleSendState === 'sent'
+                    ? 'Отправлено'
+                    : singleSendState === 'sending'
+                      ? 'Отправляется…'
+                      : 'Отправить эту КП'}
+                </ButtonV2>
+              )}
             </>
           )}
+          {!editing &&
+            singleSendState &&
+            typeof singleSendState === 'object' &&
+            'error' in singleSendState && (
+              <div className="w-full text-right text-[12px] text-rose-700">
+                {singleSendState.error}
+              </div>
+            )}
           {editing && (
             <>
               <ButtonV2

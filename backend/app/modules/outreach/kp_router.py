@@ -370,6 +370,7 @@ async def send_bulk_job(
             user_id=user_id,
             job_id=job_id,
             channels=list(payload.channels),
+            only_draft_ids=list(payload.draft_ids) if payload.draft_ids else None,
         )
     except kp_send_service.SendError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
