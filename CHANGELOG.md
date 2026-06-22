@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.110.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.109.0...v1.110.0) (2026-06-22)
+
+
+### Features
+
+* **kp-jobs:** WhatsApp канал через GreenAPI коннектор ([e237d4a](https://github.com/moiseev1991-stack/Colaba/commit/e237d4a7409c3f0bd5295eea5f34ed7a3cd8ee14))
+
 # [1.109.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.108.0...v1.109.0) (2026-06-21)
 
 
