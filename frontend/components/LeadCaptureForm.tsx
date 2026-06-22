@@ -115,7 +115,17 @@ function useLeadSubmit() {
 // Полная форма — отдельная секция страницы (между KillerBlock и FAQ).
 // ---------------------------------------------------------------------------
 
-export function LeadCaptureForm() {
+/**
+ * Полная форма захвата.
+ *
+ * Без `embedInHero` — самостоятельная секция с padding и max-width:
+ * используется в середине страницы (между KillerBlock и FAQ).
+ *
+ * С `embedInHero={true}` — без внешнего section-обёрта: вставляется
+ * прямо в правую колонку GuestHero на тёмном фоне. Карточка сама
+ * светлая, padding контролируется родителем.
+ */
+export function LeadCaptureForm({ embedInHero = false }: { embedInHero?: boolean } = {}) {
   const formId = useId();
   const [channel, setChannel] = useState<Channel>('phone');
   const [name, setName] = useState('');
@@ -131,256 +141,119 @@ export function LeadCaptureForm() {
   }
 
   if (success) {
-    return (
-      <section className="max-w-3xl mx-auto px-6 py-12 md:py-16">
-        <div
-          className="rounded-2xl p-8 md:p-10 text-center"
-          style={{
-            background: 'linear-gradient(135deg, rgba(45,212,191,0.08) 0%, rgba(6,182,212,0.08) 100%)',
-            border: '1px solid hsl(var(--border))',
-          }}
-        >
-          <div style={{ fontSize: '36px' }}>✓</div>
-          <h3 className="mt-2 text-xl md:text-2xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
-            Спасибо, заявка принята
-          </h3>
-          <p className="mt-3 text-base" style={{ color: 'hsl(var(--muted))' }}>
-            Свяжемся с вами в ближайшее время и пришлём доступ к бесплатному тестированию.
-            Купон со скидкой 50% — в первом же сообщении.
-          </p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="max-w-3xl mx-auto px-6 py-12 md:py-16">
+    const successContent = (
       <div
-        className="rounded-2xl p-6 md:p-10"
+        className="rounded-2xl p-8 md:p-10 text-center"
         style={{
-          background: 'hsl(var(--surface))',
+          background: embedInHero
+            ? 'rgba(255,255,255,0.96)'
+            : 'linear-gradient(135deg, rgba(45,212,191,0.08) 0%, rgba(6,182,212,0.08) 100%)',
           border: '1px solid hsl(var(--border))',
         }}
       >
-        <div className="text-center">
-          <div
-            style={{
-              display: 'inline-block',
-              padding: '4px 10px',
-              borderRadius: '999px',
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              fontWeight: 600,
-              background: 'rgba(45,212,191,0.15)',
-              color: '#0e9384',
-              marginBottom: '12px',
-            }}
-          >
-            Доступ ограничен: первые 50 заявок
-          </div>
-          <h3 className="text-xl md:text-2xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
-            Бесплатный тест 14 дней + скидка 50% первым 50
-          </h3>
-          <p className="mt-2 text-base" style={{ color: 'hsl(var(--muted))' }}>
-            Оставьте контакт — пришлём доступ и купон. Без оплаты и подписок.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-          <Honeypot id={`${formId}-hp`} value={hp} onChange={setHp} />
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>
-                Как к вам обращаться
-              </span>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Имя или ник"
-                maxLength={120}
-                className="w-full rounded-lg px-3 py-2 text-base"
-                style={{
-                  background: 'hsl(var(--bg))',
-                  border: '1px solid hsl(var(--border))',
-                  color: 'hsl(var(--text))',
-                }}
-              />
-            </label>
-
-            <label className="block">
-              <span className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>
-                Способ связи <span style={{ color: '#ef4444' }}>*</span>
-              </span>
-              <select
-                value={channel}
-                onChange={(e) => setChannel(e.target.value as Channel)}
-                className="w-full rounded-lg px-3 py-2 text-base"
-                style={{
-                  background: 'hsl(var(--bg))',
-                  border: '1px solid hsl(var(--border))',
-                  color: 'hsl(var(--text))',
-                }}
-              >
-                {CHANNELS.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>
-              Контакт ({currentChannel.label}) <span style={{ color: '#ef4444' }}>*</span>
-            </span>
-            <input
-              type="text"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              placeholder={currentChannel.placeholder}
-              maxLength={255}
-              required
-              className="w-full rounded-lg px-3 py-2 text-base"
-              style={{
-                background: 'hsl(var(--bg))',
-                border: '1px solid hsl(var(--border))',
-                color: 'hsl(var(--text))',
-              }}
-            />
-          </label>
-
-          <label className="block">
-            <span className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>
-              Пожелание (необязательно)
-            </span>
-            <textarea
-              value={wish}
-              onChange={(e) => setWish(e.target.value)}
-              placeholder="Какая ниша/город? Что хотите парсить?"
-              rows={3}
-              maxLength={2000}
-              className="w-full rounded-lg px-3 py-2 text-base resize-none"
-              style={{
-                background: 'hsl(var(--bg))',
-                border: '1px solid hsl(var(--border))',
-                color: 'hsl(var(--text))',
-              }}
-            />
-          </label>
-
-          {error && <ErrorBox text={error} />}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg py-3 text-base font-semibold disabled:opacity-60"
-            style={{
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-              color: '#0b1220',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {submitting ? 'Отправляем…' : 'Получить доступ'}
-          </button>
-
-          <p className="text-xs text-center" style={{ color: 'hsl(var(--muted))' }}>
-            Нажимая кнопку, вы соглашаетесь с{' '}
-            <a href="/consent" style={{ color: '#0e9384', textDecoration: 'underline' }}>
-              обработкой персональных данных
-            </a>
-            .
-          </p>
-        </form>
+        <div style={{ fontSize: '36px' }}>✓</div>
+        <h3 className="mt-2 text-xl md:text-2xl font-semibold" style={{ color: '#0b1220' }}>
+          Спасибо, заявка принята
+        </h3>
+        <p className="mt-3 text-base" style={{ color: '#475569' }}>
+          Свяжемся с вами в ближайшее время и пришлём доступ к бесплатному тестированию.
+          Купон со скидкой 50% — в первом же сообщении.
+        </p>
       </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Hero-вариант: компактная карточка под тёмный фон GuestHero. Заменяет
-// кнопки CTA на первом экране, чтобы юзер из поиска сразу видел форму.
-// ---------------------------------------------------------------------------
-
-export function LeadCaptureFormHero() {
-  const formId = useId();
-  const [channel, setChannel] = useState<Channel>('phone');
-  const [contact, setContact] = useState('');
-  const [hp, setHp] = useState('');
-  const { submit, submitting, success, error } = useLeadSubmit();
-  const currentChannel = CHANNELS.find((c) => c.value === channel) ?? CHANNELS[0];
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    await submit({ name: '', channel, contact, wish: '', hp });
-  }
-
-  if (success) {
+    );
+    if (embedInHero) return successContent;
     return (
-      <div
-        className="mt-7 rounded-xl p-5 text-center"
-        style={{
-          background: 'rgba(45,212,191,0.12)',
-          border: '1px solid rgba(45,212,191,0.35)',
-          color: '#fff',
-          maxWidth: '480px',
-        }}
-      >
-        <div style={{ fontSize: '28px' }}>✓</div>
-        <div className="mt-1 text-base font-semibold">Спасибо, заявка принята</div>
-        <div className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>
-          Свяжемся в ближайшее время. Купон 50% — в первом сообщении.
-        </div>
-      </div>
+      <section className="max-w-3xl mx-auto px-6 py-12 md:py-16">{successContent}</section>
     );
   }
 
-  return (
+  const formCard = (
     <div
-      className="mt-7 rounded-xl p-5"
+      className="rounded-2xl p-6 md:p-8"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.12)',
-        backdropFilter: 'blur(8px)',
-        maxWidth: '480px',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        boxShadow: embedInHero ? '0 20px 60px rgba(0,0,0,0.35)' : undefined,
+        // Светлые токены — независимо от темы родителя. Нужно потому что
+        // тот же компонент стоит и в светлой части страницы, и в тёмном
+        // hero. Если завязаться на CSS-переменные, тёмная тема в Hero
+        // съест читаемость.
+        color: '#0b1220',
       }}
     >
-      <div
-        style={{
-          display: 'inline-block',
-          padding: '3px 9px',
-          borderRadius: '999px',
-          fontSize: '10px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          fontWeight: 600,
-          background: 'rgba(45,212,191,0.18)',
-          color: '#5eead4',
-          marginBottom: '10px',
-        }}
-      >
-        Бесплатный тест 14 дней + скидка 50% первым 50
+      <div className="text-center">
+        <div
+          style={{
+            display: 'inline-block',
+            padding: '4px 10px',
+            borderRadius: '999px',
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            fontWeight: 600,
+            background: 'rgba(45,212,191,0.15)',
+            color: '#0e9384',
+            marginBottom: '12px',
+          }}
+        >
+          Доступ ограничен: первые 50 заявок
+        </div>
+        <h3 className="text-xl md:text-2xl font-semibold" style={{ color: '#0b1220' }}>
+          Бесплатный тест 14 дней + скидка 50% первым 50
+        </h3>
+        <p className="mt-2 text-base" style={{ color: '#475569' }}>
+          Оставьте контакт — пришлём доступ и купон. Без оплаты и подписок.
+        </p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
         <Honeypot id={`${formId}-hp`} value={hp} onChange={setHp} />
-        <div className="flex gap-2">
-          <select
-            value={channel}
-            onChange={(e) => setChannel(e.target.value as Channel)}
-            className="rounded-lg px-2.5 py-2 text-sm shrink-0"
-            style={{
-              background: 'rgba(0,0,0,0.35)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#fff',
-              width: '110px',
-            }}
-            aria-label="Способ связи"
-          >
-            {CHANNELS.map((c) => (
-              <option key={c.value} value={c.value} style={{ color: '#000' }}>{c.label}</option>
-            ))}
-          </select>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block">
+            <span className="block text-sm font-medium mb-1" style={{ color: '#0b1220' }}>
+              Как к вам обращаться
+            </span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Имя или ник"
+              maxLength={120}
+              className="w-full rounded-lg px-3 py-2 text-base"
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#0b1220',
+              }}
+            />
+          </label>
+
+          <label className="block">
+            <span className="block text-sm font-medium mb-1" style={{ color: '#0b1220' }}>
+              Способ связи <span style={{ color: '#ef4444' }}>*</span>
+            </span>
+            <select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as Channel)}
+              className="w-full rounded-lg px-3 py-2 text-base"
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#0b1220',
+              }}
+            >
+              {CHANNELS.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <label className="block">
+          <span className="block text-sm font-medium mb-1" style={{ color: '#0b1220' }}>
+            Контакт ({currentChannel.label}) <span style={{ color: '#ef4444' }}>*</span>
+          </span>
           <input
             type="text"
             value={contact}
@@ -388,54 +261,66 @@ export function LeadCaptureFormHero() {
             placeholder={currentChannel.placeholder}
             maxLength={255}
             required
-            className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm"
+            className="w-full rounded-lg px-3 py-2 text-base"
             style={{
-              background: 'rgba(0,0,0,0.35)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#fff',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              color: '#0b1220',
             }}
-            aria-label="Контакт"
           />
-        </div>
+        </label>
 
-        {error && (
-          <div
+        <label className="block">
+          <span className="block text-sm font-medium mb-1" style={{ color: '#0b1220' }}>
+            Пожелание (необязательно)
+          </span>
+          <textarea
+            value={wish}
+            onChange={(e) => setWish(e.target.value)}
+            placeholder="Какая ниша/город? Что хотите парсить?"
+            rows={3}
+            maxLength={2000}
+            className="w-full rounded-lg px-3 py-2 text-base resize-none"
             style={{
-              background: 'rgba(239,68,68,0.18)',
-              border: '1px solid rgba(239,68,68,0.45)',
-              color: '#fecaca',
-              padding: '6px 10px',
-              borderRadius: '8px',
-              fontSize: '13px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              color: '#0b1220',
             }}
-          >
-            {error}
-          </div>
-        )}
+          />
+        </label>
+
+        {error && <ErrorBox text={error} />}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg py-2.5 text-sm font-semibold disabled:opacity-60"
+          className="w-full rounded-lg py-3 text-base font-semibold disabled:opacity-60"
           style={{
             background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
             color: '#0b1220',
             cursor: submitting ? 'not-allowed' : 'pointer',
-            boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
           }}
         >
           {submitting ? 'Отправляем…' : 'Получить доступ'}
         </button>
 
-        <p className="text-[11px] leading-tight" style={{ color: 'rgba(255,255,255,0.6)' }}>
+        <p className="text-xs text-center" style={{ color: '#64748b' }}>
           Нажимая кнопку, вы соглашаетесь с{' '}
-          <a href="/consent" style={{ color: '#5eead4', textDecoration: 'underline' }}>
+          <a href="/consent" style={{ color: '#0e9384', textDecoration: 'underline' }}>
             обработкой персональных данных
           </a>
-          . Без оплаты и подписок.
+          .
         </p>
       </form>
     </div>
+  );
+
+  if (embedInHero) return formCard;
+
+  return (
+    <section className="max-w-3xl mx-auto px-6 py-12 md:py-16">
+      {formCard}
+    </section>
   );
 }
 

@@ -20,6 +20,7 @@ import { FAQSection } from '@/components/landing/FAQSection';
 import { ContactsSection } from '@/components/landing/ContactsSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { Lightbox } from '@/components/landing/Lightbox';
+import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 export default function LandingPage() {
   const [lightbox, setLightbox] = useState({ isOpen: false, src: '', alt: '' });
@@ -82,6 +83,11 @@ export default function LandingPage() {
           onCtaRegister={() => scrollTo('register', true)}
           onCtaExamples={() => scrollTo('diagnosis')}
         />
+        {/* Форма захвата лида (бесплатный тест + скидка 50% первым 50)
+            сразу под hero — посетитель из поиска видит конверсию,
+            не пролистывая всю простыню лендинга. RegisterSection ниже
+            остаётся как полноценный onboarding для тех, кто долистал. */}
+        <LeadCaptureForm />
         {/* Идеологическая фишка — сначала «вот выдача с диагнозами» (breadth),
             потом DiagnosisSection раскроет одну компанию подробно (depth). */}
         <SignalsTableSection />
