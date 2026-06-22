@@ -13,9 +13,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, require_superuser
 from app.core.rate_limit import get_client_ip, limiter
-from app.modules.website_leads import schemas, service
+from app.modules.website_leads import antispam, schemas, service
 
 router = APIRouter(prefix="/website-leads", tags=["website-leads"])
+
+
+@router.post("/token", status_code=status.HTTP_200_OK)
+@limiter.limit("30/hour")
+async def issue_token(request: Request) -> dict[str, str]:
+    """Выдаёт одноразовый токен для формы.
+
+    Фронт фетчит на mount, потом передаёт в submit как `_form_token`.
+    Rate-limit 30/час с IP — реальному юзеру хватит даже на десяток
+    форм за час, ботам выдавать токены массово не дадим.
+    """
+    return {"token": antispam.issue_form_token()}
 
 
 @router.post(
