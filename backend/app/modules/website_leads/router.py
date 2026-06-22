@@ -49,11 +49,15 @@ async def submit_lead(
     """
     client_ip = get_client_ip(request)
     user_agent = request.headers.get("user-agent", "")
+    origin = request.headers.get("origin", "")
+    referer = request.headers.get("referer", "")
     return await service.submit_lead(
         db,
         payload,
         client_ip=client_ip,
         user_agent=user_agent,
+        origin=origin,
+        referer=referer,
     )
 
 

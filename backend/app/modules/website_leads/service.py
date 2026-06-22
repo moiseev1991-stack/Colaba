@@ -53,6 +53,8 @@ async def submit_lead(
     *,
     client_ip: str,
     user_agent: str,
+    origin: str = "",
+    referer: str = "",
 ) -> WebsiteLeadSubmitResponse:
     """Принять заявку с публичной формы.
 
@@ -69,7 +71,17 @@ async def submit_lead(
         )
         return WebsiteLeadSubmitResponse()
 
-    # 2. UA bot-фильтр (см. antispam._BOT_UA_RE).
+    # 2a. Origin/Referer-фильтр — submit должен прийти с нашего домена.
+    if not antispam.is_legit_origin(origin, referer):
+        logger.info(
+            "website_lead.reject reason=bad_origin ip=%s origin=%r referer=%r",
+            client_ip,
+            origin[:80],
+            referer[:80],
+        )
+        return WebsiteLeadSubmitResponse()
+
+    # 2b. UA bot-фильтр (см. antispam._BOT_UA_RE).
     if antispam.is_bot_ua(user_agent):
         logger.info(
             "website_lead.reject reason=bot_ua ip=%s ua=%r",
