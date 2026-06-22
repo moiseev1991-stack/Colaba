@@ -691,29 +691,7 @@ export default function KpJobPage({ params }: PageProps) {
       {!loading && !error && job?.status === 'done' && items.length > 0 && (
         <SendBar
           jobId={jobId}
-          doneCount={items.filter((it) => it.status === 'done').length}
-          withRecipientCount={
-            items.filter(
-              (it) => it.status === 'done' && !!it.recipient_email,
-            ).length
-          }
-          missingRecipientCount={
-            items.filter(
-              (it) => it.status === 'done' && !it.recipient_email,
-            ).length
-          }
-          // Компании без email но с валидным телефоном — кандидаты на
-          // «На обзвон.xlsx». Логика нормализации зеркалит бэк
-          // (kp_call_list_export._normalize_phone). Если 0 — кнопка
-          // скачивания дизейблится с понятным title.
-          callableCount={
-            items.filter(
-              (it) =>
-                it.status === 'done' &&
-                !it.recipient_email &&
-                normalizePhoneForWa(it.company_phone) !== null,
-            ).length
-          }
+          items={items}
           refetchToken={sendBump}
         />
       )}
@@ -746,57 +724,225 @@ export default function KpJobPage({ params }: PageProps) {
 
 // --- Sticky bottom send bar -------------------------------------------------
 
-// Каналы, которые реально шлют. Остальные показываем «в работе» — backend
-// создаст для них skipped-строки с error_code='channel_unavailable'.
-const WORKING_CHANNELS: KpSendChannel[] = ['email'];
-
-const CHANNELS: {
+// Конфиг каналов отправки.
+//
+// `working` — реально доставляет (backend имеет коннектор):
+//   - email через Hyvor/SMTP (всегда работает на проде)
+//   - whatsapp через GreenAPI (если GREENAPI_INSTANCE_ID/TOKEN в env)
+// `priority` — порядок в режиме «один лучший канал на компанию»:
+//   на компанию с email уходит email; без email но с мобильным РФ — WhatsApp.
+// `eligible(item)` — есть ли у компании контакт для этого канала.
+//
+// Чекбоксы каналов в UI юзер может снять, чтобы временно отключить
+// конкретный канал (например, GreenAPI-инстанс отвалился). Снятый канал
+// убирает соответствующие компании из счётчика «Отправить всем».
+type ChannelDef = {
   key: KpSendChannel;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  { key: 'email', label: 'Email', Icon: Mail },
-  { key: 'telegram', label: 'Telegram', Icon: Send },
-  { key: 'whatsapp', label: 'WhatsApp', Icon: MessageCircle },
-  { key: 'max', label: 'MAX', Icon: MessageCircle },
+  working: boolean;
+  priority: number;  // 1 = высший, для one-per-company-режима
+  eligible: (item: KpJobItem) => boolean;
+  emptyHint: string;  // подсказка под счётчиком, если 0 eligible
+};
+
+const CHANNEL_DEFS: ChannelDef[] = [
+  {
+    key: 'email',
+    label: 'Email',
+    Icon: Mail,
+    working: true,
+    priority: 1,
+    eligible: (it) => !!it.recipient_email,
+    emptyHint: 'Ни у одной готовой компании не нашли email.',
+  },
+  {
+    key: 'whatsapp',
+    label: 'WhatsApp',
+    Icon: MessageCircle,
+    working: true,
+    priority: 2,
+    eligible: (it) => isRussianMobile(it.company_phone),
+    emptyHint: 'Нет компаний с мобильным РФ-номером (WhatsApp требует мобильный).',
+  },
+  {
+    key: 'telegram',
+    label: 'Telegram',
+    Icon: Send,
+    working: false,
+    priority: 3,
+    eligible: () => false,  // нет коннектора, никто не eligible
+    emptyHint: 'Коннектор Telegram-бота в работе.',
+  },
+  {
+    key: 'max',
+    label: 'MAX',
+    Icon: MessageCircle,
+    working: false,
+    priority: 4,
+    eligible: () => false,
+    emptyHint: 'Публичного API у MAX пока нет — ждём.',
+  },
 ];
+
+const CHANNEL_BY_KEY: Record<KpSendChannel, ChannelDef> = Object.fromEntries(
+  CHANNEL_DEFS.map((c) => [c.key, c]),
+) as Record<KpSendChannel, ChannelDef>;
+
+
+/**
+ * Группирует готовые драфты по тому, в какой канал они уйдут в режиме
+ * «один лучший канал на компанию». Проходим компании, для каждой
+ * выбираем первый enabled+working+eligible канал по priority.
+ *
+ * Возвращает Map<channel, draftIds[]> + список компаний, которым ни
+ * один канал не подошёл (они попадут в «на обзвон» / «без контактов»).
+ */
+function planOnePerCompany(
+  items: KpJobItem[],
+  enabled: Set<KpSendChannel>,
+): { byChannel: Map<KpSendChannel, number[]>; uncovered: KpJobItem[] } {
+  const sortedChannels = CHANNEL_DEFS
+    .filter((c) => c.working && enabled.has(c.key))
+    .sort((a, b) => a.priority - b.priority);
+  const byChannel = new Map<KpSendChannel, number[]>();
+  const uncovered: KpJobItem[] = [];
+  for (const it of items) {
+    if (it.status !== 'done' || it.draft_id === null) continue;
+    const pick = sortedChannels.find((c) => c.eligible(it));
+    if (!pick) {
+      uncovered.push(it);
+      continue;
+    }
+    const list = byChannel.get(pick.key) ?? [];
+    list.push(it.draft_id);
+    byChannel.set(pick.key, list);
+  }
+  return { byChannel, uncovered };
+}
+
+
+/**
+ * Группирует драфты по «во все каналы»: компания получит сообщение
+ * по КАЖДОМУ enabled+working каналу, для которого у неё есть адрес.
+ * Может быть несколько отправок на одну компанию.
+ */
+function planAllChannels(
+  items: KpJobItem[],
+  enabled: Set<KpSendChannel>,
+): { byChannel: Map<KpSendChannel, number[]>; uncovered: KpJobItem[] } {
+  const activeChannels = CHANNEL_DEFS.filter(
+    (c) => c.working && enabled.has(c.key),
+  );
+  const byChannel = new Map<KpSendChannel, number[]>();
+  const uncovered: KpJobItem[] = [];
+  for (const it of items) {
+    if (it.status !== 'done' || it.draft_id === null) continue;
+    let anyHit = false;
+    for (const c of activeChannels) {
+      if (!c.eligible(it)) continue;
+      anyHit = true;
+      const list = byChannel.get(c.key) ?? [];
+      list.push(it.draft_id);
+      byChannel.set(c.key, list);
+    }
+    if (!anyHit) uncovered.push(it);
+  }
+  return { byChannel, uncovered };
+}
+
 
 function SendBar({
   jobId,
-  doneCount,
-  withRecipientCount,
-  missingRecipientCount,
-  callableCount,
+  items,
   refetchToken,
 }: {
   jobId: number;
-  /** Сколько КП реально готово (status='done'). */
-  doneCount: number;
-  /** Из готовых — сколько с валидным email. По 0 «Отправить» дизейблится. */
-  withRecipientCount: number;
-  /** Из готовых — сколько без email (попадут как 'skipped' в kp_sends). */
-  missingRecipientCount: number;
-  /** Из готовых без email — сколько имеют валидный телефон (можно обзвонить). */
-  callableCount: number;
+  items: KpJobItem[];
   /** Bump-токен: после per-row отправки родитель инкрементит его, чтобы
    *  SendBar немедленно подтянул свежий счётчик (без ожидания следующего
    *  тика 2.5-сек поллинга). 0 на маунте — refetch не триггерим. */
   refetchToken: number;
 }) {
-  // Локальный toggle каналов. По умолчанию выбран Email — единственный
-  // реально подключенный, остальные после клика стартуют как 'skipped'
-  // на бэке (UI помечает их как «коннектор скоро»).
-  const [channels, setChannels] = useState<Set<KpSendChannel>>(
-    () => new Set(['email']),
+  // По умолчанию активны оба работающих канала — режим «максимальный
+  // охват из коробки». Юзер может снять чекбокс, если канал сейчас
+  // сломан или он не хочет туда слать.
+  const [enabled, setEnabled] = useState<Set<KpSendChannel>>(
+    () => new Set(['email', 'whatsapp']),
   );
 
-  // Состояние реальной отправки.
+  // Состояние реальной отправки (общий статус партии — backend агрегирует
+  // по всем каналам).
   const [status, setStatus] = useState<KpJobSendStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Скачивание call-list.xlsx — отдельный спиннер/ошибка, не мешает send.
   const [callListDownloading, setCallListDownloading] = useState(false);
   const [callListError, setCallListError] = useState<string | null>(null);
+
+  // Готовые драфты + разбор по «куда что пойдёт». Считается из items
+  // на клиенте — backend этих счётчиков пока не отдаёт. Если в будущем
+  // company_contacts даст больше телефонов чем Company.phone (см.
+  // collect_company_phones на бэке), UI-разбор станет занижен, но это
+  // не критично: backend всё равно создаст правильные строки.
+  const doneItems = useMemo(() => items.filter((it) => it.status === 'done'), [items]);
+
+  const breakdown = useMemo(() => {
+    let emailEligible = 0;
+    let waEligible = 0;
+    let landlineOnly = 0;
+    let noContacts = 0;
+    for (const it of doneItems) {
+      const hasEmail = CHANNEL_BY_KEY.email.eligible(it);
+      const hasWa = CHANNEL_BY_KEY.whatsapp.eligible(it);
+      if (hasEmail) emailEligible += 1;
+      if (hasWa) waEligible += 1;
+      if (!hasEmail && !hasWa) {
+        // Не охвачен email/WA — может быть городской (попадёт в xlsx
+        // «На обзвон») или вообще без телефона.
+        const digits = normalizePhoneForWa(it.company_phone);
+        if (digits && !isRussianMobile(it.company_phone)) landlineOnly += 1;
+        else if (!digits) noContacts += 1;
+        else landlineOnly += 1;  // fallback: digits есть но не мобильный РФ
+      }
+    }
+    return {
+      emailEligible,
+      waEligible,
+      landlineOnly,
+      noContacts,
+    };
+  }, [doneItems]);
+
+  // План отправки «один лучший канал на компанию» + «во все каналы».
+  // Пересчитывается на каждое изменение enabled-чекбоксов.
+  const planOne = useMemo(() => planOnePerCompany(doneItems, enabled), [doneItems, enabled]);
+  const planAll = useMemo(() => planAllChannels(doneItems, enabled), [doneItems, enabled]);
+
+  // Сколько уникальных компаний охватывается в каждом режиме.
+  const oneCount = useMemo(
+    () => Array.from(planOne.byChannel.values()).reduce((a, b) => a + b.length, 0),
+    [planOne],
+  );
+  // Во all-режиме это число отправок (не компаний), т.к. одна компания
+  // может попасть и в email, и в WA одновременно.
+  const allSendsCount = useMemo(
+    () => Array.from(planAll.byChannel.values()).reduce((a, b) => a + b.length, 0),
+    [planAll],
+  );
+
+  // Кандидаты на xlsx «На обзвон» — uncovered компании, у которых есть
+  // хоть какой-то телефон. Используется только для счётчика на кнопке.
+  const callableCount = useMemo(
+    () =>
+      doneItems.filter(
+        (it) =>
+          !CHANNEL_BY_KEY.email.eligible(it) &&
+          !CHANNEL_BY_KEY.whatsapp.eligible(it) &&
+          normalizePhoneForWa(it.company_phone) !== null,
+      ).length,
+    [doneItems],
+  );
+
 
   async function handleDownloadCallList() {
     if (callListDownloading || callableCount === 0) return;
@@ -804,9 +950,6 @@ function SendBar({
     setCallListError(null);
     try {
       const { blob, filename } = await downloadKpJobCallList(jobId);
-      // Создаём временный <a download> — единственный кросс-браузерный
-      // способ начать загрузку blob'а. URL отзываем сразу после клика,
-      // иначе течёт память (Chrome держит до закрытия вкладки).
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -827,11 +970,11 @@ function SendBar({
     }
   }
 
-  function toggle(key: KpSendChannel) {
-    // Защита от того, чтобы случайно «выбрать» канал, по которому мы
-    // не шлём — дублирует disabled-кнопку, но безопаснее иметь и тут.
-    if (!WORKING_CHANNELS.includes(key)) return;
-    setChannels((prev) => {
+  function toggleChannel(key: KpSendChannel) {
+    const def = CHANNEL_BY_KEY[key];
+    // Не-working каналы (TG/MAX) — disabled, кликом не переключаются.
+    if (!def.working) return;
+    setEnabled((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -839,24 +982,18 @@ function SendBar({
     });
   }
 
-  // Первичная загрузка статуса — если страница открыта после
-  // предыдущей отправки, сразу показываем «N из M отправлено».
   useEffect(() => {
     let cancelled = false;
     getKpJobSendStatus(jobId)
       .then((s) => {
         if (!cancelled) setStatus(s);
       })
-      .catch(() => {
-        // 404 / network — игнор, юзер увидит «Отправок ещё не было».
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [jobId]);
 
-  // Поллинг пока есть активные отправки. 2.5 сек — баланс между «видно
-  // прогресс» и нагрузкой на бэк (тот же темп, что у генерации).
   useEffect(() => {
     if (!status?.is_active) return;
     const t = setTimeout(() => {
@@ -867,9 +1004,6 @@ function SendBar({
     return () => clearTimeout(t);
   }, [jobId, status]);
 
-  // Внеплановый refetch после per-row отправки: родитель инкрементит
-  // refetchToken, мы дёргаем send-status сразу, чтобы счётчик «Отправлено: N»
-  // обновился без задержки. 0 — маунтовое значение, пропускаем.
   useEffect(() => {
     if (refetchToken === 0) return;
     getKpJobSendStatus(jobId)
@@ -877,13 +1011,54 @@ function SendBar({
       .catch(() => undefined);
   }, [jobId, refetchToken]);
 
-  async function handleSend() {
-    if (channels.size === 0 || submitting) return;
+
+  /**
+   * Отправка планом. План — Map<channel, draftIds>. Для каждого канала
+   * шлём отдельный sendKpJob-запрос, параллельно. Backend (с draft_ids
+   * фильтром) создаст row только под переданные драфты.
+   *
+   * Возвращает последний полученный статус — UI сразу обновляется без
+   * ожидания первого тика polling'а.
+   */
+  async function dispatchPlan(plan: Map<KpSendChannel, number[]>): Promise<KpJobSendStatus | null> {
+    const calls: Promise<KpJobSendStatus>[] = [];
+    for (const [channel, draftIds] of plan.entries()) {
+      if (draftIds.length === 0) continue;
+      calls.push(sendKpJob(jobId, [channel], draftIds));
+    }
+    if (calls.length === 0) return null;
+    const results = await Promise.all(calls);
+    // Берём последний результат — он самый свежий (после всех POST'ов
+    // backend уже видит все queued-row, не важно какой call вернул).
+    return results[results.length - 1] ?? null;
+  }
+
+  async function handleSendOnePerCompany() {
+    if (submitting || oneCount === 0) return;
     setSubmitting(true);
     setError(null);
     try {
-      const fresh = await sendKpJob(jobId, Array.from(channels));
-      setStatus(fresh);
+      const fresh = await dispatchPlan(planOne.byChannel);
+      if (fresh) setStatus(fresh);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setError(
+        typeof detail === 'string'
+          ? detail
+          : e?.message || 'Не удалось поставить отправку в очередь.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSendAllChannels() {
+    if (submitting || allSendsCount === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const fresh = await dispatchPlan(planAll.byChannel);
+      if (fresh) setStatus(fresh);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
       setError(
@@ -900,163 +1075,197 @@ function SendBar({
   const inFlight = (status?.queued ?? 0) + (status?.sending ?? 0);
   const isActive = !!status?.is_active;
   const hasAnySend = (status?.total ?? 0) > 0;
-  // Защита от отправки «в пустоту»: блокируем кнопку если ни у одной
-  // готовой компании нет email-а. До этого юзер мог нажать «Отправить»
-  // и получить партию из 100% skipped — теперь видит причину сразу.
-  const noRecipients = withRecipientCount === 0;
-  const buttonDisabled =
-    submitting || channels.size === 0 || isActive || noRecipients;
+
+  // Дублирующие отправки запрещаем во время активной партии.
+  const oneDisabled = submitting || oneCount === 0 || isActive;
+  const allDisabled = submitting || allSendsCount === 0 || isActive;
 
   return (
-    // sticky bottom-0 внутри потока страницы (не fixed) — bar прилипает
-    // к низу viewport'а пока таблица длиннее экрана и плавно «отпускается»
-    // на сайт-футер. pb-safe — учитываем нижнюю safe-area iPhone'а под
-    // home-indicator, иначе на мобильном bar частично уходит под полосу.
     <div className="sticky bottom-3 z-30 mt-5 pb-[env(safe-area-inset-bottom)]">
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-2">
-            <div className="text-[13px] font-semibold text-[hsl(var(--text))]">
-              {isActive
-                ? `Отправляем: ${status!.sent} из ${status!.total}…`
-                : hasAnySend
-                  ? `Отправлено: ${status!.sent} · с ошибкой: ${status!.failed}${
-                      status!.skipped > 0 ? ` · пропущено: ${status!.skipped}` : ''
-                    }`
-                  : noRecipients
-                    ? `Готово ${doneCount} КП, но ни у одной компании не найден email — отправка пока невозможна`
-                    : `Готово ${doneCount} КП · с контактом ${withRecipientCount}${
-                        missingRecipientCount > 0
-                          ? ` · без email-а: ${missingRecipientCount}`
-                          : ''
-                      }`}
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {CHANNELS.map(({ key, label, Icon }) => {
-                const working = WORKING_CHANNELS.includes(key);
-                const active = working && channels.has(key);
-                // TG/WA/MAX полностью disabled — кликнуть нельзя ни в каком
-                // состоянии, чтобы юзер случайно не «выбрал» канал, на
-                // который мы пока не шлём. Email остаётся toggle'абельным.
-                const lockedSoon = !working;
-                const buttonDisabled =
-                  lockedSoon || submitting || isActive;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={active}
-                    aria-disabled={lockedSoon || undefined}
-                    onClick={lockedSoon ? undefined : () => toggle(key)}
-                    disabled={buttonDisabled}
-                    title={
-                      working
-                        ? 'Отправка по email — через настроенный Hyvor/SMTP.'
-                        : 'Коннектор скоро: пока шлём только по email.'
-                    }
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
-                      lockedSoon
-                        ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
-                        : 'disabled:cursor-not-allowed disabled:opacity-60',
-                      !lockedSoon && active
-                        ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                        : '',
-                      !lockedSoon && !active
-                        ? 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
-                        : '',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'grid h-3.5 w-3.5 place-items-center rounded-sm border',
-                        lockedSoon
-                          ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
-                          : active
-                            ? 'border-violet-500 bg-violet-500 text-white'
-                            : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900',
-                      )}
-                    >
-                      {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
-                    </span>
-                    <Icon className="h-3.5 w-3.5" />
-                    {label}
-                    {lockedSoon && (
-                      <span className="ml-0.5 rounded bg-slate-200 px-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-300">
-                        скоро
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {error && (
-              <div className="text-[12px] text-rose-700">{error}</div>
-            )}
-            {callListError && (
-              <div className="text-[12px] text-rose-700">{callListError}</div>
-            )}
-            {status?.last_error && !error && (
-              <div
-                className="truncate text-[12px] text-rose-700"
-                title={status.last_error}
-              >
-                Последняя ошибка: {status.last_error}
-              </div>
-            )}
+        {/* Шапка: общий статус партии — что вообще готово и сколько уже улетело */}
+        <div className="flex flex-col gap-1 border-b border-[hsl(var(--border))] pb-3">
+          <div className="text-[13px] font-semibold text-[hsl(var(--text))]">
+            {isActive
+              ? `Отправляем: ${status!.sent} из ${status!.total}…`
+              : hasAnySend
+                ? `Отправлено: ${status!.sent} · с ошибкой: ${status!.failed}${
+                    status!.skipped > 0 ? ` · пропущено: ${status!.skipped}` : ''
+                  }`
+                : `Готово ${doneItems.length} КП · по контактам разобрали`}
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
-            <ButtonV2
-              variant="secondary"
-              size="md"
-              disabled={callListDownloading || callableCount === 0}
-              onClick={handleDownloadCallList}
-              iconLeft={
-                callListDownloading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Download />
-                )
-              }
-              title={
-                callableCount === 0
-                  ? 'Нет компаний без email с валидным телефоном — обзванивать некого.'
-                  : 'Скачать .xlsx со всеми, кому КП по почте не уйдёт, но есть телефон. С болью и темой — для звонка/WhatsApp руками.'
-              }
-            >
-              {callListDownloading
-                ? 'Готовлю…'
-                : `На обзвон${callableCount > 0 ? ` (${callableCount})` : ''}`}
-            </ButtonV2>
-            <ButtonV2
-              variant="primary"
-              size="md"
-              onClick={handleSend}
-              disabled={buttonDisabled}
-              iconLeft={
-                submitting || isActive ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Send />
-                )
-              }
-              title={
-                isActive
-                  ? 'Сейчас идёт рассылка — дождись окончания.'
-                  : noRecipients
-                    ? 'Ни у одной готовой КП нет email-а — отправка пока невозможна. Добавь контакты компаниям и попробуй снова.'
-                    : 'Шлёт каждое готовое КП по выбранным каналам. История попадает в /history → «Отправки».'
-              }
-            >
-              {isActive
-                ? `Отправляется… ${sentCount}/${status!.total}`
-                : hasAnySend
-                  ? `Дослать (${withRecipientCount - (status?.sent ?? 0)})`
-                  : `Отправить (${withRecipientCount})`}
-            </ButtonV2>
+          {/* Разбор «куда уйдёт» — независим от выбранного режима, чтобы
+              юзер понимал, какие данные у нас вообще есть. Чекбоксы
+              ниже только включают/выключают каналы — числа не меняют. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[hsl(var(--muted))]">
+            <span className="inline-flex items-center gap-1">
+              <Mail className="h-3.5 w-3.5 text-violet-600" /> {breakdown.emailEligible} email
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> {breakdown.waEligible} WhatsApp
+            </span>
+            {breakdown.landlineOnly > 0 && (
+              <span className="inline-flex items-center gap-1">
+                📞 {breakdown.landlineOnly} только звонок
+              </span>
+            )}
+            {breakdown.noContacts > 0 && (
+              <span className="inline-flex items-center gap-1 text-rose-600">
+                ❓ {breakdown.noContacts} без контактов
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Чекбоксы каналов — снять можно email/WhatsApp, TG/MAX disabled.
+            По умолчанию оба working-канала включены, чтобы «Отправить»
+            из коробки слал максимум доступного. */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {CHANNEL_DEFS.map(({ key, label, Icon, working }) => {
+            const active = working && enabled.has(key);
+            const disabledClick = !working || submitting || isActive;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="checkbox"
+                aria-checked={active}
+                aria-disabled={!working || undefined}
+                onClick={disabledClick ? undefined : () => toggleChannel(key)}
+                disabled={disabledClick}
+                title={
+                  !working
+                    ? 'Коннектор в работе — этот канал пока не шлёт.'
+                    : active
+                      ? 'Снять галочку — компании по этому каналу пойдут в «обзвон руками».'
+                      : 'Включить канал — компании с этим контактом снова попадут в отправку.'
+                }
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
+                  !working
+                    ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
+                    : 'disabled:cursor-not-allowed disabled:opacity-60',
+                  working && active
+                    ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
+                    : '',
+                  working && !active
+                    ? 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                    : '',
+                )}
+              >
+                <span
+                  className={cn(
+                    'grid h-3.5 w-3.5 place-items-center rounded-sm border',
+                    !working
+                      ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
+                      : active
+                        ? 'border-violet-500 bg-violet-500 text-white'
+                        : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900',
+                  )}
+                >
+                  {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                </span>
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+                {!working && (
+                  <span className="ml-0.5 rounded bg-slate-200 px-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                    скоро
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Ошибки */}
+        {error && (
+          <div className="mt-2 text-[12px] text-rose-700">{error}</div>
+        )}
+        {callListError && (
+          <div className="mt-2 text-[12px] text-rose-700">{callListError}</div>
+        )}
+        {status?.last_error && !error && (
+          <div
+            className="mt-2 truncate text-[12px] text-rose-700"
+            title={status.last_error}
+          >
+            Последняя ошибка: {status.last_error}
+          </div>
+        )}
+
+        {/* Кнопки: два пресета + xlsx обзвон.
+            «Отправить всем» — на компанию один лучший канал (email или WA).
+            «Во все каналы» — на компанию все доступные каналы (макс охват). */}
+        <div className="mt-3 flex flex-wrap items-stretch gap-2">
+          <ButtonV2
+            variant="primary"
+            size="md"
+            onClick={handleSendOnePerCompany}
+            disabled={oneDisabled}
+            iconLeft={
+              submitting || isActive ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Send />
+              )
+            }
+            title={
+              isActive
+                ? 'Сейчас идёт рассылка — дождись окончания.'
+                : oneCount === 0
+                  ? 'Ни одной компании не достать выбранными каналами. Включи каналы или добавь контакты.'
+                  : 'Каждой компании уйдёт ОДНА КП в первый доступный канал (email → WhatsApp). Без дублей.'
+            }
+          >
+            {isActive
+              ? `Отправляется… ${sentCount}/${status!.total}`
+              : `Отправить всем (${oneCount})`}
+          </ButtonV2>
+
+          <ButtonV2
+            variant="secondary"
+            size="md"
+            onClick={handleSendAllChannels}
+            disabled={allDisabled}
+            iconLeft={submitting && !isActive ? <Loader2 className="animate-spin" /> : <Send />}
+            title={
+              isActive
+                ? 'Сейчас идёт рассылка — дождись окончания.'
+                : allSendsCount === 0
+                  ? 'Ни одной компании не достать выбранными каналами.'
+                  : 'Каждой компании уйдёт КП по ВСЕМ доступным каналам сразу (email + WhatsApp если есть оба). Больше шансов, что увидят, но риск дубль-сообщения.'
+            }
+          >
+            {`Во все каналы (${allSendsCount} ${
+              pluralize(allSendsCount, 'отправка', 'отправки', 'отправок')
+            })`}
+          </ButtonV2>
+
+          <ButtonV2
+            variant="ghost"
+            size="md"
+            disabled={callListDownloading || callableCount === 0}
+            onClick={handleDownloadCallList}
+            iconLeft={
+              callListDownloading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Download />
+              )
+            }
+            title={
+              callableCount === 0
+                ? 'Нет компаний без email/WA с валидным телефоном — обзванивать некого.'
+                : 'Скачать .xlsx со всеми, кому КП не уйдёт по email/WA, но есть телефон. С болью и темой — для звонка руками.'
+            }
+          >
+            {callListDownloading
+              ? 'Готовлю…'
+              : `На обзвон${callableCount > 0 ? ` (${callableCount})` : ''}`}
+          </ButtonV2>
+        </div>
+
+        {/* Прогресс-бар */}
         {isActive && (
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
             <div
@@ -1078,6 +1287,16 @@ function SendBar({
       </div>
     </div>
   );
+}
+
+
+/** Простой РФ-плюрализатор для «1 отправка / 2 отправки / 5 отправок». */
+function pluralize(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }
 
 // --- Per-row send button (✈) ------------------------------------------------
