@@ -43,16 +43,27 @@ from app.core.redis_pubsub import get_redis
 logger = logging.getLogger(__name__)
 
 
-MIN_FILL_TIME_MS = 3000
+MIN_FILL_TIME_MS = 4000
 MAX_TOKEN_AGE_S = 30 * 60
 DEDUP_TTL_S = 24 * 60 * 60
 USED_TOKEN_TTL_S = MAX_TOKEN_AGE_S
+
+# Хосты, с которых submit считается легитимным. Submit с чужого Origin
+# или с пустым Origin+Referer тихо отбрасывается. Можно расширять через
+# env, но пока хардкод — у нас всего один продакшен-домен.
+ALLOWED_HOSTS = (
+    "spinlid.ru",
+    "www.spinlid.ru",
+    "localhost",
+    "127.0.0.1",
+)
 
 
 _BOT_UA_RE = re.compile(
     r"(python-requests|aiohttp|scrapy|curl/|wget/|httpie|libwww|java/|"
     r"go-http-client|httpclient|okhttp|headless|phantomjs|puppeteer|"
-    r"playwright|crawler|spider|slurp)",
+    r"playwright|selenium|webdriver|electron|node-fetch|undici|"
+    r"chrome-lighthouse|scraperapi|crawler|spider|slurp|axios/)",
     re.IGNORECASE,
 )
 
@@ -130,6 +141,42 @@ def is_bot_ua(user_agent: str) -> bool:
     if not user_agent or len(user_agent) < 8:
         return True
     return bool(_BOT_UA_RE.search(user_agent))
+
+
+def _extract_host(value: str) -> str:
+    """Возвращает host из Origin/Referer URL'а без схемы и порта."""
+    if not value:
+        return ""
+    v = value.strip().lower()
+    # strip scheme
+    if "://" in v:
+        v = v.split("://", 1)[1]
+    # strip path
+    v = v.split("/", 1)[0]
+    # strip port
+    v = v.split(":", 1)[0]
+    return v
+
+
+def is_legit_origin(origin: str, referer: str) -> bool:
+    """True если submit пришёл с нашего домена.
+
+    Submit без Origin И без Referer — подозрительно (нормальные браузеры
+    шлют хотя бы один). curl-like клиенты часто не шлют ни того, ни
+    другого.
+    """
+    origin_host = _extract_host(origin)
+    referer_host = _extract_host(referer)
+    if not origin_host and not referer_host:
+        return False
+    # Хотя бы один из заголовков должен указывать на наш домен.
+    for host in (origin_host, referer_host):
+        if not host:
+            continue
+        for allowed in ALLOWED_HOSTS:
+            if host == allowed or host.endswith("." + allowed):
+                return True
+    return False
 
 
 async def check_dedup(ip: str, contact: str) -> bool:
