@@ -32,12 +32,20 @@ from app.models.kp_generation_job import KpGenerationJob
 from app.models.kp_send import KpSend
 from app.models.maps import Company
 from app.models.organization import user_organizations
+from app.modules.outreach import whatsapp_greenapi
+from app.modules.outreach.phone_utils import (
+    is_russian_mobile,
+    normalize_phone,
+)
 
 logger = logging.getLogger(__name__)
 
 
 SUPPORTED_CHANNELS = ("email", "telegram", "whatsapp", "max")
 EMAIL_CHANNELS = ("email",)
+# Реально отправляющие каналы. telegram/max сейчас всегда skipped — для них
+# нет коннектора (TG-бот заложен, но не дописан; MAX — нет публичного API).
+PHONE_CHANNELS = ("whatsapp",)
 
 
 class SendError(Exception):
@@ -142,6 +150,75 @@ async def collect_company_emails(
             out[int(cid)].append(s)
 
     return out
+
+
+async def collect_company_phones(
+    db: AsyncSession, company_ids: list[int]
+) -> dict[int, list[str]]:
+    """company_id → объединённый и дедуплицированный список телефонов-кандидатов.
+
+    Берёт из двух источников (зеркалит collect_company_emails):
+      1. companies.phone — основной телефон из карточки источника (2GIS/
+         Yandex), как пришёл. Часто spaced/dashes ("+7 (495) 123-45-67").
+      2. company_contacts.value WHERE type='phone' — per-source, может
+         содержать несколько номеров (отдел продаж + общий + директор).
+         is_primary=true поднимаем наверх — это обычно номер из карточки.
+
+    Возвращает сырые строки в исходном виде; нормализацию делает потребитель
+    (pick_first_mobile в phone_utils). Это позволяет UI / xlsx показывать
+    «как было», но WhatsApp-канал точно отбирать только мобильные.
+    """
+    if not company_ids:
+        return {}
+
+    out: dict[int, list[str]] = {cid: [] for cid in company_ids}
+
+    rows = (
+        await db.execute(
+            select(Company.id, Company.phone).where(Company.id.in_(company_ids))
+        )
+    ).all()
+    for cid, phone in rows:
+        if not phone:
+            continue
+        value = str(phone).strip()
+        if value and value not in out[int(cid)]:
+            out[int(cid)].append(value)
+
+    contact_rows = (
+        await db.execute(
+            text(
+                """
+                SELECT company_id, value, COALESCE(is_primary, false) AS is_primary
+                FROM company_contacts
+                WHERE company_id = ANY(:ids) AND type = 'phone'
+                ORDER BY is_primary DESC, id ASC
+                """
+            ),
+            {"ids": list(company_ids)},
+        )
+    ).all()
+    for cid, value, _is_primary in contact_rows:
+        if not value:
+            continue
+        s = str(value).strip()
+        if s and s not in out[int(cid)]:
+            out[int(cid)].append(s)
+
+    return out
+
+
+def pick_first_mobile_phone(raw_phones: list | None) -> str | None:
+    """Первый valid РФ-мобильный (digits-only, 79XXXXXXXXX) из сырых
+    номеров. None если ни одного. GreenAPI отказывается слать на
+    городские и зарубежные → отбор тут, чтобы не плодить failed."""
+    if not isinstance(raw_phones, list):
+        return None
+    for raw in raw_phones:
+        digits = normalize_phone(str(raw) if raw is not None else None)
+        if is_russian_mobile(digits):
+            return digits
+    return None
 
 
 async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int | None:
@@ -269,9 +346,16 @@ async def enqueue_job_send(
     # (companies.emails JSONB + company_contacts). Раньше брали только
     # JSONB и для половины компаний возвращали None, хотя email лежал
     # в company_contacts (карточка компании показывала, KP — нет).
-    emails_by_company = await collect_company_emails(
-        db, [int(cid) for cid in drafts_by_company.keys()]
-    )
+    company_ids_for_lookup = [int(cid) for cid in drafts_by_company.keys()]
+    emails_by_company = await collect_company_emails(db, company_ids_for_lookup)
+    # Телефоны — только если в каналах есть whatsapp; для email-only партии
+    # лишний SELECT по company_contacts не нужен.
+    phones_by_company: dict[int, list[str]] = {}
+    if any(c in PHONE_CHANNELS for c in channels):
+        phones_by_company = await collect_company_phones(
+            db, company_ids_for_lookup
+        )
+    wa_configured = whatsapp_greenapi.is_configured()
 
     created = 0
     queued = 0
@@ -283,26 +367,43 @@ async def enqueue_job_send(
             if (int(draft.id), channel) in existing_pairs:
                 # Уже отправлено / в очереди — не дублим.
                 continue
-            recipient = (
-                pick_first_email(emails_by_company.get(int(cid)))
-                if channel == "email"
-                else None
-            )
+            if channel == "email":
+                recipient = pick_first_email(emails_by_company.get(int(cid)))
+            elif channel == "whatsapp":
+                recipient = pick_first_mobile_phone(phones_by_company.get(int(cid)))
+            else:
+                recipient = None
             status = "queued"
             error_code: str | None = None
             error_message: str | None = None
 
-            if channel not in EMAIL_CHANNELS:
+            if channel == "email":
+                if not recipient:
+                    status = "skipped"
+                    error_code = "no_recipient"
+                    error_message = "У компании не найден email-адрес."
+            elif channel == "whatsapp":
+                if not wa_configured:
+                    status = "skipped"
+                    error_code = "greenapi_not_configured"
+                    error_message = (
+                        "WhatsApp-коннектор не настроен — добавь GreenAPI "
+                        "ключи в окружении бэкенда."
+                    )
+                elif not recipient:
+                    status = "skipped"
+                    error_code = "no_mobile_phone"
+                    error_message = (
+                        "У компании нет мобильного телефона РФ — WhatsApp "
+                        "не примет городские/зарубежные номера."
+                    )
+            else:
                 status = "skipped"
                 error_code = "channel_unavailable"
                 error_message = (
                     "Канал в работе — коннектор появится позже. "
-                    "Пока отправляем только по email."
+                    "Пока отправляем только по email и WhatsApp."
                 )
-            elif not recipient:
-                status = "skipped"
-                error_code = "no_recipient"
-                error_message = "У компании не найден email-адрес."
 
             row = KpSend(
                 user_id=user_id,

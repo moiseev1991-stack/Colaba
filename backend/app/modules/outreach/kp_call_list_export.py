@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import io
-import re
 from datetime import datetime
 
 from openpyxl import Workbook
@@ -22,43 +21,16 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.outreach.kp_bulk_service import JobItemRow, list_job_items
+from app.modules.outreach.phone_utils import (
+    format_phone_for_display,
+    is_russian_mobile,
+    normalize_phone,
+)
 
 _HEADER_FONT = Font(bold=True, color="FFFFFF")
 _HEADER_FILL = PatternFill("solid", fgColor="334155")  # slate-700
 _MOBILE_FILL = PatternFill("solid", fgColor="D1FAE5")  # emerald-100 — мобильный (WA)
 _LANDLINE_FILL = PatternFill("solid", fgColor="F1F5F9")  # slate-100 — городской
-
-
-def _normalize_phone(raw: str | None) -> str | None:
-    """digits-only с РФ-нормализацией. См. frontend/lib/phone.ts —
-    логика должна совпадать, иначе xlsx и UI разойдутся."""
-    if not raw:
-        return None
-    first = re.split(r"[,;/]", raw)[0]
-    digits = re.sub(r"\D", "", first)
-    if not digits:
-        return None
-    if len(digits) == 11 and digits.startswith("8"):
-        digits = "7" + digits[1:]
-    if len(digits) == 10 and digits.startswith("9"):
-        digits = "7" + digits
-    if len(digits) < 10 or len(digits) > 15:
-        return None
-    return digits
-
-
-def _is_russian_mobile(digits: str | None) -> bool:
-    return bool(digits and len(digits) == 11 and digits.startswith("79"))
-
-
-def _format_phone(digits: str | None) -> str:
-    if not digits:
-        return ""
-    if len(digits) == 11 and digits.startswith("7"):
-        return (
-            f"+7 ({digits[1:4]}) {digits[4:7]}-{digits[7:9]}-{digits[9:11]}"
-        )
-    return f"+{digits}"
 
 
 def _wa_link(digits: str | None) -> str:
@@ -109,12 +81,12 @@ _COLUMNS: list[tuple[str, int, str | None]] = [
 
 
 def _row_for_xlsx(idx: int, item: JobItemRow, digits: str) -> list:
-    is_mobile = _is_russian_mobile(digits)
+    is_mobile = is_russian_mobile(digits)
     return [
         idx,
         item.company_name or f"Компания #{item.company_id or ''}",
         item.company_city or "",
-        _format_phone(digits),
+        format_phone_for_display(digits),
         "Мобильный" if is_mobile else "Городской",
         _wa_link(digits) if is_mobile else "",
         _extract_pain_label(item.draft),
@@ -131,7 +103,7 @@ def _filter_callable_rows(items: list[JobItemRow]) -> list[tuple[JobItemRow, str
     for it in items:
         if it.recipient_email:
             continue
-        digits = _normalize_phone(it.company_phone)
+        digits = normalize_phone(it.company_phone)
         if not digits:
             continue
         out.append((it, digits))
@@ -167,7 +139,7 @@ async def build_call_list_xlsx(
     ws.freeze_panes = "A2"
 
     for row_idx, (item, digits) in enumerate(callable_rows, start=2):
-        is_mobile = _is_russian_mobile(digits)
+        is_mobile = is_russian_mobile(digits)
         values = _row_for_xlsx(row_idx - 1, item, digits)
         for col_idx, ((_header, _width, fmt), value) in enumerate(
             zip(_COLUMNS, values), start=1

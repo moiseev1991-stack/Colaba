@@ -123,6 +123,31 @@ class Settings(BaseSettings):
     # Telegram Bot for outreach sending
     TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token for outreach")
 
+    # GreenAPI — WhatsApp Business connector (https://green-api.com).
+    # Заводится отдельный «инстанс» (виртуальный номер), у него свои
+    # idInstance + apiTokenInstance. Тариф «Developer» ~1500₽/мес, есть
+    # бесплатный demo на 14 дней с лимитом ~200 сообщений. Пусто → канал
+    # whatsapp в KP-send будет писать skipped(greenapi_not_configured).
+    GREENAPI_API_URL: str = Field(
+        default="https://api.green-api.com",
+        description="GreenAPI base URL. Обычный prod-инстанс — https://api.green-api.com. Для bizon-кластера может быть https://7103.api.greenapi.com и т.п.",
+    )
+    GREENAPI_INSTANCE_ID: str = Field(
+        default="",
+        description="GreenAPI idInstance (число типа 1101000000). Найти: console.green-api.com → ваш инстанс → idInstance.",
+    )
+    GREENAPI_API_TOKEN: str = Field(
+        default="",
+        description="GreenAPI apiTokenInstance (длинная hex-строка). Хранить в secret-store, в логи не уходит.",
+    )
+
+    @property
+    def greenapi_enabled(self) -> bool:
+        """Канал WhatsApp реально шлёт сообщения только когда заданы и
+        idInstance, и apiTokenInstance. Иначе enqueue пишет skipped, а
+        UI показывает «коннектор не настроен»."""
+        return bool(self.GREENAPI_INSTANCE_ID and self.GREENAPI_API_TOKEN)
+
     # OAuth Providers
     GOOGLE_CLIENT_ID: str = Field(default="", description="Google OAuth Client ID")
     GOOGLE_CLIENT_SECRET: str = Field(default="", description="Google OAuth Client Secret")
