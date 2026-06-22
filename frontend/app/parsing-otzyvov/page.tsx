@@ -3,14 +3,14 @@ import { SeoLandingShell } from '@/components/seo-landing/SeoLandingShell';
 import { AUTOSERVICE_NICHE } from '@/components/seo-landing/niches';
 
 export const metadata: Metadata = {
-  title: 'Парсинг отзывов с карт + AI-анализ болей клиентов',
+  title: 'Парсинг отзывов 2GIS и Яндекс.Карт онлайн — AI-анализ болей | Бесплатно',
   description:
-    'Соберём отзывы компаний с 2GIS и Яндекс.Карт и через AI выделим конкретные боли клиентов с цитатами. Не статистика, а готовый повод для письма.',
+    'Парсинг отзывов 2GIS и Яндекс.Карт онлайн: AI выделяет конкретные боли клиентов с цитатами — готовый повод для письма. Бесплатный тест 14 дней + скидка 50% первым 50.',
   alternates: { canonical: 'https://spinlid.ru/parsing-otzyvov' },
   openGraph: {
-    title: 'Парсинг и AI-анализ отзывов: боли клиентов любого бизнеса',
+    title: 'Парсинг отзывов 2GIS и Яндекс.Карт + AI-анализ болей клиентов',
     description:
-      'Не просто соберём отзывы с 2GIS и Яндекс.Карт — кластеризуем их и покажем боли клиентов с цитатами.',
+      'Не просто отзывы с 2GIS и Яндекс.Карт — AI-кластеризация и подсветка болей с цитатами. Тест бесплатно 14 дней.',
     url: 'https://spinlid.ru/parsing-otzyvov',
   },
 };
@@ -21,6 +21,7 @@ export default function ParsingOtzyvovPage() {
       decorTheme="reviews"
       showBeforeAfter
       showDemoCompanyCard
+      showLeadCapture
       niche={AUTOSERVICE_NICHE}
       h1="Парсинг и AI-анализ отзывов: боли клиентов любого бизнеса"
       lead="Соберём отзывы компаний с 2GIS и Яндекс.Карт и через AI выделим конкретные боли клиентов с цитатами. Это не статистика «средний балл 4.2», а готовый повод для письма — диагноз, после которого холодная рассылка перестаёт быть холодной."

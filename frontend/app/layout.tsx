@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Manrope, Unbounded } from 'next/font/google';
 import { AppShell } from '@/components/AppShell';
 import { CookieBanner } from '@/components/CookieBanner';
+import { YandexMetrika } from '@/components/YandexMetrika';
 
 export const viewport: Viewport = {
   themeColor: '#2dd4bf',
@@ -75,6 +76,7 @@ export default function RootLayout({
       <body suppressHydrationWarning style={{ fontFamily: 'var(--font-body), system-ui, sans-serif' }}>
         <AppShell>{children}</AppShell>
         <CookieBanner />
+        <YandexMetrika />
       </body>
     </html>
   );

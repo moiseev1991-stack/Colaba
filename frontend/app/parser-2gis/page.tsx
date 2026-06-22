@@ -4,14 +4,14 @@ import { BEAUTY_SALON_NICHE } from '@/components/seo-landing/niches';
 import { TwoGisFieldsBlock } from '@/components/seo-landing/UniqueBlocks';
 
 export const metadata: Metadata = {
-  title: 'Парсер 2ГИС — выгрузка компаний с контактами и анализом отзывов',
+  title: 'Парсер 2ГИС онлайн — компании, контакты, отзывы | Бесплатно 14 дней',
   description:
-    'Соберите компании из 2GIS по нише и городу: телефоны, сайты, рейтинги и боли клиентов из отзывов. Выгрузка в Excel/CSV. Попробуйте бесплатно.',
+    'Парсер 2GIS онлайн: компании по нише и городу, телефоны, сайты, рейтинги и боли клиентов из отзывов. Выгрузка в Excel/CSV. Бесплатный тест 14 дней + скидка 50% первым 50.',
   alternates: { canonical: 'https://spinlid.ru/parser-2gis' },
   openGraph: {
-    title: 'Парсер 2GIS — компании, контакты и боли клиентов из отзывов',
+    title: 'Парсер 2GIS онлайн — компании, контакты, отзывы. Тест бесплатно',
     description:
-      'Парсинг 2ГИС с контактами и AI-анализом отзывов. Выгрузка в Excel.',
+      'Парсинг 2ГИС с контактами и AI-анализом отзывов. Выгрузка в Excel. Бесплатный тест 14 дней.',
     url: 'https://spinlid.ru/parser-2gis',
   },
 };
@@ -21,6 +21,7 @@ export default function Parser2gisPage() {
     <SeoLandingShell
       decorTheme="maps"
       showCompareTable
+      showLeadCapture
       niche={BEAUTY_SALON_NICHE}
       customBlock={<TwoGisFieldsBlock />}
       h1="Парсер 2GIS: компании, контакты и боли клиентов из отзывов"
