@@ -28,6 +28,11 @@ class WebsiteLeadSubmit(BaseModel):
     referrer: str = Field(default="", max_length=500)
     # Honeypot: должен оставаться пустым в нормальном submit.
     hp: Optional[str] = Field(default="", max_length=500, alias="_hp")
+    # Server-issued token, выданный по POST /website-leads/token.
+    # Бэк проверяет HMAC + возраст + one-shot. См. antispam.py.
+    form_token: Optional[str] = Field(default="", max_length=200, alias="_form_token")
+    # Сколько миллисекунд между рендером формы и submit'ом. Меньше 3000 = бот.
+    fill_time_ms: Optional[int] = Field(default=0, ge=0, le=60 * 60 * 1000, alias="_fill_time_ms")
 
     model_config = ConfigDict(populate_by_name=True)
 

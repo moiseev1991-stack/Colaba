@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useId, useCallback } from 'react';
+import { useState, useId, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
 /**
@@ -53,6 +53,33 @@ function useLeadSubmit() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Антиспам: при монтировании запрашиваем server-issued form_token
+  // (HMAC-подпись с TTL=30 мин, one-shot) и запоминаем mountedAt —
+  // submit'ы быстрее 3 секунд бэк отбросит как бота. См. antispam.py.
+  const formTokenRef = useRef<string>('');
+  const mountedAtRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    mountedAtRef.current = Date.now();
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/v1/website-leads/token', {
+          method: 'POST',
+          cache: 'no-store',
+        });
+        if (!r.ok || cancelled) return;
+        const d = (await r.json()) as { token?: string };
+        if (d?.token && !cancelled) formTokenRef.current = d.token;
+      } catch {
+        /* fail open — бэк отбросит submit с пустым токеном */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const submit = useCallback(
     async (data: { name: string; channel: Channel; contact: string; wish: string; hp: string }) => {
       setError(null);
@@ -73,6 +100,8 @@ function useLeadSubmit() {
             source_page: pathname ?? '',
             referrer: typeof document !== 'undefined' ? document.referrer : '',
             _hp: data.hp,
+            _form_token: formTokenRef.current,
+            _fill_time_ms: Date.now() - mountedAtRef.current,
           }),
         });
         if (res.status === 429) {

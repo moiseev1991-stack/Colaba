@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.website_lead import WebsiteLead
+from app.modules.website_leads import antispam
 from app.modules.website_leads.schemas import (
     WebsiteLeadSubmit,
     WebsiteLeadSubmitResponse,
@@ -59,10 +60,35 @@ async def submit_lead(
     юзеров — чтобы боту не было сигнала «нас раскусили».
     """
 
-    # Honeypot: тихо отбрасываем, но юзеру (и боту) пишем «ок».
+    # 1. Honeypot — тихо отбрасываем, но юзеру (и боту) пишем «ок».
     if (payload.hp or "").strip():
         logger.info(
-            "website_lead.spam_honeypot ip=%s ua=%r", client_ip, user_agent[:80]
+            "website_lead.reject reason=honeypot ip=%s ua=%r",
+            client_ip,
+            user_agent[:80],
+        )
+        return WebsiteLeadSubmitResponse()
+
+    # 2. UA bot-фильтр (см. antispam._BOT_UA_RE).
+    if antispam.is_bot_ua(user_agent):
+        logger.info(
+            "website_lead.reject reason=bot_ua ip=%s ua=%r",
+            client_ip,
+            user_agent[:120],
+        )
+        return WebsiteLeadSubmitResponse()
+
+    # 3. Server-issued one-shot token + time-trap (≥3 сек на заполнение,
+    # токен живёт ≤30 мин, повторно не используется).
+    token_ok, token_reason = await antispam.verify_form_token(
+        payload.form_token or "", int(payload.fill_time_ms or 0)
+    )
+    if not token_ok:
+        logger.info(
+            "website_lead.reject reason=token:%s ip=%s ua=%r",
+            token_reason,
+            client_ip,
+            user_agent[:80],
         )
         return WebsiteLeadSubmitResponse()
 
@@ -71,10 +97,19 @@ async def submit_lead(
         # не enumerate'или формат. На фронте валидируем то же самое
         # клиентским кодом и НЕ должны такого пропускать.
         logger.info(
-            "website_lead.invalid_contact channel=%s contact=%r ip=%s",
+            "website_lead.reject reason=invalid_contact channel=%s contact=%r ip=%s",
             payload.channel,
             payload.contact[:40],
             client_ip,
+        )
+        return WebsiteLeadSubmitResponse()
+
+    # 4. Дедуп: один и тот же `(ip, contact)` не чаще раза в 24 часа.
+    if not await antispam.check_dedup(client_ip, payload.contact):
+        logger.info(
+            "website_lead.reject reason=dedup ip=%s contact=%r",
+            client_ip,
+            payload.contact[:40],
         )
         return WebsiteLeadSubmitResponse()
 
