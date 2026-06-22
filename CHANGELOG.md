@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.112.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.111.0...v1.112.0) (2026-06-22)
+
+
+### Features
+
+* **public:** захват лидов с SEO-лендингов + Яндекс.Метрика + админка ([2399cd8](https://github.com/moiseev1991-stack/Colaba/commit/2399cd8b99f82d71148c9e71d6a34293758450a9))
+
 # [1.111.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.110.0...v1.111.0) (2026-06-22)
 
 
