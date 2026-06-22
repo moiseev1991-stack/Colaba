@@ -25,6 +25,7 @@ import {
   Landmark,
   TrendingUp,
   Check,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
@@ -310,9 +311,21 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+// Админская секция. Видна только пользователю с `is_superuser=True`.
+// Эндпоинт /api/v1/auth/me возвращает флаг — фронт его читает один раз
+// при монтировании Sidebar и кэширует в state. Если 401/нет токена —
+// просто не показываем секцию.
+const ADMIN_SECTION: NavSection = {
+  title: 'Админ',
+  items: [
+    { href: '/app/admin/website-leads', label: 'Заявки с сайта', icon: ShieldCheck },
+  ],
+};
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
   const pathname = usePathname();
   const { module } = useModule();
   const config = MODULE_NAV[module];
@@ -328,10 +341,43 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // Проверяем is_superuser один раз на монтирование Sidebar. Кэшируем
+  // в sessionStorage, чтобы при переходах между страницами кабинета
+  // не дёргать backend постоянно.
+  useEffect(() => {
+    const cached = typeof window !== 'undefined' ? sessionStorage.getItem('is_superuser') : null;
+    if (cached === 'true') {
+      setIsSuperuser(true);
+      return;
+    }
+    if (cached === 'false') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const flag = Boolean(data?.is_superuser);
+        if (!cancelled) {
+          setIsSuperuser(flag);
+          try { sessionStorage.setItem('is_superuser', flag ? 'true' : 'false'); } catch { /* no-op */ }
+        }
+      } catch {
+        /* offline / no auth — Sidebar просто не покажет admin-секцию */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const effectiveCollapsed = isMobile ? true : collapsed;
 
+  // Список секций для рендера: модульные + (опц.) админская.
+  const sections = isSuperuser
+    ? [...config.sections, ADMIN_SECTION]
+    : config.sections;
+
   // Flat list of all items in the active module — for active-link resolution.
-  const allItems = config.sections.flatMap((s) => s.items);
+  const allItems = sections.flatMap((s) => s.items);
   const bestMatch = getBestMatch(pathname, allItems);
 
   return (
@@ -408,7 +454,7 @@ export function Sidebar() {
         className={`flex-1 overflow-y-auto py-4 ${effectiveCollapsed ? 'px-2' : 'px-3'}`}
         aria-label={MODULE_LABELS[module]}
       >
-        {config.sections.map((section, sectionIdx) => (
+        {sections.map((section, sectionIdx) => (
           <div key={sectionIdx} className={sectionIdx > 0 ? 'mt-5' : ''}>
             {!effectiveCollapsed && section.title && (
               <div
