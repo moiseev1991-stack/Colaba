@@ -40,6 +40,7 @@ from app.modules.maps.router import router as maps_router
 from app.modules.lead_lists.router import router as lead_lists_router
 from app.modules.user_presets.router import router as user_presets_router
 from app.modules.reviews_ai.router import router as reviews_ai_router
+from app.modules.website_leads.router import router as website_leads_router
 
 api_router.include_router(auth_router)
 api_router.include_router(dashboard_router)
@@ -63,3 +64,4 @@ api_router.include_router(maps_router)
 api_router.include_router(lead_lists_router)
 api_router.include_router(user_presets_router)
 api_router.include_router(reviews_ai_router)
+api_router.include_router(website_leads_router)

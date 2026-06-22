@@ -43,6 +43,7 @@ from app.models.kp_draft import KpDraft
 from app.models.kp_generation_job import KpGenerationJob
 from app.models.kp_send import KpSend
 from app.models.site_lead import SiteLead
+from app.models.website_lead import WebsiteLead
 
 __all__ = [
     "User",
@@ -90,4 +91,5 @@ __all__ = [
     "KpGenerationJob",
     "KpSend",
     "SiteLead",
+    "WebsiteLead",
 ]

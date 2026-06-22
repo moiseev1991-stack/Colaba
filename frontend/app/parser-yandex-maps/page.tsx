@@ -4,14 +4,14 @@ import { FITNESS_NICHE } from '@/components/seo-landing/niches';
 import { TwoSourcesBlock } from '@/components/seo-landing/UniqueBlocks';
 
 export const metadata: Metadata = {
-  title: 'Парсер Яндекс.Карт — сбор компаний, контактов и отзывов',
+  title: 'Парсер Яндекс.Карт онлайн — компании, контакты, отзывы | Тест бесплатно',
   description:
-    'Выгрузка организаций из Яндекс.Карт: рейтинги, контакты, отзывы клиентов. AI выделяет боли клиентов. Старт бесплатно.',
+    'Парсер Яндекс.Карт онлайн: организации, рейтинги, контакты, AI-анализ отзывов. Выгрузка в Excel. Бесплатный тест 14 дней + скидка 50% первым 50 пользователям.',
   alternates: { canonical: 'https://spinlid.ru/parser-yandex-maps' },
   openGraph: {
-    title: 'Парсер Яндекс.Карт: компании и отзывы по нише и городу',
+    title: 'Парсер Яндекс.Карт онлайн — компании, отзывы, контакты',
     description:
-      'Парсинг Яндекс.Карт — карточки компаний с контактами и AI-анализом отзывов.',
+      'Парсинг Яндекс.Карт — карточки компаний с контактами и AI-анализом отзывов. Бесплатный тест 14 дней.',
     url: 'https://spinlid.ru/parser-yandex-maps',
   },
 };
@@ -20,6 +20,7 @@ export default function ParserYandexMapsPage() {
   return (
     <SeoLandingShell
       decorTheme="maps-yandex"
+      showLeadCapture
       niche={FITNESS_NICHE}
       customBlock={<TwoSourcesBlock />}
       h1="Парсер Яндекс.Карт: компании и отзывы по нише и городу"

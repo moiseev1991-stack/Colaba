@@ -31,6 +31,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 import { SignalsTableDemo } from '@/components/landing/SignalsTableDemo';
+import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 /**
  * Принудительная светлая палитра для SEO-страниц. Переопределяет CSS-токены
@@ -170,6 +171,14 @@ interface SeoLandingShellProps {
   showDemoCompanyCard?: boolean;
   showMockLetterDraft?: boolean;
   showCompareTable?: boolean;
+  /**
+   * showLeadCapture — карточка-форма «бесплатный тест 14 дней + скидка
+   * 50% первым 50» с выбором канала связи. Стоит между KillerBlock и FAQ.
+   * Включается на топ-страницах под SEO-трафиком (parser-2gis,
+   * parser-yandex-maps, parsing-otzyvov). Показывается только
+   * неавторизованным посетителям — залогиненный уже у нас в продукте.
+   */
+  showLeadCapture?: boolean;
   /** Уникальные примеры по нише — ТЗ §1.4. См. NicheExamples. */
   niche?: NicheExamples;
   /**
@@ -197,6 +206,7 @@ export function SeoLandingShell({
   showDemoCompanyCard = false,
   showMockLetterDraft = false,
   showCompareTable = false,
+  showLeadCapture = false,
   niche = FALLBACK_NICHE,
   customBlock,
 }: SeoLandingShellProps) {
@@ -278,6 +288,11 @@ export function SeoLandingShell({
 
         {/* Фишка-блок (брендовая плашка) */}
         <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
+
+        {/* Карточка-форма «бесплатный тест + скидка первым 50» — только
+            для неавторизованных и только на тех страницах, где явно
+            включён showLeadCapture (топ-3 SEO-лендинги). */}
+        {showLeadCapture && !isAuthed && <Reveal><LeadCaptureForm /></Reveal>}
 
         {/* FAQ */}
         {faq.length > 0 && <Reveal><FaqSection items={faq} /></Reveal>}
