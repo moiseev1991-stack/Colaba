@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.111.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.110.0...v1.111.0) (2026-06-22)
+
+
+### Features
+
+* **kp-jobs:** два пресета SendBar — «один лучший канал» и «во все каналы» ([1dca0ed](https://github.com/moiseev1991-stack/Colaba/commit/1dca0edfd294c040da21ac5a331c90c46bf4c5be))
+
 # [1.110.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.109.0...v1.110.0) (2026-06-22)
 
 
