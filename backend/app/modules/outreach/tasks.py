@@ -23,7 +23,12 @@ from app.core.database import AsyncSessionLocal
 from app.models.email_config import EmailConfig
 from app.models.kp_generation_job import KpGenerationJob
 from app.modules.email.service import EmailServiceError, email_service
-from app.modules.outreach import kp_bulk_service, kp_send_service, kp_service
+from app.modules.outreach import (
+    kp_bulk_service,
+    kp_send_service,
+    kp_service,
+    whatsapp_greenapi,
+)
 from app.modules.outreach.kp_html_renderer import render_kp_html
 from app.queue.celery_app import celery_app
 
@@ -162,16 +167,6 @@ async def _send_one(db, send_row) -> None:
         )
         return
 
-    if send_row.channel != "email":
-        # Сейчас не должно случаться (enqueue для не-email сразу пишет
-        # 'skipped'), но если канал расширится — без падений.
-        kp_send_service.mark_send_failed(
-            send_row,
-            error_message="Канал ещё не подключен.",
-            error_code="channel_unavailable",
-        )
-        return
-
     if not send_row.recipient:
         kp_send_service.mark_send_failed(
             send_row,
@@ -180,6 +175,23 @@ async def _send_one(db, send_row) -> None:
         )
         return
 
+    if send_row.channel == "email":
+        await _send_one_email(db, send_row, draft)
+        return
+    if send_row.channel == "whatsapp":
+        await _send_one_whatsapp(send_row, draft)
+        return
+
+    # Telegram / MAX и любые будущие каналы — enqueue для них пишет
+    # skipped, до сюда дойти не должно. Если дошли — фиксируем failed.
+    kp_send_service.mark_send_failed(
+        send_row,
+        error_message="Канал ещё не подключен.",
+        error_code="channel_unavailable",
+    )
+
+
+async def _send_one_email(db, send_row, draft) -> None:
     signature_html, logo_url, brand_color = await _load_email_branding(db)
     plain_body = draft.body or ""
     html_body = render_kp_html(
@@ -213,6 +225,52 @@ async def _send_one(db, send_row) -> None:
         kp_send_service.mark_send_failed(
             send_row,
             error_message=f"Внутренняя ошибка отправки: {e}"[:1000],
+            error_code="internal",
+        )
+
+
+def _compose_whatsapp_text(draft) -> str:
+    """Текст WhatsApp-сообщения: subject (если есть) + тело КП в plain-text.
+
+    WhatsApp обрезает сообщение на ~4096 символах. Тело КП у нас обычно
+    400-1200 символов, так что upper-bound безопасный. Если subject и body
+    не пусты — сшиваем через "\\n\\n", чтобы тема выглядела как заголовок.
+    """
+    subject = (getattr(draft, "subject", "") or "").strip()
+    body = (getattr(draft, "body", "") or "").strip()
+    if subject and body:
+        text = f"{subject}\n\n{body}"
+    elif body:
+        text = body
+    elif subject:
+        text = subject
+    else:
+        text = "Здравствуйте! Хочу предложить вам наше решение."
+    # 4000 — с запасом до лимита 4096, оставляем место под подпись/окончание.
+    return text[:4000]
+
+
+async def _send_one_whatsapp(send_row, draft) -> None:
+    text = _compose_whatsapp_text(draft)
+    try:
+        message_id = await whatsapp_greenapi.send_text_message(
+            send_row.recipient, text
+        )
+        kp_send_service.mark_send_sent(send_row, provider_message_id=message_id)
+    except whatsapp_greenapi.WhatsAppSendError as e:
+        kp_send_service.mark_send_failed(
+            send_row, error_message=e.message, error_code=e.code
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception(
+            "send_kp_batch_task: unexpected WA error send_id=%s draft_id=%s: %s",
+            send_row.id,
+            send_row.draft_id,
+            e,
+        )
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message=f"Внутренняя ошибка WhatsApp-отправки: {e}"[:1000],
             error_code="internal",
         )
 
