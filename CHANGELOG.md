@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.116.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.115.0...v1.116.0) (2026-06-22)
+
+
+### Features
+
+* **website-leads:** антиспам ужесточён — origin/referer + UA + time-trap ([0cb6ff1](https://github.com/moiseev1991-stack/Colaba/commit/0cb6ff1ed010590ededba897e139c0d7fa0e77a7))
+
 # [1.115.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.114.0...v1.115.0) (2026-06-22)
 
 
