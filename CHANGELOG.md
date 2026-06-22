@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.113.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.112.0...v1.113.0) (2026-06-22)
+
+
+### Features
+
+* **landings:** форма захвата в hero + ссылка на админку в Sidebar ([301cbf9](https://github.com/moiseev1991-stack/Colaba/commit/301cbf9a20c218b9e74194a6f5b44fe8c8f5486c))
+
 # [1.112.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.111.0...v1.112.0) (2026-06-22)
 
 
