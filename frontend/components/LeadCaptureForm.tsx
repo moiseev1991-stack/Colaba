@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useId } from 'react';
+import { useState, useId, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 
 /**
- * Карточка-форма «оставьте заявку → бесплатный тест + скидка первым 50».
- * Стоит на публичных SEO-лендингах (parser-2gis, parser-yandex-maps,
- * parsing-otzyvov), куда приходит SEO-трафик. Для незалогиненных юзеров.
+ * Два варианта формы захвата лидов:
+ *   - <LeadCaptureForm/>      — полноценная карточка для блока в середине
+ *                                страницы (между KillerBlock и FAQ).
+ *   - <LeadCaptureFormHero/>  — компактная dark-themed для первого экрана
+ *                                (заменяет CTA-кнопки в GuestHero).
  *
- * Поля: имя/ник, способ связи (email/phone/whatsapp/telegram/max),
- * контакт, опц. пожелание. Honeypot `_hp` спрятан через off-screen +
- * tabIndex=-1 — боты заполняют, реальные юзеры не видят.
+ * Логика отправки общая (useLeadSubmit), верстка разная — у Hero чёрный
+ * фон, белый текст, минимум полей чтобы влезала в правую колонку рядом
+ * с заголовком.
  *
- * Submit идёт на `/api/v1/website-leads/submit` через BFF-proxy. На
- * успех показываем «спасибо», форма скрывается. На ошибку сети —
- * текст с предложением написать в WhatsApp.
+ * Honeypot `_hp` спрятан off-screen — боты заполняют, реальные юзеры нет.
  */
 
 type Channel = 'email' | 'phone' | 'whatsapp' | 'telegram' | 'max';
@@ -40,74 +40,94 @@ function isValidContact(channel: Channel, contact: string): boolean {
   return v.length >= 3;
 }
 
-export function LeadCaptureForm() {
-  const pathname = usePathname();
-  const formId = useId();
+function contactErrorText(channel: Channel): string {
+  if (channel === 'email') return 'Похоже, в email опечатка — проверьте, пожалуйста.';
+  if (channel === 'phone' || channel === 'whatsapp') return 'Номер должен содержать 10–15 цифр.';
+  return 'Контакт слишком короткий.';
+}
 
-  const [channel, setChannel] = useState<Channel>('phone');
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
-  const [wish, setWish] = useState('');
-  const [hp, setHp] = useState(''); // honeypot
+/** Общий submit-хук — обе формы используют один и тот же POST. */
+function useLeadSubmit() {
+  const pathname = usePathname();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const submit = useCallback(
+    async (data: { name: string; channel: Channel; contact: string; wish: string; hp: string }) => {
+      setError(null);
+      if (!isValidContact(data.channel, data.contact)) {
+        setError(contactErrorText(data.channel));
+        return false;
+      }
+      setSubmitting(true);
+      try {
+        const res = await fetch('/api/v1/website-leads/submit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            name: data.name.trim(),
+            channel: data.channel,
+            contact: data.contact.trim(),
+            wish: data.wish.trim(),
+            source_page: pathname ?? '',
+            referrer: typeof document !== 'undefined' ? document.referrer : '',
+            _hp: data.hp,
+          }),
+        });
+        if (res.status === 429) {
+          setError('Слишком много заявок с этого IP. Попробуйте через час.');
+          return false;
+        }
+        if (!res.ok) {
+          setError('Не удалось отправить. Напишите нам в Telegram: @spinlid_support');
+          return false;
+        }
+        setSuccess(true);
+        try {
+          const ym = (window as unknown as {
+            ym?: (id: number, action: string, goal: string, params?: Record<string, unknown>) => void;
+          }).ym;
+          if (typeof ym === 'function') {
+            ym(110073452, 'reachGoal', 'lead_submit', {
+              channel: data.channel,
+              source_page: pathname ?? '',
+            });
+          }
+        } catch {
+          /* no-op */
+        }
+        return true;
+      } catch {
+        setError('Сеть не отвечает. Попробуйте ещё раз или напишите в Telegram: @spinlid_support');
+        return false;
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [pathname],
+  );
+
+  return { submit, submitting, success, error };
+}
+
+// ---------------------------------------------------------------------------
+// Полная форма — отдельная секция страницы (между KillerBlock и FAQ).
+// ---------------------------------------------------------------------------
+
+export function LeadCaptureForm() {
+  const formId = useId();
+  const [channel, setChannel] = useState<Channel>('phone');
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [wish, setWish] = useState('');
+  const [hp, setHp] = useState('');
+  const { submit, submitting, success, error } = useLeadSubmit();
   const currentChannel = CHANNELS.find((c) => c.value === channel) ?? CHANNELS[0];
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
-
-    if (!isValidContact(channel, contact)) {
-      setError(
-        channel === 'email'
-          ? 'Похоже, в email опечатка — проверьте, пожалуйста.'
-          : channel === 'phone' || channel === 'whatsapp'
-          ? 'Номер должен содержать 10–15 цифр.'
-          : 'Контакт слишком короткий.'
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch('/api/v1/website-leads/submit', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          channel,
-          contact: contact.trim(),
-          wish: wish.trim(),
-          source_page: pathname ?? '',
-          referrer: typeof document !== 'undefined' ? document.referrer : '',
-          _hp: hp,
-        }),
-      });
-      if (res.status === 429) {
-        setError('Слишком много заявок с этого IP. Попробуйте через час.');
-        return;
-      }
-      if (!res.ok) {
-        setError('Не удалось отправить. Напишите нам в Telegram: @spinlid_support');
-        return;
-      }
-      setSuccess(true);
-      // Сигнал в Метрику для трекинга цели (если она инициализирована).
-      try {
-        const ym = (window as unknown as {
-          ym?: (id: number, action: string, goal: string, params?: Record<string, unknown>) => void;
-        }).ym;
-        if (typeof ym === 'function') {
-          ym(110073452, 'reachGoal', 'lead_submit', { channel, source_page: pathname ?? '' });
-        }
-      } catch { /* no-op */ }
-    } catch {
-      setError('Сеть не отвечает. Попробуйте ещё раз или напишите в Telegram: @spinlid_support');
-    } finally {
-      setSubmitting(false);
-    }
+    await submit({ name, channel, contact, wish, hp });
   }
 
   if (success) {
@@ -168,30 +188,7 @@ export function LeadCaptureForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-          {/* Honeypot — невидим для людей, ловит ботов. tabIndex=-1 и aria-hidden
-              чтобы вообще не попадал в навигацию. */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              left: '-10000px',
-              top: 'auto',
-              width: '1px',
-              height: '1px',
-              overflow: 'hidden',
-            }}
-          >
-            <label htmlFor={`${formId}-hp`}>Сайт компании (не заполнять)</label>
-            <input
-              id={`${formId}-hp`}
-              type="text"
-              name="company_website"
-              tabIndex={-1}
-              autoComplete="off"
-              value={hp}
-              onChange={(e) => setHp(e.target.value)}
-            />
-          </div>
+          <Honeypot id={`${formId}-hp`} value={hp} onChange={setHp} />
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block">
@@ -273,20 +270,7 @@ export function LeadCaptureForm() {
             />
           </label>
 
-          {error && (
-            <div
-              style={{
-                background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                color: '#dc2626',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '14px',
-              }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <ErrorBox text={error} />}
 
           <button
             type="submit"
@@ -311,5 +295,194 @@ export function LeadCaptureForm() {
         </form>
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hero-вариант: компактная карточка под тёмный фон GuestHero. Заменяет
+// кнопки CTA на первом экране, чтобы юзер из поиска сразу видел форму.
+// ---------------------------------------------------------------------------
+
+export function LeadCaptureFormHero() {
+  const formId = useId();
+  const [channel, setChannel] = useState<Channel>('phone');
+  const [contact, setContact] = useState('');
+  const [hp, setHp] = useState('');
+  const { submit, submitting, success, error } = useLeadSubmit();
+  const currentChannel = CHANNELS.find((c) => c.value === channel) ?? CHANNELS[0];
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await submit({ name: '', channel, contact, wish: '', hp });
+  }
+
+  if (success) {
+    return (
+      <div
+        className="mt-7 rounded-xl p-5 text-center"
+        style={{
+          background: 'rgba(45,212,191,0.12)',
+          border: '1px solid rgba(45,212,191,0.35)',
+          color: '#fff',
+          maxWidth: '480px',
+        }}
+      >
+        <div style={{ fontSize: '28px' }}>✓</div>
+        <div className="mt-1 text-base font-semibold">Спасибо, заявка принята</div>
+        <div className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>
+          Свяжемся в ближайшее время. Купон 50% — в первом сообщении.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-7 rounded-xl p-5"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        backdropFilter: 'blur(8px)',
+        maxWidth: '480px',
+      }}
+    >
+      <div
+        style={{
+          display: 'inline-block',
+          padding: '3px 9px',
+          borderRadius: '999px',
+          fontSize: '10px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontWeight: 600,
+          background: 'rgba(45,212,191,0.18)',
+          color: '#5eead4',
+          marginBottom: '10px',
+        }}
+      >
+        Бесплатный тест 14 дней + скидка 50% первым 50
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+        <Honeypot id={`${formId}-hp`} value={hp} onChange={setHp} />
+        <div className="flex gap-2">
+          <select
+            value={channel}
+            onChange={(e) => setChannel(e.target.value as Channel)}
+            className="rounded-lg px-2.5 py-2 text-sm shrink-0"
+            style={{
+              background: 'rgba(0,0,0,0.35)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff',
+              width: '110px',
+            }}
+            aria-label="Способ связи"
+          >
+            {CHANNELS.map((c) => (
+              <option key={c.value} value={c.value} style={{ color: '#000' }}>{c.label}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder={currentChannel.placeholder}
+            maxLength={255}
+            required
+            className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm"
+            style={{
+              background: 'rgba(0,0,0,0.35)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff',
+            }}
+            aria-label="Контакт"
+          />
+        </div>
+
+        {error && (
+          <div
+            style={{
+              background: 'rgba(239,68,68,0.18)',
+              border: '1px solid rgba(239,68,68,0.45)',
+              color: '#fecaca',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              fontSize: '13px',
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-lg py-2.5 text-sm font-semibold disabled:opacity-60"
+          style={{
+            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+            color: '#0b1220',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+          }}
+        >
+          {submitting ? 'Отправляем…' : 'Получить доступ'}
+        </button>
+
+        <p className="text-[11px] leading-tight" style={{ color: 'rgba(255,255,255,0.6)' }}>
+          Нажимая кнопку, вы соглашаетесь с{' '}
+          <a href="/consent" style={{ color: '#5eead4', textDecoration: 'underline' }}>
+            обработкой персональных данных
+          </a>
+          . Без оплаты и подписок.
+        </p>
+      </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Внутренние мини-компоненты.
+// ---------------------------------------------------------------------------
+
+function Honeypot({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        left: '-10000px',
+        top: 'auto',
+        width: '1px',
+        height: '1px',
+        overflow: 'hidden',
+      }}
+    >
+      <label htmlFor={id}>Сайт компании (не заполнять)</label>
+      <input
+        id={id}
+        type="text"
+        name="company_website"
+        tabIndex={-1}
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function ErrorBox({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        background: 'rgba(239,68,68,0.08)',
+        border: '1px solid rgba(239,68,68,0.3)',
+        color: '#dc2626',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        fontSize: '14px',
+      }}
+    >
+      {text}
+    </div>
   );
 }

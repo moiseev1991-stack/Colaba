@@ -31,7 +31,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 import { SignalsTableDemo } from '@/components/landing/SignalsTableDemo';
-import { LeadCaptureForm } from '@/components/LeadCaptureForm';
+import { LeadCaptureForm, LeadCaptureFormHero } from '@/components/LeadCaptureForm';
 
 /**
  * Принудительная светлая палитра для SEO-страниц. Переопределяет CSS-токены
@@ -234,7 +234,7 @@ export function SeoLandingShell({
 
       <main className="flex-1">
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
-        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} niche={niche} />}
+        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} niche={niche} showLeadCapture={showLeadCapture} />}
 
         {/* Trust-strip — короткие маркетинговые числа. На всех страницах. */}
         <Reveal><TrustStrip /></Reveal>
@@ -313,7 +313,19 @@ export function SeoLandingShell({
 // HERO — две колонки: H1+CTA слева, демо-карточка с диагнозом справа
 // ============================================================================
 
-function GuestHero({ h1, lead, decorTheme, niche }: { h1: string; lead: string; decorTheme: keyof typeof HERO_DECOR; niche: NicheExamples }) {
+function GuestHero({
+  h1,
+  lead,
+  decorTheme,
+  niche,
+  showLeadCapture,
+}: {
+  h1: string;
+  lead: string;
+  decorTheme: keyof typeof HERO_DECOR;
+  niche: NicheExamples;
+  showLeadCapture: boolean;
+}) {
   return (
     <section
       style={{
@@ -351,42 +363,49 @@ function GuestHero({ h1, lead, decorTheme, niche }: { h1: string; lead: string; 
           >
             {lead}
           </p>
-          <div className="flex flex-wrap gap-3 mt-7">
-            <Link
-              href="/auth/register"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: '#0b1220',
-                fontWeight: 600,
-                fontSize: '15px',
-                padding: '13px 22px',
-                borderRadius: '10px',
-                boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
-              }}
-            >
-              Создать аккаунт
-            </Link>
-            <Link
-              href="/#diagnosis"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'transparent',
-                color: 'rgba(255,255,255,0.85)',
-                fontWeight: 500,
-                fontSize: '15px',
-                padding: '12px 20px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255,255,255,0.25)',
-              }}
-            >
-              Посмотреть демо
-            </Link>
-          </div>
+          {showLeadCapture ? (
+            // На топ-SEO-страницах (parser-2gis, parser-yandex-maps,
+            // parsing-otzyvov) на первом экране сразу форма захвата
+            // лида — юзер из поиска не должен искать CTA внизу.
+            <LeadCaptureFormHero />
+          ) : (
+            <div className="flex flex-wrap gap-3 mt-7">
+              <Link
+                href="/auth/register"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                  color: '#0b1220',
+                  fontWeight: 600,
+                  fontSize: '15px',
+                  padding: '13px 22px',
+                  borderRadius: '10px',
+                  boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+                }}
+              >
+                Создать аккаунт
+              </Link>
+              <Link
+                href="/#diagnosis"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'transparent',
+                  color: 'rgba(255,255,255,0.85)',
+                  fontWeight: 500,
+                  fontSize: '15px',
+                  padding: '12px 20px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                }}
+              >
+                Посмотреть демо
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Демо-карточка в hero — данные подаёт страница через пропс niche.company. */}
