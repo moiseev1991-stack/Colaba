@@ -31,7 +31,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 import { SignalsTableDemo } from '@/components/landing/SignalsTableDemo';
-import { LeadCaptureForm, LeadCaptureFormHero } from '@/components/LeadCaptureForm';
+import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 /**
  * Принудительная светлая палитра для SEO-страниц. Переопределяет CSS-токены
@@ -172,11 +172,15 @@ interface SeoLandingShellProps {
   showMockLetterDraft?: boolean;
   showCompareTable?: boolean;
   /**
-   * showLeadCapture — карточка-форма «бесплатный тест 14 дней + скидка
-   * 50% первым 50» с выбором канала связи. Стоит между KillerBlock и FAQ.
-   * Включается на топ-страницах под SEO-трафиком (parser-2gis,
-   * parser-yandex-maps, parsing-otzyvov). Показывается только
-   * неавторизованным посетителям — залогиненный уже у нас в продукте.
+   * showLeadCapture — рендерит форму захвата лида в TWO местах:
+   *   1) В правой колонке Hero (вместо демо-карточки ниши) на первом
+   *      экране — чтобы посетитель из поиска сразу видел CTA.
+   *   2) Перед FAQ — второй шанс для тех, кто долистал.
+   *
+   * Включена по умолчанию для всех страниц на SeoLandingShell (топ-3
+   * SEO + остальные публичные лендинги). Показывается только
+   * неавторизованным — залогиненный уже у нас в продукте.
+   * Чтобы выключить (например, на правовых) — передайте false.
    */
   showLeadCapture?: boolean;
   /** Уникальные примеры по нише — ТЗ §1.4. См. NicheExamples. */
@@ -206,7 +210,7 @@ export function SeoLandingShell({
   showDemoCompanyCard = false,
   showMockLetterDraft = false,
   showCompareTable = false,
-  showLeadCapture = false,
+  showLeadCapture = true,
   niche = FALLBACK_NICHE,
   customBlock,
 }: SeoLandingShellProps) {
@@ -363,53 +367,53 @@ function GuestHero({
           >
             {lead}
           </p>
-          {showLeadCapture ? (
-            // На топ-SEO-страницах (parser-2gis, parser-yandex-maps,
-            // parsing-otzyvov) на первом экране сразу форма захвата
-            // лида — юзер из поиска не должен искать CTA внизу.
-            <LeadCaptureFormHero />
-          ) : (
-            <div className="flex flex-wrap gap-3 mt-7">
-              <Link
-                href="/auth/register"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                  color: '#0b1220',
-                  fontWeight: 600,
-                  fontSize: '15px',
-                  padding: '13px 22px',
-                  borderRadius: '10px',
-                  boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
-                }}
-              >
-                Создать аккаунт
-              </Link>
-              <Link
-                href="/#diagnosis"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.85)',
-                  fontWeight: 500,
-                  fontSize: '15px',
-                  padding: '12px 20px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                }}
-              >
-                Посмотреть демо
-              </Link>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-3 mt-7">
+            <Link
+              href="/auth/register"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                color: '#0b1220',
+                fontWeight: 600,
+                fontSize: '15px',
+                padding: '13px 22px',
+                borderRadius: '10px',
+                boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+              }}
+            >
+              Создать аккаунт
+            </Link>
+            <Link
+              href="/#diagnosis"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.85)',
+                fontWeight: 500,
+                fontSize: '15px',
+                padding: '12px 20px',
+                borderRadius: '10px',
+                border: '1px solid rgba(255,255,255,0.25)',
+              }}
+            >
+              Посмотреть демо
+            </Link>
+          </div>
         </div>
 
-        {/* Демо-карточка в hero — данные подаёт страница через пропс niche.company. */}
-        <DemoCompanyCard variant="hero" company={niche.company} />
+        {/* Правая колонка hero: на страницах с `showLeadCapture` (все
+            публичные SEO-лендинги) — полная форма захвата лида (имя,
+            способ связи, контакт, пожелание) светлой карточкой на
+            тёмном фоне. На остальных страницах — демо-карточка ниши. */}
+        {showLeadCapture ? (
+          <LeadCaptureForm embedInHero />
+        ) : (
+          <DemoCompanyCard variant="hero" company={niche.company} />
+        )}
       </div>
     </section>
   );
