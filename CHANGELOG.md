@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.114.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.113.0...v1.114.0) (2026-06-22)
+
+
+### Features
+
+* **landings:** полная форма захвата в hero + на главной + на всех публичных SEO ([4b343b8](https://github.com/moiseev1991-stack/Colaba/commit/4b343b883298f2b2e0adf7a029e8f2de65114111))
+
 # [1.113.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.112.0...v1.113.0) (2026-06-22)
 
 
