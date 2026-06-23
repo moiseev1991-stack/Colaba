@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.117.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.1...v1.117.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* **admin/website-leads:** показывать точный HTTP-код в alert при ошибке ([e21f346](https://github.com/moiseev1991-stack/Colaba/commit/e21f34668d29482943864fbdd5301b12882e54ea))
+
 ## [1.117.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.0...v1.117.1) (2026-06-23)
 
 
