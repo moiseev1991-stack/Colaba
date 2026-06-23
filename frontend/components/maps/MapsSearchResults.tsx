@@ -1565,6 +1565,18 @@ export function MapsSearchResults({
             <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
               <div className="font-medium">Ничего не нашлось</div>
               <div className="mt-1 opacity-90">{search.error}</div>
+              {reviewsTrend && reviewsTrend.companies_affected > 0 && (
+                <div className="mt-2 text-[12px] opacity-80">
+                  В БД уже собрано {reviewsTrend.companies_affected}{' '}
+                  {reviewsTrend.companies_affected === 1
+                    ? 'компания'
+                    : reviewsTrend.companies_affected >= 2 && reviewsTrend.companies_affected <= 4
+                      ? 'компании'
+                      : 'компаний'}{' '}
+                  этой ниши от прошлых поисков — блоки «Динамика отзывов» и
+                  «Сравнение с нишей» ниже считаются по ним.
+                </div>
+              )}
             </div>
           )}
 
@@ -1576,15 +1588,19 @@ export function MapsSearchResults({
           </div>
         )}
 
-        {!isLoading && companiesEverLoaded && renderList.length === 0 && search.status !== 'failed' && (
-          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
-            <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
-            <div className="mt-1 opacity-90">
-              Ослабь критерии в панели слева (например, убери минимум рейтинга
-              или отключи «Только с сайтом») или сбрось пресет.
+        {!isLoading &&
+          companiesEverLoaded &&
+          renderList.length === 0 &&
+          search.status !== 'failed' &&
+          search.error_type !== 'EmptyResult' && (
+            <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
+              <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
+              <div className="mt-1 opacity-90">
+                Ослабь критерии в панели слева (например, убери минимум рейтинга
+                или отключи «Только с сайтом») или сбрось пресет.
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {renderList.length > 0 && viewMode === 'list' && (
           <>
