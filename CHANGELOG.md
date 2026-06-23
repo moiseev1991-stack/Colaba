@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.117.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.0...v1.117.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* **kp-jobs:** превью каналов видно и при редактировании КП ([0601ded](https://github.com/moiseev1991-stack/Colaba/commit/0601ded56a6ac7a4a1a3f57043d903bd4fb0234b))
+
 # [1.117.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.116.0...v1.117.0) (2026-06-23)
 
 
