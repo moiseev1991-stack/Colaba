@@ -224,6 +224,15 @@ export interface KpJobItem {
    *  RowSendButton после reload показывал ✓ Отправлено и не давал
    *  случайно отправить повторно. null — ещё не пытались. */
   email_send_status: KpSendStatus | null;
+  /** ИНН (company_legal.inn) — для раскрывающегося списка «Кто получит КП»
+   *  в SendBar. null — нет матча с реестром юр. лиц. */
+  company_inn: string | null;
+  /** Полное юр. название (company_legal.legal_name) — «Общество с
+   *  ограниченной ответственностью Ромашка». null → UI fallback'ится
+   *  на `company_name`. */
+  company_legal_full: string | null;
+  /** Адрес компании (companies.address). null → '—'. */
+  company_address: string | null;
 }
 
 export interface KpJobItemsResponse {

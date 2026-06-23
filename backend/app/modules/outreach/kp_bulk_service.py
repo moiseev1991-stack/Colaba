@@ -247,6 +247,17 @@ class JobItemRow:
     # на RowSendButton и не давал случайно отправить второй раз. None —
     # ещё не пытались отправить через bulk-bar или per-row send.
     email_send_status: str | None = None
+    # ИНН компании (company_legal.inn) — для раскрывающегося списка
+    # «Кто получит КП» в SendBar, чтобы юзер мог опознать компанию по
+    # юридическим реквизитам и снять галочку «не слать».
+    company_inn: str | None = None
+    # Полное юридическое наименование (company_legal.legal_name) —
+    # «Общество с ограниченной ответственностью Ромашка». Для того же
+    # SendBar-списка. Если нет — фронт fallback'нется на company_name.
+    company_legal_full: str | None = None
+    # Адрес компании (companies.address) — для SendBar-списка, чтобы
+    # юзер видел «куда» вообще шлёт.
+    company_address: str | None = None
 
 
 async def list_user_drafts(
@@ -307,10 +318,13 @@ async def list_job_items(
 
     since = job.started_at or job.created_at
 
-    # 1. Резолвим имена/города/OPF для всех компаний job'а одним запросом.
+    # 1. Резолвим имена/города/OPF/ИНН/полное юр. название/адрес для всех
+    # компаний job'а одним запросом.
     # company_legal_short = CompanyLegal.opf («ООО»/«ИП»/«АО»/«ПАО»),
     # а не legal_short_name (это полное наименование без ИП/ООО) —
     # последнее даёт длинные пиллы и ломает таблицу.
+    # ИНН/legal_name/address добавлены для раскрывающегося списка
+    # «Кто получит КП» в SendBar (см. JobItemRow).
     company_rows = (
         await db.execute(
             select(
@@ -320,15 +334,27 @@ async def list_job_items(
                 CompanyLegal.opf,
                 Company.raw_data,
                 Company.phone,
+                CompanyLegal.inn,
+                CompanyLegal.legal_name,
+                Company.address,
             )
             .outerjoin(CompanyLegal, CompanyLegal.company_id == Company.id)
             .where(Company.id.in_(company_ids))
         )
     ).all()
+    # Ключи кортежа: 0=name, 1=city, 2=opf, 3=logo_url, 4=phone, 5=inn,
+    # 6=legal_name (полное), 7=address.
     company_meta: dict[
-        int, tuple[str | None, str | None, str | None, str | None, str | None]
+        int,
+        tuple[
+            str | None, str | None, str | None, str | None, str | None,
+            str | None, str | None, str | None,
+        ],
     ] = {
-        int(r[0]): (r[1], r[2], r[3], _extract_company_logo_url(r[4]), r[5])
+        int(r[0]): (
+            r[1], r[2], r[3], _extract_company_logo_url(r[4]), r[5],
+            r[6], r[7], r[8],
+        )
         for r in company_rows
     }
 
@@ -439,6 +465,9 @@ async def list_job_items(
                     if draft is not None
                     else None
                 ),
+                company_inn=meta[5] if meta else None,
+                company_legal_full=meta[6] if meta else None,
+                company_address=meta[7] if meta else None,
             )
         )
 

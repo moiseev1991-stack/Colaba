@@ -246,6 +246,16 @@ class KpJobItem(BaseModel):
     email_send_status: Literal[
         "queued", "sending", "sent", "failed", "skipped"
     ] | None = None
+    # ИНН компании (company_legal.inn) — для раскрывающегося списка
+    # «Кто получит КП» в SendBar, чтобы юзер опознавал компанию по
+    # реквизитам и при желании снимал галочку.
+    company_inn: str | None = None
+    # Полное юр. название (company_legal.legal_name) — «Общество с
+    # ограниченной ответственностью Ромашка». Для того же SendBar-списка.
+    # Если null — фронт fallback'нется на company_name.
+    company_legal_full: str | None = None
+    # Адрес компании (companies.address) — для SendBar-списка.
+    company_address: str | None = None
 
 
 class KpJobItemsResponse(BaseModel):

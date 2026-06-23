@@ -259,6 +259,9 @@ async def get_job_items(
                 company_logo_url=row.company_logo_url,
                 company_phone=row.company_phone,
                 email_send_status=row.email_send_status,  # type: ignore[arg-type]
+                company_inn=row.company_inn,
+                company_legal_full=row.company_legal_full,
+                company_address=row.company_address,
             )
             for row in item_rows
         ],
