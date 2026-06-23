@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.117.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.2...v1.117.3) (2026-06-23)
+
+
+### Bug Fixes
+
+* **admin/website-leads:** принимать любой 2xx у DELETE (200 vs 204) ([a9e9520](https://github.com/moiseev1991-stack/Colaba/commit/a9e952083ea8adda1c888ef921b68c9bdccd6876))
+* **maps/2gis:** unknown города — добавлять city в q и фильтровать adm_div ([4633948](https://github.com/moiseev1991-stack/Colaba/commit/46339486eef385e215f5e323448f85cd9e61a292))
+
 ## [1.117.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.1...v1.117.2) (2026-06-23)
 
 
