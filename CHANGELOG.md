@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.117.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.116.0...v1.117.0) (2026-06-23)
+
+
+### Features
+
+* **kp-jobs:** SendBar — раскрывающийся список «Кто получит КП» ([16c6c0e](https://github.com/moiseev1991-stack/Colaba/commit/16c6c0ebf3cf86a8d84c52760b59bf044869050d))
+
 # [1.116.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.115.0...v1.116.0) (2026-06-22)
 
 
