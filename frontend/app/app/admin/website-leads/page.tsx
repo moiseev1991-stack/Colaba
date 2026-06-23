@@ -114,10 +114,13 @@ export default function AdminWebsiteLeadsPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error('failed');
-    } catch {
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}${text ? ': ' + text.slice(0, 200) : ''}`);
+      }
+    } catch (e: any) {
       setItems(prev);
-      alert('Не удалось обновить статус.');
+      alert(`Не удалось обновить статус.\n${e?.message ?? 'unknown'}`);
     }
   }
 
@@ -125,11 +128,23 @@ export default function AdminWebsiteLeadsPage() {
     if (!confirm('Удалить заявку (soft-delete)?')) return;
     try {
       const res = await fetch(`/api/v1/website-leads/${id}`, { method: 'DELETE' });
-      if (res.status !== 204) throw new Error('failed');
+      if (res.status !== 204) {
+        // Показываем точный HTTP-код и (если есть) JSON-detail из ответа,
+        // чтобы юзер мог скопировать причину в чат, не лазая в DevTools.
+        // Самые частые причины:
+        //   401/403 → сессия истекла, перелогиниться
+        //   404     → лид уже удалён (другой вкладкой)
+        //   405     → прокси-окружение режет DELETE-метод (например, новая
+        //             Traefik-конфигурация); в этом случае нужно править прод
+        //   500     → миграция 040 не применила deleted_at (или другая ошибка
+        //             БД) — смотреть backend-логи
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}${text ? ': ' + text.slice(0, 200) : ''}`);
+      }
       setItems((curr) => curr.filter((i) => i.id !== id));
       setTotal((t) => Math.max(t - 1, 0));
-    } catch {
-      alert('Не удалось удалить.');
+    } catch (e: any) {
+      alert(`Не удалось удалить.\n${e?.message ?? 'unknown'}`);
     }
   }
 
