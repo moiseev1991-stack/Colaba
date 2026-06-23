@@ -20,6 +20,8 @@ import {
   AlertCircle,
   AtSign,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Download,
   Loader2,
@@ -28,6 +30,7 @@ import {
   MessageCircle,
   Pencil,
   Phone,
+  PhoneCall,
   Send,
   Sparkles,
   X,
@@ -823,6 +826,30 @@ function planOnePerCompany(
 
 
 /**
+ * Какой канал пойдёт компании в режиме «один лучший канал». Возвращает:
+ *   - key канала, который реально получит ('email' | 'whatsapp')
+ *   - 'callable' — нет email/WA, но есть телефон → попадёт в xlsx «обзвон»
+ *   - 'none'     — ни одного контакта вообще.
+ *
+ * Используется в раскрывающемся списке «Кто получит КП» внутри SendBar.
+ */
+function getOneChannelForItem(
+  item: KpJobItem,
+  enabled: Set<KpSendChannel>,
+): KpSendChannel | 'callable' | 'none' {
+  const sorted = CHANNEL_DEFS
+    .filter((c) => c.working && enabled.has(c.key))
+    .sort((a, b) => a.priority - b.priority);
+  for (const c of sorted) {
+    if (c.eligible(item)) return c.key;
+  }
+  const digits = normalizePhoneForWa(item.company_phone);
+  if (digits) return 'callable';
+  return 'none';
+}
+
+
+/**
  * Группирует драфты по «во все каналы»: компания получит сообщение
  * по КАЖДОМУ enabled+working каналу, для которого у неё есть адрес.
  * Может быть несколько отправок на одну компанию.
@@ -871,6 +898,16 @@ function SendBar({
     () => new Set(['email', 'whatsapp']),
   );
 
+  // Исключённые компании (по company_id) — те, которые юзер снял
+  // галочкой в раскрывающемся списке «Кто получит КП». По умолчанию
+  // ничего не исключено: все done-компании попадают в отправку.
+  // Исключённые НЕ попадают ни в один plan и не учитываются в counter'ах.
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(() => new Set());
+
+  // Свёрнут ли раскрывающийся список «Кто получит КП». По умолчанию
+  // скрыт, чтобы SendBar не разрастался — юзер раскрывает явным кликом.
+  const [recipientsExpanded, setRecipientsExpanded] = useState(false);
+
   // Состояние реальной отправки (общий статус партии — backend агрегирует
   // по всем каналам).
   const [status, setStatus] = useState<KpJobSendStatus | null>(null);
@@ -886,12 +923,22 @@ function SendBar({
   // не критично: backend всё равно создаст правильные строки.
   const doneItems = useMemo(() => items.filter((it) => it.status === 'done'), [items]);
 
+  // Активные = done минус исключённые. Все счётчики и plan'ы считаются
+  // отсюда — снял галочку → counter сразу уменьшился.
+  const activeDoneItems = useMemo(
+    () =>
+      doneItems.filter(
+        (it) => it.company_id === null || !excludedIds.has(it.company_id),
+      ),
+    [doneItems, excludedIds],
+  );
+
   const breakdown = useMemo(() => {
     let emailEligible = 0;
     let waEligible = 0;
     let landlineOnly = 0;
     let noContacts = 0;
-    for (const it of doneItems) {
+    for (const it of activeDoneItems) {
       const hasEmail = CHANNEL_BY_KEY.email.eligible(it);
       const hasWa = CHANNEL_BY_KEY.whatsapp.eligible(it);
       if (hasEmail) emailEligible += 1;
@@ -911,12 +958,18 @@ function SendBar({
       landlineOnly,
       noContacts,
     };
-  }, [doneItems]);
+  }, [activeDoneItems]);
 
   // План отправки «один лучший канал на компанию» + «во все каналы».
-  // Пересчитывается на каждое изменение enabled-чекбоксов.
-  const planOne = useMemo(() => planOnePerCompany(doneItems, enabled), [doneItems, enabled]);
-  const planAll = useMemo(() => planAllChannels(doneItems, enabled), [doneItems, enabled]);
+  // Пересчитывается на каждое изменение enabled-чекбоксов или exclusion'а.
+  const planOne = useMemo(
+    () => planOnePerCompany(activeDoneItems, enabled),
+    [activeDoneItems, enabled],
+  );
+  const planAll = useMemo(
+    () => planAllChannels(activeDoneItems, enabled),
+    [activeDoneItems, enabled],
+  );
 
   // Сколько уникальных компаний охватывается в каждом режиме.
   const oneCount = useMemo(
@@ -932,16 +985,42 @@ function SendBar({
 
   // Кандидаты на xlsx «На обзвон» — uncovered компании, у которых есть
   // хоть какой-то телефон. Используется только для счётчика на кнопке.
+  // Считаем по activeDoneItems — исключённые не идут даже в обзвон.
   const callableCount = useMemo(
     () =>
-      doneItems.filter(
+      activeDoneItems.filter(
         (it) =>
           !CHANNEL_BY_KEY.email.eligible(it) &&
           !CHANNEL_BY_KEY.whatsapp.eligible(it) &&
           normalizePhoneForWa(it.company_phone) !== null,
       ).length,
-    [doneItems],
+    [activeDoneItems],
   );
+
+  // Сколько включено / всего done — для шапки collapsible'а.
+  const includedCount = activeDoneItems.length;
+  const totalDoneCount = doneItems.length;
+
+  function toggleExcluded(companyId: number) {
+    setExcludedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(companyId)) next.delete(companyId);
+      else next.add(companyId);
+      return next;
+    });
+  }
+
+  function includeAll() {
+    setExcludedIds(new Set());
+  }
+
+  function excludeAll() {
+    const ids = new Set<number>();
+    for (const it of doneItems) {
+      if (it.company_id !== null) ids.add(it.company_id);
+    }
+    setExcludedIds(ids);
+  }
 
 
   async function handleDownloadCallList() {
@@ -1193,6 +1272,29 @@ function SendBar({
           </div>
         )}
 
+        {/* Раскрывающийся список «Кто получит КП». По умолчанию свёрнут —
+            юзер сам решает посмотреть. Тут он:
+              - видит каждую компанию по полному юр. названию + ИНН + адрес,
+              - видит какой канал ей реально пойдёт при «Отправить всем»,
+              - может снять галочку у конкретной компании (попадёт
+                в exclusion-set, и planOne/planAll её отфильтруют).
+            Появляется только когда есть хотя бы одна done-компания. */}
+        {totalDoneCount > 0 && (
+          <RecipientsPanel
+            expanded={recipientsExpanded}
+            onToggle={() => setRecipientsExpanded((v) => !v)}
+            doneItems={doneItems}
+            excludedIds={excludedIds}
+            onToggleExcluded={toggleExcluded}
+            onIncludeAll={includeAll}
+            onExcludeAll={excludeAll}
+            includedCount={includedCount}
+            totalCount={totalDoneCount}
+            enabled={enabled}
+            isActive={isActive}
+          />
+        )}
+
         {/* Кнопки: два пресета + xlsx обзвон.
             «Отправить всем» — на компанию один лучший канал (email или WA).
             «Во все каналы» — на компанию все доступные каналы (макс охват). */}
@@ -1287,6 +1389,246 @@ function SendBar({
       </div>
     </div>
   );
+}
+
+
+// --- RecipientsPanel — раскрываемый список «Кто получит КП» -----------------
+//
+// Под чекбоксами каналов SendBar'а. По умолчанию свёрнут — только шапка
+// «Кто получит КП (X из Y)». Раскрытие → список всех done-компаний с
+// галочкой исключения и пиллом «какой канал пойдёт».
+//
+// Логика:
+//   - Галочка включена (по умолчанию) = компания пойдёт в отправку.
+//   - Галочка снята = company_id в excludedIds = НЕ попадёт в planOne/planAll.
+//   - Канал в пилле — режим one-per-company с учётом enabled-чекбоксов.
+//     При активных Email+WA email приоритетнее.
+//   - 'callable' (📞) = нет email/WA, но есть валидный телефон → попадёт
+//     в xlsx «На обзвон» (если юзер скачает его).
+//   - 'none' (❓) = ни одного контакта вообще — компания не дойдёт
+//     никому, юзер может снять галочку чтобы убрать из счётчика.
+//
+// Во время активной отправки (`isActive`) галочки disabled — нельзя
+// поменять exclusion, пока bulk-bar шлёт партию.
+
+function RecipientsPanel({
+  expanded,
+  onToggle,
+  doneItems,
+  excludedIds,
+  onToggleExcluded,
+  onIncludeAll,
+  onExcludeAll,
+  includedCount,
+  totalCount,
+  enabled,
+  isActive,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  doneItems: KpJobItem[];
+  excludedIds: Set<number>;
+  onToggleExcluded: (companyId: number) => void;
+  onIncludeAll: () => void;
+  onExcludeAll: () => void;
+  includedCount: number;
+  totalCount: number;
+  enabled: Set<KpSendChannel>;
+  isActive: boolean;
+}) {
+  const ChevronIcon = expanded ? ChevronUp : ChevronDown;
+  return (
+    <div className="mt-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--surface-2,var(--surface)))]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-[hsl(var(--text))] hover:bg-slate-50 dark:hover:bg-slate-900/40"
+        aria-expanded={expanded}
+      >
+        <span className="inline-flex items-center gap-2">
+          <ChevronIcon className="h-4 w-4 text-[hsl(var(--muted))]" />
+          Кто получит КП ({includedCount}
+          {totalCount !== includedCount ? ` из ${totalCount}` : ''})
+        </span>
+        <span className="text-[11px] font-normal text-[hsl(var(--muted))]">
+          {expanded ? 'Скрыть' : 'Показать список'}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-[hsl(var(--border))] px-3 py-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+            <span className="text-[hsl(var(--muted))]">
+              Снимай галочку у тех, кому слать не нужно — counter обновится.
+            </span>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={onIncludeAll}
+                disabled={isActive || excludedIds.size === 0}
+                className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+              >
+                Включить все
+              </button>
+              <button
+                type="button"
+                onClick={onExcludeAll}
+                disabled={isActive || excludedIds.size === totalCount}
+                className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+              >
+                Снять все
+              </button>
+            </div>
+          </div>
+
+          <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
+            {doneItems.map((it) => {
+              const isExcluded =
+                it.company_id !== null && excludedIds.has(it.company_id);
+              const eff = getOneChannelForItem(it, enabled);
+              return (
+                <RecipientRow
+                  key={
+                    it.company_id !== null
+                      ? `c${it.company_id}`
+                      : `d${it.draft_id ?? Math.random()}`
+                  }
+                  item={it}
+                  excluded={isExcluded}
+                  effectiveChannel={eff}
+                  onToggle={
+                    it.company_id !== null && !isActive
+                      ? () => onToggleExcluded(it.company_id as number)
+                      : undefined
+                  }
+                  disabled={isActive}
+                />
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function RecipientRow({
+  item,
+  excluded,
+  effectiveChannel,
+  onToggle,
+  disabled,
+}: {
+  item: KpJobItem;
+  excluded: boolean;
+  effectiveChannel: KpSendChannel | 'callable' | 'none';
+  onToggle: (() => void) | undefined;
+  disabled: boolean;
+}) {
+  // Полное юр. название имеет приоритет — юзер просил видеть именно его.
+  // Если нет (компания не сматчилась с реестром) — fallback на company_name.
+  const title = item.company_legal_full || item.company_name || '—';
+  const innPart = item.company_inn ? `ИНН ${item.company_inn}` : null;
+  const addrPart = item.company_address || null;
+  const phonePart = item.company_phone
+    ? formatPhoneForDisplay(item.company_phone)
+    : null;
+  // email-получатель показываем когда канал = email; для остальных
+  // случаев место отдаём под другие реквизиты, чтобы строка не разбухла.
+  const emailPart =
+    effectiveChannel === 'email' && item.recipient_email
+      ? item.recipient_email
+      : null;
+  const subtitleParts = [innPart, addrPart, phonePart, emailPart].filter(
+    Boolean,
+  ) as string[];
+  const chip = channelChip(effectiveChannel);
+  return (
+    <li
+      className={cn(
+        'flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-[12px]',
+        excluded ? 'opacity-50' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40',
+      )}
+    >
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={!excluded}
+        aria-label={excluded ? 'Включить компанию в отправку' : 'Исключить из отправки'}
+        disabled={disabled || onToggle === undefined}
+        onClick={onToggle}
+        className={cn(
+          'mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-sm border',
+          excluded
+            ? 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'
+            : 'border-violet-500 bg-violet-500 text-white',
+          (disabled || onToggle === undefined) && 'cursor-not-allowed opacity-60',
+        )}
+      >
+        {!excluded && <Check className="h-3 w-3" strokeWidth={3} />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-medium text-[hsl(var(--text))]">
+          {title}
+        </div>
+        {subtitleParts.length > 0 && (
+          <div className="truncate text-[11px] text-[hsl(var(--muted))]">
+            {subtitleParts.join(' · ')}
+          </div>
+        )}
+      </div>
+      <span
+        className={cn(
+          'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium',
+          chip.cls,
+        )}
+        title={chip.title}
+      >
+        <chip.Icon className="h-3 w-3" />
+        {chip.label}
+      </span>
+    </li>
+  );
+}
+
+
+function channelChip(eff: KpSendChannel | 'callable' | 'none') {
+  switch (eff) {
+    case 'email':
+      return {
+        Icon: Mail,
+        label: 'Email',
+        cls: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200',
+        title: 'Уйдёт по Email в режиме «Отправить всем».',
+      };
+    case 'whatsapp':
+      return {
+        Icon: MessageCircle,
+        label: 'WhatsApp',
+        cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200',
+        title: 'Уйдёт по WhatsApp в режиме «Отправить всем».',
+      };
+    case 'callable':
+      return {
+        Icon: PhoneCall,
+        label: 'Обзвон',
+        cls: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200',
+        title:
+          'Нет email и мобильного — попадёт в xlsx «На обзвон». КП не уйдёт автоматически.',
+      };
+    case 'telegram':
+    case 'max':
+    case 'none':
+    default:
+      return {
+        Icon: AlertCircle,
+        label: 'Нет канала',
+        cls: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+        title:
+          'Ни email, ни телефона. КП не дойдёт ни одним каналом — можно снять галочку.',
+      };
+  }
 }
 
 
