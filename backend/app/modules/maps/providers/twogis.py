@@ -578,6 +578,7 @@ class TwoGisProvider(MapProvider):
         # значение которого == region_id. Балашиха в словарь не входит, но
         # её region_id (32) — у Москвы, → она не «главный город», → фильтр.
         city_norm = (city or "").strip().lower()
+        is_known_main_city = city_norm in CITY_TO_REGION_ID
         is_satellite_city = False
         if point is not None and radius_meters and radius_meters > 0:
             common["point"] = f"{point[1]},{point[0]}"  # 2GIS: lon,lat
@@ -589,7 +590,21 @@ class TwoGisProvider(MapProvider):
                 (k for k, v in CITY_TO_REGION_ID.items() if v == region_id),
                 None,
             )
+            # Сценарий А (старый): city — сателлит чужого региона (Балашиха
+            #   относится к region_id=32 Москвы → main_city='москва', а юзер
+            #   ищет «балашиха»). q обязательно с городом + фильтр по adm_div,
+            #   иначе вернутся московские фирмы.
+            # Сценарий Б (новый, добавлено 2026-06-23): city — НЕ в нашем
+            #   словаре (Ярославль, Тверь, Иваново, Калуга и т.д.). Резолв
+            #   возвращает «правильный» region_id через /region/search, но
+            #   2GIS Catalog нередко возвращает 0 компаний на общие ниши
+            #   («стоматологическая клиника») для региональных region_id —
+            #   API работает лучше, когда город указан и в q. Подстраховка:
+            #   добавляем город в q и включаем adm_div-фильтр.
             if main_city_of_region and main_city_of_region != city_norm:
+                is_satellite_city = True
+                common["q"] = f"{niche} {city}"
+            elif not is_known_main_city and city_norm:
                 is_satellite_city = True
                 common["q"] = f"{niche} {city}"
 
