@@ -341,16 +341,16 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Проверяем is_superuser один раз на монтирование Sidebar. Кэшируем
-  // в sessionStorage, чтобы при переходах между страницами кабинета
-  // не дёргать backend постоянно.
+  // Проверяем is_superuser при монтировании Sidebar. В sessionStorage
+  // кэшируем ТОЛЬКО положительный флаг — иначе после случайной 401
+  // (медленный логин, гонка) секция «Админ» исчезала навсегда до
+  // закрытия вкладки.
   useEffect(() => {
     const cached = typeof window !== 'undefined' ? sessionStorage.getItem('is_superuser') : null;
     if (cached === 'true') {
       setIsSuperuser(true);
       return;
     }
-    if (cached === 'false') return;
     let cancelled = false;
     (async () => {
       try {
@@ -360,7 +360,9 @@ export function Sidebar() {
         const flag = Boolean(data?.is_superuser);
         if (!cancelled) {
           setIsSuperuser(flag);
-          try { sessionStorage.setItem('is_superuser', flag ? 'true' : 'false'); } catch { /* no-op */ }
+          if (flag) {
+            try { sessionStorage.setItem('is_superuser', 'true'); } catch { /* no-op */ }
+          }
         }
       } catch {
         /* offline / no auth — Sidebar просто не покажет admin-секцию */

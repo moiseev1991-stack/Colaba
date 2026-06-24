@@ -928,7 +928,7 @@ export function MapsSearchResults({
       </BottomSheet>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
             <h2 className="font-display text-[20px] sm:text-[22px] font-semibold leading-tight tracking-tight text-[hsl(var(--text))]">
               {search.niche}
@@ -1318,7 +1318,17 @@ export function MapsSearchResults({
               );
             })()}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Toolbar шапки. При пустой выдаче (нет multi-source segment,
+              view-toggle, export-меню, recluster-кнопки) внутри остаётся
+              только «Новый поиск» — без ml-auto она липнет к заголовку,
+              без огромного gap'а до правого края. При наличии выдачи
+              lg:ml-auto работает как старый justify-between. */}
+          <div
+            className={cn(
+              'flex flex-wrap items-center gap-2',
+              !(isTerminal && renderTotal === 0) && 'lg:ml-auto',
+            )}
+          >
             {/* §4.1 редизайн: мобильная кнопка «Фильтры» открывает BottomSheet.
                 На lg+ панель уже видна слева, поэтому кнопка скрыта. */}
             <button
@@ -1565,18 +1575,33 @@ export function MapsSearchResults({
             <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
               <div className="font-medium">Ничего не нашлось</div>
               <div className="mt-1 opacity-90">{search.error}</div>
-              {reviewsTrend && reviewsTrend.companies_affected > 0 && (
-                <div className="mt-2 text-[12px] opacity-80">
-                  В БД уже собрано {reviewsTrend.companies_affected}{' '}
-                  {reviewsTrend.companies_affected === 1
-                    ? 'компания'
-                    : reviewsTrend.companies_affected >= 2 && reviewsTrend.companies_affected <= 4
-                      ? 'компании'
-                      : 'компаний'}{' '}
-                  этой ниши от прошлых поисков — блоки «Динамика отзывов» и
-                  «Сравнение с нишей» ниже считаются по ним.
-                </div>
-              )}
+              {reviewsTrend && reviewsTrend.companies_affected > 0 && (() => {
+                const n = reviewsTrend.companies_affected;
+                const mod10 = n % 10;
+                const mod100 = n % 100;
+                const word =
+                  mod100 >= 11 && mod100 <= 14
+                    ? 'компаний'
+                    : mod10 === 1
+                      ? 'компания'
+                      : mod10 >= 2 && mod10 <= 4
+                        ? 'компании'
+                        : 'компаний';
+                return (
+                  <div className="mt-2 text-[12px] opacity-80">
+                    В БД уже собрано {n} {word} этой ниши от прошлых поисков —
+                    блоки «Динамика отзывов» и «Сравнение с нишей» ниже
+                    считаются по ним.
+                  </div>
+                );
+              })()}
+              <button
+                type="button"
+                onClick={onNewSearch}
+                className="mt-3 inline-flex items-center rounded-md bg-[color:var(--signal-warm)] px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90"
+              >
+                Новый поиск
+              </button>
             </div>
           )}
 
