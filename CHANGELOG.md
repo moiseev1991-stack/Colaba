@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.117.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.3...v1.117.4) (2026-06-24)
+
+
+### Bug Fixes
+
+* **maps/results:** убрать gap у одинокой «Новый поиск», CTA в EmptyResult, плюрализация ([54ce7cb](https://github.com/moiseev1991-stack/Colaba/commit/54ce7cb6680483cc268657d1909dc2adc19fddb6))
+* **maps/results:** убрать дубль плашек и подсказать про данные ниши при EmptyResult ([6eb8a5e](https://github.com/moiseev1991-stack/Colaba/commit/6eb8a5ee6df29b905919620f99986707e3c478ca))
+* **sidebar:** не кешировать отрицательный is_superuser ([5090e1f](https://github.com/moiseev1991-stack/Colaba/commit/5090e1f58e56470db115ac9524451e051e4bba93))
+
 ## [1.117.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.2...v1.117.3) (2026-06-23)
 
 
