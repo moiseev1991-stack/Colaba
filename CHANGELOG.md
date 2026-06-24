@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.118.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.4...v1.118.0) (2026-06-24)
+
+
+### Features
+
+* **maps/synonyms:** добавить «косметология» как отдельный ключ ([00b0f75](https://github.com/moiseev1991-stack/Colaba/commit/00b0f75ebe946b86af10c48250bd397f472fcd9e))
+
 ## [1.117.4](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.3...v1.117.4) (2026-06-24)
 
 
