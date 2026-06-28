@@ -9,6 +9,7 @@ import { apiClient } from '@/client';
 import { getTheme, setTheme } from '@/lib/storage';
 import type { Theme } from '@/lib/types';
 import { BrandMark } from '@/components/BrandMark';
+import { MobileNav } from '@/components/MobileNav';
 
 export function AppHeader() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -92,8 +93,9 @@ export function AppHeader() {
         backdropFilter: 'blur(12px)',
       }}
     >
-      {/* Left: Logo — единая BrandMark (emerald→cyan, белая спираль) */}
+      {/* Left: бургер (моб.) + Logo — единая BrandMark (emerald→cyan, белая спираль) */}
       <div className="flex items-center gap-2 shrink-0">
+        <MobileNav />
         <Link href="/dashboard" className="flex items-center gap-2 group" aria-label="SpinLid">
           <span className="inline-flex items-center justify-center transition-all group-hover:scale-105 shrink-0">
             <BrandMark
