@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.119.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.118.0...v1.119.0) (2026-06-28)
+
+
+### Bug Fixes
+
+* **mobile:** бургер-меню с полной навигацией на телефоне ([a5bb6c2](https://github.com/moiseev1991-stack/Colaba/commit/a5bb6c268f5ec59cc38a4ffaa61b655466a72430))
+
+
+### Features
+
+* **outreach/kp:** контакты отправителя (SpinLid) в каждом КП ([aac37ab](https://github.com/moiseev1991-stack/Colaba/commit/aac37abf700e91f23ba6a3e7b7d5bd933d18b90a))
+
 # [1.118.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.117.4...v1.118.0) (2026-06-24)
 
 
