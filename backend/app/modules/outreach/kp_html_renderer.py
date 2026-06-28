@@ -18,9 +18,9 @@ HTML — простой table-based layout, inline-стили, без класс
 Gmail/Mail.ru/Outlook не понимают современный CSS и режут <style>. Размер
 готового письма у Димы ~5-8KB.
 
-Если ни logo, ни signature не заданы — рендерер всё равно конвертирует
-markdown в HTML (юзер получает чище отформатированное письмо), но шапка/
-подвал не показываются.
+Если logo не задан — шапка скрыта. Подпись (подвал с контактами) показываем
+всегда: если своя не задана, подставляем DEFAULT_SENDER_SIGNATURE_MD, чтобы
+письмо не уходило без обратной связи отправителя.
 
 Plain-text fallback (поле `body` в EmailService) остаётся как был — для
 старых клиентов и для readability в "Show original" Gmail.
@@ -52,6 +52,22 @@ _CONTAINER_MAX_WIDTH_PX = 600
 #   - sane_lists: понимает «- » и «1. » без хака с двумя \n.
 #   - tables: иногда LLM генерит таблицу-сравнение, пусть рендерится.
 _MD_EXTENSIONS = ["nl2br", "sane_lists", "tables"]
+
+
+# Дефолтная подпись-контакты отправителя. Используется, когда в EmailConfig
+# не задана своя sender_signature_html — чтобы в КАЖДОМ КП-письме были
+# контакты отправителя, а не безымянная простыня без обратной связи.
+# Пока зашита под SpinLid; когда у пользователя появится свой профиль
+# отправителя (см. /app/email/settings) — он перекроет этот дефолт.
+# Markdown: nl2br включён, поэтому одиночный \n превращается в перенос.
+DEFAULT_SENDER_SIGNATURE_MD = (
+    "**SpinLid** — привлечение клиентов и рассылка коммерческих предложений\n"
+    "Сайт: spinlid.ru · Почта: support@spinlid.ru"
+)
+
+# Plain-text вариант той же подписи — для мессенджеров (WhatsApp/Telegram),
+# где HTML не нужен. Держим рядом, чтобы контакты не разъезжались.
+DEFAULT_SENDER_SIGNATURE_TEXT = "—\nSpinLid · spinlid.ru · support@spinlid.ru"
 
 
 _HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
@@ -131,7 +147,9 @@ def render_kp_html(
     body_html = _md_to_html(body_md)
 
     header = _logo_block(logo_url, safe_brand)
-    footer = _signature_block(signature_html)
+    # Контакты отправителя обязательны: если своя подпись не задана —
+    # подставляем дефолтную (SpinLid), чтобы письмо не уходило безымянным.
+    footer = _signature_block(signature_html or DEFAULT_SENDER_SIGNATURE_MD)
 
     # table-based layout — на старых Outlook'ах единственный надёжный способ
     # центрирования. Background для письма #f4f5f7 — мягкий серый, контейнер

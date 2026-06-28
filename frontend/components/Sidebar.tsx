@@ -32,8 +32,8 @@ import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/
 import type { ModuleId } from '@/lib/ModuleContext';
 import { VersionBadge } from './VersionBadge';
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
-type NavSection = { title?: string; items: NavItem[] };
+export type NavItem = { href: string; label: string; icon: LucideIcon };
+export type NavSection = { title?: string; items: NavItem[] };
 
 // Email block is identical across modules for now. When per-module campaigns/templates
 // arrive, switch these to /app/{module}/email/* — same pages can stay, filtered by query.
@@ -57,7 +57,7 @@ const PROPOSALS_SECTION: NavSection = {
   ],
 };
 
-const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
+export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
   leads: {
     sections: [
       {
@@ -122,13 +122,13 @@ const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
   },
 };
 
-const MODULE_ICONS: Record<ModuleId, LucideIcon> = {
+export const MODULE_ICONS: Record<ModuleId, LucideIcon> = {
   leads: Users,
   tenders: Landmark,
   seo: TrendingUp,
 };
 
-function getBestMatch(pathname: string | null, items: NavItem[]): string | null {
+export function getBestMatch(pathname: string | null, items: NavItem[]): string | null {
   if (!pathname) return null;
   const matches = items
     .filter((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
@@ -315,7 +315,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
 // Эндпоинт /api/v1/auth/me возвращает флаг — фронт его читает один раз
 // при монтировании Sidebar и кэширует в state. Если 401/нет токена —
 // просто не показываем секцию.
-const ADMIN_SECTION: NavSection = {
+export const ADMIN_SECTION: NavSection = {
   title: 'Админ',
   items: [
     { href: '/app/admin/website-leads', label: 'Заявки с сайта', icon: ShieldCheck },

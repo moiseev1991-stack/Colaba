@@ -29,7 +29,10 @@ from app.modules.outreach import (
     kp_service,
     whatsapp_greenapi,
 )
-from app.modules.outreach.kp_html_renderer import render_kp_html
+from app.modules.outreach.kp_html_renderer import (
+    DEFAULT_SENDER_SIGNATURE_TEXT,
+    render_kp_html,
+)
 from app.queue.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -246,8 +249,10 @@ def _compose_whatsapp_text(draft) -> str:
         text = subject
     else:
         text = "Здравствуйте! Хочу предложить вам наше решение."
-    # 4000 — с запасом до лимита 4096, оставляем место под подпись/окончание.
-    return text[:4000]
+    # Контакты отправителя в конце — чтобы получатель знал, кто пишет и как
+    # ответить. Тело режем с запасом, оставляя место под подпись (лимит WA 4096).
+    body_limit = 4000 - len(DEFAULT_SENDER_SIGNATURE_TEXT) - 2
+    return f"{text[:body_limit]}\n\n{DEFAULT_SENDER_SIGNATURE_TEXT}"
 
 
 async def _send_one_whatsapp(send_row, draft) -> None:

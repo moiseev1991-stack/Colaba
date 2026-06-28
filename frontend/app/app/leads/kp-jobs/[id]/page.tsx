@@ -2218,6 +2218,13 @@ function DraftDrawer({
 
 type PreviewChannel = 'email' | 'telegram' | 'whatsapp';
 
+// Контакты отправителя, которые система автоматически добавляет в КОНЕЦ
+// каждого КП (в e-mail — подписью в подвале письма, в мессенджерах —
+// текстом). Зеркалит DEFAULT_SENDER_SIGNATURE_* из
+// backend/app/modules/outreach/kp_html_renderer.py — при смене контактов
+// править оба места. Пока зашито под SpinLid.
+const SENDER_SIGNATURE_TEXT = '—\nSpinLid · spinlid.ru · support@spinlid.ru';
+
 const CHANNEL_META: Record<
   PreviewChannel,
   { label: string; limit: number | null; warnAt: number | null }
@@ -2240,9 +2247,13 @@ function ChannelPreviewBlock({
   // TG/WA — обычно plain-text без сабжекта; склеиваем заголовок в первую
   // строку, чтобы получатель видел тему. В Email сабжект отдельный.
   const rendered = useMemo(() => {
-    if (channel === 'email') return body;
+    // Подпись-контакты добавляется автоматически в конец КП на бэкенде —
+    // показываем её и тут, чтобы юзер видел финальный вид и чтобы счётчик
+    // длины (важен для лимита WhatsApp) учитывал подпись.
+    const sig = `\n\n${SENDER_SIGNATURE_TEXT}`;
+    if (channel === 'email') return body + sig;
     const prefix = subject ? `${subject}\n\n` : '';
-    return prefix + body;
+    return prefix + body + sig;
   }, [channel, subject, body]);
 
   const length = rendered.length;
@@ -2299,10 +2310,8 @@ function ChannelPreviewBlock({
       <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
         <span className="text-[hsl(var(--muted))]">
           {channel === 'email'
-            ? 'В письме уйдут шапка с лого и подпись из настроек.'
-            : channel === 'telegram'
-              ? 'Канал в работе — пока шлём только Email. Превью для проверки длины.'
-              : 'Канал в работе — пока шлём только Email. Превью для проверки длины.'}
+            ? 'В письме уйдут шапка с лого и контакты SpinLid (подпись внизу).'
+            : 'Канал в работе — пока шлём только Email. Контакты SpinLid добавятся в конец. Превью для проверки длины.'}
         </span>
         <span
           className={cn(
