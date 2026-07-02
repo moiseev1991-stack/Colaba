@@ -45,7 +45,7 @@ services:
     image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.slim
     environment:
       ENVIRONMENT: production
       DEBUG: "False"
@@ -106,7 +106,7 @@ services:
     image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.slim
     environment:
       ENVIRONMENT: production
       DEBUG: "False"

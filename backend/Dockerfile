@@ -1,3 +1,8 @@
+# FULL image СО Playwright/Chromium. Используется только для celery-worker-search
+# (очередь maps_2gis_html — HTML-парсер карточек 2GIS через headless Chromium).
+# Backend (uvicorn) и celery-worker (LLM-очереди) Chromium не используют —
+# для них есть Dockerfile.slim (~500 MB легче). См. audit-2026-07-02.md.
+
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
