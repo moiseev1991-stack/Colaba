@@ -23,8 +23,10 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
         "name": "Yandex Cloud Postbox",
         "description": (
             "Основной канал отправки. Лучшая доставляемость в Mail.ru/Yandex "
-            "(одна экосистема, прямой FBL). AWS SES-совместимый SMTP-интерфейс. "
-            "Получить ключ: console.yandex.cloud → Postbox."
+            "(одна экосистема, прямой FBL). SMTP-интерфейс с авторизацией "
+            "через API-ключ (НЕ email+пароль). Подготовка в Yandex Cloud: "
+            "сервисный аккаунт с ролью postbox.sender, API-ключ с областью "
+            "yc.postbox.send, верифицированный адрес отправителя."
         ),
         "default_cost_per_mail": 0.039,  # ~39₽/1000 писем
         "default_priority": 0,
@@ -36,7 +38,7 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
                 "secret": False,
                 "required": True,
                 "default": "postbox.cloud.yandex.net",
-                "description": "Endpoint Postbox из консоли Yandex Cloud.",
+                "description": "Endpoint Postbox из консоли Yandex Cloud (фиксированный).",
             },
             {
                 "key": "smtp_port",
@@ -45,31 +47,43 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
                 "secret": False,
                 "required": True,
                 "default": 587,
-                "description": "587 (STARTTLS) или 465 (SSL).",
+                "description": "587 (STARTTLS) — единственный поддерживаемый Postbox.",
             },
             {
                 "key": "smtp_user",
-                "label": "SMTP user",
+                "label": "ID API-ключа",
                 "type": "text",
                 "secret": False,
                 "required": True,
-                "description": "Обычно совпадает с from_email.",
+                "description": (
+                    "Идентификатор API-ключа из консоли Yandex Cloud. "
+                    "Не путать с email — это строка вида VQJSKIA1XXXXX. "
+                    "Создаётся: console.yandex.cloud → Postbox → API-ключи "
+                    "(область yc.postbox.send)."
+                ),
             },
             {
                 "key": "smtp_password",
-                "label": "SMTP password",
+                "label": "Секрет API-ключа",
                 "type": "secret",
                 "secret": True,
                 "required": True,
-                "description": "Пароль приложения Postbox из консоли Yandex Cloud.",
+                "description": (
+                    "Секретная часть API-ключа (показывается один раз при создании). "
+                    "Используется как SMTP-пароль вместе с ID ключа."
+                ),
             },
             {
                 "key": "from_email",
-                "label": "Email отправителя",
+                "label": "Адрес отправителя (верифицированный)",
                 "type": "text",
                 "secret": False,
                 "required": True,
-                "description": "Адрес на подтверждённом домене (SPF/DKIM настроены).",
+                "description": (
+                    "Адрес, созданный и подтверждённый в Postbox "
+                    "(например hello@moy-domen.ru). Домен должен иметь "
+                    "настроенные SPF/DKIM записи."
+                ),
             },
             {
                 "key": "from_name",

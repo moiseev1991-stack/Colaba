@@ -356,14 +356,19 @@ class EmailService:
             msg.attach(MIMEText(body, "plain", "utf-8"))
 
         try:
-            smtp = aiosmtplib.SMTP(hostname=host, port=port)
-            if use_ssl:
-                await smtp.connect(use_tls=True)
-            else:
-                await smtp.connect()
-                await smtp.starttls()
-            if user and pwd:
-                await smtp.login(user, pwd)
+            # aiosmtplib 5.x: НЕ передаём hostname/port в конструктор — иначе
+            # connect() считает соединение уже установленным и падает с
+            # "Connection already using TLS". Делаем явный connect с
+            # use_tls (SSL/465) или start_tls (STARTTLS/587).
+            smtp = aiosmtplib.SMTP()
+            await smtp.connect(
+                hostname=host,
+                port=port,
+                username=user if user and pwd else None,
+                password=pwd if user and pwd else None,
+                use_tls=use_ssl,
+                start_tls=(not use_ssl),
+            )
             await smtp.send_message(msg)
             await smtp.quit()
             return {
@@ -573,14 +578,17 @@ class EmailService:
             msg.attach(MIMEText(body, "plain", "utf-8"))
 
         try:
-            smtp = aiosmtplib.SMTP(hostname=host, port=port)
-            if use_ssl:
-                await smtp.connect(use_tls=True)
-            else:
-                await smtp.connect()
-                await smtp.starttls()
-            if user and password:
-                await smtp.login(user, password)
+            # aiosmtplib 5.x: используем унифицированный connect с use_tls/
+            # start_tls (см. _send_via_smtp_row для подробностей).
+            smtp = aiosmtplib.SMTP()
+            await smtp.connect(
+                hostname=host,
+                port=port,
+                username=user if user and password else None,
+                password=password if user and password else None,
+                use_tls=use_ssl,
+                start_tls=(not use_ssl),
+            )
             await smtp.send_message(msg)
             await smtp.quit()
             from app.core.api_tracker import log_call

@@ -53,17 +53,51 @@
 
 ## Настройка Yandex Cloud Postbox
 
-1. Зарегистрироваться в [console.yandex.cloud](https://console.yandex.cloud).
-2. Создать сервис Postbox, получить SMTP-кредентиалы.
-3. Подтвердить домен отправителя (SPF/DKIM/DMARC записи появятся в консоли).
-4. В `/app/settings/email-providers` → карточка Postbox:
-   - SMTP host: `postbox.cloud.yandex.net` (по умолчанию)
-   - Port: `587` (STARTTLS)
-   - SMTP user: ваш from-email
-   - SMTP password: пароль приложения Postbox
-   - From email: адрес на подтверждённом домене
-5. Включить чекбокс «Включён», нажать «Проверить» — должно вернуть OK.
-6. Сохранить.
+Postbox использует **SMTP с авторизацией через API-ключ** (не через email+пароль).
+Endpoint: `postbox.cloud.yandex.net:587` (STARTTLS).
+
+### Подготовка в Yandex Cloud
+
+1. [console.yandex.cloud](https://console.yandex.cloud) → создать сервис Postbox.
+2. **Сервисный аккаунт** с ролью `postbox.sender`.
+3. **API-ключ** с областью `yc.postbox.send`:
+   - при создании покажет **ID** (вида `VQJSKIA1XXXXX`) и **секрет** (показывается один раз — сохрани).
+4. **Адрес отправителя** (например `hello@moy-domen.ru`) — создать и верифицировать в Postbox.
+   Домен должен иметь настроенные SPF/DKIM записи (Yandex Cloud покажет какие добавить в DNS).
+
+> ⚠️ Postbox — это **транзакционный** сервис. Для cold-outreach делай постепенный
+> warm-up доменов (сотни писем/день, не тысячи), иначе возможна блокировка.
+
+### Заполнение карточки в `/app/settings/email-providers`
+
+| Поле в UI | Что ввести |
+|---|---|
+| SMTP host | `postbox.cloud.yandex.net` (дефолт, не менять) |
+| SMTP port | `587` (дефолт, STARTTLS — единственный поддерживаемый Postbox) |
+| **ID API-ключа** | ID ключа из Yandex Cloud (не email!) |
+| **Секрет API-ключа** | Секретная часть API-ключа |
+| Адрес отправителя | `hello@moy-domen.ru` (верифицированный в Postbox) |
+| Имя отправителя | «Иван, ООО Ромашка» (необязательно) |
+| Цена за письмо (₽) | `0.039` (~39₽/1000 писем по тарифу) |
+
+Включить чекбокс «Включён», нажать «Проверить» — должно вернуть OK
+(реальный SMTP-connect с login). Сохранить.
+
+### Проверка через postfix (опционально, для отладки на сервере)
+
+Если хочешь убедиться что кредентиалы рабочие, можно проверить через системный postfix
+(это **не наш способ отправки**, только диагностика):
+
+```bash
+# Файл с учёткой в формате host:port ID:SECRET
+echo 'postbox.cloud.yandex.net:587 <ID_API_ключа>:<Секрет_API_ключа>' | sudo tee /etc/postfix/sasl_passwd
+sudo postmap hash:/etc/postfix/sasl_passwd && sudo chmod 600 /etc/postfix/sasl_passwd*
+
+# Тест
+sendmail -f hello@moy-domen.ru test@example.com
+```
+
+В Colaba это не нужно — `POST /email/providers-settings/postbox/test` делает то же самое через `aiosmtplib`.
 
 ## Настройка Amazon SES
 
