@@ -46,6 +46,7 @@
 | Auth на `/maps/insights/*`, `/maps/pain-tags` | Закрыть бизнес-know-how (ниши, боли) | ✅ 2026-07-05 |
 | `/outreach/templates` backend CRUD | Пользовательские шаблоны писем (миграция 043) | ✅ 2026-07-05 |
 | Cost tracking MVP | Учёт внешних API-вызовов + стоимость в ₽ (миграция 044) | ✅ 2026-07-05 |
+| 3 email-провайдера с fallback | Postbox/SES/Hyvor + цена за письмо (миграция 045) | ✅ 2026-07-05 |
 | Per-user квоты по тарифам | Лимиты на поиски/вызовы по плану | 🟡 Открыто (после MVP) |
 | `/filters/*` strict auth | Заменить `get_optional_user_id` на `get_current_user_id` | 🟡 Открыто |
 

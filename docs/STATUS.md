@@ -2,7 +2,7 @@
 
 **Последнее обновление:** 5 июля 2026
 **Текущая версия:** v1.119.0
-**Коммитов:** 852 | **Миграций Alembic:** 044 | **Моделей БД:** 46+
+**Коммитов:** 852 | **Миграций Alembic:** 045 | **Моделей БД:** 47+
 
 ---
 
@@ -232,6 +232,11 @@
 
 - ✅ **Cost tracking MVP**: система учёта внешних API-вызовов в таблице `api_call_log` (миграция 044). Каждый вызов 2GIS/SerpAPI/DaData/OpenAI/Anthropic/embeddings/email логируется с расчётом стоимости в рублях. Раньше `monitor` был mock; теперь отдаёт реальные данные. См. `docs/guides/COST_TRACKING.md`.
 - Эндпоинты: `GET /monitor/requests` (последние вызовы), `/monitor/summary` (агрегат за период с breakdown по провайдерам), `/monitor/by-search/{id}` (стоимость конкретного поиска лидов).
+
+### Недавно добавлено (2026-07-05, ветка `feature/email-providers-fallback`)
+
+- ✅ **3 email-провайдера с fallback**: Yandex Cloud Postbox (основной), Amazon SES (резервный), Hyvor Relay (собственный сервер) в таблице `email_provider_config` (миграция 045). При сбое основного — авто-переход на следующий. Цена за письмо per-provider задаётся в UI и учитывается в `api_call_log`.
+- UI: `/app/settings/email-providers` — 3 карточки с приоритетами, тестом подключения и полем стоимости. См. `docs/guides/EMAIL_PROVIDERS.md`.
 
 ### Что сознательно отложено
 
