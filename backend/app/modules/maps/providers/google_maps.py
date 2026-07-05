@@ -73,29 +73,57 @@ class GoogleMapsProvider(MapProvider):
         - 429 → backoff 30s, до 3 ретраев → RateLimitError
         - 5xx → backoff 5s, до 3 ретраев → последний raise
         """
+        from time import perf_counter
+
+        from app.core.api_tracker import log_call
+
+        # endpoint-имя для трекера: engine из params («google_maps» / «google_maps_reviews»).
+        engine = params.get("engine", "google_maps") if params else "google_maps"
         last_exc: Exception | None = None
         for attempt in range(3):
+            t0 = perf_counter()
             try:
                 resp = await client.get(SERPAPI_BASE_URL, params=params, timeout=30.0)
             except httpx.HTTPError as e:
                 last_exc = e
                 logger.warning("serpapi: network error %s (attempt %d)", e, attempt + 1)
+                await log_call(
+                    "serpapi", engine, method="GET", ok=False, error=str(e),
+                    latency_ms=int((perf_counter() - t0) * 1000),
+                )
                 await asyncio.sleep(5)
                 continue
             status = resp.status_code
+            latency_ms = int((perf_counter() - t0) * 1000)
             if status == 401:
+                await log_call(
+                    "serpapi", engine, method="GET", http_status=status,
+                    ok=False, error="auth", latency_ms=latency_ms,
+                )
                 raise MissingAPIKeyError(
                     "SerpAPI ответил 401 — ключ невалидный или закончился free tier"
                 )
             if status == 429:
                 logger.warning("serpapi: 429 rate-limited (attempt %d), backoff 30s", attempt + 1)
+                await log_call(
+                    "serpapi", engine, method="GET", http_status=429,
+                    ok=False, error="rate_limited", latency_ms=latency_ms,
+                )
                 await asyncio.sleep(30)
                 continue
             if status >= 500:
                 logger.warning("serpapi: %d server error (attempt %d), backoff 5s", status, attempt + 1)
+                await log_call(
+                    "serpapi", engine, method="GET", http_status=status,
+                    ok=False, error="server_error", latency_ms=latency_ms,
+                )
                 await asyncio.sleep(5)
                 continue
             resp.raise_for_status()
+            await log_call(
+                "serpapi", engine, method="GET", http_status=status,
+                ok=True, latency_ms=latency_ms,
+            )
             return resp.json()
         if last_exc is not None:
             raise last_exc

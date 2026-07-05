@@ -228,6 +228,14 @@ async def _parse_map_search_async(search_id: int) -> None:
             logger.error("parse_map_search: MapSearch #%d not found", search_id)
             return
 
+        # Контекст для api_tracker: все последующие вызовы провайдеров/LLM
+        # будут автоматически привязаны к этому user_id + map_search_id.
+        from app.core.api_tracker import set_call_context
+
+        set_call_context(
+            user_id=search.user_id, map_search_id=search.id
+        )
+
         search.status = "running"
         search.started_at = datetime.now(timezone.utc)
         await db.commit()
@@ -358,6 +366,12 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
         if company is None:
             logger.warning("parse_company_reviews: Company #%d not found", company_id)
             return 0
+
+        # Контекст api_tracker: company_id (user/search_id наследуются от
+        # parent Celery-task, если parse_map_search его выставил).
+        from app.core.api_tracker import set_call_context
+
+        set_call_context(company_id=company_id)
 
         try:
             provider = _build_provider(source, db)

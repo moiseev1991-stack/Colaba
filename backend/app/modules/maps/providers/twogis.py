@@ -411,25 +411,47 @@ class TwoGisProvider(MapProvider):
         - 5xx → backoff 5s, до 3 ретраев → последний raise
         - 2xx → возвращаем json
         """
+        from time import perf_counter
+
+        from app.core.api_tracker import log_call
+
         last_exc: Exception | None = None
         for attempt in range(3):
+            t0 = perf_counter()
             try:
                 resp = await client.get(url, params=params)
             except httpx.HTTPError as e:
                 last_exc = e
                 logger.warning("2gis %s: network error %s (attempt %d)", url, e, attempt + 1)
+                await log_call(
+                    "2gis", url, method="GET", ok=False, error=str(e),
+                    latency_ms=int((perf_counter() - t0) * 1000),
+                )
                 await asyncio.sleep(5)
                 continue
 
             status = resp.status_code
+            latency_ms = int((perf_counter() - t0) * 1000)
             if status in (401, 403):
+                await log_call(
+                    "2gis", url, method="GET", http_status=status,
+                    ok=False, error="auth", latency_ms=latency_ms,
+                )
                 raise MissingAPIKeyError(f"2GIS ответил {status} на {url} — ключ невалиден/отозван")
             if status == 429:
                 logger.warning("2gis %s: 429 rate-limited (attempt %d), backoff 30s", url, attempt + 1)
+                await log_call(
+                    "2gis", url, method="GET", http_status=429,
+                    ok=False, error="rate_limited", latency_ms=latency_ms,
+                )
                 await asyncio.sleep(30)
                 continue
             if status >= 500:
                 logger.warning("2gis %s: %d server error (attempt %d), backoff 5s", url, status, attempt + 1)
+                await log_call(
+                    "2gis", url, method="GET", http_status=status,
+                    ok=False, error="server_error", latency_ms=latency_ms,
+                )
                 await asyncio.sleep(5)
                 continue
             resp.raise_for_status()
@@ -446,6 +468,10 @@ class TwoGisProvider(MapProvider):
                     logger.error(
                         "2gis API auth error %s on %s: %s (params=%s)", meta_code, url, err, params,
                     )
+                    await log_call(
+                        "2gis", url, method="GET", http_status=status,
+                        ok=False, error=f"meta {meta_code}: {err}", latency_ms=latency_ms,
+                    )
                     raise MissingAPIKeyError(f"2GIS meta.code={meta_code}: {err}")
                 # Любые другие meta.code (400 «ничего не найдено» / «параметр X неверен» /
                 # 404 «Method not found» на reviews/list) — это НЕ повод валить весь
@@ -457,9 +483,18 @@ class TwoGisProvider(MapProvider):
                     "2gis API logical %s on %s: %s (params=%s) — возвращаем пусто",
                     meta_code, url, err, params,
                 )
+                await log_call(
+                    "2gis", url, method="GET", http_status=status,
+                    ok=False, error=f"meta {meta_code}: {err}", latency_ms=latency_ms,
+                )
                 if "/reviews/list" in url:
                     raise RuntimeError(f"2GIS API error (meta.code={meta_code}): {err}")
                 return {"meta": meta, "result": {"items": [], "total": 0}}
+            # Успешный ответ — логируем как ok.
+            await log_call(
+                "2gis", url, method="GET", http_status=status,
+                ok=True, latency_ms=latency_ms,
+            )
             return data
 
         if last_exc:

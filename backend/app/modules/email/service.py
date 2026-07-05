@@ -228,6 +228,12 @@ class EmailService:
                     headers=headers,
                 )
                 if response.status_code == 200:
+                    from app.core.api_tracker import log_call
+
+                    await log_call(
+                        "hyvor", "/api/console/sends", method="POST",
+                        http_status=200, ok=True,
+                    )
                     data = response.json()
                     return {
                         "success": True,
@@ -240,12 +246,31 @@ class EmailService:
                     error_detail = error_json.get("message", error_detail)
                 except Exception:
                     pass
+                from app.core.api_tracker import log_call
+
+                await log_call(
+                    "hyvor", "/api/console/sends", method="POST",
+                    http_status=response.status_code, ok=False,
+                    error=error_detail[:200],
+                )
                 raise EmailServiceError(
                     f"Hyvor API error: {response.status_code} - {error_detail}"
                 )
         except httpx.TimeoutException:
+            from app.core.api_tracker import log_call
+
+            await log_call(
+                "hyvor", "/api/console/sends", method="POST",
+                ok=False, error="timeout",
+            )
             raise EmailServiceError("Hyvor Relay API timeout")
         except httpx.RequestError as e:
+            from app.core.api_tracker import log_call
+
+            await log_call(
+                "hyvor", "/api/console/sends", method="POST",
+                ok=False, error=str(e),
+            )
             raise EmailServiceError(f"Hyvor Relay API request error: {e}")
 
     async def _send_via_smtp(
@@ -295,6 +320,11 @@ class EmailService:
                 await smtp.login(user, password)
             await smtp.send_message(msg)
             await smtp.quit()
+            from app.core.api_tracker import log_call
+
+            await log_call(
+                "smtp", f"{host}:{port}", method="SMTP", ok=True,
+            )
             return {
                 "success": True,
                 "message_id": None,
@@ -302,6 +332,12 @@ class EmailService:
             }
         except Exception as e:
             logger.exception("SMTP send failed")
+            from app.core.api_tracker import log_call
+
+            await log_call(
+                "smtp", f"{host}:{port}", method="SMTP",
+                ok=False, error=str(e),
+            )
             raise EmailServiceError(f"SMTP error: {e}") from e
 
     async def send_campaign_email(

@@ -105,17 +105,38 @@ def _build_headers() -> dict[str, str]:
 
 async def _suggest(client: httpx.AsyncClient, query: str, count: int = 5) -> list[dict[str, Any]]:
     """Дёргает /suggest/party и возвращает массив suggestions."""
+    from time import perf_counter
+
+    from app.core.api_tracker import log_call
+
     url = f"{settings.DADATA_BASE_URL.rstrip('/')}/suggest/party"
+    t0 = perf_counter()
     try:
         r = await client.post(
             url,
             json={"query": query, "count": count},
             headers=_build_headers(),
         )
+        latency_ms = int((perf_counter() - t0) * 1000)
+        if r.is_success:
+            await log_call(
+                "dadata", "/suggest/party", method="POST",
+                http_status=r.status_code, ok=True, latency_ms=latency_ms,
+            )
+        else:
+            await log_call(
+                "dadata", "/suggest/party", method="POST",
+                http_status=r.status_code, ok=False,
+                error=f"http {r.status_code}", latency_ms=latency_ms,
+            )
         r.raise_for_status()
         return list((r.json() or {}).get("suggestions") or [])
     except httpx.HTTPError as e:
         logger.warning("dadata suggest %r failed: %s", query, e)
+        await log_call(
+            "dadata", "/suggest/party", method="POST", ok=False,
+            error=str(e), latency_ms=int((perf_counter() - t0) * 1000),
+        )
         return []
 
 

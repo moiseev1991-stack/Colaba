@@ -87,16 +87,28 @@ async def vision(assistant_id: int, image_b64: str, prompt: str, db: AsyncSessio
 async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, temperature: float) -> str:
     from openai import AsyncOpenAI
 
+    from app.core.api_tracker import log_call
+
     api_key = (cfg.get("api_key") or settings.OPENAI_API_KEY or "")
     base_url = cfg.get("base_url") or (settings.OPENAI_BASE_URL or None)
     org = cfg.get("organization") or None
     c = AsyncOpenAI(api_key=api_key, base_url=base_url, organization=org)
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
+    # r.usage: CompletionUsage(prompt_tokens, completion_tokens, total_tokens).
+    u = getattr(r, "usage", None)
+    await log_call(
+        "openai", model or "openai", method="CHAT",
+        prompt_tokens=getattr(u, "prompt_tokens", None),
+        completion_tokens=getattr(u, "completion_tokens", None),
+        model=model,
+    )
     return (r.choices[0].message.content or "").strip()
 
 
 async def _vision_openai(model: str, cfg: dict, image_b64: str, prompt: str) -> str:
     from openai import AsyncOpenAI
+
+    from app.core.api_tracker import log_call
 
     api_key = (cfg.get("api_key") or settings.OPENAI_API_KEY or "")
     base_url = cfg.get("base_url") or (settings.OPENAI_BASE_URL or None)
@@ -112,12 +124,21 @@ async def _vision_openai(model: str, cfg: dict, image_b64: str, prompt: str) -> 
         }
     ]
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=512)
+    u = getattr(r, "usage", None)
+    await log_call(
+        "openai", model or "openai-vision", method="VISION",
+        prompt_tokens=getattr(u, "prompt_tokens", None),
+        completion_tokens=getattr(u, "completion_tokens", None),
+        model=model,
+    )
     return (r.choices[0].message.content or "").strip()
 
 
 # --- Ollama (httpx) ---
 async def _chat_ollama(model: str, cfg: dict, messages: list, max_tokens: int, temperature: float) -> str:
     import httpx
+
+    from app.core.api_tracker import log_call
 
     base = (cfg.get("base_url") or "http://localhost:11434").rstrip("/")
     async with httpx.AsyncClient(timeout=120.0) as client:
@@ -127,6 +148,13 @@ async def _chat_ollama(model: str, cfg: dict, messages: list, max_tokens: int, t
         )
         r.raise_for_status()
         data = r.json()
+    # Ollama: prompt_eval_count / eval_count (output).
+    await log_call(
+        "ollama", model or "ollama", method="CHAT",
+        prompt_tokens=data.get("prompt_eval_count"),
+        completion_tokens=data.get("eval_count"),
+        model=model,
+    )
     return (data.get("message", {}).get("content") or "").strip()
 
 
@@ -176,6 +204,16 @@ async def _chat_anthropic(model: str, cfg: dict, messages: list, max_tokens: int
     if system:
         req["system"] = system
     msg = await c.messages.create(**req)
+    # Anthropic msg.usage: input_tokens / output_tokens.
+    u = getattr(msg, "usage", None)
+    from app.core.api_tracker import log_call
+
+    await log_call(
+        "anthropic", model or "anthropic", method="CHAT",
+        prompt_tokens=getattr(u, "input_tokens", None),
+        completion_tokens=getattr(u, "output_tokens", None),
+        model=model,
+    )
     return (msg.content[0].text if msg.content else "").strip()
 
 
@@ -237,6 +275,15 @@ async def _chat_openai_compatible(
         base_url = "https://api.x.ai/v1"
     c = AsyncOpenAI(api_key=api_key, base_url=base_url)
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
+    u = getattr(r, "usage", None)
+    from app.core.api_tracker import log_call
+
+    await log_call(
+        _pt, model or _pt, method="CHAT",
+        prompt_tokens=getattr(u, "prompt_tokens", None),
+        completion_tokens=getattr(u, "completion_tokens", None),
+        model=model,
+    )
     return (r.choices[0].message.content or "").strip()
 
 

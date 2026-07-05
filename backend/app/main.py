@@ -80,6 +80,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Cost-tracking middleware: выставляет current_user_id в contextvars
+# из Bearer-токена, чтобы все api_call_log записи в рамках HTTP-запроса
+# (DaData/LLM/2GIS вызванные из эндпоинтов, не celery) привязывались к юзеру.
+@app.middleware("http")
+async def api_tracker_context_middleware(request, call_next):
+    from app.core.api_tracker import reset_call_context, set_call_context
+    from app.core.dependencies import get_optional_user_id
+
+    reset_call_context()
+    # Пытаемся извлечь user_id без жёсткой ошибки (токен может отсутствовать).
+    try:
+        # get_optional_user_id — синхронная по сути (JWT decode), но объявлена
+        # async. Вызываем через await, передаём credentials через Depends-механику
+        # не получится из middleware — поэтому вручную читаем заголовок.
+        from fastapi.security import HTTPBearer
+
+        creds = await HTTPBearer(auto_error=False).__call__(request)
+        if creds is not None:
+            uid = await get_optional_user_id(creds)
+            if uid is not None:
+                set_call_context(user_id=uid)
+    except Exception:
+        # Любая ошибка извлечения токена НЕ должна валить запрос.
+        pass
+
+    return await call_next(request)
+
 # Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)

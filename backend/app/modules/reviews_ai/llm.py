@@ -774,6 +774,8 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
 
     import httpx
 
+    from app.core.api_tracker import log_call
+
     results: list[list[float]] = []
     async with httpx.AsyncClient(timeout=60.0) as client:
         for i in range(0, len(texts), EMBEDDING_BATCH_SIZE):
@@ -789,11 +791,29 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
                 )
             except httpx.HTTPError as e:
                 logger.warning("embed_texts: HTTP error %s", e)
+                await log_call(
+                    "openai_emb", model, method="POST", ok=False,
+                    error=str(e), model=model,
+                )
                 return None
             if resp.status_code != 200:
                 logger.warning("embed_texts: status %d body=%s", resp.status_code, resp.text[:200])
+                await log_call(
+                    "openai_emb", model, method="POST",
+                    http_status=resp.status_code, ok=False,
+                    error=f"http {resp.status_code}", model=model,
+                )
                 return None
-            data = resp.json().get("data") or []
+            # Embeddings тарифицируются по prompt_tokens (input).
+            j = resp.json()
+            u = (j or {}).get("usage") or {}
+            await log_call(
+                "openai_emb", model, method="POST",
+                http_status=200, ok=True,
+                prompt_tokens=u.get("prompt_tokens"),
+                model=model,
+            )
+            data = j.get("data") or []
             for item in data:
                 vec = item.get("embedding")
                 if isinstance(vec, list):
