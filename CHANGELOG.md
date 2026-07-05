@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.120.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.119.0...v1.120.0) (2026-07-05)
+
+
+### Bug Fixes
+
+* **backend/maps:** close auth holes on /maps/admin/* and /maps/insights,*/pain-tags ([3fdb2e4](https://github.com/moiseev1991-stack/Colaba/commit/3fdb2e454f7d61436f6e9d2a3bb0c6e255b5bfc4))
+* **frontend/sidebar:** show 'Провайдеры карт' in all modules (Leads/Tenders/SEO) ([4c4e79e](https://github.com/moiseev1991-stack/Colaba/commit/4c4e79e186c79b6a641609338d4c6c9ba8f65642))
+
+
+### Features
+
+* **backend/email:** 3 providers (Postbox/SES/Hyvor) with fallback + cost_per_mail ([7156364](https://github.com/moiseev1991-stack/Colaba/commit/71563647b299930d75404a9f3a5d79061225dc7b))
+* **backend/maps:** admin UI for maps providers config (2GIS/Yandex/Google) ([3c7a3ee](https://github.com/moiseev1991-stack/Colaba/commit/3c7a3eeef6221ecdf68ee8d773e9fbb0098be7f2))
+* **backend/outreach:** CRUD for user outreach templates (/outreach/templates) ([24a5bac](https://github.com/moiseev1991-stack/Colaba/commit/24a5baccc5f1c2acd76e0d9ebca1ab240f3d2766))
+* **backend:** api_call_log model + provider_pricing + config flag ([3865892](https://github.com/moiseev1991-stack/Colaba/commit/38658921889fc65173806594d1090d58dfd7eb2a))
+* **backend:** api_tracker + integration into providers/llm/email ([fcb3313](https://github.com/moiseev1991-stack/Colaba/commit/fcb3313a7203427fc19d307e1c60d707bc16f933))
+* **frontend/email:** providers cards UI + cost per mail + priority ([ebc8fd1](https://github.com/moiseev1991-stack/Colaba/commit/ebc8fd19bdb88451bdd8252c4a16b3db15b6e478))
+* **monitor:** real api_call_log data replacing mock + summary/by-search ([60f8a98](https://github.com/moiseev1991-stack/Colaba/commit/60f8a986295154f632a6ba86a06fd4d25513efcb))
+
 # [1.119.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.118.0...v1.119.0) (2026-06-28)
 
 
