@@ -2,7 +2,7 @@
 
 **Последнее обновление:** 5 июля 2026
 **Текущая версия:** v1.119.0
-**Коммитов:** 852 | **Миграций Alembic:** 045 | **Моделей БД:** 47+
+**Коммитов:** 852 | **Миграций Alembic:** 046 | **Моделей БД:** 49+
 
 ---
 
@@ -237,6 +237,12 @@
 
 - ✅ **3 email-провайдера с fallback**: Yandex Cloud Postbox (основной), Amazon SES (резервный), Hyvor Relay (собственный сервер) в таблице `email_provider_config` (миграция 045). При сбое основного — авто-переход на следующий. Цена за письмо per-provider задаётся в UI и учитывается в `api_call_log`.
 - UI: `/app/settings/email-providers` — 3 карточки с приоритетами, тестом подключения и полем стоимости. См. `docs/guides/EMAIL_PROVIDERS.md`.
+
+### Недавно добавлено (2026-07-05, ветка `feature/multichannel-outreach`)
+
+- ✅ **Мультиканальная рассылка**: добавлены Telegram (warm-бот через Bot API) и MAX (early-stage заглушка) к существующим Email + WhatsApp. Настройки всех каналов — на единой странице `/app/settings/channels`.
+- Telegram: webhook для приёма `/start`, таблица `telegram_subscribers` (chat_id ↔ phone/email), КП отправляется в чат тем лидам, кто в боте. См. `docs/guides/MULTICHANNEL_OUTREACH.md`.
+- Юридическое предупреждение о ФЗ-38 ст.18 (реклама, маркировка, штрафы) в UI.
 
 ### Что сознательно отложено
 
