@@ -10,6 +10,7 @@ from app.modules.outreach import schemas, service
 from app.modules.outreach.kp_router import router as kp_router
 from app.modules.outreach.site_leads_router import router as site_leads_router
 from app.modules.outreach.templates_router import router as templates_router
+from app.modules.outreach.channels_router import router as channels_router
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
 
@@ -22,6 +23,13 @@ router.include_router(site_leads_router)
 # Раньше фронт стучался сюда вхолостую и работал через localStorage-фолбэк;
 # теперь backend-контракт реализован (миграция 043).
 router.include_router(templates_router)
+# Каналы рассылки /outreach/channels-settings/* (telegram/whatsapp/max):
+# настройки каналов с тестом подключения.
+router.include_router(channels_router)
+# Telegram webhook + setup: /outreach/telegram/* (приём Updates от Bot API,
+# setup webhook). Mount без префикса внутри /outreach → /outreach/telegram/*.
+from app.modules.outreach.telegram_router import router as telegram_router
+router.include_router(telegram_router)
 
 
 @router.get("/config", response_model=schemas.SmtpConfigResponse)

@@ -221,6 +221,72 @@ def pick_first_mobile_phone(raw_phones: list | None) -> str | None:
     return None
 
 
+async def collect_telegram_chat_ids(
+    db: AsyncSession,
+    company_ids: list[int],
+    emails_by_company: dict[int, list[str]],
+    phones_by_company: dict[int, list[str]],
+) -> dict[int, str]:
+    """Для каждой компании находит chat_id в telegram_subscribers.
+
+    Связь идёт по нормализованному телефону (company.phone → subscriber.phone)
+    или по email. Лид должен был нажать /start в боте и (опционально) пошарить
+    контакт — тогда его телефон попал в telegram_subscribers.phone.
+
+    Возвращает dict[company_id → str(chat_id)]. Если для компании нет
+    подходящего подписчика — она не попадает в dict (caller это понимает
+    как None → skipped(no_telegram_chat_id)).
+    """
+    if not company_ids:
+        return {}
+
+    # Собираем все возможные телефоны и email'ы компаний.
+    all_phones: set[str] = set()
+    all_emails: set[str] = set()
+    # И обратный индекс: phone/email → list[company_id]
+    contact_to_company: dict[str, list[int]] = {}
+
+    for cid in company_ids:
+        cid_int = int(cid)
+        for raw_phone in (phones_by_company.get(cid_int) or []):
+            digits = normalize_phone(str(raw_phone) if raw_phone else None)
+            if digits and is_russian_mobile(digits):
+                all_phones.add(digits)
+                contact_to_company.setdefault(digits, []).append(cid_int)
+        for raw_email in (emails_by_company.get(cid_int) or []):
+            e = str(raw_email).strip().lower()
+            if e and "@" in e:
+                all_emails.add(e)
+                contact_to_company.setdefault(e, []).append(cid_int)
+
+    if not all_phones and not all_emails:
+        return {}
+
+    from app.models.telegram_subscriber import TelegramSubscriber
+
+    # Один SELECT по всем subscriber'ам с совпадающим phone или email.
+    from sqlalchemy import or_
+
+    conditions = []
+    if all_phones:
+        conditions.append(TelegramSubscriber.phone.in_(list(all_phones)))
+    if all_emails:
+        conditions.append(TelegramSubscriber.email.in_(list(all_emails)))
+    stmt = select(TelegramSubscriber).where(or_(*conditions))
+    rows = (await db.execute(stmt)).scalars().all()
+
+    out: dict[int, str] = {}
+    for sub in rows:
+        chat_id = str(sub.chat_id)
+        # Сопоставляем по телефону (приоритет) или email.
+        for key in ((sub.phone,) if sub.phone else ()) + ((sub.email.lower(),) if sub.email else ()):
+            for cid in contact_to_company.get(key, []):
+                # Не перезаписываем уже найденный chat_id (первый выигрывает).
+                if cid not in out:
+                    out[cid] = chat_id
+    return out
+
+
 async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int | None:
     row = (
         await db.execute(
@@ -355,7 +421,20 @@ async def enqueue_job_send(
         phones_by_company = await collect_company_phones(
             db, company_ids_for_lookup
         )
+    # Telegram chat_id'ы — только если выбран канал telegram. Ищем по
+    # company.phone → telegram_subscribers.phone (лид нажал /start и
+    # пошарил контакт). Возвращает dict[company_id → chat_id].
+    tg_chat_ids_by_company: dict[int, str] = {}
+    if "telegram" in channels:
+        tg_chat_ids_by_company = await collect_telegram_chat_ids(
+            db, company_ids_for_lookup, emails_by_company, phones_by_company
+        )
     wa_configured = whatsapp_greenapi.is_configured()
+    # Telegram configured? — true если env TELEGRAM_BOT_TOKEN задан или
+    # бот-конфиг заполнен в channel_config (telegram_bot._get_bot_token_sync).
+    from app.modules.outreach import telegram_bot
+
+    tg_configured = telegram_bot.is_configured()
 
     created = 0
     queued = 0
@@ -371,6 +450,9 @@ async def enqueue_job_send(
                 recipient = pick_first_email(emails_by_company.get(int(cid)))
             elif channel == "whatsapp":
                 recipient = pick_first_mobile_phone(phones_by_company.get(int(cid)))
+            elif channel == "telegram":
+                # chat_id ищется по phone/email компании в telegram_subscribers.
+                recipient = tg_chat_ids_by_company.get(int(cid))
             else:
                 recipient = None
             status = "queued"
@@ -396,6 +478,21 @@ async def enqueue_job_send(
                     error_message = (
                         "У компании нет мобильного телефона РФ — WhatsApp "
                         "не примет городские/зарубежные номера."
+                    )
+            elif channel == "telegram":
+                if not tg_configured:
+                    status = "skipped"
+                    error_code = "telegram_not_configured"
+                    error_message = (
+                        "Telegram-бот не настроен — задайте TELEGRAM_BOT_TOKEN "
+                        "в env или в /app/settings/channels."
+                    )
+                elif not recipient:
+                    status = "skipped"
+                    error_code = "no_telegram_chat_id"
+                    error_message = (
+                        "Лид ещё не нажал /start в нашем Telegram-боте — "
+                        "бот не может написать первым (ограничение Bot API)."
                     )
             else:
                 status = "skipped"

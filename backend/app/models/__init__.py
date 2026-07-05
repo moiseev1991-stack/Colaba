@@ -38,6 +38,8 @@ from app.models.user_filter_preset import UserFilterPreset
 from app.models.user_outreach_template import UserOutreachTemplate
 from app.models.api_call_log import ApiCallLog
 from app.models.email_provider_config import EmailProviderConfig
+from app.models.channel_config import ChannelConfig
+from app.models.telegram_subscriber import TelegramSubscriber
 from app.models.company_ai_analysis import CompanyAiAnalysis
 from app.models.company_outreach_draft import CompanyOutreachDraft
 from app.models.company_legal import CompanyLegal
@@ -90,6 +92,8 @@ __all__ = [
     "UserOutreachTemplate",
     "ApiCallLog",
     "EmailProviderConfig",
+    "ChannelConfig",
+    "TelegramSubscriber",
     "CompanyAiAnalysis",
     "CompanyOutreachDraft",
     "CompanyLegal",

@@ -184,9 +184,12 @@ async def _send_one(db, send_row) -> None:
     if send_row.channel == "whatsapp":
         await _send_one_whatsapp(send_row, draft)
         return
+    if send_row.channel == "telegram":
+        await _send_one_telegram(send_row, draft)
+        return
 
-    # Telegram / MAX и любые будущие каналы — enqueue для них пишет
-    # skipped, до сюда дойти не должно. Если дошли — фиксируем failed.
+    # MAX и любые будущие каналы — enqueue для них пишет skipped, до сюда
+    # дойти не должно. Если дошли — фиксируем failed.
     kp_send_service.mark_send_failed(
         send_row,
         error_message="Канал ещё не подключен.",
@@ -276,6 +279,60 @@ async def _send_one_whatsapp(send_row, draft) -> None:
         kp_send_service.mark_send_failed(
             send_row,
             error_message=f"Внутренняя ошибка WhatsApp-отправки: {e}"[:1000],
+            error_code="internal",
+        )
+
+
+def _compose_telegram_text(draft) -> str:
+    """Текст КП для Telegram: subject + body, HTML-формат, лимит 4000 символов.
+
+    Telegram поддерживает parse_mode='HTML' (теги <b>, <i>, <a>, <br>).
+    Лимит 4096, режем с запасом на 4000.
+    """
+    body_limit = 3800  # запас на subject + разделители + подпись
+    subject = (draft.subject or "Предложение").strip()
+    body = (draft.body or "").strip()
+    if len(body) > body_limit:
+        body = body[:body_limit].rstrip() + "…"
+    # Простой markdown-→-HTML: **жирный** → <b>жирный</b>, переносы сохраняем.
+    import re
+
+    body_html = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", body)
+    return f"<b>{_escape_html(subject)}</b>\n\n{body_html}"
+
+
+def _escape_html(text: str) -> str:
+    """Экранирует <, >, & для Telegram HTML parse_mode."""
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+async def _send_one_telegram(send_row, draft) -> None:
+    from app.modules.outreach import telegram_bot
+
+    text = _compose_telegram_text(draft)
+    try:
+        message_id = await telegram_bot.send_text_message(
+            send_row.recipient, text, parse_mode="HTML"
+        )
+        kp_send_service.mark_send_sent(send_row, provider_message_id=message_id)
+    except telegram_bot.TelegramSendError as e:
+        kp_send_service.mark_send_failed(
+            send_row, error_message=e.message, error_code=e.code
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception(
+            "send_kp_batch_task: unexpected TG error send_id=%s draft_id=%s: %s",
+            send_row.id,
+            send_row.draft_id,
+            e,
+        )
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message=f"Внутренняя ошибка Telegram-отправки: {e}"[:1000],
             error_code="internal",
         )
 
