@@ -220,6 +220,9 @@ export interface KpJobItem {
    *  фронтом как fallback-канал «нет email → wa.me/{phone}». Нормализация
    *  на фронте (utils/phone). */
   company_phone: string | null;
+  /** chat_id Telegram-подписчика (если лид нажал /start в нашем боте и
+   *  его phone/email совпал с компанией). null → TG-канал недоступен. */
+  recipient_telegram: string | null;
   /** Статус последней email-отправки этого draft'а. Используется чтобы
    *  RowSendButton после reload показывал ✓ Отправлено и не давал
    *  случайно отправить повторно. null — ещё не пытались. */

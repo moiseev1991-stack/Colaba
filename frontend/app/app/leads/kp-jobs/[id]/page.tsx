@@ -772,10 +772,10 @@ const CHANNEL_DEFS: ChannelDef[] = [
     key: 'telegram',
     label: 'Telegram',
     Icon: Send,
-    working: false,
+    working: true,
     priority: 3,
-    eligible: () => false,  // нет коннектора, никто не eligible
-    emptyHint: 'Коннектор Telegram-бота в работе.',
+    eligible: (it: KpJobItem) => !!it.recipient_telegram,
+    emptyHint: 'Лид должен нажать /start в нашем Telegram-боте.',
   },
   {
     key: 'max',

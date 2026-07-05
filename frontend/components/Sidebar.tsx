@@ -27,6 +27,7 @@ import {
   Check,
   ShieldCheck,
   MapPin,
+  Send,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
@@ -81,6 +82,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           { href: '/app/leads/blacklist', label: 'Блеклист', icon: Ban },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
           { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
+          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send },
         ],
       },
     ],
@@ -102,6 +104,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           { href: '/app/gos/settings', label: 'Параметры', icon: Settings },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
           { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
+          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send },
         ],
       },
     ],
@@ -124,6 +127,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           { href: '/settings/providers', label: 'Поисковые провайдеры', icon: Settings },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
           { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
+          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send },
           { href: '/settings/blacklist', label: 'Блеклист', icon: Ban },
         ],
       },
