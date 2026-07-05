@@ -34,7 +34,17 @@ def sqlalchemy_func_sum_mention():
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.dependencies import get_current_user_id
+from app.core.dependencies import get_current_user_id, require_superuser
+
+
+async def _superuser_id(user=Depends(require_superuser)) -> int:
+    """Зависимость: требует суперпользователя и возвращает его id.
+
+    Используется в admin-handler'ах, которым нужен user_id в теле функции
+    (например для проверки владения). Семантически эквивалентно
+    `Depends(require_superuser)` + `user.id`.
+    """
+    return user.id
 from app.core.rate_limit import limiter
 from app.models.maps import Company, MapSearch, Review
 from app.models.pain_tag import PainTag
@@ -67,6 +77,12 @@ from app.modules.maps.schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/maps", tags=["maps"])
+
+# Подключаем под-роутер настроек провайдеров карт (2GIS / Yandex / Google).
+# Эндпоинты живут под /maps/providers-settings/*.
+from app.modules.maps.providers_settings_router import router as providers_settings_router  # noqa: E402
+
+router.include_router(providers_settings_router)
 
 
 # ---------------------------------------------------------------------------
@@ -1187,6 +1203,7 @@ async def get_niche_reviews_trend(
 @limiter.limit("30/minute")
 async def list_insights_niches(
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """§4 ТЗ 2026-06-10: список ниш с количеством компаний — для селектора
@@ -1220,6 +1237,7 @@ async def get_demand_index(
     # «Сравнение с нишей: боли клиентов». 'positive' = «Сравнение с нишей:
     # сильные стороны / что хвалят».
     sentiment: str = Query(default="negative", regex="^(negative|positive)$"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """§4 ТЗ 2026-06-10: индекс спроса по нише+городу.
@@ -1779,7 +1797,7 @@ async def admin_discover_websites(
     request: Request,
     search_id: int | None = Query(default=None),
     limit: int = Query(default=500, ge=1, le=5000),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk-постановка discover_company_website по website-лидам без website.
@@ -1824,7 +1842,7 @@ async def admin_queue_legal_enrichment(
     request: Request,
     search_id: int | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=2000),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Ставит Celery-таски на обогащение юр.данными из DaData.
@@ -1873,7 +1891,7 @@ async def admin_queue_company_descriptions(
     request: Request,
     search_id: int | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=2000),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Ставит Celery-таски на генерацию ai_description для website-лидов.
@@ -2002,7 +2020,7 @@ async def admin_bulk_enrich_team(
     request: Request,
     search_id: int | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=2000),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Ставит Celery-таски enrich_company_team для компаний с website,
@@ -2106,7 +2124,7 @@ async def admin_recompute_lead_temperature(
     request: Request,
     only_null: bool = Query(default=True),
     limit: int = Query(default=2000, ge=1, le=10000),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Одноразовый пересчёт lead_temperature для пачки компаний.
@@ -2152,7 +2170,7 @@ async def admin_recluster_niche(
         regex="^(negative|positive)$",
         description="negative = боли, positive = сильные стороны",
     ),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Ручной триггер AI-разбора болей/сильных сторон для ниши/города поиска.
@@ -2261,7 +2279,7 @@ async def admin_recluster_niche(
 @limiter.limit("2/minute")
 async def admin_soften_pain_labels(
     request: Request,
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Применяет _soften_pain_label ко всем существующим PainTag в БД.
@@ -2303,7 +2321,7 @@ async def admin_soften_pain_labels(
 async def admin_recluster_niche_diagnostic(
     request: Request,
     search_id: int = Query(...),
-    user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(_superuser_id),
     db: AsyncSession = Depends(get_db),
 ):
     """СИНХРОННЫЙ recluster для отладки. Не ставит задачу в Celery — выполняет
@@ -2523,7 +2541,7 @@ async def admin_recompute_website_score(
     request: Request,
     only_null: bool = Query(default=True),
     limit: int = Query(default=2000, ge=1, le=10000),
-    user_id: int = Depends(get_current_user_id),
+    _: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Одноразовый пересчёт website_lead_score (блок 4).
@@ -2595,6 +2613,7 @@ async def list_pain_tags(
     # эндпоинта обратно-совместимо для всех существующих фронт-вызовов
     # без параметра sentiment.
     sentiment: str = Query(default="negative", regex="^(negative|positive)$"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Активные pain_tags для (niche, city, sentiment). Без city — глобальные теги ниши.
@@ -2693,9 +2712,22 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     провайдер-конкретным health'ам (например /admin → DaData ping)
     чтобы не задерживать общий dashboard и не есть free-tier лимиты.
     """
-    twogis = "ok" if settings.TWOGIS_API_KEY else "no_api_key"
-    yandex_maps = "ok" if settings.USE_PROXY else "no_proxy"
-    google_maps = "ok" if (settings.SERPAPI_KEY or "").strip() else "no_api_key"
+    twogis_settings = "ok" if settings.TWOGIS_API_KEY else "no_api_key"
+    yandex_maps_settings = "ok" if settings.USE_PROXY else "no_proxy"
+    google_maps_settings = "ok" if (settings.SERPAPI_KEY or "").strip() else "no_api_key"
+
+    # Карта-провайдеры (2GIS / Yandex / Google) — приоритет за БД-настройками,
+    # fallback на env (обратная совместимость со старыми стендами без UI-настроек).
+    try:
+        from app.modules.maps.providers_settings_service import get_status as _get_maps_status
+        maps_status = await _get_maps_status(db)
+        twogis = maps_status.get("twogis", twogis_settings)
+        yandex_maps = maps_status.get("yandex_maps", yandex_maps_settings)
+        google_maps = maps_status.get("google_maps", google_maps_settings)
+    except Exception:
+        twogis = twogis_settings
+        yandex_maps = yandex_maps_settings
+        google_maps = google_maps_settings
 
     # DaData
     dadata = "ok" if (settings.DADATA_API_KEY or "").strip() else "no_api_key"
