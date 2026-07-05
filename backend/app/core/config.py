@@ -79,6 +79,34 @@ class Settings(BaseSettings):
     PROXY_URL: str = Field(default="", description="Single proxy: http://host:port or socks5://host:port")
     PROXY_LIST: str = Field(default="", description="Comma-separated proxy list for rotation")
 
+    # Cost tracking (учёт внешних API-вызовов в таблице api_call_log)
+    EXTERNAL_API_TRACKING_ENABLED: bool = Field(
+        default=True,
+        description="Включить логирование вызовов внешних API в api_call_log.",
+    )
+    EXTERNAL_API_TRACKING_SAMPLE_RATE: float = Field(
+        default=1.0,
+        description="Доля вызовов для логирования (0.0–1.0). 1.0 = все.",
+    )
+
+    @field_validator("EXTERNAL_API_TRACKING_ENABLED", mode="before")
+    @classmethod
+    def parse_external_api_tracking_enabled(cls, v: Union[bool, str]) -> bool:
+        if v in (True, "true", "1", "yes"):
+            return True
+        if v in (False, "false", "0", "no", "", None):
+            return False
+        return bool(v)
+
+    @field_validator("EXTERNAL_API_TRACKING_SAMPLE_RATE", mode="before")
+    @classmethod
+    def parse_external_api_tracking_sample_rate(cls, v) -> float:
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return 1.0
+        return max(0.0, min(1.0, f))
+
     # External APIs
     SERPAPI_KEY: str = Field(default="", description="SerpAPI key (optional, deprecated)")
     YANDEX_XML_FOLDER_ID: str = Field(default="", description="Yandex Cloud: идентификатор каталога (yandex.cloud)")
