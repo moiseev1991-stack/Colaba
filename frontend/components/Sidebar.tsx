@@ -80,6 +80,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           { href: '/app/leads/settings', label: 'Параметры поиска', icon: Settings },
           { href: '/app/leads/blacklist', label: 'Блеклист', icon: Ban },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
+          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
         ],
       },
     ],
@@ -100,6 +101,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
         items: [
           { href: '/app/gos/settings', label: 'Параметры', icon: Settings },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
+          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
         ],
       },
     ],
@@ -121,6 +123,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
         items: [
           { href: '/settings/providers', label: 'Поисковые провайдеры', icon: Settings },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
+          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
           { href: '/settings/blacklist', label: 'Блеклист', icon: Ban },
         ],
       },
