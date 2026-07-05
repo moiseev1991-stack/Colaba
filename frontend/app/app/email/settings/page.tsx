@@ -6,8 +6,6 @@ import { apiClient } from '@/client';
 import {
   getEmailSettings,
   updateEmailSettings,
-  testSmtpConnection,
-  testHyvorConnection,
   getEmailStatus,
   type EmailSettingsDTO,
 } from '@/src/services/api/emailSettings';
@@ -61,8 +59,6 @@ export default function EmailSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<EmailSettingsDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [testEmail, setTestEmail] = useState('');
-  const [testMsg, setTestMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -100,18 +96,11 @@ export default function EmailSettingsPage() {
     setSaving(true);
     setError(null);
     try {
+      // На этой странице редактируются только IMAP + подпись КП + DNS.
+      // Настройки провайдеров отправки (Postbox/SES/Hyvor) вынесены
+      // на отдельную страницу /app/settings/email-providers — туда и
+      // отправляем поля smtp_*/hyvor_* не нужно.
       const updated = await updateEmailSettings({
-        provider_type: form.provider_type,
-        hyvor_api_url: form.hyvor_api_url,
-        hyvor_api_key: form.hyvor_api_key,
-        hyvor_webhook_secret: form.hyvor_webhook_secret,
-        smtp_host: form.smtp_host,
-        smtp_port: form.smtp_port,
-        smtp_user: form.smtp_user,
-        smtp_password: form.smtp_password,
-        smtp_use_ssl: form.smtp_use_ssl,
-        smtp_from_email: form.smtp_from_email,
-        smtp_from_name: form.smtp_from_name,
         reply_to_email: form.reply_to_email,
         imap_host: form.imap_host,
         imap_port: form.imap_port,
@@ -131,42 +120,6 @@ export default function EmailSettingsPage() {
       setError(e instanceof Error ? e.message : 'Ошибка сохранения');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleTestSmtp = async () => {
-    if (!testEmail.trim()) {
-      setTestMsg('Укажите email для теста');
-      return;
-    }
-    setTestMsg(null);
-    try {
-      const r = await testSmtpConnection(testEmail.trim());
-      setTestMsg(r.success ? r.message : r.message);
-      const st = await getEmailStatus();
-      setStatus(st);
-      if (me?.is_superuser) {
-        const cfg = await getEmailSettings();
-        setForm(cfg);
-      }
-    } catch (e) {
-      setTestMsg(e instanceof Error ? e.message : 'Ошибка теста');
-    }
-  };
-
-  const handleTestHyvor = async () => {
-    setTestMsg(null);
-    try {
-      const r = await testHyvorConnection();
-      setTestMsg(r.success ? r.message : r.message);
-      const st = await getEmailStatus();
-      setStatus(st);
-      if (me?.is_superuser) {
-        const cfg = await getEmailSettings();
-        setForm(cfg);
-      }
-    } catch (e) {
-      setTestMsg(e instanceof Error ? e.message : 'Ошибка теста');
     }
   };
 
@@ -256,162 +209,34 @@ export default function EmailSettingsPage() {
 
       {me?.is_superuser && form && (
         <>
-          <CardV2 as="section" className="mb-6 p-5">
-            <h2
-              className="font-display font-semibold tracking-tight text-[15px] mb-4 flex items-center gap-2"
-              style={{ color: 'hsl(var(--text))' }}
-            >
-              <Mail className="h-4 w-4 text-brand-600 dark:text-brand-400" />
-              Провайдер отправки
-            </h2>
-            <div className="flex gap-4 mb-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="provider"
-                  checked={form.provider_type === 'hyvor'}
-                  onChange={() => updateField('provider_type', 'hyvor')}
-                />
-                Hyvor Relay
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="provider"
-                  checked={form.provider_type === 'smtp'}
-                  onChange={() => updateField('provider_type', 'smtp')}
-                />
-                Облачный SMTP
-              </label>
-            </div>
-
-            {form.provider_type === 'hyvor' && (
-              <div className="space-y-3">
-                <div>
-                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>API URL</label>
-                  <input
-                    className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                    value={form.hyvor_api_url || ''}
-                    onChange={(e) => updateField('hyvor_api_url', e.target.value)}
-                    placeholder="http://hyvor-relay:8000"
-                  />
-                </div>
-                <div>
-                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>API Key</label>
-                  <input
-                    type="password"
-                    className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                    value={form.hyvor_api_key}
-                    onChange={(e) => updateField('hyvor_api_key', e.target.value)}
-                    placeholder="***"
-                  />
-                </div>
-                <div>
-                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Webhook secret</label>
-                  <input
-                    type="password"
-                    className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                    value={form.hyvor_webhook_secret}
-                    onChange={(e) => updateField('hyvor_webhook_secret', e.target.value)}
-                  />
-                </div>
-                <ButtonV2 variant="secondary" size="sm" onClick={handleTestHyvor}>
-                  Проверить подключение к Hyvor
-                </ButtonV2>
-              </div>
-            )}
-
-            {form.provider_type === 'smtp' && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>SMTP host</label>
-                    <input
-                      className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                      value={form.smtp_host || ''}
-                      onChange={(e) => updateField('smtp_host', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Порт</label>
-                    <input
-                      type="number"
-                      className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                      value={form.smtp_port ?? ''}
-                      onChange={(e) => updateField('smtp_port', parseInt(e.target.value, 10) || 0)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Пользователь</label>
-                    <input
-                      className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                      value={form.smtp_user || ''}
-                      onChange={(e) => updateField('smtp_user', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Пароль</label>
-                    <input
-                      type="password"
-                      className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                      value={form.smtp_password}
-                      onChange={(e) => updateField('smtp_password', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.smtp_use_ssl}
-                    onChange={(e) => updateField('smtp_use_ssl', e.target.checked)}
-                  />
-                  SSL/TLS (порт 465) — снимите для STARTTLS на 587
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>From email</label>
-                    <input
-                      className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                      value={form.smtp_from_email || ''}
-                      onChange={(e) => updateField('smtp_from_email', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>From name</label>
-                    <input
-                      className={INPUT_CLS}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                      value={form.smtp_from_name || ''}
-                      onChange={(e) => updateField('smtp_from_name', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={LABEL_CLS} style={{ color: 'hsl(var(--muted))' }}>Кому отправить тест</label>
-                  <input
-                    className={`${INPUT_CLS} mb-2`}
-                    style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
-                    value={testEmail}
-                    onChange={(e) => setTestEmail(e.target.value)}
-                    placeholder="you@example.com"
-                  />
-                  <ButtonV2 variant="secondary" size="sm" onClick={handleTestSmtp}>
-                    Отправить тестовое письмо
-                  </ButtonV2>
-                </div>
-              </div>
-            )}
-          </CardV2>
+          {/* Баннер-ссылка на новую страницу провайдеров отправки.
+              Раньше тут была форма с radio (Hyvor/SMTP) — она дублировала
+              /app/settings/email-providers. Теперь настройки каналов
+              отправки (Postbox/SES/Hyvor с fallback и ценой за письмо)
+              живут отдельно; тут только ссылка. */}
+          <Link
+            href="/app/settings/email-providers"
+            className="mb-6 flex items-center justify-between gap-3 rounded-v2-sm border px-4 py-3 transition-colors hover:bg-[hsl(var(--surface-2))]"
+            style={{
+              borderColor: 'hsl(var(--border))',
+              background: 'hsl(var(--surface))',
+            }}
+          >
+            <span className="flex items-center gap-3">
+              <Mail className="h-5 w-5 shrink-0" style={{ color: 'var(--brand)' }} />
+              <span>
+                <span className="block font-medium" style={{ color: 'hsl(var(--text))' }}>
+                  Провайдеры отправки (Postbox / SES / Hyvor)
+                </span>
+                <span className="block text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                  Каналы отправки писем с автоматическим резервом и ценой за письмо →
+                </span>
+              </span>
+            </span>
+            <span className="text-sm font-medium" style={{ color: 'var(--brand)' }}>
+              Открыть →
+            </span>
+          </Link>
 
           <CardV2 as="section" className="mb-6 p-5">
             <h2
@@ -685,10 +510,6 @@ export default function EmailSettingsPage() {
               Сохранить
             </ButtonV2>
           </div>
-
-          {testMsg && (
-            <p className="mt-4 text-sm" style={{ color: 'hsl(var(--text))' }}>{testMsg}</p>
-          )}
         </>
       )}
     </div>
