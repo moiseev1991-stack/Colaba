@@ -110,10 +110,11 @@ export function RequestMonitorTable() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700/80">
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Provider</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Endpoint</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Method</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">URL</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Response Time</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Phone</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Time</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Cost ₽</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">OK</th>
               </tr>
             </thead>
@@ -121,16 +122,19 @@ export function RequestMonitorTable() {
               {[...Array(SKELETON_ROWS)].map((_, i) => (
                 <tr key={i} className="border-b border-gray-700/50">
                   <td className="px-4 py-3">
-                    <div className="monitor-skeleton-cell h-4 w-14 rounded" />
+                    <div className="monitor-skeleton-cell h-4 w-16 rounded" />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="monitor-skeleton-cell h-4 w-48 rounded" />
+                    <div className="monitor-skeleton-cell h-4 w-40 rounded" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="monitor-skeleton-cell h-4 w-12 rounded" />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="monitor-skeleton-cell h-4 w-28 rounded" />
+                    <div className="monitor-skeleton-cell h-4 w-12 rounded" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="monitor-skeleton-cell h-4 w-14 rounded" />
                   </td>
                   <td className="px-4 py-3">
                     <div className="monitor-skeleton-cell h-4 w-10 rounded" />
@@ -159,10 +163,11 @@ export function RequestMonitorTable() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700/80">
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Provider</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Endpoint</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Method</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">URL</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Response Time</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Phone</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Time</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Cost ₽</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">OK</th>
               </tr>
             </thead>
@@ -172,12 +177,23 @@ export function RequestMonitorTable() {
                   key={r.id}
                   className="border-b border-gray-700/50 transition-colors duration-200 hover:bg-gray-800/30"
                 >
-                  <td className="px-4 py-3 text-sm font-medium text-gray-200">{r.method}</td>
-                  <td className="px-4 py-3 text-sm text-gray-300 truncate max-w-[240px]" title={r.url}>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-200">
+                    <span className="inline-flex items-center rounded bg-gray-700/60 px-2 py-0.5 text-xs">
+                      {r.provider || '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-300 truncate max-w-[200px]" title={r.url}>
                     {r.url}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-300 tabular-nums">{r.response_time_ms}ms</td>
-                  <td className="px-4 py-3 text-sm text-gray-400">{r.phone ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-400 font-mono">{r.method || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-300 tabular-nums text-right">
+                    {r.response_time_ms}ms
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-200 tabular-nums text-right">
+                    {r.cost_rub != null && r.cost_rub > 0
+                      ? r.cost_rub.toLocaleString('ru-RU', { maximumFractionDigits: 4 })
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium transition-colors duration-200 ${
