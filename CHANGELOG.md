@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.120.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.120.1...v1.120.2) (2026-07-05)
+
+
+### Bug Fixes
+
+* **email/postbox:** API-key auth labels + aiosmtplib 5.x STARTTLS ([ee88bfd](https://github.com/moiseev1991-stack/Colaba/commit/ee88bfd702e72bed79460fd86ea99b04773ef61f))
+
 ## [1.120.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.120.0...v1.120.1) (2026-07-05)
 
 
