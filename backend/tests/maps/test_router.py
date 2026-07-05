@@ -56,12 +56,15 @@ async def test_cities_endpoint_public():
 
 @pytest.mark.asyncio
 async def test_health_providers_public():
+    # После закрытия auth-дыр (audit 2026-07-03 §2.2) /maps/health/providers
+    # требует авторизации. Используем суперюзера.
+    _, headers = await _create_user()
     async with _client() as c:
-        r = await c.get("/api/v1/maps/health/providers")
-        assert r.status_code == 200
+        r = await c.get("/api/v1/maps/health/providers", headers=headers)
+        assert r.status_code == 200, r.text
         body = r.json()
-        assert body["twogis"] in ("ok", "no_api_key")
-        assert body["yandex_maps"] in ("ok", "no_proxy")
+        assert body["twogis"] in ("ok", "no_api_key", "disabled")
+        assert body["yandex_maps"] in ("ok", "no_proxy", "disabled")
 
 
 @pytest.mark.asyncio
@@ -75,9 +78,11 @@ async def test_niche_suggestions_filters_by_q():
 
 @pytest.mark.asyncio
 async def test_pain_tags_returns_empty_until_ai_module():
+    # /maps/pain-tags теперь требует авторизации (audit 2026-07-03 §2.2).
+    _, headers = await _create_user()
     async with _client() as c:
-        r = await c.get("/api/v1/maps/pain-tags?niche=test")
-        assert r.status_code == 200
+        r = await c.get("/api/v1/maps/pain-tags?niche=test", headers=headers)
+        assert r.status_code == 200, r.text
         assert r.json() == []
 
 
