@@ -13,10 +13,15 @@ from app.core.config import settings as app_settings
 from app.core.database import get_db
 from app.models.email_config import EmailConfig
 from app.modules.email import email_service
+from app.modules.email.providers_router import router as providers_router
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email"])
+
+# Поддерево /email/providers-settings/* — управление 3 каналами отправки
+# (postbox/ses/hyvor) с fallback и ценой за письмо.
+router.include_router(providers_router)
 
 
 # Webhook event schemas

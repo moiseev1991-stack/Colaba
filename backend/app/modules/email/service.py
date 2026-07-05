@@ -148,43 +148,306 @@ class EmailService:
         db: Optional[AsyncSession] = None,
         force_provider: Optional[str] = None,
     ) -> dict:
-        """
-        Send via Hyvor Relay or SMTP. If ``db`` is set, loads ``EmailConfig`` id=1.
-        ``force_provider``: ``hyvor`` | ``smtp`` to override auto selection.
+        """Отправка письма через fallback-цепочку провайдеров.
+
+        Новая модель (миграция 045): 3 провайдера в email_provider_config
+        (postbox/ses/hyvor), упорядоченные по priority. send_email
+        перебирает включённые+настроенные по очереди; при сбое очередного
+        канала (EmailServiceError) переходит к следующему. Если все
+        провайдеры не заданы/отключены — fallback на старую логику
+        EmailConfig.provider_type (обратная совместимость).
+
+        ``force_provider``: явно указать канал ('postbox'|'ses'|'hyvor'|
+        'smtp') — для тестовых эндпоинтов. В этом случае fallback
+        отключён.
         """
         row: Optional[EmailConfig] = None
         if db is not None:
             row = await self._get_config_row(db)
 
-        provider = force_provider
-        if not provider and row:
-            provider = row.provider_type or "smtp"
-        if not provider:
-            provider = "hyvor" if self.enabled and self.api_key else "smtp"
-
-        if provider == "hyvor":
-            return await self._send_via_hyvor(
-                to_email=to_email,
-                subject=subject,
-                body=body,
-                from_email=from_email,
-                from_name=from_name,
-                reply_to=reply_to,
-                html_body=html_body,
-                idempotency_key=idempotency_key,
-                row=row,
+        # 1) Явный override — без fallback.
+        if force_provider:
+            return await self._dispatch_provider(
+                force_provider, to_email, subject, body,
+                from_email=from_email, from_name=from_name,
+                reply_to=reply_to, html_body=html_body,
+                idempotency_key=idempotency_key, row=row, db=db,
             )
 
-        return await self._send_via_smtp(
-            to_email=to_email,
-            subject=subject,
-            body=body,
-            from_email=from_email,
-            from_name=from_name,
-            reply_to=reply_to,
-            html_body=html_body,
-            row=row,
+        # 2) Новая модель — fallback-цепочка.
+        if db is not None:
+            try:
+                from app.modules.email import providers_service
+
+                chain = await providers_service.get_active_chain(db)
+            except Exception as e:
+                logger.warning("send_email: get_active_chain failed: %s", e)
+                chain = []
+            last_error: Optional[Exception] = None
+            for prov_row in chain:
+                try:
+                    return await self._send_via_provider_row(
+                        prov_row, to_email, subject, body,
+                        from_email=from_email, from_name=from_name,
+                        reply_to=reply_to, html_body=html_body,
+                        idempotency_key=idempotency_key,
+                    )
+                except EmailServiceError as e:
+                    logger.warning(
+                        "send_email: provider %s failed (%s) — fallback to next",
+                        prov_row.provider_id, e,
+                    )
+                    last_error = e
+                    continue
+            if chain:
+                # Была цепочка, но все провайдеры упали.
+                raise EmailServiceError(
+                    f"All email providers failed. Last error: {last_error}"
+                )
+
+        # 3) Старая логика — email_config.provider_type (обратная совместимость).
+        provider = "hyvor"
+        if row and row.provider_type:
+            provider = row.provider_type
+        elif not (self.enabled and self.api_key):
+            provider = "smtp"
+
+        return await self._dispatch_provider(
+            provider, to_email, subject, body,
+            from_email=from_email, from_name=from_name,
+            reply_to=reply_to, html_body=html_body,
+            idempotency_key=idempotency_key, row=row, db=db,
         )
+
+    async def _dispatch_provider(
+        self,
+        provider: str,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        from_email: Optional[str],
+        from_name: Optional[str],
+        reply_to: Optional[str],
+        html_body: Optional[str],
+        idempotency_key: Optional[str],
+        row: Optional[EmailConfig],
+        db: Optional[AsyncSession],
+    ) -> dict:
+        """Маршрутизация на конкретный send-метод по имени провайдера."""
+        if provider == "hyvor":
+            return await self._send_via_hyvor(
+                to_email=to_email, subject=subject, body=body,
+                from_email=from_email, from_name=from_name,
+                reply_to=reply_to, html_body=html_body,
+                idempotency_key=idempotency_key, row=row,
+            )
+        # postbox, ses, smtp — всё через SMTP-отправку (creds разные).
+        return await self._send_via_smtp(
+            to_email=to_email, subject=subject, body=body,
+            from_email=from_email, from_name=from_name,
+            reply_to=reply_to, html_body=html_body, row=row,
+        )
+
+    async def _send_via_provider_row(
+        self,
+        prov_row,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        from_email: Optional[str],
+        from_name: Optional[str],
+        reply_to: Optional[str],
+        html_body: Optional[str],
+        idempotency_key: Optional[str],
+    ) -> dict:
+        """Отправка через строку EmailProviderConfig (новая модель).
+
+        Логирует стоимость в api_call_log: cost_rub = cost_per_mail
+        конкретного провайдера (задаётся админом в UI).
+        """
+        from app.core.api_tracker import log_call
+
+        cost = float(prov_row.cost_per_mail or 0)
+        pid = prov_row.provider_id
+
+        if pid == "hyvor":
+            try:
+                result = await self._send_via_hyvor_row(
+                    prov_row, to_email, subject, body,
+                    from_email=from_email, from_name=from_name,
+                    reply_to=reply_to, html_body=html_body,
+                    idempotency_key=idempotency_key,
+                )
+                await log_call(
+                    "hyvor", "/api/console/sends", method="POST",
+                    http_status=200, ok=True, amount_rub=cost,
+                )
+                return result
+            except EmailServiceError as e:
+                await log_call(
+                    "hyvor", "/api/console/sends", method="POST",
+                    ok=False, error=str(e), amount_rub=0,
+                )
+                raise
+
+        # postbox / ses — SMTP с creds из prov_row.
+        try:
+            result = await self._send_via_smtp_row(
+                prov_row, to_email, subject, body,
+                from_email=from_email, from_name=from_name,
+                reply_to=reply_to, html_body=html_body,
+            )
+            await log_call(
+                pid, f"{prov_row.smtp_host}:{prov_row.smtp_port}",
+                method="SMTP", http_status=200, ok=True, amount_rub=cost,
+            )
+            return result
+        except EmailServiceError as e:
+            await log_call(
+                pid, f"{prov_row.smtp_host}:{prov_row.smtp_port}",
+                method="SMTP", ok=False, error=str(e), amount_rub=0,
+            )
+            raise
+
+    async def _send_via_smtp_row(
+        self,
+        prov_row,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        from_email: Optional[str],
+        from_name: Optional[str],
+        reply_to: Optional[str],
+        html_body: Optional[str],
+    ) -> dict:
+        """SMTP-отправка с creds из EmailProviderConfig (новая модель)."""
+        host = (prov_row.smtp_host or "").strip()
+        if not host:
+            raise EmailServiceError(
+                f"{prov_row.provider_id}: smtp_host пуст"
+            )
+        port = int(prov_row.smtp_port or 587)
+        user = (prov_row.smtp_user or "").strip()
+        pwd = (prov_row.smtp_password or "").strip()
+        use_ssl = bool(prov_row.smtp_use_ssl)
+
+        mail_from = from_email or prov_row.from_email or user
+        disp_name = from_name or prov_row.from_name or ""
+        if not mail_from:
+            raise EmailServiceError(
+                f"{prov_row.provider_id}: from_email пуст"
+            )
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = (
+            formataddr((disp_name, mail_from)) if disp_name else mail_from
+        )
+        msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to
+
+        if html_body:
+            msg.attach(MIMEText(html_body, "html", "utf-8"))
+        else:
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        try:
+            smtp = aiosmtplib.SMTP(hostname=host, port=port)
+            if use_ssl:
+                await smtp.connect(use_tls=True)
+            else:
+                await smtp.connect()
+                await smtp.starttls()
+            if user and pwd:
+                await smtp.login(user, pwd)
+            await smtp.send_message(msg)
+            await smtp.quit()
+            return {
+                "success": True,
+                "message_id": None,
+                "external_message_id": None,
+            }
+        except Exception as e:
+            logger.exception(
+                "%s SMTP send failed", prov_row.provider_id
+            )
+            raise EmailServiceError(
+                f"{prov_row.provider_id} SMTP error: {e}"
+            ) from e
+
+    async def _send_via_hyvor_row(
+        self,
+        prov_row,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        from_email: Optional[str],
+        from_name: Optional[str],
+        reply_to: Optional[str],
+        html_body: Optional[str],
+        idempotency_key: Optional[str],
+    ) -> dict:
+        """Hyvor Relay HTTP-API с creds из EmailProviderConfig."""
+        api_url = (prov_row.smtp_host or "").strip().rstrip("/")
+        api_key = (prov_row.api_key or "").strip()
+        if not api_url or not api_key:
+            raise EmailServiceError(
+                "hyvor: smtp_host (API URL) или api_key пуст"
+            )
+
+        payload = {
+            "to": to_email,
+            "subject": subject,
+            "body": html_body or body,
+        }
+        eff_from = from_email or prov_row.from_email
+        if eff_from:
+            payload["from"] = (
+                eff_from
+                if not (from_name or prov_row.from_name)
+                else f"{from_name or prov_row.from_name} <{eff_from}>"
+            )
+        if reply_to:
+            payload["reply_to"] = reply_to
+        if html_body:
+            payload["body_type"] = "html"
+
+        headers = self._get_headers(api_key)
+        if idempotency_key:
+            headers["X-Idempotency-Key"] = idempotency_key
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{api_url}/api/console/sends",
+                    json=payload,
+                    headers=headers,
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    return {
+                        "success": True,
+                        "message_id": data.get("id"),
+                        "external_message_id": data.get("message_id"),
+                    }
+                error_detail = response.text
+                try:
+                    error_json = response.json()
+                    error_detail = error_json.get("message", error_detail)
+                except Exception:
+                    pass
+                raise EmailServiceError(
+                    f"Hyvor API error: {response.status_code} - {error_detail}"
+                )
+        except httpx.TimeoutException:
+            raise EmailServiceError("Hyvor Relay API timeout")
+        except httpx.RequestError as e:
+            raise EmailServiceError(f"Hyvor Relay API request error: {e}")
 
     async def _send_via_hyvor(
         self,
