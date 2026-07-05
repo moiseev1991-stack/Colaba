@@ -9,6 +9,7 @@ from app.modules.email.service import email_service
 from app.modules.outreach import schemas, service
 from app.modules.outreach.kp_router import router as kp_router
 from app.modules.outreach.site_leads_router import router as site_leads_router
+from app.modules.outreach.templates_router import router as templates_router
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
 
@@ -17,6 +18,10 @@ router = APIRouter(prefix="/outreach", tags=["outreach"])
 router.include_router(kp_router)
 # Эпик F: /outreach/site-leads/* (CRUD сохранённых сайтов из web-search'а).
 router.include_router(site_leads_router)
+# Пользовательские outreach-шаблоны /outreach/templates/* (CRUD).
+# Раньше фронт стучался сюда вхолостую и работал через localStorage-фолбэк;
+# теперь backend-контракт реализован (миграция 043).
+router.include_router(templates_router)
 
 
 @router.get("/config", response_model=schemas.SmtpConfigResponse)
