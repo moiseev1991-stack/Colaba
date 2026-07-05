@@ -31,7 +31,7 @@ from app.modules.outreach import telegram_bot
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["telegram"])
+router = APIRouter(prefix="/telegram", tags=["telegram"])
 
 WELCOME_TEXT = (
     "👋 Здравствуйте! Это бот Colaba — сервис поиска клиентов и подготовки "
