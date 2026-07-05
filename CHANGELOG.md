@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.120.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.120.0...v1.120.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* **frontend/email-providers:** TS build errors — PageHeader, SignalPill, ButtonV2 + force-dynamic ([6712c45](https://github.com/moiseev1991-stack/Colaba/commit/6712c4573eb1b15c3bd99ecab9fdafe6f1d0cb31))
+
 # [1.120.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.119.0...v1.120.0) (2026-07-05)
 
 
