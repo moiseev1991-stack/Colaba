@@ -1,5 +1,10 @@
 'use client';
 
+// force-dynamic: страница делает API-вызовы в useEffect на клиенте,
+// но Next.js пытается статически prerender'нуть её при build — без
+// доступного backend'а это падает. Отключаем static-generation.
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
@@ -208,8 +213,18 @@ export default function EmailProvidersSettingsPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <PageHeader title="Провайдеры email" subtitle="Каналы отправки писем с автоматическим резервом" />
+      <PageHeader
+        breadcrumb={[
+          { label: 'Главная', href: '/' },
+          { label: 'Конфигурация', href: '/settings' },
+          { label: 'Провайдеры email' },
+        ]}
+        title="Провайдеры email"
+      />
       <div className="mx-auto max-w-3xl px-4 pt-4">
+        <p className="mb-6 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+          Каналы отправки писем с автоматическим резервом
+        </p>
         {/* Статус-баннер */}
         <div
           className="mb-6 rounded-[12px] border p-4"
@@ -265,7 +280,7 @@ export default function EmailProvidersSettingsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-semibold">{p.name}</h2>
-                        <SignalPill status={status}>{statusLabel}</SignalPill>
+                        <SignalPill tone={status === 'ok' ? 'good' : status === 'warn' ? 'warm' : 'muted'}>{statusLabel}</SignalPill>
                       </div>
                       <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                         Приоритет: {PRIORITY_LABELS[p.priority] ?? p.priority}
@@ -364,7 +379,7 @@ export default function EmailProvidersSettingsPage() {
                     {s.saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Сохранить
                   </ButtonV2>
-                  <ButtonV2 variant="outline" onClick={() => test(p.provider_id)} disabled={s.testing}>
+                  <ButtonV2 variant="secondary" onClick={() => test(p.provider_id)} disabled={s.testing}>
                     {s.testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                     Проверить
                   </ButtonV2>
