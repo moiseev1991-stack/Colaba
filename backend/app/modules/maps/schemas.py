@@ -17,6 +17,49 @@ from pydantic import BaseModel, ConfigDict, Field
 Source = Literal["2gis", "yandex_maps", "google_maps"]
 
 
+# Map: provider_id (в MapProviderConfig) → source value (в Company.sources).
+_PROVIDER_ID_TO_SOURCE = {
+    "twogis": "2gis",
+    "yandex_maps": "yandex_maps",
+    "google_maps": "google_maps",
+}
+
+
+def _get_default_sources() -> list[Source]:
+    """Дефолт sources для нового поиска: активные провайдеры из БД.
+
+    Логика:
+    - Если в БД есть хоть один is_enabled=True провайдер с валидным ключом —
+      возвращаем только их (админ явно выбрал набор через UI).
+    - Иначе — fallback на ["2gis"] (обратная совместимость, env-only стенды).
+
+    Чтение БД синхронное, потому что default_factory вызывается синхронно.
+    """
+    try:
+        from app.core.database import get_sync_session_factory
+        from app.models.map_provider_config import MapProviderConfig
+
+        factory = get_sync_session_factory()
+        with factory() as db:
+            rows = (
+                db.query(MapProviderConfig)
+                .filter(MapProviderConfig.is_enabled.is_(True))
+                .filter(MapProviderConfig.is_configured.is_(True))
+                .all()
+            )
+            sources: list[Source] = [
+                _PROVIDER_ID_TO_SOURCE[r.provider_id]
+                for r in rows
+                if r.provider_id in _PROVIDER_ID_TO_SOURCE
+            ]
+            if sources:
+                return sources
+    except Exception:
+        # БД недоступна, sync engine не настроен, таблицы нет — молча fallback.
+        pass
+    return ["2gis"]
+
+
 class CompanyRaw(BaseModel):
     """Сырые данные компании, отдаваемые провайдером карты.
 
@@ -161,7 +204,7 @@ class MapSearchCreate(BaseModel):
 
     niche: str = Field(..., min_length=2, max_length=100)
     city: str = Field(default="", max_length=100)
-    sources: list[Source] = Field(default_factory=lambda: ["2gis"])
+    sources: list[Source] = Field(default_factory=lambda: _get_default_sources())
     filters: MapSearchFilter | None = None
 
     mode: SearchMode = "city"

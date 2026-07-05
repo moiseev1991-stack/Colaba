@@ -7,8 +7,9 @@ Database connection and session management.
 import sys
 from typing import AsyncGenerator
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
@@ -40,6 +41,26 @@ AsyncSessionLocal = async_sessionmaker(
 
 # Base class for models
 Base = declarative_base()
+
+
+# Sync engine + session — для редких мест где async невозможен
+# (например чтение ключей провайдеров в sync __init__). Создаётся лениво.
+_sync_engine = None
+_sync_session_factory = None
+
+
+def get_sync_session_factory():
+    """Lazy-init sync engine. DATABASE_URL_SYNC обязателен в .env."""
+    global _sync_engine, _sync_session_factory
+    if _sync_session_factory is None:
+        sync_url = settings.DATABASE_URL_SYNC
+        if not sync_url:
+            raise RuntimeError("DATABASE_URL_SYNC must be set for sync DB access")
+        _sync_engine = create_engine(sync_url, pool_pre_ping=True, future=True)
+        _sync_session_factory = sessionmaker(
+            _sync_engine, class_=Session, expire_on_commit=False, autocommit=False
+        )
+    return _sync_session_factory
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

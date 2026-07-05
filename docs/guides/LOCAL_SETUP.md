@@ -76,10 +76,18 @@ docker compose ps
 ### Страницы настроек (после входа)
 
 - **Провайдеры поиска**: http://localhost:4000/settings/providers — см. [PROVIDERS_SETTINGS.md](PROVIDERS_SETTINGS.md)
+- **Провайдеры карт и отзывов** (2GIS / Yandex / Google): http://localhost:4000/app/settings/maps-providers — см. [PROVIDERS_SETTINGS.md](PROVIDERS_SETTINGS.md#карты-и-отзывы-map-providers)
 - **AI-ассистенты**: http://localhost:4000/settings/ai-assistants — см. [AI_ASSISTANTS.md](AI_ASSISTANTS.md)
 - **Обход капчи**: http://localhost:4000/settings/captcha — см. [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md)
 
 Прокси для HTML-провайдеров (Яндекс, Google) можно задать в `/settings/providers` или через USE_PROXY, PROXY_URL, PROXY_LIST в `.env`.
+
+Ключи карт (`TWOGIS_API_KEY`, `TWOGIS_REVIEWS_PUBLIC_API_KEY`, `SERPAPI_KEY`)
+продолжают работать из `.env` как раньше, но теперь их можно задать и через UI
+на `/app/settings/maps-providers`. Настройки в БД приоритетнее env, но только
+если включить чекбокс «Включён» для соответствующего провайдера — иначе работает
+fallback на `.env`. Для UI-настроек также требуется переменная `DATABASE_URL_SYNC`
+в `.env` (sync-формат `postgresql+psycopg2://...`).
 
 ## Полезные команды
 

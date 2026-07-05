@@ -389,12 +389,19 @@ class TwoGisProvider(MapProvider):
     source_name = "2gis"
 
     def __init__(self, api_key: str | None = None, rate_limit_delay: float | None = None):
-        """api_key/rate_limit_delay явные параметры удобны для тестов; в проде берётся из settings."""
-        self._api_key = api_key if api_key is not None else settings.TWOGIS_API_KEY
+        """api_key/rate_limit_delay явные параметры удобны для тестов; в проде берётся из БД/env."""
+        if api_key is not None:
+            self._api_key = api_key
+        else:
+            # Приоритет: БД (если is_enabled и ключ задан) → fallback на env.
+            from app.modules.maps.providers_settings_service import load_provider_keys
+            keys = load_provider_keys("twogis")
+            self._api_key = keys.get("api_key") or settings.TWOGIS_API_KEY
         self._delay = rate_limit_delay if rate_limit_delay is not None else settings.TWOGIS_RATE_LIMIT_DELAY
         if not self._api_key:
             raise MissingAPIKeyError(
-                "TWOGIS_API_KEY не задан в Settings/env. Получить ключ: https://dev.2gis.com"
+                "TWOGIS_API_KEY не задан ни в БД-настройках, ни в Settings/env. "
+                "Получить ключ: https://dev.2gis.com или задайте через UI /app/settings/maps-providers"
             )
 
     async def _request(self, client: httpx.AsyncClient, url: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -784,7 +791,10 @@ class TwoGisProvider(MapProvider):
             "sort_by": "date_edited",
             "limit": REVIEWS_PUBLIC_PAGE_SIZE,
         }
-        widget_key = settings.TWOGIS_REVIEWS_PUBLIC_API_KEY
+        # Widget key: приоритет БД → env.
+        from app.modules.maps.providers_settings_service import load_provider_keys
+        _twogis_keys = load_provider_keys("twogis")
+        widget_key = _twogis_keys.get("secondary_key") or settings.TWOGIS_REVIEWS_PUBLIC_API_KEY
         if widget_key:
             common["key"] = widget_key
 

@@ -49,11 +49,19 @@ class GoogleMapsProvider(MapProvider):
     source_name = "google_maps"
 
     def __init__(self, api_key: str | None = None, rate_limit_delay: float = 1.0):
-        self._api_key = api_key if api_key is not None else (settings.SERPAPI_KEY or "")
+        if api_key is not None:
+            self._api_key = api_key
+        else:
+            # Приоритет: БД (если is_enabled и ключ задан) → fallback на env.
+            from app.modules.maps.providers_settings_service import load_provider_keys
+            keys = load_provider_keys("google_maps")
+            self._api_key = keys.get("api_key") or (settings.SERPAPI_KEY or "")
         self._delay = rate_limit_delay
         if not self._api_key:
             raise MissingAPIKeyError(
-                "SERPAPI_KEY не задан. Получить ключ: https://serpapi.com (бесплатно 100/мес)"
+                "SERPAPI_KEY не задан ни в БД-настройках, ни в env. "
+                "Получить ключ: https://serpapi.com (бесплатно 100/мес) или "
+                "задайте через UI /app/settings/maps-providers"
             )
 
     async def _request(

@@ -156,3 +156,91 @@
 - [HTML_SEARCH_PROVIDERS.md](HTML_SEARCH_PROVIDERS.md) — Yandex/Google HTML, прокси, блокировки
 - [YANDEX_XML_SETUP.md](YANDEX_XML_SETUP.md) — настройка Yandex XML
 - [CAPTCHA_BYPASS.md](CAPTCHA_BYPASS.md) — обход капчи при использовании HTML-провайдеров (image-captcha, Yandex SmartCaptcha через 2captcha, reCAPTCHA)
+
+---
+
+# Карты и отзывы (Map providers)
+
+Отдельная подсистема от веб-поиска: парсит **отзывы** компаний с карт.
+Страница настроек: `/app/settings/maps-providers`. Список источников по умолчанию
+для нового поиска теперь вычисляется из активных провайдеров (`is_enabled=true`
++ `is_configured=true`); если никто не включён — fallback на `["2gis"]`
+(обратная совместимость со старыми env-only стендами).
+
+## Модель БД: `MapProviderConfig`
+
+Один ряд на `provider_id` (`twogis`, `yandex_maps`, `google_maps`). Аналог
+`EmailConfig`, но singleton-per-provider (3 ряда вместо 1).
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | int | PK |
+| `provider_id` | str, unique | `twogis` / `yandex_maps` / `google_maps` |
+| `api_key` | str, nullable | Catalog API (2GIS), SerpAPI (Google), пусто для Yandex |
+| `secondary_key` | str, nullable | Widget key (2GIS), коммерческий Yandex Maps API |
+| `is_enabled` | bool | Включён ли для новых поисков |
+| `is_configured` | bool | Есть ли минимально-достаточный набор ключей |
+| `last_test_at`, `last_test_result`, `last_test_error` | — | Результат последней кнопки «Проверить» |
+| `notes` | text | Заметки админа |
+
+Миграция: `backend/alembic/versions/042_map_provider_config.py` (создаёт таблицу
++ 3 дефолтные строки `is_enabled=false`).
+
+## Реестр: `MAPS_PROVIDER_REGISTRY`
+
+Файл: `backend/app/modules/maps/providers_registry.py`. Для UI: имя, описание,
+список полей с метаданными (`secret`, `required`, `description`).
+
+| provider_id | Ключи | Где получить |
+|-------------|-------|--------------|
+| `twogis` | `api_key` (Catalog API), `secondary_key` (Widget public-api) | https://dev.2gis.ru — Catalog. Widget — из DevTools 2gis.ru → Network → reviews?key=... |
+| `yandex_maps` | `secondary_key` (опц. коммерческий API) | https://yandex.ru/dev/maps/commercial — оставьте пустым для бесплатного HTML-парсера |
+| `google_maps` | `api_key` (SerpAPI) | https://serpapi.com/dashboard — ~$75/мес за 5000 запросов |
+
+## Логика чтения ключей (БД → env fallback)
+
+Функция `load_provider_keys(provider_id)` в `providers_settings_service.py`:
+
+1. Читает `MapProviderConfig[provider_id]` из БД (синхронно, через `DATABASE_URL_SYNC`).
+2. Если `is_enabled=True` и есть `api_key`/`secondary_key` → отдаёт их.
+3. Иначе — fallback на env (`TWOGIS_API_KEY`, `TWOGIS_REVIEWS_PUBLIC_API_KEY`,
+   `SERPAPI_KEY`). Для Yandex — флаг `USE_PROXY` без ключа.
+
+Это сохраняет обратную совместимость: текущие `.env`-настройки продолжают работать
+без UI-конфигурации.
+
+## API: `/api/v1/maps/providers-settings`
+
+Роутер: `backend/app/modules/maps/providers_settings_router.py`. Префикс:
+`/maps/providers-settings` (монтируется через `router.include_router`).
+
+| Метод | Путь | Описание | Доступ |
+|-------|------|----------|--------|
+| GET | `/maps/providers-settings` | Список 3 провайдеров с метаданными + ключи (маскированы) | superuser |
+| GET | `/maps/providers-settings/status` | Краткий статус для бейджей (`{provider_id: 'ok'|'no_api_key'|'disabled'|'no_proxy'}`) | auth |
+| PUT | `/maps/providers-settings/{provider_id}` | Partial update. `'***'`/`''`/`null` не перезаписывают секреты | superuser |
+| POST | `/maps/providers-settings/{provider_id}/test` | Реальный test-вызов (Catalog API ping / SerpAPI / Yandex HTTP+proxy) | superuser |
+
+## Динамический дефолт `sources`
+
+`MapSearchCreate.sources` (в `schemas.py`) использует `default_factory=_get_default_sources`,
+который читает активные провайдеры из БД. Если в БД никто не включён — fallback
+на `["2gis"]`.
+
+## Переменные окружения (legacy fallback)
+
+- `TWOGIS_API_KEY` — основной Catalog API ключ 2GIS
+- `TWOGIS_REVIEWS_PUBLIC_API_KEY` — виджет-ключ 2GIS (для отзывов)
+- `SERPAPI_KEY` — ключ SerpAPI для Google Maps
+- `USE_PROXY`, `PROXY_URL`, `PROXY_LIST` — для Yandex HTML-парсера
+
+См. `.env.example` и `app/core/config.py`. **DATABASE_URL_SYNC** (sync-формат
+URL `postgresql+psycopg2://...`) — нужен для синхронного чтения конфига
+провайдерами в Celery-тасках.
+
+## Frontend
+
+- **Страница:** `frontend/app/app/settings/maps-providers/page.tsx`
+- **API-клиент:** `frontend/src/services/api/mapsProviders.ts`
+- **Навигация:** Sidebar → «Настройки» → «Провайдеры карт»
+

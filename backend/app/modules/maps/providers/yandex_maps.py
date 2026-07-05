@@ -306,6 +306,13 @@ class YandexMapsProvider(MapProvider):
     def __init__(self, db: AsyncSession | None = None, use_proxy: bool | None = None):
         self._db = db
         # use_proxy=None → берём из settings.USE_PROXY. True/False — явный override.
+        # Читаем конфиг из БД через sync-хелпер (singleton-строка MapProviderConfig).
+        # Yandex работает через HTML-парсинг с прокси, без API-ключа — поэтому
+        # ключи тут не используются, но вызов нужен чтобы провайдер «знал» о
+        # настройках в БД (для логики skip при is_enabled=False в service-слое).
+        from app.modules.maps.providers_settings_service import load_provider_keys
+
+        self._provider_keys = load_provider_keys("yandex_maps")
         self._use_proxy = settings.USE_PROXY if use_proxy is None else use_proxy
 
     async def _solve_captcha_or_raise(
