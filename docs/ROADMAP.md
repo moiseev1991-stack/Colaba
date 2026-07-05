@@ -42,6 +42,11 @@
 | Self-service биллинг | ЮKassa / CloudPayments + рекуррентка | ❌ Не начато |
 | Deploy workflow CI | Починить GitHub Actions deploy | 🟡 Есть ручной путь |
 | SQLAdmin auth clean | Подтвердить что auth работает | ✅ Добавлено |
+| Auth на `/maps/admin/*` | `require_superuser` на 9 admin-endpoints | ✅ 2026-07-05 |
+| Auth на `/maps/insights/*`, `/maps/pain-tags` | Закрыть бизнес-know-how (ниши, боли) | ✅ 2026-07-05 |
+| `/outreach/templates` backend CRUD | Пользовательские шаблоны писем (миграция 043) | ✅ 2026-07-05 |
+| `/filters/*` strict auth | Заменить `get_optional_user_id` на `get_current_user_id` | 🟡 Открыто |
+| `/deployments/*` auth | Закрыть от не-админов | 🟡 Открыто |
 
 ---
 
