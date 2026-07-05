@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.121.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.120.2...v1.121.0) (2026-07-05)
+
+
+### Bug Fixes
+
+* **outreach/telegram:** add prefix=/telegram to webhook router ([d68f1f5](https://github.com/moiseev1991-stack/Colaba/commit/d68f1f55944af0aa49d5d60b8c4bd8204de7bb99))
+
+
+### Features
+
+* **backend/outreach:** multichannel — Telegram bot + MAX + unified channels config ([3e9c806](https://github.com/moiseev1991-stack/Colaba/commit/3e9c806993fd2a10bf9cb3ba493d2fa21c08b516))
+* **frontend:** unified /app/settings/channels page + telegram in KP SendBar ([685d2f3](https://github.com/moiseev1991-stack/Colaba/commit/685d2f3f0b1829962fef48e33bdef65b7cf7083d))
+
 ## [1.120.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.120.1...v1.120.2) (2026-07-05)
 
 
