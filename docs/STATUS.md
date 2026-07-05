@@ -2,7 +2,7 @@
 
 **Последнее обновление:** 5 июля 2026
 **Текущая версия:** v1.119.0
-**Коммитов:** 852 | **Миграций Alembic:** 043 | **Моделей БД:** 45+
+**Коммитов:** 852 | **Миграций Alembic:** 044 | **Моделей БД:** 46+
 
 ---
 
@@ -227,6 +227,11 @@
 - ✅ **Бизнес-know-how закрыт авторизацией**: `/maps/insights/niches`, `/maps/insights/demand-index`, `/maps/pain-tags` больше не публичные.
 - ✅ **`/outreach/templates`**: реализован backend CRUD (модель `UserOutreachTemplate` + миграция 043). Раньше фронт стучался в несуществующий роут и работал через localStorage-фолбэк — шаблоны не синхронизировались. См. `docs/audit-2026-07-03.md` §6.
 - ✅ **maps-providers**: YandexMapsProvider интегрирован с БД-настройками; «Провайдеры карт» теперь в Sidebar всех модулей (Leads/Tenders/SEO).
+
+### Недавно добавлено (2026-07-05, ветка `feature/cost-tracking-api-log`)
+
+- ✅ **Cost tracking MVP**: система учёта внешних API-вызовов в таблице `api_call_log` (миграция 044). Каждый вызов 2GIS/SerpAPI/DaData/OpenAI/Anthropic/embeddings/email логируется с расчётом стоимости в рублях. Раньше `monitor` был mock; теперь отдаёт реальные данные. См. `docs/guides/COST_TRACKING.md`.
+- Эндпоинты: `GET /monitor/requests` (последние вызовы), `/monitor/summary` (агрегат за период с breakdown по провайдерам), `/monitor/by-search/{id}` (стоимость конкретного поиска лидов).
 
 ### Что сознательно отложено
 
