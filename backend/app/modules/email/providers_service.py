@@ -239,7 +239,19 @@ async def update_config(
     row.updated_at = datetime.utcnow()
 
     db.add(row)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        # Понятное сообщение для частой ошибки: секрет слишком длинный.
+        msg = str(e).lower()
+        if "value too long" in msg or "stringdatarighttruncation" in msg:
+            raise ValueError(
+                "Одно из значений слишком длинное для БД. "
+                "Проверьте, что вставляете правильный ключ/секрет "
+                "(Yandex Cloud Postbox secret ~40-50 символов)."
+            ) from e
+        raise
     await db.refresh(row)
     return row
 

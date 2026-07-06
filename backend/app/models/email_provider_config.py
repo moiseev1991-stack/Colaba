@@ -46,17 +46,18 @@ class EmailProviderConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     provider_id = Column(String(32), unique=True, nullable=False, index=True)
 
-    # Credentials (зависят от провайдера — см. docstring модуля).
-    api_key = Column(String(255), nullable=True)        # hyvor: Bearer API key
-    secret_key = Column(String(255), nullable=True)     # hyvor: webhook secret
-    smtp_host = Column(String(255), nullable=True)      # postbox/ses: SMTP endpoint; hyvor: API URL
-    smtp_port = Column(Integer, nullable=True)          # postbox/ses: порт (587/465)
-    smtp_user = Column(String(255), nullable=True)      # postbox/ses: SMTP username
-    smtp_password = Column(String(255), nullable=True)  # postbox/ses: SMTP password
+    # Секреты — Text (без лимита): встречаются JWT, длинные base64-blobs.
+    api_key = Column(Text, nullable=True)
+    secret_key = Column(Text, nullable=True)
+    # Прочие строки — widen до 2048 на случай длинных hosts/emails/regions.
+    smtp_host = Column(String(2048), nullable=True)
+    smtp_port = Column(Integer, nullable=True)
+    smtp_user = Column(String(2048), nullable=True)
+    smtp_password = Column(Text, nullable=True)
     smtp_use_ssl = Column(Boolean, nullable=False, default=False, server_default="false")
-    from_email = Column(String(255), nullable=True)     # email отправителя
-    from_name = Column(String(255), nullable=True)      # имя отправителя
-    region = Column(String(50), nullable=True)          # ses: AWS region
+    from_email = Column(String(2048), nullable=True)
+    from_name = Column(String(2048), nullable=True)
+    region = Column(String(2048), nullable=True)
 
     # Стоимость отправки одного письма в рублях — задаётся админом в UI.
     # Трекер api_call_log.log_call(provider_id, amount_rub=cost_per_mail)
