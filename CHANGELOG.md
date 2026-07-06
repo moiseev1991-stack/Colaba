@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.121.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.121.0...v1.121.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **email-providers:** widen String(255)→Text/2048 for secrets + meaningful error ([95583e8](https://github.com/moiseev1991-stack/Colaba/commit/95583e890a2e9a36de6e3a7f2f96264345786767))
+
 # [1.121.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.120.2...v1.121.0) (2026-07-05)
 
 
