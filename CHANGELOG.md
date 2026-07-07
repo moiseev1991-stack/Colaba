@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.122.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.122.0...v1.122.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* **email:** verify_credentials корректно ловит bare 403 от ycalb-балансировщика ([08011c2](https://github.com/moiseev1991-stack/Colaba/commit/08011c2ad433f72ebe18fa484292e3c7ad6a7a5c))
+
 # [1.122.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.121.1...v1.122.0) (2026-07-07)
 
 
