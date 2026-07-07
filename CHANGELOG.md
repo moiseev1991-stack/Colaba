@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.122.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.121.1...v1.122.0) (2026-07-07)
+
+
+### Features
+
+* **email/postbox:** HTTP API transport via boto3 (port 443, bypasses SMTP block) ([3d18372](https://github.com/moiseev1991-stack/Colaba/commit/3d18372ff9cfbf4a2603fa01eb6e2e54ede8ad4d))
+
 ## [1.121.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.121.0...v1.121.1) (2026-07-06)
 
 
