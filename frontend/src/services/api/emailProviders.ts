@@ -32,6 +32,7 @@ export interface EmailProviderConfigDTO {
   smtp_user: string | null;
   smtp_password: string | null;
   smtp_use_ssl: boolean;
+  transport: 'smtp' | 'http';
   from_email: string | null;
   from_name: string | null;
   region: string | null;
@@ -55,6 +56,7 @@ export interface EmailProviderUpdate {
   smtp_user?: string | null;
   smtp_password?: string | null;
   smtp_use_ssl?: boolean;
+  transport?: 'smtp' | 'http';
   from_email?: string | null;
   from_name?: string | null;
   region?: string | null;

@@ -42,6 +42,7 @@ class EmailProviderConfigUpdate(BaseModel):
     from_email: Optional[str] = None
     from_name: Optional[str] = None
     region: Optional[str] = None
+    transport: Optional[str] = None  # 'smtp' | 'http'
     cost_per_mail: Optional[float] = None
     is_enabled: Optional[bool] = None
     priority: Optional[int] = None
@@ -156,6 +157,8 @@ async def _run_test(db: AsyncSession, provider_id: str) -> dict:
     try:
         if provider_id == "hyvor":
             ok, err = await _test_hyvor(row)
+        elif getattr(row, "transport", "smtp") == "http" and provider_id in ("postbox", "ses"):
+            ok, err = await _test_postbox_http(row)
         else:
             ok, err = await _test_smtp(row)
     except Exception as e:
@@ -202,6 +205,30 @@ async def _test_smtp(row: EmailProviderConfig) -> tuple[bool, Optional[str]]:
         )
         await smtp.quit()
         return True, None
+    except Exception as e:
+        return False, f"{type(e).__name__}: {str(e)[:200]}"
+
+
+async def _test_postbox_http(row: EmailProviderConfig) -> tuple[bool, Optional[str]]:
+    """Тест Postbox/SES через AWS SESv2 HTTP API (порт 443).
+
+    Использует verify_credentials — лёгкий запрос на get_dedicated_ip
+    чтобы проверить валидность подписи SigV4 и кредентиалов без реальной
+    отправки письма.
+    """
+    from app.modules.email.postbox_http import verify_credentials
+
+    user = (row.smtp_user or "").strip()
+    pwd = (row.smtp_password or "").strip()
+    region = (row.region or "").strip() or "ru-central1"
+    if not user or not pwd:
+        return False, "smtp_user (API-key ID) или smtp_password (секрет) пусты"
+
+    try:
+        ok, err = await verify_credentials(user, pwd, region)
+        if ok:
+            return True, "HTTP API: ключи приняты"
+        return False, err or "HTTP API: ключи отклонены"
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:200]}"
 

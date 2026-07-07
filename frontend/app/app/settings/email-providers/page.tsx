@@ -44,6 +44,7 @@ interface PerProviderState {
   form: Record<string, string>;
   cost_per_mail: string;
   is_enabled: boolean;
+  transport: 'smtp' | 'http';
   saving: boolean;
   testing: boolean;
 }
@@ -105,6 +106,7 @@ export default function EmailProvidersSettingsPage() {
           form,
           cost_per_mail: String(p.cost_per_mail ?? 0),
           is_enabled: p.is_enabled,
+          transport: p.transport === 'http' ? 'http' : 'smtp',
           saving: false,
           testing: false,
         };
@@ -140,6 +142,10 @@ export default function EmailProvidersSettingsPage() {
     setState((prev) => ({ ...prev, [id]: { ...prev[id], cost_per_mail: value } }));
   };
 
+  const setTransport = (id: string, value: 'smtp' | 'http') => {
+    setState((prev) => ({ ...prev, [id]: { ...prev[id], transport: value } }));
+  };
+
   const save = async (id: string) => {
     const s = state[id];
     if (!s) return;
@@ -149,6 +155,7 @@ export default function EmailProvidersSettingsPage() {
         ...s.form,
         cost_per_mail: parseFloat(s.cost_per_mail) || 0,
         is_enabled: s.is_enabled,
+        transport: s.transport,
       };
       // Пустые секреты НЕ отправляем (бэкенд оставит старые).
       if (!payload.api_key) delete payload.api_key;
@@ -317,6 +324,41 @@ export default function EmailProvidersSettingsPage() {
                       <span className="text-sm">Включён</span>
                     </label>
                   </div>
+
+                  {/* Переключатель транспорта для SMTP-провайдеров */}
+                  {(p.provider_id === 'postbox' || p.provider_id === 'ses') && (
+                    <div
+                      className="mt-3 flex flex-wrap items-center gap-3 rounded-[8px] border p-3"
+                      style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}
+                    >
+                      <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                        Способ отправки:
+                      </span>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-sm">
+                        <input
+                          type="radio"
+                          name={`transport-${p.provider_id}`}
+                          checked={s.transport === 'smtp'}
+                          onChange={() => setTransport(p.provider_id, 'smtp')}
+                        />
+                        SMTP (порт 587)
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-sm">
+                        <input
+                          type="radio"
+                          name={`transport-${p.provider_id}`}
+                          checked={s.transport === 'http'}
+                          onChange={() => setTransport(p.provider_id, 'http')}
+                        />
+                        HTTP API (порт 443, обходит блокировки)
+                      </label>
+                      {s.transport === 'http' && (
+                        <span className="text-xs" style={{ color: 'hsl(var(--signal-good-text))' }}>
+                          ✓ Рекомендуется, если хостинг блокирует SMTP-порты
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <p className="mt-4 text-sm" style={{ color: 'hsl(var(--muted))' }}>

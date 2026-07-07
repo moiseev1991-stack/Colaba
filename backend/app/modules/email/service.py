@@ -292,7 +292,33 @@ class EmailService:
                 )
                 raise
 
-        # postbox / ses — SMTP с creds из prov_row.
+        # postbox / ses — два варианта транспорта.
+        # Если transport='http' — используем AWS SESv2 HTTP API (порт 443,
+        # обходит блокировку SMTP на VPS). Иначе — классический SMTP.
+        use_http = getattr(prov_row, "transport", "smtp") == "http" and pid in (
+            "postbox",
+            "ses",
+        )
+        if use_http:
+            try:
+                result = await self._send_via_postbox_http(
+                    prov_row, to_email, subject, body,
+                    from_email=from_email, from_name=from_name,
+                    html_body=html_body,
+                )
+                await log_call(
+                    pid, "https-api", method="POST",
+                    http_status=200, ok=True, amount_rub=cost,
+                )
+                return result
+            except EmailServiceError as e:
+                await log_call(
+                    pid, "https-api", method="POST",
+                    ok=False, error=str(e), amount_rub=0,
+                )
+                raise
+
+        # SMTP (дефолт).
         try:
             result = await self._send_via_smtp_row(
                 prov_row, to_email, subject, body,
@@ -310,6 +336,71 @@ class EmailService:
                 method="SMTP", ok=False, error=str(e), amount_rub=0,
             )
             raise
+
+    async def _send_via_postbox_http(
+        self,
+        prov_row,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        from_email: Optional[str],
+        from_name: Optional[str],
+        html_body: Optional[str],
+    ) -> dict:
+        """AWS SESv2 HTTP API (порт 443) — для postbox/ses когда SMTP заблокирован.
+
+        AWS SigV4 подпись запроса через boto3. Credы те же, что для SMTP:
+        access_key_id = smtp_user, secret_access_key = smtp_password.
+        """
+        from app.modules.email.postbox_http import (
+            PostboxHTTPError,
+            send_email as postbox_send,
+        )
+
+        host = (prov_row.smtp_host or "").strip()
+        user = (prov_row.smtp_user or "").strip()
+        pwd = (prov_row.smtp_password or "").strip()
+        mail_from = from_email or prov_row.from_email
+        disp_name = from_name or prov_row.from_name
+        if not host:
+            raise EmailServiceError(
+                f"{prov_row.provider_id}: smtp_host пуст (нужен endpoint)"
+            )
+        if not user or not pwd:
+            raise EmailServiceError(
+                f"{prov_row.provider_id}: smtp_user/smtp_password пусты "
+                "(ID API-ключа и секрет)"
+            )
+        if not mail_from:
+            raise EmailServiceError(
+                f"{prov_row.provider_id}: from_email пуст"
+            )
+
+        # Region — для postbox всегда ru-central1; для ses берём из prov_row.
+        region = (prov_row.region or "").strip() or "ru-central1"
+
+        try:
+            message_id = await postbox_send(
+                access_key_id=user,
+                secret_access_key=pwd,
+                from_email=mail_from,
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=body if not html_body else None,
+                from_name=disp_name,
+                region=region,
+            )
+            return {
+                "success": True,
+                "message_id": message_id,
+                "external_message_id": message_id,
+            }
+        except PostboxHTTPError as e:
+            raise EmailServiceError(
+                f"{prov_row.provider_id} HTTP API: {e.message}"
+            ) from e
 
     async def _send_via_smtp_row(
         self,

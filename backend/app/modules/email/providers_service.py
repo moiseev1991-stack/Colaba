@@ -120,6 +120,7 @@ def row_to_dict(row: EmailProviderConfig) -> dict[str, Any]:
         "from_email": row.from_email,
         "from_name": row.from_name,
         "region": row.region,
+        "transport": row.transport,
         # Стоимость и статус:
         "cost_per_mail": float(row.cost_per_mail) if row.cost_per_mail is not None else 0.0,
         "is_enabled": bool(row.is_enabled),
@@ -218,6 +219,11 @@ async def update_config(
         row.from_name = _apply_plain_update(row.from_name, data["from_name"])
     if "region" in data:
         row.region = _apply_plain_update(row.region, data["region"])
+    if "transport" in data:
+        # Только 'smtp' или 'http', иначе игнор.
+        t = str(data["transport"]).lower().strip()
+        if t in ("smtp", "http"):
+            row.transport = t
 
     # Стоимость и статус:
     if "cost_per_mail" in data:

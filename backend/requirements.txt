@@ -81,3 +81,9 @@ sentry-sdk[fastapi]>=1.40,<3
 # Starlette SessionMiddleware (signed cookies). Нужно для SQLAdmin auth.
 itsdangerous>=2.1
 
+
+# AWS SDK — для Yandex Cloud Postbox HTTP API (AWS SES-compatible).
+# Postbox поддерживает SMTP (postbox.cloud.yandex.net:587), но многие VPS
+# блокируют исходящие SMTP-порты. HTTP API работает через 443.
+# Также используется для Amazon SES (резервный канал).
+boto3>=1.34,<2

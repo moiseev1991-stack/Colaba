@@ -59,6 +59,13 @@ class EmailProviderConfig(Base):
     from_name = Column(String(2048), nullable=True)
     region = Column(String(2048), nullable=True)
 
+    # Способ отправки для SMTP-провайдеров (postbox/ses):
+    # 'smtp' — классическое SMTP-соединение (порт 587/465).
+    # 'http' — AWS SESv2 HTTP API (порт 443, обходит блокировки SMTP).
+    # Для postbox на VPS с заблокированными SMTP-портами — рекомендуется 'http'.
+    # Для hyvor поле игнорируется (там собственный HTTP-API).
+    transport = Column(String(10), nullable=False, default="smtp", server_default="smtp")
+
     # Стоимость отправки одного письма в рублях — задаётся админом в UI.
     # Трекер api_call_log.log_call(provider_id, amount_rub=cost_per_mail)
     # использует это значение для расчёта стоимости рассылки.
