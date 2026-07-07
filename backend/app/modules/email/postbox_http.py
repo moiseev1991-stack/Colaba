@@ -176,21 +176,42 @@ async def verify_credentials(
 
     import anyio
 
+    # Строки в тексте ошибки, означающие auth/сигнатуру-проблему.
+    # Внимание: bare 'Forbidden' (от ycalb-балансировщика) тоже сюда входит —
+    # без этого кейса 403 без XML-тела ошибочно классифицировался как «ключи ок».
+    _AUTH_FAIL_MARKERS = (
+        "accessdenied",
+        "unauthorized",
+        "invalidclienttokenid",
+        "forbidden",
+        "signaturedoesnotmatch",
+        "invalididentitytoken",
+    )
+
     def _do_probe() -> tuple[bool, Optional[str]]:
         try:
             client = _build_client(access_key_id, secret_access_key, region)
             # get_dedicated_ip — лёгкий endpoint, который требует auth,
             # но не делает реальной отправки. Если вернётся auth-ошибка —
-            # значит ключи не валидны. Если 404/прочее — ключи ок.
+            # значит ключи не валидны. Если 404/прочее про ресурс — ключи ок.
             try:
                 client.get_dedicated_ip(ip="0.0.0.0")
-            except Exception as e:
-                low = str(e).lower()
-                if "accessdenied" in low or "unauthorized" in low or "invalidclienttokenid" in low:
-                    return False, f"Ключи отклонены: {str(e)[:200]}"
-                # Любая другая ошибка (400/404) = подпись принята, ключи ок.
                 return True, None
-            return True, None
+            except Exception as e:
+                # Достаём HTTP-статус из response metadata botocore.
+                status = None
+                if hasattr(e, "response"):
+                    meta = e.response.get("ResponseMetadata", {}) or {}
+                    status = meta.get("HTTPStatusCode")
+                low = str(e).lower()
+                # Auth-ошибка: либо 401/403 статус, либо знакомая строка.
+                if status in (401, 403) or any(
+                    marker in low for marker in _AUTH_FAIL_MARKERS
+                ):
+                    return False, f"Ключи отклонены (HTTP {status}): {str(e)[:200]}"
+                # Любая другая ошибка (400/404/409 про сам ресурс) = подпись
+                # принята сервером → ключи валидны.
+                return True, None
         except Exception as e:
             return False, f"network/internal: {str(e)[:200]}"
 
