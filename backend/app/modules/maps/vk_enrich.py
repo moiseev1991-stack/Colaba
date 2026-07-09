@@ -62,18 +62,10 @@ _TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 
 def _normalize_company_name(name: str) -> str:
-    """См. hh_enrich._normalize_company_name — тот же принцип."""
-    if not name:
-        return ""
-    s = name.lower()
-    for stop in (
-        "ооо", "оао", "зао", "пао", "ао", "ип ", "тоо", "оно",
-        "нко", "ано", "фгуп", "гуп", "муп",
-    ):
-        s = s.replace(stop, " ")
-    s = re.sub(r'[«»"\'`\-–—()]+', " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    """См. hh_enrich._normalize_company_name — делегируем туда, чтобы
+    не расходились правила матчинга."""
+    from app.modules.maps.hh_enrich import _normalize_company_name as _n
+    return _n(name)
 
 
 def _domain(url: str) -> str:
