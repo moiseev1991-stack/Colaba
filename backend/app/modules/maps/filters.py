@@ -163,6 +163,11 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         except ImportError:
             logger.info("apply_filters: has_lpr задан, но модели CompanyLegal/CompanyDecisionMaker недоступны — фильтр игнорируется")
 
+    # ТЗ Marketing-DM 2026-06-20 §4.2: пресет «ищут маркетолога» — только
+    # компании с активной hh-вакансией маркетолога.
+    if filters.hiring_marketing is not None:
+        query = query.where(Company.hiring_marketing == filters.hiring_marketing)
+
     # ---- WHERE: тексты отзывов (EXISTS-подзапрос на reviews)
     # Объединяем legacy single-форму и новую *_any-форму в один список.
     # contains: компания пройдёт, если у неё ЕСТЬ отзыв с ЛЮБЫМ из слов (OR).

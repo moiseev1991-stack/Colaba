@@ -956,6 +956,9 @@ async def call_llm_extract_team(
         return []
     out: list[dict[str, Any]] = []
     seen_lower: set[str] = set()
+    allowed_categories = {
+        "marketing", "owner", "founder", "management", "hr", "other",
+    }
     for item in data:
         if not isinstance(item, dict):
             continue
@@ -974,6 +977,32 @@ async def call_llm_extract_team(
         if key in seen_lower:
             continue
         seen_lower.add(key)
-        out.append({"name": name[:200], "post": (post or "")[:200] or None, "is_dm": is_dm})
+
+        # role_category — валидируем по whitelist; невалидные значения → None
+        # (пусть post-processing сам определит по ключевым словам должности).
+        cat_raw = (item.get("role_category") or "").strip().lower() or None
+        role_category = cat_raw if cat_raw in allowed_categories else None
+
+        # Личные контакты рядом с ФИО. LLM может вернуть пустую строку —
+        # нормализуем к None.
+        def _clean(v: Any) -> str | None:
+            if not isinstance(v, str):
+                return None
+            v = v.strip()
+            return v[:500] if v else None
+
+        contact_email = _clean(item.get("contact_email"))
+        contact_phone = _clean(item.get("contact_phone"))
+        contact_vk = _clean(item.get("contact_vk"))
+
+        out.append({
+            "name": name[:200],
+            "post": (post or "")[:200] or None,
+            "is_dm": is_dm,
+            "role_category": role_category,
+            "contact_email": contact_email,
+            "contact_phone": contact_phone,
+            "contact_vk": contact_vk,
+        })
     return out
 

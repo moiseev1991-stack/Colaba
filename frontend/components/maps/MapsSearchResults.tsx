@@ -1782,6 +1782,7 @@ export function MapsSearchResults({
 
       <MapsCompanyDetailDrawer
         companyId={drawerCompanyId}
+        searchId={search.id}
         onClose={() => setDrawerCompanyId(null)}
       />
 

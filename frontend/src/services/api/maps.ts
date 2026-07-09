@@ -120,6 +120,9 @@ export interface MapSearchFilter {
   /** 2026-06-19: фильтр по типу юр.лица. Массив аббревиатур ('ООО','ИП','АО',...).
    *  Спец-значение '__unknown__' = «компании без opf». OR между значениями. */
   opf_in?: string[] | null;
+  /** ТЗ Marketing-DM 2026-06-20 §4.2: пресет для маркетинговых агентств —
+   *  показать только компании с активной вакансией маркетолога на hh.ru. */
+  hiring_marketing?: boolean | null;
 }
 
 export type SearchMode = 'city' | 'radius';
@@ -265,12 +268,25 @@ export interface CompanyOut {
   /** 2026-06-12: true если у компании известен ЛПР (DaData director_name или
    *  хотя бы один decision_maker). Pill в карточке выдачи + фильтр в сайдбаре. */
   has_lpr?: boolean;
+  /** ТЗ «Маркетинг-ЛПР Finder» 2026-06-20: hh.ru показывает активную вакансию
+   *  маркетолога/SMM/PR у этой компании — сильнейший лид-сигнал для
+   *  маркетинговых подрядчиков. Бейдж «🔥 ищет маркетолога» + фильтр в
+   *  сайдбаре («ищут маркетолога»). hiring_url — прямая ссылка на вакансию. */
+  hiring_marketing?: boolean;
+  hiring_url?: string | null;
 }
 
-/** ЛПР, извлечённый LLM-ом со страницы сайта /команда /о-нас /контакты
- *  (ТЗ A.2 2026-06-04). source указывает с какой страницы пришло.
- *  is_decision_maker=true для ролей в whitelist (директор/владелец/...).
- *  Параллельно с CompanyLegalShort.director_name (DaData по ЕГРЮЛ). */
+/** ЛПР (ТЗ A.2 2026-06-04 + ТЗ Marketing-DM 2026-06-20). Источники:
+ *  website_team / website_about / website_contacts (LLM с сайта),
+ *  vk (контакты сообщества), hh (контактное лицо вакансии),
+ *  egrul_director / egrul_founder (DaData / ФНС),
+ *  egrn (Росреестр — собственник помещения, справочно).
+ *
+ *  is_marketing_dm=true — выбран оркестратором enrich_marketing_dm как
+ *  ЦЕЛЕВОЙ маркетинг-ЛПР. Ровно один на компанию (или ни одного).
+ *  role_category — грубая роль для UI: marketing/owner/founder/management/hr/other.
+ *  contact_type/contact_value — публичный рабочий канал (vk/email/phone/site).
+ *  egrn_matches_founder — только у source='egrn': сверка с ЕГРЮЛ-учредителем. */
 export interface DecisionMakerOut {
   name: string;
   post?: string | null;
@@ -278,6 +294,11 @@ export interface DecisionMakerOut {
   source_url?: string | null;
   confidence?: number | null;
   is_decision_maker: boolean;
+  role_category?: string | null;
+  is_marketing_dm?: boolean;
+  contact_type?: string | null;
+  contact_value?: string | null;
+  egrn_matches_founder?: boolean | null;
 }
 
 export interface CompanyLegalShort {
@@ -438,6 +459,8 @@ export async function listMapCompanies(
     params.set('has_website', String(filter.has_website));
   if (filter.has_lpr !== undefined && filter.has_lpr !== null)
     params.set('has_lpr', String(filter.has_lpr));
+  if (filter.hiring_marketing !== undefined && filter.hiring_marketing !== null)
+    params.set('hiring_marketing', String(filter.hiring_marketing));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length) {
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
   }
@@ -901,6 +924,31 @@ export async function enrichCompaniesTeam(
   return resp.data;
 }
 
+/**
+ * ТЗ Marketing-DM 2026-06-20 §4.1: ручной триггер пайплайна поиска
+ * маркетинг-ЛПР (hh + vk + оркестратор). Использует та же валидация
+ * search_id-владения, что и enrich-team.
+ *
+ * Оркестратор с countdown=45s внутри — чтобы hh/vk успели отработать.
+ * vk_enabled=false означает, что на сервере не настроен VK_SERVICE_TOKEN
+ * (модуль VK тихо skip'нется, но hh + egrul всё равно отработают).
+ */
+export interface EnrichMarketingDmResponse {
+  queued: number;
+  vk_enabled: boolean;
+}
+
+export async function enrichCompaniesMarketingDm(
+  searchId: number,
+  companyIds: number[],
+): Promise<EnrichMarketingDmResponse> {
+  const resp = await apiClient.post<EnrichMarketingDmResponse>(
+    `/maps/companies/enrich-marketing-dm`,
+    { search_id: searchId, company_ids: companyIds },
+  );
+  return resp.data;
+}
+
 /** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку.
  *
  *  Два режима:
@@ -932,6 +980,8 @@ export function exportSearchCsvUrl(
     params.set('has_website', String(filter.has_website));
   if (filter.has_lpr !== undefined && filter.has_lpr !== null)
     params.set('has_lpr', String(filter.has_lpr));
+  if (filter.hiring_marketing !== undefined && filter.hiring_marketing !== null)
+    params.set('hiring_marketing', String(filter.hiring_marketing));
   if (filter.pain_tag_ids && filter.pain_tag_ids.length)
     for (const id of filter.pain_tag_ids) params.append('pain_tag_ids', String(id));
   params.set('sort_by', backendSortBy(filter.sort_by));

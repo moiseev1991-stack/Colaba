@@ -479,6 +479,37 @@ def _maybe_enrich_contacts(company: Company) -> None:
             company.id, e,
         )
 
+    # ТЗ «Маркетинг-ЛПР Finder» 2026-06-20:
+    # hh.ru (сигнал «ищет маркетолога» + контактное лицо) — есть для любой
+    # компании, не только с сайтом;
+    # ВК (публичные контакты сообщества) — тоже без предусловий;
+    # Оркестратор enrich_marketing_dm запускаем с countdown=45s, чтобы
+    # успели отработать team/legal/hh/vk и он выбрал best-DM по полным
+    # данным. Идёмпотентен — можно пере-триггерить и позже.
+    try:
+        enrich_company_hh.delay(company.id)
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue hh-enrich for #%d: %s",
+            company.id, e,
+        )
+    try:
+        from app.core.config import settings as _s
+        if (_s.VK_SERVICE_TOKEN or "").strip():
+            enrich_company_vk.delay(company.id)
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue vk-enrich for #%d: %s",
+            company.id, e,
+        )
+    try:
+        enrich_marketing_dm.apply_async(args=[company.id], countdown=45)
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue marketing_dm for #%d: %s",
+            company.id, e,
+        )
+
     try:
         extra = company.contacts_extra or {}
         already_tried_2gis_html = "fetched_2gis_url" in extra or "error_2gis" in extra
@@ -1131,6 +1162,91 @@ def enrich_company_team(self, company_id: int):
     except Exception as exc:
         logger.warning(
             "enrich_company_team retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# Marketing-DM Finder — hh, VK, оркестратор (ТЗ 2026-06-20)
+# ---------------------------------------------------------------------------
+
+
+async def _enrich_company_hh_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.hh_enrich import enrich_from_hh
+        return await enrich_from_hh(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_company_hh",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # hh публичный API 5 req/сек. У нас 3 запроса на компанию, лимит 60/m
+    # держим с запасом.
+    rate_limit="60/m",
+)
+def enrich_company_hh(self, company_id: int):
+    """Ищет активные маркетинговые вакансии компании на hh.ru.
+    Сохраняет hiring_marketing флаг + контактное лицо вакансии."""
+    try:
+        return asyncio.run(_enrich_company_hh_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_company_hh retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_company_vk_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.vk_enrich import enrich_from_vk
+        return await enrich_from_vk(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_company_vk",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # VK service token 3 req/сек; 2 запроса на компанию.
+    rate_limit="60/m",
+)
+def enrich_company_vk(self, company_id: int):
+    """Ищет группу ВКонтакте компании и извлекает публичные контакты
+    сообщества. Без VK_SERVICE_TOKEN тихо возвращает skipped."""
+    try:
+        return asyncio.run(_enrich_company_vk_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_company_vk retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_marketing_dm_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.marketing_dm import enrich_marketing_dm
+        return await enrich_marketing_dm(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_marketing_dm",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # Оркестратор ТОЛЬКО читает БД + считает приоритет. Тяжёлый rate-limit
+    # не нужен, но 120/m держим чтобы не залить очередь при bulk-прогоне.
+    rate_limit="120/m",
+)
+def enrich_marketing_dm(self, company_id: int):
+    """Оркестратор: подтягивает egrul-персон, сверяет ЕГРН, выбирает
+    маркетинг-ЛПР и метит is_marketing_dm=True одной записи."""
+    try:
+        return asyncio.run(_enrich_marketing_dm_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_marketing_dm retrying company=%d: %s", company_id, exc
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
