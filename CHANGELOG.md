@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.123.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.122.1...v1.123.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* **maps/hh:** _normalize_company_name режет юр-формы токенами, не подстрокой ([ec89ddd](https://github.com/moiseev1991-stack/Colaba/commit/ec89ddd0e130df3b8dba348b8a2980c17cffbf05))
+
+
+### Features
+
+* **maps/marketing-dm:** кнопка «Найти ЛПР» + bulk-admin + unit-тесты ([5ae77f6](https://github.com/moiseev1991-stack/Colaba/commit/5ae77f6194153328b77a7d5aeafa6bfef06094a2))
+* **maps:** маркетинг-ЛПР Finder — VK, hh.ru, ЕГРЮЛ + оркестратор ([744bb87](https://github.com/moiseev1991-stack/Colaba/commit/744bb87f175d5226518f3255b6744fc23052c306))
+
 ## [1.122.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.122.0...v1.122.1) (2026-07-07)
 
 
