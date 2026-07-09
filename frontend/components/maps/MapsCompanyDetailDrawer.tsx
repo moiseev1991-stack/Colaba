@@ -1313,11 +1313,12 @@ function DecisionMakersBlock({
     egrul_founder: 'ЕГРЮЛ (учредитель)',
     egrn: 'ЕГРН (собственник)',
   };
+  // Винительный падеж — «фолбэк на кого?»: маркетолога / владельца / …
   const roleLabel: Record<string, string> = {
-    marketing: 'маркетолог',
-    owner: 'владелец',
-    founder: 'учредитель',
-    management: 'руководитель',
+    marketing: 'маркетолога',
+    owner: 'владельца',
+    founder: 'учредителя',
+    management: 'руководителя',
     hr: 'HR',
   };
 
