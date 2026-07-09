@@ -1221,65 +1221,194 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
 }
 
 
-// ЛПР со страниц сайта (ТЗ A.2 2026-06-04). decision_makers[] — массив,
-// отсортированный API по убыванию is_decision_maker + confidence. Если пуст
-// — компонент не рендерится (нет смысла показывать пустой блок).
+// ЛПР со страниц сайта / ВК / hh / ЕГРЮЛ (ТЗ A.2 2026-06-04 + ТЗ
+// Marketing-DM 2026-06-20). decision_makers[] — массив, отсортированный
+// API по убыванию is_decision_maker + confidence. Если пуст —
+// компонент не рендерится.
 function DecisionMakersBlock({
   decisionMakers,
 }: {
   decisionMakers: DecisionMakerOut[];
 }) {
   if (!decisionMakers || decisionMakers.length === 0) return null;
-  // Делим: верхние is_dm и остальные. Если все без is_dm — показываем общим
-  // списком «контактные лица» без выделения.
-  const dms = decisionMakers.filter((d) => d.is_decision_maker);
-  const others = decisionMakers.filter((d) => !d.is_decision_maker);
+  // ТЗ Marketing-DM §4.1: сверху выделенный блок «Кто за маркетинг» —
+  // единственная выбранная оркестратором персона (is_marketing_dm=true),
+  // либо фолбэк-руководитель если маркетолога не нашли.
+  const marketingDm = decisionMakers.find((d) => d.is_marketing_dm) ?? null;
+  const rest = decisionMakers.filter((d) => d !== marketingDm);
+  const dms = rest.filter((d) => d.is_decision_maker);
+  const others = rest.filter((d) => !d.is_decision_maker);
+
   const sourceLabel: Record<string, string> = {
     website_team: 'команда сайта',
     website_about: 'страница «о нас»',
     website_contacts: 'контакты сайта',
+    vk: 'ВКонтакте',
+    hh: 'hh.ru',
+    egrul_director: 'ЕГРЮЛ (директор)',
+    egrul_founder: 'ЕГРЮЛ (учредитель)',
+    egrn: 'ЕГРН (собственник)',
   };
+  const roleLabel: Record<string, string> = {
+    marketing: 'маркетолог',
+    owner: 'владелец',
+    founder: 'учредитель',
+    management: 'руководитель',
+    hr: 'HR',
+  };
+
+  // Обёртка для отрисовки контакта из contact_type/contact_value.
+  const renderContact = (d: DecisionMakerOut) => {
+    if (!d.contact_value) return null;
+    const t = d.contact_type ?? '';
+    let href = d.contact_value;
+    if (t === 'email') href = `mailto:${d.contact_value}`;
+    else if (t === 'phone') href = `tel:${d.contact_value}`;
+    else if (t === 'vk' || t === 'site') {
+      href = d.contact_value.startsWith('http') ? d.contact_value : `https://${d.contact_value}`;
+    }
+    const icon = t === 'email' ? '✉' : t === 'phone' ? '☎' : t === 'vk' ? 'VK' : '↗';
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="ml-2 inline-flex items-center gap-1 text-[11px] text-brand-600 hover:underline dark:text-brand-400"
+        title={`Написать: ${d.contact_value}`}
+      >
+        <span>{icon}</span>
+        <span>{d.contact_value}</span>
+      </a>
+    );
+  };
+
   return (
-    <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
-      <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
-        ЛПР с сайта компании
-      </div>
-      <ul className="space-y-1.5">
-        {(dms.length > 0 ? dms : others).map((d, i) => (
-          <li key={`${d.name}-${i}`} className="text-[12px]">
-            <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
-            {d.post && (
-              <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
-            )}
-            {d.source_url && (
-              <a
-                href={d.source_url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="ml-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
-                title={sourceLabel[d.source] ?? d.source}
+    <div className="space-y-2">
+      {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
+      {marketingDm && (
+        <div className="rounded-v2-sm border-2 border-brand-500/50 bg-brand-50/40 p-3 dark:bg-brand-950/20">
+          <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+            <span>🎯 Кто за маркетинг</span>
+            {marketingDm.role_category && marketingDm.role_category !== 'marketing' && (
+              <span
+                className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                title="Маркетолог не найден — контакт руководителя как фолбэк"
               >
-                ↗
-              </a>
+                фолбэк на {roleLabel[marketingDm.role_category] ?? 'руководителя'}
+              </span>
             )}
-          </li>
-        ))}
-      </ul>
-      {dms.length > 0 && others.length > 0 && (
-        <details className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-          <summary className="cursor-pointer">
-            + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
-          </summary>
-          <ul className="mt-1 space-y-1 pl-3">
-            {others.map((d, i) => (
-              <li key={`other-${d.name}-${i}`}>
-                <span className="font-medium">{d.name}</span>
-                {d.post && <span>{` · ${d.post}`}</span>}
+          </div>
+          <div className="text-[13px]">
+            <span className="font-medium text-slate-900 dark:text-slate-100">
+              {marketingDm.name}
+            </span>
+            {marketingDm.post && (
+              <span className="text-slate-600 dark:text-slate-300">
+                {` · ${marketingDm.post}`}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span
+              className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
+              title={`Источник: ${sourceLabel[marketingDm.source] ?? marketingDm.source}`}
+            >
+              {sourceLabel[marketingDm.source] ?? marketingDm.source}
+            </span>
+            {typeof marketingDm.confidence === 'number' && (
+              <span
+                title="Уверенность оркестратора"
+                className={
+                  marketingDm.confidence >= 0.8
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : marketingDm.confidence >= 0.6
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-500 dark:text-slate-400'
+                }
+              >
+                уверенность {Math.round(marketingDm.confidence * 100)}%
+              </span>
+            )}
+            {marketingDm.egrn_matches_founder === true && (
+              <span
+                className="text-emerald-600 dark:text-emerald-400"
+                title="Собственник помещения (ЕГРН) совпадает с учредителем (ЕГРЮЛ)"
+              >
+                ✓ подтверждён ЕГРН
+              </span>
+            )}
+          </div>
+          <div className="mt-2">{renderContact(marketingDm) ?? (
+            <span className="text-[11px] italic text-slate-500 dark:text-slate-400">
+              публичного контакта нет — напишите по общей почте компании
+            </span>
+          )}</div>
+          {marketingDm.source_url && (
+            <a
+              href={marketingDm.source_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1 inline-block text-[11px] text-slate-500 hover:text-brand-600 dark:text-slate-400"
+            >
+              открыть источник ↗
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Остальные найденные персоны (командa сайта, учредители и т.п.) */}
+      {(dms.length > 0 || others.length > 0) && (
+        <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
+          <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
+            {marketingDm ? 'Прочие найденные ЛПР' : 'ЛПР с сайта компании'}
+          </div>
+          <ul className="space-y-1.5">
+            {(dms.length > 0 ? dms : others).map((d, i) => (
+              <li key={`${d.name}-${i}`} className="text-[12px]">
+                <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
+                {d.post && (
+                  <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
+                )}
+                <span
+                  className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                  title={sourceLabel[d.source] ?? d.source}
+                >
+                  {sourceLabel[d.source] ?? d.source}
+                </span>
+                {renderContact(d)}
+                {d.source_url && !d.contact_value && (
+                  <a
+                    href={d.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
+                    title={sourceLabel[d.source] ?? d.source}
+                  >
+                    ↗
+                  </a>
+                )}
               </li>
             ))}
           </ul>
-        </details>
+          {dms.length > 0 && others.length > 0 && (
+            <details className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <summary className="cursor-pointer">
+                + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
+              </summary>
+              <ul className="mt-1 space-y-1 pl-3">
+                {others.map((d, i) => (
+                  <li key={`other-${d.name}-${i}`}>
+                    <span className="font-medium">{d.name}</span>
+                    {d.post && <span>{` · ${d.post}`}</span>}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
       )}
     </div>
   );

@@ -209,16 +209,32 @@ async def generate_or_get_draft(
                 None,
             )
 
-    # ЛПР (ТЗ A.1 2026-06-04): если у компании есть юр.данные с ФИО
-    # директора — подставляем имя в обращение письма. Без блокировки:
-    # если CompanyLegal нет / директора нет — письмо будет с «Здравствуйте!».
+    # ЛПР (ТЗ A.1 2026-06-04 + ТЗ Marketing-DM 2026-06-20): приоритет
+    # обращения — целевой маркетинг-ЛПР (is_marketing_dm=True из
+    # оркестратора enrich_marketing_dm), фолбэк — DaData-директор
+    # (CompanyLegal.director_name). Без блокировки: если ни того, ни
+    # другого — письмо будет с «Здравствуйте!».
+    from app.models.company_decision_maker import CompanyDecisionMaker
+
+    marketing_dm = (await db.execute(
+        select(CompanyDecisionMaker)
+        .where(CompanyDecisionMaker.company_id == company.id)
+        .where(CompanyDecisionMaker.is_marketing_dm.is_(True))
+        .limit(1)
+    )).scalar_one_or_none()
+
     legal = (await db.execute(
         select(CompanyLegal).where(CompanyLegal.company_id == company.id)
     )).scalar_one_or_none()
-    recipient_first_name = (
-        extract_first_name(legal.director_name) if legal and legal.director_name else None
-    )
-    recipient_post = legal.director_post if legal and legal.director_post else None
+
+    if marketing_dm is not None and marketing_dm.name:
+        recipient_first_name = extract_first_name(marketing_dm.name)
+        recipient_post = marketing_dm.post
+    else:
+        recipient_first_name = (
+            extract_first_name(legal.director_name) if legal and legal.director_name else None
+        )
+        recipient_post = legal.director_post if legal and legal.director_post else None
 
     # 4. Зовём LLM. pains может быть пустым — функция это умеет.
     pains_for_llm = [

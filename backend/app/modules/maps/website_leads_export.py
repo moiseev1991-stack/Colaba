@@ -69,6 +69,11 @@ def _build_leads_columns():
         ("ЛПР (ФИО)", "lpr_name", 28, None),
         ("ЛПР: должность", "lpr_post", 22, None),
         ("ЛПР: источник", "lpr_source_label", 18, None),
+        # ТЗ Marketing-DM 2026-06-20 §4.4
+        ("Маркетинг-ЛПР?", "marketing_dm_flag", 14, None),
+        ("Контакт ЛПР", "lpr_contact", 34, None),
+        ("Ищет маркетолога", "hiring_marketing_label", 18, None),
+        ("Ссылка на вакансию", "hiring_url", 40, None),
         ("Website-score", "website_lead_score", 12, "score"),
         ("Температура", "lead_temperature", 12, "score"),
         ("Ссылка на 2GIS/Я.Карты", "source_url", 40, None),
@@ -247,10 +252,12 @@ async def _load_legal(
 async def _load_top_decision_makers(
     db: AsyncSession, company_ids: list[int]
 ) -> dict[int, CompanyDecisionMaker]:
-    """Топ-1 ЛПР с сайта по каждой компании (PR #15, миграция 032).
+    """Топ-1 ЛПР по каждой компании.
 
-    Берём is_decision_maker=True, сортируем по confidence DESC — если
-    несколько лиц найдено на /team, выбираем самого уверенного.
+    Приоритет (ТЗ Marketing-DM 2026-06-20):
+        1) is_marketing_dm=True (уже выбран оркестратором enrich_marketing_dm);
+        2) is_decision_maker=True с наибольшим confidence — фолбэк для
+           компаний, где оркестратор ещё не отработал (legacy).
     """
     if not company_ids:
         return {}
@@ -258,8 +265,10 @@ async def _load_top_decision_makers(
         select(CompanyDecisionMaker)
         .where(CompanyDecisionMaker.company_id.in_(company_ids))
         .where(CompanyDecisionMaker.is_decision_maker.is_(True))
+        # is_marketing_dm сверху — приоритет маркетинг-ЛПР над всеми.
         .order_by(
             CompanyDecisionMaker.company_id.asc(),
+            CompanyDecisionMaker.is_marketing_dm.desc(),
             CompanyDecisionMaker.confidence.desc(),
         )
     )
@@ -276,6 +285,11 @@ _DM_SOURCE_LABELS = {
     "website_team": "Сайт (/team)",
     "website_about": "Сайт (/о-нас)",
     "website_contacts": "Сайт (/контакты)",
+    "vk": "ВКонтакте",
+    "hh": "hh.ru",
+    "egrul_director": "ЕГРЮЛ (директор)",
+    "egrul_founder": "ЕГРЮЛ (учредитель)",
+    "egrn": "Росреестр (ЕГРН)",
 }
 
 
@@ -482,6 +496,15 @@ def _row_value(field: str, c: Company, ctx: dict) -> Any:
     if field in ("lpr_name", "lpr_post", "lpr_source_label"):
         legal = ctx.get("legal")
         dm = ctx.get("decision_maker")
+        # ТЗ Marketing-DM: если есть is_marketing_dm-запись, она приоритетнее
+        # DaData-директора (директор идёт как egrul_director внутри dm-map,
+        # маркетолог с сайта — как website_team; loader кладёт первого).
+        if dm is not None and (dm.is_marketing_dm or dm.source not in ("egrul_director",)):
+            if field == "lpr_name":
+                return dm.name
+            if field == "lpr_post":
+                return dm.post or ""
+            return _DM_SOURCE_LABELS.get(dm.source, dm.source)
         if legal is not None and legal.status == "ok" and legal.director_name:
             if field == "lpr_name":
                 return legal.director_name
@@ -495,6 +518,18 @@ def _row_value(field: str, c: Company, ctx: dict) -> Any:
                 return dm.post or ""
             return _DM_SOURCE_LABELS.get(dm.source, dm.source)
         return ""
+    if field == "marketing_dm_flag":
+        dm = ctx.get("decision_maker")
+        return "Да" if (dm is not None and dm.is_marketing_dm) else ""
+    if field == "lpr_contact":
+        dm = ctx.get("decision_maker")
+        if dm is None or not dm.contact_value:
+            return ""
+        return f"{dm.contact_type}: {dm.contact_value}" if dm.contact_type else dm.contact_value
+    if field == "hiring_marketing_label":
+        return "🔥 Да" if bool(getattr(c, "hiring_marketing", False)) else ""
+    if field == "hiring_url":
+        return getattr(c, "hiring_url", None) or ""
     return getattr(c, field, "") or ""
 
 

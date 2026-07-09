@@ -315,6 +315,7 @@ export function MapsFiltersPanel({
       min_age_years: null,
       opf_in: null,
       source_filter: 'all',
+      hiring_marketing: null,
     });
   }, [onChange]);
 
@@ -335,7 +336,8 @@ export function MapsFiltersPanel({
     value.min_revenue != null ||
     value.min_age_years != null ||
     (value.opf_in?.length ?? 0) > 0 ||
-    (value.source_filter != null && value.source_filter !== 'all');
+    (value.source_filter != null && value.source_filter !== 'all') ||
+    value.hiring_marketing != null;
 
   function commitWords(kind: 'contains' | 'excludes', raw: string) {
     const arr = raw
@@ -826,6 +828,35 @@ export function MapsFiltersPanel({
           <option value="any">Не важно</option>
           <option value="yes">Только с ЛПР</option>
           <option value="no">Только без ЛПР</option>
+        </Select>
+      </div>
+
+      {/* ТЗ Marketing-DM 2026-06-20 §4.2: пресет для маркетинговых агентств —
+          «ищут маркетолога». Заполняется enrich_company_hh (hh.ru). Это
+          сильнейший лид-сигнал: компания сама размещает вакансию, значит
+          нужны подрядчики/консультанты по маркетингу. */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+          🔥 Ищет маркетолога (hh.ru)
+        </label>
+        <Select
+          value={
+            value.hiring_marketing === true
+              ? 'yes'
+              : value.hiring_marketing === false
+                ? 'no'
+                : 'any'
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            const next = v === 'yes' ? true : v === 'no' ? false : null;
+            recordManualOverride('hiring_marketing', next);
+            onChange({ ...value, hiring_marketing: next });
+          }}
+        >
+          <option value="any">Не важно</option>
+          <option value="yes">Только те, кто ищет</option>
+          <option value="no">Только те, кто НЕ ищет</option>
         </Select>
       </div>
 

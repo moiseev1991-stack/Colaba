@@ -284,6 +284,8 @@ async def list_search_companies(
     # 2026-06-19: фильтр «Тип юр.лица» (multi-select). Спец-значение
     # '__unknown__' = «компании без opf». OR между значениями.
     opf_in: Optional[list[str]] = Query(default=None),
+    # ТЗ Marketing-DM 2026-06-20 §4.2: пресет «ищут маркетолога».
+    hiring_marketing: Optional[bool] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -308,6 +310,7 @@ async def list_search_companies(
         review_text_excludes_any=review_text_excludes_any or None,
         source_filter=source_filter,
         opf_in=opf_in or None,
+        hiring_marketing=hiring_marketing,
     )
     items, total = await service.get_search_results(db, search_id, flt, limit=limit, offset=offset)
     # Подгружаем топ-3 болей с цитатами одним запросом на всю страницу.
@@ -602,6 +605,7 @@ async def export_search_csv(
     has_owner_replies: Optional[bool] = Query(default=None),
     has_website: Optional[bool] = Query(default=None),
     has_lpr: Optional[bool] = Query(default=None),
+    hiring_marketing: Optional[bool] = Query(default=None),
     pain_tag_ids: Optional[list[int]] = Query(default=None),
     sort_by: SortBy = Query(default="rating_desc"),
     review_text_contains: Optional[str] = Query(default=None, max_length=200),
@@ -646,6 +650,7 @@ async def export_search_csv(
             review_text_excludes=review_text_excludes,
             review_text_contains_any=review_text_contains_any or None,
             review_text_excludes_any=review_text_excludes_any or None,
+            hiring_marketing=hiring_marketing,
         )
         items, _ = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
@@ -851,6 +856,11 @@ async def get_company(
             source_url=r.source_url,
             confidence=float(r.confidence) if r.confidence is not None else None,
             is_decision_maker=bool(r.is_decision_maker),
+            role_category=r.role_category,
+            is_marketing_dm=bool(r.is_marketing_dm),
+            contact_type=r.contact_type,
+            contact_value=r.contact_value,
+            egrn_matches_founder=r.egrn_matches_founder,
         )
         for r in dm_rows
     ]
@@ -2056,6 +2066,64 @@ async def admin_bulk_enrich_team(
         except Exception as e:
             logger.warning("bulk-enrich-team enqueue failed for #%s: %s", cid, e)
     return {"queued": queued}
+
+
+@router.post("/companies/enrich-marketing-dm")
+@limiter.limit("10/minute")
+async def companies_enrich_marketing_dm(
+    request: Request,
+    payload: dict,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """ТЗ «Маркетинг-ЛПР Finder» 2026-06-20: полный пайплайн поиска маркетинг-ЛПР
+    для списка компаний. Ставит hh + vk + оркестратор.
+
+    Body: {"company_ids": [1, 2, 3], "search_id": 42}
+    Идемпотентно: оркестратор внутри reset'ит прошлый is_marketing_dm.
+    """
+    from app.models.maps import MapSearchResult
+    from app.modules.maps.tasks import (
+        enrich_company_hh,
+        enrich_company_vk,
+        enrich_marketing_dm as enrich_marketing_dm_task,
+    )
+    from app.core.config import settings as _s
+
+    company_ids = payload.get("company_ids") or []
+    search_id = payload.get("search_id")
+    if not isinstance(company_ids, list) or not company_ids:
+        raise HTTPException(status_code=400, detail="company_ids обязателен")
+    if search_id is None:
+        raise HTTPException(status_code=400, detail="search_id обязателен")
+    company_ids = [int(x) for x in company_ids if isinstance(x, (int, str))][:500]
+
+    await _get_owned_search(db, int(search_id), user_id)
+
+    valid_rows = (await db.execute(
+        select(MapSearchResult.company_id)
+        .where(MapSearchResult.map_search_id == int(search_id))
+        .where(MapSearchResult.company_id.in_(company_ids))
+    )).scalars().all()
+    valid_set = {int(x) for x in valid_rows}
+    if not valid_set:
+        return {"queued": 0}
+
+    vk_enabled = bool((_s.VK_SERVICE_TOKEN or "").strip())
+    queued = 0
+    for cid in valid_set:
+        try:
+            enrich_company_hh.delay(int(cid))
+            if vk_enabled:
+                enrich_company_vk.delay(int(cid))
+            enrich_marketing_dm_task.apply_async(args=[int(cid)], countdown=45)
+            queued += 1
+        except Exception as e:
+            logger.warning(
+                "companies_enrich_marketing_dm enqueue failed for #%s: %s",
+                cid, e,
+            )
+    return {"queued": queued, "vk_enabled": vk_enabled}
 
 
 # ---------------------------------------------------------------------------

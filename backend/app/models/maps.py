@@ -88,6 +88,14 @@ class Company(Base):
     contacts_extra = Column(JSONB)
     contacts_enriched_at = Column(DateTime(timezone=True))
 
+    # ТЗ «Маркетинг-ЛПР Finder» 2026-06-20 (миграция 049).
+    # hiring_marketing=True — на hh.ru есть активная вакансия маркетолога/SMM/PR.
+    # Сильнейший лид-сигнал для маркетинговых подрядчиков: «ищет маркетолога»
+    # = маркетинга нет или слаб. Заполняется таском enrich_from_hh.
+    # hiring_url — ссылка на вакансию для ручной проверки.
+    hiring_marketing = Column(Boolean, nullable=False, default=False)
+    hiring_url = Column(String(1000))
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

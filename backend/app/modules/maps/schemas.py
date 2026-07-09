@@ -182,6 +182,12 @@ class MapSearchFilter(BaseModel):
     # сайта). False — ни того, ни другого. None — фильтр не накладывается.
     has_lpr: bool | None = None
 
+    # ТЗ Marketing-DM 2026-06-20 §4.2: пресет «ищут маркетолога» — hh.ru
+    # показал активную вакансию маркетолога/SMM/PR. Заполняется
+    # enrich_company_hh. Сильнейший лид-сигнал для маркетинговых
+    # подрядчиков; отдельный фильтр в сайдбаре.
+    hiring_marketing: bool | None = None
+
 
 # ---------------------------------------------------------------------------
 # API request/response schemas
@@ -357,6 +363,12 @@ class CompanyOut(BaseModel):
     # CompanyDecisionMaker (парсер /team на сайте). Заполняется в роутере
     # batch'ем через attach_has_lpr_for_companies.
     has_lpr: bool = False
+    # ТЗ «Маркетинг-ЛПР Finder» 2026-06-20:
+    # hiring_marketing — сильнейший лид-сигнал: hh.ru показывает активную
+    # вакансию маркетолога/SMM/PR у этой компании. Заполняется
+    # enrich_company_hh, приходит прямо из Company.hiring_marketing.
+    hiring_marketing: bool = False
+    hiring_url: str | None = None
 
 
 class ReviewOut(BaseModel):
@@ -378,16 +390,27 @@ class ReviewOut(BaseModel):
 
 
 class DecisionMakerOut(BaseModel):
-    """ЛПР с сайта компании (ТЗ A.2 2026-06-04). Из company_decision_makers."""
+    """ЛПР с сайта компании (ТЗ A.2 2026-06-04 + ТЗ Marketing-DM 2026-06-20).
+    Из company_decision_makers."""
 
     model_config = ConfigDict(from_attributes=True)
 
     name: str
     post: str | None = None
-    source: str  # 'website_team' | 'website_about' | 'website_contacts'
+    # website_team | website_about | website_contacts | vk | hh
+    # | egrul_director | egrul_founder | egrn
+    source: str
     source_url: str | None = None
     confidence: float | None = None
     is_decision_maker: bool = True
+    # ТЗ Marketing-DM: role_category (marketing/owner/founder/management/hr/other),
+    # is_marketing_dm (целевой ЛПР), contact_type/contact_value (публичный канал),
+    # egrn_matches_founder (сверка Росреестр↔учредитель).
+    role_category: str | None = None
+    is_marketing_dm: bool = False
+    contact_type: str | None = None
+    contact_value: str | None = None
+    egrn_matches_founder: bool | None = None
 
 
 class CompanyDetailOut(CompanyOut):

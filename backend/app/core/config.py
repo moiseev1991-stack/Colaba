@@ -183,6 +183,11 @@ class Settings(BaseSettings):
     YANDEX_CLIENT_SECRET: str = Field(default="", description="Yandex OAuth Client Secret")
     VK_CLIENT_ID: str = Field(default="", description="VK ID Client ID")
     VK_CLIENT_SECRET: str = Field(default="", description="VK ID Client Secret")
+    # Service token для VK API (groups.search / groups.getById). Получается
+    # в кабинете VK-приложения (vk.com/apps?act=manage → «Настройки» →
+    # «Сервисный ключ доступа»). Без него модуль maps/vk_enrich возвращает
+    # skipped — маркетинг-ЛПР Finder работает на других источниках.
+    VK_SERVICE_TOKEN: str = Field(default="", description="VK service token for public groups.search/getById")
     # Telegram Login Widget uses bot token above
 
     # OAuth Frontend URL (for redirects)

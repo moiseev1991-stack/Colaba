@@ -33,6 +33,7 @@ import {
   MessageCircle,
   UserCheck,
   UserX,
+  Flame,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -280,6 +281,23 @@ export function MapsCompanyCard({
               title="ЛПР не найден ни в DaData, ни на сайте"
             >
               ЛПР: нет данных
+            </StatusPill>
+          )}
+          {/* ТЗ Marketing-DM 2026-06-20 §4.2: hot-бейдж «ищет маркетолога».
+              Заполняется enrich_company_hh (hh.ru). Сильнейший лид-сигнал
+              для маркетинговых подрядчиков — показываем крупно (tone=bad
+              = красный акцент, привлекает внимание). */}
+          {company.hiring_marketing && (
+            <StatusPill
+              tone="hot"
+              icon={<Flame />}
+              title={
+                company.hiring_url
+                  ? `Активная вакансия маркетолога на hh.ru: ${company.hiring_url}`
+                  : 'Активная вакансия маркетолога на hh.ru'
+              }
+            >
+              ищет маркетолога
             </StatusPill>
           )}
           {/* 2026-06-12: убраны pill'ы lead_temperature и website_lead_score.

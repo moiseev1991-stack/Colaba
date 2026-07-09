@@ -69,12 +69,45 @@ _DM_ROLE_KEYWORDS = (
     "маркетолог", "ceo", "cmo", "cto", "coo",
 )
 
+# Ключевые слова для маркетинг-роли (для определения role_category='marketing'
+# и is_marketing_dm=True). Также включает SMM/PR/бренд/рекламу.
+_MARKETING_KEYWORDS = (
+    "маркетолог", "маркетинг", "cmo", "директор по маркетинг",
+    "руководитель отдела маркетинг", "начальник отдела маркетинг",
+    "smm", "pr-", "pr ", "pr,", "пиар", "бренд-менедж", "бренд менедж",
+    "реклам",
+)
+
 
 def _is_decision_maker_role(post: str | None) -> bool:
     if not post:
         return False
     low = post.lower()
     return any(k in low for k in _DM_ROLE_KEYWORDS)
+
+
+def _infer_role_category(post: str | None) -> str | None:
+    """Грубая классификация должности в role_category. Возвращает один из
+    marketing/owner/founder/management/hr/other или None если пусто.
+    Нужен как фолбэк если LLM не выставил категорию или выставил невалидную.
+    """
+    if not post:
+        return None
+    low = post.lower()
+    if any(k in low for k in _MARKETING_KEYWORDS):
+        return "marketing"
+    if "учредител" in low or "основател" in low or "соучредител" in low:
+        return "founder"
+    if "владел" in low or "собственник" in low:
+        return "owner"
+    if any(k in low for k in (
+        "директор", "руководител", "управляющ", "генеральный",
+        "ceo", "cto", "coo", "главврач", "главный врач",
+    )):
+        return "management"
+    if low.startswith("hr") or "рекрут" in low or "кадровик" in low:
+        return "hr"
+    return "other"
 
 
 def _clean_text(html: str) -> str:
@@ -175,6 +208,29 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
                     # их не помечаем как ЛПР, но всё равно сохраняем.
                     confidence = min(confidence, 0.4)
 
+                # role_category: доверяем LLM, если валидное значение;
+                # иначе выводим по ключевым словам должности.
+                role_category = item.get("role_category") or _infer_role_category(post)
+
+                # Личный контакт: приоритет email > vk > phone (для UI это
+                # означает: кликабельная почта → чат → звонок). Сохраняем
+                # только один — самый подходящий.
+                contact_email = item.get("contact_email")
+                contact_phone = item.get("contact_phone")
+                contact_vk = item.get("contact_vk")
+                if contact_email:
+                    contact_type, contact_value = "email", contact_email
+                elif contact_vk:
+                    contact_type, contact_value = "vk", contact_vk
+                elif contact_phone:
+                    contact_type, contact_value = "phone", contact_phone
+                else:
+                    contact_type, contact_value = None, None
+
+                # on_conflict_do_nothing применяется к нашему функциональному
+                # UNIQUE index по (company_id, lower(name)) автоматически.
+                # is_marketing_dm НЕ выставляем здесь — это делает оркестратор
+                # enrich_marketing_dm после сбора всех источников.
                 stmt = pg_insert(CompanyDecisionMaker).values(
                     company_id=company_id,
                     name=name,
@@ -183,24 +239,9 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
                     source_url=url[:1000],
                     confidence=confidence,
                     is_decision_maker=is_dm,
-                ).on_conflict_do_nothing(
-                    # UNIQUE index по (company_id, lower(name)) — дедуп
-                    # на стороне БД (см. миграцию 032).
-                    index_elements=None,
-                    index_where=None,
-                )
-                # on_conflict_do_nothing(index_elements=…) для функциональных
-                # индексов не работает, поэтому используем глобальный
-                # ON CONFLICT DO NOTHING (он применится к нашему UNIQUE
-                # constraint автоматически).
-                stmt = pg_insert(CompanyDecisionMaker).values(
-                    company_id=company_id,
-                    name=name,
-                    post=post,
-                    source=source_tag,
-                    source_url=url[:1000],
-                    confidence=confidence,
-                    is_decision_maker=is_dm,
+                    role_category=role_category,
+                    contact_type=contact_type,
+                    contact_value=contact_value,
                 ).on_conflict_do_nothing()
                 try:
                     await db.execute(stmt)
