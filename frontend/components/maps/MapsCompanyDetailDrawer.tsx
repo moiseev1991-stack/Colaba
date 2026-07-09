@@ -36,6 +36,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
+  enrichCompaniesMarketingDm,
   getCompanyDetail,
   getCompanyPainTrend,
   getCompanyReviews,
@@ -51,10 +52,14 @@ type SourceTab = 'all' | '2gis' | 'yandex_maps';
 
 interface Props {
   companyId: number | null;
+  /** ТЗ Marketing-DM 2026-06-20 §4.1: нужен для кнопки «Найти ЛПР» —
+   *  POST /maps/companies/enrich-marketing-dm требует search_id для
+   *  проверки владения. */
+  searchId: number;
   onClose: () => void;
 }
 
-export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
+export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props) {
   const [detail, setDetail] = useState<CompanyDetailOut | null>(null);
   const [tab, setTab] = useState<Tab>('all');
   // Phase 5 multi-source: вкладка по источнику. Активна (видна) только если
@@ -90,6 +95,30 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
     const t = setTimeout(() => setDebouncedText(textQuery.trim()), 300);
     return () => clearTimeout(t);
   }, [textQuery]);
+
+  // ТЗ Marketing-DM §4.1: state для кнопки «Найти ЛПР» — простой pending
+  // + result-flash. Оркестратор с countdown=45s внутри, кнопка сразу
+  // возвращает queued=1 и уходит в disabled на 45 секунд.
+  const [dmEnrichPending, setDmEnrichPending] = useState(false);
+  const [dmEnrichResult, setDmEnrichResult] = useState<string | null>(null);
+  const handleFindDm = useCallback(async () => {
+    if (companyId == null || dmEnrichPending) return;
+    setDmEnrichPending(true);
+    setDmEnrichResult(null);
+    try {
+      const r = await enrichCompaniesMarketingDm(searchId, [companyId]);
+      setDmEnrichResult(
+        r.queued > 0
+          ? `Поиск запущен — ЛПР появится в drawer через ~1 мин${r.vk_enabled ? '' : ' (VK не настроен)'}`
+          : 'Не удалось запустить поиск',
+      );
+    } catch (e) {
+      setDmEnrichResult('Ошибка — попробуйте ещё раз');
+    } finally {
+      // Через 45s снимаем disabled, чтобы юзер мог повторить если результата нет.
+      window.setTimeout(() => setDmEnrichPending(false), 45_000);
+    }
+  }, [companyId, searchId, dmEnrichPending]);
 
   const loadReviews = useCallback(async () => {
     if (companyId == null || !detail) return;
@@ -236,10 +265,14 @@ export function MapsCompanyDetailDrawer({ companyId, onClose }: Props) {
               отдельное поле пустое — «нет данных» серым, не молча. */}
           <LegalBlock legal={detail.legal} />
 
-          {/* ЛПР со страниц сайта (ТЗ A.2 2026-06-04). Если decision_makers
-              пуст и legal.director_name тоже null — блок не рендерится. */}
+          {/* ЛПР со страниц сайта / ВК / hh / ЕГРЮЛ (ТЗ A.2 + Marketing-DM).
+              Блок отрисовывается всегда (даже когда список пуст) — в пустом
+              состоянии показывает кнопку «Найти ЛПР» для ручного триггера. */}
           <DecisionMakersBlock
             decisionMakers={detail.decision_makers ?? []}
+            onFindDm={handleFindDm}
+            dmEnrichPending={dmEnrichPending}
+            dmEnrichResult={dmEnrichResult}
           />
 
           <div className="flex flex-wrap gap-3 text-xs">
@@ -1227,10 +1260,41 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
 // компонент не рендерится.
 function DecisionMakersBlock({
   decisionMakers,
+  onFindDm,
+  dmEnrichPending,
+  dmEnrichResult,
 }: {
   decisionMakers: DecisionMakerOut[];
+  onFindDm: () => void;
+  dmEnrichPending: boolean;
+  dmEnrichResult: string | null;
 }) {
-  if (!decisionMakers || decisionMakers.length === 0) return null;
+  // Пусто → показываем кнопку «Найти ЛПР» (ТЗ Marketing-DM §4.1).
+  if (!decisionMakers || decisionMakers.length === 0) {
+    return (
+      <div className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+          Кто за маркетинг
+        </div>
+        <div className="mb-2 text-[12px] text-slate-500 dark:text-slate-400">
+          ЛПР ещё не найден. Запустить поиск (сайт /team, hh.ru, ВК, ЕГРЮЛ).
+        </div>
+        <button
+          type="button"
+          onClick={onFindDm}
+          disabled={dmEnrichPending}
+          className="rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {dmEnrichPending ? 'Ищем…' : '🎯 Найти ЛПР'}
+        </button>
+        {dmEnrichResult && (
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+            {dmEnrichResult}
+          </div>
+        )}
+      </div>
+    );
+  }
   // ТЗ Marketing-DM §4.1: сверху выделенный блок «Кто за маркетинг» —
   // единственная выбранная оркестратором персона (is_marketing_dm=true),
   // либо фолбэк-руководитель если маркетолога не нашли.
@@ -1285,6 +1349,28 @@ function DecisionMakersBlock({
 
   return (
     <div className="space-y-2">
+      {/* Если оркестратор не выбрал маркетинг-ЛПР — предлагаем ре-триггер.
+          Это ловит legacy-компании (парсились до этой ветки). */}
+      {!marketingDm && (
+        <div className="flex items-center justify-between rounded-v2-sm border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
+          <span className="text-[12px] text-amber-800 dark:text-amber-200">
+            Маркетинг-ЛПР ещё не выбран. Запустить поиск?
+          </span>
+          <button
+            type="button"
+            onClick={onFindDm}
+            disabled={dmEnrichPending}
+            className="rounded-md bg-brand-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {dmEnrichPending ? 'Ищем…' : '🎯 Найти ЛПР'}
+          </button>
+        </div>
+      )}
+      {dmEnrichResult && !marketingDm && (
+        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+          {dmEnrichResult}
+        </div>
+      )}
       {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
       {marketingDm && (
         <div className="rounded-v2-sm border-2 border-brand-500/50 bg-brand-50/40 p-3 dark:bg-brand-950/20">

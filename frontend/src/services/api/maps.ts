@@ -924,6 +924,31 @@ export async function enrichCompaniesTeam(
   return resp.data;
 }
 
+/**
+ * ТЗ Marketing-DM 2026-06-20 §4.1: ручной триггер пайплайна поиска
+ * маркетинг-ЛПР (hh + vk + оркестратор). Использует та же валидация
+ * search_id-владения, что и enrich-team.
+ *
+ * Оркестратор с countdown=45s внутри — чтобы hh/vk успели отработать.
+ * vk_enabled=false означает, что на сервере не настроен VK_SERVICE_TOKEN
+ * (модуль VK тихо skip'нется, но hh + egrul всё равно отработают).
+ */
+export interface EnrichMarketingDmResponse {
+  queued: number;
+  vk_enabled: boolean;
+}
+
+export async function enrichCompaniesMarketingDm(
+  searchId: number,
+  companyIds: number[],
+): Promise<EnrichMarketingDmResponse> {
+  const resp = await apiClient.post<EnrichMarketingDmResponse>(
+    `/maps/companies/enrich-marketing-dm`,
+    { search_id: searchId, company_ids: companyIds },
+  );
+  return resp.data;
+}
+
 /** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку.
  *
  *  Два режима:

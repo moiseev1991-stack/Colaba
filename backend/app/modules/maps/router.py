@@ -2068,6 +2068,65 @@ async def admin_bulk_enrich_team(
     return {"queued": queued}
 
 
+@router.post("/admin/bulk-enrich-marketing-dm")
+@limiter.limit("5/minute")
+async def admin_bulk_enrich_marketing_dm(
+    request: Request,
+    search_id: int | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=2000),
+    _: "User" = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Прогоняет пайплайн «Маркетинг-ЛПР Finder» по существующим компаниям.
+
+    Идемпотентно: если оркестратор уже отработал по компании (есть запись
+    с is_marketing_dm=True), — пропускаем. Иначе ставим hh+vk+оркестратор.
+
+    Для разового прогона на проде: после мержа фичи хочется получить
+    hiring_marketing и маркетинг-ЛПР по компаниям, которые парсились
+    ДО этой ветки. Без bulk-endpoint пришлось бы ждать нового парсинга.
+    """
+    from app.models.company_decision_maker import CompanyDecisionMaker
+    from app.modules.maps.tasks import (
+        enrich_company_hh,
+        enrich_company_vk,
+        enrich_marketing_dm as enrich_marketing_dm_task,
+    )
+    from app.core.config import settings as _s
+
+    # Компании, у которых уже выставлен is_marketing_dm — пропускаем.
+    already_sub = select(CompanyDecisionMaker.company_id).where(
+        CompanyDecisionMaker.is_marketing_dm.is_(True)
+    )
+    stmt = (
+        select(Company.id)
+        .where(Company.id.not_in(already_sub))
+        .limit(limit)
+    )
+    if search_id is not None:
+        from app.models.maps import MapSearchResult
+        stmt = stmt.join(
+            MapSearchResult, MapSearchResult.company_id == Company.id
+        ).where(MapSearchResult.map_search_id == search_id)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    vk_enabled = bool((_s.VK_SERVICE_TOKEN or "").strip())
+    queued = 0
+    for cid in rows:
+        try:
+            enrich_company_hh.delay(int(cid))
+            if vk_enabled:
+                enrich_company_vk.delay(int(cid))
+            enrich_marketing_dm_task.apply_async(args=[int(cid)], countdown=45)
+            queued += 1
+        except Exception as e:
+            logger.warning(
+                "admin_bulk_enrich_marketing_dm enqueue failed for #%s: %s",
+                cid, e,
+            )
+    return {"queued": queued, "vk_enabled": vk_enabled}
+
+
 @router.post("/companies/enrich-marketing-dm")
 @limiter.limit("10/minute")
 async def companies_enrich_marketing_dm(
