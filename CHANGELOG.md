@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.124.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.123.0...v1.124.0) (2026-07-10)
+
+
+### Features
+
+* **maps:** playwright email-парсер сайта + косметика Marketing-DM ([74a2953](https://github.com/moiseev1991-stack/Colaba/commit/74a295367af651dda743f0522296fe1c223c6d25))
+
 # [1.123.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.122.1...v1.123.0) (2026-07-09)
 
 
