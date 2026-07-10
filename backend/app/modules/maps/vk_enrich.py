@@ -3,13 +3,20 @@
 
 Что делаем автономно
 --------------------
-1. Ищем группу компании через groups.search (по названию + городу).
-2. Валидируем матч: совпадение website (у нас Company.website ↔ group.site)
-   или совпадение city + похожее имя. Если ни того ни другого — skip
-   (лучше «не нашли», чем взять чужую группу с тем же названием).
-3. groups.getById с fields=contacts,site,city,description → достаём блок
-   «Контакты» сообщества: имя + должность + телефон + email.
+1. Берём VK-slug из company_contacts (type='vk') — 2GIS уже сам привязал
+   сообщества к компаниям при парсинге.
+2. groups.getById(vk_slug) с fields=contacts,site,city,description → достаём
+   блок «Контакты» сообщества: имя + должность + телефон + email.
+3. Валидируем матч по website (если у группы есть site и он не совпадает с
+   Company.website — отклоняем как чужую группу).
 4. Пишем в company_decision_makers с source='vk'.
+
+История стратегии
+-----------------
+До 2026-07-10 использовался groups.search + fuzzy name/city match. VK
+ограничил метод для service token'ов (code=1051 method unavailable), поэтому
+перешли на getById с уже известным slug'ом. Плюс: 2GIS-slug — более надёжный
+источник чем name-search (нет ambiguity с одноимёнными сообществами).
 
 Что мы НЕ можем автономно
 -------------------------
@@ -24,16 +31,18 @@
 - Данные из блока «Контакты» сообщества — публично отображаются на
   странице группы. Работодатель добровольно их разместил. 152-ФЗ: сбор
   таких данных легален.
-- Rate-limit VK API: 3 req/сек service token. У нас 2 запроса на
-  компанию (search + getById), безопасно.
+- Rate-limit VK API: 3 req/сек service token. У нас 1 запрос на компанию
+  (getById), безопасно.
 - Без VK_SERVICE_TOKEN модуль возвращает `skipped` — оркестратор
   enrich_marketing_dm работает без ВК (просто теряем один сигнал).
+- Без company_contacts (type='vk') — возвращаем `no_vk_link`, оркестратор
+  тоже без ВК-сигнала. Влияет только на компании, где 2GIS не связал VK.
 
 Матчинг (важно, false-positive = мусорный ЛПР)
 ---------------------------------------------
-Порог совпадения: если group.site совпал с company.website — берём с
-confidence=0.8. Если сайта у группы нет, но совпал город + name (по
-_normalize_company_name) — берём с confidence=0.6. Иначе skip.
+- Если group.site явно совпал с company.website → confidence=0.9.
+- Если site у группы пустой → confidence=0.7 (доверяем 2GIS-привязке).
+- Если group.site есть, но НЕ совпал с company.website → skip (чужая группа).
 """
 
 from __future__ import annotations
@@ -50,7 +59,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.company_decision_maker import CompanyDecisionMaker
-from app.models.maps import Company
+from app.models.maps import Company, CompanyContact
 
 
 logger = logging.getLogger(__name__)
@@ -59,13 +68,6 @@ logger = logging.getLogger(__name__)
 _VK_API = "https://api.vk.com/method"
 _VK_API_VERSION = "5.199"
 _TIMEOUT = httpx.Timeout(10.0, connect=5.0)
-
-
-def _normalize_company_name(name: str) -> str:
-    """См. hh_enrich._normalize_company_name — делегируем туда, чтобы
-    не расходились правила матчинга."""
-    from app.modules.maps.hh_enrich import _normalize_company_name as _n
-    return _n(name)
 
 
 def _domain(url: str) -> str:
@@ -114,62 +116,64 @@ async def _vk_call(
     return data.get("response") if isinstance(data, dict) else None
 
 
-async def _search_group(
-    client: httpx.AsyncClient, company: Company
-) -> dict[str, Any] | None:
-    """groups.search + матч по website/city. Возвращает {id, name, ...}
-    или None."""
-    q = (company.name or "").strip()
-    if not q:
+_VK_URL_RE = re.compile(
+    r"(?:https?://)?(?:m\.|www\.)?vk\.com/(?:club|public|id)?([A-Za-z0-9_.]{3,60})/?",
+    re.IGNORECASE,
+)
+
+
+def _extract_vk_slug(vk_value: str) -> str | None:
+    """Из строки company_contacts (тип vk) возвращает screen_name / group_id
+    для VK API. Примеры:
+        'https://vk.com/lame_clinic' → 'lame_clinic'
+        'vk.com/club123' → 'club123'  (числовой club id остаётся как есть)
+        '@lame_clinic' → 'lame_clinic'
+        'lame_clinic' → 'lame_clinic'
+    Возвращает None если строка мусорная (типа 'vk.com' без slug'а).
+    """
+    if not vk_value:
         return None
-    resp = await _vk_call(client, "groups.search", {
-        "q": q,
-        "count": 20,
-        "city": None,  # без ID — не фильтруем; матчить будем по имени/сайту
-    })
-    if not isinstance(resp, dict):
+    raw = vk_value.strip().lstrip("@").rstrip("/")
+    m = _VK_URL_RE.match(raw)
+    if m:
+        slug = m.group(1).strip("_.-")
+    else:
+        # Может быть чистый handle без URL — примем его как есть.
+        slug = raw.strip("_.-")
+    # Валидатор: 3-60 символов, только ASCII + `_` + `.`.
+    if not re.match(r"^[A-Za-z0-9_.]{3,60}$", slug):
         return None
-    items = resp.get("items") or []
-    if not items:
+    # Мусорные значения от 2GIS-парсера
+    if slug.lower() in {"vk", "vkcom", "www", "com", "share"}:
         return None
+    return slug
 
-    target_name = _normalize_company_name(company.name or "")
-    target_domain = _domain(company.website or "")
-    target_city = (company.city or "").strip().lower()
 
-    # Первый проход: точный матч по website (если у нас он есть).
-    if target_domain:
-        for g in items:
-            gid = g.get("id")
-            if not gid:
-                continue
-            # groups.search сам по себе НЕ возвращает site — надо getById.
-            # Здесь пока только запомним первый кандидат по имени, а домен
-            # проверим в getById.
-            pass
-
-    # Второй проход: по нормализованному имени + городу (fuzzy).
-    for g in items:
-        gid = g.get("id")
-        name = g.get("name") or ""
-        gcity = ((g.get("city") or {}).get("title") or "").strip().lower()
-        if _normalize_company_name(name) != target_name:
-            continue
-        if target_city and gcity and target_city == gcity:
-            return g
-        # Если города не сравниваем (у нас нет company.city или у группы
-        # нет city), возвращаем первый точный name-match. Уточнение по
-        # website будет в get_by_id.
-        return g
-
-    # Ничего не подошло по строгому нормализованному имени — не рискуем.
+async def _pick_vk_slug_for_company(
+    db: AsyncSession, company_id: int
+) -> str | None:
+    """Достаёт VK-slug из company_contacts (type='vk'). Первый is_primary=True
+    выигрывает; иначе — любая свежая запись."""
+    stmt = (
+        select(CompanyContact.value, CompanyContact.is_primary)
+        .where(CompanyContact.company_id == company_id)
+        .where(CompanyContact.type == "vk")
+        .order_by(CompanyContact.is_primary.desc(), CompanyContact.id.desc())
+        .limit(10)
+    )
+    rows = (await db.execute(stmt)).all()
+    for value, _ in rows:
+        slug = _extract_vk_slug(value or "")
+        if slug:
+            return slug
     return None
 
 
 async def _get_group_details(
-    client: httpx.AsyncClient, group_id: int
+    client: httpx.AsyncClient, group_id: str
 ) -> dict[str, Any] | None:
-    """groups.getById с fields=contacts,site,city."""
+    """groups.getById с fields=contacts,site,city. group_id принимает как
+    числовой id, так и screen_name (VK API сам резолвит slug)."""
     resp = await _vk_call(client, "groups.getById", {
         "group_id": group_id,
         "fields": "contacts,site,city,description",
@@ -197,27 +201,32 @@ async def enrich_from_vk(
     if not company.name:
         return {"status": "no_name"}
 
+    # 2026-07-10: VK ограничил groups.search для service token
+    # (code=1051 method unavailable). Переходим на groups.getById с уже
+    # известным VK-slug'ом из company_contacts (2GIS парсит их массово).
+    vk_slug = await _pick_vk_slug_for_company(db, company_id)
+    if not vk_slug:
+        return {"status": "no_vk_link"}
+
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-        group = await _search_group(client, company)
-        if group is None:
-            return {"status": "no_group"}
-
-        gid = group.get("id")
-        if not gid:
-            return {"status": "no_group"}
-
-        details = await _get_group_details(client, int(gid))
+        details = await _get_group_details(client, vk_slug)
         if not details:
-            return {"status": "no_details", "group_id": gid}
+            return {"status": "no_details", "vk_slug": vk_slug}
+
+    # gid — числовой id, нужен для формирования vk.com/club{gid} URL.
+    gid = details.get("id")
+    if not gid:
+        return {"status": "no_group_id", "vk_slug": vk_slug}
 
     # Валидация матча по website (если у нас известен).
+    # 2026-07-10: VK-slug теперь берётся из company_contacts (2GIS его сам
+    # привязал к компании), поэтому «пусто у группы» — норма (не заполнили site),
+    # НЕ повод отклонить. Отклоняем только явный mismatch (сайт есть, но чужой).
     target_domain = _domain(company.website or "")
     group_domain = _domain(details.get("site") or "")
     website_match = bool(target_domain and target_domain == group_domain)
 
-    # Если website у компании известен, а у группы либо нет либо
-    # НЕ совпадает — отклоняем матч (высокий риск чужой группы).
-    if target_domain and not website_match:
+    if target_domain and group_domain and not website_match:
         return {
             "status": "site_mismatch",
             "group_id": gid,
@@ -236,8 +245,9 @@ async def enrich_from_vk(
             "website_match": website_match,
         }
 
-    # Confidence: 0.8 если сайт совпал, 0.6 если только имя+город.
-    base_confidence = 0.8 if website_match else 0.6
+    # Confidence: 0.9 если сайт совпал явно, 0.7 если сайта у группы нет
+    # (доверяем что 2GIS правильно привязал VK к компании).
+    base_confidence = 0.9 if website_match else 0.7
 
     # Маркетинговые роли для повышения confidence и role_category='marketing'.
     marketing_keywords = (
