@@ -230,17 +230,14 @@ from app.modules.maps.hh_enrich import (
     ("Bello Dente", True),
     ("Ivanor", True),
     ("Аскона", False),
-    ("Клиника Astra", True),  # 50/50 — > 60% ASCII не набирается
+    # 'Клиника Astra' = 7 кир + 5 лат = 41.7% ASCII < 60% threshold → False.
+    # Смешанные названия (частая ситуация в RU-каталогах) специально
+    # игнорируем — они и без транслита сработают через прямой запрос.
+    ("Клиника Astra", False),
     ("", False),
 ])
 def test_looks_like_latin(text, expected_latin):
-    # Пороговый тест — не жёстко проверяем каждый случай.
-    if expected_latin:
-        assert _looks_like_latin(text) is True
-    else:
-        # Пустая или чистая кириллица.
-        if not text or all(not c.isascii() or not c.isalpha() for c in text):
-            assert _looks_like_latin(text) is False
+    assert _looks_like_latin(text) is expected_latin
 
 
 @pytest.mark.parametrize("latin,cyr_expected", [
