@@ -101,23 +101,52 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   // возвращает queued=1 и уходит в disabled на 45 секунд.
   const [dmEnrichPending, setDmEnrichPending] = useState(false);
   const [dmEnrichResult, setDmEnrichResult] = useState<string | null>(null);
+  // 2026-07-10: юзер жаловался «нажал Найти ЛПР — ничего не появилось».
+  // Раньше UI просто снимал disabled кнопки через 45s, а данные drawer'а
+  // (detail.decision_makers) НЕ рефетчились. Юзер видел ту же пустоту.
+  // Теперь через 55s после клика перезагружаем компанию → decision_makers
+  // подтянутся автоматически. Если после рефетча всё ещё пусто — показываем
+  // явный «не нашли», а не молча возвращаем кнопку.
+  const [dmSearchExhausted, setDmSearchExhausted] = useState(false);
   const handleFindDm = useCallback(async () => {
     if (companyId == null || dmEnrichPending) return;
     setDmEnrichPending(true);
     setDmEnrichResult(null);
+    setDmSearchExhausted(false);
     try {
       const r = await enrichCompaniesMarketingDm(searchId, [companyId]);
       setDmEnrichResult(
         r.queued > 0
-          ? `Поиск запущен — ЛПР появится в drawer через ~1 мин${r.vk_enabled ? '' : ' (VK не настроен)'}`
+          ? `Поиск запущен — hh, VK, ЕГРЮЛ… результат ~1 минуту${r.vk_enabled ? '' : ' (VK не настроен)'}`
           : 'Не удалось запустить поиск',
       );
     } catch (e) {
       setDmEnrichResult('Ошибка — попробуйте ещё раз');
-    } finally {
-      // Через 45s снимаем disabled, чтобы юзер мог повторить если результата нет.
-      window.setTimeout(() => setDmEnrichPending(false), 45_000);
+      setDmEnrichPending(false);
+      return;
     }
+    // Через 55 сек: рефетч drawer + если пусто → пометить как «искали, не нашли».
+    window.setTimeout(async () => {
+      if (companyId == null) return;
+      try {
+        const fresh = await getCompanyDetail(companyId);
+        setDetail(fresh);
+        const found = (fresh.decision_makers || []).length > 0;
+        if (!found) {
+          setDmSearchExhausted(true);
+          setDmEnrichResult(
+            'Не нашли ЛПР ни в одном источнике: hh.ru (нет активных вакансий), ' +
+            'VK (нет привязанного сообщества), ЕГРЮЛ (не удалось сматчить ИНН).',
+          );
+        } else {
+          setDmEnrichResult(null);
+        }
+      } catch {
+        // Тихо — юзер сможет перезапустить.
+      } finally {
+        setDmEnrichPending(false);
+      }
+    }, 55_000);
   }, [companyId, searchId, dmEnrichPending]);
 
   const loadReviews = useCallback(async () => {
@@ -268,11 +297,14 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
           {/* ЛПР со страниц сайта / ВК / hh / ЕГРЮЛ (ТЗ A.2 + Marketing-DM).
               Блок отрисовывается всегда (даже когда список пуст) — в пустом
               состоянии показывает кнопку «Найти ЛПР» для ручного триггера. */}
+          {/* dmSearchExhausted=true → в блок передан флаг для показа
+              «не нашли», а не заново кнопки. */}
           <DecisionMakersBlock
             decisionMakers={detail.decision_makers ?? []}
             onFindDm={handleFindDm}
             dmEnrichPending={dmEnrichPending}
             dmEnrichResult={dmEnrichResult}
+            searchExhausted={dmSearchExhausted}
           />
 
           <div className="flex flex-wrap gap-3 text-xs">
@@ -1263,14 +1295,41 @@ function DecisionMakersBlock({
   onFindDm,
   dmEnrichPending,
   dmEnrichResult,
+  searchExhausted,
 }: {
   decisionMakers: DecisionMakerOut[];
   onFindDm: () => void;
   dmEnrichPending: boolean;
   dmEnrichResult: string | null;
+  /** true после 55с ожидания если поиск ничего не нашёл. UI покажет явно
+   *  «не нашли», а не заново кнопку. */
+  searchExhausted?: boolean;
 }) {
-  // Пусто → показываем кнопку «Найти ЛПР» (ТЗ Marketing-DM §4.1).
+  // Пусто → показываем кнопку «Найти ЛПР» или «не нашли», если поиск уже
+  // отработал вхолостую (2026-07-10 fix — юзер жаловался на «нажал → пусто»).
   if (!decisionMakers || decisionMakers.length === 0) {
+    if (searchExhausted) {
+      return (
+        <div className="rounded-v2-sm border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+          <div className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+            Кто за маркетинг
+          </div>
+          <div className="mb-2 text-[12px] text-amber-900 dark:text-amber-100">
+            🔍 Не нашли ЛПР ни в одном источнике. У компании нет активных
+            вакансий на hh.ru, привязанного VK-сообщества и данных в ЕГРЮЛ.
+            Попробуй запустить снова позже — источники обновляются.
+          </div>
+          <button
+            type="button"
+            onClick={onFindDm}
+            disabled={dmEnrichPending}
+            className="rounded-md border border-amber-400 bg-white px-3 py-1.5 text-[12px] font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-950 dark:text-amber-100 dark:hover:bg-amber-900"
+          >
+            {dmEnrichPending ? 'Ищем…' : '🔄 Попробовать снова'}
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
         <div className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
@@ -1285,7 +1344,7 @@ function DecisionMakersBlock({
           disabled={dmEnrichPending}
           className="rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {dmEnrichPending ? 'Ищем…' : '🎯 Найти ЛПР'}
+          {dmEnrichPending ? 'Ищем… (~1 мин)' : '🎯 Найти ЛПР'}
         </button>
         {dmEnrichResult && (
           <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
