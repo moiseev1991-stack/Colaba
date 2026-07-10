@@ -123,7 +123,7 @@ const REVIEW_FILTER_FIELDS: FieldDef[] = [
     id: 'review_text',
     label: 'В тексте отзыва есть',
     kind: 'text',
-    placeholder: 'Например: долго ждали',
+    placeholder: 'Например: не перезвонили, грубость, обман',
   },
 ];
 
@@ -924,8 +924,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                   onChange={setFilterSpec}
                   disabled={isLoading}
                   fields={REVIEW_FILTER_FIELDS}
-                  emptyHint='Добавьте условие — например, «В тексте отзыва есть содержит долго ждали».'
-                  defaultTextPlaceholder="Например: долго ждали"
+                  emptyHint='Добавьте условие — например, «В тексте отзыва есть содержит грубость».'
+                  defaultTextPlaceholder="Например: не перезвонили, грубость, обман"
                 />
               </div>
             )}

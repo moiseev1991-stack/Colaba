@@ -92,6 +92,10 @@ export function MapsFiltersPanel({
   // вешал страницу на 30 секунд (CDP-блокер) — заменили на Dialog.
   const [confirmDelete, setConfirmDelete] = useState<UserPresetOut | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  // Inline-ошибка операций с пресетами (delete/hide). Заменяет window.alert
+  // — расширения браузера часто блокируют alert, плюс модальный alert рвёт
+  // фокус. Показываем внизу списка пресетов на 4 секунды.
+  const [presetError, setPresetError] = useState<string | null>(null);
 
   // Multi-preset AND: список применённых сейчас пресетов в порядке клика.
   // ID = `builtin:${id}` для встроенных, `user:${id}` для пользовательских.
@@ -136,10 +140,10 @@ export function MapsFiltersPanel({
       await deleteUserPreset(confirmDelete.id);
       setAllUserPresets((prev) => prev.filter((p) => p.id !== confirmDelete.id));
       setConfirmDelete(null);
+      setPresetError(null);
     } catch (e) {
-      // оставляем модалку открытой, показываем ошибку через alert
-      // (можно потом добавить inline-error в самом Dialog)
-      window.alert('Не удалось удалить пресет');
+      setPresetError('Не удалось удалить пресет. Попробуй ещё раз.');
+      setTimeout(() => setPresetError(null), 4000);
     } finally {
       setDeleteInProgress(false);
     }
@@ -149,8 +153,10 @@ export function MapsFiltersPanel({
     try {
       const updated = await updateUserPreset(preset.id, { hidden });
       setAllUserPresets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setPresetError(null);
     } catch (e) {
-      window.alert('Не удалось изменить статус пресета');
+      setPresetError('Не удалось изменить статус пресета.');
+      setTimeout(() => setPresetError(null), 4000);
     }
   }, []);
 
@@ -552,6 +558,14 @@ export function MapsFiltersPanel({
             <BookmarkPlus className="h-3 w-3" /> сохранить
           </button>
         </div>
+        {presetError && (
+          <div
+            role="alert"
+            className="mb-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-[11px] text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+          >
+            {presetError}
+          </div>
+        )}
         {visibleUserPresets.length === 0 ? (
           <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
             {userPresetsTab === 'active' ? (
