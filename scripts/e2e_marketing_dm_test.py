@@ -31,6 +31,7 @@ from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.maps import Company
 from app.modules.maps.tasks import (
     enrich_company_hh,
+    enrich_company_prodoctorov,
     enrich_company_team,
     enrich_company_vk,
     enrich_marketing_dm as enrich_marketing_dm_task,
@@ -181,7 +182,10 @@ async def main(limit: int, wait_seconds: int, stats_only_ids: list[int] | None =
     # hh (вакансии+HR) → vk (сообщество) → orchestrator (choose marketing-DM
     # с countdown=60s, чтобы всё успело отработать).
     print("\n=== Enqueueing tasks ===")
-    enqueued = {"team": 0, "playwright": 0, "hh": 0, "vk": 0, "orch": 0}
+    enqueued = {
+        "team": 0, "playwright": 0, "hh": 0, "vk": 0,
+        "prodoctorov": 0, "orch": 0,
+    }
     for c in picked:
         try:
             if c.website:
@@ -205,6 +209,11 @@ async def main(limit: int, wait_seconds: int, stats_only_ids: list[int] | None =
             enqueued["vk"] += 1
         except Exception as e:
             print(f"  vk delay failed for #{c.id}: {e}")
+        try:
+            enrich_company_prodoctorov.delay(c.id)
+            enqueued["prodoctorov"] += 1
+        except Exception as e:
+            print(f"  prodoctorov delay failed for #{c.id}: {e}")
         try:
             enrich_marketing_dm_task.apply_async(args=[c.id], countdown=60)
             enqueued["orch"] += 1
