@@ -1300,8 +1300,29 @@ function DecisionMakersBlock({
   // либо фолбэк-руководитель если маркетолога не нашли.
   const marketingDm = decisionMakers.find((d) => d.is_marketing_dm) ?? null;
   const rest = decisionMakers.filter((d) => d !== marketingDm);
-  const dms = rest.filter((d) => d.is_decision_maker);
-  const others = rest.filter((d) => !d.is_decision_maker);
+  // 2026-07-10: топ-3 альтернативных кандидата с публичным контактом
+  // (email/phone/vk). Юзеру полезно видеть их отдельно на случай если
+  // marketingDm недоступен или для повторного касания через другой канал.
+  const alternativesWithContact = rest
+    .filter((d) => d.contact_value && d.contact_value.trim())
+    .sort((a, b) => {
+      // 1) is_decision_maker=true → приоритет
+      if (a.is_decision_maker !== b.is_decision_maker) {
+        return a.is_decision_maker ? -1 : 1;
+      }
+      // 2) confidence desc
+      const ac = typeof a.confidence === 'number' ? a.confidence : 0;
+      const bc = typeof b.confidence === 'number' ? b.confidence : 0;
+      return bc - ac;
+    })
+    .slice(0, 3);
+  const alternativeIds = new Set(alternativesWithContact.map((d) => d.name));
+  const dms = rest.filter(
+    (d) => d.is_decision_maker && !alternativeIds.has(d.name),
+  );
+  const others = rest.filter(
+    (d) => !d.is_decision_maker && !alternativeIds.has(d.name),
+  );
 
   const sourceLabel: Record<string, string> = {
     website_team: 'команда сайта',
@@ -1442,6 +1463,38 @@ function DecisionMakersBlock({
               открыть источник ↗
             </a>
           )}
+        </div>
+      )}
+
+      {/* Альтернативные кандидаты С КОНТАКТОМ — топ-3 (2026-07-10).
+          Если marketingDm без контакта или юзер хочет второе касание —
+          вот готовые адреса для outreach. */}
+      {marketingDm && alternativesWithContact.length > 0 && (
+        <div className="rounded-v2-sm border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
+          <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+            📞 Другие контакты для касания
+          </div>
+          <ul className="space-y-1.5">
+            {alternativesWithContact.map((d, i) => (
+              <li key={`alt-${d.name}-${i}`} className="text-[12px]">
+                <span className="font-medium text-slate-800 dark:text-slate-100">
+                  {d.name}
+                </span>
+                {d.post && (
+                  <span className="text-slate-600 dark:text-slate-300">
+                    {` · ${d.post}`}
+                  </span>
+                )}
+                <span
+                  className="ml-2 rounded bg-emerald-200 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100"
+                  title={sourceLabel[d.source] ?? d.source}
+                >
+                  {sourceLabel[d.source] ?? d.source}
+                </span>
+                {renderContact(d)}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
