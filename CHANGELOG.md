@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.125.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.124.1...v1.125.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **maps/hh:** fuzzy set-token матчинг + удаление пунктуации в normalize ([b1aa4bb](https://github.com/moiseev1991-stack/Colaba/commit/b1aa4bb6370c021b9e1d8a27f4da28c5b26c6614))
+* **maps/vk:** переходим с groups.search на groups.getById + company_contacts ([c1f878c](https://github.com/moiseev1991-stack/Colaba/commit/c1f878c6159aa0df9002b7fd80c3ccdf9e6eddfb))
+* **ux:** 3 быстрых фикса из UX-аудита перед демо ([801efe8](https://github.com/moiseev1991-stack/Colaba/commit/801efe8cceb79b106e10d49535939cb5ff034c4e))
+
+
+### Features
+
+* **outreach:** SMS канал через SMS.ru — новый транспорт в KP-send ([400c4ee](https://github.com/moiseev1991-stack/Colaba/commit/400c4ee6b157c4d600040cc0d99efb6e4a72a824))
+
 ## [1.124.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.124.0...v1.124.1) (2026-07-10)
 
 
