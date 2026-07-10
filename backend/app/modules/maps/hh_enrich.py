@@ -114,32 +114,107 @@ _HH_GENERIC_TOKENS = frozenset({
 })
 
 
+# Транслит-запрос для брендов на латинице (Askona, Bello Dente, Secret Vi).
+# hh.ru — русскоязычная база: под «Askona» ничего не находит, а под «Аскона» —
+# правильный работодатель с городом. Используем упрощённую обратную
+# транслитерацию (latin → кириллица) для дополнительного поискового запроса.
+_LATIN_TO_CYR = {
+    "sh": "ш", "ch": "ч", "zh": "ж", "kh": "х", "yu": "ю", "ya": "я",
+    "ts": "ц", "ye": "е", "yo": "ё",
+    "a": "а", "b": "б", "c": "с", "d": "д", "e": "е", "f": "ф",
+    "g": "г", "h": "х", "i": "и", "j": "дж", "k": "к", "l": "л",
+    "m": "м", "n": "н", "o": "о", "p": "п", "q": "к", "r": "р",
+    "s": "с", "t": "т", "u": "у", "v": "в", "w": "в", "x": "кс",
+    "y": "й", "z": "з",
+}
+
+
+def _latin_to_cyrillic(text: str) -> str:
+    """Приблизительная транслитерация англ → рус. Для брендов на латинице:
+    «Askona» → «аскона», «Bello Dente» → «белло денте».
+
+    Точность не критична — это дополнительный поисковый запрос к hh,
+    а финальный матчинг всё равно через _is_match (set-token)."""
+    if not text:
+        return ""
+    s = text.lower()
+    out = []
+    i = 0
+    while i < len(s):
+        # Пробуем 2-char comboj (sh, ch, zh, kh, yu, ya, ts, ye, yo).
+        if i + 1 < len(s) and s[i:i + 2] in _LATIN_TO_CYR:
+            out.append(_LATIN_TO_CYR[s[i:i + 2]])
+            i += 2
+            continue
+        c = s[i]
+        out.append(_LATIN_TO_CYR.get(c, c))
+        i += 1
+    return "".join(out)
+
+
+def _looks_like_latin(text: str) -> bool:
+    """True если >= 60% ASCII-букв в тексте — тогда пробуем транслит."""
+    if not text:
+        return False
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return False
+    ascii_count = sum(1 for c in letters if c.isascii())
+    return ascii_count / len(letters) >= 0.6
+
+
+async def _hh_search_employers(
+    client: httpx.AsyncClient, query: str
+) -> list[dict[str, Any]]:
+    """Один поисковый запрос к hh.ru/employers. Возвращает items[] или []."""
+    try:
+        r = await client.get(
+            f"{_HH_API}/employers",
+            params={"text": query, "per_page": 20},
+        )
+        if r.status_code != 200:
+            return []
+        data = r.json()
+    except Exception as e:
+        logger.debug("hh._hh_search_employers failed for %r: %s", query, e)
+        return []
+    return data.get("items") or []
+
+
 async def _search_employer(
     client: httpx.AsyncClient, company_name: str, city: str | None
 ) -> int | None:
     """Пытается найти employer_id на hh.ru по названию компании.
-    Матчинг строгий — только точное совпадение normalized-имени.
+
+    Стратегия (2026-07-10):
+      1. Прямой запрос по company_name.
+      2. Если 0 матчей и название латиницей (Askona, Bello Dente) —
+         дополнительный запрос по транслиту в кириллицу (Аскона).
+      3. Set-token матч на объединённых результатах.
     """
     q = company_name.strip()
     if not q:
         return None
-    try:
-        r = await client.get(
-            f"{_HH_API}/employers",
-            params={"text": q, "per_page": 20},
-        )
-        if r.status_code != 200:
-            return None
-        data = r.json()
-    except Exception as e:
-        logger.debug("hh._search_employer failed for %r: %s", company_name, e)
-        return None
 
-    items = data.get("items") or []
+    items = await _hh_search_employers(client, q)
+
+    # Латиница? Добавляем транслит-запрос.
+    if _looks_like_latin(q):
+        cyr_q = _latin_to_cyrillic(q).strip()
+        if cyr_q and cyr_q != q.lower():
+            extra = await _hh_search_employers(client, cyr_q)
+            # Дедуп по id.
+            seen_ids = {it.get("id") for it in items}
+            items = items + [it for it in extra if it.get("id") not in seen_ids]
+
     if not items:
         return None
 
     target_tokens = _name_tokens(company_name)
+    # Если у нас latin-имя, добавим ещё транслит-варианты токенов для match.
+    if _looks_like_latin(company_name):
+        cyr_name = _latin_to_cyrillic(company_name)
+        target_tokens = target_tokens | _name_tokens(cyr_name)
     city_low = (city or "").strip().lower()
 
     # Матчинг: set-token intersection. Порог зависит от размера:
