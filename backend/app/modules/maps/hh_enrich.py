@@ -73,7 +73,7 @@ _LEGAL_FORM_TOKENS = frozenset({
 
 
 def _normalize_company_name(name: str) -> str:
-    """Убираем ООО/ИП/АО/кавычки/тире, схлопываем пробелы, lower.
+    """Убираем ООО/ИП/АО/кавычки/тире/пунктуацию, схлопываем пробелы, lower.
     Используется для матчинга hh.employers ↔ Company.name.
 
     Юр-формы вырезаем ТОЛЬКО как отдельные токены — иначе 'ано'
@@ -84,12 +84,34 @@ def _normalize_company_name(name: str) -> str:
     if not name:
         return ""
     s = name.lower()
-    # Убираем кавычки/скобки/дефисы РАНЬШЕ токенизации, чтобы 'ООО-Ромашка'
-    # распалось на два токена.
-    s = re.sub(r'[«»"\'`\-–—()]+', " ", s)
+    # "+", "&" — часть бренда ("К+31", "S&P"), их НЕ разбиваем, а склеиваем:
+    # "К+31" → "к31", чтобы бренд остался одним токеном.
+    s = re.sub(r'[+&]', "", s)
+    # Остальную пунктуацию (запятые, точки, знаки) — на пробел, чтобы
+    # "Астра, клиника" ↔ "клиника Астра" сматчились по set of tokens.
+    s = re.sub(r'[«»"\'`\-–—(),.:;/!?]+', " ", s)
     # Токенизация → фильтр стоп-токенов → обратная сборка.
     tokens = [t for t in s.split() if t and t not in _LEGAL_FORM_TOKENS]
     return " ".join(tokens)
+
+
+def _name_tokens(name: str) -> frozenset[str]:
+    """Токены нормализованного имени, для fuzzy set-based matching.
+    Односимвольные токены отбрасываем (шум типа 'и', 'а')."""
+    normalized = _normalize_company_name(name)
+    return frozenset(t for t in normalized.split() if len(t) >= 2)
+
+
+# Generic-слова, которые в изоляции не подтверждают match: если пересечение
+# состоит ТОЛЬКО из них, отклоняем. «Клиника Астра» vs «Клиника Восток»
+# пересеклись бы по «клиника» = false-positive.
+_HH_GENERIC_TOKENS = frozenset({
+    "клиника", "центр", "медицинский", "медицинского", "стоматологическая",
+    "магазин", "сеть", "салон", "студия", "агентство", "компания", "группа",
+    "торговый", "торговая", "интернет", "онлайн", "офис", "офисы",
+    "ресторан", "кафе", "бар", "фитнес", "спа",
+    "клиника", "консалтинг", "международный", "мир",
+})
 
 
 async def _search_employer(
@@ -117,30 +139,49 @@ async def _search_employer(
     if not items:
         return None
 
-    target = _normalize_company_name(company_name)
+    target_tokens = _name_tokens(company_name)
     city_low = (city or "").strip().lower()
 
-    for it in items:
-        name = it.get("name") or ""
-        if _normalize_company_name(name) != target:
-            continue
-        # Если у нас известен город — используем как tiebreaker (у hh
-        # employers.area даёт только id; area.name приходит не всегда,
-        # поэтому не блокируем — просто предпочитаем совпавший).
-        if city_low:
+    # Матчинг: set-token intersection. Порог зависит от размера:
+    #   len(target) == 1 → нужен exact match (единственный токен присутствует)
+    #   len(target) >= 2 → нужно >= 2 общих токена, из которых хотя бы 1 не generic
+    # Это защищает от «Клиника Восток» ↔ «Клиника Астра» (общий только 'клиника').
+    def _is_match(hh_name: str) -> bool:
+        hh_tokens = _name_tokens(hh_name)
+        common = target_tokens & hh_tokens
+        if not common:
+            return False
+        specific = common - _HH_GENERIC_TOKENS
+        if len(target_tokens) == 1:
+            return target_tokens.issubset(hh_tokens)
+        # Хотя бы 1 specific токен в пересечении.
+        if not specific:
+            return False
+        # И >= 50% от размера меньшего множества.
+        smaller = min(len(target_tokens), len(hh_tokens))
+        return len(common) / max(smaller, 1) >= 0.5
+
+    matches = [it for it in items if _is_match(it.get("name") or "")]
+    if not matches:
+        return None
+
+    # Если у нас известен город — предпочитаем совпадение по городу.
+    if city_low:
+        for it in matches:
             area = (it.get("area") or {}).get("name") or ""
             if area and area.lower() == city_low:
                 try:
                     return int(it["id"])
                 except (KeyError, TypeError, ValueError):
                     continue
+
+    # Иначе — берём первый (hh сортирует по релевантности).
+    for it in matches:
         try:
             return int(it["id"])
         except (KeyError, TypeError, ValueError):
             continue
 
-    # Совпадений по normalized-имени нет — возвращаем None (лучше «не нашли»,
-    # чем взять «не ту» ООО с тем же коммерческим названием).
     return None
 
 
