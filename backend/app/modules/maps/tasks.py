@@ -493,6 +493,17 @@ def _maybe_enrich_contacts(company: Company) -> None:
             "_maybe_enrich_contacts: cannot enqueue hh-enrich for #%d: %s",
             company.id, e,
         )
+
+    # 2026-07-10: prodoctorov.ru парсер медицинских каталогов —
+    # триггерим для любой компании, внутри таск сам делает _is_medical()
+    # и skip'ает не-медицинские. Дешёвая проверка + selective request.
+    try:
+        enrich_company_prodoctorov.delay(company.id)
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue prodoctorov for #%d: %s",
+            company.id, e,
+        )
     try:
         from app.core.config import settings as _s
         if (_s.VK_SERVICE_TOKEN or "").strip():
@@ -1234,6 +1245,35 @@ def enrich_company_vk(self, company_id: int):
     except Exception as exc:
         logger.warning(
             "enrich_company_vk retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_company_prodoctorov_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.industry_catalog_prodoctorov import (
+            enrich_from_prodoctorov,
+        )
+        return await enrich_from_prodoctorov(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_company_prodoctorov",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # prodoctorov 20 req/min — conservative (сайт лёгкий, но парсим много
+    # компаний в bulk, не хотим триггерить anti-bot).
+    rate_limit="20/m",
+)
+def enrich_company_prodoctorov(self, company_id: int):
+    """Ищет клинику на prodoctorov.ru и обогащает контактами + главврачом.
+    Для не-медицинских компаний возвращает skipped."""
+    try:
+        return asyncio.run(_enrich_company_prodoctorov_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_company_prodoctorov retrying company=%d: %s", company_id, exc
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 

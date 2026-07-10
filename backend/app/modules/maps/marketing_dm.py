@@ -43,6 +43,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.company_decision_maker import CompanyDecisionMaker
 from app.modules.maps.dm_from_legal import import_persons_from_legal
 from app.modules.maps.egrn_reconcile import reconcile_egrn_for_company
+from app.modules.maps.email_to_dm_attribution import attribute_emails_to_dms
 
 
 logger = logging.getLogger(__name__)
@@ -95,14 +96,19 @@ def _pick_best(dms: list[CompanyDecisionMaker]) -> CompanyDecisionMaker | None:
         "egrn": 5,
     }
 
-    def _key(d: CompanyDecisionMaker) -> tuple[int, float, int, int]:
+    def _key(d: CompanyDecisionMaker) -> tuple[int, int, float, int]:
         role_p = _ROLE_PRIORITY[d.role_category]
+        # 2026-07-10: has_contact подняли ВЫШЕ confidence в приоритете.
+        # Причина (E2E-инсайт): VK-руководитель с email проигрывал ЕГРЮЛ-
+        # директору без контакта, потому что ЕГРЮЛ conf=0.95, а VK=0.7-0.9.
+        # Итог — outreach некому слать. Логика продукта: лучше «человек с
+        # адресом» даже при conf=0.5, чем «известное ФИО без адреса».
+        contact_p = 0 if _has_contact(d) else 1
         # confidence — Numeric(3,2) в БД, приходит Decimal. Инвертируем
         # для «больше — раньше».
         conf = float(d.confidence or 0.0)
-        contact_p = 0 if _has_contact(d) else 1
         src_p = source_prio.get(d.source or "", 9)
-        return (role_p, -conf, contact_p, src_p)
+        return (role_p, contact_p, -conf, src_p)
 
     candidates.sort(key=_key)
     return candidates[0]
@@ -138,6 +144,19 @@ async def enrich_marketing_dm(
     except Exception as e:
         logger.warning(
             "enrich_marketing_dm: reconcile_egrn failed for #%d: %s",
+            company_id, e,
+        )
+
+    # Шаг 1c. Атрибуция email компании ↔ ФИО директора (2026-07-10).
+    # Если у ЕГРЮЛ-директора совпал транслит фамилии/имени с local-part
+    # найденного playwright-email — сохраняем email как contact_value.
+    # Директор с email имеет приоритет над директором без — важно для
+    # шага 3 (best-DM выбор учитывает has_contact).
+    try:
+        await attribute_emails_to_dms(db, company_id)
+    except Exception as e:
+        logger.warning(
+            "enrich_marketing_dm: email_to_dm failed for #%d: %s",
             company_id, e,
         )
 

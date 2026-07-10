@@ -49,6 +49,18 @@ async def import_persons_from_legal(
 
     # --- Директор ---
     if legal.director_name:
+        # 2026-07-10 (E2E-инсайт): если director_post = «Ликвидатор» /
+        # «Конкурсный управляющий» / «Арбитражный управляющий» — компания
+        # в стадии банкротства/ликвидации, не наш целевой лид. Роль ставим
+        # 'other' чтобы оркестратор НЕ выбрал его как marketing_dm.
+        # Имя всё равно сохраняем — юзер увидит статус в drawer.
+        director_post_low = (legal.director_post or "").lower()
+        is_liquidation = any(
+            k in director_post_low
+            for k in ("ликвидатор", "конкурсный", "арбитражный управляющий")
+        )
+        director_role = "other" if is_liquidation else "management"
+
         stmt = pg_insert(CompanyDecisionMaker).values(
             company_id=company_id,
             name=legal.director_name[:200],
@@ -58,8 +70,10 @@ async def import_persons_from_legal(
             # DaData отдаёт руководителя по данным ФНС — это официальный
             # факт, confidence максимальный.
             confidence=0.95,
-            is_decision_maker=True,
-            role_category="management",
+            # Ликвидатор — фактически ещё «руководитель» юридически, но
+            # для outreach-целей мы его не считаем ЛПР (компания закрывается).
+            is_decision_maker=not is_liquidation,
+            role_category=director_role,
             contact_type=None,
             contact_value=None,
         ).on_conflict_do_nothing()
