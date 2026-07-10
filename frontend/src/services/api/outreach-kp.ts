@@ -279,7 +279,7 @@ export async function listKpJobs(limit = 50): Promise<KpJobListResponse> {
 
 // --- Отправка КП (миграция 038, 2026-06-21) -------------------------------
 
-export type KpSendChannel = 'email' | 'telegram' | 'whatsapp' | 'max';
+export type KpSendChannel = 'email' | 'telegram' | 'whatsapp' | 'sms' | 'max';
 
 export type KpSendStatus =
   | 'queued'

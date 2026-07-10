@@ -32,7 +32,7 @@ from app.models.kp_generation_job import KpGenerationJob
 from app.models.kp_send import KpSend
 from app.models.maps import Company
 from app.models.organization import user_organizations
-from app.modules.outreach import whatsapp_greenapi
+from app.modules.outreach import sms_smsru, whatsapp_greenapi
 from app.modules.outreach.phone_utils import (
     is_russian_mobile,
     normalize_phone,
@@ -41,11 +41,11 @@ from app.modules.outreach.phone_utils import (
 logger = logging.getLogger(__name__)
 
 
-SUPPORTED_CHANNELS = ("email", "telegram", "whatsapp", "max")
+SUPPORTED_CHANNELS = ("email", "telegram", "whatsapp", "sms", "max")
 EMAIL_CHANNELS = ("email",)
 # Реально отправляющие каналы. telegram/max сейчас всегда skipped — для них
 # нет коннектора (TG-бот заложен, но не дописан; MAX — нет публичного API).
-PHONE_CHANNELS = ("whatsapp",)
+PHONE_CHANNELS = ("whatsapp", "sms")
 
 
 class SendError(Exception):
@@ -430,6 +430,7 @@ async def enqueue_job_send(
             db, company_ids_for_lookup, emails_by_company, phones_by_company
         )
     wa_configured = whatsapp_greenapi.is_configured()
+    sms_configured = sms_smsru.is_configured()
     # Telegram configured? — true если env TELEGRAM_BOT_TOKEN задан или
     # бот-конфиг заполнен в channel_config (telegram_bot._get_bot_token_sync).
     from app.modules.outreach import telegram_bot
@@ -449,6 +450,10 @@ async def enqueue_job_send(
             if channel == "email":
                 recipient = pick_first_email(emails_by_company.get(int(cid)))
             elif channel == "whatsapp":
+                recipient = pick_first_mobile_phone(phones_by_company.get(int(cid)))
+            elif channel == "sms":
+                # SMS шлётся по мобильному РФ (как и WhatsApp) — переиспользуем
+                # тот же extractor. Городские/зарубежные SMS.ru не примет.
                 recipient = pick_first_mobile_phone(phones_by_company.get(int(cid)))
             elif channel == "telegram":
                 # chat_id ищется по phone/email компании в telegram_subscribers.
@@ -478,6 +483,21 @@ async def enqueue_job_send(
                     error_message = (
                         "У компании нет мобильного телефона РФ — WhatsApp "
                         "не примет городские/зарубежные номера."
+                    )
+            elif channel == "sms":
+                if not sms_configured:
+                    status = "skipped"
+                    error_code = "smsru_not_configured"
+                    error_message = (
+                        "SMS-коннектор не настроен — добавь SMSRU_API_KEY "
+                        "в окружении бэкенда."
+                    )
+                elif not recipient:
+                    status = "skipped"
+                    error_code = "no_mobile_phone"
+                    error_message = (
+                        "У компании нет мобильного телефона РФ — SMS.ru "
+                        "не принимает городские номера."
                     )
             elif channel == "telegram":
                 if not tg_configured:

@@ -70,6 +70,10 @@ services:
       # Marketing-DM Finder 2026-07-09: VK service token для vk_enrich.py.
       # Без него vk_enrich возвращает skipped_no_token — оркестратор пропускает VK.
       VK_SERVICE_TOKEN: ${VK_SERVICE_TOKEN:-}
+      # SMS канал 2026-07-10: SMS.ru api_id для sms_smsru.py.
+      # Без него канал sms в KP-send пишет skipped(smsru_not_configured).
+      SMSRU_API_KEY: ${SMSRU_API_KEY:-}
+      SMSRU_FROM: ${SMSRU_FROM:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       YANDEX_XML_FOLDER_ID: ${YANDEX_XML_FOLDER_ID}
@@ -136,6 +140,9 @@ services:
       DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
       # Marketing-DM Finder 2026-07-09: VK service token для vk_enrich.py.
       VK_SERVICE_TOKEN: ${VK_SERVICE_TOKEN:-}
+      # SMS канал 2026-07-10: SMS.ru api_id для sms_smsru.py.
+      SMSRU_API_KEY: ${SMSRU_API_KEY:-}
+      SMSRU_FROM: ${SMSRU_FROM:-}
     depends_on:
       postgres:
         condition: service_healthy

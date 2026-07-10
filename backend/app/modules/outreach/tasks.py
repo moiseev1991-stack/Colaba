@@ -27,6 +27,7 @@ from app.modules.outreach import (
     kp_bulk_service,
     kp_send_service,
     kp_service,
+    sms_smsru,
     whatsapp_greenapi,
 )
 from app.modules.outreach.kp_html_renderer import (
@@ -184,6 +185,9 @@ async def _send_one(db, send_row) -> None:
     if send_row.channel == "whatsapp":
         await _send_one_whatsapp(send_row, draft)
         return
+    if send_row.channel == "sms":
+        await _send_one_sms(send_row, draft)
+        return
     if send_row.channel == "telegram":
         await _send_one_telegram(send_row, draft)
         return
@@ -279,6 +283,52 @@ async def _send_one_whatsapp(send_row, draft) -> None:
         kp_send_service.mark_send_failed(
             send_row,
             error_message=f"Внутренняя ошибка WhatsApp-отправки: {e}"[:1000],
+            error_code="internal",
+        )
+
+
+def _compose_sms_text(draft) -> str:
+    """Текст SMS: короткое уведомление о КП (не весь КП!).
+
+    SMS — самый дорогой канал (~2-5 ₽ за 70 знаков кириллицей). Отправлять
+    полный КП здесь неоправданно (15-40 ₽ за сообщение). Стратегия: короткое
+    уведомление «Отправили вам КП» с CTA. Максимум 300 знаков (~4 сегмента,
+    ~10-12 ₽), чтобы получатель прочёл и решил перейти к длинному варианту
+    (email/WA).
+    """
+    subject = (getattr(draft, "subject", "") or "").strip()
+    body = (getattr(draft, "body", "") or "").strip()
+    # Тизер: первое предложение body — обычно приветствие и суть.
+    # Если body короткий — берём как есть.
+    if body:
+        first_sentence = body.split(".")[0].strip()
+        teaser = first_sentence[:180]
+    else:
+        teaser = subject[:180] if subject else "Здравствуйте! Есть предложение по маркетингу для вас."
+    tail = f" — {DEFAULT_SENDER_SIGNATURE_TEXT[:100]}"
+    max_body_len = 300 - len(tail)
+    return f"{teaser[:max_body_len]}{tail}"
+
+
+async def _send_one_sms(send_row, draft) -> None:
+    text = _compose_sms_text(draft)
+    try:
+        message_id = await sms_smsru.send_text_message(send_row.recipient, text)
+        kp_send_service.mark_send_sent(send_row, provider_message_id=message_id)
+    except sms_smsru.SmsSendError as e:
+        kp_send_service.mark_send_failed(
+            send_row, error_message=e.message, error_code=e.code
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception(
+            "send_kp_batch_task: unexpected SMS error send_id=%s draft_id=%s: %s",
+            send_row.id,
+            send_row.draft_id,
+            e,
+        )
+        kp_send_service.mark_send_failed(
+            send_row,
+            error_message=f"Внутренняя ошибка SMS-отправки: {e}"[:1000],
             error_code="internal",
         )
 
