@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.126.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.125.0...v1.126.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **maps/drawer:** «нажал Найти ЛПР → пусто» — теперь refetch + честный «не нашли» ([d8605e8](https://github.com/moiseev1991-stack/Colaba/commit/d8605e82289b8192805df93fdddb1d26906b8b3c))
+* **maps/hh:** транслит латиница→кириллица для брендов Askona/Bello Dente ([87975d6](https://github.com/moiseev1991-stack/Colaba/commit/87975d63b90f602c1c9b544554a5963d635d18b1))
+* **maps/legal:** «Ликвидатор»/«Конкурсный управляющий» → role='other' ([4c58f84](https://github.com/moiseev1991-stack/Colaba/commit/4c58f84eed78efed4215b2ae8f7d870b3487e3cd))
+* **ux:** placeholder-примеры + window.alert → inline-toast ([6798e5e](https://github.com/moiseev1991-stack/Colaba/commit/6798e5e16ed4b6bcfdbd9acb2f8d3bcdcc90ff6f))
+
+
+### Features
+
+* **maps/drawer:** «Другие контакты для касания» — топ-3 альтернативы ([f6aa264](https://github.com/moiseev1991-stack/Colaba/commit/f6aa264a3b7b275d8ea5b914a21a8c10b80f9922))
+* **maps:** email→директор атрибуция + 2 фикса оркестратора из E2E-теста ([6c0d696](https://github.com/moiseev1991-stack/Colaba/commit/6c0d696ed76fc7feaf2ddcd52c58bd46f72c2331))
+* **maps:** parser prodoctorov.ru — контакты + главврач медицинских клиник ([58c95a6](https://github.com/moiseev1991-stack/Colaba/commit/58c95a6f6bf9de50a375806d8106d16e930177f0))
+
 # [1.125.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.124.1...v1.125.0) (2026-07-10)
 
 
