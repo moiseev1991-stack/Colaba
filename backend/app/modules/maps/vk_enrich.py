@@ -302,9 +302,24 @@ async def enrich_from_vk(
             # но UI покажет ссылку.
             name = "Контакт сообщества"
 
-        # Определяем role_category и is_dm по post.
+        # Определяем role_category и is_dm по post + local-part email.
+        # 2026-07-10: E2E-инсайт — VK-контакты часто post='По вопросам
+        # сотрудничества' или пустой, а email `pr@company.ru` явно PR-контакт.
+        # Local-part email — сильный сигнал роли.
         post_low = (post or "").lower()
-        is_marketing = any(k in post_low for k in marketing_keywords)
+        email_local = ""
+        if email and "@" in email:
+            email_local = email.split("@", 1)[0].strip().lower()
+        # Marketing/PR-роль по email: pr@, marketing@, smm@, reklama@, brand@,
+        # media@, press@.
+        email_marketing_locals = frozenset({
+            "pr", "marketing", "smm", "reklama", "reklamma",
+            "brand", "media", "press",
+        })
+        is_marketing = (
+            any(k in post_low for k in marketing_keywords)
+            or email_local in email_marketing_locals
+        )
         if is_marketing:
             role_category = "marketing"
         elif any(k in post_low for k in ("директор", "руководител", "владел", "основател", "учредител")):
