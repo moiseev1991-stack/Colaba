@@ -204,12 +204,14 @@ export function KpModal({
       // было быстро посмотреть Network → Console.
       const respData = e?.response?.data;
       const status = e?.response?.status;
-      // eslint-disable-next-line no-console
-      console.error('[KpModal] /outreach/kp/generate failed', {
-        status,
-        payload,
-        response: respData,
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error('[KpModal] /outreach/kp/generate failed', {
+          status,
+          payload,
+          response: respData,
+        });
+      }
       let msg = '';
       if (respData && Array.isArray(respData.detail)) {
         msg = respData.detail
