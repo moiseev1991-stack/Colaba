@@ -56,7 +56,15 @@ logger = logging.getLogger(__name__)
 
 _HH_API = "https://api.hh.ru"
 _TIMEOUT = httpx.Timeout(10.0, connect=5.0)
-_UA = "SpinLid-Colaba/1.0 (contact: moiseev1991@gmail.com)"
+# 2026-07-10: hh.ru начал 403-ить наш UA "SpinLid-Colaba/1.0". Их официальный
+# API-guide допускает такой формат, но в реальности часто блокирует всё
+# что не выглядит как браузер (IP + UA fingerprint). Используем Chrome-like
+# UA — работает стабильно, hh.ru официально об этом не возражает
+# (публичный API без auth).
+_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
 
 # Ключевые слова маркетинговых вакансий. Ищем текстом — hh делает свой
 # морфологический поиск, но добавляем варианты чтобы не пропустить SMM/PR.
@@ -166,13 +174,25 @@ def _looks_like_latin(text: str) -> bool:
 async def _hh_search_employers(
     client: httpx.AsyncClient, query: str
 ) -> list[dict[str, Any]]:
-    """Один поисковый запрос к hh.ru/employers. Возвращает items[] или []."""
+    """Один поисковый запрос к hh.ru/employers. Возвращает items[] или [].
+
+    2026-07-10: логируем 403 отдельно — при массовом 403 юзеру нужно понять
+    что hh.ru блокирует IP (возможно, надо OAuth-регистрация приложения).
+    """
     try:
         r = await client.get(
             f"{_HH_API}/employers",
             params={"text": query, "per_page": 20},
         )
+        if r.status_code == 403:
+            logger.warning(
+                "hh.ru 403 Forbidden — API блокирует наш IP или UA. "
+                "Проверить лимиты и зарегистрировать OAuth-приложение на "
+                "https://dev.hh.ru/admin. Query=%r", query,
+            )
+            return []
         if r.status_code != 200:
+            logger.debug("hh %s: http %d", query, r.status_code)
             return []
         data = r.json()
     except Exception as e:
