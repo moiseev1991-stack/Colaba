@@ -1538,6 +1538,15 @@ export function MapsSearchResults({
               По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу
               или сменить город.
             </div>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={onNewSearch}
+                className="inline-flex items-center gap-1 rounded-md bg-[color:var(--signal-warm)] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+              >
+                Новый поиск
+              </button>
+            </div>
           </div>
         )}
 

@@ -287,13 +287,16 @@ export default function KpJobPage({ params }: PageProps) {
         </CardV2>
       )}
 
-      {job?.status === 'failed' && job?.error_message && (
+      {job?.status === 'failed' && (
         <CardV2 className="mb-4 border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <div className="font-medium">Задача завершилась с ошибкой</div>
-              <div className="mt-0.5">{job.error_message}</div>
+              <div className="mt-0.5">
+                {job.error_message ||
+                  'Не удалось сгенерировать КП. Попробуй запустить заново — если ошибка повторится, напиши в поддержку.'}
+              </div>
             </div>
           </div>
         </CardV2>
