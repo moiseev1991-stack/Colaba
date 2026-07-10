@@ -31,8 +31,10 @@ from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.maps import Company
 from app.modules.maps.tasks import (
     enrich_company_hh,
+    enrich_company_team,
     enrich_company_vk,
     enrich_marketing_dm as enrich_marketing_dm_task,
+    enrich_website_email_playwright,
 )
 
 
@@ -175,27 +177,40 @@ async def main(limit: int, wait_seconds: int, stats_only_ids: list[int] | None =
         return
 
     # Запускаем таски. Не в транзакции — celery-broker вне.
+    # Полный pipeline: team (сайт /team, /о-нас) → playwright (JS email) →
+    # hh (вакансии+HR) → vk (сообщество) → orchestrator (choose marketing-DM
+    # с countdown=60s, чтобы всё успело отработать).
     print("\n=== Enqueueing tasks ===")
-    enqueued_hh = 0
-    enqueued_vk = 0
-    enqueued_orch = 0
+    enqueued = {"team": 0, "playwright": 0, "hh": 0, "vk": 0, "orch": 0}
     for c in picked:
         try:
+            if c.website:
+                enrich_company_team.delay(c.id)
+                enqueued["team"] += 1
+        except Exception as e:
+            print(f"  team delay failed for #{c.id}: {e}")
+        try:
+            if c.website:
+                enrich_website_email_playwright.delay(c.id)
+                enqueued["playwright"] += 1
+        except Exception as e:
+            print(f"  playwright delay failed for #{c.id}: {e}")
+        try:
             enrich_company_hh.delay(c.id)
-            enqueued_hh += 1
+            enqueued["hh"] += 1
         except Exception as e:
             print(f"  hh delay failed for #{c.id}: {e}")
         try:
             enrich_company_vk.delay(c.id)
-            enqueued_vk += 1
+            enqueued["vk"] += 1
         except Exception as e:
             print(f"  vk delay failed for #{c.id}: {e}")
         try:
-            enrich_marketing_dm_task.apply_async(args=[c.id], countdown=45)
-            enqueued_orch += 1
+            enrich_marketing_dm_task.apply_async(args=[c.id], countdown=60)
+            enqueued["orch"] += 1
         except Exception as e:
             print(f"  orch delay failed for #{c.id}: {e}")
-    print(f"Enqueued: hh={enqueued_hh} vk={enqueued_vk} orch={enqueued_orch}")
+    print(f"Enqueued: {enqueued}")
 
     print(f"\n=== Waiting {wait_seconds}s for tasks to finish ===")
     time.sleep(wait_seconds)
