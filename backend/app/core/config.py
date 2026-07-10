@@ -176,6 +176,30 @@ class Settings(BaseSettings):
         UI показывает «коннектор не настроен»."""
         return bool(self.GREENAPI_INSTANCE_ID and self.GREENAPI_API_TOKEN)
 
+    # === SMS канал через SMS.ru (2026-07-10) ===
+    # SMS.ru — российский SMS-провайдер (https://sms.ru). Регистрация 1 мин,
+    # тариф от 2.13₽ за сегмент (70 знаков кириллицей). API проще некуда:
+    # GET https://sms.ru/sms/send?api_id=<key>&to=<phone>&msg=<text>&json=1
+    # Пусто → канал sms в KP-send пишет skipped(smsru_not_configured).
+    SMSRU_API_URL: str = Field(
+        default="https://sms.ru",
+        description="SMS.ru base URL. Обычно https://sms.ru, менять не надо.",
+    )
+    SMSRU_API_KEY: str = Field(
+        default="",
+        description="SMS.ru api_id — UUID из личного кабинета sms.ru → Настройки → API.",
+    )
+    SMSRU_FROM: str = Field(
+        default="",
+        description="Опциональный подписант (from). Требует одобрения SMS.ru — можно пустым, тогда отправитель — числовой шорткод SMS.ru.",
+    )
+
+    @property
+    def smsru_enabled(self) -> bool:
+        """Канал SMS реально шлёт только если задан api_id. Иначе enqueue
+        пишет skipped('smsru_not_configured')."""
+        return bool(self.SMSRU_API_KEY)
+
     # OAuth Providers
     GOOGLE_CLIENT_ID: str = Field(default="", description="Google OAuth Client ID")
     GOOGLE_CLIENT_SECRET: str = Field(default="", description="Google OAuth Client Secret")

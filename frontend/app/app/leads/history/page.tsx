@@ -724,6 +724,7 @@ const CHANNEL_META: Record<
   email: { label: 'Email', Icon: Mail },
   telegram: { label: 'Telegram', Icon: Send },
   whatsapp: { label: 'WhatsApp', Icon: MessageCircle },
+  sms: { label: 'SMS', Icon: MessageCircle },
   max: { label: 'MAX', Icon: MessageCircle },
 };
 

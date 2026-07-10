@@ -778,11 +778,20 @@ const CHANNEL_DEFS: ChannelDef[] = [
     emptyHint: 'Лид должен нажать /start в нашем Telegram-боте.',
   },
   {
+    key: 'sms',
+    label: 'SMS',
+    Icon: MessageCircle,
+    working: true,
+    priority: 4,
+    eligible: (it) => isRussianMobile(it.company_phone),
+    emptyHint: 'Нет компаний с мобильным РФ-номером (SMS.ru не принимает городские).',
+  },
+  {
     key: 'max',
     label: 'MAX',
     Icon: MessageCircle,
     working: false,
-    priority: 4,
+    priority: 5,
     eligible: () => false,
     emptyHint: 'Публичного API у MAX пока нет — ждём.',
   },
@@ -1608,6 +1617,13 @@ function channelChip(eff: KpSendChannel | 'callable' | 'none') {
         label: 'WhatsApp',
         cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200',
         title: 'Уйдёт по WhatsApp в режиме «Отправить всем».',
+      };
+    case 'sms':
+      return {
+        Icon: MessageCircle,
+        label: 'SMS',
+        cls: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200',
+        title: 'Короткое уведомление в SMS через SMS.ru (обрезано до ~300 знаков).',
       };
     case 'callable':
       return {
