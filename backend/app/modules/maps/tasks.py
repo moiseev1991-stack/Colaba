@@ -502,6 +502,20 @@ def _maybe_enrich_contacts(company: Company) -> None:
             "_maybe_enrich_contacts: cannot enqueue vk-enrich for #%d: %s",
             company.id, e,
         )
+    # Playwright-email fallback: только если у компании ЕСТЬ website и НЕТ
+    # emails (httpx-парсер уже отработал в enrich_company_contacts, если
+    # он ничего не нашёл — есть шанс что email скрыт за JS/reveal-кнопкой).
+    try:
+        if company.website and not (company.emails or []):
+            enrich_website_email_playwright.apply_async(
+                args=[company.id], countdown=10,
+            )
+    except Exception as e:
+        logger.warning(
+            "_maybe_enrich_contacts: cannot enqueue playwright-email for #%d: %s",
+            company.id, e,
+        )
+
     try:
         enrich_marketing_dm.apply_async(args=[company.id], countdown=45)
     except Exception as e:
@@ -1220,6 +1234,36 @@ def enrich_company_vk(self, company_id: int):
     except Exception as exc:
         logger.warning(
             "enrich_company_vk retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_website_email_playwright_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.website_email_playwright import (
+            enrich_from_website_playwright,
+        )
+        return await enrich_from_website_playwright(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_website_email_playwright",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # Playwright тяжёлый (~200MB RAM, 2-3s CPU). 20/m = worst-case
+    # 3 сек × 20 = 60 сек чистого времени, укладываемся в минуту при
+    # single-thread worker'е. Прод-worker с 2GB RAM выдержит.
+    rate_limit="20/m",
+)
+def enrich_website_email_playwright(self, company_id: int):
+    """Playwright-парсер email/phone на сайте компании — добивает то,
+    что httpx-парсер не увидел из-за JS-рендера."""
+    try:
+        return asyncio.run(_enrich_website_email_playwright_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_website_email_playwright retrying #%d: %s", company_id, exc,
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 

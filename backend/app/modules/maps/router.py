@@ -2068,6 +2068,53 @@ async def admin_bulk_enrich_team(
     return {"queued": queued}
 
 
+@router.post("/admin/bulk-enrich-website-email-playwright")
+@limiter.limit("5/minute")
+async def admin_bulk_enrich_website_email_playwright(
+    request: Request,
+    search_id: int | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    _: "User" = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Прогоняет playwright-парсер по компаниям с website и без emails.
+    Тяжёлый (~3с/компания), лимит по умолчанию 100.
+
+    Идемпотентно: пропускает компании с уже проставленной отметкой
+    contacts_extra.playwright_website_at.
+    """
+    from sqlalchemy import and_, func
+    from app.modules.maps.tasks import enrich_website_email_playwright
+
+    stmt = (
+        select(Company.id)
+        .where(func.btrim(func.coalesce(Company.website, "")) != "")
+        .where(
+            # emails IS NULL или пустой массив
+            (Company.emails.is_(None))
+            | (func.cardinality(Company.emails) == 0)
+        )
+        .limit(limit)
+    )
+    if search_id is not None:
+        from app.models.maps import MapSearchResult
+        stmt = stmt.join(
+            MapSearchResult, MapSearchResult.company_id == Company.id
+        ).where(MapSearchResult.map_search_id == search_id)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    queued = 0
+    for cid in rows:
+        try:
+            enrich_website_email_playwright.delay(int(cid))
+            queued += 1
+        except Exception as e:
+            logger.warning(
+                "admin_bulk_website_email_playwright enqueue for #%s: %s", cid, e,
+            )
+    return {"queued": queued}
+
+
 @router.post("/admin/bulk-enrich-marketing-dm")
 @limiter.limit("5/minute")
 async def admin_bulk_enrich_marketing_dm(

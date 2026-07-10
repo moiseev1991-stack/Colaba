@@ -192,3 +192,59 @@ def test_normalize_person_name_single_word():
 ])
 def test_normalize_company_name(raw, expected):
     assert _norm_hh_name(raw) == expected
+
+
+# ---------------------------------------------------------------------------
+# website_email_playwright — фильтры pure-функций
+# ---------------------------------------------------------------------------
+
+
+from app.modules.maps.website_email_playwright import (
+    _looks_like_real_email, _normalize_phone_ru,
+)
+
+
+@pytest.mark.parametrize("email", [
+    "info@romashka.ru",
+    "sales@my-company.com",
+    "a.b@company.co.uk",
+    "IVAN@romashka.ru",  # Case не важен — lowerим на вызывающей стороне.
+])
+def test_looks_like_real_email_accepts(email):
+    assert _looks_like_real_email(email)
+
+
+@pytest.mark.parametrize("email", [
+    "",
+    "not-an-email",
+    "@romashka.ru",
+    "a@",
+    "example@example.com",
+    "user@yourdomain.com",
+    "abc@ingest.sentry.io",
+    "test@wix.com",
+    # Слишком короткий local part.
+    "a@romashka.ru",
+])
+def test_looks_like_real_email_rejects(email):
+    assert not _looks_like_real_email(email)
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("+7 (495) 123-45-67", "+74951234567"),
+    ("8 495 123 45 67", "+74951234567"),
+    ("+74951234567", "+74951234567"),
+    ("(495) 123-45-67", "+74951234567"),  # 10 цифр → добавляем +7
+])
+def test_normalize_phone_ru_accepts(raw, expected):
+    assert _normalize_phone_ru(raw) == expected
+
+
+@pytest.mark.parametrize("raw", [
+    "",
+    "abc",
+    "123",  # слишком мало цифр
+    "12345678901234",  # слишком много
+])
+def test_normalize_phone_ru_rejects(raw):
+    assert _normalize_phone_ru(raw) is None
