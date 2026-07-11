@@ -40,6 +40,10 @@ import {
   type KpTone,
 } from '@/src/services/api/outreach-kp';
 import {
+  getCompanyDetail,
+  type CompanyPainOut,
+} from '@/src/services/api/maps';
+import {
   getStoredKpTemplateKey,
   recordOnboardingEvent,
 } from '@/lib/onboarding-storage';
@@ -88,6 +92,13 @@ export function KpModal({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'subject' | 'body' | 'both' | null>(null);
+  // 2026-07-11 multi-pain: чекбоксы с болями компании. Загружается один
+  // раз при открытии modal'ки (для company_id). Для site_lead_id — пусто.
+  // selectedPainIds по умолчанию содержит топ-1 (первый в списке) чтобы
+  // поведение совпадало со старым — 1 боль автоматически.
+  const [availablePains, setAvailablePains] = useState<CompanyPainOut[]>([]);
+  const [painsLoading, setPainsLoading] = useState(false);
+  const [selectedPainIds, setSelectedPainIds] = useState<number[]>([]);
   // Edit-режим: subject/body можно править прямо в модалке поверх
   // AI-генерации. editSubject/editBody — локальные значения textarea;
   // dirty=true если есть несохранённые изменения; saveState управляет
@@ -155,8 +166,37 @@ export function KpModal({
       setEditBody('');
       setSaveState('idle');
       setSaveError(null);
+      setAvailablePains([]);
+      setSelectedPainIds([]);
     }
   }, [open]);
+
+  // Подгружаем боли компании при открытии — для чекбоксов выбора.
+  // site_lead_id-ветка — скипаем (там нет отзывов).
+  useEffect(() => {
+    if (!open || targetCompanyId == null) return;
+    let cancelled = false;
+    setPainsLoading(true);
+    getCompanyDetail(targetCompanyId)
+      .then((detail) => {
+        if (cancelled) return;
+        const pains = detail.top_pains ?? [];
+        setAvailablePains(pains);
+        // Дефолт: отметить топ-1 (первую в списке — уже отсортирован
+        // по mention_count desc на бэке). Если список пуст — [].
+        setSelectedPainIds(pains.length > 0 ? [pains[0].pain_tag_id] : []);
+      })
+      .catch(() => {
+        // Молча — чекбоксы просто не покажутся, старая логика (топ-1
+        // автоматически на бэке) отработает как и раньше.
+      })
+      .finally(() => {
+        if (!cancelled) setPainsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, targetCompanyId]);
 
   // При смене draft — синхронизируем edit-поля с сервером.
   useEffect(() => {
@@ -189,6 +229,12 @@ export function KpModal({
       template_key: selectedKey,
       tone,
       custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
+      // 2026-07-11 multi-pain: передаём только если юзер выбрал ЯВНО
+      // (иначе бэк возьмёт топ-1 автоматически — старое поведение).
+      pain_tag_ids:
+        targetCompanyId != null && selectedPainIds.length > 0
+          ? selectedPainIds
+          : null,
     };
     try {
       const res = await generateKp(payload);
@@ -386,6 +432,70 @@ export function KpModal({
             </div>
           </div>
 
+          {/* 2026-07-11 multi-pain: чекбоксы с топ-болями компании.
+              До 3 отмеченных — иначе письмо превратится в простыню.
+              Только для company-ветки (site_lead КП не имеет отзывов). */}
+          {targetCompanyId != null && !painsLoading && availablePains.length > 0 && (
+            <div className="mt-4">
+              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Боли для КП <span className="normal-case text-[10px] text-slate-400">· выбрано {selectedPainIds.length} из {Math.min(availablePains.length, 3)} макс</span>
+              </label>
+              <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30">
+                {availablePains.slice(0, 6).map((p) => {
+                  const checked = selectedPainIds.includes(p.pain_tag_id);
+                  const atLimit = !checked && selectedPainIds.length >= 3;
+                  return (
+                    <label
+                      key={p.pain_tag_id}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-[12px] transition-colors',
+                        checked
+                          ? 'bg-violet-100 dark:bg-violet-900/30'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/40',
+                        atLimit && 'cursor-not-allowed opacity-50',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={atLimit}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPainIds((prev) => [...prev, p.pain_tag_id]);
+                          } else {
+                            setSelectedPainIds((prev) =>
+                              prev.filter((id) => id !== p.pain_tag_id),
+                            );
+                          }
+                        }}
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-600"
+                      />
+                      <span className="flex-1">
+                        <span className="font-medium text-slate-800 dark:text-slate-100">
+                          {p.label}
+                        </span>
+                        <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                          · {p.mention_count} упоминаний
+                        </span>
+                        {p.top_quote && (
+                          <span className="block truncate text-[11px] italic text-slate-500 dark:text-slate-400">
+                            «{p.top_quote.slice(0, 90)}
+                            {p.top_quote.length > 90 ? '…' : ''}»
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {selectedPainIds.length === 0 && (
+                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                  Выбрана 0 болей — КП сгенерируется «общим» по шаблону.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Generate button */}
           <div className="mt-4">
             <button
@@ -538,20 +648,32 @@ export function KpModal({
 }
 
 function ArgumentsBlock({ args }: { args: KpArgumentsUsed }) {
-  // Показываем только те аргументы, по которым у нас реально есть данные.
-  // Без них LLM-промпт строку пропустил — значит и в UI ей не место.
-  const hasPain = !!args.pain_label;
-  const hasQuote = !!args.quote;
+  // 2026-07-11 multi-pain: приоритет args.pains (список), fallback на
+  // плоские pain_label/quote для legacy-КП сгенерированных до фичи.
+  const painsList =
+    args.pains && args.pains.length > 0
+      ? args.pains
+      : args.pain_label
+        ? [
+            {
+              pain_tag_id: null,
+              label: args.pain_label,
+              top_quote: args.quote,
+              mention_count: args.mention_count,
+              source: args.source,
+            },
+          ]
+        : [];
   const hasTrend = !!args.trend_phrase;
   const hasBenchmark = !!args.benchmark_phrase;
-  if (!hasPain && !hasQuote && !hasTrend && !hasBenchmark) return null;
+  if (painsList.length === 0 && !hasTrend && !hasBenchmark) return null;
 
-  const sourceLabel =
-    args.source === '2gis'
+  const sourceLabelOf = (src: string | null | undefined) =>
+    src === '2gis'
       ? '2GIS'
-      : args.source === 'yandex_maps'
+      : src === 'yandex_maps'
         ? 'Я.Карты'
-        : args.source === 'google'
+        : src === 'google'
           ? 'Google'
           : null;
 
@@ -559,32 +681,42 @@ function ArgumentsBlock({ args }: { args: KpArgumentsUsed }) {
     <div className="rounded-md border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-700/40 dark:bg-violet-900/20">
       <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">
         На чём построено письмо
+        {painsList.length > 1 && (
+          <span className="ml-1.5 rounded-full bg-violet-200 px-1.5 py-0.5 text-[9px] normal-case text-violet-900 dark:bg-violet-800 dark:text-violet-100">
+            {painsList.length} болей
+          </span>
+        )}
       </div>
-      <ul className="space-y-1.5 text-[12px] text-slate-700 dark:text-slate-200">
-        {hasPain && (
-          <li>
-            <span className="font-medium">Боль:</span> {args.pain_label}
-            {args.mention_count != null && args.mention_count > 0 && (
-              <span className="text-slate-500 dark:text-slate-400">
-                {' '}
-                · {args.mention_count} упоминаний
-              </span>
-            )}
-          </li>
-        )}
-        {hasQuote && (
-          <li className="flex items-start gap-1.5">
-            <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-violet-500" />
-            <span className="italic">
-              «{args.quote}»
-              {sourceLabel && (
-                <span className="ml-1 not-italic text-slate-500 dark:text-slate-400">
-                  · {sourceLabel}
-                </span>
+      <ul className="space-y-2 text-[12px] text-slate-700 dark:text-slate-200">
+        {painsList.map((p, idx) => {
+          const src = sourceLabelOf(p.source);
+          return (
+            <li key={`pain-${p.pain_tag_id ?? idx}`} className="border-l-2 border-violet-300 pl-2 dark:border-violet-700">
+              <div>
+                <span className="font-medium">Боль:</span> {p.label}
+                {p.mention_count != null && p.mention_count > 0 && (
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {' '}
+                    · {p.mention_count} упоминаний
+                  </span>
+                )}
+              </div>
+              {p.top_quote && (
+                <div className="mt-0.5 flex items-start gap-1.5">
+                  <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-violet-500" />
+                  <span className="italic">
+                    «{p.top_quote}»
+                    {src && (
+                      <span className="ml-1 not-italic text-slate-500 dark:text-slate-400">
+                        · {src}
+                      </span>
+                    )}
+                  </span>
+                </div>
               )}
-            </span>
-          </li>
-        )}
+            </li>
+          );
+        })}
         {hasTrend && (
           <li className="flex items-start gap-1.5">
             <TrendingUp className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />

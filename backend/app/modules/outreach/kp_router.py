@@ -103,6 +103,7 @@ async def generate_kp(
                 template_key=payload.template_key,
                 tone=payload.tone,
                 custom_sender_profile=payload.custom_sender_profile,
+                pain_tag_ids=payload.pain_tag_ids,
             )
     except kp_service.KpGenerationError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

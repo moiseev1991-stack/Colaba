@@ -79,6 +79,76 @@ class TopPain:
     source: str | None
 
 
+async def _resolve_pain_source(
+    db: AsyncSession, company_id: int, top_quote: str | None
+) -> str | None:
+    """best-effort: определить источник (2gis/yandex_maps/google) по цитате,
+    находя Review с такой же головой текста. Общий хелпер — используется и
+    в load_top_pain, и в load_pains_by_ids."""
+    if not top_quote:
+        return None
+    quote_head = top_quote.strip().split("\n", 1)[0][:60]
+    if not quote_head:
+        return None
+    src_row = (
+        await db.execute(
+            select(Review.source)
+            .where(
+                Review.company_id == company_id,
+                Review.raw_text.ilike(f"{quote_head}%"),
+            )
+            .order_by(Review.posted_at.desc().nullslast())
+            .limit(1)
+        )
+    ).first()
+    return src_row[0] if src_row is not None else None
+
+
+async def load_pains_by_ids(
+    db: AsyncSession, company_id: int, pain_tag_ids: list[int]
+) -> list[TopPain]:
+    """Загрузить конкретные боли по списку id (2026-07-11: multi-pain КП).
+
+    Возвращает TopPain-объекты только для тех id, у которых у компании
+    реально есть CompanyPainScore. Сортирует по mention_count desc, чтобы
+    в промпте LLM боли шли от «мясистой» к «мелкой». Пустой список — если
+    ни одна из указанных болей у компании не проанализирована."""
+    from app.models.pain_tag import CompanyPainScore, PainTag
+
+    if not pain_tag_ids:
+        return []
+    rows = (
+        await db.execute(
+            select(
+                CompanyPainScore.pain_tag_id,
+                PainTag.label,
+                CompanyPainScore.mention_count,
+                CompanyPainScore.top_quote,
+            )
+            .join(PainTag, PainTag.id == CompanyPainScore.pain_tag_id)
+            .where(
+                CompanyPainScore.company_id == company_id,
+                CompanyPainScore.pain_tag_id.in_(pain_tag_ids),
+                PainTag.status == "active",
+            )
+            .order_by(CompanyPainScore.mention_count.desc().nullslast())
+        )
+    ).all()
+    out: list[TopPain] = []
+    for pain_tag_id, label, mention_count, top_quote in rows:
+        source = await _resolve_pain_source(db, company_id, top_quote)
+        out.append(
+            TopPain(
+                pain_tag_id=int(pain_tag_id),
+                label=str(label),
+                mention_count=int(mention_count or 0),
+                top_quote=top_quote,
+                source=source,
+            )
+        )
+    return out
+
+
 async def load_top_pain(db: AsyncSession, company_id: int) -> TopPain | None:
     """Топ-1 боль компании. Если у компании нет проанализированных pain'ов
     (или AI ещё не отработал) — None. KP-роутер тогда отдаст 409 с
@@ -268,6 +338,7 @@ def build_kp_prompt(
     website: str | None,
     rating: float | None,
     niche_avg_rating: float | None,
+    additional_pains: list[dict] | None = None,
 ) -> str:
     """Чистая функция: собирает итоговый текст промпта для КП по компании.
 
@@ -296,6 +367,21 @@ def build_kp_prompt(
         # ограничим длину цитаты, чтобы промпт не разбухал на пьесах в отзывах
         safe_quote = top_quote.strip().replace("\n", " ")[:280]
         facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_quote))
+    # 2026-07-11 multi-pain: 2-я и 3-я боль, если юзер выбрал несколько.
+    # LLM в KP_PROMPT_TAIL получает инструкцию затронуть КАЖДУЮ.
+    for extra in additional_pains or []:
+        extra_label = extra.get("label")
+        extra_mention = extra.get("mention_count")
+        extra_quote = extra.get("top_quote")
+        if extra_label and extra_mention is not None:
+            facts.append(
+                KP_FACT_PAIN_LINE.format(
+                    pain_label=extra_label, mention_count=extra_mention
+                )
+            )
+        if extra_quote:
+            safe_extra_quote = str(extra_quote).strip().replace("\n", " ")[:280]
+            facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_extra_quote))
     tp = trend_phrase(trend_verdict)
     if tp:
         facts.append(KP_FACT_TREND_LINE.format(trend_phrase=tp))
@@ -819,11 +905,16 @@ async def generate_kp(
     template_key: str,
     tone: str = "neutral",
     custom_sender_profile: str | None = None,
+    pain_tag_ids: list[int] | None = None,
 ) -> GeneratedKp:
     """Главная функция: собирает контекст, зовёт LLM, парсит, пишет в БД.
 
     Бросает KpGenerationError(message, status_code) на ожидаемые ошибки
     (нет шаблона / нет болей / LLM недоступен / битый JSON после ретрая).
+
+    pain_tag_ids: 2026-07-11 — если передан 1-3 id из плитки болей UI,
+      письмо генерится по ЭТИМ болям (сортируем по mention_count desc).
+      Если None/пусто — как раньше, топ-1 боль автоматически.
     """
     # 1. Компания
     company = await db.get(Company, company_id)
@@ -835,27 +926,41 @@ async def generate_kp(
         db, template_key, custom_sender_profile
     )
 
-    # 3. Топ-боль (опционально — Юзер 2026-06-12 #2: КП должна работать и
-    #    у компаний без проанализированных болей, генерируя «общее» письмо
-    #    по шаблону. Раньше тут стоял 409 «нет болей» — это блокировало
-    #    UX-кейс «я уверен, что хочу написать этой компании», особенно
-    #    для компаний из списков, у которых AI-анализ ещё не успел добежать).
-    top_pain = await load_top_pain(db, company_id)
-    has_pain_with_quote = top_pain is not None and bool(top_pain.top_quote)
+    # 3. Боли. Если юзер выбрал в UI конкретные id (multi-pain) — грузим их.
+    #    Иначе fallback на топ-1 (старое поведение до 2026-07-11).
+    #    Юзер 2026-06-12 #2: КП работает и у компаний без проанализированных
+    #    болей — LLM пишет «общее» письмо по шаблону.
+    selected_pains: list[TopPain]
+    if pain_tag_ids:
+        selected_pains = await load_pains_by_ids(db, company_id, pain_tag_ids)
+    else:
+        top_pain = await load_top_pain(db, company_id)
+        selected_pains = [top_pain] if top_pain is not None else []
 
-    # 4. Тренд + бенчмарк + средний рейтинг ниши
+    primary_pain = selected_pains[0] if selected_pains else None
+    has_pain_with_quote = primary_pain is not None and bool(primary_pain.top_quote)
+
+    # 4. Тренд + бенчмарк + средний рейтинг ниши (по первой боли)
     trend_verdict = await compute_negative_trend_verdict(db, company_id)
     ratio = (
-        await compute_benchmark_ratio(db, company, top_pain.pain_tag_id)
-        if top_pain is not None
+        await compute_benchmark_ratio(db, company, primary_pain.pain_tag_id)
+        if primary_pain is not None
         else None
     )
     niche_avg_rating = await compute_niche_avg_rating(db, company)
 
     # 5. Промпт. build_kp_prompt уже умеет пропускать строки факт-блока,
     # по которым нет данных (см. test_build_prompt_no_pain_skips_pain_lines).
-    # В отсутствие боли LLM получает только контекст по компании + sender_profile
-    # + offer_hint и пишет «общее» предложение по шаблону.
+    # additional_pains — 2-я и 3-я боль (если юзер выбрал несколько).
+    additional_pains_for_prompt = [
+        {
+            "label": p.label,
+            "mention_count": p.mention_count,
+            "top_quote": p.top_quote,
+        }
+        for p in selected_pains[1:]
+        if p.top_quote
+    ]
     prompt_text = build_kp_prompt(
         sender_profile=sender_profile,
         offer_hint=offer_hint,
@@ -863,14 +968,15 @@ async def generate_kp(
         company_name=company.name or "",
         niche=company.niche or "",
         city=company.city or "",
-        pain_label=top_pain.label if has_pain_with_quote else None,
-        pain_mention_count=top_pain.mention_count if has_pain_with_quote else None,
-        top_quote=top_pain.top_quote if has_pain_with_quote else None,
+        pain_label=primary_pain.label if has_pain_with_quote else None,
+        pain_mention_count=primary_pain.mention_count if has_pain_with_quote else None,
+        top_quote=primary_pain.top_quote if has_pain_with_quote else None,
         trend_verdict=trend_verdict,
         benchmark_ratio=ratio,
         website=company.website,
         rating=float(company.rating) if company.rating is not None else None,
         niche_avg_rating=niche_avg_rating,
+        additional_pains=additional_pains_for_prompt,
     )
 
     # 6. LLM
@@ -889,15 +995,26 @@ async def generate_kp(
     # проанализированных болей. UI блок «Аргументы» рендерит только
     # ненулевые значения, так что «общее» КП визуально отличимо от
     # «КП по конкретной боли».
+    pains_payload = [
+        {
+            "pain_tag_id": p.pain_tag_id,
+            "label": p.label,
+            "top_quote": p.top_quote,
+            "mention_count": p.mention_count,
+            "source": p.source,
+        }
+        for p in selected_pains
+    ] or None
     arguments_used = {
-        "pain_label": top_pain.label if has_pain_with_quote else None,
-        "quote": top_pain.top_quote if has_pain_with_quote else None,
-        "mention_count": top_pain.mention_count if has_pain_with_quote else None,
+        "pain_label": primary_pain.label if has_pain_with_quote else None,
+        "quote": primary_pain.top_quote if has_pain_with_quote else None,
+        "mention_count": primary_pain.mention_count if has_pain_with_quote else None,
+        "pains": pains_payload,
         "trend": trend_verdict,
         "trend_phrase": trend_phrase(trend_verdict),
         "benchmark_ratio": ratio,
         "benchmark_phrase": benchmark_phrase(ratio),
-        "source": top_pain.source if has_pain_with_quote else None,
+        "source": primary_pain.source if has_pain_with_quote else None,
         "sender_profile": sender_profile,
         "offer_hint": offer_hint,
         "tone": tone,

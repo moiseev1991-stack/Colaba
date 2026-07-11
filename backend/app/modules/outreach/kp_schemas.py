@@ -36,6 +36,11 @@ class KpGenerateRequest(BaseModel):
     # подкладывает 1-2 предложения в это поле. Для системных шаблонов
     # игнорируется (берётся sender_profile из БД).
     custom_sender_profile: str | None = Field(default=None, max_length=600)
+    # 2026-07-11: выбор конкретных болей, о которых должно писать КП. Если
+    # None или пусто — используется топ-1 боль (как раньше). Если 1-3 id —
+    # используются эти боли, LLM получает промпт с их цитатами и генерит
+    # письмо, затрагивающее каждую. Игнорируется для site_lead_id.
+    pain_tag_ids: list[int] | None = Field(default=None, max_length=3)
 
     @model_validator(mode="after")
     def _check_xor_target(self):
@@ -80,6 +85,19 @@ class SiteLeadOut(BaseModel):
     created_at: datetime
 
 
+class KpPainArg(BaseModel):
+    """Одна боль в контексте КП — id тега, лейбл, цитата, кол-во упоминаний,
+    источник. Используется в KpArgumentsUsed.pains для multi-pain-КП
+    (2026-07-11). Первая всегда дублируется в плоские pain_label/quote/…
+    для обратной совместимости старого UI."""
+
+    pain_tag_id: int | None = None
+    label: str
+    top_quote: str | None = None
+    mention_count: int | None = None
+    source: str | None = None
+
+
 class KpArgumentsUsed(BaseModel):
     """Снимок входных данных для промпта — отдаётся обратно во фронт +
     хранится в kp_drafts.arguments_used JSONB. Сделан плоским, без
@@ -89,6 +107,10 @@ class KpArgumentsUsed(BaseModel):
     pain_label: str | None = None
     quote: str | None = None
     mention_count: int | None = None
+    # 2026-07-11: полный список болей, на которых построено письмо.
+    # None если КП сгенерировано «в общем» (без болей). Плоские
+    # pain_label/quote/mention_count дублируют первую боль из списка.
+    pains: list[KpPainArg] | None = None
     trend: str | None = None  # rising/stable/falling/no_data
     trend_phrase: str | None = None  # человеческая фраза или ""
     benchmark_ratio: float | None = None

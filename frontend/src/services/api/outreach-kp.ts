@@ -20,12 +20,25 @@ export interface KpTemplate {
   is_system: boolean;
 }
 
+/** Одна боль в КП (2026-07-11 multi-pain). Первая дублируется в плоские
+ *  pain_label/quote/mention_count для обратной совместимости старого UI. */
+export interface KpPainArg {
+  pain_tag_id: number | null;
+  label: string;
+  top_quote: string | null;
+  mention_count: number | null;
+  source: string | null;
+}
+
 /** Снимок «на чём построено письмо». Поля null'абельны — для UI-блока
  * «Аргументы» рисуем только те, что не пусты. */
 export interface KpArgumentsUsed {
   pain_label: string | null;
   quote: string | null;
   mention_count: number | null;
+  /** 2026-07-11: полный список болей, на которых построено письмо.
+   *  UI ренеgerит их вместо одной plain-плашки. null для legacy-КП. */
+  pains?: KpPainArg[] | null;
   trend: string | null; // rising | stable | falling | no_data
   trend_phrase: string | null;
   benchmark_ratio: number | null;
@@ -68,6 +81,9 @@ export interface KpGenerateRequest {
   tone?: KpTone;
   /** Для template_key='custom' — текст профиля отправителя. */
   custom_sender_profile?: string | null;
+  /** 2026-07-11: выбрать 1-3 боли, о которых должно писать КП. Если
+   *  не задано / пустой массив — берётся топ-1 боль автоматически. */
+  pain_tag_ids?: number[] | null;
 }
 
 export async function listKpTemplates(): Promise<KpTemplate[]> {

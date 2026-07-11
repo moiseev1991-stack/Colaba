@@ -161,3 +161,70 @@ def test_build_prompt_no_pain_skips_pain_lines():
 def test_build_prompt_uses_bold_tone_hint():
     prompt = build_kp_prompt(**_ctx(tone="bold"))
     assert "уверенный, прямой, но без давления" in prompt
+
+
+# --- 2026-07-11: multi-pain -------------------------------------------------
+
+
+def test_build_prompt_multi_pain_includes_each_pain_line():
+    """Юзер выбрал 3 боли в UI → LLM получает все три label+цитата, а
+    tail-инструкция явно требует упомянуть КАЖДУЮ."""
+    prompt = build_kp_prompt(
+        **_ctx(
+            additional_pains=[
+                {
+                    "label": "Долгое ожидание приёма",
+                    "mention_count": 18,
+                    "top_quote": "«Ждали 40 минут, врач опоздал»",
+                },
+                {
+                    "label": "Неприветливое отношение врачей",
+                    "mention_count": 11,
+                    "top_quote": "«Разговаривали свысока»",
+                },
+            ]
+        )
+    )
+    # Основная боль по-прежнему первая
+    assert "Спорные доплаты за лечение" in prompt
+    assert "24 упоминаний" in prompt
+    # Дополнительные боли — каждая со своим label + цитата + count
+    assert "Долгое ожидание приёма" in prompt
+    assert "18 упоминаний" in prompt
+    assert "Ждали 40 минут" in prompt
+    assert "Неприветливое отношение врачей" in prompt
+    assert "11 упоминаний" in prompt
+    assert "Разговаривали свысока" in prompt
+    # Tail-инструкция про «упомяни КАЖДУЮ» присутствует
+    assert "упомяни КАЖДУЮ" in prompt or "упомяни каждую" in prompt.lower()
+
+
+def test_build_prompt_multi_pain_empty_additional_falls_back_to_single():
+    """additional_pains=[] или None ведут себя как раньше — только topline."""
+    prompt_none = build_kp_prompt(**_ctx(additional_pains=None))
+    prompt_empty = build_kp_prompt(**_ctx(additional_pains=[]))
+    # Строк с дополнительными болями нет
+    assert "Ждали 40 минут" not in prompt_none
+    assert "Ждали 40 минут" not in prompt_empty
+    # Основная боль на месте
+    assert "Спорные доплаты за лечение" in prompt_none
+    assert "Спорные доплаты за лечение" in prompt_empty
+
+
+def test_build_prompt_multi_pain_skips_extras_without_quote():
+    """Доп. боль без quote — фильтруется в generate_kp, но защитно
+    проверим что build_prompt не падает если такое всё же прилетело:
+    label-строка есть, quote-строка пропущена."""
+    prompt = build_kp_prompt(
+        **_ctx(
+            additional_pains=[
+                {
+                    "label": "Странная навигация в кабинете",
+                    "mention_count": 4,
+                    "top_quote": None,
+                }
+            ]
+        )
+    )
+    assert "Странная навигация в кабинете" in prompt
+    assert "4 упоминаний" in prompt
