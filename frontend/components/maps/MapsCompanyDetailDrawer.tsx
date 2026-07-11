@@ -308,6 +308,10 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             dmEnrichPending={dmEnrichPending}
             dmEnrichResult={dmEnrichResult}
             searchExhausted={dmSearchExhausted}
+            legalMatchConfidence={detail.legal?.match_confidence ?? null}
+            hiringMarketing={detail.hiring_marketing ?? false}
+            legalDirectorName={detail.legal?.director_name ?? null}
+            legalDirectorPost={detail.legal?.director_post ?? null}
           />
 
           <div className="flex flex-wrap gap-3 text-xs">
@@ -1293,12 +1297,84 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
 // Marketing-DM 2026-06-20). decision_makers[] — массив, отсортированный
 // API по убыванию is_decision_maker + confidence. Если пуст —
 // компонент не рендерится.
+// Плашки «Проверено»: показывают юзеру, какие из 5 источников оркестратор
+// смог разобрать и сколько кандидатов пришло из каждого. Даёт прозрачность —
+// вместо молчаливого «не нашли» видно «сайт: 0, ВК: 1, hh: 0, ЕГРЮЛ: 1».
+function SourcesCheckedStrip({
+  decisionMakers,
+  legalMatchConfidence,
+  hiringMarketing,
+}: {
+  decisionMakers: DecisionMakerOut[];
+  legalMatchConfidence: number | null;
+  hiringMarketing: boolean;
+}) {
+  const countBy = (prefixes: string[]) =>
+    decisionMakers.filter((d) => prefixes.some((p) => d.source === p || d.source.startsWith(p)))
+      .length;
+  const website = countBy(['website_team', 'website_about', 'website_contacts']);
+  const vk = countBy(['vk']);
+  const hh = countBy(['hh']);
+  const egrul = countBy(['egrul_director', 'egrul_founder']);
+  const dadata = legalMatchConfidence != null;
+  const chip = (label: string, count: number, extra?: string) => (
+    <span
+      className={
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ' +
+        (count > 0
+          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500')
+      }
+      title={count > 0 ? `${label}: найдено ${count}` : `${label}: пусто`}
+    >
+      <span>{count > 0 ? '✓' : '○'}</span>
+      <span>{label}</span>
+      {count > 0 && <span className="opacity-70">· {count}</span>}
+      {extra && <span className="opacity-70">· {extra}</span>}
+    </span>
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <span className="mr-0.5 uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        Проверено:
+      </span>
+      {chip('сайт', website)}
+      {chip('ВК', vk)}
+      {chip('hh.ru', hh, hiringMarketing ? '🔥 ищет маркетолога' : undefined)}
+      {chip('ЕГРЮЛ', egrul)}
+      <span
+        className={
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ' +
+          (dadata
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500')
+        }
+        title={
+          dadata
+            ? `DaData: юр.данные сматчены на ${Math.round((legalMatchConfidence ?? 0) * 100)}%`
+            : 'DaData: юр.лицо не сматчено'
+        }
+      >
+        <span>{dadata ? '✓' : '○'}</span>
+        <span>DaData</span>
+        {dadata && (
+          <span className="opacity-70">· {Math.round((legalMatchConfidence ?? 0) * 100)}%</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 function DecisionMakersBlock({
   decisionMakers,
   onFindDm,
   dmEnrichPending,
   dmEnrichResult,
   searchExhausted,
+  legalMatchConfidence,
+  hiringMarketing,
+  legalDirectorName,
+  legalDirectorPost,
 }: {
   decisionMakers: DecisionMakerOut[];
   onFindDm: () => void;
@@ -1307,6 +1383,10 @@ function DecisionMakersBlock({
   /** true после 55с ожидания если поиск ничего не нашёл. UI покажет явно
    *  «не нашли», а не заново кнопку. */
   searchExhausted?: boolean;
+  legalMatchConfidence?: number | null;
+  hiringMarketing?: boolean;
+  legalDirectorName?: string | null;
+  legalDirectorPost?: string | null;
 }) {
   // Пусто → показываем кнопку «Найти ЛПР» или «не нашли», если поиск уже
   // отработал вхолостую (2026-07-10 fix — юзер жаловался на «нажал → пусто»).
@@ -1322,6 +1402,27 @@ function DecisionMakersBlock({
             вакансий на hh.ru, привязанного VK-сообщества и данных в ЕГРЮЛ.
             Попробуй запустить снова позже — источники обновляются.
           </div>
+          <div className="mb-2">
+            <SourcesCheckedStrip
+              decisionMakers={decisionMakers}
+              legalMatchConfidence={legalMatchConfidence ?? null}
+              hiringMarketing={hiringMarketing ?? false}
+            />
+          </div>
+          {legalDirectorName && (
+            <div className="mb-2 rounded border border-amber-200 bg-white/60 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              👤 <span className="font-medium">Из DaData известен только руководитель:</span>{' '}
+              {legalDirectorName}
+              {legalDirectorPost && (
+                <span className="text-amber-800/80 dark:text-amber-200/70">
+                  {` · ${legalDirectorPost}`}
+                </span>
+              )}
+              <div className="text-amber-800/70 dark:text-amber-200/60">
+                Можно писать на общую почту компании, обращаясь к нему.
+              </div>
+            </div>
+          )}
           <button
             type="button"
             onClick={onFindDm}
@@ -1431,6 +1532,29 @@ function DecisionMakersBlock({
     );
   };
 
+  // 2026-07-11: «Ближайший кандидат» — если оркестратор не выбрал marketing_dm,
+  // но в rest есть кандидат с ролью owner/founder/management, показываем его
+  // явно (а не только amber-баннер «маркетинг не найден»). Юзеру видно
+  // альтернативу сразу, не нужно скроллить в «Прочие ЛПР».
+  const rolePriority: Record<string, number> = {
+    owner: 3,
+    founder: 3,
+    management: 2,
+    hr: 1,
+  };
+  const nearestCandidate = !marketingDm
+    ? [...rest]
+        .filter((d) => d.role_category && rolePriority[d.role_category] !== undefined)
+        .sort((a, b) => {
+          const ap = rolePriority[a.role_category ?? ''] ?? 0;
+          const bp = rolePriority[b.role_category ?? ''] ?? 0;
+          if (ap !== bp) return bp - ap;
+          const ac = typeof a.confidence === 'number' ? a.confidence : 0;
+          const bc = typeof b.confidence === 'number' ? b.confidence : 0;
+          return bc - ac;
+        })[0] ?? null
+    : null;
+
   return (
     <div className="space-y-2">
       {/* Если оркестратор не выбрал маркетинг-ЛПР — предлагаем ре-триггер.
@@ -1455,6 +1579,64 @@ function DecisionMakersBlock({
           {dmEnrichResult}
         </div>
       )}
+      {/* Ближайший кандидат — фолбэк на владельца/директора, когда маркетолога
+          нет. Пусть юзер увидит имя+контакт+вероятность в одном месте. */}
+      {!marketingDm && nearestCandidate && (
+        <div className="rounded-v2-sm border border-sky-300 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/20">
+          <div className="mb-1 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
+            <span>👤 Ближайший кандидат</span>
+            <span
+              className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
+              title="Маркетолог не найден — предлагаем ЛПР со смежной ролью"
+            >
+              роль: {roleLabel[nearestCandidate.role_category ?? ''] ?? nearestCandidate.role_category}
+            </span>
+          </div>
+          <div className="text-[13px]">
+            <span className="font-medium text-slate-900 dark:text-slate-100">
+              {nearestCandidate.name}
+            </span>
+            {nearestCandidate.post && (
+              <span className="text-slate-600 dark:text-slate-300">{` · ${nearestCandidate.post}`}</span>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span
+              className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
+              title={`Источник: ${sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}`}
+            >
+              {sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}
+            </span>
+            {typeof nearestCandidate.confidence === 'number' && (
+              <span
+                title="Уверенность оркестратора, что это реальный ЛПР этой компании"
+                className={
+                  nearestCandidate.confidence >= 0.8
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : nearestCandidate.confidence >= 0.6
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-500 dark:text-slate-400'
+                }
+              >
+                уверенность {Math.round(nearestCandidate.confidence * 100)}%
+              </span>
+            )}
+          </div>
+          <div className="mt-2">
+            {renderContact(nearestCandidate) ?? (
+              <span className="text-[11px] italic text-slate-500 dark:text-slate-400">
+                публичного контакта нет — пишите по общей почте компании
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Прозрачность источников — какие оркестратор смог собрать. */}
+      <SourcesCheckedStrip
+        decisionMakers={decisionMakers}
+        legalMatchConfidence={legalMatchConfidence ?? null}
+        hiringMarketing={hiringMarketing ?? false}
+      />
       {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
       {marketingDm && (
         <div className="rounded-v2-sm border-2 border-brand-500/50 bg-brand-50/40 p-3 dark:bg-brand-950/20">
@@ -1553,6 +1735,14 @@ function DecisionMakersBlock({
                 >
                   {sourceLabel[d.source] ?? d.source}
                 </span>
+                {typeof d.confidence === 'number' && (
+                  <span
+                    className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
+                    title="Уверенность оркестратора"
+                  >
+                    {Math.round(d.confidence * 100)}%
+                  </span>
+                )}
                 {renderContact(d)}
               </li>
             ))}
@@ -1579,6 +1769,14 @@ function DecisionMakersBlock({
                 >
                   {sourceLabel[d.source] ?? d.source}
                 </span>
+                {typeof d.confidence === 'number' && (
+                  <span
+                    className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
+                    title="Уверенность оркестратора"
+                  >
+                    {Math.round(d.confidence * 100)}%
+                  </span>
+                )}
                 {renderContact(d)}
                 {d.source_url && !d.contact_value && (
                   <a
