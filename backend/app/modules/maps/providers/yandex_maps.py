@@ -79,9 +79,14 @@ _PLAYWRIGHT_HEADERS = {
 
 _PAGE_TIMEOUT_MS = 30_000        # навигация
 _LIST_TIMEOUT_MS = 15_000        # ждём появления первой карточки
-_SCROLL_MAX_ITERATIONS = 20      # сколько раз пытаемся скроллить
+# 2026-07-12: раньше 20 итераций + no_growth=3 давало потолок ~50 компаний
+# в узкой нише СПб, хотя Я.Карты по типовым запросам держат до 200-500.
+# Юзер жаловался «мало компаний в парсе» — расширяем до 80 итераций,
+# no-growth порог 5 (виртуализированный DOM иногда не догоняет за 3 такта).
+_SCROLL_MAX_ITERATIONS = 80
 _SCROLL_STEP_PX = 1200
-_SCROLL_WAIT_MS = 1200           # пауза между скроллами для подгрузки
+_SCROLL_WAIT_MS = 900            # пауза между скроллами для подгрузки
+_SCROLL_NO_GROWTH_STOP = 5       # столько итераций подряд без роста → выход
 
 
 # ID организации Я.Карт — длинная цифра в URL после slug:
@@ -448,10 +453,20 @@ class YandexMapsProvider(MapProvider):
                         await page.wait_for_timeout(_SCROLL_WAIT_MS)
                         if len(collected) == prev:
                             no_growth_iters += 1
-                            if no_growth_iters >= 3:
-                                break  # три скролла подряд без новых компаний — потолок
+                            if no_growth_iters >= _SCROLL_NO_GROWTH_STOP:
+                                # Потолок: Я.Карты больше карточек не отдают.
+                                # (либо реально всё, либо capped серверной стороной).
+                                logger.info(
+                                    "yandex_maps: no growth for %d iters, stop at %d companies",
+                                    _SCROLL_NO_GROWTH_STOP, len(collected),
+                                )
+                                break
                         else:
                             no_growth_iters = 0
+                    logger.info(
+                        "yandex_maps: search '%s %s' — собрано %d компаний за %d скроллов",
+                        niche, city, len(collected), _ + 1,
+                    )
                 finally:
                     await browser.close()
         except CaptchaWallError:
