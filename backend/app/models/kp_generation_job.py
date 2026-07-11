@@ -47,6 +47,10 @@ class KpGenerationJob(Base):
     template_key = Column(String(40), nullable=False)
     tone = Column(String(20), nullable=False, default="neutral")
     custom_sender_profile = Column(Text, nullable=True)
+    # 2026-07-12 миграция 050: универсальный dict под новые параметры
+    # генерации (pain_tag_ids, use_4hods, channel, my_offer_step). NULL
+    # для legacy-джоб — task тогда использует старые defaults.
+    options = Column(JSONB, nullable=True)
     company_ids = Column(JSONB, nullable=False, default=list)
     total = Column(Integer, nullable=False, default=0)
     generated = Column(Integer, nullable=False, default=0)

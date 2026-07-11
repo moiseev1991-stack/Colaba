@@ -29,8 +29,10 @@ import {
   readBulkKpPending,
 } from '@/lib/kp-bulk-pending';
 import {
+  findCommonPains,
   listKpTemplates,
   startBulkKpGeneration,
+  type KpCommonPain,
   type KpTemplate,
   type KpTone,
 } from '@/src/services/api/outreach-kp';
@@ -101,6 +103,13 @@ function KpJobNewInner() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [tone, setTone] = useState<KpTone>('neutral');
   const [customSenderProfile, setCustomSenderProfile] = useState('');
+  // 2026-07-12: общая боль партии + 4hods для всей партии.
+  const [commonPains, setCommonPains] = useState<KpCommonPain[]>([]);
+  const [commonPainsLoading, setCommonPainsLoading] = useState(false);
+  const [selectedCommonPainId, setSelectedCommonPainId] = useState<number | null>(null);
+  const [bulkUse4hods, setBulkUse4hods] = useState(false);
+  const [bulkChannel, setBulkChannel] = useState<'messenger' | 'email'>('email');
+  const [bulkOfferStep, setBulkOfferStep] = useState('созвон 10 минут');
 
   useEffect(() => {
     let cancelled = false;
@@ -137,6 +146,31 @@ function KpJobNewInner() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
+  // 2026-07-12: подгружаем общие боли партии как только известен список.
+  // Endpoint возвращает боли, встречающиеся у ≥2 компаний.
+  useEffect(() => {
+    if (!companyIds || companyIds.length < 2) {
+      setCommonPains([]);
+      return;
+    }
+    let cancelled = false;
+    setCommonPainsLoading(true);
+    findCommonPains(companyIds)
+      .then((pains) => {
+        if (cancelled) return;
+        setCommonPains(pains);
+      })
+      .catch(() => {
+        // тихо — блок просто не покажется
+      })
+      .finally(() => {
+        if (!cancelled) setCommonPainsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyIds]);
+
   async function handleStart() {
     if (!companyIds || companyIds.length === 0) return;
     if (!selectedKey || starting) return;
@@ -154,6 +188,10 @@ function KpJobNewInner() {
         template_key: selectedKey,
         tone,
         custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
+        pain_tag_ids: selectedCommonPainId != null ? [selectedCommonPainId] : null,
+        use_4hods: bulkUse4hods,
+        channel: bulkUse4hods ? bulkChannel : undefined,
+        my_offer_step: bulkUse4hods ? (bulkOfferStep.trim() || null) : null,
       });
       // Очищаем pending в localStorage — больше не нужен.
       const ref = searchParams.get('ref');
@@ -302,6 +340,136 @@ function KpJobNewInner() {
                 );
               })}
             </div>
+          </div>
+
+          {/* 2026-07-12: Общая боль партии — если у ≥2 компаний есть
+              общий pain, юзер может выбрать его и получить КП по этой
+              боли ВСЕЙ партии (унифицированный оффер). Иначе — каждой
+              компании берётся её топ-1 автоматически. */}
+          {!commonPainsLoading && commonPains.length > 0 && (
+            <div>
+              <label className="mb-1 block text-[12px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                Общая боль партии{' '}
+                <span className="normal-case text-[10.5px] text-slate-400">
+                  · {commonPains.length} найдено, {companyIds.length} компаний
+                </span>
+              </label>
+              <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30">
+                <label className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-[12.5px] hover:bg-slate-100 dark:hover:bg-slate-800/40">
+                  <input
+                    type="radio"
+                    name="common-pain"
+                    checked={selectedCommonPainId === null}
+                    onChange={() => setSelectedCommonPainId(null)}
+                    className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
+                  />
+                  <span className="flex-1">
+                    <span className="font-medium">Автоматически</span>
+                    <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                      · каждой компании — её топ-1 боль
+                    </span>
+                  </span>
+                </label>
+                {commonPains.slice(0, 8).map((p) => (
+                  <label
+                    key={p.pain_tag_id}
+                    className={cn(
+                      'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-[12.5px] transition-colors',
+                      selectedCommonPainId === p.pain_tag_id
+                        ? 'bg-violet-100 dark:bg-violet-900/30'
+                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/40',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="common-pain"
+                      checked={selectedCommonPainId === p.pain_tag_id}
+                      onChange={() => setSelectedCommonPainId(p.pain_tag_id)}
+                      className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
+                    />
+                    <span className="flex-1">
+                      <span className="font-medium text-slate-800 dark:text-slate-100">
+                        {p.label}
+                      </span>
+                      <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                        · {p.companies_hit} из {companyIds.length} компаний · {p.total_mentions} упоминаний
+                      </span>
+                      {p.example_quote && (
+                        <span className="block truncate text-[11px] italic text-slate-500 dark:text-slate-400">
+                          «{p.example_quote.slice(0, 100)}
+                          {p.example_quote.length > 100 ? '…' : ''}»
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 2026-07-12: включить «4 хода» для всей партии. */}
+          <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+            <label className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                checked={bulkUse4hods}
+                onChange={(e) => setBulkUse4hods(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-violet-600"
+              />
+              <span className="flex-1 text-[12.5px]">
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  Промпт «4 хода» для всей партии
+                </span>
+                <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9.5px] font-medium uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+                  beta
+                </span>
+                <span className="block text-[11px] text-slate-500 dark:text-slate-400">
+                  Каркас: наблюдение → что стоит клиенту → решение результатом → микрошаг. Справочник — «автоматизация связи».
+                </span>
+              </span>
+            </label>
+            {bulkUse4hods && (
+              <div className="mt-3 space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Канал
+                  </label>
+                  <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
+                    {(['messenger', 'email'] as const).map((c) => {
+                      const active = bulkChannel === c;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setBulkChannel(c)}
+                          className={cn(
+                            'rounded px-2.5 py-1 text-[12px] font-medium transition-colors',
+                            active
+                              ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100'
+                              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400',
+                          )}
+                        >
+                          {c === 'messenger' ? 'Мессенджер' : 'Email'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Микрошаг (ХОД 4)
+                  </label>
+                  <input
+                    type="text"
+                    value={bulkOfferStep}
+                    onChange={(e) => setBulkOfferStep(e.target.value)}
+                    placeholder="созвон 10 минут / показ на примере / мини-аудит"
+                    maxLength={200}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Калькулятор «что выжмем» — независимый блок, не влияет на старт.

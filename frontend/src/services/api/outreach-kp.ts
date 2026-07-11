@@ -105,6 +105,27 @@ export async function listKpTemplates(): Promise<KpTemplate[]> {
   return r.data;
 }
 
+/** 2026-07-12: одна общая боль партии, встречающаяся у ≥2 из выбранных
+ *  company_ids. Возвращается endpoint'ом /outreach/kp/common-pains. */
+export interface KpCommonPain {
+  pain_tag_id: number;
+  label: string;
+  companies_hit: number;
+  total_mentions: number;
+  example_quote: string | null;
+}
+
+export async function findCommonPains(
+  companyIds: number[],
+): Promise<KpCommonPain[]> {
+  const r = await apiClient.post<KpCommonPain[]>(
+    '/outreach/kp/common-pains',
+    { company_ids: companyIds },
+  );
+  return r.data;
+}
+
+
 export async function generateKp(req: KpGenerateRequest): Promise<KpDraft> {
   const r = await apiClient.post<KpDraft>('/outreach/kp/generate', req);
   return r.data;
@@ -167,6 +188,14 @@ export interface KpBulkGenerateRequest {
   template_key: string;
   tone?: KpTone;
   custom_sender_profile?: string | null;
+  /** 2026-07-12: общая боль для всей партии (1-3 pain_tag_id).
+   *  Каждой компании КП генерится по этой боли. Если null — каждой
+   *  берётся её топ-1 автоматически. */
+  pain_tag_ids?: number[] | null;
+  /** 2026-07-12: включить каркас «4 хода» ко ВСЕЙ партии. */
+  use_4hods?: boolean;
+  channel?: 'messenger' | 'email';
+  my_offer_step?: string | null;
 }
 
 export async function startBulkKpGeneration(

@@ -24,6 +24,7 @@ from app.modules.outreach.kp_schemas import (
     KpBulkDraftPreview,
     KpBulkGenerateRequest,
     KpBulkJobOut,
+    KpCommonPainOut,
     KpDraftListItem,
     KpDraftListResponse,
     KpDraftOut,
@@ -170,6 +171,10 @@ async def bulk_generate_kp(
             template_key=payload.template_key,
             tone=payload.tone,
             custom_sender_profile=payload.custom_sender_profile,
+            pain_tag_ids=payload.pain_tag_ids,
+            use_4hods=payload.use_4hods,
+            channel=payload.channel,
+            my_offer_step=payload.my_offer_step,
         )
     except kp_bulk_service.BulkJobError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -192,6 +197,64 @@ async def bulk_generate_kp(
         )
 
     return _job_to_out(job, recent_drafts=[])
+
+
+@router.post("/common-pains", response_model=list[KpCommonPainOut])
+async def kp_common_pains(
+    payload: dict,
+    _user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[KpCommonPainOut]:
+    """Возвращает боли, которые встречаются у указанных company_ids хотя
+    бы у 2 компаний (общая тема для универсального КП).
+
+    Body: {"company_ids": [1,2,3,...]}
+    Ответ отсортирован по companies_hit desc, total_mentions desc. Верхняя
+    строка = наиболее «универсальная» боль партии.
+    """
+    from sqlalchemy import select, func as sa_func
+    from app.models.pain_tag import CompanyPainScore, PainTag
+
+    company_ids_raw = payload.get("company_ids") or []
+    company_ids = [
+        int(x) for x in company_ids_raw
+        if isinstance(x, (int, str)) and str(x).isdigit()
+    ][:500]
+    if len(company_ids) < 2:
+        return []
+
+    rows = (await db.execute(
+        select(
+            CompanyPainScore.pain_tag_id,
+            PainTag.label,
+            sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).label("hits"),
+            sa_func.sum(CompanyPainScore.mention_count).label("mentions"),
+            sa_func.max(CompanyPainScore.top_quote).label("example_quote"),
+        )
+        .join(PainTag, PainTag.id == CompanyPainScore.pain_tag_id)
+        .where(
+            CompanyPainScore.company_id.in_(company_ids),
+            PainTag.status == "active",
+        )
+        .group_by(CompanyPainScore.pain_tag_id, PainTag.label)
+        .having(sa_func.count(sa_func.distinct(CompanyPainScore.company_id)) >= 2)
+        .order_by(
+            sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).desc(),
+            sa_func.sum(CompanyPainScore.mention_count).desc(),
+        )
+        .limit(20)
+    )).all()
+
+    return [
+        KpCommonPainOut(
+            pain_tag_id=int(r[0]),
+            label=str(r[1]),
+            companies_hit=int(r[2] or 0),
+            total_mentions=int(r[3] or 0),
+            example_quote=(str(r[4]) if r[4] else None),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/jobs/{job_id}", response_model=KpBulkJobOut)
