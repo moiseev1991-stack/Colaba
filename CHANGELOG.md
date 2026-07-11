@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.132.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.131.0...v1.132.0) (2026-07-11)
+
+
+### Features
+
+* **maps/yandex:** расширить пагинацию — до 80 скроллов вместо 20 ([36da825](https://github.com/moiseev1991-stack/Colaba/commit/36da825281e86c799925e1856d5628c93c195476))
+
 # [1.131.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.130.0...v1.131.0) (2026-07-11)
 
 
