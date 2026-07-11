@@ -131,12 +131,15 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
       try {
         const fresh = await getCompanyDetail(companyId);
         setDetail(fresh);
-        const found = (fresh.decision_makers || []).length > 0;
-        if (!found) {
+        const foundMarketing = (fresh.decision_makers || []).some(
+          (d) => d.is_marketing_dm === true,
+        );
+        if (!foundMarketing) {
           setDmSearchExhausted(true);
           setDmEnrichResult(
-            'Не нашли ЛПР ни в одном источнике: hh.ru (нет активных вакансий), ' +
-            'VK (нет привязанного сообщества), ЕГРЮЛ (не удалось сматчить ИНН).',
+            'Не нашли маркетинг-ЛПР ни в одном источнике: hh.ru (нет вакансии маркетолога), ' +
+            'VK (нет контакта с маркетинг-ролью), сайт (нет раздела «команда/маркетинг»), ' +
+            'ЕГРЮЛ (директор — не маркетинг). Все найденные контакты — в блоке «Другие контакты для касания» ниже.',
           );
         } else {
           setDmEnrichResult(null);
