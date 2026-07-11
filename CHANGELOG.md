@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.128.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.127.0...v1.128.0) (2026-07-11)
+
+
+### Features
+
+* **kp:** multi-pain выбор — юзер отмечает 1-3 боли, КП по каждой ([030005a](https://github.com/moiseev1991-stack/Colaba/commit/030005aaad85380a6098c045259842c4064784d4))
+* **maps/drawer:** плашка источника кликабельна, если есть source_url ([786e95a](https://github.com/moiseev1991-stack/Colaba/commit/786e95aa92e829e898f8d9e37394d972a3a8e9c7))
+* **maps/pain-tiles:** явный multi-select + счётчик + раскрывашка ([fb2749c](https://github.com/moiseev1991-stack/Colaba/commit/fb2749c8c080e41828ab7f851f70df84541e35b5))
+
 # [1.127.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.126.1...v1.127.0) (2026-07-11)
 
 
