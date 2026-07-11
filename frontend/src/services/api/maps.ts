@@ -949,6 +949,30 @@ export async function enrichCompaniesMarketingDm(
   return resp.data;
 }
 
+/** 2026-07-11: точечный триггер одного источника для компании.
+ *  Используется когда юзер кликает по плашке «○ ВК» / «○ hh.ru» в drawer'е.
+ *  После source-таска бэк сам ставит enrich_marketing_dm через 45с. */
+export type EnrichSource = 'website' | 'vk' | 'hh' | 'egrul';
+
+export interface EnrichSingleSourceResponse {
+  queued: boolean;
+  source: EnrichSource;
+  task: string;
+  label: string;
+}
+
+export async function enrichCompanySource(
+  companyId: number,
+  source: EnrichSource,
+  searchId: number,
+): Promise<EnrichSingleSourceResponse> {
+  const resp = await apiClient.post<EnrichSingleSourceResponse>(
+    `/maps/companies/${companyId}/enrich-source`,
+    { source, search_id: searchId },
+  );
+  return resp.data;
+}
+
 /** Возвращает URL для скачивания CSV — браузер сам инициирует загрузку.
  *
  *  Два режима:

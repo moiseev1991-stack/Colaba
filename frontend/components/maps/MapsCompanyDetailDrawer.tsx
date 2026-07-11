@@ -37,12 +37,14 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   enrichCompaniesMarketingDm,
+  enrichCompanySource,
   getCompanyDetail,
   getCompanyPainTrend,
   getCompanyReviews,
   getNichePainTrend,
   type CompanyDetailOut,
   type DecisionMakerOut,
+  type EnrichSource,
   type PainTrendOut,
   type ReviewOut,
 } from '@/src/services/api/maps';
@@ -108,6 +110,38 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   // подтянутся автоматически. Если после рефетча всё ещё пусто — показываем
   // явный «не нашли», а не молча возвращаем кнопку.
   const [dmSearchExhausted, setDmSearchExhausted] = useState(false);
+  // 2026-07-11: точечный триггер source-парсера (клик по плашке
+  // «○ ВК»/«○ hh.ru»/…). triggeringSource показывает какой сейчас в процессе.
+  const [triggeringSource, setTriggeringSource] = useState<EnrichSource | null>(null);
+  const handleSourceRetry = useCallback(async (source: EnrichSource) => {
+    if (companyId == null || triggeringSource) return;
+    setTriggeringSource(source);
+    try {
+      await enrichCompanySource(companyId, source, searchId);
+    } catch {
+      setTriggeringSource(null);
+      // Тихо — сама плашка вернётся в исходное состояние.
+      return;
+    }
+    // Через 55с рефетч drawer'а. Если source нашёл что-то — плашка станет
+    // ✓·N. Если нет — останется ○. is_marketing_dm тоже может обновиться,
+    // потому что бэк ставит enrich_marketing_dm через 45с после source-таска.
+    window.setTimeout(async () => {
+      if (companyId == null) {
+        setTriggeringSource(null);
+        return;
+      }
+      try {
+        const fresh = await getCompanyDetail(companyId);
+        setDetail(fresh);
+      } catch {
+        // Тихо.
+      } finally {
+        setTriggeringSource(null);
+      }
+    }, 55_000);
+  }, [companyId, searchId, triggeringSource]);
+
   const handleFindDm = useCallback(async () => {
     if (companyId == null || dmEnrichPending) return;
     setDmEnrichPending(true);
@@ -312,6 +346,8 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             hiringMarketing={detail.hiring_marketing ?? false}
             legalDirectorName={detail.legal?.director_name ?? null}
             legalDirectorPost={detail.legal?.director_post ?? null}
+            onSourceRetry={handleSourceRetry}
+            triggeringSource={triggeringSource}
           />
 
           <div className="flex flex-wrap gap-3 text-xs">
@@ -1300,14 +1336,24 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
 // Плашки «Проверено»: показывают юзеру, какие из 5 источников оркестратор
 // смог разобрать и сколько кандидатов пришло из каждого. Даёт прозрачность —
 // вместо молчаливого «не нашли» видно «сайт: 0, ВК: 1, hh: 0, ЕГРЮЛ: 1».
+type EnrichSourceKey = 'website' | 'vk' | 'hh' | 'egrul';
+
 function SourcesCheckedStrip({
   decisionMakers,
   legalMatchConfidence,
   hiringMarketing,
+  onSourceRetry,
+  triggeringSource,
 }: {
   decisionMakers: DecisionMakerOut[];
   legalMatchConfidence: number | null;
   hiringMarketing: boolean;
+  /** Клик по «○ ВК» / «○ hh.ru» / «○ сайт» / «○ ЕГРЮЛ» — просит родителя
+   *  запустить конкретный source-таск. Если undefined — плашки статичные. */
+  onSourceRetry?: (source: EnrichSourceKey) => void | Promise<void>;
+  /** Родитель показывает какой источник сейчас в процессе — плашка
+   *  превращается в «отправлено, ищем…» и disabled. */
+  triggeringSource?: EnrichSourceKey | null;
 }) {
   const countBy = (prefixes: string[]) =>
     decisionMakers.filter((d) => prefixes.some((p) => d.source === p || d.source.startsWith(p)))
@@ -1317,31 +1363,73 @@ function SourcesCheckedStrip({
   const hh = countBy(['hh']);
   const egrul = countBy(['egrul_director', 'egrul_founder']);
   const dadata = legalMatchConfidence != null;
-  const chip = (label: string, count: number, extra?: string) => (
-    <span
-      className={
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ' +
-        (count > 0
-          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500')
-      }
-      title={count > 0 ? `${label}: найдено ${count}` : `${label}: пусто`}
-    >
-      <span>{count > 0 ? '✓' : '○'}</span>
-      <span>{label}</span>
-      {count > 0 && <span className="opacity-70">· {count}</span>}
-      {extra && <span className="opacity-70">· {extra}</span>}
-    </span>
-  );
+
+  // Плашка. Если count>0 → зелёная статичная. Если count===0 и есть
+  // onSourceRetry+sourceKey → кликабельная кнопка «повторить». Если
+  // triggeringSource===sourceKey → «ищем…» disabled.
+  const chip = (
+    label: string,
+    count: number,
+    sourceKey: EnrichSourceKey | null,
+    extra?: string,
+  ) => {
+    const found = count > 0;
+    const isTriggering = sourceKey != null && triggeringSource === sourceKey;
+    const clickable = !found && !!onSourceRetry && sourceKey != null && !isTriggering;
+    const baseCls =
+      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ';
+    const stateCls = found
+      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+      : isTriggering
+        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+        : clickable
+          ? 'cursor-pointer bg-slate-100 text-slate-600 hover:bg-brand-100 hover:text-brand-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-brand-900/30 dark:hover:text-brand-200'
+          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500';
+    const content = (
+      <>
+        <span>
+          {isTriggering ? '⏳' : found ? '✓' : clickable ? '↻' : '○'}
+        </span>
+        <span>{label}</span>
+        {found && <span className="opacity-70">· {count}</span>}
+        {isTriggering && <span className="opacity-70">· ищем…</span>}
+        {extra && <span className="opacity-70">· {extra}</span>}
+      </>
+    );
+    const title = found
+      ? `${label}: найдено ${count}`
+      : isTriggering
+        ? `${label}: запущен поиск, ~1 мин`
+        : clickable
+          ? `${label}: пусто — кликните, чтобы запустить парсер повторно`
+          : `${label}: пусто`;
+    if (clickable) {
+      return (
+        <button
+          type="button"
+          onClick={() => onSourceRetry!(sourceKey!)}
+          className={baseCls + stateCls}
+          title={title}
+        >
+          {content}
+        </button>
+      );
+    }
+    return (
+      <span className={baseCls + stateCls} title={title}>
+        {content}
+      </span>
+    );
+  };
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
       <span className="mr-0.5 uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Проверено:
       </span>
-      {chip('сайт', website)}
-      {chip('ВК', vk)}
-      {chip('hh.ru', hh, hiringMarketing ? '🔥 ищет маркетолога' : undefined)}
-      {chip('ЕГРЮЛ', egrul)}
+      {chip('сайт', website, 'website')}
+      {chip('ВК', vk, 'vk')}
+      {chip('hh.ru', hh, 'hh', hiringMarketing ? '🔥 ищет маркетолога' : undefined)}
+      {chip('ЕГРЮЛ', egrul, 'egrul')}
       <span
         className={
           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ' +
@@ -1352,7 +1440,7 @@ function SourcesCheckedStrip({
         title={
           dadata
             ? `DaData: юр.данные сматчены на ${Math.round((legalMatchConfidence ?? 0) * 100)}%`
-            : 'DaData: юр.лицо не сматчено'
+            : 'DaData: юр.лицо не сматчено (перезапуск через плашку ЕГРЮЛ)'
         }
       >
         <span>{dadata ? '✓' : '○'}</span>
@@ -1375,6 +1463,8 @@ function DecisionMakersBlock({
   hiringMarketing,
   legalDirectorName,
   legalDirectorPost,
+  onSourceRetry,
+  triggeringSource,
 }: {
   decisionMakers: DecisionMakerOut[];
   onFindDm: () => void;
@@ -1387,6 +1477,10 @@ function DecisionMakersBlock({
   hiringMarketing?: boolean;
   legalDirectorName?: string | null;
   legalDirectorPost?: string | null;
+  /** Клик по «○ ВК» / «○ hh.ru» / «○ сайт» / «○ ЕГРЮЛ» — родитель
+   *  триггерит source-task и рефетчит drawer через 55с. */
+  onSourceRetry?: (source: EnrichSourceKey) => void | Promise<void>;
+  triggeringSource?: EnrichSourceKey | null;
 }) {
   // Пусто → показываем кнопку «Найти ЛПР» или «не нашли», если поиск уже
   // отработал вхолостую (2026-07-10 fix — юзер жаловался на «нажал → пусто»).
@@ -1407,6 +1501,8 @@ function DecisionMakersBlock({
               decisionMakers={decisionMakers}
               legalMatchConfidence={legalMatchConfidence ?? null}
               hiringMarketing={hiringMarketing ?? false}
+              onSourceRetry={onSourceRetry}
+              triggeringSource={triggeringSource ?? null}
             />
           </div>
           {legalDirectorName && (
@@ -1645,11 +1741,15 @@ function DecisionMakersBlock({
           </div>
         </div>
       )}
-      {/* Прозрачность источников — какие оркестратор смог собрать. */}
+      {/* Прозрачность источников — какие оркестратор смог собрать.
+          Плашки с ○ кликабельны — запускают конкретный source-парсер
+          повторно (2026-07-11 юзерский запрос). */}
       <SourcesCheckedStrip
         decisionMakers={decisionMakers}
         legalMatchConfidence={legalMatchConfidence ?? null}
         hiringMarketing={hiringMarketing ?? false}
+        onSourceRetry={onSourceRetry}
+        triggeringSource={triggeringSource ?? null}
       />
       {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
       {marketingDm && (
