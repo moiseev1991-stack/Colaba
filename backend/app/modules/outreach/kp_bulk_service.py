@@ -116,6 +116,10 @@ async def create_bulk_job(
     template_key: str,
     tone: str = "neutral",
     custom_sender_profile: str | None = None,
+    pain_tag_ids: list[int] | None = None,
+    use_4hods: bool = False,
+    channel: str = "email",
+    my_offer_step: str | None = None,
 ) -> KpGenerationJob:
     """Создаёт job в статусе queued. Celery-task запускается отдельно
     (роутер делает `.delay(job.id)` после коммита).
@@ -137,6 +141,20 @@ async def create_bulk_job(
             status_code=400,
         )
 
+    # 2026-07-12: собираем options только когда есть что положить, иначе
+    # оставляем NULL — для видимости в UI/history что это классическая джоба.
+    options: dict | None = None
+    extras: dict = {}
+    if pain_tag_ids:
+        extras["pain_tag_ids"] = list(pain_tag_ids)
+    if use_4hods:
+        extras["use_4hods"] = True
+        extras["channel"] = channel
+        if my_offer_step:
+            extras["my_offer_step"] = my_offer_step
+    if extras:
+        options = extras
+
     organization_id = await _resolve_user_organization_id(db, user_id)
     job = KpGenerationJob(
         user_id=user_id,
@@ -145,6 +163,7 @@ async def create_bulk_job(
         template_key=template_key,
         tone=tone,
         custom_sender_profile=custom_sender_profile,
+        options=options,
         company_ids=valid_ids,
         total=len(valid_ids),
         generated=0,

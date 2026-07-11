@@ -84,6 +84,11 @@ async def _generate_kp_bulk_async(job_id: int) -> dict:
                 break
 
             try:
+                # 2026-07-12: job.options содержит опциональные параметры
+                # (pain_tag_ids/use_4hods/channel/my_offer_step) —
+                # пробрасываем в generate_kp. Legacy-джобы имеют options=NULL,
+                # generate_kp тогда работает по старым дефолтам.
+                opts = dict(job.options or {})
                 await kp_service.generate_kp(
                     db,
                     user_id=job.user_id,
@@ -91,6 +96,10 @@ async def _generate_kp_bulk_async(job_id: int) -> dict:
                     template_key=job.template_key,
                     tone=job.tone or "neutral",
                     custom_sender_profile=job.custom_sender_profile,
+                    pain_tag_ids=opts.get("pain_tag_ids"),
+                    use_4hods=bool(opts.get("use_4hods", False)),
+                    channel=opts.get("channel", "email"),
+                    my_offer_step=opts.get("my_offer_step"),
                 )
                 job.generated += 1
             except kp_service.KpGenerationError as e:

@@ -166,6 +166,27 @@ class KpBulkGenerateRequest(BaseModel):
     template_key: str = Field(..., min_length=1, max_length=40)
     tone: Literal["neutral", "bold"] = "neutral"
     custom_sender_profile: str | None = Field(default=None, max_length=600)
+    # 2026-07-12: если задан — КП на КАЖДУЮ выбранную компанию генерится
+    # по этим 1-3 болям (унифицированный оффер под общую боль партии).
+    # Если None — каждой компании берётся её топ-1 автоматически.
+    pain_tag_ids: list[int] | None = Field(default=None, max_length=3)
+    # 2026-07-12: те же поля что у одиночного generate — применяются ко
+    # ВСЕЙ партии единообразно.
+    use_4hods: bool = False
+    channel: Literal["messenger", "email"] = "email"
+    my_offer_step: str | None = Field(default=None, max_length=200)
+
+
+class KpCommonPainOut(BaseModel):
+    """Одна общая боль партии — встречается у ≥1 из выбранных компаний.
+    Возвращается endpoint'ом /outreach/kp/common-pains для выбора юзером."""
+
+    pain_tag_id: int
+    label: str
+    # сколько из company_ids запроса имеют эту боль (mention_count >= 1)
+    companies_hit: int
+    total_mentions: int
+    example_quote: str | None = None
 
 
 class KpBulkDraftPreview(BaseModel):
