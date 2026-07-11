@@ -1601,12 +1601,26 @@ function DecisionMakersBlock({
             )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-            <span
-              className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
-              title={`Источник: ${sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}`}
-            >
-              {sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}
-            </span>
+            {nearestCandidate.source_url ? (
+              <a
+                href={nearestCandidate.source_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-0.5 rounded bg-slate-200 px-1.5 py-0.5 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600"
+                title={`Открыть источник: ${sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}`}
+              >
+                <span>{sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}</span>
+                <span aria-hidden>↗</span>
+              </a>
+            ) : (
+              <span
+                className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
+                title={`Источник: ${sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}`}
+              >
+                {sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}
+              </span>
+            )}
             {typeof nearestCandidate.confidence === 'number' && (
               <span
                 title="Уверенность оркестратора, что это реальный ЛПР этой компании"
@@ -1729,12 +1743,26 @@ function DecisionMakersBlock({
                     {` · ${d.post}`}
                   </span>
                 )}
-                <span
-                  className="ml-2 rounded bg-emerald-200 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100"
-                  title={sourceLabel[d.source] ?? d.source}
-                >
-                  {sourceLabel[d.source] ?? d.source}
-                </span>
+                {d.source_url ? (
+                  <a
+                    href={d.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-2 inline-flex items-center gap-0.5 rounded bg-emerald-200 px-1.5 py-0.5 text-[10px] text-emerald-800 hover:bg-emerald-300 dark:bg-emerald-800 dark:text-emerald-100 dark:hover:bg-emerald-700"
+                    title={`Открыть источник: ${sourceLabel[d.source] ?? d.source}`}
+                  >
+                    <span>{sourceLabel[d.source] ?? d.source}</span>
+                    <span aria-hidden>↗</span>
+                  </a>
+                ) : (
+                  <span
+                    className="ml-2 rounded bg-emerald-200 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100"
+                    title={sourceLabel[d.source] ?? d.source}
+                  >
+                    {sourceLabel[d.source] ?? d.source}
+                  </span>
+                )}
                 {typeof d.confidence === 'number' && (
                   <span
                     className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
