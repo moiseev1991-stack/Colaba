@@ -2233,6 +2233,106 @@ async def companies_enrich_marketing_dm(
 
 
 # ---------------------------------------------------------------------------
+# Point-source enrich (2026-07-11): юзер в drawer'е кликает по плашке
+# «Проверено: ○ ВК» — запускается ТОЛЬКО парсер ВК для этой компании.
+# Существующий /companies/enrich-marketing-dm гоняет весь оркестратор,
+# что тратит квоты (DaData/SerpAPI) впустую если нужна лишь 1 источник.
+# ---------------------------------------------------------------------------
+
+
+_ENRICH_SOURCE_TASKS = {
+    # source-key → (task-import-attr, human-label). Все таски принимают
+    # ровно один аргумент — company_id, и уже сами разбираются с квотами
+    # / no-op'ами / ретраями. Здесь только диспетч.
+    "website": ("enrich_company_team", "сайт (страницы «команда/о нас»)"),
+    "vk": ("enrich_company_vk", "ВКонтакте"),
+    "hh": ("enrich_company_hh", "hh.ru"),
+    "egrul": ("enrich_company_legal", "ЕГРЮЛ / DaData"),
+}
+
+
+@router.post("/companies/{company_id}/enrich-source")
+@limiter.limit("20/minute")
+async def companies_enrich_single_source(
+    company_id: int,
+    request: Request,
+    payload: dict,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Триггерит ОДИН конкретный источник для компании (2026-07-11).
+
+    Body: {"source": "website"|"vk"|"hh"|"egrul", "search_id": 42}
+    - source: какой парсер запустить (валидируется по _ENRICH_SOURCE_TASKS).
+    - search_id: обязателен для own-check (юзер не должен обогащать
+      компании из чужого поиска, даже зная id).
+
+    После постановки source-таска ставим enrich_marketing_dm через 45с —
+    чтобы найденные новые контакты попали в marketing-DM selection.
+
+    Возвращает: {"queued": true, "source": "vk", "task": "enrich_company_vk"}
+    либо 400/404/503 с понятным detail.
+    """
+    from app.models.maps import MapSearchResult
+    from app.modules.maps.tasks import enrich_marketing_dm as enrich_marketing_dm_task
+
+    source = str(payload.get("source") or "").strip().lower()
+    if source not in _ENRICH_SOURCE_TASKS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"source должен быть один из: {', '.join(sorted(_ENRICH_SOURCE_TASKS))}"
+            ),
+        )
+    search_id = payload.get("search_id")
+    if search_id is None:
+        raise HTTPException(status_code=400, detail="search_id обязателен")
+
+    await _get_owned_search(db, int(search_id), user_id)
+
+    # Компания должна быть в этом search'е (защита от подмены id).
+    exists = (
+        await db.execute(
+            select(MapSearchResult.company_id)
+            .where(MapSearchResult.map_search_id == int(search_id))
+            .where(MapSearchResult.company_id == int(company_id))
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if exists is None:
+        raise HTTPException(
+            status_code=404, detail="Компания не найдена в этом поиске."
+        )
+
+    task_attr, label = _ENRICH_SOURCE_TASKS[source]
+    from app.modules.maps import tasks as _tasks_mod
+
+    task_fn = getattr(_tasks_mod, task_attr, None)
+    if task_fn is None:
+        # Технически защита от опечатки в _ENRICH_SOURCE_TASKS
+        raise HTTPException(
+            status_code=503,
+            detail=f"Внутренняя ошибка: таск {task_attr} не найден.",
+        )
+
+    try:
+        task_fn.delay(int(company_id))
+        # Re-select marketing-DM после того как source отработает.
+        enrich_marketing_dm_task.apply_async(args=[int(company_id)], countdown=45)
+    except Exception as e:
+        logger.warning(
+            "companies_enrich_single_source enqueue failed (source=%s, cid=%s): %s",
+            source, company_id, e,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"Celery недоступен, не удалось запустить {label}.",
+        )
+
+    return {"queued": True, "source": source, "task": task_attr, "label": label}
+
+
+# ---------------------------------------------------------------------------
 # Website leads Excel export (блок 4 ТЗ 2026-06-02)
 # ---------------------------------------------------------------------------
 
