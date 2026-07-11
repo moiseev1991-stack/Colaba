@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.130.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.129.1...v1.130.0) (2026-07-11)
+
+
+### Bug Fixes
+
+* **kp/pain-dictionaries:** match_pain_key устойчив к падежам ([e018147](https://github.com/moiseev1991-stack/Colaba/commit/e01814797ba27252ca7bc3f8dab6c1ed44817de9))
+
+
+### Features
+
+* **kp:** каркас «4 хода» — справочники + промпт + валидатор ([ca76135](https://github.com/moiseev1991-stack/Colaba/commit/ca76135c1c2e2d44a158076b6f5fce0ed335e684))
+
 ## [1.129.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.129.0...v1.129.1) (2026-07-11)
 
 
