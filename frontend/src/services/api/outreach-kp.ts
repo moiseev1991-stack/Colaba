@@ -54,6 +54,12 @@ export interface KpArgumentsUsed {
   offer_hint: string;
   tone: string;
   template_key: string;
+  /** 2026-07-11 «4 хода»: включён ли новый каркас. */
+  use_4hods?: boolean | null;
+  channel?: 'messenger' | 'email' | null;
+  my_offer_step?: string | null;
+  /** Одностроковая сводка ошибок валидатора («2 issues: length, url»). */
+  validation_summary?: string | null;
 }
 
 export interface KpDraft {
@@ -84,6 +90,14 @@ export interface KpGenerateRequest {
   /** 2026-07-11: выбрать 1-3 боли, о которых должно писать КП. Если
    *  не задано / пустой массив — берётся топ-1 боль автоматически. */
   pain_tag_ids?: number[] | null;
+  /** 2026-07-11 «4 хода»: новый промпт-каркас (боль→последствие→решение→
+   *  микрошаг) вместо свободного tail'а. */
+  use_4hods?: boolean;
+  /** Канал доставки — влияет на лимиты. */
+  channel?: 'messenger' | 'email';
+  /** ХОД4: короткое описание бесплатного микрошага
+   *  («созвон 10 минут», «мини-аудит запись+дозвон», «показ на вашем примере»). */
+  my_offer_step?: string | null;
 }
 
 export async function listKpTemplates(): Promise<KpTemplate[]> {

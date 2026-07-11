@@ -906,6 +906,9 @@ async def generate_kp(
     tone: str = "neutral",
     custom_sender_profile: str | None = None,
     pain_tag_ids: list[int] | None = None,
+    use_4hods: bool = False,
+    channel: str = "email",
+    my_offer_step: str | None = None,
 ) -> GeneratedKp:
     """Главная функция: собирает контекст, зовёт LLM, парсит, пишет в БД.
 
@@ -915,6 +918,14 @@ async def generate_kp(
     pain_tag_ids: 2026-07-11 — если передан 1-3 id из плитки болей UI,
       письмо генерится по ЭТИМ болям (сортируем по mention_count desc).
       Если None/пусто — как раньше, топ-1 боль автоматически.
+
+    use_4hods (2026-07-11): True — новый промпт-каркас «4 хода»
+      (боль→последствие→решение→микрошаг). Валидация выхода
+      (длина/один вопрос/ссылки/стоп-слова) + 1 регенерация.
+      False — старый свободный промпт с фактами.
+
+    channel: 'messenger'|'email' — только при use_4hods=True.
+    my_offer_step: короткое описание ХОД4 (созвон / показ / мини-аудит).
     """
     # 1. Компания
     company = await db.get(Company, company_id)
@@ -949,9 +960,20 @@ async def generate_kp(
     )
     niche_avg_rating = await compute_niche_avg_rating(db, company)
 
-    # 5. Промпт. build_kp_prompt уже умеет пропускать строки факт-блока,
-    # по которым нет данных (см. test_build_prompt_no_pain_skips_pain_lines).
-    # additional_pains — 2-я и 3-я боль (если юзер выбрал несколько).
+    # 5. ЛПР — имя для обращения (для 4hods-каркаса)
+    recipient_first_name: str | None = None
+    if use_4hods:
+        from app.models.company_decision_maker import CompanyDecisionMaker
+        marketing_dm = (await db.execute(
+            select(CompanyDecisionMaker)
+            .where(CompanyDecisionMaker.company_id == company_id)
+            .where(CompanyDecisionMaker.is_marketing_dm.is_(True))
+            .limit(1)
+        )).scalar_one_or_none()
+        if marketing_dm and marketing_dm.name:
+            recipient_first_name = str(marketing_dm.name).strip().split()[0] or None
+
+    # 6. Промпт. Ветвление: старый свободный vs новый каркас 4 ходов.
     additional_pains_for_prompt = [
         {
             "label": p.label,
@@ -961,25 +983,52 @@ async def generate_kp(
         for p in selected_pains[1:]
         if p.top_quote
     ]
-    prompt_text = build_kp_prompt(
-        sender_profile=sender_profile,
-        offer_hint=offer_hint,
-        tone=tone,
-        company_name=company.name or "",
-        niche=company.niche or "",
-        city=company.city or "",
-        pain_label=primary_pain.label if has_pain_with_quote else None,
-        pain_mention_count=primary_pain.mention_count if has_pain_with_quote else None,
-        top_quote=primary_pain.top_quote if has_pain_with_quote else None,
-        trend_verdict=trend_verdict,
-        benchmark_ratio=ratio,
-        website=company.website,
-        rating=float(company.rating) if company.rating is not None else None,
-        niche_avg_rating=niche_avg_rating,
-        additional_pains=additional_pains_for_prompt,
-    )
+    if use_4hods:
+        # Новый каркас: подставляем боли + справочники + канал.
+        from .pain_dictionaries import fill_pains
+        from .kp_prompts_v2 import build_prompt_4hods
+        pains_dicts = [
+            {
+                "label": p.label,
+                "mention_count": p.mention_count,
+                "top_quote": p.top_quote,
+                "source": p.source,
+                "pain_tag_id": p.pain_tag_id,
+            }
+            for p in selected_pains
+        ]
+        filled_pains = fill_pains(pains_dicts, offer_theme="automation")
+        prompt_text = build_prompt_4hods(
+            channel=channel,
+            sender_profile=sender_profile,
+            company_name=company.name or "",
+            niche=company.niche or "",
+            city=company.city or "",
+            pains=filled_pains,
+            my_offer_step=my_offer_step or "короткий созвон 10 минут",
+            tone=tone,
+            recipient_first_name=recipient_first_name,
+        )
+    else:
+        prompt_text = build_kp_prompt(
+            sender_profile=sender_profile,
+            offer_hint=offer_hint,
+            tone=tone,
+            company_name=company.name or "",
+            niche=company.niche or "",
+            city=company.city or "",
+            pain_label=primary_pain.label if has_pain_with_quote else None,
+            pain_mention_count=primary_pain.mention_count if has_pain_with_quote else None,
+            top_quote=primary_pain.top_quote if has_pain_with_quote else None,
+            trend_verdict=trend_verdict,
+            benchmark_ratio=ratio,
+            website=company.website,
+            rating=float(company.rating) if company.rating is not None else None,
+            niche_avg_rating=niche_avg_rating,
+            additional_pains=additional_pains_for_prompt,
+        )
 
-    # 6. LLM
+    # 7. LLM
     assistant_id = await pick_assistant_id(db, "outreach_draft")
     if assistant_id is None:
         raise KpGenerationError(
@@ -990,6 +1039,42 @@ async def generate_kp(
         )
 
     parsed = await _call_llm_with_retry(db, assistant_id, prompt_text)
+
+    # 7.1. Валидация выхода (только для 4hods): если нарушено — 1 повтор.
+    #      Не прошло со второй попытки → пишем draft с флагом needs_review.
+    validation_summary: str | None = None
+    if use_4hods:
+        from .kp_validator import validate_kp, issues_summary
+        v = validate_kp(
+            subject=str(parsed.get("subject") or ""),
+            body=str(parsed.get("body") or ""),
+            channel=channel,
+        )
+        if not v.ok:
+            # 1 повтор.
+            logger.info(
+                "generate_kp 4hods validation failed on 1st try: %s",
+                issues_summary(v.issues),
+            )
+            parsed_retry = await _call_llm_with_retry(db, assistant_id, prompt_text)
+            v2 = validate_kp(
+                subject=str(parsed_retry.get("subject") or ""),
+                body=str(parsed_retry.get("body") or ""),
+                channel=channel,
+            )
+            if v2.ok:
+                parsed = parsed_retry
+            else:
+                # Оставляем лучший (по кол-ву issues) и помечаем needs_review.
+                if len(v2.issues) < len(v.issues):
+                    parsed = parsed_retry
+                    validation_summary = issues_summary(v2.issues)
+                else:
+                    validation_summary = issues_summary(v.issues)
+                logger.warning(
+                    "generate_kp 4hods validation failed after retry: %s",
+                    validation_summary,
+                )
 
     # 7. Persist. Поля с pain/quote/source — None если у компании не было
     # проанализированных болей. UI блок «Аргументы» рендерит только
@@ -1019,6 +1104,11 @@ async def generate_kp(
         "offer_hint": offer_hint,
         "tone": tone,
         "template_key": template_key,
+        # 2026-07-11 «4 хода»: мета-инфа для UI-плашки «На чём построено».
+        "use_4hods": use_4hods,
+        "channel": channel if use_4hods else None,
+        "my_offer_step": my_offer_step if use_4hods else None,
+        "validation_summary": validation_summary if use_4hods else None,
     }
 
     organization_id = await _resolve_user_organization_id(db, user_id)

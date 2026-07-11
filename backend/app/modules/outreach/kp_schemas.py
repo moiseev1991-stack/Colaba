@@ -41,6 +41,17 @@ class KpGenerateRequest(BaseModel):
     # используются эти боли, LLM получает промпт с их цитатами и генерит
     # письмо, затрагивающее каждую. Игнорируется для site_lead_id.
     pain_tag_ids: list[int] | None = Field(default=None, max_length=3)
+    # 2026-07-11 «4 хода»: если True — новый промпт-каркас (боль→последствие
+    # →решение→микрошаг) вместо свободного tail'а. По умолчанию False для
+    # обратной совместимости, включается юзером в модалке КП.
+    use_4hods: bool = False
+    # 2026-07-11: канал — влияет только при use_4hods=True. messenger =
+    # 4-6 строк без ссылок, email = 6-9 строк со ссылкой в подписи.
+    channel: Literal["messenger", "email"] = "email"
+    # 2026-07-11: короткое описание микрошага (ХОД4). «созвон 10 минут»,
+    # «мини-аудит запись+дозвон», «показ на вашем примере». Игнорируется
+    # при use_4hods=False.
+    my_offer_step: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def _check_xor_target(self):

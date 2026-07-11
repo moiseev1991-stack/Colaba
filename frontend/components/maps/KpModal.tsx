@@ -87,6 +87,12 @@ export function KpModal({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [tone, setTone] = useState<KpTone>('neutral');
   const [customSenderProfile, setCustomSenderProfile] = useState('');
+  // 2026-07-11 «4 хода»: новый промпт-каркас с справочниками.
+  // По умолчанию OFF, юзер включает галкой. При включении показывается
+  // селектор канала (messenger/email) и поле «микрошаг ХОД4».
+  const [use4hods, setUse4hods] = useState(false);
+  const [channel, setChannel] = useState<'messenger' | 'email'>('email');
+  const [myOfferStep, setMyOfferStep] = useState('созвон 10 минут');
 
   const [draft, setDraft] = useState<KpDraft | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -235,6 +241,10 @@ export function KpModal({
         targetCompanyId != null && selectedPainIds.length > 0
           ? selectedPainIds
           : null,
+      // 2026-07-11 «4 хода»: включается юзером в модалке.
+      use_4hods: use4hods,
+      channel: use4hods ? channel : undefined,
+      my_offer_step: use4hods ? myOfferStep.trim() || null : null,
     };
     try {
       const res = await generateKp(payload);
@@ -502,6 +512,82 @@ export function KpModal({
               )}
             </div>
           )}
+
+          {/* 2026-07-11 «4 хода» — новый промпт-каркас (боль→последствие→
+              решение→микрошаг) + валидация выхода + справочники под тему
+              «автоматизация связи». Выключается по умолчанию для A/B. */}
+          <div className="mt-4 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+            <label className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                checked={use4hods}
+                onChange={(e) => setUse4hods(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-violet-600"
+              />
+              <span className="flex-1 text-[12px]">
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  Промпт «4 хода»
+                </span>
+                <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+                  beta
+                </span>
+                <span className="ml-1 text-slate-500 dark:text-slate-400">
+                  · ТЗ 2026-07-11
+                </span>
+                <span className="block text-[11px] text-slate-500 dark:text-slate-400">
+                  Каркас: наблюдение → что стоит клиенту → решение результатом (без техник) → микрошаг. Сейчас справочник только «автоматизация связи».
+                </span>
+              </span>
+            </label>
+            {use4hods && (
+              <div className="mt-3 space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Канал
+                  </label>
+                  <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
+                    {(['messenger', 'email'] as const).map((c) => {
+                      const active = channel === c;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setChannel(c)}
+                          className={cn(
+                            'rounded px-2.5 py-1 text-[12px] font-medium transition-colors',
+                            active
+                              ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-700'
+                              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
+                          )}
+                        >
+                          {c === 'messenger' ? 'Мессенджер' : 'Email'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    Мессенджер: 4–6 строк, без ссылок · Email: 6–9 строк, тема + подпись
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Микрошаг (ХОД 4)
+                  </label>
+                  <input
+                    type="text"
+                    value={myOfferStep}
+                    onChange={(e) => setMyOfferStep(e.target.value)}
+                    placeholder="созвон 10 минут / показ на вашем примере / мини-аудит"
+                    maxLength={200}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                  <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    Короткое «что предлагаешь бесплатно» — заканчивает письмо одним вопросом.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Generate button */}
           <div className="mt-4">
