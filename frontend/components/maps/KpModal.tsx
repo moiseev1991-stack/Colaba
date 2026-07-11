@@ -438,10 +438,17 @@ export function KpModal({
           {targetCompanyId != null && !painsLoading && availablePains.length > 0 && (
             <div className="mt-4">
               <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Боли для КП <span className="normal-case text-[10px] text-slate-400">· выбрано {selectedPainIds.length} из {Math.min(availablePains.length, 3)} макс</span>
+                Боли для КП{' '}
+                <span className="normal-case text-[10px] text-slate-400">
+                  · выбрано {selectedPainIds.length} из 3 макс
+                  {availablePains.length > 6 && ` · всего у компании ${availablePains.length}`}
+                </span>
               </label>
-              <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30">
-                {availablePains.slice(0, 6).map((p) => {
+              <div
+                className="space-y-1.5 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30"
+                style={{ maxHeight: '240px' }}
+              >
+                {availablePains.map((p) => {
                   const checked = selectedPainIds.includes(p.pain_tag_id);
                   const atLimit = !checked && selectedPainIds.length >= 3;
                   return (

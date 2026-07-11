@@ -118,9 +118,19 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
     setTriggeringSource(source);
     try {
       await enrichCompanySource(companyId, source, searchId);
-    } catch {
+      // eslint-disable-next-line no-console
+      console.log('[drawer] source-retry OK', { source, companyId, searchId });
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail || e?.message || 'unknown';
+      // eslint-disable-next-line no-console
+      console.error('[drawer] source-retry FAILED', { source, status, detail });
+      // Показываем ошибку в существующем dmEnrichResult — юзер видит красный
+      // хвост под кнопкой «Найти ЛПР».
+      setDmEnrichResult(
+        `Не удалось запустить ${source}: ${status ? `HTTP ${status} — ` : ''}${detail}`,
+      );
       setTriggeringSource(null);
-      // Тихо — сама плашка вернётся в исходное состояние.
       return;
     }
     // Через 55с рефетч drawer'а. Если source нашёл что-то — плашка станет
