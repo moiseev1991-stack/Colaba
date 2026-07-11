@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.127.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.126.1...v1.127.0) (2026-07-11)
+
+
+### Features
+
+* **maps/drawer:** плашки «Проверено», «Ближайший кандидат», confidence ([3279347](https://github.com/moiseev1991-stack/Colaba/commit/3279347f7991a77a39f8b967d324e9e6d7f3e968))
+
 ## [1.126.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.126.0...v1.126.1) (2026-07-11)
 
 
