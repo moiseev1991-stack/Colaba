@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.129.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.128.0...v1.129.0) (2026-07-11)
+
+
+### Features
+
+* **maps/drawer:** клик по плашке «○ ВК/hh/сайт/ЕГРЮЛ» запускает точечный парсер ([fbed571](https://github.com/moiseev1991-stack/Colaba/commit/fbed5713c9afd424a582f8892e6df25202ab6c91))
+
 # [1.128.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.127.0...v1.128.0) (2026-07-11)
 
 
