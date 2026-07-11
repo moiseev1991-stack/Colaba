@@ -1865,16 +1865,27 @@ function RegionPainSummary({
     seen.add(key);
     return true;
   });
-  const top = unique.slice(0, 6);
+  // 2026-07-11: показываем до 8 плиток (было 6), плюс раскрывашка если
+  // в нише больше 8 болей. Юзер хотел «больше выбора» + чёткое multi-select.
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? unique : unique.slice(0, 8);
   const hasActive = activeIds.length > 0;
-  if (top.length === 0) return null;
+  const activeCount = activeIds.length;
+  if (visible.length === 0) return null;
 
   return (
     <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2">
-        <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          <span>Топ-боли ниши — нажмите плитку, чтобы отфильтровать список</span>
+        <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span>
+            Топ-боли ниши — можно выбирать несколько плиток
+            {activeCount > 0 && (
+              <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[9.5px] normal-case text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
+                выбрано {activeCount}
+              </span>
+            )}
+          </span>
           <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
             {niche}{city ? ` · ${city}` : ''}
           </span>
@@ -1884,12 +1895,12 @@ function RegionPainSummary({
               onClick={onClear}
               className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              × снять фильтр
+              × снять {activeCount > 1 ? `все ${activeCount}` : 'фильтр'}
             </button>
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {top.map((t) => {
+          {visible.map((t) => {
             const active = activeIds.includes(t.id);
             return (
               <button
@@ -1931,6 +1942,16 @@ function RegionPainSummary({
               </button>
             );
           })}
+          {unique.length > 8 && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex items-center rounded border border-dashed border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              title={expanded ? 'Скрыть, оставить топ-8' : `Показать ещё ${unique.length - 8} плиток`}
+            >
+              {expanded ? '× свернуть' : `+ ещё ${unique.length - 8}`}
+            </button>
+          )}
         </div>
       </div>
     </div>
