@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.133.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.132.0...v1.133.0) (2026-07-11)
+
+
+### Features
+
+* **kp:** bulk-КП по общей боли партии + 4 хода на всю партию ([078e8ff](https://github.com/moiseev1991-stack/Colaba/commit/078e8ffcc7bea00b099fc0fe1aab0c00a43d759b))
+
 # [1.132.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.131.0...v1.132.0) (2026-07-11)
 
 
