@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.131.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.130.0...v1.131.0) (2026-07-11)
+
+
+### Features
+
+* **scripts:** A/B прогон промпта КП — старый vs «4 хода» ([ecb5952](https://github.com/moiseev1991-stack/Colaba/commit/ecb59528d87079b7fb47ddd6e121875239e2e574))
+
 # [1.130.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.129.1...v1.130.0) (2026-07-11)
 
 
