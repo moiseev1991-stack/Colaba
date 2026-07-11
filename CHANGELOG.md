@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.129.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.129.0...v1.129.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* **maps:** показывать все боли в KP-модалке + логировать ошибки source-retry ([13f7249](https://github.com/moiseev1991-stack/Colaba/commit/13f72499e512e45c92d14809cb3056c425864245))
+
 # [1.129.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.128.0...v1.129.0) (2026-07-11)
 
 
