@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.126.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.126.0...v1.126.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* **maps/drawer:** «Найти ЛПР» — проверять is_marketing_dm, не length ([42f86b0](https://github.com/moiseev1991-stack/Colaba/commit/42f86b05c83eb69ae6ac68cb4b425edaff54da17))
+
 # [1.126.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.125.0...v1.126.0) (2026-07-10)
 
 
