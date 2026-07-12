@@ -632,12 +632,16 @@ def extract_kp_json(raw: str) -> dict[str, str] | None:
             obj = _try_parse(raw[start : end + 1])
 
     if isinstance(obj, dict):
-        subject = obj.get("subject")
+        subject_raw = obj.get("subject", "")
         body = obj.get("body")
-        if isinstance(subject, str) and isinstance(body, str):
-            subject = subject.strip()
+        # Для мессенджер-канала (промпт «4 хода») subject обязан быть
+        # пустым — раньше это ловилось как ошибка и весь сырой JSON падал
+        # в plaintext-фолбэк. Теперь пустой/отсутствующий subject допустим,
+        # достаточно валидного body.
+        if isinstance(body, str):
+            subject = subject_raw.strip() if isinstance(subject_raw, str) else ""
             body = body.strip()
-            if subject and body:
+            if body:
                 return {"subject": subject, "body": body}
 
     # 4. Финальный фолбэк: голый текст. Юзер 2026-06-12 упёрся в «422
