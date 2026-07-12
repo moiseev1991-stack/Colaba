@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.133.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.133.0...v1.133.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* **kp:** пустой subject легитимен для мессенджер-канала (4 хода) ([abcf552](https://github.com/moiseev1991-stack/Colaba/commit/abcf552379a9fb58719b6111ef741a5b26fe8077))
+
 # [1.133.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.132.0...v1.133.0) (2026-07-11)
 
 
