@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.135.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.134.0...v1.135.0) (2026-07-12)
+
+
+### Features
+
+* **pains:** глобальный поиск компаний по конкретной боли ([3266e64](https://github.com/moiseev1991-stack/Colaba/commit/3266e6412f4caabec3dbb37bea8fe82ab3af63e8))
+
 # [1.134.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.133.1...v1.134.0) (2026-07-12)
 
 
