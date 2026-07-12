@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.134.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.133.1...v1.134.0) (2026-07-12)
+
+
+### Features
+
+* **pilot:** bulk-парс 12 запросов (Мск+СПб × 6 ниш) + экономия LLM-sentiment на 90% ([9684536](https://github.com/moiseev1991-stack/Colaba/commit/9684536992761fb061c96ceafa9586051a52945c))
+
 ## [1.133.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.133.0...v1.133.1) (2026-07-12)
 
 
