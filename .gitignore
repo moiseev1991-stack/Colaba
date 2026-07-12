@@ -107,3 +107,9 @@ build/
 # Local prod-clone working copy
 /spinlid-clean/
 
+# Локальные скрипты с префиксом _local_ — работают против прода с SSH
+# и токенами, не должны попадать в репозиторий.
+/scripts/_local_*
+# Кэш последнего запуска bulk_niche_parse.py — id поисков конкретной сессии.
+/scripts/bulk_niche_parse_last_run.json
+

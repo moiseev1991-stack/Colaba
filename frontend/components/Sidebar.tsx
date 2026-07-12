@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   MapPin,
   Send,
+  Flame,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
@@ -65,6 +66,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
       {
         items: [
           { href: '/app/leads', label: 'Поиск лидов', icon: Search },
+          { href: '/app/pains', label: 'Поиск по боли', icon: Flame },
           { href: '/leads/dashboard', label: 'Дашборд', icon: LayoutDashboard },
           { href: '/app/leads/history', label: 'История', icon: History },
           // Раньше эти пункты были только через шапку /app/leads — юзер
