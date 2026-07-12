@@ -46,9 +46,18 @@ def test_extract_returns_none_on_garbage():
     assert extract_kp_json("{неправильный json") is None
 
 
-def test_extract_returns_none_when_subject_missing():
+def test_extract_allows_empty_subject_for_messenger():
+    """Мессенджер-канал (промпт «4 хода») требует пустой subject.
+    Раньше `if subject and body:` ронял валидный ответ в plaintext-фолбэк,
+    и юзер получал сырой JSON в поле «Текст». Теперь пустой subject легитимен.
+    """
+    raw = '{"subject": "", "body": "Привет? Как дела?"}'
+    assert extract_kp_json(raw) == {"subject": "", "body": "Привет? Как дела?"}
+
+
+def test_extract_allows_missing_subject_key():
     raw = '{"body": "только тело"}'
-    assert extract_kp_json(raw) is None
+    assert extract_kp_json(raw) == {"subject": "", "body": "только тело"}
 
 
 def test_extract_returns_none_when_body_empty():
