@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.135.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.135.0...v1.135.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* **pains:** убрать «0 компаний» когда фильтр city/niche слишком узкий ([f10e471](https://github.com/moiseev1991-stack/Colaba/commit/f10e4710324ce30d0d0e026a95ee387ac34cff89))
+
 # [1.135.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.134.0...v1.135.0) (2026-07-12)
 
 
