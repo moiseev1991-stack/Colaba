@@ -51,7 +51,9 @@ from app.models.pain_tag import PainTag
 from app.modules.maps import service
 from app.modules.maps.providers.twogis import CITY_TO_REGION_ID, KNOWN_CITIES_FOR_UI
 from app.modules.maps.schemas import (
+    CompaniesByPainListOut,
     CompaniesListOut,
+    CompanyByPainOut,
     CompanyDetailOut,
     CompanyDigestOut,
     CompanyLegalOut,
@@ -2965,6 +2967,150 @@ async def list_pain_tags(
         item.occurrences_count = int(occ)
         out.append(item)
     return out
+
+
+@router.get("/pains/companies", response_model=CompaniesByPainListOut)
+@limiter.limit("60/minute")
+async def list_companies_by_pain(
+    request: Request,
+    pain_key: str = Query(..., min_length=2, max_length=64),
+    city: Optional[str] = Query(default=None, max_length=100),
+    niche: Optional[str] = Query(default=None, max_length=100),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Глобальный список компаний по конкретной боли (без привязки к search_id).
+
+    Как работает:
+    1. Тянем все активные негативные PainTag (опц. по niche/city).
+    2. Отфильтровываем через `match_pain_key(label)` — Python-эвристика
+       из pain_dictionaries (падеже-устойчивый substring-матч). В SQL
+       матчер не выражается, поэтому шаг Python-side. Тегов в БД сотни,
+       не проблема.
+    3. По полученным pain_tag_id идём в CompanyPainScore + Company,
+       агрегируем mention_count по компании (одна компания может иметь
+       несколько pain_tag под один pain_key — «дозвон» + «не берут»),
+       лучший top_quote по similarity.
+    4. Опциональный фильтр Company.city / Company.niche — по колонкам
+       компании (у тега свои city/niche могут отличаться из-за глобальных
+       тегов ниши с city=NULL).
+    """
+    from app.modules.outreach.pain_dictionaries import PAIN_KEYS, match_pain_key
+    from app.models.pain_tag import CompanyPainScore
+
+    if pain_key not in PAIN_KEYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"unknown pain_key={pain_key!r}. Валидные: {list(PAIN_KEYS)}",
+        )
+
+    tag_filter = [PainTag.status == "active", PainTag.sentiment == "negative"]
+    if niche:
+        tag_filter.append(PainTag.niche == niche)
+    if city:
+        # Городские теги + глобальные для ниши (city=NULL).
+        tag_filter.append(or_(PainTag.city == city, PainTag.city.is_(None)))
+
+    tag_rows = list(
+        (await db.execute(
+            select(PainTag.id, PainTag.label).where(*tag_filter)
+        )).all()
+    )
+    matched_tag_ids: list[int] = []
+    matched_labels: list[str] = []
+    seen_labels: set[str] = set()
+    for tid, label in tag_rows:
+        if match_pain_key(label) == pain_key:
+            matched_tag_ids.append(int(tid))
+            if label not in seen_labels:
+                matched_labels.append(label)
+                seen_labels.add(label)
+
+    if not matched_tag_ids:
+        return CompaniesByPainListOut(
+            pain_key=pain_key, pain_labels=[], total=0, limit=limit, offset=offset, items=[],
+        )
+
+    # Агрегируем по компании: сумма mention_count + top_quote с максимальной
+    # similarity. Оба через оконку — так одним запросом.
+    mention_sum = sa_func.sum(CompanyPainScore.mention_count).label("mentions")
+
+    # Для каждой компании выбираем top_quote c максимальной similarity —
+    # оконка row_number() + фильтр rn=1. Одним подзапросом, без Python-loop.
+    quote_row_num = sa_func.row_number().over(
+        partition_by=CompanyPainScore.company_id,
+        order_by=CompanyPainScore.top_quote_similarity.desc().nulls_last(),
+    ).label("rn")
+
+    quote_sub = (
+        select(
+            CompanyPainScore.company_id.label("company_id"),
+            CompanyPainScore.top_quote.label("top_quote"),
+            quote_row_num,
+        )
+        .where(CompanyPainScore.pain_tag_id.in_(matched_tag_ids))
+        .subquery()
+    )
+    best_quote_sub = (
+        select(quote_sub.c.company_id, quote_sub.c.top_quote)
+        .where(quote_sub.c.rn == 1)
+        .subquery()
+    )
+
+    # Итоговый запрос: агрегируем mention_count + join best_quote + join Company
+    # с опциональными фильтрами по компании.
+    company_filter = []
+    if city:
+        company_filter.append(Company.city == city)
+    if niche:
+        company_filter.append(Company.niche == niche)
+
+    base = (
+        select(
+            Company,
+            mention_sum,
+            best_quote_sub.c.top_quote,
+        )
+        .join(CompanyPainScore, CompanyPainScore.company_id == Company.id)
+        .join(best_quote_sub, best_quote_sub.c.company_id == Company.id, isouter=True)
+        .where(
+            CompanyPainScore.pain_tag_id.in_(matched_tag_ids),
+            *company_filter,
+        )
+        .group_by(Company.id, best_quote_sub.c.top_quote)
+        .order_by(mention_sum.desc(), Company.reviews_count.desc())
+    )
+
+    # total = число уникальных компаний
+    total_stmt = (
+        select(sa_func.count(sa_func.distinct(Company.id)))
+        .join(CompanyPainScore, CompanyPainScore.company_id == Company.id)
+        .where(
+            CompanyPainScore.pain_tag_id.in_(matched_tag_ids),
+            *company_filter,
+        )
+    )
+    total = int((await db.execute(total_stmt)).scalar() or 0)
+
+    rows = list((await db.execute(base.limit(limit).offset(offset))).all())
+
+    items: list[CompanyByPainOut] = []
+    for company, mentions, top_quote in rows:
+        item = CompanyByPainOut.model_validate(company)
+        item.pain_mention_count = int(mentions or 0)
+        item.top_quote = top_quote
+        items.append(item)
+
+    return CompaniesByPainListOut(
+        pain_key=pain_key,
+        pain_labels=matched_labels,
+        total=total,
+        limit=limit,
+        offset=offset,
+        items=items,
+    )
 
 
 @router.get("/health/providers", response_model=ProvidersHealthOut)

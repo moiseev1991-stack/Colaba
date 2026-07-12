@@ -741,6 +741,74 @@ export async function getSearchPainTags(searchId: number): Promise<PainTagOut[]>
   return response.data;
 }
 
+// -------- Глобальный поиск компаний по боли (страница /app/pains) ----------
+
+export type PainKey =
+  | 'call_no_answer'
+  | 'callback_lost'
+  | 'schedule_hard'
+  | 'schedule_wait'
+  | 'queue_wait'
+  | 'admin_rude'
+  | 'food_slow'
+  | 'unclear_pricing';
+
+export const PAIN_KEY_LABELS: Record<PainKey, string> = {
+  call_no_answer: 'Не могут дозвониться',
+  callback_lost: 'Оставил заявку — никто не перезвонил',
+  schedule_hard: 'Онлайн-запись не работает / сложная',
+  schedule_wait: 'Долгое ожидание подтверждения записи',
+  queue_wait: 'Очередь на месте, никто не предупреждает',
+  admin_rude: 'Администратор нахамил / не разобрался',
+  food_slow: 'Долго готовят / несут еду',
+  unclear_pricing: 'Непонятная цена / сюрприз-доплаты',
+};
+
+export interface CompanyByPainOut {
+  id: number;
+  name: string;
+  niche: string | null;
+  city: string | null;
+  address: string | null;
+  source: string;
+  external_id: string | null;
+  phone: string | null;
+  website: string | null;
+  rating: number | null;
+  reviews_count: number;
+  reviews_negative_count: number;
+  lead_temperature: number | null;
+  pain_mention_count: number;
+  top_quote: string | null;
+}
+
+export interface CompaniesByPainListOut {
+  pain_key: string;
+  pain_labels: string[];
+  total: number;
+  limit: number;
+  offset: number;
+  items: CompanyByPainOut[];
+}
+
+export async function listCompaniesByPain(params: {
+  pain_key: PainKey;
+  city?: string;
+  niche?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<CompaniesByPainListOut> {
+  const q = new URLSearchParams({ pain_key: params.pain_key });
+  if (params.city) q.set('city', params.city);
+  if (params.niche) q.set('niche', params.niche);
+  if (params.limit !== undefined) q.set('limit', String(params.limit));
+  if (params.offset !== undefined) q.set('offset', String(params.offset));
+  const response = await apiClient.get<CompaniesByPainListOut>(
+    `/maps/pains/companies?${q.toString()}`,
+  );
+  return response.data;
+}
+
 export async function listMapCities(): Promise<string[]> {
   const response = await apiClient.get<string[]>('/maps/cities');
   return response.data;

@@ -653,3 +653,49 @@ class CompanyDigestOut(BaseModel):
     owner_reply_rate: float | None = None  # 0..1, доля отзывов с ответом владельца
     top_pains: list[CompanyPainOut] = Field(default_factory=list)
     top_negative_reviews_all_time: list[ReviewOut] = Field(default_factory=list)
+
+
+class CompanyByPainOut(BaseModel):
+    """Компания в выдаче глобального поиска по боли (GET /maps/pains/companies).
+
+    Лёгкая карточка — только то, что нужно для страницы «выбери боль →
+    список компаний». Без вложенных pain_tags/legal/sources — иначе payload
+    распухнет; детали пусть подгружаются на клик по компании через
+    /maps/companies/{id}.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    niche: str | None = None
+    city: str | None = None
+    address: str | None = None
+    source: str
+    external_id: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    rating: float | None = None
+    reviews_count: int = 0
+    reviews_negative_count: int = 0
+    lead_temperature: int | None = None
+    # Сколько раз выбранная боль упомянута у этой компании — сумма
+    # CompanyPainScore.mention_count по всем pain_tag-ам, попавшим под pain_key.
+    pain_mention_count: int = 0
+    # Лучшая цитата под болью (top_quote с наибольшей similarity) — «пруф»
+    # для юзера, что боль реальная. None если ни у одного из подходящих
+    # pain_tag'ов top_quote не заполнен.
+    top_quote: str | None = None
+
+
+class CompaniesByPainListOut(BaseModel):
+    """Ответ GET /maps/pains/companies: список + мета."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    pain_key: str
+    pain_labels: list[str] = Field(default_factory=list)
+    total: int = 0
+    limit: int
+    offset: int
+    items: list[CompanyByPainOut] = Field(default_factory=list)
