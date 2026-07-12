@@ -166,9 +166,62 @@ export default function PainsPage() {
       </section>
 
       {data && data.items.length === 0 && !isLoading && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-          Компаний с этой болью не найдено. Возможно, нужного гео/ниши ещё нет в спарсенных
-          данных — запусти поиск на странице «Лиды → По картам».
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600 space-y-3">
+          {(city || niche) ? (
+            <>
+              <p>
+                В этой комбинации (
+                {[niche && `ниша «${niche}»`, city && `город «${city}»`].filter(Boolean).join(', ')}
+                ) компаний с болью «{PAIN_KEY_LABELS[painKey]}» не найдено — AI не выделил эту тему
+                в отзывах.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {city && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCity('');
+                      void runSearch(0);
+                    }}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    × Убрать город «{city}»
+                  </button>
+                )}
+                {niche && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNiche('');
+                      void runSearch(0);
+                    }}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    × Убрать нишу «{niche}»
+                  </button>
+                )}
+                {(city && niche) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCity('');
+                      setNiche('');
+                      void runSearch(0);
+                    }}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    × Убрать оба фильтра
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-center">
+              Компаний с этой болью нет в БД. Возможно, пилот парсинга ещё не завершился —
+              запусти поиск на странице «Лиды → По картам» или подожди пока разберётся текущая
+              очередь.
+            </p>
+          )}
         </div>
       )}
 

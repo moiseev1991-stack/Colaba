@@ -38,6 +38,12 @@ def test_match_pain_key_schedule_wait():
 def test_match_pain_key_schedule_hard():
     assert match_pain_key("Проблемы с записью на приём") == "schedule_hard"
     assert match_pain_key("Проблемы с записью на услуги") == "schedule_hard"
+    # Расширенные паттерны 2026-07-13 — юзер увидел «0 компаний» по schedule_hard
+    # для стом Москвы, потому что «сложно» не матчил «сложная запись».
+    assert match_pain_key("Сложная запись на приём") == "schedule_hard"
+    assert match_pain_key("сложные записи") == "schedule_hard"
+    assert match_pain_key("Онлайн-запись не работает") == "schedule_hard"
+    assert match_pain_key("не работает онлайн запись") == "schedule_hard"
 
 
 def test_match_pain_key_admin_rude():
