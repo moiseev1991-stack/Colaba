@@ -792,13 +792,18 @@ export interface CompaniesByPainListOut {
 }
 
 export async function listCompaniesByPain(params: {
-  pain_key: PainKey;
+  pain_key?: PainKey;
+  pain_tag_ids?: number[];
   city?: string;
   niche?: string;
   limit?: number;
   offset?: number;
 }): Promise<CompaniesByPainListOut> {
-  const q = new URLSearchParams({ pain_key: params.pain_key });
+  const q = new URLSearchParams();
+  if (params.pain_key) q.set('pain_key', params.pain_key);
+  if (params.pain_tag_ids && params.pain_tag_ids.length > 0) {
+    for (const id of params.pain_tag_ids) q.append('pain_tag_ids', String(id));
+  }
   if (params.city) q.set('city', params.city);
   if (params.niche) q.set('niche', params.niche);
   if (params.limit !== undefined) q.set('limit', String(params.limit));

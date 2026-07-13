@@ -3,23 +3,31 @@
 /**
  * /app/pains — «Поиск компаний по боли».
  *
- * Юзер выбирает конкретный pain_key (например «Не могут дозвониться»),
- * опционально фильтрует по городу и нише — видит список карточек компаний
- * из ВСЕХ его прошлых поисков, у которых эта боль в топе. Клик по компании
- * ведёт в раздел «Лиды» (в дальнейшем — в drawer компании из глобального
- * контекста, пока это MVP).
+ * Три способа найти компании:
+ *   1) Быстрый dropdown pain_key (8 категорий: call_no_answer, schedule_hard,
+ *      admin_rude, ...) — старый путь.
+ *   2) Плитка ТОП-БОЛЕЙ ниши — horizontal scroll, click = выбрать конкретный
+ *      PainTag (не pain_key). Показывается когда выбрана ниша.
+ *   3) Text-search по label PainTag — для случая когда pain_keys не хватает
+ *      (например «грязный бассейн»). Работает в рамках выбранной ниши.
+ *
+ * Клик по плитке или выбор из text-search дёргает endpoint с pain_tag_ids
+ * (не pain_key) — минуя match_pain_key.
  */
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { AddToListModal } from '@/components/maps/AddToListModal';
 import {
   listCompaniesByPain,
   listMapCities,
+  listPainTags,
   nicheSuggestions,
   PAIN_KEY_LABELS,
   type CompaniesByPainListOut,
   type PainKey,
+  type PainTagOut,
 } from '@/src/services/api/maps';
 
 const PAIN_KEYS: PainKey[] = [
@@ -37,6 +45,7 @@ const PAGE_SIZE = 50;
 
 export default function PainsPage() {
   const [painKey, setPainKey] = useState<PainKey>('call_no_answer');
+  const [selectedTag, setSelectedTag] = useState<PainTagOut | null>(null);
   const [city, setCity] = useState<string>('');
   const [niche, setNiche] = useState<string>('');
 
@@ -48,9 +57,19 @@ export default function PainsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 2026-07-13: суперюзерская кнопка «Пересобрать AI-теги» показывается
-  // в empty-state, если niche задан. Кешируем флаг в sessionStorage
-  // положительно (как в Sidebar) чтобы не гонять /auth/me на каждый рендер.
+  // Топ-теги ниши для плитки (horizontal scroll)
+  const [topTags, setTopTags] = useState<PainTagOut[]>([]);
+  const [topTagsLoading, setTopTagsLoading] = useState(false);
+  const tilesScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Text-search по тегам ниши (заменяет ограничение 8 pain_keys)
+  const [tagSearch, setTagSearch] = useState('');
+  const [tagSearchOpen, setTagSearchOpen] = useState(false);
+
+  // Батч «Добавить всех в список»
+  const [addToListOpen, setAddToListOpen] = useState(false);
+
+  // Суперюзерская кнопка «Пересобрать AI-теги»
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [rebuildBusy, setRebuildBusy] = useState(false);
   const [rebuildMsg, setRebuildMsg] = useState<string | null>(null);
@@ -82,6 +101,53 @@ export default function PainsPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Загружаем топ-теги при смене ниши. Без ниши — глобальный список
+  // мгновенно перегружает страницу тысячей тегов, поэтому не показываем.
+  useEffect(() => {
+    if (!niche) {
+      setTopTags([]);
+      return;
+    }
+    let cancelled = false;
+    setTopTagsLoading(true);
+    listPainTags(niche, city || undefined)
+      .then((tags) => {
+        if (!cancelled) setTopTags(tags);
+      })
+      .catch(() => {
+        if (!cancelled) setTopTags([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTopTagsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [niche, city]);
+
+  // Автопрокрутка плитки — тонкий hint, что там ещё есть чего скроллить.
+  // Мягкая анимация вправо-влево каждые 4с, пока юзер не потрогает.
+  useEffect(() => {
+    const el = tilesScrollRef.current;
+    if (!el || topTags.length < 6) return;
+    let userTouched = false;
+    const onTouch = () => { userTouched = true; };
+    el.addEventListener('mouseenter', onTouch, { once: true });
+    el.addEventListener('wheel', onTouch, { once: true });
+    el.addEventListener('touchstart', onTouch, { once: true });
+    const interval = setInterval(() => {
+      if (userTouched || !el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      const next = (el.scrollLeft + 120) % (max + 120);
+      el.scrollTo({ left: next > max ? 0 : next, behavior: 'smooth' });
+    }, 4000);
+    return () => {
+      clearInterval(interval);
+      el.removeEventListener('mouseenter', onTouch);
+      el.removeEventListener('wheel', onTouch);
+      el.removeEventListener('touchstart', onTouch);
+    };
+  }, [topTags.length]);
 
   const rebuildNiche = async () => {
     if (!niche) return;
@@ -119,13 +185,18 @@ export default function PainsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await listCompaniesByPain({
-          pain_key: painKey,
+        const params: Parameters<typeof listCompaniesByPain>[0] = {
           city: city || undefined,
           niche: niche || undefined,
           limit: PAGE_SIZE,
           offset: nextOffset,
-        });
+        };
+        if (selectedTag) {
+          params.pain_tag_ids = [selectedTag.id];
+        } else {
+          params.pain_key = painKey;
+        }
+        const result = await listCompaniesByPain(params);
         setData(result);
         setOffset(nextOffset);
       } catch (e) {
@@ -135,8 +206,33 @@ export default function PainsPage() {
         setIsLoading(false);
       }
     },
-    [painKey, city, niche],
+    [painKey, city, niche, selectedTag],
   );
+
+  // Клик по плитке → выбрать конкретный tag и запустить поиск
+  const pickTag = (tag: PainTagOut) => {
+    setSelectedTag(tag);
+    setTagSearchOpen(false);
+    setTagSearch('');
+    // Триггер запроса через таймер, чтобы state успел обновиться
+    setTimeout(() => void runSearch(0), 0);
+  };
+
+  const clearTagSelection = () => {
+    setSelectedTag(null);
+    setTagSearch('');
+    setTimeout(() => void runSearch(0), 0);
+  };
+
+  // Отфильтрованный список для text-search dropdown
+  const tagSearchResults = useMemo(() => {
+    if (!tagSearch.trim()) return topTags.slice(0, 20);
+    const q = tagSearch.toLowerCase();
+    return topTags.filter((t) => t.label.toLowerCase().includes(q)).slice(0, 20);
+  }, [tagSearch, topTags]);
+
+  // Заголовок «активной боли» в шапке (или plашка выбранной кастом-темы)
+  const activePainLabel = selectedTag ? selectedTag.label : PAIN_KEY_LABELS[painKey];
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6 space-y-4">
@@ -152,17 +248,36 @@ export default function PainsPage() {
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
             <span className="mb-1 block font-medium text-slate-700">Боль</span>
-            <select
-              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              value={painKey}
-              onChange={(e) => setPainKey(e.target.value as PainKey)}
-            >
-              {PAIN_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {PAIN_KEY_LABELS[k]}
-                </option>
-              ))}
-            </select>
+            {selectedTag ? (
+              <div className="flex items-center gap-2">
+                <span
+                  className="flex-1 truncate rounded-md border border-rose-300 bg-rose-50 px-2 py-1.5 text-sm text-rose-800"
+                  title={selectedTag.label}
+                >
+                  {selectedTag.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearTagSelection}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-100"
+                  title="Сбросить конкретный тег и вернуться к общей категории"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <select
+                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                value={painKey}
+                onChange={(e) => setPainKey(e.target.value as PainKey)}
+              >
+                {PAIN_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {PAIN_KEY_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
 
           <label className="text-sm">
@@ -198,6 +313,49 @@ export default function PainsPage() {
           </label>
         </div>
 
+        {/* Text-search тегов внутри ниши. Combobox: input + результаты списком.
+            Работает только когда niche задан — иначе поиск бы шёл по тысячам
+            тегов из всех ниш, что бесполезно. */}
+        {niche && (
+          <div className="relative">
+            <input
+              type="text"
+              value={tagSearch}
+              onChange={(e) => {
+                setTagSearch(e.target.value);
+                setTagSearchOpen(true);
+              }}
+              onFocus={() => setTagSearchOpen(true)}
+              onBlur={() => setTimeout(() => setTagSearchOpen(false), 200)}
+              placeholder={
+                topTags.length > 0
+                  ? `⌕ Найти боль в нише «${niche}» текстом (например: грязный, доплаты, невежливо)`
+                  : 'Теги ниши ещё не загружены'
+              }
+              className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:outline-none"
+            />
+            {tagSearchOpen && tagSearchResults.length > 0 && (
+              <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                {tagSearchResults.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickTag(t)}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-rose-50"
+                    >
+                      <span className="truncate">{t.label}</span>
+                      <span className="shrink-0 text-xs text-slate-400">
+                        {t.occurrences_count}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -210,7 +368,7 @@ export default function PainsPage() {
           {data && !isLoading && (
             <span className="text-sm text-slate-500">
               Найдено {data.total} компаний
-              {data.pain_labels.length > 0 && (
+              {data.pain_labels.length > 0 && !selectedTag && (
                 <>
                   {' '}
                   · сматчилось {data.pain_labels.length} tag(ов):{' '}
@@ -226,6 +384,62 @@ export default function PainsPage() {
         </div>
       </section>
 
+      {/* Плитка ТОП-БОЛЕЙ ниши. Показывается когда выбрана ниша и есть теги.
+          Одна горизонтальная строка со скроллом (иначе 30+ тегов забьют пол-страницы).
+          Автопрокрутка — только пока юзер не потрогал. */}
+      {niche && topTags.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              Топ-боли ниши{' '}
+              <span className="text-slate-400 normal-case">
+                — можно кликнуть, чтобы увидеть компании
+              </span>
+            </span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+              {niche}{city ? ` · ${city}` : ''}
+            </span>
+          </div>
+          <div
+            ref={tilesScrollRef}
+            className="flex gap-2 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]"
+          >
+            {topTags.map((t) => {
+              const active = selectedTag?.id === t.id;
+              return (
+                <button
+                  type="button"
+                  key={t.id}
+                  onClick={() => pickTag(t)}
+                  className={
+                    'group inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-all hover:-translate-y-px hover:shadow-sm ' +
+                    (active
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-400')
+                  }
+                  title={t.description ?? undefined}
+                >
+                  <span className="whitespace-nowrap">{t.label}</span>
+                  <span
+                    className={
+                      'rounded px-1 text-[10.5px] ' +
+                      (active
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white/60 text-rose-700')
+                    }
+                  >
+                    {t.occurrences_count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      {niche && topTagsLoading && (
+        <p className="text-xs text-slate-400 pl-1">Загружаем топ-боли ниши…</p>
+      )}
+
       {data && data.items.length === 0 && !isLoading && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600 space-y-3">
           {(city || niche) ? (
@@ -233,11 +447,8 @@ export default function PainsPage() {
               <p>
                 В этой комбинации (
                 {[niche && `ниша «${niche}»`, city && `город «${city}»`].filter(Boolean).join(', ')}
-                ) компаний с болью «{PAIN_KEY_LABELS[painKey]}» не найдено.
+                ) компаний с болью «{activePainLabel}» не найдено.
               </p>
-              {/* Диагностика: pain_labels пуст = AI ещё не разметил или тема правда
-                  не всплывала. Не пуст = теги есть в БД, но у компаний в этом гео/нише
-                  их нет — юзер понимает, что снятие фильтра поможет. */}
               {data.pain_labels && data.pain_labels.length > 0 ? (
                 <p className="text-xs text-slate-500">
                   В БД есть {data.pain_labels.length}{' '}
@@ -292,10 +503,6 @@ export default function PainsPage() {
                   </button>
                 )}
               </div>
-              {/* Суперюзерская кнопка — дергает POST /maps/admin/rebuild-pain-tags-for-niche.
-                  Полезно когда pilot bulk-парс наполнил БД компаниями через from_cache,
-                  но reviews_ai не переприсваивал pain_tags — этот вызов затригерит
-                  analyze_reviews_for_company для всех компаний ниши + recluster. */}
               {isSuperuser && niche && (
                 <div className="pt-2 mt-2 border-t border-slate-200 space-y-1">
                   <button
@@ -318,7 +525,7 @@ export default function PainsPage() {
           ) : (
             <div className="text-center space-y-1">
               <p>
-                Компаний с болью «{PAIN_KEY_LABELS[painKey]}» нет в БД.
+                Компаний с болью «{activePainLabel}» нет в БД.
               </p>
               <p className="text-xs text-slate-500">
                 {data.pain_labels && data.pain_labels.length > 0
@@ -331,112 +538,146 @@ export default function PainsPage() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="grid gap-3">
-          {data.items.map((c) => (
-            <article
-              key={c.id}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+        <>
+          {/* Батч-действие — быстрая кнопка добавить всех найденных в список */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <span className="text-slate-600">
+              {data.total} {data.total === 1 ? 'компания' : 'компаний'} с болью «{activePainLabel}» —
+              можно закинуть в список для рассылки.
+            </span>
+            <button
+              type="button"
+              onClick={() => setAddToListOpen(true)}
+              className="rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <h3 className="text-base font-semibold text-slate-900 truncate">{c.name}</h3>
-                    {c.niche && <span className="text-xs text-slate-500">{c.niche}</span>}
-                    {c.city && (
-                      <span className="text-xs text-slate-500">· {c.city}</span>
+              + Добавить {data.items.length} видимых в список
+              {data.total > data.items.length && (
+                <span className="ml-1 opacity-70">
+                  (из {data.total} — только текущая страница)
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="grid gap-3">
+            {data.items.map((c) => (
+              <article
+                key={c.id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <h3 className="text-base font-semibold text-slate-900 truncate">{c.name}</h3>
+                      {c.niche && <span className="text-xs text-slate-500">{c.niche}</span>}
+                      {c.city && (
+                        <span className="text-xs text-slate-500">· {c.city}</span>
+                      )}
+                    </div>
+                    {c.address && (
+                      <div className="mt-0.5 text-xs text-slate-500 truncate">{c.address}</div>
                     )}
                   </div>
-                  {c.address && (
-                    <div className="mt-0.5 text-xs text-slate-500 truncate">{c.address}</div>
-                  )}
+                  <div className="flex flex-col items-end gap-1 text-xs text-slate-500">
+                    {c.rating !== null && (
+                      <span>
+                        ★ {c.rating.toFixed(1)}{' '}
+                        <span className="text-slate-400">/ {c.reviews_count} отз.</span>
+                      </span>
+                    )}
+                    {c.lead_temperature !== null && (
+                      <span
+                        className={
+                          c.lead_temperature >= 70
+                            ? 'font-medium text-rose-600'
+                            : c.lead_temperature >= 40
+                            ? 'font-medium text-amber-600'
+                            : 'text-slate-400'
+                        }
+                      >
+                        🔥 {c.lead_temperature}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1 text-xs text-slate-500">
-                  {c.rating !== null && (
-                    <span>
-                      ★ {c.rating.toFixed(1)}{' '}
-                      <span className="text-slate-400">/ {c.reviews_count} отз.</span>
-                    </span>
-                  )}
-                  {c.lead_temperature !== null && (
-                    <span
-                      className={
-                        c.lead_temperature >= 70
-                          ? 'font-medium text-rose-600'
-                          : c.lead_temperature >= 40
-                          ? 'font-medium text-amber-600'
-                          : 'text-slate-400'
-                      }
-                    >
-                      🔥 {c.lead_temperature}
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
-                  {PAIN_KEY_LABELS[painKey]} · {c.pain_mention_count} упом.
-                </span>
-                {c.reviews_negative_count > 0 && (
-                  <span className="text-slate-500">
-                    Негатив: {c.reviews_negative_count}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                  <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
+                    {activePainLabel} · {c.pain_mention_count} упом.
                   </span>
+                  {c.reviews_negative_count > 0 && (
+                    <span className="text-slate-500">
+                      Негатив: {c.reviews_negative_count}
+                    </span>
+                  )}
+                  {c.phone && <span className="text-slate-500">{c.phone}</span>}
+                  {c.website && (
+                    <a
+                      href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-600 underline underline-offset-2"
+                    >
+                      {c.website}
+                    </a>
+                  )}
+                </div>
+
+                {c.top_quote && (
+                  <blockquote className="mt-2 border-l-2 border-rose-300 bg-rose-50/40 px-3 py-1 text-xs italic text-slate-700">
+                    «{c.top_quote}»
+                  </blockquote>
                 )}
-                {c.phone && <span className="text-slate-500">{c.phone}</span>}
-                {c.website && (
-                  <a
-                    href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-slate-600 underline underline-offset-2"
+
+                <div className="mt-2 text-xs">
+                  <Link
+                    href={`/app/leads?company=${c.id}`}
+                    className="text-slate-600 underline underline-offset-2 hover:text-slate-900"
                   >
-                    {c.website}
-                  </a>
-                )}
-              </div>
+                    Открыть в «Лидах» →
+                  </Link>
+                </div>
+              </article>
+            ))}
 
-              {c.top_quote && (
-                <blockquote className="mt-2 border-l-2 border-rose-300 bg-rose-50/40 px-3 py-1 text-xs italic text-slate-700">
-                  «{c.top_quote}»
-                </blockquote>
-              )}
-
-              <div className="mt-2 text-xs">
-                <Link
-                  href={`/app/leads?company=${c.id}`}
-                  className="text-slate-600 underline underline-offset-2 hover:text-slate-900"
+            {(data.total > offset + data.items.length || offset > 0) && (
+              <div className="flex items-center justify-center gap-3 pt-2 pb-6">
+                <button
+                  type="button"
+                  disabled={offset === 0 || isLoading}
+                  onClick={() => void runSearch(Math.max(0, offset - PAGE_SIZE))}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
                 >
-                  Открыть в «Лидах» →
-                </Link>
+                  ← Назад
+                </button>
+                <span className="text-xs text-slate-500">
+                  {offset + 1}–{offset + data.items.length} из {data.total}
+                </span>
+                <button
+                  type="button"
+                  disabled={offset + data.items.length >= data.total || isLoading}
+                  onClick={() => void runSearch(offset + PAGE_SIZE)}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  Дальше →
+                </button>
               </div>
-            </article>
-          ))}
-
-          {(data.total > offset + data.items.length || offset > 0) && (
-            <div className="flex items-center justify-center gap-3 pt-2 pb-6">
-              <button
-                type="button"
-                disabled={offset === 0 || isLoading}
-                onClick={() => void runSearch(Math.max(0, offset - PAGE_SIZE))}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
-              >
-                ← Назад
-              </button>
-              <span className="text-xs text-slate-500">
-                {offset + 1}–{offset + data.items.length} из {data.total}
-              </span>
-              <button
-                type="button"
-                disabled={offset + data.items.length >= data.total || isLoading}
-                onClick={() => void runSearch(offset + PAGE_SIZE)}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
-              >
-                Дальше →
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </>
       )}
+
+      <AddToListModal
+        open={addToListOpen}
+        companyIds={data?.items.map((c) => c.id) ?? []}
+        defaultListName={
+          data
+            ? `Боль «${activePainLabel}»${niche ? ` — ${niche}` : ''}${city ? ` / ${city}` : ''}`
+            : undefined
+        }
+        onClose={() => setAddToListOpen(false)}
+        onDone={() => setAddToListOpen(false)}
+      />
     </div>
   );
 }
