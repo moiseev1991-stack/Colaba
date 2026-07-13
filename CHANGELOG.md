@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.141.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.140.0...v1.141.0) (2026-07-13)
+
+
+### Features
+
+* **pains:** drawer детали компании + чекбоксы выбора + батч ([9c9b0f6](https://github.com/moiseev1991-stack/Colaba/commit/9c9b0f632687ad4704a58c00e2fbac9f875a886b))
+
 # [1.140.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.139.0...v1.140.0) (2026-07-13)
 
 
