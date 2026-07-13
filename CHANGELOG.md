@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.140.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.139.0...v1.140.0) (2026-07-13)
+
+
+### Features
+
+* **admin:** sidebar link + rebuild buttons + drill-through в /pains ([4bd1f04](https://github.com/moiseev1991-stack/Colaba/commit/4bd1f04d6a1605407a81a29138ee49baaab0da4b))
+
 # [1.139.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.138.0...v1.139.0) (2026-07-13)
 
 
