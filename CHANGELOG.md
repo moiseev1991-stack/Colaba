@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.136.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.135.2...v1.136.0) (2026-07-13)
+
+
+### Features
+
+* **pains:** показать диагностику pain_labels в empty-state ([5be60e7](https://github.com/moiseev1991-stack/Colaba/commit/5be60e72a8c3da90a8d67fc4e0bf35b94360a5d5))
+
 ## [1.135.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.135.1...v1.135.2) (2026-07-13)
 
 
