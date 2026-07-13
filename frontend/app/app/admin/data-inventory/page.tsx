@@ -39,6 +39,28 @@ interface InventoryResponse {
 
 type RebuildState = 'idle' | 'busy' | 'done' | 'error';
 
+// Матрица массового парсинга. Ниши × города — 5 × 10 = 50 запросов.
+// Соответствует scripts/bulk_niche_parse.py DEFAULT_NICHES/CITIES.
+const PARSE_NICHES = [
+  'стоматология',
+  'косметология',
+  'лазерная эпиляция',
+  'барбершоп',
+  'ветеринарная клиника',
+];
+const PARSE_CITIES = [
+  'Москва',
+  'Санкт-Петербург',
+  'Балашиха',
+  'Химки',
+  'Красногорск',
+  'Одинцово',
+  'Екатеринбург',
+  'Новосибирск',
+  'Казань',
+  'Краснодар',
+];
+
 export default function DataInventoryPage() {
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +68,14 @@ export default function DataInventoryPage() {
   const [q, setQ] = useState('');
   // Состояние rebuild-кнопок: ключ `${niche}::${city}`.
   const [rebuild, setRebuild] = useState<Record<string, { state: RebuildState; msg?: string }>>({});
+  // Состояние массового парсинга
+  const [parseBusy, setParseBusy] = useState(false);
+  const [parseResults, setParseResults] = useState<Array<{
+    niche: string;
+    city: string;
+    status: 'pending' | 'from_cache' | 'failed';
+    id?: number;
+  }>>([]);
 
   const reload = async () => {
     setLoading(true);
@@ -110,6 +140,56 @@ export default function DataInventoryPage() {
     }
   };
 
+  // Массовый парсинг матрицы (ниши × города). Последовательные POST /maps/search
+  // с задержкой 7с (rate-limit 10/min). Yandex_maps only — 2GIS-ключ заблокирован.
+  const runMassParse = async () => {
+    if (parseBusy) return;
+    if (!confirm(
+      `Запустить парсинг матрицы: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.\n\nПродолжить?`,
+    )) return;
+    setParseBusy(true);
+    setParseResults([]);
+    const pairs: Array<[string, string]> = [];
+    for (const city of PARSE_CITIES) {
+      for (const niche of PARSE_NICHES) {
+        pairs.push([niche, city]);
+      }
+    }
+    for (let i = 0; i < pairs.length; i++) {
+      const [niche, city] = pairs[i];
+      try {
+        const res = await fetch('/api/v1/maps/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            niche, city,
+            sources: ['yandex_maps'],
+            mode: 'city',
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 201 && body.id) {
+          setParseResults((prev) => [...prev, {
+            niche, city,
+            status: body.status === 'from_cache' ? 'from_cache' : 'pending',
+            id: body.id,
+          }]);
+        } else {
+          setParseResults((prev) => [...prev, { niche, city, status: 'failed' }]);
+        }
+      } catch {
+        setParseResults((prev) => [...prev, { niche, city, status: 'failed' }]);
+      }
+      // Rate-limit 10/min = 6с/запрос. Ставим 7с с запасом.
+      if (i < pairs.length - 1) {
+        await new Promise((r) => setTimeout(r, 7000));
+      }
+    }
+    setParseBusy(false);
+    // Обновляем таблицу
+    void reload();
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6 space-y-4">
       <header className="space-y-1">
@@ -119,6 +199,56 @@ export default function DataInventoryPage() {
           Клик по нише/городу — фильтр. «Дособрать» — доразметить AI-теги. «→ Открыть» — переход в поиск по болям.
         </p>
       </header>
+
+      {/* Массовый парсинг — расширить БД новыми (ниша, город) парами */}
+      <section className="rounded-lg border border-slate-200 bg-white p-3 space-y-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-col">
+            <span className="font-medium text-slate-800">
+              🚀 Массовый парсинг: {PARSE_NICHES.length} ниш × {PARSE_CITIES.length} городов
+              {' '}= {PARSE_NICHES.length * PARSE_CITIES.length} запросов
+            </span>
+            <span className="text-xs text-slate-500">
+              Ниши: {PARSE_NICHES.join(', ')} · Города: {PARSE_CITIES.slice(0, 4).join(', ')} + ещё {PARSE_CITIES.length - 4} · Источник: Yandex.Карты
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void runMassParse()}
+            disabled={parseBusy}
+            className="rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:bg-slate-400"
+          >
+            {parseBusy
+              ? `Парсим… ${parseResults.length} / ${PARSE_NICHES.length * PARSE_CITIES.length}`
+              : '🚀 Запустить парсинг'}
+          </button>
+        </div>
+        {parseResults.length > 0 && (
+          <div className="rounded-md border border-slate-100 bg-slate-50 p-2 text-xs space-y-0.5 max-h-40 overflow-auto">
+            <div className="font-medium text-slate-600 mb-1">
+              Результаты: {parseResults.filter((r) => r.status === 'pending').length} pending,
+              {' '}{parseResults.filter((r) => r.status === 'from_cache').length} из кеша,
+              {' '}{parseResults.filter((r) => r.status === 'failed').length} ошибок
+            </div>
+            {parseResults.slice(-8).map((r, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className={
+                  r.status === 'pending' ? 'text-emerald-700' :
+                  r.status === 'from_cache' ? 'text-slate-600' : 'text-rose-700'
+                }>
+                  {r.status === 'pending' && '✓'}
+                  {r.status === 'from_cache' && '⚡'}
+                  {r.status === 'failed' && '✗'}
+                </span>
+                <span className="text-slate-700">{r.city} / {r.niche}</span>
+                <span className="ml-auto text-slate-400">
+                  {r.status}{r.id ? ` #${r.id}` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {loading && <p className="text-sm text-slate-500">Загружаем…</p>}
       {error && (
