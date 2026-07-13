@@ -61,7 +61,10 @@ function PainsPageInner() {
   const initialCity = searchParams?.get('city') ?? '';
 
   const [painKey, setPainKey] = useState<PainKey>('call_no_answer');
-  const [selectedTag, setSelectedTag] = useState<PainTagOut | null>(null);
+  // Multi-select плиток: юзер может кликать несколько тегов и увидит
+  // компании у которых есть ХОТЯ БЫ ОДИН из выбранных (OR).
+  // Пусто = используем dropdown pain_key.
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
   const [city, setCity] = useState<string>(initialCity);
   const [niche, setNiche] = useState<string>(initialNiche);
 
@@ -222,8 +225,8 @@ function PainsPageInner() {
           limit: PAGE_SIZE,
           offset: nextOffset,
         };
-        if (selectedTag) {
-          params.pain_tag_ids = [selectedTag.id];
+        if (selectedTagIds.size > 0) {
+          params.pain_tag_ids = Array.from(selectedTagIds);
         } else {
           params.pain_key = painKey;
         }
@@ -237,20 +240,25 @@ function PainsPageInner() {
         setIsLoading(false);
       }
     },
-    [painKey, city, niche, selectedTag],
+    [painKey, city, niche, selectedTagIds],
   );
 
-  // Клик по плитке → выбрать конкретный tag и запустить поиск
+  // Клик по плитке = toggle: добавить/убрать из multi-select и запустить поиск.
   const pickTag = (tag: PainTagOut) => {
-    setSelectedTag(tag);
+    setSelectedTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag.id)) next.delete(tag.id);
+      else next.add(tag.id);
+      return next;
+    });
     setTagSearchOpen(false);
     setTagSearch('');
-    // Триггер запроса через таймер, чтобы state успел обновиться
+    // Через тик — state успевает обновиться до вызова runSearch
     setTimeout(() => void runSearch(0), 0);
   };
 
   const clearTagSelection = () => {
-    setSelectedTag(null);
+    setSelectedTagIds(new Set());
     setTagSearch('');
     setTimeout(() => void runSearch(0), 0);
   };
@@ -262,8 +270,21 @@ function PainsPageInner() {
     return topTags.filter((t) => t.label.toLowerCase().includes(q)).slice(0, 20);
   }, [tagSearch, topTags]);
 
-  // Заголовок «активной боли» в шапке (или plашка выбранной кастом-темы)
-  const activePainLabel = selectedTag ? selectedTag.label : PAIN_KEY_LABELS[painKey];
+  // Заголовок «активной боли»: если 1 tag — его label, если несколько —
+  // «X болей (X, Y, Z)», иначе pain_key label.
+  const selectedTags = useMemo(
+    () => topTags.filter((t) => selectedTagIds.has(t.id)),
+    [topTags, selectedTagIds],
+  );
+  const activePainLabel = useMemo(() => {
+    if (selectedTags.length === 1) return selectedTags[0].label;
+    if (selectedTags.length > 1) {
+      const preview = selectedTags.slice(0, 2).map((t) => t.label).join(', ');
+      const more = selectedTags.length > 2 ? `, +${selectedTags.length - 2}` : '';
+      return `${selectedTags.length} болей (${preview}${more})`;
+    }
+    return PAIN_KEY_LABELS[painKey];
+  }, [selectedTags, painKey]);
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6 space-y-4">
@@ -279,19 +300,21 @@ function PainsPageInner() {
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
             <span className="mb-1 block font-medium text-slate-700">Боль</span>
-            {selectedTag ? (
+            {selectedTagIds.size > 0 ? (
               <div className="flex items-center gap-2">
                 <span
                   className="flex-1 truncate rounded-md border border-rose-300 bg-rose-50 px-2 py-1.5 text-sm text-rose-800"
-                  title={selectedTag.label}
+                  title={selectedTags.map((t) => t.label).join('; ')}
                 >
-                  {selectedTag.label}
+                  {selectedTagIds.size === 1
+                    ? selectedTags[0]?.label ?? 'выбран 1 тег'
+                    : `${selectedTagIds.size} болей выбрано`}
                 </span>
                 <button
                   type="button"
                   onClick={clearTagSelection}
                   className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-100"
-                  title="Сбросить конкретный тег и вернуться к общей категории"
+                  title="Сбросить выбранные теги"
                 >
                   ×
                 </button>
@@ -399,7 +422,7 @@ function PainsPageInner() {
           {data && !isLoading && (
             <span className="text-sm text-slate-500">
               Найдено {data.total} компаний
-              {data.pain_labels.length > 0 && !selectedTag && (
+              {data.pain_labels.length > 0 && selectedTagIds.size === 0 && (
                 <>
                   {' '}
                   · сматчилось {data.pain_labels.length} tag(ов):{' '}
@@ -420,23 +443,35 @@ function PainsPageInner() {
           Автопрокрутка — только пока юзер не потрогал. */}
       {niche && topTags.length > 0 && (
         <section className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center justify-between px-1 flex-wrap gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Топ-боли ниши{' '}
               <span className="text-slate-400 normal-case">
-                — можно кликнуть, чтобы увидеть компании
+                — клик = добавить в выборку (можно несколько)
               </span>
             </span>
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-              {niche}{city ? ` · ${city}` : ''}
-            </span>
+            <div className="flex items-center gap-2">
+              {selectedTagIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={clearTagSelection}
+                  className="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-50"
+                  title="Сбросить все выбранные боли"
+                >
+                  × сбросить {selectedTagIds.size}
+                </button>
+              )}
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                {niche}{city ? ` · ${city}` : ''}
+              </span>
+            </div>
           </div>
           <div
             ref={tilesScrollRef}
             className="flex gap-2 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]"
           >
             {topTags.map((t) => {
-              const active = selectedTag?.id === t.id;
+              const active = selectedTagIds.has(t.id);
               return (
                 <button
                   type="button"
@@ -450,6 +485,7 @@ function PainsPageInner() {
                   }
                   title={t.description ?? undefined}
                 >
+                  {active && <span className="text-emerald-300">✓</span>}
                   <span className="whitespace-nowrap">{t.label}</span>
                   <span
                     className={
