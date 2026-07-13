@@ -197,6 +197,39 @@ async def create_map_search(
                 search.id, len(missing),
             )
 
+        # 2026-07-13: from_cache-ветка НИКОГДА не запускала reviews_ai для
+        # компаний с уже спарсенными отзывами. Из-за этого pilot bulk-парс
+        # 12.07 наполнил БД кешированными компаниями по 5 нишам, но
+        # /app/pains показывал 0 везде — sentiment/embeddings не считались,
+        # pain_tags не строились. Теперь для КАЖДОЙ компании поиска ставим
+        # analyze_reviews_for_company (идемпотентно — no-op если отзывы
+        # уже AI-обработаны), а потом с countdown=180с — recluster всей
+        # ниши/города. Пилот от cache-hit-ниш получит те же pain_tags, что
+        # и от свежепарсенных.
+        if search.niche and search.city:
+            all_company_ids = await service.list_search_all_company_ids(db, search.id)
+            if all_company_ids:
+                try:
+                    from app.modules.reviews_ai.tasks import (
+                        analyze_reviews_for_company,
+                        recluster_pains_for_niche_task,
+                    )
+                    for cid in all_company_ids:
+                        analyze_reviews_for_company.delay(cid)
+                    recluster_pains_for_niche_task.apply_async(
+                        args=[search.niche, search.city],
+                        countdown=180,
+                    )
+                    logger.info(
+                        "create_map_search #%d from_cache: enqueued analyze for %d companies + recluster (%r, %r) in 180s",
+                        search.id, len(all_company_ids), search.niche, search.city,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "create_map_search #%d from_cache: failed to trigger reviews_ai: %s",
+                        search.id, e,
+                    )
+
     return search
 
 
@@ -2547,6 +2580,162 @@ async def admin_recluster_niche(
             f"Запущено: sentiment + embeddings, затем через {countdown_sec}с — "
             f"кластеризация {'сильных сторон' if sentiment == 'positive' else 'болей'}. "
             f"Общее время ~{2 if countdown_sec < 30 else 4} минуты."
+        ),
+    }
+
+
+@router.post("/admin/rebuild-pain-tags-for-niche")
+@limiter.limit("3/minute")
+async def admin_rebuild_pain_tags_for_niche(
+    request: Request,
+    niche: str = Query(..., min_length=2, max_length=100),
+    city: str | None = Query(default=None, max_length=100),
+    sentiment: str = Query(
+        "negative",
+        regex="^(negative|positive)$",
+        description="negative = боли, positive = сильные стороны",
+    ),
+    _: "User" = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Перестроить pain_tags для ниши/города по ВСЕМ компаниям в БД.
+
+    Отличие от /admin/recluster-niche: не привязан к search_id, а ищет
+    компании по Company.niche + Company.city напрямую. Нужно для случая
+    когда pilot bulk-парс сделал N поисков со status='from_cache' — они
+    все ссылаются на уже спарсенные компании, но reviews_ai для них
+    не пере-запускался (см. fix from_cache в create_map_search).
+
+    Пример: один вызов на «стоматология / Москва» покроет все 12 pilot
+    поисков этой ниши/города независимо от того, cache-hit они или нет.
+
+    Пайплайн:
+      1. Находим все Company.niche=X, Company.city=Y (если city задан).
+      2. Для каждой — analyze_reviews_for_company.delay (идемпотентно).
+      3. Через 180с — recluster_pains_for_niche_task для (niche, city).
+    """
+    filters_ = [Company.niche == niche]
+    if city:
+        filters_.append(Company.city == city)
+    company_ids_rows = (
+        await db.execute(select(Company.id).where(*filters_))
+    ).scalars().all()
+    company_ids = [int(c) for c in company_ids_rows]
+
+    if not company_ids:
+        return {
+            "queued": False,
+            "niche": niche,
+            "city": city,
+            "companies_queued_for_analyze": 0,
+            "hint": (
+                f"В БД нет компаний с niche={niche!r}"
+                + (f", city={city!r}" if city else "")
+                + ". Может niche записан иначе — проверь /maps/niches."
+            ),
+        }
+
+    try:
+        from app.modules.reviews_ai.tasks import (
+            analyze_reviews_for_company,
+            recluster_pains_for_niche_task,
+        )
+        for cid in company_ids:
+            analyze_reviews_for_company.delay(cid)
+        recluster_pains_for_niche_task.apply_async(
+            kwargs={
+                "niche": niche,
+                "city": city,
+                "company_ids": company_ids,
+                "sentiment": sentiment,
+            },
+            countdown=180,
+        )
+    except Exception as e:
+        logger.exception("admin_rebuild_pain_tags_for_niche: failed to enqueue")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Не смог поставить задачу: {e}",
+        )
+
+    return {
+        "queued": True,
+        "niche": niche,
+        "city": city,
+        "sentiment": sentiment,
+        "companies_queued_for_analyze": len(company_ids),
+        "hint": (
+            f"Запущено analyze для {len(company_ids)} компаний, "
+            f"через 180с — recluster {'сильных сторон' if sentiment == 'positive' else 'болей'}. "
+            "Общее время ~4-6 минут в зависимости от объёма отзывов."
+        ),
+    }
+
+
+@router.post("/admin/requeue-stale-searches")
+@limiter.limit("2/minute")
+async def admin_requeue_stale_searches(
+    request: Request,
+    older_than_minutes: int = Query(default=30, ge=5, le=1440),
+    limit: int = Query(default=50, ge=1, le=500),
+    _: "User" = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Найти maps-поиски, застрявшие в pending/running > N минут, и
+    переставить их в очередь celery.
+
+    Зачем: pilot bulk-парс 13.07 создал 7 pending-поисков. Если celery
+    после рестарта потерял часть тасок — поиски навсегда висят в pending,
+    UI и /app/pains показывают 0 компаний. Этот endpoint находит стуки
+    и рестартует parse_map_search.delay для каждого.
+
+    Возвращает список requeued search_id.
+    """
+    from datetime import datetime, timezone, timedelta
+    from app.models.maps import MapSearch
+
+    threshold = datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)
+    stale = (
+        await db.execute(
+            select(MapSearch.id, MapSearch.niche, MapSearch.city, MapSearch.status, MapSearch.created_at)
+            .where(
+                MapSearch.status.in_(["pending", "running"]),
+                MapSearch.created_at < threshold,
+            )
+            .order_by(MapSearch.created_at)
+            .limit(limit)
+        )
+    ).all()
+
+    if not stale:
+        return {
+            "requeued": 0,
+            "older_than_minutes": older_than_minutes,
+            "hint": f"Нет поисков в pending/running старше {older_than_minutes} мин.",
+        }
+
+    from app.modules.maps.tasks import parse_map_search as parse_task
+    requeued_ids: list[int] = []
+    for sid, niche, city, status_, _created in stale:
+        try:
+            parse_task.delay(int(sid))
+            requeued_ids.append(int(sid))
+            logger.info(
+                "admin_requeue_stale_searches: requeued #%d (%r/%r, was %s)",
+                sid, niche, city, status_,
+            )
+        except Exception as e:
+            logger.warning(
+                "admin_requeue_stale_searches: failed to requeue #%d: %s", sid, e
+            )
+
+    return {
+        "requeued": len(requeued_ids),
+        "requeued_ids": requeued_ids,
+        "older_than_minutes": older_than_minutes,
+        "hint": (
+            f"Переставлено {len(requeued_ids)} поисков в очередь. "
+            "Проверь /app/leads/history через 5-15 мин — статус должен смениться на completed."
         ),
     }
 

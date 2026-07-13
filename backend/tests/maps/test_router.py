@@ -387,11 +387,14 @@ async def test_stream_endpoint_returns_200_text_event_stream():
 
 @pytest.mark.asyncio
 async def test_create_search_from_cache_enqueues_reviews_for_empty_companies(monkeypatch):
-    """При cache hit роутер должен перепоставить parse_company_reviews
-    для компаний, у которых нет отзывов — иначе скопированные из прошлого
-    поиска карточки останутся «пустыми» в UI."""
+    """При cache hit роутер должен:
+    1. Перепоставить parse_company_reviews для компаний без отзывов.
+    2. (2026-07-13) Поставить analyze_reviews_for_company на ВСЕ компании
+       поиска + запланировать recluster_pains_for_niche_task — иначе
+       from_cache-ниши навсегда остаются без pain_tags (bug пилота 12.07)."""
     from datetime import datetime, timezone
     from app.modules.maps import tasks as maps_tasks
+    from app.modules.reviews_ai import tasks as reviews_ai_tasks
 
     # parse_map_search.delay не должен вызываться (это not pending case)
     map_calls: list[int] = []
@@ -403,6 +406,18 @@ async def test_create_search_from_cache_enqueues_reviews_for_empty_companies(mon
     monkeypatch.setattr(
         maps_tasks.parse_company_reviews, "delay",
         lambda cid, src: review_calls.append((cid, src)),
+    )
+    # analyze_reviews_for_company.delay — должен быть вызван для ВСЕХ компаний
+    analyze_calls: list[int] = []
+    monkeypatch.setattr(
+        reviews_ai_tasks.analyze_reviews_for_company, "delay",
+        lambda cid: analyze_calls.append(cid),
+    )
+    # recluster_pains_for_niche_task.apply_async — должен быть вызван с countdown=180
+    recluster_calls: list[dict] = []
+    monkeypatch.setattr(
+        reviews_ai_tasks.recluster_pains_for_niche_task, "apply_async",
+        lambda **kw: recluster_calls.append(kw),
     )
 
     niche = _unique_id("frc")
@@ -439,3 +454,179 @@ async def test_create_search_from_cache_enqueues_reviews_for_empty_companies(mon
     # для каждой из 3 пустых компаний — таск на отзывы
     assert len(review_calls) == 3
     assert {src for _, src in review_calls} == {"2gis"}
+    # для всех 3 компаний — analyze_reviews_for_company (даже если reviews_count=0
+    # — analyze идемпотентна, no-op когда нечего анализировать)
+    assert len(analyze_calls) == 3
+    # ровно один recluster с правильными args + countdown=180
+    assert len(recluster_calls) == 1
+    call = recluster_calls[0]
+    assert call.get("args") == [niche, city]
+    assert call.get("countdown") == 180
+
+
+@pytest.mark.asyncio
+async def test_admin_rebuild_pain_tags_for_niche_happy_path(monkeypatch):
+    """POST /maps/admin/rebuild-pain-tags-for-niche:
+    - находит все компании по (niche, city)
+    - ставит analyze_reviews_for_company на каждую
+    - планирует recluster_pains_for_niche_task с company_ids"""
+    from app.modules.reviews_ai import tasks as reviews_ai_tasks
+
+    analyze_calls: list[int] = []
+    monkeypatch.setattr(
+        reviews_ai_tasks.analyze_reviews_for_company, "delay",
+        lambda cid: analyze_calls.append(cid),
+    )
+    recluster_calls: list[dict] = []
+    monkeypatch.setattr(
+        reviews_ai_tasks.recluster_pains_for_niche_task, "apply_async",
+        lambda **kw: recluster_calls.append(kw),
+    )
+
+    niche = _unique_id("rbn")
+    city = _unique_id("citi")
+    user_id, headers = await _create_user()
+
+    # 2 компании этой ниши/города + 1 «чужая» (не должна попасть)
+    async with AsyncSessionLocal() as db:
+        prev = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("a"), name="A", niche=niche, city=city),
+            CompanyRaw(source="2gis", external_id=_unique_id("b"), name="B", niche=niche, city=city),
+        ], prev.id)
+        # чужая — другой niche
+        other = await service.create_map_search(
+            db, user_id=user_id, niche="другая", city=city, sources=["2gis"],
+        )
+        await service.save_companies_batch(db, [
+            CompanyRaw(source="2gis", external_id=_unique_id("z"), name="Z", niche="другая", city=city),
+        ], other.id)
+        await db.commit()
+
+    async with _client() as c:
+        r = await c.post(
+            f"/api/v1/maps/admin/rebuild-pain-tags-for-niche"
+            f"?niche={niche}&city={city}",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["queued"] is True
+        assert body["companies_queued_for_analyze"] == 2
+
+    # ровно 2 analyze — только «наши»
+    assert len(analyze_calls) == 2
+    # один recluster с правильными kwargs
+    assert len(recluster_calls) == 1
+    kwargs = recluster_calls[0].get("kwargs", {})
+    assert kwargs.get("niche") == niche
+    assert kwargs.get("city") == city
+    assert kwargs.get("sentiment") == "negative"
+    assert set(kwargs.get("company_ids", [])) == set(analyze_calls)
+
+
+@pytest.mark.asyncio
+async def test_admin_rebuild_pain_tags_for_niche_no_companies_returns_skipped(monkeypatch):
+    """Если по (niche, city) нет ни одной компании — queued=False, задачи не ставятся."""
+    from app.modules.reviews_ai import tasks as reviews_ai_tasks
+
+    analyze_calls: list[int] = []
+    monkeypatch.setattr(
+        reviews_ai_tasks.analyze_reviews_for_company, "delay",
+        lambda cid: analyze_calls.append(cid),
+    )
+    recluster_calls: list[dict] = []
+    monkeypatch.setattr(
+        reviews_ai_tasks.recluster_pains_for_niche_task, "apply_async",
+        lambda **kw: recluster_calls.append(kw),
+    )
+
+    _, headers = await _create_user()
+    async with _client() as c:
+        r = await c.post(
+            "/api/v1/maps/admin/rebuild-pain-tags-for-niche"
+            "?niche=никогда_такой_ниши_нет_12345&city=Москва",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["queued"] is False
+        assert body["companies_queued_for_analyze"] == 0
+    assert analyze_calls == []
+    assert recluster_calls == []
+
+
+@pytest.mark.asyncio
+async def test_admin_rebuild_pain_tags_for_niche_requires_superuser():
+    """Обычный юзер (is_superuser=False) → 403."""
+    _, headers = await _create_user(is_superuser=False)
+    async with _client() as c:
+        r = await c.post(
+            "/api/v1/maps/admin/rebuild-pain-tags-for-niche?niche=x&city=y",
+            headers=headers,
+        )
+        assert r.status_code == 403, r.text
+
+
+@pytest.mark.asyncio
+async def test_admin_requeue_stale_searches_requeues_only_old_pending(monkeypatch):
+    """Стук > N минут в pending/running → parse_map_search.delay.
+    Свежие pending и completed — не трогать."""
+    from datetime import datetime, timezone, timedelta
+    from app.modules.maps import tasks as maps_tasks
+
+    calls: list[int] = []
+    monkeypatch.setattr(
+        maps_tasks.parse_map_search, "delay", lambda sid: calls.append(sid)
+    )
+
+    niche = _unique_id("stale")
+    user_id, headers = await _create_user()
+
+    async with AsyncSessionLocal() as db:
+        # старый pending — должен переехать в очередь
+        old_pending = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city="Мск", sources=["2gis"],
+        )
+        old_pending.status = "pending"
+        old_pending.created_at = datetime.now(timezone.utc) - timedelta(hours=2)
+
+        # старый running — тоже переставить
+        old_running = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city="СПб", sources=["2gis"],
+        )
+        old_running.status = "running"
+        old_running.created_at = datetime.now(timezone.utc) - timedelta(hours=1)
+
+        # свежий pending — НЕ трогать
+        fresh = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city="Казань", sources=["2gis"],
+        )
+        fresh.status = "pending"
+        # (created_at свежий по default)
+
+        # старый completed — НЕ трогать
+        done = await service.create_map_search(
+            db, user_id=user_id, niche=niche, city="Тула", sources=["2gis"],
+        )
+        done.status = "completed"
+        done.created_at = datetime.now(timezone.utc) - timedelta(hours=3)
+
+        await db.commit()
+        expected_ids = {old_pending.id, old_running.id}
+
+    async with _client() as c:
+        r = await c.post(
+            "/api/v1/maps/admin/requeue-stale-searches?older_than_minutes=30",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["requeued"] >= 2
+        # свежий и completed не в списке
+        assert set(expected_ids).issubset(set(body["requeued_ids"]))
+
+    # parse_map_search.delay вызван для обоих старых
+    assert set(expected_ids).issubset(set(calls))
