@@ -115,15 +115,11 @@ function PainsPageInner() {
   }, []);
 
   // Автозапуск поиска при приходе из /admin/data-inventory с ?niche=&city=
+  // ВАЖНО: не дёргаем pain_key дефолтом (call_no_answer в СПб/стома = 0).
+  // Ждём топ-теги ниши → auto-click первого (самого крупного) → показывает
+  // компании с самой распространённой болью. Юзер сразу видит результаты,
+  // а не пустое «0 компаний».
   const autoRunRef = useRef(false);
-  useEffect(() => {
-    if (autoRunRef.current) return;
-    if (!initialNiche && !initialCity) return;
-    autoRunRef.current = true;
-    // Один тик, чтобы state успел обновиться
-    setTimeout(() => void runSearch(0), 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialNiche, initialCity]);
 
   useEffect(() => {
     const cached = typeof window !== 'undefined'
@@ -159,7 +155,22 @@ function PainsPageInner() {
     setTopTagsLoading(true);
     listPainTags(niche, city || undefined)
       .then((tags) => {
-        if (!cancelled) setTopTags(tags);
+        if (cancelled) return;
+        setTopTags(tags);
+        // Drill-through из /admin/data-inventory: как только теги загрузились,
+        // auto-click первого (самого крупного по occurrences). Юзер сразу
+        // видит компании с топ-болью, а не пустой pain_key='call_no_answer'.
+        if (
+          !autoRunRef.current &&
+          (initialNiche || initialCity) &&
+          tags.length > 0 &&
+          selectedTagIds.size === 0
+        ) {
+          autoRunRef.current = true;
+          const topTag = tags[0]; // тот, что с max occurrences_count (сортировка backend)
+          setSelectedTagIds(new Set([topTag.id]));
+          setTimeout(() => void runSearch(0), 0);
+        }
       })
       .catch(() => {
         if (!cancelled) setTopTags([]);
@@ -168,6 +179,7 @@ function PainsPageInner() {
         if (!cancelled) setTopTagsLoading(false);
       });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [niche, city]);
 
   // Автопрокрутка плитки — тонкий hint, что там ещё есть чего скроллить.
@@ -420,18 +432,23 @@ function PainsPageInner() {
 
           <label className="text-sm">
             <span className="mb-1 block font-medium text-slate-700">Ниша</span>
-            <input
-              list="pains-niche-list"
+            <select
               className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
               value={niche}
-              placeholder="салоны красоты, стома, ..."
               onChange={(e) => setNiche(e.target.value)}
-            />
-            <datalist id="pains-niche-list">
+            >
+              <option value="">— любая —</option>
               {niches.map((n) => (
-                <option key={n} value={n} />
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
-            </datalist>
+              {/* Если текущая ниша пришла из URL и её нет в списке — добавляем
+                  как выбранный option, чтобы select не сбросился на «любая». */}
+              {niche && !niches.includes(niche) && (
+                <option value={niche}>{niche} (кастом)</option>
+              )}
+            </select>
           </label>
         </div>
 
