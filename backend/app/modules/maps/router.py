@@ -2584,6 +2584,129 @@ async def admin_recluster_niche(
     }
 
 
+@router.get("/admin/data-inventory")
+@limiter.limit("10/minute")
+async def admin_data_inventory(
+    request: Request,
+    _: "User" = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Инвентаризация распарсенных данных: (niche, city) → counts.
+
+    Возвращает срез что вообще есть в БД:
+      - companies_count: сколько компаний
+      - reviews_count: сколько отзывов накоплено (сумма Company.reviews_count)
+      - reviews_analyzed: сколько отзывов прошли sentiment/embeddings
+      - pain_tags_count: сколько активных PainTag построено
+      - has_pain_scores: есть ли CompanyPainScore для этой пары
+
+    Ниши/города, у которых нет ни отзывов ни компаний, не включаем.
+    Сортировка: по companies_count desc. Полезно чтобы юзер видел
+    что у него реально есть для работы и где дыры.
+    """
+    from app.models.pain_tag import CompanyPainScore
+
+    # companies: сгруппировано по (niche, city)
+    company_stats = list((await db.execute(
+        select(
+            Company.niche,
+            Company.city,
+            sa_func.count(Company.id).label("companies"),
+            sa_func.coalesce(sa_func.sum(Company.reviews_count), 0).label("reviews"),
+        )
+        .where(Company.niche.isnot(None), Company.city.isnot(None))
+        .group_by(Company.niche, Company.city)
+    )).all())
+
+    # pain_tags: активные негативные, сгруппировано по (niche, city)
+    tag_stats = list((await db.execute(
+        select(
+            PainTag.niche,
+            PainTag.city,
+            sa_func.count(PainTag.id).label("tags"),
+        )
+        .where(PainTag.status == "active", PainTag.sentiment == "negative")
+        .group_by(PainTag.niche, PainTag.city)
+    )).all())
+
+    # analyzed reviews: считаем reviews с embedding по (Company.niche, Company.city)
+    analyzed_stats = list((await db.execute(
+        select(
+            Company.niche,
+            Company.city,
+            sa_func.count(Review.id).label("analyzed"),
+        )
+        .join(Review, Review.company_id == Company.id)
+        .where(
+            Company.niche.isnot(None),
+            Company.city.isnot(None),
+            Review.embedding.isnot(None),
+        )
+        .group_by(Company.niche, Company.city)
+    )).all())
+
+    # has_pain_scores: True если есть хоть один CompanyPainScore
+    scored_stats = list((await db.execute(
+        select(
+            Company.niche,
+            Company.city,
+            sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).label("with_scores"),
+        )
+        .join(CompanyPainScore, CompanyPainScore.company_id == Company.id)
+        .where(Company.niche.isnot(None), Company.city.isnot(None))
+        .group_by(Company.niche, Company.city)
+    )).all())
+
+    # Строим единый словарь по (niche, city)
+    inventory: dict[tuple[str, str], dict] = {}
+    for niche_, city_, comp, rev in company_stats:
+        key = (str(niche_), str(city_))
+        inventory[key] = {
+            "niche": str(niche_),
+            "city": str(city_),
+            "companies_count": int(comp or 0),
+            "reviews_count": int(rev or 0),
+            "reviews_analyzed": 0,
+            "pain_tags_count": 0,
+            "companies_with_pain_scores": 0,
+        }
+
+    for niche_, city_, analyzed in analyzed_stats:
+        key = (str(niche_), str(city_ or ""))
+        if key in inventory:
+            inventory[key]["reviews_analyzed"] = int(analyzed or 0)
+
+    for niche_, city_, tags in tag_stats:
+        # PainTag.city может быть NULL (глобальные для ниши) — учитываем в общий счёт
+        if city_ is None:
+            # Прибавляем ко всем городам этой ниши
+            for k, v in inventory.items():
+                if k[0] == str(niche_):
+                    v["pain_tags_count"] += int(tags or 0)
+        else:
+            key = (str(niche_), str(city_))
+            if key in inventory:
+                inventory[key]["pain_tags_count"] += int(tags or 0)
+
+    for niche_, city_, with_scores in scored_stats:
+        key = (str(niche_), str(city_))
+        if key in inventory:
+            inventory[key]["companies_with_pain_scores"] = int(with_scores or 0)
+
+    items = sorted(
+        inventory.values(),
+        key=lambda x: (-x["companies_count"], x["niche"], x["city"]),
+    )
+
+    return {
+        "total_pairs": len(items),
+        "total_companies": sum(x["companies_count"] for x in items),
+        "total_reviews": sum(x["reviews_count"] for x in items),
+        "total_pain_tags": sum(x["pain_tags_count"] for x in items),
+        "items": items,
+    }
+
+
 @router.post("/admin/rebuild-pain-tags-for-niche")
 @limiter.limit("3/minute")
 async def admin_rebuild_pain_tags_for_niche(
