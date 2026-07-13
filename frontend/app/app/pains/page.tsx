@@ -172,9 +172,26 @@ export default function PainsPage() {
               <p>
                 В этой комбинации (
                 {[niche && `ниша «${niche}»`, city && `город «${city}»`].filter(Boolean).join(', ')}
-                ) компаний с болью «{PAIN_KEY_LABELS[painKey]}» не найдено — AI не выделил эту тему
-                в отзывах.
+                ) компаний с болью «{PAIN_KEY_LABELS[painKey]}» не найдено.
               </p>
+              {/* Диагностика: pain_labels пуст = AI ещё не разметил или тема правда
+                  не всплывала. Не пуст = теги есть в БД, но у компаний в этом гео/нише
+                  их нет — юзер понимает, что снятие фильтра поможет. */}
+              {data.pain_labels && data.pain_labels.length > 0 ? (
+                <p className="text-xs text-slate-500">
+                  В БД есть {data.pain_labels.length}{' '}
+                  {data.pain_labels.length === 1 ? 'тег' : 'тегов'} с этой болью
+                  {' '}({data.pain_labels.slice(0, 3).map((l) => `«${l}»`).join(', ')}
+                  {data.pain_labels.length > 3 ? ', ...' : ''}), но ни одна из компаний
+                  в этом фильтре их не имеет. Попробуй снять фильтр:
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Ни один тег с этой болью не размечен для этого гео/ниши. Возможно,
+                  парсер ещё не разобрал очередь пилота — подожди 5–10 мин или
+                  сними фильтр:
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {city && (
                   <button
@@ -216,11 +233,16 @@ export default function PainsPage() {
               </div>
             </>
           ) : (
-            <p className="text-center">
-              Компаний с этой болью нет в БД. Возможно, пилот парсинга ещё не завершился —
-              запусти поиск на странице «Лиды → По картам» или подожди пока разберётся текущая
-              очередь.
-            </p>
+            <div className="text-center space-y-1">
+              <p>
+                Компаний с болью «{PAIN_KEY_LABELS[painKey]}» нет в БД.
+              </p>
+              <p className="text-xs text-slate-500">
+                {data.pain_labels && data.pain_labels.length > 0
+                  ? `Теги есть (${data.pain_labels.length}), но ни одна компания не связана с ними — редкий случай, напиши админу.`
+                  : 'Пилот парсинга ещё не разобрал эту тему, либо AI действительно её не выделил в отзывах. Запусти новый поиск в «Лиды → По картам» или подожди 5–10 мин.'}
+              </p>
+            </div>
           )}
         </div>
       )}
