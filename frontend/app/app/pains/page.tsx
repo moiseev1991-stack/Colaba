@@ -16,7 +16,8 @@
  */
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import {
@@ -44,10 +45,24 @@ const PAIN_KEYS: PainKey[] = [
 const PAGE_SIZE = 50;
 
 export default function PainsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-slate-500">Загружаем…</div>}>
+      <PainsPageInner />
+    </Suspense>
+  );
+}
+
+function PainsPageInner() {
+  // URL query params: /app/pains?niche=X&city=Y — pre-fill фильтров
+  // (нужно для навигации из /app/admin/data-inventory).
+  const searchParams = useSearchParams();
+  const initialNiche = searchParams?.get('niche') ?? '';
+  const initialCity = searchParams?.get('city') ?? '';
+
   const [painKey, setPainKey] = useState<PainKey>('call_no_answer');
   const [selectedTag, setSelectedTag] = useState<PainTagOut | null>(null);
-  const [city, setCity] = useState<string>('');
-  const [niche, setNiche] = useState<string>('');
+  const [city, setCity] = useState<string>(initialCity);
+  const [niche, setNiche] = useState<string>(initialNiche);
 
   const [cities, setCities] = useState<string[]>([]);
   const [niches, setNiches] = useState<string[]>([]);
@@ -78,6 +93,17 @@ export default function PainsPage() {
     listMapCities().then(setCities).catch(() => setCities([]));
     nicheSuggestions('').then(setNiches).catch(() => setNiches([]));
   }, []);
+
+  // Автозапуск поиска при приходе из /admin/data-inventory с ?niche=&city=
+  const autoRunRef = useRef(false);
+  useEffect(() => {
+    if (autoRunRef.current) return;
+    if (!initialNiche && !initialCity) return;
+    autoRunRef.current = true;
+    // Один тик, чтобы state успел обновиться
+    setTimeout(() => void runSearch(0), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNiche, initialCity]);
 
   useEffect(() => {
     const cached = typeof window !== 'undefined'
