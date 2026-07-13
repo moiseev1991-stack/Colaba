@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.137.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.136.0...v1.137.0) (2026-07-13)
+
+
+### Bug Fixes
+
+* **maps:** from_cache теперь тригерит analyze_reviews_for_company + recluster ([92a9cc6](https://github.com/moiseev1991-stack/Colaba/commit/92a9cc6522bfe38c6be61b5fbd661ebde40e1324))
+
+
+### Features
+
+* **pains:** суперюзерская кнопка «rebuild AI-теги» в empty-state ([2e80b59](https://github.com/moiseev1991-stack/Colaba/commit/2e80b59c65d2bb9e0904f759ed88845660731796))
+
 # [1.136.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.135.2...v1.136.0) (2026-07-13)
 
 
