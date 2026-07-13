@@ -3162,7 +3162,8 @@ async def list_pain_tags(
 @limiter.limit("60/minute")
 async def list_companies_by_pain(
     request: Request,
-    pain_key: str = Query(..., min_length=2, max_length=64),
+    pain_key: Optional[str] = Query(default=None, min_length=2, max_length=64),
+    pain_tag_ids: Optional[list[int]] = Query(default=None, description="Конкретные PainTag.id — альтернатива pain_key"),
     city: Optional[str] = Query(default=None, max_length=100),
     niche: Optional[str] = Query(default=None, max_length=100),
     limit: int = Query(default=50, ge=1, le=200),
@@ -3170,56 +3171,80 @@ async def list_companies_by_pain(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Глобальный список компаний по конкретной боли (без привязки к search_id).
+    """Глобальный список компаний по конкретной боли.
 
-    Как работает:
-    1. Тянем все активные негативные PainTag (опц. по niche/city).
-    2. Отфильтровываем через `match_pain_key(label)` — Python-эвристика
-       из pain_dictionaries (падеже-устойчивый substring-матч). В SQL
-       матчер не выражается, поэтому шаг Python-side. Тегов в БД сотни,
-       не проблема.
-    3. По полученным pain_tag_id идём в CompanyPainScore + Company,
-       агрегируем mention_count по компании (одна компания может иметь
-       несколько pain_tag под один pain_key — «дозвон» + «не берут»),
-       лучший top_quote по similarity.
-    4. Опциональный фильтр Company.city / Company.niche — по колонкам
-       компании (у тега свои city/niche могут отличаться из-за глобальных
-       тегов ниши с city=NULL).
+    Способа выборки два:
+    - `pain_key` — крупная категория из PAIN_KEYS (call_no_answer,
+      schedule_hard, ...). Мапим label→pain_key через match_pain_key.
+    - `pain_tag_ids` — прямой список PainTag.id (для клика по плитке
+      или combobox-поиска по тексту тега). 2026-07-13: добавлено чтобы
+      UI мог показывать плитку топ-тегов ниши и/или искать по тексту,
+      минуя PAIN_KEYS (у нас всего 8, а pain_tag'ов сотни).
+
+    Ровно один из pain_key/pain_tag_ids обязателен.
     """
     from app.modules.outreach.pain_dictionaries import PAIN_KEYS, match_pain_key
     from app.models.pain_tag import CompanyPainScore
 
-    if pain_key not in PAIN_KEYS:
+    if not pain_key and not pain_tag_ids:
         raise HTTPException(
             status_code=422,
-            detail=f"unknown pain_key={pain_key!r}. Валидные: {list(PAIN_KEYS)}",
+            detail="нужен pain_key или pain_tag_ids",
+        )
+    if pain_key and pain_tag_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="передай что-то одно: pain_key ИЛИ pain_tag_ids",
         )
 
-    tag_filter = [PainTag.status == "active", PainTag.sentiment == "negative"]
-    if niche:
-        tag_filter.append(PainTag.niche == niche)
-    if city:
-        # Городские теги + глобальные для ниши (city=NULL).
-        tag_filter.append(or_(PainTag.city == city, PainTag.city.is_(None)))
-
-    tag_rows = list(
-        (await db.execute(
-            select(PainTag.id, PainTag.label).where(*tag_filter)
-        )).all()
-    )
     matched_tag_ids: list[int] = []
     matched_labels: list[str] = []
-    seen_labels: set[str] = set()
-    for tid, label in tag_rows:
-        if match_pain_key(label) == pain_key:
+
+    if pain_tag_ids:
+        # Прямой выбор тегов — подтягиваем labels для отладки/UI, и
+        # заодно валидируем что теги активные и негативные (иначе
+        # можно было бы просунуть positive и получить лидов «сильных
+        # сторон» в разделе болей).
+        rows = list((await db.execute(
+            select(PainTag.id, PainTag.label).where(
+                PainTag.id.in_(pain_tag_ids),
+                PainTag.status == "active",
+                PainTag.sentiment == "negative",
+            )
+        )).all())
+        for tid, label in rows:
             matched_tag_ids.append(int(tid))
-            if label not in seen_labels:
-                matched_labels.append(label)
-                seen_labels.add(label)
+            matched_labels.append(label)
+    else:
+        if pain_key not in PAIN_KEYS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"unknown pain_key={pain_key!r}. Валидные: {list(PAIN_KEYS)}",
+            )
+
+        tag_filter = [PainTag.status == "active", PainTag.sentiment == "negative"]
+        if niche:
+            tag_filter.append(PainTag.niche == niche)
+        if city:
+            # Городские теги + глобальные для ниши (city=NULL).
+            tag_filter.append(or_(PainTag.city == city, PainTag.city.is_(None)))
+
+        tag_rows = list(
+            (await db.execute(
+                select(PainTag.id, PainTag.label).where(*tag_filter)
+            )).all()
+        )
+        seen_labels: set[str] = set()
+        for tid, label in tag_rows:
+            if match_pain_key(label) == pain_key:
+                matched_tag_ids.append(int(tid))
+                if label not in seen_labels:
+                    matched_labels.append(label)
+                    seen_labels.add(label)
 
     if not matched_tag_ids:
         return CompaniesByPainListOut(
-            pain_key=pain_key, pain_labels=[], total=0, limit=limit, offset=offset, items=[],
+            pain_key=pain_key or "", pain_labels=[], total=0, limit=limit, offset=offset, items=[],
         )
 
     # Агрегируем по компании: сумма mention_count + top_quote с максимальной
@@ -3293,7 +3318,7 @@ async def list_companies_by_pain(
         items.append(item)
 
     return CompaniesByPainListOut(
-        pain_key=pain_key,
+        pain_key=pain_key or "",
         pain_labels=matched_labels,
         total=total,
         limit=limit,
