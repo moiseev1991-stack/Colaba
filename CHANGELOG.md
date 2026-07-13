@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.142.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.141.0...v1.142.0) (2026-07-13)
+
+
+### Features
+
+* **pains:** multi-select плиток болей (OR-фильтр) ([7f0584e](https://github.com/moiseev1991-stack/Colaba/commit/7f0584e7ed62bb66b44f84db373e95d513c44ea3))
+
 # [1.141.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.140.0...v1.141.0) (2026-07-13)
 
 
