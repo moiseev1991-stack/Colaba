@@ -29,6 +29,7 @@ import {
   MapPin,
   Send,
   Flame,
+  Database,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
@@ -334,6 +335,7 @@ export const ADMIN_SECTION: NavSection = {
   title: 'Админ',
   items: [
     { href: '/app/admin/website-leads', label: 'Заявки с сайта', icon: ShieldCheck },
+    { href: '/app/admin/data-inventory', label: 'Data inventory', icon: Database },
   ],
 };
 

@@ -7,9 +7,16 @@
  * reviews_analyzed (с embedding), pain_tags_count, companies_with_pain_scores.
  * Сортировка по companies_count desc.
  *
+ * Действия:
+ * - Клик по нише/городу → фильтрует таблицу этим значением.
+ * - «→ Открыть» → переход в /app/pains с pre-fill niche+city.
+ * - «⚙ Дособрать» → POST /maps/admin/rebuild-pain-tags-for-niche для этой
+ *   пары. Появляется если статус ≠ «готово».
+ *
  * Только для суперюзера. Backend: GET /maps/admin/data-inventory.
  */
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 interface InventoryItem {
@@ -30,31 +37,37 @@ interface InventoryResponse {
   items: InventoryItem[];
 }
 
+type RebuildState = 'idle' | 'busy' | 'done' | 'error';
+
 export default function DataInventoryPage() {
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
+  // Состояние rebuild-кнопок: ключ `${niche}::${city}`.
+  const [rebuild, setRebuild] = useState<Record<string, { state: RebuildState; msg?: string }>>({});
+
+  const reload = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/v1/maps/admin/data-inventory', {
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(`HTTP ${res.status}: ${body?.detail ?? 'см. консоль'}`);
+      }
+      setData(await res.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось загрузить');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/v1/maps/admin/data-inventory', {
-          cache: 'no-store',
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(`HTTP ${res.status}: ${body?.detail ?? 'см. консоль'}`);
-        }
-        setData(await res.json());
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Не удалось загрузить');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    void reload();
   }, []);
 
   const filtered = useMemo(() => {
@@ -68,13 +81,42 @@ export default function DataInventoryPage() {
     );
   }, [data, q]);
 
+  const rebuildRow = async (niche: string, city: string) => {
+    const key = `${niche}::${city}`;
+    setRebuild((r) => ({ ...r, [key]: { state: 'busy' } }));
+    try {
+      const params = new URLSearchParams({ niche, city, sentiment: 'negative' });
+      const res = await fetch(
+        `/api/v1/maps/admin/rebuild-pain-tags-for-niche?${params.toString()}`,
+        { method: 'POST' },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRebuild((r) => ({
+          ...r,
+          [key]: { state: 'error', msg: `HTTP ${res.status}: ${body?.detail ?? ''}` },
+        }));
+        return;
+      }
+      const msg = body.queued
+        ? `${body.companies_queued_for_analyze} компаний → analyze, потом recluster (~5-8 мин)`
+        : (body.hint ?? 'Нет компаний с этой нишей.');
+      setRebuild((r) => ({ ...r, [key]: { state: 'done', msg } }));
+    } catch (e) {
+      setRebuild((r) => ({
+        ...r,
+        [key]: { state: 'error', msg: e instanceof Error ? e.message : 'network' },
+      }));
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6 space-y-4">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-slate-900">Data inventory (admin)</h1>
         <p className="text-sm text-slate-500">
           Что реально есть в БД: сколько компаний, отзывов и AI-тегов по каждой (ниша, город).
-          Помогает понять с чем можно работать сейчас, а где ещё нужно парсить.
+          Клик по нише/городу — фильтр. «Дособрать» — доразметить AI-теги. «→ Открыть» — переход в поиск по болям.
         </p>
       </header>
 
@@ -94,7 +136,7 @@ export default function DataInventoryPage() {
             <StatCard label="Активных pain-тегов" value={data.total_pain_tags} />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
               type="text"
               value={q}
@@ -105,6 +147,22 @@ export default function DataInventoryPage() {
             <span className="text-xs text-slate-500">
               Показано {filtered.length} из {data.items.length}
             </span>
+            {q && (
+              <button
+                type="button"
+                onClick={() => setQ('')}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              >
+                × Сбросить фильтр
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void reload()}
+              className="ml-auto rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+            >
+              ↻ Обновить
+            </button>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -119,6 +177,7 @@ export default function DataInventoryPage() {
                   <th className="px-3 py-2 text-right">Pain-тегов</th>
                   <th className="px-3 py-2 text-right">С pain-скорами</th>
                   <th className="px-3 py-2">Готовность</th>
+                  <th className="px-3 py-2 text-right">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -132,10 +191,35 @@ export default function DataInventoryPage() {
                   const ready =
                     row.pain_tags_count > 0 &&
                     scoredPct >= 50;
+                  const status: 'ready' | 'partial' | 'raw' =
+                    ready ? 'ready'
+                    : row.reviews_analyzed === 0 ? 'raw'
+                    : 'partial';
+                  const key = `${row.niche}::${row.city}`;
+                  const rb = rebuild[key];
+                  const painsHref = `/app/pains?niche=${encodeURIComponent(row.niche)}&city=${encodeURIComponent(row.city)}`;
                   return (
-                    <tr key={`${row.niche}-${row.city}`} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 font-medium text-slate-900">{row.niche}</td>
-                      <td className="px-3 py-2 text-slate-700">{row.city}</td>
+                    <tr key={key} className="hover:bg-slate-50 align-top">
+                      <td className="px-3 py-2 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setQ(row.niche)}
+                          className="text-left text-slate-900 hover:text-rose-700 hover:underline underline-offset-2"
+                          title="Отфильтровать этой нишей"
+                        >
+                          {row.niche}
+                        </button>
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => setQ(row.city)}
+                          className="text-slate-700 hover:text-rose-700 hover:underline underline-offset-2"
+                          title="Отфильтровать этим городом"
+                        >
+                          {row.city}
+                        </button>
+                      </td>
                       <td className="px-3 py-2 text-right">{row.companies_count}</td>
                       <td className="px-3 py-2 text-right">{row.reviews_count}</td>
                       <td className="px-3 py-2 text-right">
@@ -148,18 +232,57 @@ export default function DataInventoryPage() {
                         <span className="ml-1 text-xs text-slate-400">({scoredPct}%)</span>
                       </td>
                       <td className="px-3 py-2">
-                        {ready ? (
+                        {status === 'ready' && (
                           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                             готово
                           </span>
-                        ) : row.reviews_analyzed === 0 ? (
+                        )}
+                        {status === 'raw' && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                             только парс
                           </span>
-                        ) : (
+                        )}
+                        {status === 'partial' && (
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                             частично
                           </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right space-y-1">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Link
+                            href={painsHref}
+                            className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                            title="Открыть в поиске по болям"
+                          >
+                            → Открыть
+                          </Link>
+                          {status !== 'ready' && (
+                            <button
+                              type="button"
+                              onClick={() => void rebuildRow(row.niche, row.city)}
+                              disabled={rb?.state === 'busy' || rb?.state === 'done'}
+                              className={
+                                'rounded-md border px-2 py-0.5 text-xs font-medium disabled:opacity-50 ' +
+                                (rb?.state === 'done'
+                                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                  : rb?.state === 'error'
+                                    ? 'border-rose-300 bg-rose-50 text-rose-800'
+                                    : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100')
+                              }
+                              title="Пересобрать AI-разметку и pain_tags"
+                            >
+                              {rb?.state === 'busy' && 'Ставлю…'}
+                              {rb?.state === 'done' && '✓ В очереди'}
+                              {rb?.state === 'error' && '✗ Ошибка'}
+                              {(!rb || rb.state === 'idle') && '⚙ Дособрать'}
+                            </button>
+                          )}
+                        </div>
+                        {rb?.msg && (
+                          <p className="text-[10.5px] leading-tight text-slate-500 max-w-[220px] ml-auto">
+                            {rb.msg}
+                          </p>
                         )}
                       </td>
                     </tr>
@@ -168,6 +291,45 @@ export default function DataInventoryPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Кнопка бэтч-пересборки всех «частично/только парс» */}
+          {filtered.some((r) => {
+            const scoredPct = r.companies_count > 0
+              ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
+              : 0;
+            return !(r.pain_tags_count > 0 && scoredPct >= 50);
+          }) && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Можно поставить в очередь пересборку для всех «частично / только парс» пар в текущем фильтре.
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  for (const r of filtered) {
+                    const scoredPct = r.companies_count > 0
+                      ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
+                      : 0;
+                    const ready = r.pain_tags_count > 0 && scoredPct >= 50;
+                    if (ready) continue;
+                    if (r.companies_count === 0) continue;
+                    // Пауза 500мс между запросами — не завалим rate-limit
+                    // (3/min на этот endpoint, но с гэпом рискуем на батче 20+)
+                    await rebuildRow(r.niche, r.city);
+                    await new Promise((res) => setTimeout(res, 500));
+                  }
+                }}
+                className="rounded-md border border-amber-400 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+              >
+                ⚙ Дособрать все ({filtered.filter((r) => {
+                  const scoredPct = r.companies_count > 0
+                    ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
+                    : 0;
+                  return !(r.pain_tags_count > 0 && scoredPct >= 50) && r.companies_count > 0;
+                }).length})
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
