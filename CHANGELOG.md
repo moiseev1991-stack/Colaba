@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.138.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.137.0...v1.138.0) (2026-07-13)
+
+
+### Features
+
+* **pains:** плитка топ-тегов + поиск боли текстом + батч в список ([b9600e1](https://github.com/moiseev1991-stack/Colaba/commit/b9600e1868729e031302aa152ae0478482282a68))
+
 # [1.137.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.136.0...v1.137.0) (2026-07-13)
 
 
