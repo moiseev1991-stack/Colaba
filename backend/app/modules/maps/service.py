@@ -756,6 +756,25 @@ async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
 # ---------------------------------------------------------------------------
 
 
+async def list_search_all_company_ids(
+    db: AsyncSession,
+    search_id: int,
+) -> list[int]:
+    """Возвращает [company_id, …] всех компаний этого поиска.
+
+    Используется при from_cache для триггера reviews_ai по всем компаниям
+    (даже уже спарсенным), чтобы pain_tags появились и для кешированных
+    ниш — старый from_cache-путь запускал analyze только для компаний
+    с reviews_count=0.
+    """
+    q = (
+        select(MapSearchResult.company_id)
+        .where(MapSearchResult.map_search_id == search_id)
+    )
+    rows = (await db.execute(q)).scalars().all()
+    return [int(cid) for cid in rows]
+
+
 async def list_search_companies_missing_reviews(
     db: AsyncSession,
     search_id: int,

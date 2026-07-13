@@ -48,10 +48,71 @@ export default function PainsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 2026-07-13: суперюзерская кнопка «Пересобрать AI-теги» показывается
+  // в empty-state, если niche задан. Кешируем флаг в sessionStorage
+  // положительно (как в Sidebar) чтобы не гонять /auth/me на каждый рендер.
+  const [isSuperuser, setIsSuperuser] = useState(false);
+  const [rebuildBusy, setRebuildBusy] = useState(false);
+  const [rebuildMsg, setRebuildMsg] = useState<string | null>(null);
+
   useEffect(() => {
     listMapCities().then(setCities).catch(() => setCities([]));
     nicheSuggestions('').then(setNiches).catch(() => setNiches([]));
   }, []);
+
+  useEffect(() => {
+    const cached = typeof window !== 'undefined'
+      ? sessionStorage.getItem('is_superuser')
+      : null;
+    if (cached === 'true') {
+      setIsSuperuser(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const body = await res.json();
+        if (!cancelled && Boolean(body?.is_superuser)) {
+          setIsSuperuser(true);
+          try { sessionStorage.setItem('is_superuser', 'true'); } catch { /* no-op */ }
+        }
+      } catch { /* no-op */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const rebuildNiche = async () => {
+    if (!niche) return;
+    setRebuildBusy(true);
+    setRebuildMsg(null);
+    try {
+      const params = new URLSearchParams({ niche, sentiment: 'negative' });
+      if (city) params.set('city', city);
+      const res = await fetch(
+        `/api/v1/maps/admin/rebuild-pain-tags-for-niche?${params.toString()}`,
+        { method: 'POST' },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRebuildMsg(`Ошибка ${res.status}: ${body?.detail ?? 'см. консоль'}`);
+        return;
+      }
+      if (body.queued) {
+        setRebuildMsg(
+          `Запустил AI-разметку для ${body.companies_queued_for_analyze} компаний. ` +
+          `Подожди 5-8 минут и обнови страницу.`,
+        );
+      } else {
+        setRebuildMsg(body.hint ?? 'В БД нет компаний с этой нишей.');
+      }
+    } catch (e) {
+      setRebuildMsg(e instanceof Error ? e.message : 'Не удалось');
+    } finally {
+      setRebuildBusy(false);
+    }
+  };
 
   const runSearch = useMemo(
     () => async (nextOffset: number) => {
@@ -231,6 +292,28 @@ export default function PainsPage() {
                   </button>
                 )}
               </div>
+              {/* Суперюзерская кнопка — дергает POST /maps/admin/rebuild-pain-tags-for-niche.
+                  Полезно когда pilot bulk-парс наполнил БД компаниями через from_cache,
+                  но reviews_ai не переприсваивал pain_tags — этот вызов затригерит
+                  analyze_reviews_for_company для всех компаний ниши + recluster. */}
+              {isSuperuser && niche && (
+                <div className="pt-2 mt-2 border-t border-slate-200 space-y-1">
+                  <button
+                    type="button"
+                    onClick={rebuildNiche}
+                    disabled={rebuildBusy}
+                    className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                    title="Только для суперюзера"
+                  >
+                    {rebuildBusy
+                      ? 'Ставлю в очередь…'
+                      : `⚙ Пересобрать AI-теги для «${niche}»${city ? ` / ${city}` : ''}`}
+                  </button>
+                  {rebuildMsg && (
+                    <p className="text-[11px] text-slate-600">{rebuildMsg}</p>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <div className="text-center space-y-1">
