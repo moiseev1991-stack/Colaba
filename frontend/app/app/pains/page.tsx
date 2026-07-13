@@ -22,6 +22,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import {
+  getCompanyReviews,
   listCompaniesByPain,
   listMapCities,
   listPainTags,
@@ -30,6 +31,7 @@ import {
   type CompaniesByPainListOut,
   type PainKey,
   type PainTagOut,
+  type ReviewOut,
 } from '@/src/services/api/maps';
 
 const PAIN_KEYS: PainKey[] = [
@@ -91,6 +93,16 @@ function PainsPageInner() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   // Открытая карточка в drawer'е
   const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
+  // Раскрытые карточки (inline-отзывы). Ключ = company_id.
+  const [expandedCompanies, setExpandedCompanies] = useState<Record<number, {
+    loading: boolean;
+    reviews: ReviewOut[];
+    total: number;
+    offset: number;
+  }>>({});
+  // Фильтр по источнику отзывов (Y.Карты / 2GIS / Google) — применяется
+  // к inline-отзывам в карточках. 'all' = все.
+  const [reviewSource, setReviewSource] = useState<'all' | 'yandex_maps' | '2gis' | 'google'>('all');
 
   // Суперюзерская кнопка «Пересобрать AI-теги»
   const [isSuperuser, setIsSuperuser] = useState(false);
@@ -243,6 +255,62 @@ function PainsPageInner() {
     [painKey, city, niche, selectedTagIds],
   );
 
+  // Раскрыть/закрыть карточку. При первом раскрытии — fetch отзывов.
+  // Если selectedTagIds задан — берём отзывы с одним из выбранных pain_tag.
+  // Иначе — все негативные.
+  const REVIEWS_PAGE = 5;
+  const toggleExpand = async (companyId: number, initialLoad = true) => {
+    if (expandedCompanies[companyId] && initialLoad) {
+      // Свернуть — просто удалить запись
+      setExpandedCompanies((prev) => {
+        const next = { ...prev };
+        delete next[companyId];
+        return next;
+      });
+      return;
+    }
+    const currentOffset = initialLoad ? 0 : expandedCompanies[companyId]?.offset ?? 0;
+    setExpandedCompanies((prev) => ({
+      ...prev,
+      [companyId]: {
+        loading: true,
+        reviews: prev[companyId]?.reviews ?? [],
+        total: prev[companyId]?.total ?? 0,
+        offset: currentOffset,
+      },
+    }));
+    try {
+      // Если выбраны конкретные теги — берём отзывы с ПЕРВЫМ выбранным тегом.
+      // Мульти-tag сейчас не поддержан на бэке /reviews (только один pain_tag_id).
+      const firstTagId = selectedTagIds.size > 0 ? Array.from(selectedTagIds)[0] : undefined;
+      const filter = {
+        sentiment: 'negative' as const,
+        source: reviewSource !== 'all' ? reviewSource : undefined,
+        pain_tag_id: firstTagId,
+      };
+      const res = await getCompanyReviews(companyId, filter, REVIEWS_PAGE, currentOffset);
+      setExpandedCompanies((prev) => ({
+        ...prev,
+        [companyId]: {
+          loading: false,
+          reviews: initialLoad
+            ? res.items
+            : [...(prev[companyId]?.reviews ?? []), ...res.items],
+          total: res.total,
+          offset: currentOffset + res.items.length,
+        },
+      }));
+    } catch {
+      setExpandedCompanies((prev) => ({
+        ...prev,
+        [companyId]: {
+          ...(prev[companyId] ?? { reviews: [], total: 0, offset: 0 }),
+          loading: false,
+        },
+      }));
+    }
+  };
+
   // Клик по плитке = toggle: добавить/убрать из multi-select и запустить поиск.
   const pickTag = (tag: PainTagOut) => {
     setSelectedTagIds((prev) => {
@@ -365,6 +433,38 @@ function PainsPageInner() {
               ))}
             </datalist>
           </label>
+        </div>
+
+        {/* Фильтр по источнику inline-отзывов в раскрытых карточках */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-500">Источник отзывов в карточках:</span>
+          {([
+            { v: 'all', l: 'Все' },
+            { v: 'yandex_maps', l: 'Я.Карты' },
+            { v: '2gis', l: '2GIS' },
+            { v: 'google', l: 'Google' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              onClick={() => {
+                setReviewSource(opt.v);
+                // Перезагрузить уже раскрытые карточки
+                Object.keys(expandedCompanies).forEach((cid) => {
+                  void toggleExpand(Number(cid), true);
+                  setTimeout(() => void toggleExpand(Number(cid), true), 50);
+                });
+              }}
+              className={
+                'rounded-md border px-2 py-0.5 font-medium ' +
+                (reviewSource === opt.v
+                  ? 'border-slate-900 bg-slate-900 text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100')
+              }
+            >
+              {opt.l}
+            </button>
+          ))}
         </div>
 
         {/* Text-search тегов внутри ниши. Combobox: input + результаты списком.
@@ -759,15 +859,111 @@ function PainsPageInner() {
                     )}
                   </div>
 
-                  {c.top_quote && (
+                  {c.top_quote && !expandedCompanies[c.id] && (
                     <blockquote className="mt-2 border-l-2 border-rose-300 bg-rose-50/40 px-3 py-1 text-xs italic text-slate-700">
                       «{c.top_quote}»
                     </blockquote>
                   )}
 
-                  <div className="mt-2 flex items-center gap-3 text-xs">
+                  {/* Inline-отзывы (раскрывашка). Fetch по клику на кнопку.
+                      Если выбраны tag'и — берём отзывы с pain_tag_id первого выбранного.
+                      Иначе — все негативные. */}
+                  {expandedCompanies[c.id] && (
+                    <div
+                      className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {expandedCompanies[c.id].loading && expandedCompanies[c.id].reviews.length === 0 && (
+                        <p className="text-xs text-slate-500">Загружаем отзывы…</p>
+                      )}
+                      {expandedCompanies[c.id].reviews.map((r) => (
+                        <div
+                          key={r.id}
+                          className="rounded-md border border-slate-200 bg-white p-2 text-xs space-y-1"
+                        >
+                          <div className="flex flex-wrap items-center gap-2 text-[10.5px]">
+                            {r.rating != null && (
+                              <span className="rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-800">
+                                ★ {r.rating}/5
+                              </span>
+                            )}
+                            {r.source && (
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">
+                                {r.source === 'yandex_maps' && 'Я.Карты'}
+                                {r.source === '2gis' && '2GIS'}
+                                {r.source === 'google' && 'Google'}
+                                {!['yandex_maps', '2gis', 'google'].includes(r.source) && r.source}
+                              </span>
+                            )}
+                            {r.posted_at && (
+                              <span className="text-slate-500">
+                                {new Date(r.posted_at).toLocaleDateString('ru-RU', {
+                                  day: 'numeric', month: 'short', year: 'numeric',
+                                })}
+                              </span>
+                            )}
+                            {r.has_owner_reply && (
+                              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
+                                отвечено
+                              </span>
+                            )}
+                            {r.pain_tags && r.pain_tags.length > 0 && (
+                              <span className="text-slate-400 italic truncate">
+                                {r.pain_tags.map((t) => `#${t.label}`).slice(0, 2).join(' ')}
+                              </span>
+                            )}
+                            {r.source_url && (
+                              <a
+                                href={r.source_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-auto text-slate-500 underline underline-offset-2"
+                              >
+                                открыть ↗
+                              </a>
+                            )}
+                          </div>
+                          {r.raw_text && (
+                            <p className="text-slate-700 whitespace-pre-wrap break-words">
+                              «{r.raw_text.length > 280 ? r.raw_text.slice(0, 280) + '…' : r.raw_text}»
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      {expandedCompanies[c.id].total > expandedCompanies[c.id].reviews.length && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void toggleExpand(c.id, false);
+                          }}
+                          disabled={expandedCompanies[c.id].loading}
+                          className="w-full rounded-md border border-slate-300 bg-white py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                        >
+                          {expandedCompanies[c.id].loading
+                            ? 'Загружаем…'
+                            : `Показать ещё (${expandedCompanies[c.id].total - expandedCompanies[c.id].reviews.length} осталось)`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void toggleExpand(c.id, true);
+                      }}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-slate-700 hover:bg-slate-100 font-medium"
+                    >
+                      {expandedCompanies[c.id]
+                        ? '▲ Свернуть отзывы'
+                        : `▼ Показать отзывы (${c.reviews_negative_count || c.reviews_count} шт.)`}
+                    </button>
                     <span className="text-slate-500 italic">
-                      Клик по карточке — открыть детали →
+                      Клик по карточке — детали →
                     </span>
                     <Link
                       href={`/app/leads?company=${c.id}`}
