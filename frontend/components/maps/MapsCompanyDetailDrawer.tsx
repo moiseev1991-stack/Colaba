@@ -56,8 +56,10 @@ interface Props {
   companyId: number | null;
   /** ТЗ Marketing-DM 2026-06-20 §4.1: нужен для кнопки «Найти ЛПР» —
    *  POST /maps/companies/enrich-marketing-dm требует search_id для
-   *  проверки владения. */
-  searchId: number;
+   *  проверки владения. Если null — кнопки, связанные с search_id
+   *  (Найти ЛПР, source-retry) не показываются. Полезно для /app/pains,
+   *  где drawer открывается без контекста конкретного поиска. */
+  searchId: number | null;
   onClose: () => void;
 }
 
@@ -114,7 +116,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   // «○ ВК»/«○ hh.ru»/…). triggeringSource показывает какой сейчас в процессе.
   const [triggeringSource, setTriggeringSource] = useState<EnrichSource | null>(null);
   const handleSourceRetry = useCallback(async (source: EnrichSource) => {
-    if (companyId == null || triggeringSource) return;
+    if (companyId == null || triggeringSource || searchId == null) return;
     setTriggeringSource(source);
     try {
       await enrichCompanySource(companyId, source, searchId);
@@ -153,7 +155,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   }, [companyId, searchId, triggeringSource]);
 
   const handleFindDm = useCallback(async () => {
-    if (companyId == null || dmEnrichPending) return;
+    if (companyId == null || dmEnrichPending || searchId == null) return;
     setDmEnrichPending(true);
     setDmEnrichResult(null);
     setDmSearchExhausted(false);
@@ -348,7 +350,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
               «не нашли», а не заново кнопки. */}
           <DecisionMakersBlock
             decisionMakers={detail.decision_makers ?? []}
-            onFindDm={handleFindDm}
+            onFindDm={searchId != null ? handleFindDm : undefined}
             dmEnrichPending={dmEnrichPending}
             dmEnrichResult={dmEnrichResult}
             searchExhausted={dmSearchExhausted}
@@ -356,7 +358,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             hiringMarketing={detail.hiring_marketing ?? false}
             legalDirectorName={detail.legal?.director_name ?? null}
             legalDirectorPost={detail.legal?.director_post ?? null}
-            onSourceRetry={handleSourceRetry}
+            onSourceRetry={searchId != null ? handleSourceRetry : undefined}
             triggeringSource={triggeringSource}
           />
 
@@ -1477,7 +1479,9 @@ function DecisionMakersBlock({
   triggeringSource,
 }: {
   decisionMakers: DecisionMakerOut[];
-  onFindDm: () => void;
+  /** undefined = кнопка «Найти ЛПР» и retry-плашки не показываются
+   *  (например drawer открыт с /app/pains без search_id). */
+  onFindDm?: () => void;
   dmEnrichPending: boolean;
   dmEnrichResult: string | null;
   /** true после 55с ожидания если поиск ничего не нашёл. UI покажет явно
@@ -1492,6 +1496,11 @@ function DecisionMakersBlock({
   onSourceRetry?: (source: EnrichSourceKey) => void | Promise<void>;
   triggeringSource?: EnrichSourceKey | null;
 }) {
+  // Если родитель не дал onFindDm (напр. drawer открыт из /app/pains
+  // без search_id) и ЛПР нет — прячем весь блок целиком.
+  if (!onFindDm && (!decisionMakers || decisionMakers.length === 0)) {
+    return null;
+  }
   // Пусто → показываем кнопку «Найти ЛПР» или «не нашли», если поиск уже
   // отработал вхолостую (2026-07-10 fix — юзер жаловался на «нажал → пусто»).
   if (!decisionMakers || decisionMakers.length === 0) {
