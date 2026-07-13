@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.135.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.135.1...v1.135.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **maps:** defensive dedup карточек по id + safe key-fallback ([45e847e](https://github.com/moiseev1991-stack/Colaba/commit/45e847e03ded71b1d5f7176d9e89bc2054e47f33))
+
 ## [1.135.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.135.0...v1.135.1) (2026-07-12)
 
 
