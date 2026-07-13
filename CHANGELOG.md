@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.143.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.143.0...v1.143.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **pains:** drill-through auto-click топ-tag + niche = <select> ([82bd9a0](https://github.com/moiseev1991-stack/Colaba/commit/82bd9a03403c5965ce34b1bcb563a1cd566706fb))
+
 # [1.143.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.142.0...v1.143.0) (2026-07-13)
 
 
