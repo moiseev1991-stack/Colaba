@@ -821,28 +821,46 @@ export function MapsSearchResults({
   // делаем на клиенте поверх baseList. Компании без AI-score (или с failed) —
   // в конец, независимо от направления, чтобы сверху всегда был содержательный
   // результат, а не пустые карточки.
+  //
+  // 2026-07-13: defensive dedup по (id ?? company_id) — 12.07 юзер видел
+  // одну карточку дважды при том что selectedIds не дублировался. Каждый
+  // отдельный setCompanies/liveCompanies источник корректен, но добавляем
+  // страховку на случай гонок при переключении с SSE на серверную выдачу.
   const renderList: any[] = (() => {
-    if (filter.sort_by !== 'ai_score_desc' && filter.sort_by !== 'ai_score_asc') {
-      return baseList;
+    const sorted = (() => {
+      if (filter.sort_by !== 'ai_score_desc' && filter.sort_by !== 'ai_score_asc') {
+        return baseList;
+      }
+      const direction = filter.sort_by === 'ai_score_asc' ? 1 : -1;
+      const withScore = baseList
+        .map((c) => {
+          const id = (c.id ?? c.company_id) as number | undefined;
+          const a = typeof id === 'number' ? aiAnalyses.get(id) : undefined;
+          const score = a?.status === 'done' ? (a.score ?? null) : null;
+          return { c, score };
+        });
+      return withScore
+        .slice()
+        .sort((x, y) => {
+          // null/без оценки → в конец
+          if (x.score == null && y.score == null) return 0;
+          if (x.score == null) return 1;
+          if (y.score == null) return -1;
+          return (x.score - y.score) * direction;
+        })
+        .map((it) => it.c);
+    })();
+    const seen = new Set<number>();
+    const out: any[] = [];
+    for (const c of sorted) {
+      const id = (c.id ?? c.company_id) as number | undefined;
+      if (typeof id === 'number') {
+        if (seen.has(id)) continue;
+        seen.add(id);
+      }
+      out.push(c);
     }
-    const direction = filter.sort_by === 'ai_score_asc' ? 1 : -1;
-    const withScore = baseList
-      .map((c) => {
-        const id = (c.id ?? c.company_id) as number | undefined;
-        const a = typeof id === 'number' ? aiAnalyses.get(id) : undefined;
-        const score = a?.status === 'done' ? (a.score ?? null) : null;
-        return { c, score };
-      });
-    return withScore
-      .slice()
-      .sort((x, y) => {
-        // null/без оценки → в конец
-        if (x.score == null && y.score == null) return 0;
-        if (x.score == null) return 1;
-        if (y.score == null) return -1;
-        return (x.score - y.score) * direction;
-      })
-      .map((it) => it.c);
+    return out;
   })();
 
   function handleExport() {
@@ -1756,12 +1774,14 @@ export function MapsSearchResults({
               )}
             </div>
             <ul className="reveal-stack space-y-2.5">
-              {renderList.map((c: any) => {
+              {renderList.map((c: any, idx: number) => {
                 const id = c.id ?? c.company_id;
                 const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;
+                // fallback-key чтобы React не столкнулся с undefined у нескольких
+                // карточек (SSE-компания без сохранённого id) — редко, но возможно
                 return (
                   <MapsCompanyCard
-                    key={id}
+                    key={id ?? `pos-${idx}-${c.name ?? ''}`}
                     company={c}
                     onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
                     onAddToList={id != null ? onAddToList : undefined}
