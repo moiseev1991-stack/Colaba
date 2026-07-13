@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.143.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.142.0...v1.143.0) (2026-07-13)
+
+
+### Features
+
+* **pains+admin:** inline-отзывы в карточке + массовый парсинг матрицы ([625a56c](https://github.com/moiseev1991-stack/Colaba/commit/625a56c4d85ee097bf54b83b7e4c205f8440e4f8))
+
 # [1.142.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.141.0...v1.142.0) (2026-07-13)
 
 
