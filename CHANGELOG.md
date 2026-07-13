@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.139.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.138.0...v1.139.0) (2026-07-13)
+
+
+### Features
+
+* **admin:** /admin/data-inventory — таблица «что есть в БД» ([784ee23](https://github.com/moiseev1991-stack/Colaba/commit/784ee23968b277179b7f3d150bbabf3be7a6a537))
+
 # [1.138.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.137.0...v1.138.0) (2026-07-13)
 
 
