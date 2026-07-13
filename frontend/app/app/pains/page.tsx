@@ -20,6 +20,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
+import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import {
   listCompaniesByPain,
   listMapCities,
@@ -83,6 +84,10 @@ function PainsPageInner() {
 
   // Батч «Добавить всех в список»
   const [addToListOpen, setAddToListOpen] = useState(false);
+  // Выбранные компании чекбоксами (для батча в список)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // Открытая карточка в drawer'е
+  const [drawerCompanyId, setDrawerCompanyId] = useState<number | null>(null);
 
   // Суперюзерская кнопка «Пересобрать AI-теги»
   const [isSuperuser, setIsSuperuser] = useState(false);
@@ -565,106 +570,180 @@ function PainsPageInner() {
 
       {data && data.items.length > 0 && (
         <>
-          {/* Батч-действие — быстрая кнопка добавить всех найденных в список */}
+          {/* Батч-панель: суммарная строка + чекбокс «выбрать всех видимых» +
+              кнопка добавить в список (выбранных, а если ничего не выбрано —
+              всех текущей страницы). */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-            <span className="text-slate-600">
-              {data.total} {data.total === 1 ? 'компания' : 'компаний'} с болью «{activePainLabel}» —
-              можно закинуть в список для рассылки.
-            </span>
+            <div className="flex flex-wrap items-center gap-3 text-slate-700">
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={
+                    data.items.length > 0 &&
+                    data.items.every((c) => selectedIds.has(c.id))
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedIds(
+                        (prev) => new Set([...prev, ...data.items.map((c) => c.id)]),
+                      );
+                    } else {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        data.items.forEach((c) => next.delete(c.id));
+                        return next;
+                      });
+                    }
+                  }}
+                  className="h-4 w-4 accent-rose-600"
+                />
+                <span className="text-xs">Выбрать всех видимых</span>
+              </label>
+              <span className="text-xs text-slate-500">
+                {data.total} {data.total === 1 ? 'компания' : 'компаний'} · выбрано{' '}
+                <b className="text-slate-800">{selectedIds.size}</b>
+              </span>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100"
+                >
+                  × Сбросить
+                </button>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setAddToListOpen(true)}
-              className="rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700"
+              disabled={selectedIds.size === 0 && data.items.length === 0}
+              className="rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:bg-slate-400"
             >
-              + Добавить {data.items.length} видимых в список
-              {data.total > data.items.length && (
-                <span className="ml-1 opacity-70">
-                  (из {data.total} — только текущая страница)
-                </span>
-              )}
+              + Добавить в список
+              {selectedIds.size > 0
+                ? ` (${selectedIds.size} выбранных)`
+                : ` (${data.items.length} видимых)`}
             </button>
           </div>
 
           <div className="grid gap-3">
-            {data.items.map((c) => (
-              <article
-                key={c.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <h3 className="text-base font-semibold text-slate-900 truncate">{c.name}</h3>
-                      {c.niche && <span className="text-xs text-slate-500">{c.niche}</span>}
-                      {c.city && (
-                        <span className="text-xs text-slate-500">· {c.city}</span>
+            {data.items.map((c) => {
+              const isSelected = selectedIds.has(c.id);
+              return (
+                <article
+                  key={c.id}
+                  onClick={(e) => {
+                    // Клик по чекбоксу/ссылке/кнопке — не открывать drawer
+                    const t = e.target as HTMLElement;
+                    if (t.closest('a, button, input, label')) return;
+                    setDrawerCompanyId(c.id);
+                  }}
+                  className={
+                    'group cursor-pointer rounded-xl border p-4 shadow-sm hover:shadow-md transition-all ' +
+                    (isSelected
+                      ? 'border-rose-300 bg-rose-50/40 ring-2 ring-rose-200'
+                      : 'border-slate-200 bg-white')
+                  }
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(c.id)) next.delete(c.id);
+                            else next.add(c.id);
+                            return next;
+                          });
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 h-4 w-4 accent-rose-600"
+                        title={isSelected ? 'Убрать из выбора' : 'Добавить в выбор'}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <h3 className="text-base font-semibold text-slate-900 truncate group-hover:text-rose-800">
+                            {c.name}
+                          </h3>
+                          {c.niche && <span className="text-xs text-slate-500">{c.niche}</span>}
+                          {c.city && (
+                            <span className="text-xs text-slate-500">· {c.city}</span>
+                          )}
+                        </div>
+                        {c.address && (
+                          <div className="mt-0.5 text-xs text-slate-500 truncate">{c.address}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 text-xs text-slate-500">
+                      {c.rating !== null && (
+                        <span>
+                          ★ {c.rating.toFixed(1)}{' '}
+                          <span className="text-slate-400">/ {c.reviews_count} отз.</span>
+                        </span>
+                      )}
+                      {c.lead_temperature !== null && (
+                        <span
+                          className={
+                            c.lead_temperature >= 70
+                              ? 'font-medium text-rose-600'
+                              : c.lead_temperature >= 40
+                              ? 'font-medium text-amber-600'
+                              : 'text-slate-400'
+                          }
+                        >
+                          🔥 {c.lead_temperature}
+                        </span>
                       )}
                     </div>
-                    {c.address && (
-                      <div className="mt-0.5 text-xs text-slate-500 truncate">{c.address}</div>
-                    )}
                   </div>
-                  <div className="flex flex-col items-end gap-1 text-xs text-slate-500">
-                    {c.rating !== null && (
-                      <span>
-                        ★ {c.rating.toFixed(1)}{' '}
-                        <span className="text-slate-400">/ {c.reviews_count} отз.</span>
-                      </span>
-                    )}
-                    {c.lead_temperature !== null && (
-                      <span
-                        className={
-                          c.lead_temperature >= 70
-                            ? 'font-medium text-rose-600'
-                            : c.lead_temperature >= 40
-                            ? 'font-medium text-amber-600'
-                            : 'text-slate-400'
-                        }
-                      >
-                        🔥 {c.lead_temperature}
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                  <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
-                    {activePainLabel} · {c.pain_mention_count} упом.
-                  </span>
-                  {c.reviews_negative_count > 0 && (
-                    <span className="text-slate-500">
-                      Негатив: {c.reviews_negative_count}
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
+                      {activePainLabel} · {c.pain_mention_count} упом.
                     </span>
+                    {c.reviews_negative_count > 0 && (
+                      <span className="text-slate-500">
+                        Негатив: {c.reviews_negative_count}
+                      </span>
+                    )}
+                    {c.phone && <span className="text-slate-500">{c.phone}</span>}
+                    {c.website && (
+                      <a
+                        href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-slate-600 underline underline-offset-2"
+                      >
+                        {c.website}
+                      </a>
+                    )}
+                  </div>
+
+                  {c.top_quote && (
+                    <blockquote className="mt-2 border-l-2 border-rose-300 bg-rose-50/40 px-3 py-1 text-xs italic text-slate-700">
+                      «{c.top_quote}»
+                    </blockquote>
                   )}
-                  {c.phone && <span className="text-slate-500">{c.phone}</span>}
-                  {c.website && (
-                    <a
-                      href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-slate-600 underline underline-offset-2"
+
+                  <div className="mt-2 flex items-center gap-3 text-xs">
+                    <span className="text-slate-500 italic">
+                      Клик по карточке — открыть детали →
+                    </span>
+                    <Link
+                      href={`/app/leads?company=${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-auto text-slate-600 underline underline-offset-2 hover:text-slate-900"
                     >
-                      {c.website}
-                    </a>
-                  )}
-                </div>
-
-                {c.top_quote && (
-                  <blockquote className="mt-2 border-l-2 border-rose-300 bg-rose-50/40 px-3 py-1 text-xs italic text-slate-700">
-                    «{c.top_quote}»
-                  </blockquote>
-                )}
-
-                <div className="mt-2 text-xs">
-                  <Link
-                    href={`/app/leads?company=${c.id}`}
-                    className="text-slate-600 underline underline-offset-2 hover:text-slate-900"
-                  >
-                    Открыть в «Лидах» →
-                  </Link>
-                </div>
-              </article>
-            ))}
+                      Открыть в «Лидах» →
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
 
             {(data.total > offset + data.items.length || offset > 0) && (
               <div className="flex items-center justify-center gap-3 pt-2 pb-6">
@@ -695,14 +774,30 @@ function PainsPageInner() {
 
       <AddToListModal
         open={addToListOpen}
-        companyIds={data?.items.map((c) => c.id) ?? []}
+        companyIds={
+          selectedIds.size > 0
+            ? Array.from(selectedIds)
+            : (data?.items.map((c) => c.id) ?? [])
+        }
         defaultListName={
           data
             ? `Боль «${activePainLabel}»${niche ? ` — ${niche}` : ''}${city ? ` / ${city}` : ''}`
             : undefined
         }
         onClose={() => setAddToListOpen(false)}
-        onDone={() => setAddToListOpen(false)}
+        onDone={() => {
+          setAddToListOpen(false);
+          setSelectedIds(new Set());
+        }}
+      />
+
+      {/* Detail drawer — открывается кликом по карточке. searchId=null:
+          drawer работает без контекста поиска, «Найти ЛПР» и source-retry
+          не показываются. */}
+      <MapsCompanyDetailDrawer
+        companyId={drawerCompanyId}
+        searchId={null}
+        onClose={() => setDrawerCompanyId(null)}
       />
     </div>
   );
