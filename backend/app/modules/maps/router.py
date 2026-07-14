@@ -2795,6 +2795,110 @@ async def admin_rebuild_pain_tags_for_niche(
     }
 
 
+@router.get("/admin/rebuild-pain-tags-status")
+async def admin_rebuild_pain_tags_status(
+    niche: str = Query(..., min_length=2, max_length=100),
+    city: str | None = Query(default=None, max_length=100),
+    _: "User" = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Прогресс AI-разметки болей для (ниша, город). Фронт поллит этот
+    endpoint пока идёт recluster, чтобы юзер видел «65 из 168 компаний
+    обработано» вместо глухого «подожди 5-8 минут» (юзер 2026-07-14).
+
+    Считаем:
+      - companies_total: сколько компаний в БД (ниша+город)
+      - reviews_total: сколько отзывов у этих компаний
+      - reviews_analyzed: сколько отзывов уже прошло AI (ai_processed_at != NULL)
+      - active_tags: сколько активных pain_tags для этой (ниша+город)
+      - pain_scores: сколько company_pain_scores для этих компаний
+
+    percent = reviews_analyzed / reviews_total. Когда 100% + прошло
+    ~3 мин (countdown recluster_pains_for_niche_task) — плитка готова.
+    """
+    from app.models.maps import Review
+    from app.models.pain_tag import CompanyPainScore, PainTag
+
+    company_filter = [Company.niche == niche]
+    if city:
+        company_filter.append(Company.city == city)
+
+    companies_total = int(
+        (await db.execute(
+            select(sa_func.count(Company.id)).where(*company_filter)
+        )).scalar_one() or 0
+    )
+
+    if companies_total == 0:
+        return {
+            "niche": niche,
+            "city": city,
+            "companies_total": 0,
+            "reviews_total": 0,
+            "reviews_analyzed": 0,
+            "percent": 0,
+            "active_tags": 0,
+            "pain_scores": 0,
+            "ready": True,
+            "hint": "В БД нет компаний с этой связкой.",
+        }
+
+    company_ids_subq = select(Company.id).where(*company_filter).scalar_subquery()
+
+    reviews_total = int(
+        (await db.execute(
+            select(sa_func.count(Review.id)).where(
+                Review.company_id.in_(company_ids_subq)
+            )
+        )).scalar_one() or 0
+    )
+    reviews_analyzed = int(
+        (await db.execute(
+            select(sa_func.count(Review.id)).where(
+                Review.company_id.in_(company_ids_subq),
+                Review.ai_processed_at.is_not(None),
+            )
+        )).scalar_one() or 0
+    )
+
+    tag_filter = [PainTag.status == "active", PainTag.niche == niche]
+    if city:
+        tag_filter.append(or_(PainTag.city == city, PainTag.city.is_(None)))
+    active_tags = int(
+        (await db.execute(select(sa_func.count(PainTag.id)).where(*tag_filter))).scalar_one() or 0
+    )
+
+    pain_scores = int(
+        (await db.execute(
+            select(sa_func.count(CompanyPainScore.id)).where(
+                CompanyPainScore.company_id.in_(company_ids_subq)
+            )
+        )).scalar_one() or 0
+    )
+
+    percent = int(reviews_analyzed * 100 / reviews_total) if reviews_total > 0 else 100
+    ready = percent >= 100 and pain_scores > 0
+    return {
+        "niche": niche,
+        "city": city,
+        "companies_total": companies_total,
+        "reviews_total": reviews_total,
+        "reviews_analyzed": reviews_analyzed,
+        "percent": percent,
+        "active_tags": active_tags,
+        "pain_scores": pain_scores,
+        "ready": ready,
+        "hint": (
+            f"AI обработал {reviews_analyzed}/{reviews_total} отзывов ({percent}%). "
+            + (
+                f"Активных тегов: {active_tags}, связей компания↔боль: {pain_scores}."
+                if ready
+                else "Recluster завершится через ~3 мин после 100%."
+            )
+        ),
+    }
+
+
 @router.post("/admin/requeue-stale-searches")
 @limiter.limit("2/minute")
 async def admin_requeue_stale_searches(
