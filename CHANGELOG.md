@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.146.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.3...v1.146.0) (2026-07-14)
+
+
+### Features
+
+* **pains+kp:** раскрыть длинный отзыв + площадка в цитате КП ([fb4eece](https://github.com/moiseev1991-stack/Colaba/commit/fb4eece977aca71845167a43ba55bce14ba6e984))
+
 ## [1.145.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.2...v1.145.3) (2026-07-14)
 
 
