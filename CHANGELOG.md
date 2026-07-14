@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.146.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.146.0...v1.146.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **maps:** не показывать EmptyResult при all-cache-hit парсе ([ba1e88c](https://github.com/moiseev1991-stack/Colaba/commit/ba1e88c27661addc380050d3226033dea41fbf68))
+
 # [1.146.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.3...v1.146.0) (2026-07-14)
 
 
