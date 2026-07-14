@@ -907,8 +907,20 @@ function PainsPageInner() {
                   </div>
 
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
-                      {activePainLabel} · {c.pain_mention_count} упом.
+                    {/* 2026-07-14: в pill'е компании показываем реальные
+                        сматчнутые лейблы PainTag'ов (data.pain_labels) — те,
+                        что AI действительно нашёл в отзывах, а не generic
+                        pain_key. Юзер видит суть «за что вопрос». Fallback
+                        на activePainLabel если бэк не вернул детализацию. */}
+                    <span
+                      className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700"
+                      title={data.pain_labels.join(', ')}
+                    >
+                      {(selectedTagIds.size > 0 || !data.pain_labels?.length)
+                        ? activePainLabel
+                        : data.pain_labels.slice(0, 2).join(', ') +
+                          (data.pain_labels.length > 2 ? ` +${data.pain_labels.length - 2}` : '')}
+                      {' · '}{c.pain_mention_count} упом.
                     </span>
                     {c.reviews_negative_count > 0 && (
                       <span className="text-slate-500">
