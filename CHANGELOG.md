@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.145.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.1...v1.145.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **maps:** диагностика пустых yandex_maps парсов + честный текст ошибки ([c3bf33f](https://github.com/moiseev1991-stack/Colaba/commit/c3bf33fc41e5b68d8271396da4eafa239b4f51ef))
+* **pains:** CityCombobox для города + свободно стираемое поле «Боль» ([e7286b7](https://github.com/moiseev1991-stack/Colaba/commit/e7286b741a889ea268614c2771a29fdee65e9124))
+
 ## [1.145.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.0...v1.145.1) (2026-07-14)
 
 
