@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.145.3](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.2...v1.145.3) (2026-07-14)
+
+
+### Bug Fixes
+
+* **pains:** pill компании показывает реально сматчнутые PainTag-лейблы ([9c5cbeb](https://github.com/moiseev1991-stack/Colaba/commit/9c5cbeb5c9858803f99db1d1dd777e0341248df1))
+
 ## [1.145.2](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.1...v1.145.2) (2026-07-14)
 
 
