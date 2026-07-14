@@ -22,10 +22,10 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { DraftEmailPopover, type CompanyForDraft } from '@/components/pains/DraftEmailPopover';
+import { CityCombobox } from '@/components/CityCombobox';
 import {
   getCompanyReviews,
   listCompaniesByPain,
-  listMapCities,
   listPainTags,
   nicheSuggestions,
   PAIN_KEY_LABELS,
@@ -64,6 +64,13 @@ function PainsPageInner() {
   const initialCity = searchParams?.get('city') ?? '';
 
   const [painKey, setPainKey] = useState<PainKey>('call_no_answer');
+  // 2026-07-14: свободный текст в поле «Боль» — юзер может стирать/писать.
+  // Инициализируем label'ом текущего painKey. При совпадении текста с
+  // одним из PAIN_KEY_LABELS обновляем painKey; иначе painKey не меняется
+  // (при runSearch пойдёт последний валидный).
+  const [painInput, setPainInput] = useState<string>(
+    PAIN_KEY_LABELS['call_no_answer'],
+  );
   // Multi-select плиток: юзер может кликать несколько тегов и увидит
   // компании у которых есть ХОТЯ БЫ ОДИН из выбранных (OR).
   // Пусто = используем dropdown pain_key.
@@ -71,7 +78,6 @@ function PainsPageInner() {
   const [city, setCity] = useState<string>(initialCity);
   const [niche, setNiche] = useState<string>(initialNiche);
 
-  const [cities, setCities] = useState<string[]>([]);
   const [niches, setNiches] = useState<string[]>([]);
 
   const [data, setData] = useState<CompaniesByPainListOut | null>(null);
@@ -115,7 +121,8 @@ function PainsPageInner() {
   const [rebuildMsg, setRebuildMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    listMapCities().then(setCities).catch(() => setCities([]));
+    // 2026-07-14: список городов — из локального справочника lib/cities.ts
+    // через <CityCombobox />. listMapCities() больше не дёргаем.
     nicheSuggestions('').then(setNiches).catch(() => setNiches([]));
   }, []);
 
@@ -405,7 +412,7 @@ function PainsPageInner() {
                 </button>
               </div>
             ) : (
-              // 2026-07-14: combobox с датасписком — можно выбрать из
+              // 2026-07-14: combobox с datalist — можно выбрать из
               // фиксированных 8 pain_key ИЛИ вписать текстом. Свободный
               // ввод пока не влияет на поиск (нет back-end матча по
               // произвольной боли) — юзер должен либо выбрать из списка,
@@ -415,9 +422,10 @@ function PainsPageInner() {
                 <input
                   list="pains-key-options"
                   type="text"
-                  value={PAIN_KEY_LABELS[painKey]}
+                  value={painInput}
                   onChange={(e) => {
                     const v = e.target.value;
+                    setPainInput(v);
                     const matched = (Object.entries(PAIN_KEY_LABELS) as [PainKey, string][])
                       .find(([, label]) => label === v);
                     if (matched) setPainKey(matched[0]);
@@ -436,21 +444,27 @@ function PainsPageInner() {
 
           <label className="text-sm">
             <span className="mb-1 block font-medium text-slate-700">Город</span>
-            {/* 2026-07-14: combobox город — выбор из списка ИЛИ ввод текстом
-                (напр. города не из dropdown). Пустая строка = «любой». */}
-            <input
-              list="pains-city-options"
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="— любой — или впиши текстом"
-              className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm placeholder:text-slate-400"
-            />
-            <datalist id="pains-city-options">
-              {cities.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            {/* 2026-07-14: используем общий <CityCombobox /> из lib/cities.ts
+                (группировка по регионам, поиск, keyboard-навигация) —
+                как в MapsSearchForm. yandexId нам тут не нужен. */}
+            <div className="flex items-center gap-1">
+              <CityCombobox
+                city={city}
+                onCityChange={(newCity) => setCity(newCity)}
+                placeholder="— любой —"
+                className="flex-1"
+              />
+              {city && (
+                <button
+                  type="button"
+                  onClick={() => setCity('')}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-100"
+                  title="Убрать город"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </label>
 
           <label className="text-sm">
