@@ -2479,7 +2479,7 @@ async def admin_recluster_niche(
         regex="^(negative|positive)$",
         description="negative = боли, positive = сильные стороны",
     ),
-    _: "User" = Depends(require_superuser),
+    current_user: "User" = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Ручной триггер AI-разбора болей/сильных сторон для ниши/города поиска.
@@ -2500,7 +2500,17 @@ async def admin_recluster_niche(
     автоматически. positive-теги хранятся отдельно от negative и не
     конфликтуют по UNIQUE (расширенный констрейнт включает sentiment).
     """
-    search = await _get_owned_search(db, search_id, user_id)
+    # 2026-07-14: superuser может recluster'ить ЛЮБОЙ поиск, даже чужой
+    # (напр. созданный ботом sir.nikam через bulk_niche_parse.py). Прежде
+    # использовали _get_owned_search → NameError на user_id (регрессия) и
+    # 403 для чужих. Теперь просто db.get + 404 если id не существует.
+    _ = current_user  # проверен require_superuser
+    search = await db.get(MapSearch, search_id)
+    if search is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Поиск #{search_id} не найден.",
+        )
     if not search.niche or not search.city:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
