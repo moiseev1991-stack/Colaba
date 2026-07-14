@@ -114,6 +114,10 @@ function PainsPageInner() {
   // Фильтр по источнику отзывов (Y.Карты / 2GIS / Google) — применяется
   // к inline-отзывам в карточках. 'all' = все.
   const [reviewSource, setReviewSource] = useState<'all' | 'yandex_maps' | '2gis' | 'google'>('all');
+  // 2026-07-14: развёрнутые отзывы (клик по «Читать полностью»). Set по id
+  // отзыва — юзеру часто нужно увидеть весь текст (в pill'е обрезано на
+  // 280 символов, у длинных «биографий» отрезалась суть).
+  const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
 
   // Суперюзерская кнопка «Пересобрать AI-теги»
   const [isSuperuser, setIsSuperuser] = useState(false);
@@ -1006,11 +1010,37 @@ function PainsPageInner() {
                               </a>
                             )}
                           </div>
-                          {r.raw_text && (
-                            <p className="text-slate-700 whitespace-pre-wrap break-words">
-                              «{r.raw_text.length > 280 ? r.raw_text.slice(0, 280) + '…' : r.raw_text}»
-                            </p>
-                          )}
+                          {r.raw_text && (() => {
+                            const isLong = r.raw_text.length > 280;
+                            const isExpanded = expandedReviews.has(r.id);
+                            const shown = isLong && !isExpanded
+                              ? r.raw_text.slice(0, 280) + '…'
+                              : r.raw_text;
+                            return (
+                              <div>
+                                <p className="text-slate-700 whitespace-pre-wrap break-words">
+                                  «{shown}»
+                                </p>
+                                {isLong && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedReviews((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(r.id)) next.delete(r.id);
+                                        else next.add(r.id);
+                                        return next;
+                                      });
+                                    }}
+                                    className="mt-0.5 text-[11px] font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
+                                  >
+                                    {isExpanded ? '× Свернуть' : `Читать полностью (+${r.raw_text.length - 280} симв.)`}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
                       {expandedCompanies[c.id].total > expandedCompanies[c.id].reviews.length && (

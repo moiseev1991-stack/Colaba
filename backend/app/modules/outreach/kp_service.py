@@ -47,6 +47,7 @@ from app.modules.outreach.kp_prompts import (
     KP_FACT_CUSTOM_PAIN_LINE,
     KP_FACT_PAIN_LINE,
     KP_FACT_QUOTE_LINE,
+    KP_FACT_QUOTE_WITH_SOURCE_LINE,
     KP_FACT_RATING_LINE,
     KP_FACT_RATING_NO_AVG_LINE,
     KP_FACT_SITE_ENTRY_LINE,
@@ -62,6 +63,25 @@ from app.modules.outreach.kp_prompts import (
 from app.modules.reviews_ai.llm import pick_assistant_id
 
 logger = logging.getLogger(__name__)
+
+
+# 2026-07-14: маппинг «код источника → человеческое название площадки»
+# для подстановки в промпт КП. LLM в письме упоминает эту площадку —
+# юзер видит «в вашем отзыве на Яндекс.Картах…» и понимает что это
+# реальный публичный отзыв, а не выдумка.
+_SOURCE_LABELS: dict[str, str] = {
+    "yandex_maps": "Яндекс.Карты",
+    "2gis": "2GIS",
+    "google": "Google Карты",
+    "google_maps": "Google Карты",
+    "prodoctorov": "ПроДокторов",
+}
+
+
+def _source_label_of(source: str | None) -> str | None:
+    if not source:
+        return None
+    return _SOURCE_LABELS.get(str(source).strip().lower())
 
 
 # --- Контекст КП -------------------------------------------------------------
@@ -341,6 +361,7 @@ def build_kp_prompt(
     niche_avg_rating: float | None,
     additional_pains: list[dict] | None = None,
     custom_pain: dict | None = None,
+    top_quote_source: str | None = None,
 ) -> str:
     """Чистая функция: собирает итоговый текст промпта для КП по компании.
 
@@ -368,7 +389,17 @@ def build_kp_prompt(
     if top_quote:
         # ограничим длину цитаты, чтобы промпт не разбухал на пьесах в отзывах
         safe_quote = top_quote.strip().replace("\n", " ")[:280]
-        facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_quote))
+        # 2026-07-14: если известен источник — подставляем строку с
+        # площадкой, чтобы LLM написала «в вашем отзыве на Яндекс.Картах».
+        source_label = _source_label_of(top_quote_source)
+        if source_label:
+            facts.append(
+                KP_FACT_QUOTE_WITH_SOURCE_LINE.format(
+                    source_label=source_label, top_quote=safe_quote,
+                )
+            )
+        else:
+            facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_quote))
     # 2026-07-11 multi-pain: 2-я и 3-я боль, если юзер выбрал несколько.
     # LLM в KP_PROMPT_TAIL получает инструкцию затронуть КАЖДУЮ.
     for extra in additional_pains or []:
@@ -383,7 +414,16 @@ def build_kp_prompt(
             )
         if extra_quote:
             safe_extra_quote = str(extra_quote).strip().replace("\n", " ")[:280]
-            facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_extra_quote))
+            extra_source_label = _source_label_of(extra.get("source"))
+            if extra_source_label:
+                facts.append(
+                    KP_FACT_QUOTE_WITH_SOURCE_LINE.format(
+                        source_label=extra_source_label,
+                        top_quote=safe_extra_quote,
+                    )
+                )
+            else:
+                facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_extra_quote))
     # 2026-07-14: юзерская «своя боль» — отдельная строка-факт. LLM
     # знает, что это не цитата отзыва, а гипотеза отправителя, и в
     # структуре письма упоминает её как «мы видим у похожих компаний».
@@ -999,6 +1039,9 @@ async def generate_kp(
             "label": p.label,
             "mention_count": p.mention_count,
             "top_quote": p.top_quote,
+            # 2026-07-14: source нужен build_kp_prompt чтобы подставить
+            # площадку в цитату («в отзыве на 2GIS…»).
+            "source": p.source,
         }
         for p in selected_pains[1:]
         if p.top_quote
@@ -1061,6 +1104,7 @@ async def generate_kp(
             niche_avg_rating=niche_avg_rating,
             additional_pains=additional_pains_for_prompt,
             custom_pain=custom_pain,
+            top_quote_source=primary_pain.source if has_pain_with_quote else None,
         )
 
     # 7. LLM
