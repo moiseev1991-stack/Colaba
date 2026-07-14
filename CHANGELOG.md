@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.145.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.144.0...v1.145.0) (2026-07-14)
+
+
+### Features
+
+* **kp:** своя боль в KpModal + combobox фильтры + 4hods в disabled ([c9a3dfa](https://github.com/moiseev1991-stack/Colaba/commit/c9a3dfa5bbd79862bba4ddf31e9286997fd5c329))
+
 # [1.144.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.143.1...v1.144.0) (2026-07-14)
 
 
