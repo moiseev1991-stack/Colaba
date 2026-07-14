@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.144.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.143.1...v1.144.0) (2026-07-14)
+
+
+### Features
+
+* **outreach:** email-шаблоны с привязкой к боли + попап «Написать» на /app/pains ([a6bee55](https://github.com/moiseev1991-stack/Colaba/commit/a6bee55605fc2f102084d53220ff0db2bc779fdd))
+
 ## [1.143.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.143.0...v1.143.1) (2026-07-13)
 
 
