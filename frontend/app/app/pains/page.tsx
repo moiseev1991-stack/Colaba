@@ -21,6 +21,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
+import { DraftEmailPopover, type CompanyForDraft } from '@/components/pains/DraftEmailPopover';
 import {
   getCompanyReviews,
   listCompaniesByPain,
@@ -89,6 +90,10 @@ function PainsPageInner() {
 
   // Батч «Добавить всех в список»
   const [addToListOpen, setAddToListOpen] = useState(false);
+  // Popover «✉ Написать» — либо для одной компании (companies=[c]),
+  // либо для батча (companies=selected/visible).
+  const [draftCompanies, setDraftCompanies] = useState<CompanyForDraft[]>([]);
+  const [draftOpen, setDraftOpen] = useState(false);
   // Выбранные компании чекбоксами (для батча в список)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   // Открытая карточка в drawer'е
@@ -766,17 +771,35 @@ function PainsPageInner() {
                 </button>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setAddToListOpen(true)}
-              disabled={selectedIds.size === 0 && data.items.length === 0}
-              className="rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:bg-slate-400"
-            >
-              + Добавить в список
-              {selectedIds.size > 0
-                ? ` (${selectedIds.size} выбранных)`
-                : ` (${data.items.length} видимых)`}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const list = selectedIds.size > 0
+                    ? data.items.filter((c) => selectedIds.has(c.id))
+                    : data.items;
+                  setDraftCompanies(list as CompanyForDraft[]);
+                  setDraftOpen(true);
+                }}
+                disabled={data.items.length === 0}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50"
+                title="Открыть шаблон письма (можно копировать/mailto)"
+              >
+                ✉ Написать
+                {selectedIds.size > 0 ? ` (${selectedIds.size})` : ` (${data.items.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddToListOpen(true)}
+                disabled={selectedIds.size === 0 && data.items.length === 0}
+                className="rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:bg-slate-400"
+              >
+                + Добавить в список
+                {selectedIds.size > 0
+                  ? ` (${selectedIds.size} выбранных)`
+                  : ` (${data.items.length} видимых)`}
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-3">
@@ -979,6 +1002,18 @@ function PainsPageInner() {
                         ? '▲ Свернуть отзывы'
                         : `▼ Показать отзывы (${c.reviews_negative_count || c.reviews_count} шт.)`}
                     </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDraftCompanies([c as CompanyForDraft]);
+                        setDraftOpen(true);
+                      }}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-slate-700 hover:bg-slate-100 font-medium"
+                      title="Открыть шаблон письма для этой компании"
+                    >
+                      ✉ Написать
+                    </button>
                     <span className="text-slate-500 italic">
                       Клик по карточке — детали →
                     </span>
@@ -1047,6 +1082,17 @@ function PainsPageInner() {
         companyId={drawerCompanyId}
         searchId={null}
         onClose={() => setDrawerCompanyId(null)}
+      />
+
+      {/* Popover «Написать» — шаблон + подставленные плейсхолдеры,
+          копирование / mailto. Работает как для одной компании (клик по
+          кнопке в карточке), так и для батча (панель сверху). */}
+      <DraftEmailPopover
+        open={draftOpen}
+        companies={draftCompanies}
+        painLabel={activePainLabel}
+        painKey={selectedTagIds.size > 0 ? null : painKey}
+        onClose={() => setDraftOpen(false)}
       />
     </div>
   );

@@ -7,7 +7,7 @@ API-слое. Паттерн аналогичен user_presets/service.py.
 
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_outreach_template import UserOutreachTemplate
@@ -21,16 +21,29 @@ async def list_for_user(
     db: AsyncSession,
     user_id: int,
     module: str | None = None,
+    pain_key: str | None = None,
 ) -> list[UserOutreachTemplate]:
     """Шаблоны пользователя, новые сверху.
 
-    module=None — все модули; иначе фильтр по конкретному ('seo', 'leads', ...).
+    - module=None — все модули; иначе фильтр по конкретному ('seo', 'leads', ...).
+    - pain_key=None — все шаблоны без фильтра;
+      pain_key='X' — только шаблоны с этой болью ИЛИ универсальные
+      (pain_key IS NULL). Логика такая, чтобы юзер на /app/pains для
+      выбранной боли увидел свои специальные шаблоны + мог использовать
+      общие.
     """
     stmt = select(UserOutreachTemplate).where(
         UserOutreachTemplate.user_id == user_id
     )
     if module is not None:
         stmt = stmt.where(UserOutreachTemplate.module == module)
+    if pain_key is not None:
+        stmt = stmt.where(
+            or_(
+                UserOutreachTemplate.pain_key == pain_key,
+                UserOutreachTemplate.pain_key.is_(None),
+            )
+        )
     stmt = stmt.order_by(UserOutreachTemplate.created_at.desc())
     rows = (await db.execute(stmt)).scalars().all()
     return list(rows)
@@ -64,6 +77,7 @@ async def create(
         subject=payload.subject.strip(),
         body=payload.body.strip(),
         module=(payload.module or "seo").strip() or "seo",
+        pain_key=(payload.pain_key.strip() if payload.pain_key else None) or None,
     )
     db.add(tpl)
     await db.commit()
@@ -88,6 +102,9 @@ async def update(
         template.module = payload.module.strip() or "seo"
     if payload.is_default is not None:
         template.is_default = payload.is_default
+    if payload.pain_key is not None:
+        # Пустая строка = «сбросить привязку к боли, сделать универсальным».
+        template.pain_key = payload.pain_key.strip() or None
     await db.commit()
     await db.refresh(template)
     return template

@@ -35,10 +35,17 @@ router = APIRouter(prefix="/templates", tags=["outreach-templates"])
 async def list_my_templates(
     request: Request,
     module: Optional[str] = Query(default=None, max_length=50),
+    pain_key: Optional[str] = Query(
+        default=None, max_length=64,
+        description=(
+            "Фильтр по боли. При заданном pain_key возвращает шаблоны с "
+            "этой болью + универсальные (pain_key IS NULL)."
+        ),
+    ),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    rows = await service.list_for_user(db, user_id=user_id, module=module)
+    rows = await service.list_for_user(db, user_id=user_id, module=module, pain_key=pain_key)
     return [UserOutreachTemplateOut.model_validate(r) for r in rows]
 
 

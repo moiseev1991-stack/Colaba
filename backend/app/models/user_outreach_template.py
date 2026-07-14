@@ -67,6 +67,11 @@ class UserOutreachTemplate(Base):
     # Дефолтный шаблон пользователя (показывается первым в списке).
     is_default = Column(Boolean, nullable=False, default=False)
 
+    # 2026-07-14: привязка к боли — на /app/pains для выбранной боли
+    # предлагаются шаблоны с этим pain_key + универсальные (NULL).
+    # Значения — из PAIN_KEYS (call_no_answer, schedule_hard, admin_rude, ...).
+    pain_key = Column(String(64), nullable=True, index=True)
+
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
