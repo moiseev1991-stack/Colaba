@@ -241,6 +241,11 @@ async def _parse_map_search_async(search_id: int) -> None:
         await db.commit()
 
         total_found = 0
+        # 2026-07-14: считаем сколько источников ушло в cache-hit —
+        # чтобы не путать «свежий парс дал 0» с «все закешировано, дельта 0».
+        # Раньше при все-cache-hit total_found=0 → писали EmptyResult
+        # с текстом «источник ничего не вернул», хотя в БД уже сотни компаний.
+        cache_hits = 0
         # В radius-режиме точка/радиус уникальны — нельзя переиспользовать city-кэш.
         # Иначе после первого city-поиска по (ниша, город) любой radius-поиск в этом
         # городе ловит cache hit, пропускает парсинг и возвращает 0 компаний.
@@ -249,6 +254,7 @@ async def _parse_map_search_async(search_id: int) -> None:
             sources = [s.strip() for s in (search.sources or "").split(",") if s.strip()]
             for source in sources:
                 if not radius_mode and await service.check_cache(db, search.niche, search.city, source):
+                    cache_hits += 1
                     logger.info("parse_map_search: cache hit for %s/%s/%s", search.niche, search.city, source)
                     # На cache hit повторно парсить компании не нужно — они
                     # уже в БД. Но enrichment мог не отработать (фича добавлена
@@ -296,12 +302,13 @@ async def _parse_map_search_async(search_id: int) -> None:
             search.companies_found = total_found
             search.status = "completed"
             search.finished_at = datetime.now(timezone.utc)
-            if total_found == 0:
-                # Полезный сигнал для UI: успешно завершили, но 0 компаний.
-                # Самые частые причины — опечатка в нише, узкий запрос, недоступная
-                # категория, либо провайдер сломан/забанен (капча, изменение
-                # разметки, dead proxy). Пишем подсказку в .error с реальным
-                # списком источников, а не хардкодом «2GIS».
+            if total_found == 0 and cache_hits == 0:
+                # Полезный сигнал для UI: успешно завершили, но 0 компаний
+                # и НИ ОДИН источник не был закеширован (иначе это не пустой
+                # результат, а «уже всё есть, дельта 0»).
+                # Самые частые причины — опечатка в нише, узкий запрос,
+                # недоступная категория, либо провайдер сломан/забанен
+                # (капча, изменение разметки, dead proxy).
                 sources_pretty = ", ".join(sources) if sources else "провайдер"
                 search.error = (
                     f"По этому запросу источник ({sources_pretty}) ничего не вернул. "
@@ -309,6 +316,12 @@ async def _parse_map_search_async(search_id: int) -> None:
                     f"или временно выключить проблемный источник."
                 )
                 search.error_type = "EmptyResult"
+            elif total_found == 0 and cache_hits > 0:
+                # Все источники закешированы, свежих компаний не добавили.
+                # UI покажет companies_found=0, но БЕЗ error — это нормальный
+                # cache-refresh запуск, компании уже в БД. error_type пусто.
+                search.error = None
+                search.error_type = None
             await db.commit()
             await service.publish_progress_event(
                 search.id, "done",
