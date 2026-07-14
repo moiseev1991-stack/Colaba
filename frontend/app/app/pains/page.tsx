@@ -123,6 +123,19 @@ function PainsPageInner() {
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [rebuildBusy, setRebuildBusy] = useState(false);
   const [rebuildMsg, setRebuildMsg] = useState<string | null>(null);
+  // 2026-07-14: live-прогресс recluster'а. После POST /rebuild-pain-tags-for-niche
+  // включаем 20-сек polling GET /rebuild-pain-tags-status, показываем «X/Y
+  // отзывов обработано (N%)». Останавливаем когда ready=true.
+  const [rebuildProgress, setRebuildProgress] = useState<{
+    percent: number;
+    reviews_analyzed: number;
+    reviews_total: number;
+    active_tags: number;
+    pain_scores: number;
+    ready: boolean;
+    hint: string;
+  } | null>(null);
+  const rebuildPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // 2026-07-14: список городов — из локального справочника lib/cities.ts
@@ -223,10 +236,50 @@ function PainsPageInner() {
     };
   }, [topTags.length]);
 
+  // Тянет статус прогресса recluster'а. Вызывается один раз сразу после
+  // POST и потом каждые 20 сек, пока ready=false.
+  const pollRebuildStatus = async () => {
+    if (!niche) return;
+    try {
+      const params = new URLSearchParams({ niche });
+      if (city) params.set('city', city);
+      const res = await fetch(
+        `/api/v1/maps/admin/rebuild-pain-tags-status?${params.toString()}`,
+        { cache: 'no-store' },
+      );
+      if (!res.ok) return;
+      const body = await res.json();
+      setRebuildProgress({
+        percent: Number(body.percent) || 0,
+        reviews_analyzed: Number(body.reviews_analyzed) || 0,
+        reviews_total: Number(body.reviews_total) || 0,
+        active_tags: Number(body.active_tags) || 0,
+        pain_scores: Number(body.pain_scores) || 0,
+        ready: Boolean(body.ready),
+        hint: String(body.hint || ''),
+      });
+      if (body.ready && rebuildPollTimer.current) {
+        clearInterval(rebuildPollTimer.current);
+        rebuildPollTimer.current = null;
+      }
+    } catch { /* no-op */ }
+  };
+
+  // Останавливаем polling при уходе со страницы или смене niche/city.
+  useEffect(() => {
+    return () => {
+      if (rebuildPollTimer.current) {
+        clearInterval(rebuildPollTimer.current);
+        rebuildPollTimer.current = null;
+      }
+    };
+  }, [niche, city]);
+
   const rebuildNiche = async () => {
     if (!niche) return;
     setRebuildBusy(true);
     setRebuildMsg(null);
+    setRebuildProgress(null);
     try {
       const params = new URLSearchParams({ niche, sentiment: 'negative' });
       if (city) params.set('city', city);
@@ -242,8 +295,14 @@ function PainsPageInner() {
       if (body.queued) {
         setRebuildMsg(
           `Запустил AI-разметку для ${body.companies_queued_for_analyze} компаний. ` +
-          `Подожди 5-8 минут и обнови страницу.`,
+          `Прогресс ниже.`,
         );
+        // Сразу тянем первый статус + запускаем поллинг каждые 20 сек.
+        await pollRebuildStatus();
+        if (rebuildPollTimer.current) clearInterval(rebuildPollTimer.current);
+        rebuildPollTimer.current = setInterval(() => {
+          void pollRebuildStatus();
+        }, 20_000);
       } else {
         setRebuildMsg(body.hint ?? 'В БД нет компаний с этой нишей.');
       }
@@ -741,6 +800,37 @@ function PainsPageInner() {
                   </button>
                   {rebuildMsg && (
                     <p className="text-[11px] text-slate-600">{rebuildMsg}</p>
+                  )}
+                  {rebuildProgress && (
+                    <div className="mt-2 rounded-md border border-amber-200 bg-white p-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-medium text-slate-800">
+                          AI-разметка отзывов
+                        </span>
+                        <span className="tabular-nums text-slate-600">
+                          {rebuildProgress.reviews_analyzed.toLocaleString('ru-RU')}
+                          {' / '}
+                          {rebuildProgress.reviews_total.toLocaleString('ru-RU')}
+                          {' · '}
+                          <b>{rebuildProgress.percent}%</b>
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={
+                            'h-full transition-all duration-500 ' +
+                            (rebuildProgress.ready ? 'bg-emerald-500' : 'bg-amber-500')
+                          }
+                          style={{ width: `${Math.max(2, Math.min(100, rebuildProgress.percent))}%` }}
+                        />
+                      </div>
+                      <p className="text-[10.5px] text-slate-500">
+                        Активных тегов: {rebuildProgress.active_tags} · связей компания↔боль: {rebuildProgress.pain_scores}
+                        {rebuildProgress.ready
+                          ? ' · готово, обнови плитку'
+                          : ' · обновление каждые 20 сек'}
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
