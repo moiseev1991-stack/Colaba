@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.147.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.147.0...v1.147.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **maps:** admin_recluster_niche падал с NameError user_id + 403 на чужих ([84c6005](https://github.com/moiseev1991-stack/Colaba/commit/84c60054f44e7ab80d3552ad7c0087d681461414))
+
 # [1.147.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.146.1...v1.147.0) (2026-07-14)
 
 
