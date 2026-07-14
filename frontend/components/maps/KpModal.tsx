@@ -88,11 +88,11 @@ export function KpModal({
   const [tone, setTone] = useState<KpTone>('neutral');
   const [customSenderProfile, setCustomSenderProfile] = useState('');
   // 2026-07-11 «4 хода»: новый промпт-каркас с справочниками.
-  // По умолчанию OFF, юзер включает галкой. При включении показывается
-  // селектор канала (messenger/email) и поле «микрошаг ХОД4».
-  const [use4hods, setUse4hods] = useState(false);
-  const [channel, setChannel] = useState<'messenger' | 'email'>('email');
-  const [myOfferStep, setMyOfferStep] = useState('созвон 10 минут');
+  // 2026-07-14: UI-блок задизейблен (пометка «beta, временно выключен»),
+  // поэтому setter'ов нет — payload всегда отдаёт use_4hods=false.
+  const [use4hods] = useState(false);
+  const [channel] = useState<'messenger' | 'email'>('email');
+  const [myOfferStep] = useState('созвон 10 минут');
 
   const [draft, setDraft] = useState<KpDraft | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -105,6 +105,17 @@ export function KpModal({
   const [availablePains, setAvailablePains] = useState<CompanyPainOut[]>([]);
   const [painsLoading, setPainsLoading] = useState(false);
   const [selectedPainIds, setSelectedPainIds] = useState<number[]>([]);
+  // 2026-07-14 своя боль: юзер жмёт «+ Создать свою боль», раскрывается
+  // форма (label + description). Кнопка «Создать» переводит форму в
+  // «сохранённую» — тогда при генерации отправим её в payload.custom_pain.
+  // Хранится только одна одновременно; повторный клик «редактировать» —
+  // возвращает форму. Reset на закрытии модалки.
+  const [customPainOpen, setCustomPainOpen] = useState(false);
+  const [customPainLabelInput, setCustomPainLabelInput] = useState('');
+  const [customPainDescriptionInput, setCustomPainDescriptionInput] = useState('');
+  const [customPainSaved, setCustomPainSaved] = useState<
+    { label: string; description: string } | null
+  >(null);
   // Edit-режим: subject/body можно править прямо в модалке поверх
   // AI-генерации. editSubject/editBody — локальные значения textarea;
   // dirty=true если есть несохранённые изменения; saveState управляет
@@ -174,6 +185,10 @@ export function KpModal({
       setSaveError(null);
       setAvailablePains([]);
       setSelectedPainIds([]);
+      setCustomPainOpen(false);
+      setCustomPainLabelInput('');
+      setCustomPainDescriptionInput('');
+      setCustomPainSaved(null);
     }
   }, [open]);
 
@@ -245,6 +260,10 @@ export function KpModal({
       use_4hods: use4hods,
       channel: use4hods ? channel : undefined,
       my_offer_step: use4hods ? myOfferStep.trim() || null : null,
+      // 2026-07-14 своя боль: только если юзер её создал и сохранил
+      // (нажал «Создать» в форме). Пустая незакоммиченная форма —
+      // игнорируется.
+      custom_pain: customPainSaved,
     };
     try {
       const res = await generateKp(payload);
@@ -513,80 +532,154 @@ export function KpModal({
             </div>
           )}
 
+          {/* 2026-07-14: «Создать свою боль» — юзер вводит label + description,
+              LLM пишет КП именно по этому описанию (плюс к выбранным
+              AI-болям, если они есть). Работает только в company-ветке;
+              для site_lead КП боли не применяются. */}
+          {targetCompanyId != null && (
+            <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+              {!customPainOpen && !customPainSaved && (
+                <button
+                  type="button"
+                  onClick={() => setCustomPainOpen(true)}
+                  className="text-[12px] font-medium text-violet-700 hover:text-violet-900 dark:text-violet-300"
+                >
+                  + Создать свою боль
+                </button>
+              )}
+              {customPainOpen && !customPainSaved && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Название
+                    </label>
+                    <input
+                      type="text"
+                      value={customPainLabelInput}
+                      onChange={(e) => setCustomPainLabelInput(e.target.value)}
+                      placeholder="Например: долго отвечают в WhatsApp"
+                      maxLength={120}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Описание — LLM напишет КП по нему
+                    </label>
+                    <textarea
+                      value={customPainDescriptionInput}
+                      onChange={(e) => setCustomPainDescriptionInput(e.target.value)}
+                      rows={3}
+                      maxLength={1200}
+                      placeholder="1–4 предложения: в чём именно проблема, как это выглядит у клиентов, чем оборачивается. Опиши так, будто рассказываешь коллеге."
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={
+                        customPainLabelInput.trim().length < 2
+                        || customPainDescriptionInput.trim().length < 10
+                      }
+                      onClick={() => {
+                        setCustomPainSaved({
+                          label: customPainLabelInput.trim(),
+                          description: customPainDescriptionInput.trim(),
+                        });
+                        setCustomPainOpen(false);
+                      }}
+                      className="rounded-md bg-violet-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Создать
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomPainOpen(false);
+                        setCustomPainLabelInput('');
+                        setCustomPainDescriptionInput('');
+                      }}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                    >
+                      Отмена
+                    </button>
+                    <span className="ml-auto text-[10px] text-slate-500 dark:text-slate-400">
+                      минимум 2 симв. + 10 симв.
+                    </span>
+                  </div>
+                </div>
+              )}
+              {customPainSaved && (
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <div className="text-[11px] uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                      Своя боль (уйдёт в КП)
+                    </div>
+                    <div className="text-[13px] font-medium text-slate-900 dark:text-slate-100">
+                      {customPainSaved.label}
+                    </div>
+                    <div className="text-[11px] italic text-slate-600 dark:text-slate-400">
+                      {customPainSaved.description}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomPainLabelInput(customPainSaved.label);
+                        setCustomPainDescriptionInput(customPainSaved.description);
+                        setCustomPainSaved(null);
+                        setCustomPainOpen(true);
+                      }}
+                      className="text-[11px] text-violet-700 hover:text-violet-900 dark:text-violet-300"
+                    >
+                      Изменить
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomPainSaved(null);
+                        setCustomPainLabelInput('');
+                        setCustomPainDescriptionInput('');
+                      }}
+                      className="text-[11px] text-slate-500 hover:text-rose-700 dark:text-slate-400"
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 2026-07-11 «4 хода» — новый промпт-каркас (боль→последствие→
               решение→микрошаг) + валидация выхода + справочники под тему
-              «автоматизация связи». Выключается по умолчанию для A/B. */}
-          <div className="mt-4 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-            <label className="flex cursor-pointer items-start gap-2">
+              «автоматизация связи». 2026-07-14: временно задизейблен как
+              бета — блок серый, некликаемый, не выделяется. */}
+          <div
+            aria-disabled
+            className="mt-4 rounded-md border border-dashed border-slate-200 bg-slate-100/60 p-3 pointer-events-none select-none opacity-60 dark:border-slate-700 dark:bg-slate-800/40"
+          >
+            <div className="flex items-start gap-2">
               <input
                 type="checkbox"
-                checked={use4hods}
-                onChange={(e) => setUse4hods(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-violet-600"
+                checked={false}
+                readOnly
+                disabled
+                className="mt-0.5 h-4 w-4 accent-slate-400"
               />
-              <span className="flex-1 text-[12px]">
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  Промпт «4 хода»
-                </span>
-                <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+              <span className="flex-1 text-[12px] text-slate-500 dark:text-slate-400">
+                <span className="font-medium">Промпт «4 хода»</span>
+                <span className="ml-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                   beta
                 </span>
-                <span className="ml-1 text-slate-500 dark:text-slate-400">
-                  · ТЗ 2026-07-11
-                </span>
-                <span className="block text-[11px] text-slate-500 dark:text-slate-400">
-                  Каркас: наблюдение → что стоит клиенту → решение результатом (без техник) → микрошаг. Сейчас справочник только «автоматизация связи».
+                <span className="ml-1">· ТЗ 2026-07-11 · временно выключен</span>
+                <span className="block text-[11px]">
+                  Каркас: наблюдение → что стоит клиенту → решение результатом (без техник) → микрошаг.
                 </span>
               </span>
-            </label>
-            {use4hods && (
-              <div className="mt-3 space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
-                <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Канал
-                  </label>
-                  <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
-                    {(['messenger', 'email'] as const).map((c) => {
-                      const active = channel === c;
-                      return (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setChannel(c)}
-                          className={cn(
-                            'rounded px-2.5 py-1 text-[12px] font-medium transition-colors',
-                            active
-                              ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-700'
-                              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
-                          )}
-                        >
-                          {c === 'messenger' ? 'Мессенджер' : 'Email'}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-                    Мессенджер: 4–6 строк, без ссылок · Email: 6–9 строк, тема + подпись
-                  </p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Микрошаг (ХОД 4)
-                  </label>
-                  <input
-                    type="text"
-                    value={myOfferStep}
-                    onChange={(e) => setMyOfferStep(e.target.value)}
-                    placeholder="созвон 10 минут / показ на вашем примере / мини-аудит"
-                    maxLength={200}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                  />
-                  <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-                    Короткое «что предлагаешь бесплатно» — заканчивает письмо одним вопросом.
-                  </p>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Generate button */}
@@ -759,7 +852,8 @@ function ArgumentsBlock({ args }: { args: KpArgumentsUsed }) {
         : [];
   const hasTrend = !!args.trend_phrase;
   const hasBenchmark = !!args.benchmark_phrase;
-  if (painsList.length === 0 && !hasTrend && !hasBenchmark) return null;
+  const hasCustomPain = !!args.custom_pain?.label;
+  if (painsList.length === 0 && !hasTrend && !hasBenchmark && !hasCustomPain) return null;
 
   const sourceLabelOf = (src: string | null | undefined) =>
     src === '2gis'
@@ -810,6 +904,18 @@ function ArgumentsBlock({ args }: { args: KpArgumentsUsed }) {
             </li>
           );
         })}
+        {hasCustomPain && (
+          <li className="border-l-2 border-emerald-400 pl-2">
+            <div>
+              <span className="font-medium">Своя боль (от отправителя):</span>{' '}
+              {args.custom_pain!.label}
+            </div>
+            <div className="mt-0.5 flex items-start gap-1.5">
+              <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+              <span className="italic">{args.custom_pain!.description}</span>
+            </div>
+          </li>
+        )}
         {hasTrend && (
           <li className="flex items-start gap-1.5">
             <TrendingUp className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />

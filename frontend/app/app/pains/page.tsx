@@ -405,55 +405,71 @@ function PainsPageInner() {
                 </button>
               </div>
             ) : (
-              <select
-                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-                value={painKey}
-                onChange={(e) => setPainKey(e.target.value as PainKey)}
-              >
-                {PAIN_KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {PAIN_KEY_LABELS[k]}
-                  </option>
-                ))}
-              </select>
+              // 2026-07-14: combobox с датасписком — можно выбрать из
+              // фиксированных 8 pain_key ИЛИ вписать текстом. Свободный
+              // ввод пока не влияет на поиск (нет back-end матча по
+              // произвольной боли) — юзер должен либо выбрать из списка,
+              // либо использовать плитку/поиск по PainTag ниже, либо
+              // «Создать свою боль» в KpModal при отправке КП.
+              <>
+                <input
+                  list="pains-key-options"
+                  type="text"
+                  value={PAIN_KEY_LABELS[painKey]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const matched = (Object.entries(PAIN_KEY_LABELS) as [PainKey, string][])
+                      .find(([, label]) => label === v);
+                    if (matched) setPainKey(matched[0]);
+                  }}
+                  placeholder="выбери из списка или впиши свою"
+                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm placeholder:text-slate-400"
+                />
+                <datalist id="pains-key-options">
+                  {PAIN_KEYS.map((k) => (
+                    <option key={k} value={PAIN_KEY_LABELS[k]} />
+                  ))}
+                </datalist>
+              </>
             )}
           </label>
 
           <label className="text-sm">
             <span className="mb-1 block font-medium text-slate-700">Город</span>
-            <select
-              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            {/* 2026-07-14: combobox город — выбор из списка ИЛИ ввод текстом
+                (напр. города не из dropdown). Пустая строка = «любой». */}
+            <input
+              list="pains-city-options"
+              type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-            >
-              <option value="">— любой —</option>
+              placeholder="— любой — или впиши текстом"
+              className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm placeholder:text-slate-400"
+            />
+            <datalist id="pains-city-options">
               {cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c} />
               ))}
-            </select>
+            </datalist>
           </label>
 
           <label className="text-sm">
             <span className="mb-1 block font-medium text-slate-700">Ниша</span>
-            <select
-              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            {/* 2026-07-14: combobox ниша — выбор из списка ИЛИ ввод текстом
+                (напр. кастомная ниша с URL / из drill-through). */}
+            <input
+              list="pains-niche-options"
+              type="text"
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
-            >
-              <option value="">— любая —</option>
+              placeholder="— любая — или впиши текстом"
+              className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm placeholder:text-slate-400"
+            />
+            <datalist id="pains-niche-options">
               {niches.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
+                <option key={n} value={n} />
               ))}
-              {/* Если текущая ниша пришла из URL и её нет в списке — добавляем
-                  как выбранный option, чтобы select не сбросился на «любая». */}
-              {niche && !niches.includes(niche) && (
-                <option value={niche}>{niche} (кастом)</option>
-              )}
-            </select>
+            </datalist>
           </label>
         </div>
 

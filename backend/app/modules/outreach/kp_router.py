@@ -108,6 +108,14 @@ async def generate_kp(
                 use_4hods=payload.use_4hods,
                 channel=payload.channel,
                 my_offer_step=payload.my_offer_step,
+                custom_pain=(
+                    {
+                        "label": payload.custom_pain.label.strip(),
+                        "description": payload.custom_pain.description.strip(),
+                    }
+                    if payload.custom_pain is not None
+                    else None
+                ),
             )
     except kp_service.KpGenerationError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
