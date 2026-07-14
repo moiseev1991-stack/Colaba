@@ -74,6 +74,7 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           // их не находил, см. отчёт Chrome-агента 2026-06-07.
           { href: '/app/leads/presets', label: 'Мои пресеты', icon: Bookmark },
           { href: '/app/leads/lists', label: 'Мои списки', icon: ListPlus },
+          { href: '/app/leads/templates', label: 'Шаблоны писем', icon: Mail },
         ],
       },
       PROPOSALS_SECTION,

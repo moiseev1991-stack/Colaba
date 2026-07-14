@@ -19,6 +19,7 @@ class UserOutreachTemplateCreate(BaseModel):
     subject: str = Field(..., min_length=1, max_length=500)
     body: str = Field(..., min_length=1)
     module: str = Field(default="seo", max_length=50)
+    pain_key: str | None = Field(default=None, max_length=64)
 
 
 class UserOutreachTemplateUpdate(BaseModel):
@@ -32,6 +33,7 @@ class UserOutreachTemplateUpdate(BaseModel):
     body: str | None = None
     module: str | None = Field(default=None, max_length=50)
     is_default: bool | None = None
+    pain_key: str | None = Field(default=None, max_length=64)
 
 
 class UserOutreachTemplateOut(BaseModel):
@@ -45,5 +47,6 @@ class UserOutreachTemplateOut(BaseModel):
     body: str
     module: str
     is_default: bool = False
+    pain_key: str | None = None
     created_at: datetime
     updated_at: datetime

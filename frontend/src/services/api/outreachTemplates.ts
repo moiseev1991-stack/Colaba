@@ -21,6 +21,9 @@ export interface OutreachTemplate {
   body: string;
   module: string;
   is_default?: boolean;
+  /** 2026-07-14: привязка к боли (call_no_answer, schedule_hard, ...).
+   *  NULL/undefined = универсальный. */
+  pain_key?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -30,6 +33,7 @@ export interface OutreachTemplateCreate {
   subject: string;
   body: string;
   module?: string;
+  pain_key?: string | null;
 }
 
 function getFromLocalStorage(): OutreachTemplate[] {
@@ -76,14 +80,25 @@ function saveToLocalStorage(templates: OutreachTemplate[], nextId: number): void
 /**
  * Список шаблонов КП. При ошибке API или таймауте — данные из localStorage.
  * Сначала возвращаем localStorage (мгновенно), т.к. эндпоинт может отсутствовать в backend.
+ *
+ * options.pain_key — фильтр (бэк вернёт шаблоны с этой болью + универсальные).
+ * options.module — фильтр по модулю ('leads', 'seo', ...).
  */
-export async function getOutreachTemplates(): Promise<OutreachTemplate[]> {
+export async function getOutreachTemplates(options?: {
+  pain_key?: string | null;
+  module?: string;
+}): Promise<OutreachTemplate[]> {
   const local = getFromLocalStorage();
   try {
+    const params: Record<string, string> = {};
+    if (options?.pain_key) params.pain_key = options.pain_key;
+    if (options?.module) params.module = options.module;
     const response = await apiClient.get<OutreachTemplate[]>('/outreach/templates', {
       timeout: 4000,
+      params,
     });
     const api = response.data ?? [];
+    // Фильтр не применяем к localStorage-фолбэку (там мало данных — покажем всё).
     return api.length > 0 ? api : local;
   } catch {
     return local;
