@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.145.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.145.0...v1.145.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **pains:** CityCombobox для города + свободно стираемое поле «Боль» ([e230e84](https://github.com/moiseev1991-stack/Colaba/commit/e230e8477f1bf5d45a2103810c17cae1a66b2f43))
+
 # [1.145.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.144.0...v1.145.0) (2026-07-14)
 
 
