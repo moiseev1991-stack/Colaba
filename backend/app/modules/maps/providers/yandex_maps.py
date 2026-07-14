@@ -394,12 +394,19 @@ class YandexMapsProvider(MapProvider):
                     try:
                         await page.goto(url, wait_until="domcontentloaded", timeout=_PAGE_TIMEOUT_MS)
                     except PWTimeout:
-                        logger.warning("yandex_maps: page.goto timeout for %s", url)
+                        logger.warning(
+                            "yandex_maps: page.goto timeout url=%s proxy=%s",
+                            url, bool(proxy_arg),
+                        )
                         return
 
                     # Если редирект на /showcaptcha — это капча. SmartCaptcha solver работает
                     # с HTML (через data-sitekey), нам нужен HTML страницы капчи.
                     if "/showcaptcha" in page.url.lower() or "/checkcaptcha" in page.url.lower():
+                        logger.warning(
+                            "yandex_maps: captcha redirect landed=%s query=%r proxy=%s",
+                            page.url, query, bool(proxy_arg),
+                        )
                         captcha_html = await page.content()
                         await self._solve_captcha_or_raise(captcha_html, page.url, 1)
                         # token получили, но в Playwright его не применить простым cookie —
@@ -409,11 +416,32 @@ class YandexMapsProvider(MapProvider):
                     try:
                         await page.wait_for_selector(".search-business-snippet-view", timeout=_LIST_TIMEOUT_MS)
                     except PWTimeout:
-                        # Карточек не появилось — либо пустая выдача, либо капча, либо изменилась вёрстка
+                        # Карточек не появилось — либо пустая выдача, либо капча, либо изменилась вёрстка.
+                        # 2026-07-14: подробное логирование, чтобы отличить причины в проде
+                        # (за сутки yandex может изменить класс карточки — тогда селектор просто
+                        # не появится, а мы молча возвращали 0 без сигнала).
                         html_check = await page.content()
-                        if any(k in html_check.lower() for k in ("showcaptcha", "smartcaptcha", "checkcaptcha")):
+                        low = html_check.lower()
+                        if any(k in low for k in ("showcaptcha", "smartcaptcha", "checkcaptcha")):
+                            logger.warning(
+                                "yandex_maps: SmartCaptcha wall on results page url=%s query=%r",
+                                page.url, query,
+                            )
                             raise CaptchaWallError("Yandex Maps: SmartCaptcha на странице выдачи")
-                        logger.info("yandex_maps: карточки .search-business-snippet-view не появились (пустая выдача?)")
+                        # Собираем диагностику: URL, длина HTML, наличие типовых классов.
+                        markers = {
+                            "search_business_snippet_view": ".search-business-snippet-view" in html_check,
+                            "search_list_view": "search-list-view" in low,
+                            "business_segments_list_view": "business-segments-list-view" in low,
+                            "nothing_found": ("ничего не найдено" in low) or ("nothing found" in low),
+                            "generic_maps_home": "search-form-view__input" in html_check and ".search-business-snippet-view" not in html_check,
+                        }
+                        logger.warning(
+                            "yandex_maps: selector .search-business-snippet-view не появился за %dмс. "
+                            "url=%s final_url=%s query=%r html_len=%d markers=%s html_head=%r",
+                            _LIST_TIMEOUT_MS, url, page.url, query, len(html_check), markers,
+                            html_check[:400],
+                        )
                         return
 
                     # Я.Карты используют ВИРТУАЛИЗИРОВАННЫЙ скролл: в DOM лежат только видимые
@@ -472,7 +500,14 @@ class YandexMapsProvider(MapProvider):
         except CaptchaWallError:
             raise
         except Exception as e:
-            logger.warning("yandex_maps: Playwright error: %s", e)
+            # 2026-07-14: логируем тип exception + сообщение — раньше терялся
+            # трейс, было непонятно ImportError (playwright/chromium missing),
+            # ProxyError (dead proxy) или что-то иное.
+            logger.warning(
+                "yandex_maps: Playwright error type=%s msg=%s query=%r use_proxy=%s",
+                type(e).__name__, e, f"{niche} {city}", self._use_proxy,
+                exc_info=True,
+            )
             return
 
         yielded = 0
