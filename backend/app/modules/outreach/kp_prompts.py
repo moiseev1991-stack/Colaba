@@ -30,6 +30,13 @@ KP_PROMPT_RECIPIENT = (
 # по которым есть данные, и склеивает через "\n".
 KP_FACT_PAIN_LINE = "- Главная боль клиентов по отзывам: «{pain_label}» ({mention_count} упоминаний)"
 KP_FACT_QUOTE_LINE = "- Цитата из реального отзыва: «{top_quote}»"
+# 2026-07-14: боль, добавленная юзером вручную из KpModal
+# («+ Создать свою боль»). Это НЕ AI-размеченная боль из отзывов,
+# а гипотеза отправителя. Идёт в промпт отдельной строкой, чтобы
+# LLM не путал её с цитатой отзыва.
+KP_FACT_CUSTOM_PAIN_LINE = (
+    "- Гипотеза о боли клиентов (от отправителя): «{custom_pain_label}» — {custom_pain_description}"
+)
 KP_FACT_TREND_LINE = "- Динамика: {trend_phrase}"
 KP_FACT_BENCHMARK_LINE = "- Сравнение с конкурентами: {benchmark_phrase}"
 KP_FACT_WEBSITE_LINE = "- Сайт: {website_status}"

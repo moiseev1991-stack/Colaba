@@ -60,6 +60,9 @@ export interface KpArgumentsUsed {
   my_offer_step?: string | null;
   /** Одностроковая сводка ошибок валидатора («2 issues: length, url»). */
   validation_summary?: string | null;
+  /** 2026-07-14: своя боль, введённая юзером в KpModal. Отображается
+   *  в блоке «На чём построено письмо» с пометкой «от отправителя». */
+  custom_pain?: { label: string; description: string } | null;
 }
 
 export interface KpDraft {
@@ -98,6 +101,10 @@ export interface KpGenerateRequest {
   /** ХОД4: короткое описание бесплатного микрошага
    *  («созвон 10 минут», «мини-аудит запись+дозвон», «показ на вашем примере»). */
   my_offer_step?: string | null;
+  /** 2026-07-14: своя боль от юзера («+ Создать свою боль» в KpModal).
+   *  label — короткое название, description — 1-4 предложения, LLM
+   *  пишет КП по этому описанию. Может идти вместе с pain_tag_ids. */
+  custom_pain?: { label: string; description: string } | null;
 }
 
 export async function listKpTemplates(): Promise<KpTemplate[]> {

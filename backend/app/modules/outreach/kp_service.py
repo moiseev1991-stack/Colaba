@@ -44,6 +44,7 @@ from app.modules.outreach.kp_phrases import (
 )
 from app.modules.outreach.kp_prompts import (
     KP_FACT_BENCHMARK_LINE,
+    KP_FACT_CUSTOM_PAIN_LINE,
     KP_FACT_PAIN_LINE,
     KP_FACT_QUOTE_LINE,
     KP_FACT_RATING_LINE,
@@ -339,6 +340,7 @@ def build_kp_prompt(
     rating: float | None,
     niche_avg_rating: float | None,
     additional_pains: list[dict] | None = None,
+    custom_pain: dict | None = None,
 ) -> str:
     """Чистая функция: собирает итоговый текст промпта для КП по компании.
 
@@ -382,6 +384,19 @@ def build_kp_prompt(
         if extra_quote:
             safe_extra_quote = str(extra_quote).strip().replace("\n", " ")[:280]
             facts.append(KP_FACT_QUOTE_LINE.format(top_quote=safe_extra_quote))
+    # 2026-07-14: юзерская «своя боль» — отдельная строка-факт. LLM
+    # знает, что это не цитата отзыва, а гипотеза отправителя, и в
+    # структуре письма упоминает её как «мы видим у похожих компаний».
+    if custom_pain is not None:
+        cp_label = str(custom_pain.get("label") or "").strip()
+        cp_desc = str(custom_pain.get("description") or "").strip().replace("\n", " ")[:600]
+        if cp_label and cp_desc:
+            facts.append(
+                KP_FACT_CUSTOM_PAIN_LINE.format(
+                    custom_pain_label=cp_label,
+                    custom_pain_description=cp_desc,
+                )
+            )
     tp = trend_phrase(trend_verdict)
     if tp:
         facts.append(KP_FACT_TREND_LINE.format(trend_phrase=tp))
@@ -913,6 +928,7 @@ async def generate_kp(
     use_4hods: bool = False,
     channel: str = "email",
     my_offer_step: str | None = None,
+    custom_pain: dict | None = None,
 ) -> GeneratedKp:
     """Главная функция: собирает контекст, зовёт LLM, парсит, пишет в БД.
 
@@ -1001,6 +1017,20 @@ async def generate_kp(
             }
             for p in selected_pains
         ]
+        # 2026-07-14: своя боль тоже уходит в 4hods-каркас как ещё одна
+        # боль. Тег/цитаты нет — top_quote заполняем description чтобы
+        # LLM видел контекст. mention_count None → в промпте не пишем
+        # «X упоминаний».
+        if custom_pain is not None:
+            pains_dicts.append(
+                {
+                    "label": custom_pain.get("label"),
+                    "mention_count": None,
+                    "top_quote": custom_pain.get("description"),
+                    "source": "user_custom",
+                    "pain_tag_id": None,
+                }
+            )
         filled_pains = fill_pains(pains_dicts, offer_theme="automation")
         prompt_text = build_prompt_4hods(
             channel=channel,
@@ -1030,6 +1060,7 @@ async def generate_kp(
             rating=float(company.rating) if company.rating is not None else None,
             niche_avg_rating=niche_avg_rating,
             additional_pains=additional_pains_for_prompt,
+            custom_pain=custom_pain,
         )
 
     # 7. LLM
@@ -1113,6 +1144,8 @@ async def generate_kp(
         "channel": channel if use_4hods else None,
         "my_offer_step": my_offer_step if use_4hods else None,
         "validation_summary": validation_summary if use_4hods else None,
+        # 2026-07-14: custom_pain для аудита «на чём построено».
+        "custom_pain": custom_pain,
     }
 
     organization_id = await _resolve_user_organization_id(db, user_id)

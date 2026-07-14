@@ -8,6 +8,18 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class CustomPainInput(BaseModel):
+    """Своя боль, введённая юзером в KpModal («+ Создать свою боль»,
+    2026-07-14). label — короткое название («Долгий отклик по WhatsApp»),
+    description — 1-4 предложения, из которых LLM строит письмо.
+
+    Идёт вместе с pain_tag_ids (может быть пусто) — LLM получает список
+    БД-болей + добавленную «свою» и упоминает каждую в письме."""
+
+    label: str = Field(..., min_length=2, max_length=120)
+    description: str = Field(..., min_length=10, max_length=1200)
+
+
 class KpTemplateOut(BaseModel):
     """Системный или организационный шаблон КП — для селекта в модалке."""
 
@@ -52,6 +64,11 @@ class KpGenerateRequest(BaseModel):
     # «мини-аудит запись+дозвон», «показ на вашем примере». Игнорируется
     # при use_4hods=False.
     my_offer_step: str | None = Field(default=None, max_length=200)
+    # 2026-07-14: юзерская «своя боль» — задаётся текстом (label + description)
+    # прямо в KpModal, без предварительного тега. LLM получает описание как
+    # факт и пишет КП по нему. Может идти вместе с pain_tag_ids — тогда
+    # LLM затронет и AI-боли, и свою. Игнорируется для site_lead_id.
+    custom_pain: CustomPainInput | None = None
 
     @model_validator(mode="after")
     def _check_xor_target(self):
@@ -138,6 +155,9 @@ class KpArgumentsUsed(BaseModel):
     offer_hint: str
     tone: str
     template_key: str
+    # 2026-07-14: своя боль, введённая юзером в KpModal. Отображается в
+    # UI-блоке «На чём построено письмо» с пометкой «от отправителя».
+    custom_pain: CustomPainInput | None = None
 
 
 class KpDraftOut(BaseModel):
