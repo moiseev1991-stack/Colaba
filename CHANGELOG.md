@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.147.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.146.1...v1.147.0) (2026-07-14)
+
+
+### Features
+
+* **pains:** live-прогресс AI-разметки болей (Пересобрать AI-теги) ([69f303d](https://github.com/moiseev1991-stack/Colaba/commit/69f303d1b32854a74f379613e95b489a1c768b3f))
+
 ## [1.146.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.146.0...v1.146.1) (2026-07-14)
 
 
