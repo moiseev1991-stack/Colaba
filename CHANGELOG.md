@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.148.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.147.1...v1.148.0) (2026-07-15)
+
+
+### Bug Fixes
+
+* **dm-finder:** точнее reason-коды в is_valid_email — CI-фикс ([f032f23](https://github.com/moiseev1991-stack/Colaba/commit/f032f23949e93533253de495a99c9672893eb8ed))
+
+
+### Features
+
+* **dm-finder:** quality-wins — deep-crawl + email validation + admin stats ([abc36f1](https://github.com/moiseev1991-stack/Colaba/commit/abc36f1a8e9693ba67b9ac9775356ff26c71342e))
+
 ## [1.147.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.147.0...v1.147.1) (2026-07-14)
 
 
