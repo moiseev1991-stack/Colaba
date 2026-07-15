@@ -49,6 +49,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.maps import Company
+from app.modules.maps.contact_validation import is_valid_email, is_valid_phone_ru
 
 
 logger = logging.getLogger(__name__)
@@ -373,9 +374,10 @@ async def enrich_from_hh(
     saved_person = False
     if contacts and contacts.get("name"):
         name = (contacts.get("name") or "").strip()[:200]
-        # Тип контакта: приоритет email > phone.
-        email = (contacts.get("email") or "").strip().lower() or None
-        phone = None
+        # Тип контакта: приоритет email > phone. Валидация — без MX
+        # (hot-path вакансий), MX проверит оркестратор перед outreach.
+        raw_email = (contacts.get("email") or "").strip().lower() or None
+        raw_phone = None
         phones = contacts.get("phones") or []
         if isinstance(phones, list) and phones:
             p = phones[0]
@@ -384,12 +386,16 @@ async def enrich_from_hh(
                 country = (p.get("country") or "").strip()
                 city_code = (p.get("city") or "").strip()
                 number = (p.get("number") or "").strip()
-                phone = f"+{country}{city_code}{number}".replace(" ", "") if country else number
-                phone = phone or None
-        if email:
-            contact_type, contact_value = "email", email[:500]
-        elif phone:
-            contact_type, contact_value = "phone", phone[:500]
+                raw_phone = f"+{country}{city_code}{number}".replace(" ", "") if country else number
+                raw_phone = raw_phone or None
+
+        v_ok, _e_reason, norm_email = is_valid_email(raw_email, check_mx=False)
+        p_ok, _p_reason, norm_phone = is_valid_phone_ru(raw_phone)
+
+        if v_ok:
+            contact_type, contact_value = "email", norm_email
+        elif p_ok:
+            contact_type, contact_value = "phone", norm_phone
         else:
             contact_type, contact_value = None, None
 

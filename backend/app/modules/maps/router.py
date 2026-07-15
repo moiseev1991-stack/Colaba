@@ -2609,11 +2609,17 @@ async def admin_data_inventory(
       - reviews_analyzed: сколько отзывов прошли sentiment/embeddings
       - pain_tags_count: сколько активных PainTag построено
       - has_pain_scores: есть ли CompanyPainScore для этой пары
+      - companies_with_marketing_dm: сколько компаний с найденным маркетинг-ЛПР
+
+    Плюс глобальный блок dm_source_stats: по каждому источнику ЛПР —
+    сколько всего персон, сколько с рабочим контактом, сколько помечены
+    как is_marketing_dm. Даёт видимость «какой источник умирает».
 
     Ниши/города, у которых нет ни отзывов ни компаний, не включаем.
     Сортировка: по companies_count desc. Полезно чтобы юзер видел
     что у него реально есть для работы и где дыры.
     """
+    from app.models.company_decision_maker import CompanyDecisionMaker
     from app.models.pain_tag import CompanyPainScore
 
     # companies: сгруппировано по (niche, city)
@@ -2667,6 +2673,45 @@ async def admin_data_inventory(
         .group_by(Company.niche, Company.city)
     )).all())
 
+    # companies_with_marketing_dm: сколько компаний в паре (niche, city)
+    # имеют помеченного is_marketing_dm=True.
+    mdm_stats = list((await db.execute(
+        select(
+            Company.niche,
+            Company.city,
+            sa_func.count(sa_func.distinct(Company.id)).label("with_mdm"),
+        )
+        .join(
+            CompanyDecisionMaker,
+            CompanyDecisionMaker.company_id == Company.id,
+        )
+        .where(
+            CompanyDecisionMaker.is_marketing_dm.is_(True),
+            Company.niche.isnot(None),
+            Company.city.isnot(None),
+        )
+        .group_by(Company.niche, Company.city)
+    )).all())
+
+    # Глобальные ЛПР-стата по источникам: сколько персон, сколько с рабочим
+    # каналом (contact_type + contact_value), сколько помечены как
+    # marketing_dm. Даёт видимость «hh 403-ит, website deep-crawl упал»,
+    # «vk без токена — 0 контактов», «prodoctorov даёт лучше чем ЕГРЮЛ» и т.д.
+    dm_source_rows = list((await db.execute(
+        select(
+            CompanyDecisionMaker.source,
+            sa_func.count(CompanyDecisionMaker.id).label("total"),
+            sa_func.count(CompanyDecisionMaker.contact_value).label("with_contact"),
+            sa_func.count(
+                sa_case(
+                    (CompanyDecisionMaker.is_marketing_dm.is_(True), 1),
+                    else_=None,
+                )
+            ).label("marketing_dms"),
+        )
+        .group_by(CompanyDecisionMaker.source)
+    )).all())
+
     # Строим единый словарь по (niche, city)
     inventory: dict[tuple[str, str], dict] = {}
     for niche_, city_, comp, rev in company_stats:
@@ -2679,6 +2724,7 @@ async def admin_data_inventory(
             "reviews_analyzed": 0,
             "pain_tags_count": 0,
             "companies_with_pain_scores": 0,
+            "companies_with_marketing_dm": 0,
         }
 
     for niche_, city_, analyzed in analyzed_stats:
@@ -2703,16 +2749,39 @@ async def admin_data_inventory(
         if key in inventory:
             inventory[key]["companies_with_pain_scores"] = int(with_scores or 0)
 
+    for niche_, city_, with_mdm in mdm_stats:
+        key = (str(niche_), str(city_))
+        if key in inventory:
+            inventory[key]["companies_with_marketing_dm"] = int(with_mdm or 0)
+
     items = sorted(
         inventory.values(),
         key=lambda x: (-x["companies_count"], x["niche"], x["city"]),
     )
+
+    dm_source_stats = [
+        {
+            "source": str(src or "unknown"),
+            "total": int(total or 0),
+            "with_contact": int(with_c or 0),
+            "marketing_dms": int(mdm or 0),
+            "contact_rate": (
+                round(float(with_c or 0) / float(total), 3) if total else 0.0
+            ),
+        }
+        for src, total, with_c, mdm in dm_source_rows
+    ]
+    dm_source_stats.sort(key=lambda x: -x["total"])
 
     return {
         "total_pairs": len(items),
         "total_companies": sum(x["companies_count"] for x in items),
         "total_reviews": sum(x["reviews_count"] for x in items),
         "total_pain_tags": sum(x["pain_tags_count"] for x in items),
+        "total_companies_with_marketing_dm": sum(
+            x["companies_with_marketing_dm"] for x in items
+        ),
+        "dm_source_stats": dm_source_stats,
         "items": items,
     }
 

@@ -46,6 +46,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.maps import Company
+from app.modules.maps.contact_validation import is_valid_email
 
 
 logger = logging.getLogger(__name__)
@@ -100,38 +101,15 @@ _RE_EMAIL_PLAIN = re.compile(
 _RE_MAILTO = re.compile(r'mailto:([^"\'<>\s?]+)', re.IGNORECASE)
 _RE_TEL = re.compile(r'tel:([+\d\s\-\(\)]+)', re.IGNORECASE)
 
-_BLACKLIST_EMAILS = {
-    "example@example.com", "example@mail.com", "test@test.com",
-    "email@example.com", "user@example.com", "your@email.com",
-    "info@example.com", "name@example.com",
-}
-_BLACKLIST_DOMAINS_SUFFIX = (
-    "example.com", "example.ru", "domain.com", "yourdomain.com",
-    "sentry.io", "cloudflare.com", "wixpress.com", "wix.com",
-    "godaddy.com", "shopify.com",
-)
-
-
 def _looks_like_real_email(email: str) -> bool:
-    """Фильтр: не placeholder, не системная почта CMS, не sentry-id."""
-    if not email or "@" not in email:
-        return False
-    e = email.strip().lower()
-    if e in _BLACKLIST_EMAILS:
-        return False
-    _local, _, domain = e.partition("@")
-    if not domain:
-        return False
-    if any(domain.endswith(sfx) for sfx in _BLACKLIST_DOMAINS_SUFFIX):
-        return False
-    # Sentry/analytics-id вида <hash>@o12345.ingest.sentry.io
-    if "ingest.sentry" in domain:
-        return False
-    # Локальная часть длиной < 2 или > 64 — не email
-    local = e.split("@")[0]
-    if len(local) < 2 or len(local) > 64:
-        return False
-    return True
+    """Фильтр: не placeholder, не системная почта CMS, не sentry-id.
+
+    Делегирует общему contact_validation.is_valid_email (без MX-check —
+    playwright hot-path, много кандидатов; MX проверит оркестратор перед
+    использованием email в outreach).
+    """
+    ok, _reason, _norm = is_valid_email(email, check_mx=False)
+    return ok
 
 
 def _normalize_phone_ru(raw: str) -> str | None:
