@@ -33,6 +33,11 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.6
 email-validator==2.1.0
+# MX-lookup для валидации email перед outreach (contact_validation.py).
+# email-validator тянет dnspython как транзитивную зависимость, но
+# фиксируем явно — если апдейт email-validator сменит подход, наш
+# MX-check не сломается.
+dnspython>=2.4,<3
 
 # OAuth
 fastapi-sso>=0.21.0

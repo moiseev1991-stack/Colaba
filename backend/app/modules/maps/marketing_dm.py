@@ -85,9 +85,14 @@ def _pick_best(dms: list[CompanyDecisionMaker]) -> CompanyDecisionMaker | None:
     # source_priority: если два учредителя одинаковой роли/confidence,
     # предпочитаем того, что пришёл с сайта (там часто рядом контакт),
     # затем ВК, затем ЕГРЮЛ.
+    # website_partnership/career — маркетинг-специфичные страницы
+    # (/reklama, /franchise, /media, /career). Если персона нашлась там,
+    # шанс что это marketing-DM выше — приоритет = 0.
     source_prio: dict[str, int] = {
+        "website_partnership": 0,
         "website_team": 0,
         "website_about": 0,
+        "website_career": 0,
         "website_contacts": 0,
         "vk": 1,
         "hh": 2,

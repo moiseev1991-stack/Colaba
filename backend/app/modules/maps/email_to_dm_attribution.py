@@ -49,6 +49,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.maps import Company, CompanyContact
+from app.modules.maps.contact_validation import (
+    is_valid_email,
+    is_valid_email_async,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -174,13 +178,26 @@ async def _collect_company_emails(
     db: AsyncSession, company_id: int
 ) -> list[str]:
     """Все emails компании — из Company.emails (JSONB) + company_contacts.
-    Дедупликация по нижнему регистру."""
+    Дедупликация по нижнему регистру.
+
+    Фильтрация: пропускаем через is_valid_email (без MX — тут hot-path
+    матчинга по ФИО, MX-check для одобренного best_email делается позже
+    в attribute_emails_to_dms перед сохранением как contact_value).
+    Отсекаем placeholder'ы, noreply@, невалидный формат — иначе директор
+    получит `noreply@company.ru` как «свой» email.
+    """
     company = await db.get(Company, company_id)
     out: dict[str, str] = {}  # lowercased → original
+
+    def _maybe_add(raw: str) -> None:
+        v_ok, _r, norm = is_valid_email(raw, check_mx=False)
+        if v_ok:
+            out.setdefault(norm, norm)
+
     if company and company.emails:
         for e in company.emails:
             if isinstance(e, str) and "@" in e:
-                out.setdefault(e.strip().lower(), e.strip())
+                _maybe_add(e)
     rows = (
         await db.execute(
             select(CompanyContact.value)
@@ -190,7 +207,7 @@ async def _collect_company_emails(
     ).all()
     for (value,) in rows:
         if isinstance(value, str) and "@" in value:
-            out.setdefault(value.strip().lower(), value.strip())
+            _maybe_add(value)
     return list(out.values())
 
 
@@ -245,6 +262,16 @@ async def attribute_emails_to_dms(
                 best_conf = conf
                 best_email = email
         if best_email and best_conf >= 0.5:
+            # Финальный MX-check перед сохранением как contact_value —
+            # тут кандидат ровно один, стоимость DNS ≈0 после LRU-кэша.
+            # Если MX нет, письмо заведомо не дойдёт — не приписываем.
+            mx_ok, _r, _norm = await is_valid_email_async(best_email, check_mx=True)
+            if not mx_ok:
+                logger.info(
+                    "email_to_dm: skip company=%d dm=%d email=%r no_mx",
+                    company_id, dm.id, best_email,
+                )
+                continue
             dm.contact_type = "email"
             dm.contact_value = best_email[:500]
             # confidence бустится немного (не переписываем полностью — 0.95

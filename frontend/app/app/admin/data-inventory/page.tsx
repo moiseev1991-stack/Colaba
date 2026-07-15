@@ -27,6 +27,15 @@ interface InventoryItem {
   reviews_analyzed: number;
   pain_tags_count: number;
   companies_with_pain_scores: number;
+  companies_with_marketing_dm: number;
+}
+
+interface DmSourceStat {
+  source: string;
+  total: number;
+  with_contact: number;
+  marketing_dms: number;
+  contact_rate: number; // 0..1
 }
 
 interface InventoryResponse {
@@ -34,6 +43,8 @@ interface InventoryResponse {
   total_companies: number;
   total_reviews: number;
   total_pain_tags: number;
+  total_companies_with_marketing_dm: number;
+  dm_source_stats: DmSourceStat[];
   items: InventoryItem[];
 }
 
@@ -259,12 +270,88 @@ export default function DataInventoryPage() {
 
       {data && (
         <>
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
             <StatCard label="Пар (ниша × город)" value={data.total_pairs} />
             <StatCard label="Компаний всего" value={data.total_companies} />
             <StatCard label="Отзывов" value={data.total_reviews} />
             <StatCard label="Активных pain-тегов" value={data.total_pain_tags} />
+            <StatCard
+              label="С маркетинг-ЛПР"
+              value={data.total_companies_with_marketing_dm}
+              hint={
+                data.total_companies > 0
+                  ? `${Math.round(
+                      (data.total_companies_with_marketing_dm /
+                        data.total_companies) *
+                        100,
+                    )}% всех компаний`
+                  : undefined
+              }
+            />
           </div>
+
+          {/* Источники ЛПР — success-rate по source. Даёт видимость
+              «hh 403-ит», «vk без токена», «prodoctorov лучше egrul» и т.д. */}
+          {data.dm_source_stats.length > 0 && (
+            <section className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-800">
+                  🎯 Источники ЛПР — success-rate
+                </h2>
+                <span className="text-xs text-slate-500">
+                  contact_rate = % персон с рабочим email/phone/vk
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Источник</th>
+                      <th className="px-3 py-2 text-right">Персон</th>
+                      <th className="px-3 py-2 text-right">С контактом</th>
+                      <th className="px-3 py-2 text-right">%</th>
+                      <th className="px-3 py-2 text-right">Marketing-DM</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {data.dm_source_stats.map((s) => {
+                      const rate = Math.round(s.contact_rate * 100);
+                      const rateBad = rate < 30;
+                      const rateGood = rate >= 60;
+                      return (
+                        <tr key={s.source} className="hover:bg-slate-50">
+                          <td className="px-3 py-1.5 font-mono text-xs text-slate-700">
+                            {s.source}
+                          </td>
+                          <td className="px-3 py-1.5 text-right">{s.total}</td>
+                          <td className="px-3 py-1.5 text-right">
+                            {s.with_contact}
+                          </td>
+                          <td className="px-3 py-1.5 text-right">
+                            <span
+                              className={
+                                'inline-block rounded px-1.5 py-0.5 text-xs font-medium ' +
+                                (rateGood
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : rateBad
+                                    ? 'bg-rose-50 text-rose-800'
+                                    : 'bg-amber-50 text-amber-800')
+                              }
+                            >
+                              {rate}%
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-right">
+                            {s.marketing_dms}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           <div className="flex items-center gap-2 flex-wrap">
             <input
@@ -306,6 +393,7 @@ export default function DataInventoryPage() {
                   <th className="px-3 py-2 text-right">Разобрано AI</th>
                   <th className="px-3 py-2 text-right">Pain-тегов</th>
                   <th className="px-3 py-2 text-right">С pain-скорами</th>
+                  <th className="px-3 py-2 text-right">С ЛПР</th>
                   <th className="px-3 py-2">Готовность</th>
                   <th className="px-3 py-2 text-right">Действия</th>
                 </tr>
@@ -360,6 +448,20 @@ export default function DataInventoryPage() {
                       <td className="px-3 py-2 text-right">
                         {row.companies_with_pain_scores}
                         <span className="ml-1 text-xs text-slate-400">({scoredPct}%)</span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {(() => {
+                          const mdmPct = row.companies_count > 0
+                            ? Math.round((row.companies_with_marketing_dm / row.companies_count) * 100)
+                            : 0;
+                          const cls = mdmPct >= 50 ? 'text-emerald-700' : mdmPct >= 20 ? 'text-amber-700' : 'text-rose-700';
+                          return (
+                            <>
+                              <span className={cls}>{row.companies_with_marketing_dm}</span>
+                              <span className="ml-1 text-xs text-slate-400">({mdmPct}%)</span>
+                            </>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-2">
                         {status === 'ready' && (
@@ -466,11 +568,22 @@ export default function DataInventoryPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+}) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-2xl font-semibold text-slate-900">{value.toLocaleString('ru-RU')}</div>
+      <div className="text-2xl font-semibold text-slate-900">
+        {value.toLocaleString('ru-RU')}
+      </div>
+      {hint && <div className="text-[11px] text-slate-400 mt-0.5">{hint}</div>}
     </div>
   );
 }

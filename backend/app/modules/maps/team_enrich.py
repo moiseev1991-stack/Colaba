@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.maps import Company
+from app.modules.maps.contact_validation import is_valid_email, is_valid_phone_ru
 from app.modules.reviews_ai.llm import call_llm_extract_team
 
 
@@ -44,6 +45,16 @@ _UA = (
 
 # Страницы-кандидаты на наличие ФИО + должностей. Порядок — от наиболее
 # вероятных к менее. Краулер ходит по первым N (см. _MAX_PAGES).
+#
+# Группы:
+#   website_team     — /team, /о-нас, /руководство — прямые ФИО+должности
+#   website_contacts — /контакты — обычно офис-менеджеры, но иногда PR/marketing
+#   website_partnership — /partnership, /reklama, /media — прямые контакты
+#     отдела маркетинга/PR. B2B-страницы (франшиза, реклама, пресс-релизы).
+#     Здесь чаще всего сидит именно marketing-DM (потому что эти страницы
+#     сделаны для того, чтобы с отделом связывались рекламодатели).
+#   website_career   — /career, /vacancies — иногда HR-контакт + прямой email
+#     руководителя направления «ищем маркетолога».
 _TEAM_PATHS: tuple[tuple[str, str], ...] = (
     ("/team", "website_team"),
     ("/komanda", "website_team"),
@@ -57,11 +68,35 @@ _TEAM_PATHS: tuple[tuple[str, str], ...] = (
     ("/o-kompanii", "website_about"),
     ("/rukovodstvo", "website_about"),
     ("/management", "website_about"),
+    # B2B / marketing / partnership — прямые контакты отдела маркетинга-PR
+    ("/partnership", "website_partnership"),
+    ("/partners", "website_partnership"),
+    ("/franchise", "website_partnership"),
+    ("/franchising", "website_partnership"),
+    ("/franshiza", "website_partnership"),
+    ("/reklama", "website_partnership"),
+    ("/reklamodatelyam", "website_partnership"),
+    ("/advertising", "website_partnership"),
+    ("/media", "website_partnership"),
+    ("/media-kit", "website_partnership"),
+    ("/press", "website_partnership"),
+    ("/pr", "website_partnership"),
+    # Вакансии — часто «Ищем маркетолога» с прямым email руководителя
+    ("/career", "website_career"),
+    ("/careers", "website_career"),
+    ("/vacancies", "website_career"),
+    ("/vakansii", "website_career"),
+    ("/jobs", "website_career"),
+    # Контакты — в самом конце, там обычно ресепшн, а не ЛПР
     ("/contacts", "website_contacts"),
     ("/kontakty", "website_contacts"),
     ("/contact", "website_contacts"),
 )
-_MAX_PAGES = 6  # ограничиваем чтобы не выжирать токены LLM на каждой компании
+# Увеличили с 6 до 9: партнёрские/маркетинговые страницы редко в top-6, но
+# ценность высокая — прямые контакты отдела маркетинга. LLM всё равно вернёт
+# пусто, если на странице ФИО нет — токены расходуются только на страницах
+# с релевантным текстом (>100 символов после _clean_text).
+_MAX_PAGES = 9
 
 _DM_ROLE_KEYWORDS = (
     "руководител", "директор", "владел", "основател", "учредител",
@@ -215,15 +250,25 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
                 # Личный контакт: приоритет email > vk > phone (для UI это
                 # означает: кликабельная почта → чат → звонок). Сохраняем
                 # только один — самый подходящий.
+                # Валидация: email — формат + blacklist без MX (MX тянуть на
+                # каждую компанию в hot-path парсера дорого; оркестратор
+                # enrich_marketing_dm перед outreach сделает MX-check).
+                # Phone — нормализация к +7XXXXXXXXXX + отсечь placeholder'ы.
                 contact_email = item.get("contact_email")
                 contact_phone = item.get("contact_phone")
                 contact_vk = item.get("contact_vk")
-                if contact_email:
-                    contact_type, contact_value = "email", contact_email
+
+                valid_email, _e_reason, norm_email = is_valid_email(
+                    contact_email, check_mx=False
+                )
+                valid_phone, _p_reason, norm_phone = is_valid_phone_ru(contact_phone)
+
+                if valid_email:
+                    contact_type, contact_value = "email", norm_email
                 elif contact_vk:
                     contact_type, contact_value = "vk", contact_vk
-                elif contact_phone:
-                    contact_type, contact_value = "phone", contact_phone
+                elif valid_phone:
+                    contact_type, contact_value = "phone", norm_phone
                 else:
                     contact_type, contact_value = None, None
 

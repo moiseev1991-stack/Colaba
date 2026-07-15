@@ -60,6 +60,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.company_decision_maker import CompanyDecisionMaker
 from app.models.maps import Company, CompanyContact
+from app.modules.maps.contact_validation import is_valid_email, is_valid_phone_ru
 
 
 logger = logging.getLogger(__name__)
@@ -260,10 +261,18 @@ async def enrich_from_vk(
         if not isinstance(c, dict):
             continue
         # ВК даёт desc (описание/роль), email, phone; иногда только user_id.
+        # Валидируем email/phone сразу — плохие превращаем в None, чтобы
+        # ниже не попали в contact_type/contact_value. MX-check делаем
+        # без него в hot-path парсера (оркестратор перед outreach проверит).
         desc = (c.get("desc") or "").strip()
-        email = (c.get("email") or "").strip().lower() or None
-        phone = (c.get("phone") or "").strip() or None
+        raw_email = (c.get("email") or "").strip().lower() or None
+        raw_phone = (c.get("phone") or "").strip() or None
         user_id = c.get("user_id")
+
+        v_ok, _e_reason, norm_email = is_valid_email(raw_email, check_mx=False)
+        email = norm_email if v_ok else None
+        p_ok, _p_reason, norm_phone = is_valid_phone_ru(raw_phone)
+        phone = norm_phone if p_ok else None
 
         # Без роли и без user_id (значит и имя не вытащить) — пропускаем.
         # user_id → нужно users.get, но это ещё один API-запрос на каждую
