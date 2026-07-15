@@ -27,7 +27,8 @@ interface InventoryItem {
   reviews_analyzed: number;
   pain_tags_count: number;
   companies_with_pain_scores: number;
-  companies_with_marketing_dm: number;
+  // Опционально — старый backend не возвращает это поле.
+  companies_with_marketing_dm?: number;
 }
 
 interface DmSourceStat {
@@ -43,8 +44,10 @@ interface InventoryResponse {
   total_companies: number;
   total_reviews: number;
   total_pain_tags: number;
-  total_companies_with_marketing_dm: number;
-  dm_source_stats: DmSourceStat[];
+  // Опционально — старый backend без ЛПР-стата (до PR feat/dm-finder-quality)
+  // возвращает undefined. UI должен корректно рендериться и на старом ответе.
+  total_companies_with_marketing_dm?: number;
+  dm_source_stats?: DmSourceStat[];
   items: InventoryItem[];
 }
 
@@ -277,11 +280,11 @@ export default function DataInventoryPage() {
             <StatCard label="Активных pain-тегов" value={data.total_pain_tags} />
             <StatCard
               label="С маркетинг-ЛПР"
-              value={data.total_companies_with_marketing_dm}
+              value={data.total_companies_with_marketing_dm ?? 0}
               hint={
                 data.total_companies > 0
                   ? `${Math.round(
-                      (data.total_companies_with_marketing_dm /
+                      ((data.total_companies_with_marketing_dm ?? 0) /
                         data.total_companies) *
                         100,
                     )}% всех компаний`
@@ -292,7 +295,7 @@ export default function DataInventoryPage() {
 
           {/* Источники ЛПР — success-rate по source. Даёт видимость
               «hh 403-ит», «vk без токена», «prodoctorov лучше egrul» и т.д. */}
-          {data.dm_source_stats.length > 0 && (
+          {(data.dm_source_stats?.length ?? 0) > 0 && (
             <section className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-800">
@@ -314,7 +317,7 @@ export default function DataInventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.dm_source_stats.map((s) => {
+                    {(data.dm_source_stats ?? []).map((s) => {
                       const rate = Math.round(s.contact_rate * 100);
                       const rateBad = rate < 30;
                       const rateGood = rate >= 60;
@@ -451,13 +454,14 @@ export default function DataInventoryPage() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         {(() => {
+                          const mdm = row.companies_with_marketing_dm ?? 0;
                           const mdmPct = row.companies_count > 0
-                            ? Math.round((row.companies_with_marketing_dm / row.companies_count) * 100)
+                            ? Math.round((mdm / row.companies_count) * 100)
                             : 0;
                           const cls = mdmPct >= 50 ? 'text-emerald-700' : mdmPct >= 20 ? 'text-amber-700' : 'text-rose-700';
                           return (
                             <>
-                              <span className={cls}>{row.companies_with_marketing_dm}</span>
+                              <span className={cls}>{mdm}</span>
                               <span className="ml-1 text-xs text-slate-400">({mdmPct}%)</span>
                             </>
                           );
