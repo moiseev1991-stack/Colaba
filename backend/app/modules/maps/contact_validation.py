@@ -39,18 +39,24 @@ logger = logging.getLogger(__name__)
 
 
 # Local-part-и которые точно не являются рабочим ящиком человека.
+# NB: "example"/"test" НЕ включаем сюда — они ловятся доменом (example.com,
+# test.ru). Иначе `example@example.com` вернёт blacklist_local, тогда как
+# концептуально причина в мусорном домене — это ухудшает читаемость логов.
 _EMAIL_LOCAL_BLACKLIST = frozenset({
     "noreply", "no-reply", "donotreply", "do-not-reply",
     "mailer-daemon", "postmaster", "abuse", "bounce", "bounces",
-    "example", "test", "user", "your", "name", "email",
+    "user", "your", "name", "email",
 })
 
 # Домены, на которые точно нет смысла писать (placeholder'ы CMS/инфра).
+# NB: "sentry.io" НЕ добавляем как suffix — реальные Sentry ingest-адреса
+# ловятся отдельной проверкой на 'ingest.sentry' в domain (даёт более
+# точный reason='sentry_id' в логах).
 _EMAIL_DOMAIN_BLACKLIST_SUFFIX: tuple[str, ...] = (
     "example.com", "example.ru", "example.org", "example.net",
     "domain.com", "domain.ru", "yourdomain.com", "yourdomain.ru",
     "test.com", "test.ru", "localhost",
-    "sentry.io", "wixpress.com", "wix.com",
+    "wixpress.com", "wix.com",
     "cloudflare.com", "godaddy.com", "shopify.com",
 )
 
