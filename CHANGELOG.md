@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.149.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.148.0...v1.149.0) (2026-07-16)
+
+
+### Bug Fixes
+
+* **admin:** ErrorBoundary на /admin/data-inventory при старом backend ([c343ddc](https://github.com/moiseev1991-stack/Colaba/commit/c343ddc99a369e71c80e8f7045732a7630a4ab0d))
+
+
+### Features
+
+* **dm-finder:** общая почта компании как fallback + NER имён из отзывов ([3b2a177](https://github.com/moiseev1991-stack/Colaba/commit/3b2a177181ef1c7a69be5f6c065d0ba52746504c))
+
 # [1.148.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.147.1...v1.148.0) (2026-07-15)
 
 
