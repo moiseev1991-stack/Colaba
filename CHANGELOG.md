@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.150.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.149.0...v1.150.0) (2026-07-16)
+
+
+### Features
+
+* **dm-finder:** 4 новых источника ЛПР — owner-reply, Telegram-био, checko, SerpAPI ([f74f370](https://github.com/moiseev1991-stack/Colaba/commit/f74f370fff715d2d92d3aa44dc9bcb7dd9d8349e))
+
 # [1.149.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.148.0...v1.149.0) (2026-07-16)
 
 
