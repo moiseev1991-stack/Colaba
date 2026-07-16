@@ -2249,17 +2249,29 @@ async def companies_enrich_marketing_dm(
     search_id = payload.get("search_id")
     if not isinstance(company_ids, list) or not company_ids:
         raise HTTPException(status_code=400, detail="company_ids обязателен")
-    if search_id is None:
-        raise HTTPException(status_code=400, detail="search_id обязателен")
     company_ids = [int(x) for x in company_ids if isinstance(x, (int, str))][:500]
 
-    await _get_owned_search(db, int(search_id), user_id)
-
-    valid_rows = (await db.execute(
-        select(MapSearchResult.company_id)
-        .where(MapSearchResult.map_search_id == int(search_id))
-        .where(MapSearchResult.company_id.in_(company_ids))
-    )).scalars().all()
+    if search_id is not None:
+        # /app/maps: конкретный поиск — стандартная валидация.
+        await _get_owned_search(db, int(search_id), user_id)
+        valid_rows = (await db.execute(
+            select(MapSearchResult.company_id)
+            .where(MapSearchResult.map_search_id == int(search_id))
+            .where(MapSearchResult.company_id.in_(company_ids))
+        )).scalars().all()
+    else:
+        # 2026-07-16: /app/pains — search_id=null. Проверяем владение через
+        # ЛЮБОЙ user-search и берём только компании, реально принадлежащие
+        # юзеру (защита от подмены id).
+        valid_rows = (await db.execute(
+            select(MapSearchResult.company_id)
+            .join(
+                MapSearch, MapSearch.id == MapSearchResult.map_search_id,
+            )
+            .where(MapSearch.user_id == user_id)
+            .where(MapSearchResult.company_id.in_(company_ids))
+            .distinct()
+        )).scalars().all()
     valid_set = {int(x) for x in valid_rows}
     if not valid_set:
         return {"queued": 0}
@@ -2334,24 +2346,43 @@ async def companies_enrich_single_source(
             ),
         )
     search_id = payload.get("search_id")
-    if search_id is None:
-        raise HTTPException(status_code=400, detail="search_id обязателен")
 
-    await _get_owned_search(db, int(search_id), user_id)
-
-    # Компания должна быть в этом search'е (защита от подмены id).
-    exists = (
-        await db.execute(
-            select(MapSearchResult.company_id)
-            .where(MapSearchResult.map_search_id == int(search_id))
-            .where(MapSearchResult.company_id == int(company_id))
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if exists is None:
-        raise HTTPException(
-            status_code=404, detail="Компания не найдена в этом поиске."
-        )
+    if search_id is not None:
+        # Классический путь /app/maps: есть конкретный поиск — проверяем
+        # владение и что компания реально в этом поиске.
+        await _get_owned_search(db, int(search_id), user_id)
+        exists = (
+            await db.execute(
+                select(MapSearchResult.company_id)
+                .where(MapSearchResult.map_search_id == int(search_id))
+                .where(MapSearchResult.company_id == int(company_id))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if exists is None:
+            raise HTTPException(
+                status_code=404, detail="Компания не найдена в этом поиске."
+            )
+    else:
+        # 2026-07-16: путь /app/pains — там drawer открывается без search_id,
+        # но юзер всё равно должен уметь ре-парсить источники ЛПР. Проверяем
+        # владение через ЛЮБОЙ поиск юзера, куда попала эта компания.
+        exists_owned = (
+            await db.execute(
+                select(MapSearchResult.company_id)
+                .join(
+                    MapSearch, MapSearch.id == MapSearchResult.map_search_id,
+                )
+                .where(MapSearch.user_id == user_id)
+                .where(MapSearchResult.company_id == int(company_id))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if exists_owned is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Компания не найдена ни в одном из ваших поисков.",
+            )
 
     task_attr, label = _ENRICH_SOURCE_TASKS[source]
     from app.modules.maps import tasks as _tasks_mod

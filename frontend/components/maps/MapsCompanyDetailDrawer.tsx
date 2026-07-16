@@ -113,12 +113,25 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   // явный «не нашли», а не молча возвращаем кнопку.
   const [dmSearchExhausted, setDmSearchExhausted] = useState(false);
   // 2026-07-11: точечный триггер source-парсера (клик по плашке
-  // «○ ВК»/«○ hh.ru»/…). triggeringSource показывает какой сейчас в процессе.
-  const [triggeringSource, setTriggeringSource] = useState<EnrichSource | null>(null);
+  // «○ ВК»/«○ hh.ru»/…). 2026-07-16: сделали НЕЗАВИСИМЫМ per-source —
+  // юзер может нажать несколько плашек подряд, каждая крутится своим
+  // счётчиком; disabled только та, у которой сейчас idem-запрос в полёте.
+  const [triggeringSources, setTriggeringSources] = useState<Set<EnrichSource>>(
+    () => new Set(),
+  );
   const handleSourceRetry = useCallback(async (source: EnrichSource) => {
-    if (companyId == null || triggeringSource || searchId == null) return;
-    setTriggeringSource(source);
+    if (companyId == null) return;
+    // Уже крутится ЭТА плашка — тихо игнорируем повторный клик по ней.
+    // По другим источникам разрешено параллельно.
+    if (triggeringSources.has(source)) return;
+    setTriggeringSources((prev) => {
+      const next = new Set(prev);
+      next.add(source);
+      return next;
+    });
     try {
+      // searchId=null — валидный кейс для /app/pains (бэк проверит владение
+      // через любой user-search'ев). Проксируем null.
       await enrichCompanySource(companyId, source, searchId);
       // eslint-disable-next-line no-console
       console.log('[drawer] source-retry OK', { source, companyId, searchId });
@@ -127,20 +140,28 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
       const detail = e?.response?.data?.detail || e?.message || 'unknown';
       // eslint-disable-next-line no-console
       console.error('[drawer] source-retry FAILED', { source, status, detail });
-      // Показываем ошибку в существующем dmEnrichResult — юзер видит красный
-      // хвост под кнопкой «Найти ЛПР».
       setDmEnrichResult(
         `Не удалось запустить ${source}: ${status ? `HTTP ${status} — ` : ''}${detail}`,
       );
-      setTriggeringSource(null);
+      setTriggeringSources((prev) => {
+        const next = new Set(prev);
+        next.delete(source);
+        return next;
+      });
       return;
     }
     // Через 55с рефетч drawer'а. Если source нашёл что-то — плашка станет
     // ✓·N. Если нет — останется ○. is_marketing_dm тоже может обновиться,
     // потому что бэк ставит enrich_marketing_dm через 45с после source-таска.
     window.setTimeout(async () => {
+      const clearTriggering = () =>
+        setTriggeringSources((prev) => {
+          const next = new Set(prev);
+          next.delete(source);
+          return next;
+        });
       if (companyId == null) {
-        setTriggeringSource(null);
+        clearTriggering();
         return;
       }
       try {
@@ -149,13 +170,13 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
       } catch {
         // Тихо.
       } finally {
-        setTriggeringSource(null);
+        clearTriggering();
       }
     }, 55_000);
-  }, [companyId, searchId, triggeringSource]);
+  }, [companyId, searchId, triggeringSources]);
 
   const handleFindDm = useCallback(async () => {
-    if (companyId == null || dmEnrichPending || searchId == null) return;
+    if (companyId == null || dmEnrichPending) return;
     setDmEnrichPending(true);
     setDmEnrichResult(null);
     setDmSearchExhausted(false);
@@ -350,7 +371,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
               «не нашли», а не заново кнопки. */}
           <DecisionMakersBlock
             decisionMakers={detail.decision_makers ?? []}
-            onFindDm={searchId != null ? handleFindDm : undefined}
+            onFindDm={handleFindDm}
             dmEnrichPending={dmEnrichPending}
             dmEnrichResult={dmEnrichResult}
             searchExhausted={dmSearchExhausted}
@@ -359,8 +380,8 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             legalDirectorName={detail.legal?.director_name ?? null}
             legalDirectorPost={detail.legal?.director_post ?? null}
             genericEmails={detail.generic_emails ?? []}
-            onSourceRetry={searchId != null ? handleSourceRetry : undefined}
-            triggeringSource={triggeringSource}
+            onSourceRetry={handleSourceRetry}
+            triggeringSources={triggeringSources}
           />
 
           <div className="flex flex-wrap gap-3 text-xs">
@@ -1356,30 +1377,34 @@ function SourcesCheckedStrip({
   legalMatchConfidence,
   hiringMarketing,
   onSourceRetry,
-  triggeringSource,
+  triggeringSources,
 }: {
   decisionMakers: DecisionMakerOut[];
   legalMatchConfidence: number | null;
   hiringMarketing: boolean;
-  /** Клик по «○ ВК» / «○ hh.ru» / «○ сайт» / «○ ЕГРЮЛ» — просит родителя
-   *  запустить конкретный source-таск. Если undefined — плашки статичные. */
+  /** Клик по плашке источника — просит родителя запустить конкретный
+   *  source-таск. Если undefined — плашки статичные. Плашки НЕЗАВИСИМЫ:
+   *  можно кликать несколько подряд, каждая крутится своим счётчиком. */
   onSourceRetry?: (source: EnrichSourceKey) => void | Promise<void>;
-  /** Родитель показывает какой источник сейчас в процессе — плашка
-   *  превращается в «отправлено, ищем…» и disabled. */
-  triggeringSource?: EnrichSourceKey | null;
+  /** Set источников, у которых сейчас в полёте idem-запрос. Плашка
+   *  disabled только для источника из этого set — остальные всегда
+   *  доступны для клика, даже уже «✓ найдено» (перепарсинг). */
+  triggeringSources?: Set<EnrichSourceKey> | null;
 }) {
   const countBy = (prefixes: string[]) =>
     decisionMakers.filter((d) => prefixes.some((p) => d.source === p || d.source.startsWith(p)))
       .length;
-  const website = countBy(['website_team', 'website_about', 'website_contacts']);
+  const website = countBy(['website_team', 'website_about', 'website_contacts', 'website_partnership', 'website_career']);
   const vk = countBy(['vk']);
   const hh = countBy(['hh']);
   const egrul = countBy(['egrul_director', 'egrul_founder']);
   const dadata = legalMatchConfidence != null;
 
-  // Плашка. Если count>0 → зелёная статичная. Если count===0 и есть
-  // onSourceRetry+sourceKey → кликабельная кнопка «повторить». Если
-  // triggeringSource===sourceKey → «ищем…» disabled.
+  // Плашка. 3 состояния:
+  //  - triggering: «⏳ ищем…» disabled (только эта плашка, остальные живут)
+  //  - found (count>0): «✓ N», по клику ре-парсинг источника (перепроверить)
+  //  - empty (count===0): «↻ N» / «○» — по клику запуск парсера
+  // Все клики независимы, глобального lock'а больше нет.
   const chip = (
     label: string,
     count: number,
@@ -1387,14 +1412,16 @@ function SourcesCheckedStrip({
     extra?: string,
   ) => {
     const found = count > 0;
-    const isTriggering = sourceKey != null && triggeringSource === sourceKey;
-    const clickable = !found && !!onSourceRetry && sourceKey != null && !isTriggering;
+    const isTriggering = sourceKey != null && !!triggeringSources?.has(sourceKey);
+    const clickable = !isTriggering && !!onSourceRetry && sourceKey != null;
     const baseCls =
       'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ';
-    const stateCls = found
-      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-      : isTriggering
-        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+    const stateCls = isTriggering
+      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+      : found
+        ? clickable
+          ? 'cursor-pointer bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60'
+          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
         : clickable
           ? 'cursor-pointer bg-slate-100 text-slate-600 hover:bg-brand-100 hover:text-brand-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-brand-900/30 dark:hover:text-brand-200'
           : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500';
@@ -1409,12 +1436,14 @@ function SourcesCheckedStrip({
         {extra && <span className="opacity-70">· {extra}</span>}
       </>
     );
-    const title = found
-      ? `${label}: найдено ${count}`
-      : isTriggering
-        ? `${label}: запущен поиск, ~1 мин`
+    const title = isTriggering
+      ? `${label}: запущен поиск, ~1 мин`
+      : found
+        ? clickable
+          ? `${label}: найдено ${count} — кликните, чтобы перепроверить`
+          : `${label}: найдено ${count}`
         : clickable
-          ? `${label}: пусто — кликните, чтобы запустить парсер повторно`
+          ? `${label}: пусто — кликните, чтобы запустить парсер`
           : `${label}: пусто`;
     if (clickable) {
       return (
@@ -1478,11 +1507,11 @@ function DecisionMakersBlock({
   legalDirectorPost,
   genericEmails,
   onSourceRetry,
-  triggeringSource,
+  triggeringSources,
 }: {
   decisionMakers: DecisionMakerOut[];
-  /** undefined = кнопка «Найти ЛПР» и retry-плашки не показываются
-   *  (например drawer открыт с /app/pains без search_id). */
+  /** undefined = кнопка «Найти ЛПР» не показывается. По умолчанию
+   *  показывается всегда — 2026-07-16 разрешили и на /app/pains. */
   onFindDm?: () => void;
   dmEnrichPending: boolean;
   dmEnrichResult: string | null;
@@ -1496,10 +1525,12 @@ function DecisionMakersBlock({
   /** 2026-07-16: общая почта компании (info@, contact@ …). Fallback-канал,
    *  когда персонального ЛПР с контактом не нашли. */
   genericEmails?: string[];
-  /** Клик по «○ ВК» / «○ hh.ru» / «○ сайт» / «○ ЕГРЮЛ» — родитель
-   *  триггерит source-task и рефетчит drawer через 55с. */
+  /** Клик по плашке источника — родитель триггерит source-task и
+   *  рефетчит drawer через 55с. */
   onSourceRetry?: (source: EnrichSourceKey) => void | Promise<void>;
-  triggeringSource?: EnrichSourceKey | null;
+  /** 2026-07-16: НЕЗАВИСИМЫЕ плашки — set источников, у которых сейчас
+   *  в полёте idem-запрос. Остальные плашки всегда кликабельны. */
+  triggeringSources?: Set<EnrichSourceKey> | null;
 }) {
   const generic = (genericEmails ?? []).filter(Boolean);
   // Общий блок «Общая почта компании» — переиспользуем в empty-state и как
@@ -1577,7 +1608,7 @@ function DecisionMakersBlock({
               legalMatchConfidence={legalMatchConfidence ?? null}
               hiringMarketing={hiringMarketing ?? false}
               onSourceRetry={onSourceRetry}
-              triggeringSource={triggeringSource ?? null}
+              triggeringSources={triggeringSources ?? null}
             />
           </div>
           {legalDirectorName && (
@@ -1655,10 +1686,19 @@ function DecisionMakersBlock({
     })
     .slice(0, 3);
   const alternativeIds = new Set(alternativesWithContact.map((d) => d.name));
-  const dms = rest.filter(
+  // 2026-07-16: reviews_ner-персоны — это упоминания клиентов из отзывов
+  // («спасибо Марине из маркетинга»). Они НЕ ЛПР по определению — это
+  // слабый шумный источник. Показываем их отдельным блоком «Упомянуты в
+  // отзывах» с честным disclaimer'ом, чтобы юзер не путал врачей из
+  // отзывов с реальными маркетинг-ЛПР.
+  const reviewsMentions = rest.filter(
+    (d) => d.source === 'reviews_ner' && !alternativeIds.has(d.name),
+  );
+  const nonReview = rest.filter((d) => d.source !== 'reviews_ner');
+  const dms = nonReview.filter(
     (d) => d.is_decision_maker && !alternativeIds.has(d.name),
   );
-  const others = rest.filter(
+  const others = nonReview.filter(
     (d) => !d.is_decision_maker && !alternativeIds.has(d.name),
   );
 
@@ -1832,7 +1872,7 @@ function DecisionMakersBlock({
         legalMatchConfidence={legalMatchConfidence ?? null}
         hiringMarketing={hiringMarketing ?? false}
         onSourceRetry={onSourceRetry}
-        triggeringSource={triggeringSource ?? null}
+        triggeringSources={triggeringSources ?? null}
       />
       {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
       {marketingDm && (
@@ -1967,65 +2007,121 @@ function DecisionMakersBlock({
         </div>
       )}
 
-      {/* Остальные найденные персоны (командa сайта, учредители и т.п.) */}
-      {(dms.length > 0 || others.length > 0) && (
-        <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
-          <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
-            {marketingDm ? 'Прочие найденные ЛПР' : 'ЛПР с сайта компании'}
+      {/* Найденные ЛПР / сотрудники с сайта, ВК, hh, ЕГРЮЛ. Отзывы —
+          отдельный блок ниже, потому что это шумный источник и врачи из
+          отзывов ЛПР НЕ являются. */}
+      {(dms.length > 0 || others.length > 0) && (() => {
+        // Динамический заголовок:
+        //   - есть dms → «Прочие найденные ЛПР» (если marketingDm) /
+        //     «Найденные ЛПР» (если marketingDm нет)
+        //   - только others → «Найденные сотрудники (не ЛПР)»
+        const list = dms.length > 0 ? dms : others;
+        const heading =
+          dms.length > 0
+            ? marketingDm
+              ? 'Прочие найденные ЛПР'
+              : 'Найденные ЛПР'
+            : 'Найденные сотрудники (не ЛПР)';
+        return (
+          <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
+              {heading}
+            </div>
+            <ul className="space-y-1.5">
+              {list.map((d, i) => (
+                <li key={`${d.name}-${i}`} className="text-[12px]">
+                  <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
+                  {d.post && (
+                    <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
+                  )}
+                  <span
+                    className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                    title={sourceLabel[d.source] ?? d.source}
+                  >
+                    {sourceLabel[d.source] ?? d.source}
+                  </span>
+                  {typeof d.confidence === 'number' && (
+                    <span
+                      className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
+                      title="Уверенность оркестратора"
+                    >
+                      {Math.round(d.confidence * 100)}%
+                    </span>
+                  )}
+                  {renderContact(d)}
+                  {d.source_url && !d.contact_value && (
+                    <a
+                      href={d.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
+                      title={sourceLabel[d.source] ?? d.source}
+                    >
+                      ↗
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {dms.length > 0 && others.length > 0 && (
+              <details className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <summary className="cursor-pointer">
+                  + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
+                </summary>
+                <ul className="mt-1 space-y-1 pl-3">
+                  {others.map((d, i) => (
+                    <li key={`other-${d.name}-${i}`}>
+                      <span className="font-medium">{d.name}</span>
+                      {d.post && <span>{` · ${d.post}`}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </div>
-          <ul className="space-y-1.5">
-            {(dms.length > 0 ? dms : others).map((d, i) => (
-              <li key={`${d.name}-${i}`} className="text-[12px]">
-                <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
+        );
+      })()}
+
+      {/* 2026-07-16: имена, упомянутые клиентами в отзывах (LLM-NER по
+          raw_text). Явный disclaimer: это НЕ ЛПР, это работники, которых
+          упоминали клиенты. Может пригодиться для персонализации письма
+          («Здравствуйте, Марина!»), но полагаться на них как на решение
+          нельзя. */}
+      {reviewsMentions.length > 0 && (
+        <details className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+          <summary className="cursor-pointer text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+            💬 Упомянуты в отзывах ({reviewsMentions.length})
+            <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+              не ЛПР — сотрудники по упоминанию клиентов
+            </span>
+          </summary>
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+            Имена, которые клиенты называют в отзывах («спасибо Марине»).
+            Если это врач/мастер/администратор — это НЕ маркетинг-ЛПР,
+            но имя можно использовать в приветствии письма.
+          </div>
+          <ul className="mt-2 space-y-1">
+            {reviewsMentions.map((d, i) => (
+              <li key={`rev-${d.name}-${i}`} className="text-[12px]">
+                <span className="font-medium text-slate-800 dark:text-slate-100">
+                  {d.name}
+                </span>
                 {d.post && (
                   <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
                 )}
-                <span
-                  className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-                  title={sourceLabel[d.source] ?? d.source}
-                >
-                  {sourceLabel[d.source] ?? d.source}
-                </span>
                 {typeof d.confidence === 'number' && (
                   <span
                     className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
-                    title="Уверенность оркестратора"
+                    title="Уверенность NER-парсера. Низкая ⇒ упомянут пару раз, высокая ⇒ упомянут в нескольких отзывах."
                   >
                     {Math.round(d.confidence * 100)}%
                   </span>
                 )}
-                {renderContact(d)}
-                {d.source_url && !d.contact_value && (
-                  <a
-                    href={d.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="ml-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
-                    title={sourceLabel[d.source] ?? d.source}
-                  >
-                    ↗
-                  </a>
-                )}
               </li>
             ))}
           </ul>
-          {dms.length > 0 && others.length > 0 && (
-            <details className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-              <summary className="cursor-pointer">
-                + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
-              </summary>
-              <ul className="mt-1 space-y-1 pl-3">
-                {others.map((d, i) => (
-                  <li key={`other-${d.name}-${i}`}>
-                    <span className="font-medium">{d.name}</span>
-                    {d.post && <span>{` · ${d.post}`}</span>}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
+        </details>
       )}
     </div>
   );
