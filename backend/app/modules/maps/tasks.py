@@ -1324,6 +1324,111 @@ def enrich_website_email_playwright(self, company_id: int):
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
+# ---------------------------------------------------------------------------
+# 4 новых источника ЛПР — 2026-07-16
+# ---------------------------------------------------------------------------
+
+
+async def _enrich_dm_from_serp_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.serp_dm import enrich_dm_from_serp
+        return await enrich_dm_from_serp(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_dm_from_serp",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # SerpAPI платный + ~1-2 запроса на компанию. 30/m — комфорт.
+    rate_limit="30/m",
+)
+def enrich_dm_from_serp(self, company_id: int):
+    """Ищет ЛПР через Google-поиск (SerpAPI). Snippet+title → LLM."""
+    try:
+        return asyncio.run(_enrich_dm_from_serp_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_dm_from_serp retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_dm_from_telegram_bio_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.telegram_bio_dm import enrich_dm_from_telegram_bio
+        return await enrich_dm_from_telegram_bio(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_dm_from_telegram_bio",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # Публичные t.me/{name} страницы без rate-limit'а Telegram, но
+    # держим 60/m — вежливо к их серверу.
+    rate_limit="60/m",
+)
+def enrich_dm_from_telegram_bio(self, company_id: int):
+    """Ищет ЛПР через bio Telegram-каналов компании (публичные preview)."""
+    try:
+        return asyncio.run(_enrich_dm_from_telegram_bio_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_dm_from_telegram_bio retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_dm_from_checko_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.checko_dm import enrich_dm_from_checko
+        return await enrich_dm_from_checko(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_dm_from_checko",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    # checko.ru без явных лимитов, но conservative — 30/m.
+    rate_limit="30/m",
+)
+def enrich_dm_from_checko(self, company_id: int):
+    """Ищет ЛПР через публичную страницу checko.ru/company/{inn}."""
+    try:
+        return asyncio.run(_enrich_dm_from_checko_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_dm_from_checko retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
+async def _enrich_dm_from_owner_replies_async(company_id: int) -> dict:
+    async with AsyncSessionLocal() as db:
+        from app.modules.maps.owner_reply_dm import enrich_dm_from_owner_replies
+        return await enrich_dm_from_owner_replies(db, company_id)
+
+
+@celery_app.task(
+    name="enrich_dm_from_owner_replies",
+    queue="maps",
+    bind=True,
+    max_retries=1,
+    rate_limit="60/m",
+)
+def enrich_dm_from_owner_replies(self, company_id: int):
+    """Ищет ЛПР в подписях ответов владельца на отзывы клиентов."""
+    try:
+        return asyncio.run(_enrich_dm_from_owner_replies_async(company_id))
+    except Exception as exc:
+        logger.warning(
+            "enrich_dm_from_owner_replies retrying company=%d: %s", company_id, exc
+        )
+        raise self.retry(exc=exc, countdown=30, max_retries=1)
+
+
 async def _enrich_marketing_dm_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.marketing_dm import enrich_marketing_dm

@@ -1673,8 +1673,12 @@ function DecisionMakersBlock({
     egrul_director: 'ЕГРЮЛ (директор)',
     egrul_founder: 'ЕГРЮЛ (учредитель)',
     egrn: 'ЕГРН (собственник)',
-    // 2026-07-16: имя нашли в отзывах клиентов (LLM-NER по raw_text).
+    // 2026-07-16 (вечер): 5 источников NER-типа, добавленных за один день.
     reviews_ner: 'из отзывов',
+    owner_reply: 'из ответа владельца',
+    telegram_bio: 'из Telegram-био',
+    checko: 'checko.ru',
+    serp_google: 'из Google-поиска',
   };
   // Винительный падеж — «фолбэк на кого?»: маркетолога / владельца / …
   const roleLabel: Record<string, string> = {

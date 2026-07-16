@@ -2297,6 +2297,13 @@ _ENRICH_SOURCE_TASKS = {
     "vk": ("enrich_company_vk", "ВКонтакте"),
     "hh": ("enrich_company_hh", "hh.ru"),
     "egrul": ("enrich_company_legal", "ЕГРЮЛ / DaData"),
+    # 2026-07-16: 4 новых источника. Точечный retry доступен через API,
+    # но плашки в UI не рисуем — источники запускаются автоматически
+    # оркестратором enrich_marketing_dm.
+    "serp_google": ("enrich_dm_from_serp", "SerpAPI (Google-поиск)"),
+    "telegram_bio": ("enrich_dm_from_telegram_bio", "Telegram-био"),
+    "checko": ("enrich_dm_from_checko", "checko.ru"),
+    "owner_reply": ("enrich_dm_from_owner_replies", "подписи в ответах владельца"),
 }
 
 

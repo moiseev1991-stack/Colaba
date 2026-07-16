@@ -244,6 +244,10 @@ class Review(Base):
     source_url = Column(String(500))
     posted_at = Column(DateTime(timezone=True))
     has_owner_reply = Column(Boolean, nullable=False, default=False)
+    # 2026-07-16: текст ответа владельца на отзыв. Используется owner_reply_dm.py
+    # для NER подписей вида «— Мария, PR-менеджер». NULL если ответа нет либо
+    # провайдер не отдал текст.
+    owner_reply_text = Column(Text)
 
     text_hash = Column(String(64))
     embedding = Column(Vector(1536))       # OpenAI text-embedding-3-small
