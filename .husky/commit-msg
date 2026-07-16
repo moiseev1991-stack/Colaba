@@ -1,0 +1,2 @@
+# commit-msg хук: проверка формата коммита через commitlint (Conventional Commits).
+npx --no-install commitlint --edit "$1"

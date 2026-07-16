@@ -4,6 +4,31 @@
   "scripts": {
     "dev": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
-    "start": "npm run start --prefix frontend"
+    "start": "npm run start --prefix frontend",
+    "prepare": "husky",
+    "lint:frontend": "npm run lint --prefix frontend",
+    "typecheck:frontend": "npm run type-check --prefix frontend"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.5"
+  },
+  "lint-staged": {
+    "backend/**/*.py": [
+      "ruff check --fix",
+      "ruff format"
+    ],
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "prettier --write"
+    ],
+    "frontend/**/*.{json,md,css}": [
+      "prettier --write"
+    ],
+    "*.{js,cjs,mjs,json,md}": [
+      "prettier --write"
+    ]
   }
 }
