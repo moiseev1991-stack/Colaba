@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.150.1](https://github.com/moiseev1991-stack/Colaba/compare/v1.150.0...v1.150.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **dm-drawer:** «прочие найденные ЛПР» → «прочие упоминающиеся люди» ([39a3ffc](https://github.com/moiseev1991-stack/Colaba/commit/39a3ffc61c1bffe6ed9ea4d79d733ee579612cfd))
+* **dm-drawer:** независимые плашки, честный заголовок, retry на /app/pains ([2935cda](https://github.com/moiseev1991-stack/Colaba/commit/2935cda450239c17742fc110d95a19325b295723))
+
 # [1.150.0](https://github.com/moiseev1991-stack/Colaba/compare/v1.149.0...v1.150.0) (2026-07-16)
 
 
