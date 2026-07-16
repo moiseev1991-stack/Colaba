@@ -44,6 +44,7 @@ from app.models.company_decision_maker import CompanyDecisionMaker
 from app.modules.maps.dm_from_legal import import_persons_from_legal
 from app.modules.maps.egrn_reconcile import reconcile_egrn_for_company
 from app.modules.maps.email_to_dm_attribution import attribute_emails_to_dms
+from app.modules.maps.reviews_ner_dm import enrich_dm_from_reviews
 
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,9 @@ def _pick_best(dms: list[CompanyDecisionMaker]) -> CompanyDecisionMaker | None:
         "egrul_founder": 3,
         "egrul_director": 4,
         "egrn": 5,
+        # reviews_ner (2026-07-16) — самый шумный источник, ставим ниже всех:
+        # в best-DM выбирают только при отсутствии альтернатив с contact.
+        "reviews_ner": 6,
     }
 
     def _key(d: CompanyDecisionMaker) -> tuple[int, int, float, int]:
@@ -162,6 +166,19 @@ async def enrich_marketing_dm(
     except Exception as e:
         logger.warning(
             "enrich_marketing_dm: email_to_dm failed for #%d: %s",
+            company_id, e,
+        )
+
+    # Шаг 1d. NER имён сотрудников из отзывов клиентов (2026-07-16).
+    # Часто в отзывах «спасибо Марине из отдела маркетинга» — вытаскиваем
+    # такие имена как candidate ЛПР. Confidence низкий (0.35-0.55), поэтому
+    # выберут best-DM'ом только если ничего лучше не нашлось. Даже если не
+    # выберут — имя будет в UI, юзер напишет «Здравствуйте, Марина!».
+    try:
+        await enrich_dm_from_reviews(db, company_id)
+    except Exception as e:
+        logger.warning(
+            "enrich_marketing_dm: reviews_ner failed for #%d: %s",
             company_id, e,
         )
 

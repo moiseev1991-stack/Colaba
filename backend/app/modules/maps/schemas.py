@@ -420,6 +420,10 @@ class CompanyDetailOut(CompanyOut):
     # директор «по ЕГРЮЛ», здесь — все лица найденные на /команда /о-нас.
     # Пустой массив = краулер ещё не отработал или сайт без явных страниц команды.
     decision_makers: list[DecisionMakerOut] = Field(default_factory=list)
+    # 2026-07-16: fallback-канал компании, если персональный ЛПР не найден.
+    # info@/contact@/… из Company.emails, отфильтрованные от email-ов уже
+    # привязанных к персонам. Считается на лету через split_generic_emails.
+    generic_emails: list[str] = Field(default_factory=list)
 
 
 class MapSearchOut(BaseModel):

@@ -906,6 +906,20 @@ async def get_company(
         and detail.legal.director_name.strip()
     )
     detail.has_lpr = legal_has_director or bool(dm_rows)
+
+    # 2026-07-16: общая почта компании (fallback-канал, если персональный
+    # ЛПР не найден). Company.emails минус те, что уже привязаны к персоне
+    # через CompanyDecisionMaker.contact_value (type=email).
+    from app.modules.maps.generic_emails import split_generic_emails
+    personal_emails = {
+        (r.contact_value or "").strip().lower()
+        for r in dm_rows
+        if (r.contact_type or "") == "email" and r.contact_value
+    }
+    detail.generic_emails = split_generic_emails(
+        list(company.emails or []),
+        personal_emails,
+    )
     return detail
 
 

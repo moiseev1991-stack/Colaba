@@ -358,6 +358,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             hiringMarketing={detail.hiring_marketing ?? false}
             legalDirectorName={detail.legal?.director_name ?? null}
             legalDirectorPost={detail.legal?.director_post ?? null}
+            genericEmails={detail.generic_emails ?? []}
             onSourceRetry={searchId != null ? handleSourceRetry : undefined}
             triggeringSource={triggeringSource}
           />
@@ -1475,6 +1476,7 @@ function DecisionMakersBlock({
   hiringMarketing,
   legalDirectorName,
   legalDirectorPost,
+  genericEmails,
   onSourceRetry,
   triggeringSource,
 }: {
@@ -1491,15 +1493,69 @@ function DecisionMakersBlock({
   hiringMarketing?: boolean;
   legalDirectorName?: string | null;
   legalDirectorPost?: string | null;
+  /** 2026-07-16: общая почта компании (info@, contact@ …). Fallback-канал,
+   *  когда персонального ЛПР с контактом не нашли. */
+  genericEmails?: string[];
   /** Клик по «○ ВК» / «○ hh.ru» / «○ сайт» / «○ ЕГРЮЛ» — родитель
    *  триггерит source-task и рефетчит drawer через 55с. */
   onSourceRetry?: (source: EnrichSourceKey) => void | Promise<void>;
   triggeringSource?: EnrichSourceKey | null;
 }) {
+  const generic = (genericEmails ?? []).filter(Boolean);
+  // Общий блок «Общая почта компании» — переиспользуем в empty-state и как
+  // подсказку под ЛПР без личного контакта.
+  const renderGenericMails = (variant: 'warn' | 'neutral' = 'neutral') => {
+    if (generic.length === 0) return null;
+    const box =
+      variant === 'warn'
+        ? 'rounded border border-amber-200 bg-white/60 px-2 py-1.5 dark:border-amber-800 dark:bg-amber-950/40'
+        : 'rounded border border-slate-200 bg-white/60 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/40';
+    const textCls =
+      variant === 'warn'
+        ? 'text-amber-900 dark:text-amber-100'
+        : 'text-slate-700 dark:text-slate-200';
+    return (
+      <div className={`${box} text-[11px] ${textCls}`}>
+        <div className="mb-0.5 font-medium">
+          ✉ Общая почта компании
+          <span className="ml-1 rounded bg-slate-200/70 px-1 text-[9px] uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            общая
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+          {generic.map((e) => (
+            <a
+              key={`gm-${e}`}
+              href={`mailto:${e}`}
+              onClick={(ev) => ev.stopPropagation()}
+              className="text-brand-700 hover:underline dark:text-brand-300"
+              title={`Написать на общую почту: ${e}`}
+            >
+              {e}
+            </a>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Если родитель не дал onFindDm (напр. drawer открыт из /app/pains
-  // без search_id) и ЛПР нет — прячем весь блок целиком.
+  // без search_id) и ЛПР нет — прячем весь блок ТОЛЬКО если и общей
+  // почты нет. Иначе покажем маленький блок «Общая почта компании».
   if (!onFindDm && (!decisionMakers || decisionMakers.length === 0)) {
-    return null;
+    if (generic.length === 0) return null;
+    return (
+      <div className="rounded-v2-sm border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+          Кто за маркетинг
+        </div>
+        <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+          Персонального ЛПР пока нет. Пиши на общую почту — попадёшь в
+          общую переписку компании.
+        </div>
+        {renderGenericMails('neutral')}
+      </div>
+    );
   }
   // Пусто → показываем кнопку «Найти ЛПР» или «не нашли», если поиск уже
   // отработал вхолостую (2026-07-10 fix — юзер жаловался на «нажал → пусто»).
@@ -1538,6 +1594,9 @@ function DecisionMakersBlock({
               </div>
             </div>
           )}
+          {/* Общая почта — fallback-канал, когда персональный ЛПР не нашёлся.
+              Показываем прямо в amber-баннере, чтобы было куда писать сейчас. */}
+          {generic.length > 0 && <div className="mb-2">{renderGenericMails('warn')}</div>}
           <button
             type="button"
             onClick={onFindDm}
@@ -1557,6 +1616,7 @@ function DecisionMakersBlock({
         <div className="mb-2 text-[12px] text-slate-500 dark:text-slate-400">
           ЛПР ещё не найден. Запустить поиск (сайт /team, hh.ru, ВК, ЕГРЮЛ).
         </div>
+        {generic.length > 0 && <div className="mb-2">{renderGenericMails('neutral')}</div>}
         <button
           type="button"
           onClick={onFindDm}
@@ -1606,11 +1666,15 @@ function DecisionMakersBlock({
     website_team: 'команда сайта',
     website_about: 'страница «о нас»',
     website_contacts: 'контакты сайта',
+    website_partnership: 'страница партнёров/рекламы',
+    website_career: 'страница вакансий',
     vk: 'ВКонтакте',
     hh: 'hh.ru',
     egrul_director: 'ЕГРЮЛ (директор)',
     egrul_founder: 'ЕГРЮЛ (учредитель)',
     egrn: 'ЕГРН (собственник)',
+    // 2026-07-16: имя нашли в отзывах клиентов (LLM-NER по raw_text).
+    reviews_ner: 'из отзывов',
   };
   // Винительный падеж — «фолбэк на кого?»: маркетолога / владельца / …
   const roleLabel: Record<string, string> = {
@@ -1824,11 +1888,17 @@ function DecisionMakersBlock({
               </span>
             )}
           </div>
-          <div className="mt-2">{renderContact(marketingDm) ?? (
-            <span className="text-[11px] italic text-slate-500 dark:text-slate-400">
-              публичного контакта нет — напишите по общей почте компании
-            </span>
-          )}</div>
+          <div className="mt-2 space-y-1.5">
+            {renderContact(marketingDm) ?? (
+              <span className="text-[11px] italic text-slate-500 dark:text-slate-400">
+                публичного контакта нет — напишите по общей почте компании
+              </span>
+            )}
+            {/* Общая почта компании (info@/contact@) — доступна и здесь как
+                независимый канал для второго касания или как fallback,
+                если у ЛПР contact_value=None. */}
+            {generic.length > 0 && renderGenericMails('neutral')}
+          </div>
           {marketingDm.source_url && (
             <a
               href={marketingDm.source_url}
