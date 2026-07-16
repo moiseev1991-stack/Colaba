@@ -41,10 +41,14 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company_decision_maker import CompanyDecisionMaker
+from app.modules.maps.checko_dm import enrich_dm_from_checko
 from app.modules.maps.dm_from_legal import import_persons_from_legal
 from app.modules.maps.egrn_reconcile import reconcile_egrn_for_company
 from app.modules.maps.email_to_dm_attribution import attribute_emails_to_dms
+from app.modules.maps.owner_reply_dm import enrich_dm_from_owner_replies
 from app.modules.maps.reviews_ner_dm import enrich_dm_from_reviews
+from app.modules.maps.serp_dm import enrich_dm_from_serp
+from app.modules.maps.telegram_bio_dm import enrich_dm_from_telegram_bio
 
 
 logger = logging.getLogger(__name__)
@@ -97,11 +101,19 @@ def _pick_best(dms: list[CompanyDecisionMaker]) -> CompanyDecisionMaker | None:
         "website_contacts": 0,
         "vk": 1,
         "hh": 2,
+        # 2026-07-16: owner_reply — сам владелец подписался в ответе на
+        # отзыв, доверие сравнимо с hh (обычно это администратор / PR).
+        "owner_reply": 2,
         "egrul_founder": 3,
         "egrul_director": 4,
+        # checko — public register, тот же уровень надёжности что и egrul.
+        "checko": 4,
         "egrn": 5,
-        # reviews_ner (2026-07-16) — самый шумный источник, ставим ниже всех:
-        # в best-DM выбирают только при отсутствии альтернатив с contact.
+        # telegram_bio — публичное описание канала, часто автор смм-щик.
+        "telegram_bio": 5,
+        # serp_google — snippet'ы Google-выдачи, шумный источник.
+        "serp_google": 6,
+        # reviews_ner — самый шумный источник (клиентские отзывы).
         "reviews_ner": 6,
     }
 
@@ -181,6 +193,28 @@ async def enrich_marketing_dm(
             "enrich_marketing_dm: reviews_ner failed for #%d: %s",
             company_id, e,
         )
+
+    # Шаги 1e-1h. 4 новых источника ЛПР (2026-07-16):
+    #   - owner_reply — подписи в ответах владельца на отзывы.
+    #   - telegram_bio — bio публичных Telegram-каналов компании.
+    #   - checko — checko.ru/company/{inn} (расширяет ЕГРЮЛ).
+    #   - serp_google — SerpAPI-поиск по имени компании.
+    # Все шаги идемпотентны (skip <30 дней), тихо no-op'ят если источник
+    # не даёт данных (нет inn/tg/website и т.п.). Каждый обёрнут в try —
+    # чтобы падение одного не роняло весь оркестратор.
+    for step_name, step_fn in (
+        ("owner_reply", enrich_dm_from_owner_replies),
+        ("telegram_bio", enrich_dm_from_telegram_bio),
+        ("checko", enrich_dm_from_checko),
+        ("serp_google", enrich_dm_from_serp),
+    ):
+        try:
+            await step_fn(db, company_id)
+        except Exception as e:
+            logger.warning(
+                "enrich_marketing_dm: %s failed for #%d: %s",
+                step_name, company_id, e,
+            )
 
     # Шаг 2. Все decision_makers компании.
     dms = (await db.execute(

@@ -27,6 +27,7 @@ from app.modules.ai_assistants.client import chat
 from app.modules.reviews_ai.prompts import (
     CLUSTER_NAMING_PROMPT,
     COMPANY_DESCRIPTION_PROMPT,
+    DM_FROM_TEXT_PROMPT,
     OUTREACH_ANGLE_HINTS,
     OUTREACH_DRAFT_PROMPT,
     OUTREACH_LANGUAGE_HINTS,
@@ -47,6 +48,7 @@ AssistantKind = Literal[
     "company_description",
     "team_extract",
     "reviews_ner",
+    "dm_from_text",
 ]
 
 
@@ -64,6 +66,7 @@ _KIND_HINTS: dict[AssistantKind, list[str]] = {
     "company_description": ["gpt-4o-mini", "haiku", "lite"],     # короткий текст — дёшево
     "team_extract":        ["gpt-4o-mini", "haiku", "lite"],     # парсинг страницы, дёшево
     "reviews_ner":         ["gpt-4o-mini", "haiku", "lite"],     # NER по отзывам, дёшево
+    "dm_from_text":        ["gpt-4o-mini", "haiku", "lite"],     # NER из SERP/tg/checko/owner-reply, дёшево
 }
 
 
@@ -92,6 +95,10 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
     elif kind == "reviews_ner":
         # NER по отзывам — та же логика, что и team_extract: дешёвая
         # модель, без выделенной env.
+        explicit = ""
+    elif kind == "dm_from_text":
+        # NER из свободного текста (SerpAPI-snippets, Telegram-bio,
+        # Checko-page, owner-reply) — тот же режим, что и reviews_ner.
         explicit = ""
     else:  # custom_analysis — нет отдельной env, всегда auto-pick
         explicit = ""
@@ -1107,6 +1114,114 @@ async def call_llm_extract_from_reviews(
             "post": (post or "")[:200] or None,
             "role_category": role_category,
             "mentions_count": mentions_count,
+        })
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Универсальный DM-extract из свободного текста (2026-07-16)
+# Используется для SerpAPI-snippets, Telegram-bio, Checko-page, owner-reply.
+# ---------------------------------------------------------------------------
+
+
+async def call_llm_extract_dm_from_text(
+    db: AsyncSession,
+    *,
+    company_name: str,
+    text: str,
+    source_hint: str,
+) -> list[dict[str, Any]] | None:
+    """Универсальный экстрактор ЛПР из свободного текста.
+
+    source_hint — короткая строка-контекст для LLM: «сниппеты Google-поиска»,
+    «bio Telegram-канала компании», «страница компании на checko.ru», «ответ
+    владельца на отзыв клиента». Помогает LLM корректно интерпретировать текст.
+
+    Возвращает список объектов вида
+    `[{"name", "post", "role_category", "contact_email", "contact_vk",
+       "contact_phone", "confidence_hint"}]`
+    или None, если ассистент недоступен / LLM упал.
+
+    Text обрезается до 10 КБ (хватит для 5-10 SERP-snippet'ов, одной страницы
+    Checko или всех Telegram-bio компании).
+    """
+    if not text or not text.strip():
+        return []
+    assistant_id = await pick_assistant_id(db, "dm_from_text")
+    if assistant_id is None:
+        logger.info("call_llm_extract_dm_from_text: no assistant available")
+        return None
+
+    prompt = DM_FROM_TEXT_PROMPT.format(
+        company_name=company_name or "—",
+        source_hint=source_hint or "текст",
+        text=text[:10000],
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt}],
+            db=db,
+            max_tokens=700,
+            temperature=0.1,
+        )
+    except Exception as e:
+        logger.warning("call_llm_extract_dm_from_text: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, list):
+        return []
+    out: list[dict[str, Any]] = []
+    seen_lower: set[str] = set()
+    allowed_categories = {
+        "marketing", "owner", "founder", "management", "hr", "other",
+    }
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        name = (item.get("name") or "").strip()
+        parts = [p for p in re.split(r"\s+", name) if p]
+        if not parts or len(parts) > 4:
+            continue
+        # Кириллица только, длина ≥ 2.
+        if not all(re.match(r"^[А-ЯЁа-яё\-]+$", p) for p in parts):
+            continue
+        if len(parts[0]) < 2:
+            continue
+        key = name.lower()
+        if key in seen_lower:
+            continue
+        seen_lower.add(key)
+
+        post = (item.get("post") or "").strip() or None
+        cat_raw = (item.get("role_category") or "").strip().lower() or None
+        role_category = cat_raw if cat_raw in allowed_categories else None
+
+        def _clean(v: Any) -> str | None:
+            if not isinstance(v, str):
+                return None
+            v = v.strip()
+            return v[:500] if v else None
+
+        contact_email = _clean(item.get("contact_email"))
+        contact_vk = _clean(item.get("contact_vk"))
+        contact_phone = _clean(item.get("contact_phone"))
+
+        try:
+            conf = float(item.get("confidence_hint") or 0.0)
+        except (TypeError, ValueError):
+            conf = 0.0
+        conf = max(0.0, min(1.0, conf))
+
+        out.append({
+            "name": name[:200],
+            "post": (post or "")[:200] or None,
+            "role_category": role_category,
+            "contact_email": contact_email,
+            "contact_vk": contact_vk,
+            "contact_phone": contact_phone,
+            "confidence_hint": conf,
         })
     return out
 

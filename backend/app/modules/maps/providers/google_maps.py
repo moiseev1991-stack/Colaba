@@ -281,6 +281,21 @@ class GoogleMapsProvider(MapProvider):
                 posted_at = None
 
         owner_response = item.get("response") or item.get("owner_response")
+        # 2026-07-16: сохраняем текст ответа владельца (нужен owner_reply_dm.py).
+        # SerpAPI отдаёт response либо строкой, либо объектом {snippet, date, ...}.
+        owner_reply_text: str | None = None
+        if isinstance(owner_response, str) and owner_response.strip():
+            owner_reply_text = owner_response.strip()[:4000]
+        elif isinstance(owner_response, dict):
+            txt = (
+                owner_response.get("snippet")
+                or owner_response.get("description")
+                or owner_response.get("text")
+                or ""
+            )
+            if isinstance(txt, str) and txt.strip():
+                owner_reply_text = txt.strip()[:4000]
+
         return ReviewRaw(
             source="google_maps",
             external_id=str(review_id),
@@ -290,4 +305,5 @@ class GoogleMapsProvider(MapProvider):
             source_url=f"https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1s{company_external_id}",
             posted_at=posted_at,
             has_owner_reply=owner_response is not None,
+            owner_reply_text=owner_reply_text,
         )

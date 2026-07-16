@@ -664,6 +664,8 @@ def _review_row_from_raw(r: ReviewRaw, company_id: int) -> dict[str, Any]:
         "source_url": r.source_url,
         "posted_at": r.posted_at,
         "has_owner_reply": r.has_owner_reply,
+        # 2026-07-16: текст ответа владельца для owner_reply_dm.py
+        "owner_reply_text": getattr(r, "owner_reply_text", None),
         "text_hash": hash_review_text(r.raw_text),
     }
 

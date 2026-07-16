@@ -107,6 +107,9 @@ class ReviewRaw(BaseModel):
     source_url: str | None = None
     posted_at: datetime | None = None
     has_owner_reply: bool = False
+    # 2026-07-16: текст ответа владельца на отзыв (если есть). Используется
+    # owner_reply_dm.py для NER подписей вида «— Мария, PR-менеджер».
+    owner_reply_text: str | None = None
 
 
 SortBy = Literal[
