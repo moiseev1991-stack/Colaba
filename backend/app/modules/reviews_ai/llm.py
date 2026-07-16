@@ -31,6 +31,7 @@ from app.modules.reviews_ai.prompts import (
     OUTREACH_DRAFT_PROMPT,
     OUTREACH_LANGUAGE_HINTS,
     OUTREACH_TONE_HINTS,
+    REVIEWS_NER_PROMPT,
     SENTIMENT_PROMPT,
     STRENGTH_NAMING_PROMPT,
     TEAM_EXTRACT_PROMPT,
@@ -45,6 +46,7 @@ AssistantKind = Literal[
     "custom_analysis",
     "company_description",
     "team_extract",
+    "reviews_ner",
 ]
 
 
@@ -61,6 +63,7 @@ _KIND_HINTS: dict[AssistantKind, list[str]] = {
     "custom_analysis":     ["gpt-4o-mini", "haiku", "lite"],     # лёгкая модель
     "company_description": ["gpt-4o-mini", "haiku", "lite"],     # короткий текст — дёшево
     "team_extract":        ["gpt-4o-mini", "haiku", "lite"],     # парсинг страницы, дёшево
+    "reviews_ner":         ["gpt-4o-mini", "haiku", "lite"],     # NER по отзывам, дёшево
 }
 
 
@@ -85,6 +88,10 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
     elif kind == "team_extract":
         # Своей env-переменной не заводим (см. подход custom_analysis),
         # auto-pick по hints всегда подберёт haiku/gpt-4o-mini.
+        explicit = ""
+    elif kind == "reviews_ner":
+        # NER по отзывам — та же логика, что и team_extract: дешёвая
+        # модель, без выделенной env.
         explicit = ""
     else:  # custom_analysis — нет отдельной env, всегда auto-pick
         explicit = ""
@@ -1003,6 +1010,103 @@ async def call_llm_extract_team(
             "contact_email": contact_email,
             "contact_phone": contact_phone,
             "contact_vk": contact_vk,
+        })
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Reviews NER — вытаскиваем имена сотрудников из отзывов клиентов (2026-07-16)
+# ---------------------------------------------------------------------------
+
+
+async def call_llm_extract_from_reviews(
+    db: AsyncSession,
+    *,
+    company_name: str,
+    review_texts: list[str],
+) -> list[dict[str, Any]] | None:
+    """NER по отзывам: находит имена сотрудников, упомянутых клиентами.
+
+    Возвращает список объектов вида
+    `[{"name": "Марина", "post": "маркетолог", "role_category": "marketing",
+       "mentions_count": 2}, ...]`
+    или None, если ассистент не настроен / LLM упал.
+
+    review_texts — сырые тексты отзывов (обрезка до ~4КБ каждого делается
+    здесь, чтобы не тратить токены на длинные простыни).
+    """
+    if not review_texts:
+        return []
+    assistant_id = await pick_assistant_id(db, "reviews_ner")
+    if assistant_id is None:
+        logger.info("call_llm_extract_from_reviews: no assistant available")
+        return None
+
+    reviews_block = "\n".join(
+        f"- «{(t or '').strip()[:800]}»"
+        for t in review_texts[:30]
+        if t and t.strip()
+    )
+    if not reviews_block.strip():
+        return []
+
+    prompt = REVIEWS_NER_PROMPT.format(
+        company_name=company_name or "—",
+        reviews_block=reviews_block,
+    )
+    try:
+        raw = await chat(
+            assistant_id=assistant_id,
+            messages=[{"role": "user", "content": prompt}],
+            db=db,
+            max_tokens=600,
+            temperature=0.1,
+        )
+    except Exception as e:
+        logger.warning("call_llm_extract_from_reviews: chat() failed: %s", e)
+        return None
+
+    data = _extract_json(raw)
+    if not isinstance(data, list):
+        return []
+    out: list[dict[str, Any]] = []
+    seen_lower: set[str] = set()
+    allowed_categories = {
+        "marketing", "owner", "founder", "management", "hr", "other",
+    }
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        name = (item.get("name") or "").strip()
+        # Имя: одно слово («Марина») либо два («Иванов Пётр»). Кириллица.
+        parts = [p for p in re.split(r"\s+", name) if p]
+        if not parts or len(parts) > 3:
+            continue
+        if not all(re.match(r"^[А-ЯЁа-яё\-]+$", p) for p in parts):
+            continue
+        # Слишком короткое (1 символ) — мусор.
+        if len(parts[0]) < 2:
+            continue
+        key = name.lower()
+        if key in seen_lower:
+            continue
+        seen_lower.add(key)
+
+        post = (item.get("post") or "").strip() or None
+        cat_raw = (item.get("role_category") or "").strip().lower() or None
+        role_category = cat_raw if cat_raw in allowed_categories else None
+
+        mc_raw = item.get("mentions_count")
+        try:
+            mentions_count = max(1, int(mc_raw)) if mc_raw is not None else 1
+        except (TypeError, ValueError):
+            mentions_count = 1
+
+        out.append({
+            "name": name[:200],
+            "post": (post or "")[:200] or None,
+            "role_category": role_category,
+            "mentions_count": mentions_count,
         })
     return out
 

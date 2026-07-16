@@ -378,6 +378,11 @@ export interface ReviewOut {
 
 export interface CompanyDetailOut extends CompanyOut {
   recent_reviews: ReviewOut[];
+  /** 2026-07-16: общие email компании (info@, contact@ и т.п.), не
+   *  привязанные ни к одному ЛПР. Fallback-канал, когда персонального
+   *  ЛПР с контактом не нашли — юзер видит «Общая почта компании: info@…»
+   *  в блоке «Кто за маркетинг» и может писать туда. */
+  generic_emails?: string[];
 }
 
 /** Multi-source (ТЗ 2026-06-04): счётчики компаний по источникам. */
