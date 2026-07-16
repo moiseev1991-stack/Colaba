@@ -1017,9 +1017,11 @@ export interface EnrichMarketingDmResponse {
 }
 
 export async function enrichCompaniesMarketingDm(
-  searchId: number,
+  searchId: number | null,
   companyIds: number[],
 ): Promise<EnrichMarketingDmResponse> {
+  // 2026-07-16: searchId=null допустим для /app/pains. Бэк проверит владение
+  // через любой user-search'ев (см. router `/companies/enrich-marketing-dm`).
   const resp = await apiClient.post<EnrichMarketingDmResponse>(
     `/maps/companies/enrich-marketing-dm`,
     { search_id: searchId, company_ids: companyIds },
@@ -1042,8 +1044,11 @@ export interface EnrichSingleSourceResponse {
 export async function enrichCompanySource(
   companyId: number,
   source: EnrichSource,
-  searchId: number,
+  searchId: number | null,
 ): Promise<EnrichSingleSourceResponse> {
+  // 2026-07-16: searchId=null допустим — на /app/pains drawer открывается
+  // без привязки к MapSearch. Бэк проверит владение через любой из
+  // поисков юзера (helper _get_owned_search соблюдает own-check иначе).
   const resp = await apiClient.post<EnrichSingleSourceResponse>(
     `/maps/companies/${companyId}/enrich-source`,
     { source, search_id: searchId },
