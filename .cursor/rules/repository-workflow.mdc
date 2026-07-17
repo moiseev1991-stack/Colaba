@@ -1,55 +1,25 @@
 ---
 name: Repository Workflow Rules
-description: Правила работы с Git репозиторием Colaba
+description: Правила работы с Git репозиторием Colaba. Полная версия в AGENTS.md
 ---
 
-# Правила работы с репозиторием Colaba
+# Git workflow — см. AGENTS.md
 
-## Критическое правило
+> **Полные правила — в `AGENTS.md` (§4 Git).** Этот файл — указатель для Cursor.
 
-**НИКОГДА не выполнять `git push` автоматически.** Push -- только после явного указания пользователя.
+## ⚠️ Критическое правило
+**НИКОГДА не выполнять `git push` автоматически.** Push — только после явного разрешения пользователя.
+Процесс: задача → `git add` → `git commit` → **ОСТАНОВИТЬСЯ** → спросить «push?» → пуш только после ответа.
 
-## Процесс работы
-
-1. Выполнить задачу
-2. `git add` -- добавить изменения
-3. `git commit -m "<type>(<scope>): <description>"` -- создать коммит
-4. Сообщить пользователю, что коммит готов
-5. Спросить: "Выполнить push?"
-6. Дождаться явного ответа
-7. Только после подтверждения -- `git push`
-
-## Формат коммитов
-
-`<type>(<scope>): <description>`
-
-Типы: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `style`, `perf`, `ci`, `build`
-
-Примеры:
-- `feat(backend): Add OAuth authorization`
-- `fix(frontend): Fix search form validation`
-- `docs(project): Update deployment guide`
-- `refactor(docs): Consolidate deployment documentation`
+## Формат коммитов (проверяется commitlint)
+`<type>(<scope>): <description>` — типы: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`.
 
 ## Ветки
-
-- `feature/<name>` -- новая функциональность
-- `fix/<name>` -- исправление бага
-- `docs/<name>` -- документация
-- `refactor/<name>` -- рефакторинг
+`feature/<name>`, `fix/<name>`, `docs/<name>`, `refactor/<name>`. PR — после `git rebase main`.
+В `main` пуш напрямую запрещён (branch protection).
 
 ## Что НЕ коммитить
+`.env`, `__pycache__/`, `*.pyc`, `node_modules/`, `.next/`, логи, временные файлы, IDE-конфиги, одноразовые отчёты, секреты.
 
-- `.env` файлы (только `.env.example`)
-- `__pycache__/`, `*.pyc`, `node_modules/`, `.next/`
-- Лог-файлы (`*.log`, `*_log*.txt`, `log.txt`)
-- Временные файлы (`tmp_*.txt`, `*.tmp`, `*.bak`)
-- IDE конфигурация (`.vscode/`, `.idea/`)
-- Одноразовые отчёты, результаты проверок, сводки
-
-## Чеклист перед коммитом
-
-- [ ] Файлы в правильных папках
-- [ ] Нет мусорных/временных файлов
-- [ ] Коммит-сообщение соответствует формату
-- [ ] Нет секретов в коде (ключи, пароли)
+## Координация между агентами/разработчиками
+Перед задачей читайте `.hermes/COORDINATION.md`. Подробности — в `AGENTS.md` §5.

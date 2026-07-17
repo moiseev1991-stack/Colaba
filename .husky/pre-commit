@@ -1,0 +1,4 @@
+# pre-commit хук: guard на запрещённые файлы + lint-staged.
+# Guard блокирует мусорные паттерны/код-в-корне; lint-staged прогоняет ruff/eslint/prettier на staged.
+scripts/hooks/guard-staged-files.sh
+npx lint-staged

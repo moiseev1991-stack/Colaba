@@ -1,0 +1,35 @@
+# CODEOWNERS — кто обязан ревьюить изменения в модулях.
+# Формат: <шаблон пути>  @владелец1 @владелец2
+# GitHub будет требовать одобрение от владельца при PR, затрагивающем модуль
+# (если включён rule "Require review from Code Owners" в branch protection — см. инструкцию).
+#
+# ⚠️ ЗАМЕНИТЕ плейсхолдеры на реальные GitHub-логины двух разработчиков!
+#   @dev-a → логин разработчика A
+#   @dev-b → логин разработчика B
+# Оба по умолчанию владеют всем проектом (чтобы мог ревьюить любой из них).
+# При желании закрепите модули за конкретным владельцем (примеры в комментариях ниже).
+
+# ── Глобальные владельцы (по умолчанию — оба разработчика) ──
+*       @moiseev1991-stack
+
+# ── Пример закрепления конкретных модулей (раскомментируйте и задайте владельцев) ──
+# Backend
+# /backend/app/modules/maps/        @dev-a
+# /backend/app/modules/reviews_ai/  @dev-b
+# /backend/app/modules/email/       @dev-a
+# /backend/app/modules/auth/        @dev-b
+# /backend/app/admin/               @dev-a
+#
+# Frontend
+# /frontend/app/leads/              @dev-a
+# /frontend/app/page.tsx            @dev-b
+# /frontend/app/(public)/           @dev-b
+#
+# DevOps / CI/CD
+# /.github/                         @moiseev1991-stack
+# /docker-compose*.yml              @moiseev1991-stack
+#
+# Документация и источники правды
+# /docs/STATUS.md                   @moiseev1991-stack
+# /docs/ROADMAP.md                  @moiseev1991-stack
+# /AGENTS.md                        @moiseev1991-stack

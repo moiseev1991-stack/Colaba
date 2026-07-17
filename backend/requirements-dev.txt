@@ -8,6 +8,9 @@ pytest==7.4.3
 pytest-asyncio==0.23.8
 pytest-cov==4.1.0
 
+# Linting / formatting (конфиг — backend/pyproject.toml)
+ruff==0.15.22
+
 # Development
 black==23.12.1
 isort==5.13.2
