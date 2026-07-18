@@ -11,10 +11,15 @@ from app.core.database import Base
 
 class User(Base):
     """User model."""
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    # Email для ответов в outreach-рассылках (Reply-To). Может отличаться от login:
+    # например, юзер входит как user@spinlid.ru, а ответы лидов хочет получать на свой
+    # ящик client@gmail.com. NULL = не задан (отправка рассылки блокируется с подсказкой).
+    reply_to_email = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
@@ -28,12 +33,7 @@ class User(Base):
     email_campaigns = relationship("EmailCampaign", back_populates="user", cascade="all, delete-orphan")
     email_logs = relationship("EmailLog", back_populates="user", cascade="all, delete-orphan")
     email_replies = relationship("EmailReply", back_populates="user", cascade="all, delete-orphan")
-    organizations = relationship(
-        "Organization",
-        secondary="user_organizations",
-        back_populates="users",
-        lazy="dynamic"
-    )
+    organizations = relationship("Organization", secondary="user_organizations", back_populates="users", lazy="dynamic")
     social_accounts = relationship("SocialAccount", back_populates="user", cascade="all, delete-orphan")
 
     def __str__(self):

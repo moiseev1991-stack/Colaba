@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import Link from 'next/link';
 import {
   AlertCircle,
   AtSign,
@@ -49,6 +50,7 @@ import {
   normalizePhoneForWa,
 } from '@/lib/phone';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/client';
 import {
   downloadKpJobCallList,
   getKpJobItems,
@@ -106,10 +108,10 @@ const ROW_STATUS_META: Record<
   KpJobItemStatus,
   { label: string; tone: SignalTone; pulse?: boolean }
 > = {
-  queued:  { label: 'В очереди',    tone: 'muted' },
+  queued: { label: 'В очереди', tone: 'muted' },
   running: { label: 'Генерируется', tone: 'cool', pulse: true },
-  done:    { label: 'Готово',       tone: 'good' },
-  failed:  { label: 'Ошибка',       tone: 'hot' },
+  done: { label: 'Готово', tone: 'good' },
+  failed: { label: 'Ошибка', tone: 'hot' },
 };
 
 interface PageProps {
@@ -131,7 +133,7 @@ export default function KpJobPage({ params }: PageProps) {
   const drawerItem = useMemo(
     () =>
       drawerCompanyId !== null
-        ? items.find((it) => it.company_id === drawerCompanyId) ?? null
+        ? (items.find((it) => it.company_id === drawerCompanyId) ?? null)
         : null,
     [drawerCompanyId, items],
   );
@@ -157,10 +159,7 @@ export default function KpJobPage({ params }: PageProps) {
         setSendBump((n) => n + 1);
       } catch (e: any) {
         const detail = e?.response?.data?.detail;
-        const message =
-          typeof detail === 'string'
-            ? detail
-            : e?.message || 'Не удалось отправить.';
+        const message = typeof detail === 'string' ? detail : e?.message || 'Не удалось отправить.';
         setSingleSend((prev) => ({ ...prev, [draftId]: { error: message } }));
       }
     },
@@ -198,11 +197,7 @@ export default function KpJobPage({ params }: PageProps) {
   // обновление прогресса» и нагрузкой на бэк.
   useEffect(() => {
     if (!job) return;
-    if (
-      job.status === 'done' ||
-      job.status === 'cancelled' ||
-      job.status === 'failed'
-    ) {
+    if (job.status === 'done' || job.status === 'cancelled' || job.status === 'failed') {
       return;
     }
     const t = setTimeout(() => {
@@ -213,18 +208,13 @@ export default function KpJobPage({ params }: PageProps) {
 
   function handleItemPatched(companyId: number, updates: Partial<KpJobItem>) {
     setItems((prev) =>
-      prev.map((it) =>
-        it.company_id === companyId ? { ...it, ...updates } : it,
-      ),
+      prev.map((it) => (it.company_id === companyId ? { ...it, ...updates } : it)),
     );
   }
 
   const progressPct =
     job && job.total > 0
-      ? Math.min(
-          100,
-          Math.round(((job.generated + job.failed) / job.total) * 100),
-        )
+      ? Math.min(100, Math.round(((job.generated + job.failed) / job.total) * 100))
       : 0;
 
   // --- Render
@@ -239,8 +229,7 @@ export default function KpJobPage({ params }: PageProps) {
         {job && (
           <p className="mt-1 text-[12px] text-[hsl(var(--muted))]">
             {templateLabel(job.template_key)} · тон:{' '}
-            {job.tone === 'bold' ? 'уверенный' : 'нейтральный'} ·{' '}
-            {formatDateTime(job.created_at)}
+            {job.tone === 'bold' ? 'уверенный' : 'нейтральный'} · {formatDateTime(job.created_at)}
           </p>
         )}
       </div>
@@ -264,9 +253,7 @@ export default function KpJobPage({ params }: PageProps) {
             <span className="text-[hsl(var(--text))]">
               {job.generated + job.failed} / {job.total}
             </span>
-            {job.failed > 0 && (
-              <span className="text-rose-600">с ошибкой: {job.failed}</span>
-            )}
+            {job.failed > 0 && <span className="text-rose-600">с ошибкой: {job.failed}</span>}
             <span className="ml-auto font-medium tabular-nums text-[hsl(var(--text))]">
               {progressPct}%
             </span>
@@ -312,9 +299,7 @@ export default function KpJobPage({ params }: PageProps) {
       )}
 
       {!loading && error && (
-        <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">
-          {error}
-        </CardV2>
+        <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">{error}</CardV2>
       )}
 
       {!loading && !error && items.length === 0 && (
@@ -355,8 +340,7 @@ export default function KpJobPage({ params }: PageProps) {
                 <tbody>
                   {items.map((it, idx) => {
                     const meta = ROW_STATUS_META[it.status];
-                    const clickable =
-                      it.status === 'done' || it.draft_id !== null;
+                    const clickable = it.status === 'done' || it.draft_id !== null;
                     const hasRecipient = !!it.recipient_email;
                     // Телефон обрабатываем независимо от email: даже если КП
                     // уйдёт по email, юзеру полезно видеть номер компании в
@@ -365,14 +349,10 @@ export default function KpJobPage({ params }: PageProps) {
                     const waLink = hasMobile
                       ? buildWhatsappLink(
                           it.company_phone,
-                          it.body
-                            ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}`
-                            : null,
+                          it.body ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}` : null,
                         )
                       : null;
-                    const telLink = !hasMobile
-                      ? buildTelLink(it.company_phone)
-                      : null;
+                    const telLink = !hasMobile ? buildTelLink(it.company_phone) : null;
                     const phoneDisplay = it.company_phone
                       ? formatPhoneForDisplay(it.company_phone)
                       : '';
@@ -381,18 +361,12 @@ export default function KpJobPage({ params }: PageProps) {
                         key={`${it.company_id}-${idx}`}
                         className={cn(
                           'border-b border-[hsl(var(--border))] last:border-b-0 transition-colors',
-                          clickable
-                            ? 'cursor-pointer hover:bg-[hsl(var(--surface-2))]'
-                            : '',
+                          clickable ? 'cursor-pointer hover:bg-[hsl(var(--surface-2))]' : '',
                           idx % 2 === 1 && 'bg-[hsl(var(--surface-2))]/40',
                           drawerCompanyId === it.company_id &&
                             'bg-violet-50/60 dark:bg-violet-950/30',
                         )}
-                        onClick={
-                          clickable
-                            ? () => setDrawerCompanyId(it.company_id)
-                            : undefined
-                        }
+                        onClick={clickable ? () => setDrawerCompanyId(it.company_id) : undefined}
                       >
                         <td className="px-3 py-2.5 text-[11px] tabular-nums text-[hsl(var(--muted))]">
                           {idx + 1}
@@ -423,10 +397,7 @@ export default function KpJobPage({ params }: PageProps) {
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-[hsl(var(--muted))]">
-                          <span
-                            className="truncate"
-                            title={it.company_city || ''}
-                          >
+                          <span className="truncate" title={it.company_city || ''}>
                             {it.company_city || '—'}
                           </span>
                         </td>
@@ -441,10 +412,7 @@ export default function KpJobPage({ params }: PageProps) {
                         </td>
                         <td className="max-w-0 px-3 py-2.5 text-[hsl(var(--text))]">
                           {it.subject ? (
-                            <span
-                              className="block truncate"
-                              title={it.subject}
-                            >
+                            <span className="block truncate" title={it.subject}>
                               {it.subject}
                             </span>
                           ) : (
@@ -458,9 +426,7 @@ export default function KpJobPage({ params }: PageProps) {
                               title={it.recipient_email!}
                             >
                               <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
-                              <span className="truncate">
-                                {it.recipient_email}
-                              </span>
+                              <span className="truncate">{it.recipient_email}</span>
                             </span>
                           ) : (
                             <span
@@ -502,29 +468,29 @@ export default function KpJobPage({ params }: PageProps) {
                               <span className="truncate">{phoneDisplay}</span>
                             </a>
                           ) : (
-                            <span className="text-[11px] text-[hsl(var(--muted))]">
-                              —
-                            </span>
+                            <span className="text-[11px] text-[hsl(var(--muted))]">—</span>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {it.draft_id !== null && hasRecipient && (() => {
-                              const eff = computeRowSendState(
-                                singleSend[it.draft_id],
-                                it.email_send_status,
-                              );
-                              return (
-                                <RowSendButton
-                                  state={eff}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (eff === 'sending' || eff === 'sent') return;
-                                    void handleSendOne(it.draft_id!);
-                                  }}
-                                />
-                              );
-                            })()}
+                            {it.draft_id !== null &&
+                              hasRecipient &&
+                              (() => {
+                                const eff = computeRowSendState(
+                                  singleSend[it.draft_id],
+                                  it.email_send_status,
+                                );
+                                return (
+                                  <RowSendButton
+                                    state={eff}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (eff === 'sending' || eff === 'sent') return;
+                                      void handleSendOne(it.draft_id!);
+                                    }}
+                                  />
+                                );
+                              })()}
                             {clickable && (
                               <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
                                 Открыть
@@ -544,33 +510,22 @@ export default function KpJobPage({ params }: PageProps) {
           <div className="space-y-2 sm:hidden">
             {items.map((it, idx) => {
               const meta = ROW_STATUS_META[it.status];
-              const clickable =
-                it.status === 'done' || it.draft_id !== null;
+              const clickable = it.status === 'done' || it.draft_id !== null;
               const hasRecipient = !!it.recipient_email;
               const hasMobile = isRussianMobile(it.company_phone);
               const waLink = hasMobile
                 ? buildWhatsappLink(
                     it.company_phone,
-                    it.body
-                      ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}`
-                      : null,
+                    it.body ? `${it.subject ? `${it.subject}\n\n` : ''}${it.body}` : null,
                   )
                 : null;
-              const telLink = !hasMobile
-                ? buildTelLink(it.company_phone)
-                : null;
-              const phoneDisplay = it.company_phone
-                ? formatPhoneForDisplay(it.company_phone)
-                : '';
+              const telLink = !hasMobile ? buildTelLink(it.company_phone) : null;
+              const phoneDisplay = it.company_phone ? formatPhoneForDisplay(it.company_phone) : '';
               return (
                 <CardV2
                   key={`m-${it.company_id}-${idx}`}
                   interactive={clickable}
-                  onClick={
-                    clickable
-                      ? () => setDrawerCompanyId(it.company_id)
-                      : undefined
-                  }
+                  onClick={clickable ? () => setDrawerCompanyId(it.company_id) : undefined}
                   className={cn(
                     'p-3',
                     drawerCompanyId === it.company_id &&
@@ -658,26 +613,26 @@ export default function KpJobPage({ params }: PageProps) {
                       </a>
                     ) : null}
                     <div className="ml-auto flex shrink-0 items-center gap-2">
-                      {it.draft_id !== null && hasRecipient && (() => {
-                        const eff = computeRowSendState(
-                          singleSend[it.draft_id],
-                          it.email_send_status,
-                        );
-                        return (
-                          <RowSendButton
-                            state={eff}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (eff === 'sending' || eff === 'sent') return;
-                              void handleSendOne(it.draft_id!);
-                            }}
-                          />
-                        );
-                      })()}
+                      {it.draft_id !== null &&
+                        hasRecipient &&
+                        (() => {
+                          const eff = computeRowSendState(
+                            singleSend[it.draft_id],
+                            it.email_send_status,
+                          );
+                          return (
+                            <RowSendButton
+                              state={eff}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (eff === 'sending' || eff === 'sent') return;
+                                void handleSendOne(it.draft_id!);
+                              }}
+                            />
+                          );
+                        })()}
                       {clickable && (
-                        <span className="text-[12px] font-medium text-violet-700">
-                          Открыть →
-                        </span>
+                        <span className="text-[12px] font-medium text-violet-700">Открыть →</span>
                       )}
                     </div>
                   </div>
@@ -695,11 +650,7 @@ export default function KpJobPage({ params }: PageProps) {
           withRecipientCount: сколько готовых КП с валидным email — кнопка
           «Отправить» дизейблится если ноль. */}
       {!loading && !error && job?.status === 'done' && items.length > 0 && (
-        <SendBar
-          jobId={jobId}
-          items={items}
-          refetchToken={sendBump}
-        />
+        <SendBar jobId={jobId} items={items} refetchToken={sendBump} />
       )}
 
       {/* Drawer */}
@@ -708,13 +659,10 @@ export default function KpJobPage({ params }: PageProps) {
           item={drawerItem}
           onClose={() => setDrawerCompanyId(null)}
           onPatched={(updates) =>
-            drawerItem.company_id !== null &&
-            handleItemPatched(drawerItem.company_id, updates)
+            drawerItem.company_id !== null && handleItemPatched(drawerItem.company_id, updates)
           }
           singleSendState={computeRowSendState(
-            drawerItem.draft_id !== null
-              ? singleSend[drawerItem.draft_id]
-              : undefined,
+            drawerItem.draft_id !== null ? singleSend[drawerItem.draft_id] : undefined,
             drawerItem.email_send_status,
           )}
           onSendOne={
@@ -747,9 +695,9 @@ type ChannelDef = {
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
   working: boolean;
-  priority: number;  // 1 = высший, для one-per-company-режима
+  priority: number; // 1 = высший, для one-per-company-режима
   eligible: (item: KpJobItem) => boolean;
-  emptyHint: string;  // подсказка под счётчиком, если 0 eligible
+  emptyHint: string; // подсказка под счётчиком, если 0 eligible
 };
 
 const CHANNEL_DEFS: ChannelDef[] = [
@@ -804,7 +752,6 @@ const CHANNEL_BY_KEY: Record<KpSendChannel, ChannelDef> = Object.fromEntries(
   CHANNEL_DEFS.map((c) => [c.key, c]),
 ) as Record<KpSendChannel, ChannelDef>;
 
-
 /**
  * Группирует готовые драфты по тому, в какой канал они уйдут в режиме
  * «один лучший канал на компанию». Проходим компании, для каждой
@@ -817,9 +764,9 @@ function planOnePerCompany(
   items: KpJobItem[],
   enabled: Set<KpSendChannel>,
 ): { byChannel: Map<KpSendChannel, number[]>; uncovered: KpJobItem[] } {
-  const sortedChannels = CHANNEL_DEFS
-    .filter((c) => c.working && enabled.has(c.key))
-    .sort((a, b) => a.priority - b.priority);
+  const sortedChannels = CHANNEL_DEFS.filter((c) => c.working && enabled.has(c.key)).sort(
+    (a, b) => a.priority - b.priority,
+  );
   const byChannel = new Map<KpSendChannel, number[]>();
   const uncovered: KpJobItem[] = [];
   for (const it of items) {
@@ -836,7 +783,6 @@ function planOnePerCompany(
   return { byChannel, uncovered };
 }
 
-
 /**
  * Какой канал пойдёт компании в режиме «один лучший канал». Возвращает:
  *   - key канала, который реально получит ('email' | 'whatsapp')
@@ -849,9 +795,9 @@ function getOneChannelForItem(
   item: KpJobItem,
   enabled: Set<KpSendChannel>,
 ): KpSendChannel | 'callable' | 'none' {
-  const sorted = CHANNEL_DEFS
-    .filter((c) => c.working && enabled.has(c.key))
-    .sort((a, b) => a.priority - b.priority);
+  const sorted = CHANNEL_DEFS.filter((c) => c.working && enabled.has(c.key)).sort(
+    (a, b) => a.priority - b.priority,
+  );
   for (const c of sorted) {
     if (c.eligible(item)) return c.key;
   }
@@ -859,7 +805,6 @@ function getOneChannelForItem(
   if (digits) return 'callable';
   return 'none';
 }
-
 
 /**
  * Группирует драфты по «во все каналы»: компания получит сообщение
@@ -870,9 +815,7 @@ function planAllChannels(
   items: KpJobItem[],
   enabled: Set<KpSendChannel>,
 ): { byChannel: Map<KpSendChannel, number[]>; uncovered: KpJobItem[] } {
-  const activeChannels = CHANNEL_DEFS.filter(
-    (c) => c.working && enabled.has(c.key),
-  );
+  const activeChannels = CHANNEL_DEFS.filter((c) => c.working && enabled.has(c.key));
   const byChannel = new Map<KpSendChannel, number[]>();
   const uncovered: KpJobItem[] = [];
   for (const it of items) {
@@ -890,7 +833,6 @@ function planAllChannels(
   return { byChannel, uncovered };
 }
 
-
 function SendBar({
   jobId,
   items,
@@ -906,9 +848,27 @@ function SendBar({
   // По умолчанию активны оба работающих канала — режим «максимальный
   // охват из коробки». Юзер может снять чекбокс, если канал сейчас
   // сломан или он не хочет туда слать.
-  const [enabled, setEnabled] = useState<Set<KpSendChannel>>(
-    () => new Set(['email', 'whatsapp']),
-  );
+  const [enabled, setEnabled] = useState<Set<KpSendChannel>>(() => new Set(['email', 'whatsapp']));
+
+  // Текущий юзер — нужен для reply_to_email (адрес, на который лиди будут
+  // отвечать). Если выбран email-канал, а reply_to_email пуст — отправка
+  // блокируется с подсказкой-ссылкой заполнить профиль.
+  const [replyToEmail, setReplyToEmail] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .get<{ reply_to_email: string | null }>('/auth/me')
+      .then((res) => {
+        if (!cancelled) setReplyToEmail(res.data.reply_to_email ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setReplyToEmail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const replyToMissing = enabled.has('email') && !replyToEmail;
 
   // Исключённые компании (по company_id) — те, которые юзер снял
   // галочкой в раскрывающемся списке «Кто получит КП». По умолчанию
@@ -938,10 +898,7 @@ function SendBar({
   // Активные = done минус исключённые. Все счётчики и plan'ы считаются
   // отсюда — снял галочку → counter сразу уменьшился.
   const activeDoneItems = useMemo(
-    () =>
-      doneItems.filter(
-        (it) => it.company_id === null || !excludedIds.has(it.company_id),
-      ),
+    () => doneItems.filter((it) => it.company_id === null || !excludedIds.has(it.company_id)),
     [doneItems, excludedIds],
   );
 
@@ -961,7 +918,7 @@ function SendBar({
         const digits = normalizePhoneForWa(it.company_phone);
         if (digits && !isRussianMobile(it.company_phone)) landlineOnly += 1;
         else if (!digits) noContacts += 1;
-        else landlineOnly += 1;  // fallback: digits есть но не мобильный РФ
+        else landlineOnly += 1; // fallback: digits есть но не мобильный РФ
       }
     }
     return {
@@ -1034,7 +991,6 @@ function SendBar({
     setExcludedIds(ids);
   }
 
-
   async function handleDownloadCallList() {
     if (callListDownloading || callableCount === 0) return;
     setCallListDownloading(true);
@@ -1052,9 +1008,7 @@ function SendBar({
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
       setCallListError(
-        typeof detail === 'string'
-          ? detail
-          : e?.message || 'Не удалось скачать список.',
+        typeof detail === 'string' ? detail : e?.message || 'Не удалось скачать список.',
       );
     } finally {
       setCallListDownloading(false);
@@ -1101,7 +1055,6 @@ function SendBar({
       .then(setStatus)
       .catch(() => undefined);
   }, [jobId, refetchToken]);
-
 
   /**
    * Отправка планом. План — Map<channel, draftIds>. Для каждого канала
@@ -1168,8 +1121,8 @@ function SendBar({
   const hasAnySend = (status?.total ?? 0) > 0;
 
   // Дублирующие отправки запрещаем во время активной партии.
-  const oneDisabled = submitting || oneCount === 0 || isActive;
-  const allDisabled = submitting || allSendsCount === 0 || isActive;
+  const oneDisabled = submitting || oneCount === 0 || isActive || replyToMissing;
+  const allDisabled = submitting || allSendsCount === 0 || isActive || replyToMissing;
 
   return (
     <div className="sticky bottom-3 z-30 mt-5 pb-[env(safe-area-inset-bottom)]">
@@ -1193,7 +1146,8 @@ function SendBar({
               <Mail className="h-3.5 w-3.5 text-violet-600" /> {breakdown.emailEligible} email
             </span>
             <span className="inline-flex items-center gap-1">
-              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> {breakdown.waEligible} WhatsApp
+              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> {breakdown.waEligible}{' '}
+              WhatsApp
             </span>
             {breakdown.landlineOnly > 0 && (
               <span className="inline-flex items-center gap-1">
@@ -1269,17 +1223,10 @@ function SendBar({
         </div>
 
         {/* Ошибки */}
-        {error && (
-          <div className="mt-2 text-[12px] text-rose-700">{error}</div>
-        )}
-        {callListError && (
-          <div className="mt-2 text-[12px] text-rose-700">{callListError}</div>
-        )}
+        {error && <div className="mt-2 text-[12px] text-rose-700">{error}</div>}
+        {callListError && <div className="mt-2 text-[12px] text-rose-700">{callListError}</div>}
         {status?.last_error && !error && (
-          <div
-            className="mt-2 truncate text-[12px] text-rose-700"
-            title={status.last_error}
-          >
+          <div className="mt-2 truncate text-[12px] text-rose-700" title={status.last_error}>
             Последняя ошибка: {status.last_error}
           </div>
         )}
@@ -1307,6 +1254,24 @@ function SendBar({
           />
         )}
 
+        {/* Подсказка: не указан email для ответов. Без него лиди не смогут
+            ответить на КП (ответ уйдёт на системный From, а не клиенту).
+            Показываем только когда выбран email-канал и reply_to пуст. */}
+        {replyToMissing && (
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div>
+              Не указан email для ответов — лиди не смогут вам ответить.{' '}
+              <Link
+                href="/app/settings/profile"
+                className="font-medium underline underline-offset-2 hover:text-amber-700"
+              >
+                Указать email →
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Кнопки: два пресета + xlsx обзвон.
             «Отправить всем» — на компанию один лучший канал (email или WA).
             «Во все каналы» — на компанию все доступные каналы (макс охват). */}
@@ -1316,13 +1281,7 @@ function SendBar({
             size="md"
             onClick={handleSendOnePerCompany}
             disabled={oneDisabled}
-            iconLeft={
-              submitting || isActive ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Send />
-              )
-            }
+            iconLeft={submitting || isActive ? <Loader2 className="animate-spin" /> : <Send />}
             title={
               isActive
                 ? 'Сейчас идёт рассылка — дождись окончания.'
@@ -1350,9 +1309,12 @@ function SendBar({
                   : 'Каждой компании уйдёт КП по ВСЕМ доступным каналам сразу (email + WhatsApp если есть оба). Больше шансов, что увидят, но риск дубль-сообщения.'
             }
           >
-            {`Во все каналы (${allSendsCount} ${
-              pluralize(allSendsCount, 'отправка', 'отправки', 'отправок')
-            })`}
+            {`Во все каналы (${allSendsCount} ${pluralize(
+              allSendsCount,
+              'отправка',
+              'отправки',
+              'отправок',
+            )})`}
           </ButtonV2>
 
           <ButtonV2
@@ -1360,13 +1322,7 @@ function SendBar({
             size="md"
             disabled={callListDownloading || callableCount === 0}
             onClick={handleDownloadCallList}
-            iconLeft={
-              callListDownloading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Download />
-              )
-            }
+            iconLeft={callListDownloading ? <Loader2 className="animate-spin" /> : <Download />}
             title={
               callableCount === 0
                 ? 'Нет компаний без email/WA с валидным телефоном — обзванивать некого.'
@@ -1395,14 +1351,17 @@ function SendBar({
         )}
         {!isActive && hasAnySend && inFlight === 0 && (
           <div className="mt-2 text-[11px] text-[hsl(var(--muted))]">
-            Полный лог — в <a className="underline" href="/app/leads/history?tab=sends">«Отправки»</a> на странице истории.
+            Полный лог — в{' '}
+            <a className="underline" href="/app/leads/history?tab=sends">
+              «Отправки»
+            </a>{' '}
+            на странице истории.
           </div>
         )}
       </div>
     </div>
   );
 }
-
 
 // --- RecipientsPanel — раскрываемый список «Кто получит КП» -----------------
 //
@@ -1495,8 +1454,7 @@ function RecipientsPanel({
 
           <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
             {doneItems.map((it) => {
-              const isExcluded =
-                it.company_id !== null && excludedIds.has(it.company_id);
+              const isExcluded = it.company_id !== null && excludedIds.has(it.company_id);
               const eff = getOneChannelForItem(it, enabled);
               return (
                 <RecipientRow
@@ -1524,7 +1482,6 @@ function RecipientsPanel({
   );
 }
 
-
 function RecipientRow({
   item,
   excluded,
@@ -1543,18 +1500,12 @@ function RecipientRow({
   const title = item.company_legal_full || item.company_name || '—';
   const innPart = item.company_inn ? `ИНН ${item.company_inn}` : null;
   const addrPart = item.company_address || null;
-  const phonePart = item.company_phone
-    ? formatPhoneForDisplay(item.company_phone)
-    : null;
+  const phonePart = item.company_phone ? formatPhoneForDisplay(item.company_phone) : null;
   // email-получатель показываем когда канал = email; для остальных
   // случаев место отдаём под другие реквизиты, чтобы строка не разбухла.
   const emailPart =
-    effectiveChannel === 'email' && item.recipient_email
-      ? item.recipient_email
-      : null;
-  const subtitleParts = [innPart, addrPart, phonePart, emailPart].filter(
-    Boolean,
-  ) as string[];
+    effectiveChannel === 'email' && item.recipient_email ? item.recipient_email : null;
+  const subtitleParts = [innPart, addrPart, phonePart, emailPart].filter(Boolean) as string[];
   const chip = channelChip(effectiveChannel);
   return (
     <li
@@ -1581,9 +1532,7 @@ function RecipientRow({
         {!excluded && <Check className="h-3 w-3" strokeWidth={3} />}
       </button>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-[hsl(var(--text))]">
-          {title}
-        </div>
+        <div className="truncate font-medium text-[hsl(var(--text))]">{title}</div>
         {subtitleParts.length > 0 && (
           <div className="truncate text-[11px] text-[hsl(var(--muted))]">
             {subtitleParts.join(' · ')}
@@ -1603,7 +1552,6 @@ function RecipientRow({
     </li>
   );
 }
-
 
 function channelChip(eff: KpSendChannel | 'callable' | 'none') {
   switch (eff) {
@@ -1633,8 +1581,7 @@ function channelChip(eff: KpSendChannel | 'callable' | 'none') {
         Icon: PhoneCall,
         label: 'Обзвон',
         cls: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200',
-        title:
-          'Нет email и мобильного — попадёт в xlsx «На обзвон». КП не уйдёт автоматически.',
+        title: 'Нет email и мобильного — попадёт в xlsx «На обзвон». КП не уйдёт автоматически.',
       };
     case 'telegram':
     case 'max':
@@ -1644,12 +1591,10 @@ function channelChip(eff: KpSendChannel | 'callable' | 'none') {
         Icon: AlertCircle,
         label: 'Нет канала',
         cls: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-        title:
-          'Ни email, ни телефона. КП не дойдёт ни одним каналом — можно снять галочку.',
+        title: 'Ни email, ни телефона. КП не дойдёт ни одним каналом — можно снять галочку.',
       };
   }
 }
-
 
 /** Простой РФ-плюрализатор для «1 отправка / 2 отправки / 5 отправок». */
 function pluralize(n: number, one: string, few: string, many: string): string {
@@ -1715,8 +1660,7 @@ function RowSendButton({
 }) {
   const isSending = state === 'sending';
   const isSent = state === 'sent';
-  const error =
-    state && typeof state === 'object' && 'error' in state ? state.error : null;
+  const error = state && typeof state === 'object' && 'error' in state ? state.error : null;
   const disabled = isSending || isSent;
   const title = isSent
     ? 'Отправлено. Чтобы переслать — обнови страницу.'
@@ -1814,11 +1758,7 @@ function DraftDrawer({
       setEditing(false);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
-      setSaveError(
-        typeof detail === 'string'
-          ? detail
-          : e?.message || 'Не удалось сохранить.',
-      );
+      setSaveError(typeof detail === 'string' ? detail : e?.message || 'Не удалось сохранить.');
     } finally {
       setSaving(false);
     }
@@ -1840,11 +1780,7 @@ function DraftDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-slate-900/30"
-        onClick={onClose}
-        aria-hidden
-      />
+      <div className="fixed inset-0 z-40 bg-slate-900/30" onClick={onClose} aria-hidden />
       {/* Panel */}
       <aside
         role="dialog"
@@ -1853,11 +1789,7 @@ function DraftDrawer({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[hsl(var(--border))] px-5 py-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
-            <CompanyAvatar
-              name={item.company_name}
-              logoUrl={item.company_logo_url}
-              size={40}
-            />
+            <CompanyAvatar name={item.company_name} logoUrl={item.company_logo_url} size={40} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {item.company_legal_short && (
@@ -1872,9 +1804,7 @@ function DraftDrawer({
               <p className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
                 {templateLabel(item.template_key)}
                 {item.company_city ? ` · ${item.company_city}` : ''}
-                {item.draft_created_at
-                  ? ` · ${formatDateTime(item.draft_created_at)}`
-                  : ''}
+                {item.draft_created_at ? ` · ${formatDateTime(item.draft_created_at)}` : ''}
               </p>
             </div>
           </div>
@@ -1922,8 +1852,7 @@ function DraftDrawer({
               <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
                 <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
                 <div className="text-amber-800 dark:text-amber-200">
-                  Email не найден — добавь в карточке компании, чтобы
-                  включить отправку.
+                  Email не найден — добавь в карточке компании, чтобы включить отправку.
                 </div>
               </div>
             )}
@@ -1940,9 +1869,7 @@ function DraftDrawer({
             const waLink = isMobile
               ? buildWhatsappLink(
                   item.company_phone,
-                  body
-                    ? `${subject ? `${subject}\n\n` : ''}${body}`
-                    : null,
+                  body ? `${subject ? `${subject}\n\n` : ''}${body}` : null,
                 )
               : null;
             const telLink = !isMobile ? buildTelLink(item.company_phone) : null;
@@ -1971,8 +1898,7 @@ function DraftDrawer({
                       </div>
                     </a>
                     <p className="text-[11px] leading-tight text-[hsl(var(--muted))]">
-                      Клик — wa.me с пред-заполненным КП. Шлём руками
-                      (bulk-коннектора WA пока нет).
+                      Клик — wa.me с пред-заполненным КП. Шлём руками (bulk-коннектора WA пока нет).
                     </p>
                   </div>
                 ) : telLink ? (
@@ -2024,16 +1950,10 @@ function DraftDrawer({
                 type="button"
                 onClick={() => item.draft_id !== null && setEditing(true)}
                 disabled={item.draft_id === null}
-                title={
-                  item.draft_id !== null
-                    ? 'Клик — отредактировать тему'
-                    : undefined
-                }
+                title={item.draft_id !== null ? 'Клик — отредактировать тему' : undefined}
                 className="w-full rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[14px] font-medium text-slate-800 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
               >
-                {subject || (
-                  <span className="italic text-slate-400">Тема пустая.</span>
-                )}
+                {subject || <span className="italic text-slate-400">Тема пустая.</span>}
               </button>
             )}
           </div>
@@ -2065,18 +1985,10 @@ function DraftDrawer({
                 type="button"
                 onClick={() => item.draft_id !== null && setEditing(true)}
                 disabled={item.draft_id === null}
-                title={
-                  item.draft_id !== null
-                    ? 'Клик — отредактировать тело письма'
-                    : undefined
-                }
+                title={item.draft_id !== null ? 'Клик — отредактировать тело письма' : undefined}
                 className="w-full whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-left text-[13px] leading-relaxed text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
               >
-                {body || (
-                  <span className="italic text-slate-400">
-                    Тело письма пустое.
-                  </span>
-                )}
+                {body || <span className="italic text-slate-400">Тело письма пустое.</span>}
               </button>
             )}
           </div>
@@ -2086,9 +1998,7 @@ function DraftDrawer({
               правка ложится в WA/TG — особенно важно для лимита 1024
               у WhatsApp. Раньше скрывали при editing — юзер не понимал
               куда делся блок и думал что это баг. */}
-          {item.draft_id !== null && (
-            <ChannelPreviewBlock subject={subject} body={body} />
-          )}
+          {item.draft_id !== null && <ChannelPreviewBlock subject={subject} body={body} />}
 
           {saveError && (
             <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
@@ -2104,11 +2014,7 @@ function DraftDrawer({
                 variant="ghost"
                 size="sm"
                 iconLeft={
-                  copyFlash === 'subject' ? (
-                    <Check className="text-emerald-600" />
-                  ) : (
-                    <Copy />
-                  )
+                  copyFlash === 'subject' ? <Check className="text-emerald-600" /> : <Copy />
                 }
                 onClick={() => copyToClipboard(subject, 'subject')}
               >
@@ -2117,13 +2023,7 @@ function DraftDrawer({
               <ButtonV2
                 variant="ghost"
                 size="sm"
-                iconLeft={
-                  copyFlash === 'body' ? (
-                    <Check className="text-emerald-600" />
-                  ) : (
-                    <Copy />
-                  )
-                }
+                iconLeft={copyFlash === 'body' ? <Check className="text-emerald-600" /> : <Copy />}
                 onClick={() => copyToClipboard(body, 'body')}
               >
                 {copyFlash === 'body' ? 'Скопировано' : 'Тело'}
@@ -2155,9 +2055,7 @@ function DraftDrawer({
                       <Send />
                     )
                   }
-                  disabled={
-                    singleSendState === 'sending' || singleSendState === 'sent'
-                  }
+                  disabled={singleSendState === 'sending' || singleSendState === 'sent'}
                   onClick={onSendOne}
                   title={
                     singleSendState === 'sent'
@@ -2201,11 +2099,7 @@ function DraftDrawer({
                 variant="primary"
                 size="sm"
                 iconLeft={
-                  savedFlash ? (
-                    <Check />
-                  ) : saving ? (
-                    <Loader2 className="animate-spin" />
-                  ) : undefined
+                  savedFlash ? <Check /> : saving ? <Loader2 className="animate-spin" /> : undefined
                 }
                 onClick={handleSave}
                 disabled={!dirty || saving}
@@ -2248,18 +2142,12 @@ const CHANNEL_META: Record<
   PreviewChannel,
   { label: string; limit: number | null; warnAt: number | null }
 > = {
-  email:    { label: 'Email',    limit: null, warnAt: null },
+  email: { label: 'Email', limit: null, warnAt: null },
   telegram: { label: 'Telegram', limit: 4096, warnAt: 3500 },
   whatsapp: { label: 'WhatsApp', limit: 1024, warnAt: 900 },
 };
 
-function ChannelPreviewBlock({
-  subject,
-  body,
-}: {
-  subject: string;
-  body: string;
-}) {
+function ChannelPreviewBlock({ subject, body }: { subject: string; body: string }) {
   const [channel, setChannel] = useState<PreviewChannel>('email');
   const meta = CHANNEL_META[channel];
 
@@ -2321,9 +2209,7 @@ function ChannelPreviewBlock({
           </div>
         )}
         <pre className="whitespace-pre-wrap font-sans text-[hsl(var(--text))]">
-          {rendered || (
-            <span className="italic text-slate-400">Тело пустое</span>
-          )}
+          {rendered || <span className="italic text-slate-400">Тело пустое</span>}
         </pre>
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
@@ -2348,8 +2234,8 @@ function ChannelPreviewBlock({
       </div>
       {overLimit && meta.limit !== null && (
         <p className="mt-1 text-[11px] text-rose-700 dark:text-rose-300">
-          Превышен лимит {meta.label} на {(length - meta.limit).toLocaleString('ru-RU')}{' '}
-          симв. — урежь тело перед отправкой через этот канал.
+          Превышен лимит {meta.label} на {(length - meta.limit).toLocaleString('ru-RU')} симв. —
+          урежь тело перед отправкой через этот канал.
         </p>
       )}
     </div>

@@ -61,7 +61,7 @@ class SendError(Exception):
 class EnqueueResult:
     job_id: int
     created: int  # сколько строк KpSend записали (queued + skipped)
-    queued: int   # из них в queued (реально пойдут в worker)
+    queued: int  # из них в queued (реально пойдут в worker)
     skipped: int  # из них skipped (без адреса / канал недоступен)
 
 
@@ -94,9 +94,7 @@ def pick_first_email(emails: list | None) -> str | None:
     return None
 
 
-async def collect_company_emails(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, list[str]]:
+async def collect_company_emails(db: AsyncSession, company_ids: list[int]) -> dict[int, list[str]]:
     """company_id → объединённый и дедуплицированный список email-кандидатов.
 
     Берёт из двух источников:
@@ -114,11 +112,7 @@ async def collect_company_emails(
 
     out: dict[int, list[str]] = {cid: [] for cid in company_ids}
 
-    rows = (
-        await db.execute(
-            select(Company.id, Company.emails).where(Company.id.in_(company_ids))
-        )
-    ).all()
+    rows = (await db.execute(select(Company.id, Company.emails).where(Company.id.in_(company_ids)))).all()
     for cid, emails in rows:
         if not isinstance(emails, list):
             continue
@@ -152,9 +146,7 @@ async def collect_company_emails(
     return out
 
 
-async def collect_company_phones(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, list[str]]:
+async def collect_company_phones(db: AsyncSession, company_ids: list[int]) -> dict[int, list[str]]:
     """company_id → объединённый и дедуплицированный список телефонов-кандидатов.
 
     Берёт из двух источников (зеркалит collect_company_emails):
@@ -173,11 +165,7 @@ async def collect_company_phones(
 
     out: dict[int, list[str]] = {cid: [] for cid in company_ids}
 
-    rows = (
-        await db.execute(
-            select(Company.id, Company.phone).where(Company.id.in_(company_ids))
-        )
-    ).all()
+    rows = (await db.execute(select(Company.id, Company.phone).where(Company.id.in_(company_ids)))).all()
     for cid, phone in rows:
         if not phone:
             continue
@@ -248,12 +236,12 @@ async def collect_telegram_chat_ids(
 
     for cid in company_ids:
         cid_int = int(cid)
-        for raw_phone in (phones_by_company.get(cid_int) or []):
+        for raw_phone in phones_by_company.get(cid_int) or []:
             digits = normalize_phone(str(raw_phone) if raw_phone else None)
             if digits and is_russian_mobile(digits):
                 all_phones.add(digits)
                 contact_to_company.setdefault(digits, []).append(cid_int)
-        for raw_email in (emails_by_company.get(cid_int) or []):
+        for raw_email in emails_by_company.get(cid_int) or []:
             e = str(raw_email).strip().lower()
             if e and "@" in e:
                 all_emails.add(e)
@@ -324,18 +312,14 @@ async def enqueue_job_send(
         raise SendError("Не выбран ни один канал отправки.", status_code=400)
     invalid = [c for c in channels if c not in SUPPORTED_CHANNELS]
     if invalid:
-        raise SendError(
-            f"Неизвестные каналы: {', '.join(invalid)}.", status_code=400
-        )
+        raise SendError(f"Неизвестные каналы: {', '.join(invalid)}.", status_code=400)
 
     job = await db.get(KpGenerationJob, job_id)
     if job is None or job.user_id != user_id:
         raise SendError("Партия не найдена.", status_code=404)
     if job.status not in ("done", "running", "cancelled"):
         # На queued ещё нет смысла слать — генерация даже не началась.
-        raise SendError(
-            "Сначала дождись окончания генерации этой партии.", status_code=400
-        )
+        raise SendError("Сначала дождись окончания генерации этой партии.", status_code=400)
 
     company_ids = [int(c) for c in (job.company_ids or [])]
     if not company_ids:
@@ -359,9 +343,7 @@ async def enqueue_job_send(
         ).all()
     )
     if not draft_rows:
-        raise SendError(
-            "В партии пока нет готовых КП для отправки.", status_code=400
-        )
+        raise SendError("В партии пока нет готовых КП для отправки.", status_code=400)
 
     # Один draft на компанию — на случай, если юзер перегенерил вручную
     # между итерациями. Берём ПЕРВЫЙ по времени, как в list_job_items.
@@ -374,20 +356,28 @@ async def enqueue_job_send(
             drafts_by_company[cid] = (kp, company)
 
     if not drafts_by_company:
-        raise SendError(
-            "В партии пока нет готовых КП для отправки.", status_code=400
-        )
+        raise SendError("В партии пока нет готовых КП для отправки.", status_code=400)
 
     if only_draft_ids:
         allowed = {int(i) for i in only_draft_ids if i is not None}
-        drafts_by_company = {
-            cid: pair
-            for cid, pair in drafts_by_company.items()
-            if int(pair[0].id) in allowed
-        }
+        drafts_by_company = {cid: pair for cid, pair in drafts_by_company.items() if int(pair[0].id) in allowed}
         if not drafts_by_company:
             raise SendError(
                 "Указанные КП не найдены в этой партии или ещё не готовы.",
+                status_code=400,
+            )
+
+    # Если среди каналов есть email — требуем у юзера заполненный reply_to_email.
+    # Без него рассылка бессмысленна: лиди не смогут ответить (ответ уйдёт на
+    # системный From, а не клиенту). Блокируем на API с понятным сообщением.
+    if any(c in EMAIL_CHANNELS for c in channels):
+        from app.models.user import User
+
+        user_row = await db.get(User, user_id)
+        reply_to_email = getattr(user_row, "reply_to_email", None) if user_row else None
+        if not reply_to_email:
+            raise SendError(
+                "Не указан email для ответов. Заполните его в настройках профиля — иначе лиди не смогут вам ответить.",
                 status_code=400,
             )
 
@@ -418,9 +408,7 @@ async def enqueue_job_send(
     # лишний SELECT по company_contacts не нужен.
     phones_by_company: dict[int, list[str]] = {}
     if any(c in PHONE_CHANNELS for c in channels):
-        phones_by_company = await collect_company_phones(
-            db, company_ids_for_lookup
-        )
+        phones_by_company = await collect_company_phones(db, company_ids_for_lookup)
     # Telegram chat_id'ы — только если выбран канал telegram. Ищем по
     # company.phone → telegram_subscribers.phone (лид нажал /start и
     # пошарил контакт). Возвращает dict[company_id → chat_id].
@@ -473,39 +461,28 @@ async def enqueue_job_send(
                 if not wa_configured:
                     status = "skipped"
                     error_code = "greenapi_not_configured"
-                    error_message = (
-                        "WhatsApp-коннектор не настроен — добавь GreenAPI "
-                        "ключи в окружении бэкенда."
-                    )
+                    error_message = "WhatsApp-коннектор не настроен — добавь GreenAPI ключи в окружении бэкенда."
                 elif not recipient:
                     status = "skipped"
                     error_code = "no_mobile_phone"
                     error_message = (
-                        "У компании нет мобильного телефона РФ — WhatsApp "
-                        "не примет городские/зарубежные номера."
+                        "У компании нет мобильного телефона РФ — WhatsApp не примет городские/зарубежные номера."
                     )
             elif channel == "sms":
                 if not sms_configured:
                     status = "skipped"
                     error_code = "smsru_not_configured"
-                    error_message = (
-                        "SMS-коннектор не настроен — добавь SMSRU_API_KEY "
-                        "в окружении бэкенда."
-                    )
+                    error_message = "SMS-коннектор не настроен — добавь SMSRU_API_KEY в окружении бэкенда."
                 elif not recipient:
                     status = "skipped"
                     error_code = "no_mobile_phone"
-                    error_message = (
-                        "У компании нет мобильного телефона РФ — SMS.ru "
-                        "не принимает городские номера."
-                    )
+                    error_message = "У компании нет мобильного телефона РФ — SMS.ru не принимает городские номера."
             elif channel == "telegram":
                 if not tg_configured:
                     status = "skipped"
                     error_code = "telegram_not_configured"
                     error_message = (
-                        "Telegram-бот не настроен — задайте TELEGRAM_BOT_TOKEN "
-                        "в env или в /app/settings/channels."
+                        "Telegram-бот не настроен — задайте TELEGRAM_BOT_TOKEN в env или в /app/settings/channels."
                     )
                 elif not recipient:
                     status = "skipped"
@@ -517,10 +494,7 @@ async def enqueue_job_send(
             else:
                 status = "skipped"
                 error_code = "channel_unavailable"
-                error_message = (
-                    "Канал в работе — коннектор появится позже. "
-                    "Пока отправляем только по email и WhatsApp."
-                )
+                error_message = "Канал в работе — коннектор появится позже. Пока отправляем только по email и WhatsApp."
 
             row = KpSend(
                 user_id=user_id,
@@ -624,14 +598,7 @@ async def list_user_sends(
     """Все отправки юзера — для вкладки «Отправки» в /history.
     JOIN'им с companies и kp_drafts чтобы дать UI имя компании + subject.
     """
-    total = int(
-        (
-            await db.execute(
-                select(sa_func.count(KpSend.id)).where(KpSend.user_id == user_id)
-            )
-        ).scalar_one()
-        or 0
-    )
+    total = int((await db.execute(select(sa_func.count(KpSend.id)).where(KpSend.user_id == user_id))).scalar_one() or 0)
 
     rows = (
         await db.execute(
@@ -664,22 +631,24 @@ async def list_user_sends(
     return items, total
 
 
-async def claim_queued_sends_for_job(
-    db: AsyncSession, *, job_id: int, batch_size: int = 20
-) -> list[KpSend]:
+async def claim_queued_sends_for_job(db: AsyncSession, *, job_id: int, batch_size: int = 20) -> list[KpSend]:
     """Воркер забирает следующую пачку KpSend в статусе queued этого job'а
     и переводит их в 'sending'. Лочим UPDATE'ом по id-списку, чтобы
     несколько воркеров не дублили отправку.
     """
     candidate_rows = (
-        await db.execute(
-            select(KpSend)
-            .where(KpSend.job_id == job_id, KpSend.status == "queued")
-            .order_by(KpSend.created_at.asc(), KpSend.id.asc())
-            .limit(batch_size)
-            .with_for_update(skip_locked=True)
+        (
+            await db.execute(
+                select(KpSend)
+                .where(KpSend.job_id == job_id, KpSend.status == "queued")
+                .order_by(KpSend.created_at.asc(), KpSend.id.asc())
+                .limit(batch_size)
+                .with_for_update(skip_locked=True)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not candidate_rows:
         return []
 

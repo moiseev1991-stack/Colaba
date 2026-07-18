@@ -156,9 +156,7 @@ async def _load_email_branding(db) -> tuple[str | None, str | None, str | None]:
     None/пустым — рендерер скрывает соответствующий блок. Если EmailConfig
     вообще не создан (новая инсталляция) — отдаём (None, None, None).
     """
-    row = (
-        await db.execute(select(EmailConfig).where(EmailConfig.id == 1))
-    ).scalar_one_or_none()
+    row = (await db.execute(select(EmailConfig).where(EmailConfig.id == 1))).scalar_one_or_none()
     if row is None:
         return None, None, None
     return (
@@ -220,6 +218,15 @@ async def _send_one_email(db, send_row, draft) -> None:
         brand_color=brand_color,
     )
 
+    # Reply-To = личный email пользователя. Лид, отвечая на КП, шлёт письмо
+    # в ящик клиента, а не на системный From. До send_row это не должно
+    # доходить с пустым reply_to (блокируется в enqueue_job_send), но
+    # защищаемся и здесь — без reply_to отправка теряет смысл.
+    from app.models.user import User
+
+    user = await db.get(User, send_row.user_id)
+    reply_to = (user.reply_to_email if user else None) or None
+
     try:
         result = await email_service.send_email(
             to_email=send_row.recipient,
@@ -227,6 +234,7 @@ async def _send_one_email(db, send_row, draft) -> None:
             body=plain_body,
             html_body=html_body,
             db=db,
+            reply_to=reply_to,
         )
         kp_send_service.mark_send_sent(
             send_row,
@@ -274,14 +282,10 @@ def _compose_whatsapp_text(draft) -> str:
 async def _send_one_whatsapp(send_row, draft) -> None:
     text = _compose_whatsapp_text(draft)
     try:
-        message_id = await whatsapp_greenapi.send_text_message(
-            send_row.recipient, text
-        )
+        message_id = await whatsapp_greenapi.send_text_message(send_row.recipient, text)
         kp_send_service.mark_send_sent(send_row, provider_message_id=message_id)
     except whatsapp_greenapi.WhatsAppSendError as e:
-        kp_send_service.mark_send_failed(
-            send_row, error_message=e.message, error_code=e.code
-        )
+        kp_send_service.mark_send_failed(send_row, error_message=e.message, error_code=e.code)
     except Exception as e:  # noqa: BLE001
         logger.exception(
             "send_kp_batch_task: unexpected WA error send_id=%s draft_id=%s: %s",
@@ -325,9 +329,7 @@ async def _send_one_sms(send_row, draft) -> None:
         message_id = await sms_smsru.send_text_message(send_row.recipient, text)
         kp_send_service.mark_send_sent(send_row, provider_message_id=message_id)
     except sms_smsru.SmsSendError as e:
-        kp_send_service.mark_send_failed(
-            send_row, error_message=e.message, error_code=e.code
-        )
+        kp_send_service.mark_send_failed(send_row, error_message=e.message, error_code=e.code)
     except Exception as e:  # noqa: BLE001
         logger.exception(
             "send_kp_batch_task: unexpected SMS error send_id=%s draft_id=%s: %s",
@@ -362,11 +364,7 @@ def _compose_telegram_text(draft) -> str:
 
 def _escape_html(text: str) -> str:
     """Экранирует <, >, & для Telegram HTML parse_mode."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 async def _send_one_telegram(send_row, draft) -> None:
@@ -374,14 +372,10 @@ async def _send_one_telegram(send_row, draft) -> None:
 
     text = _compose_telegram_text(draft)
     try:
-        message_id = await telegram_bot.send_text_message(
-            send_row.recipient, text, parse_mode="HTML"
-        )
+        message_id = await telegram_bot.send_text_message(send_row.recipient, text, parse_mode="HTML")
         kp_send_service.mark_send_sent(send_row, provider_message_id=message_id)
     except telegram_bot.TelegramSendError as e:
-        kp_send_service.mark_send_failed(
-            send_row, error_message=e.message, error_code=e.code
-        )
+        kp_send_service.mark_send_failed(send_row, error_message=e.message, error_code=e.code)
     except Exception as e:  # noqa: BLE001
         logger.exception(
             "send_kp_batch_task: unexpected TG error send_id=%s draft_id=%s: %s",
@@ -404,9 +398,7 @@ async def _send_kp_batch_async(job_id: int) -> dict:
     # за один прогон task'а, чтобы не плодить chain'ы Celery-ретвитов.
     while True:
         async with AsyncSessionLocal() as db:
-            claimed = await kp_send_service.claim_queued_sends_for_job(
-                db, job_id=job_id, batch_size=_SEND_BATCH_SIZE
-            )
+            claimed = await kp_send_service.claim_queued_sends_for_job(db, job_id=job_id, batch_size=_SEND_BATCH_SIZE)
             if not claimed:
                 break
 
@@ -441,9 +433,7 @@ def send_kp_batch_task(self, job_id: int):
     try:
         return asyncio.run(_send_kp_batch_async(job_id))
     except Exception as exc:
-        logger.error(
-            "send_kp_batch_task job=%d crashed: %s", job_id, exc, exc_info=True
-        )
+        logger.error("send_kp_batch_task job=%d crashed: %s", job_id, exc, exc_info=True)
         raise
 
 
@@ -465,6 +455,7 @@ def generate_kp_bulk_task(self, job_id: int):
             exc,
             exc_info=True,
         )
+
         # Помечаем job как failed, чтобы UI не висел в «running» вечно.
         async def _mark_failed():
             async with AsyncSessionLocal() as db:

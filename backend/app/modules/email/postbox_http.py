@@ -83,11 +83,16 @@ async def send_email(
     text_body: Optional[str] = None,
     from_name: Optional[str] = None,
     region: str = DEFAULT_REGION,
+    reply_to: Optional[str] = None,
 ) -> str:
     """Отправляет письмо через Postbox HTTP API (AWS SESv2 SendEmail).
 
     Возвращает MessageId (строка) → пишется в KpSend.provider_message_id.
     Подымает PostboxHTTPError с понятным кодом.
+
+    ``reply_to`` — адрес для ответа (Reply-To). Лид, нажав «Ответить»,
+    шлёт письмо на этот адрес (обычно — личный ящик пользователя spinlid,
+    а не системный отправитель). None = без заголовка Reply-To.
     """
     if not access_key_id or not secret_access_key:
         raise PostboxHTTPError(
@@ -119,9 +124,14 @@ async def send_email(
 
     def _do_send() -> dict:
         client = _build_client(access_key_id, secret_access_key, region)
+        # Reply-To: если задан, добавляем ReplyToAddresses — лид, отвечая,
+        # шлёт письмо на reply_to, а не на системный From.
+        destination: dict = {"ToAddresses": [to_email]}
+        if reply_to:
+            destination["ReplyToAddresses"] = [reply_to]
         return client.send_email(
             FromEmailAddress=from_addr,
-            Destination={"ToAddresses": [to_email]},
+            Destination=destination,
             Content={
                 "Simple": {
                     "Subject": {"Data": subject or "(без темы)"},
@@ -146,9 +156,7 @@ async def send_email(
             return_code = "http_error"
         else:
             return_code = "http_error"
-        raise PostboxHTTPError(
-            f"Postbox API: {msg[:300]}", code=return_code
-        ) from e
+        raise PostboxHTTPError(f"Postbox API: {msg[:300]}", code=return_code) from e
 
     message_id = response.get("MessageId")
     if not message_id:
@@ -205,9 +213,7 @@ async def verify_credentials(
                     status = meta.get("HTTPStatusCode")
                 low = str(e).lower()
                 # Auth-ошибка: либо 401/403 статус, либо знакомая строка.
-                if status in (401, 403) or any(
-                    marker in low for marker in _AUTH_FAIL_MARKERS
-                ):
+                if status in (401, 403) or any(marker in low for marker in _AUTH_FAIL_MARKERS):
                     return False, f"Ключи отклонены (HTTP {status}): {str(e)[:200]}"
                 # Любая другая ошибка (400/404/409 про сам ресурс) = подпись
                 # принята сервером → ключи валидны.
