@@ -47,9 +47,7 @@ class EmailService:
         result = await db.execute(select(EmailConfig).where(EmailConfig.id == 1))
         return result.scalar_one_or_none()
 
-    def _resolve_hyvor(
-        self, row: Optional[EmailConfig]
-    ) -> Tuple[str, str, bool]:
+    def _resolve_hyvor(self, row: Optional[EmailConfig]) -> Tuple[str, str, bool]:
         """api_url, api_key, use_db."""
         if row and row.hyvor_api_url and row.hyvor_api_key:
             return row.hyvor_api_url.rstrip("/"), row.hyvor_api_key, True
@@ -59,9 +57,7 @@ class EmailService:
             return (row.hyvor_api_url or self.api_url).rstrip("/"), row.hyvor_api_key, True
         return self.api_url.rstrip("/"), self.api_key or "", False
 
-    def _resolve_smtp(
-        self, row: Optional[EmailConfig]
-    ) -> Tuple[str, int, str, str, bool]:
+    def _resolve_smtp(self, row: Optional[EmailConfig]) -> Tuple[str, int, str, str, bool]:
         if row and row.smtp_host:
             return (
                 row.smtp_host,
@@ -168,10 +164,17 @@ class EmailService:
         # 1) Явный override — без fallback.
         if force_provider:
             return await self._dispatch_provider(
-                force_provider, to_email, subject, body,
-                from_email=from_email, from_name=from_name,
-                reply_to=reply_to, html_body=html_body,
-                idempotency_key=idempotency_key, row=row, db=db,
+                force_provider,
+                to_email,
+                subject,
+                body,
+                from_email=from_email,
+                from_name=from_name,
+                reply_to=reply_to,
+                html_body=html_body,
+                idempotency_key=idempotency_key,
+                row=row,
+                db=db,
             )
 
         # 2) Новая модель — fallback-цепочка.
@@ -187,23 +190,27 @@ class EmailService:
             for prov_row in chain:
                 try:
                     return await self._send_via_provider_row(
-                        prov_row, to_email, subject, body,
-                        from_email=from_email, from_name=from_name,
-                        reply_to=reply_to, html_body=html_body,
+                        prov_row,
+                        to_email,
+                        subject,
+                        body,
+                        from_email=from_email,
+                        from_name=from_name,
+                        reply_to=reply_to,
+                        html_body=html_body,
                         idempotency_key=idempotency_key,
                     )
                 except EmailServiceError as e:
                     logger.warning(
                         "send_email: provider %s failed (%s) — fallback to next",
-                        prov_row.provider_id, e,
+                        prov_row.provider_id,
+                        e,
                     )
                     last_error = e
                     continue
             if chain:
                 # Была цепочка, но все провайдеры упали.
-                raise EmailServiceError(
-                    f"All email providers failed. Last error: {last_error}"
-                )
+                raise EmailServiceError(f"All email providers failed. Last error: {last_error}")
 
         # 3) Старая логика — email_config.provider_type (обратная совместимость).
         provider = "hyvor"
@@ -213,10 +220,17 @@ class EmailService:
             provider = "smtp"
 
         return await self._dispatch_provider(
-            provider, to_email, subject, body,
-            from_email=from_email, from_name=from_name,
-            reply_to=reply_to, html_body=html_body,
-            idempotency_key=idempotency_key, row=row, db=db,
+            provider,
+            to_email,
+            subject,
+            body,
+            from_email=from_email,
+            from_name=from_name,
+            reply_to=reply_to,
+            html_body=html_body,
+            idempotency_key=idempotency_key,
+            row=row,
+            db=db,
         )
 
     async def _dispatch_provider(
@@ -237,16 +251,26 @@ class EmailService:
         """Маршрутизация на конкретный send-метод по имени провайдера."""
         if provider == "hyvor":
             return await self._send_via_hyvor(
-                to_email=to_email, subject=subject, body=body,
-                from_email=from_email, from_name=from_name,
-                reply_to=reply_to, html_body=html_body,
-                idempotency_key=idempotency_key, row=row,
+                to_email=to_email,
+                subject=subject,
+                body=body,
+                from_email=from_email,
+                from_name=from_name,
+                reply_to=reply_to,
+                html_body=html_body,
+                idempotency_key=idempotency_key,
+                row=row,
             )
         # postbox, ses, smtp — всё через SMTP-отправку (creds разные).
         return await self._send_via_smtp(
-            to_email=to_email, subject=subject, body=body,
-            from_email=from_email, from_name=from_name,
-            reply_to=reply_to, html_body=html_body, row=row,
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            from_name=from_name,
+            reply_to=reply_to,
+            html_body=html_body,
+            row=row,
         )
 
     async def _send_via_provider_row(
@@ -275,20 +299,33 @@ class EmailService:
         if pid == "hyvor":
             try:
                 result = await self._send_via_hyvor_row(
-                    prov_row, to_email, subject, body,
-                    from_email=from_email, from_name=from_name,
-                    reply_to=reply_to, html_body=html_body,
+                    prov_row,
+                    to_email,
+                    subject,
+                    body,
+                    from_email=from_email,
+                    from_name=from_name,
+                    reply_to=reply_to,
+                    html_body=html_body,
                     idempotency_key=idempotency_key,
                 )
                 await log_call(
-                    "hyvor", "/api/console/sends", method="POST",
-                    http_status=200, ok=True, amount_rub=cost,
+                    "hyvor",
+                    "/api/console/sends",
+                    method="POST",
+                    http_status=200,
+                    ok=True,
+                    amount_rub=cost,
                 )
                 return result
             except EmailServiceError as e:
                 await log_call(
-                    "hyvor", "/api/console/sends", method="POST",
-                    ok=False, error=str(e), amount_rub=0,
+                    "hyvor",
+                    "/api/console/sends",
+                    method="POST",
+                    ok=False,
+                    error=str(e),
+                    amount_rub=0,
                 )
                 raise
 
@@ -302,38 +339,64 @@ class EmailService:
         if use_http:
             try:
                 result = await self._send_via_postbox_http(
-                    prov_row, to_email, subject, body,
-                    from_email=from_email, from_name=from_name,
+                    prov_row,
+                    to_email,
+                    subject,
+                    body,
+                    from_email=from_email,
+                    from_name=from_name,
                     html_body=html_body,
+                    reply_to=reply_to,
                 )
                 await log_call(
-                    pid, "https-api", method="POST",
-                    http_status=200, ok=True, amount_rub=cost,
+                    pid,
+                    "https-api",
+                    method="POST",
+                    http_status=200,
+                    ok=True,
+                    amount_rub=cost,
                 )
                 return result
             except EmailServiceError as e:
                 await log_call(
-                    pid, "https-api", method="POST",
-                    ok=False, error=str(e), amount_rub=0,
+                    pid,
+                    "https-api",
+                    method="POST",
+                    ok=False,
+                    error=str(e),
+                    amount_rub=0,
                 )
                 raise
 
         # SMTP (дефолт).
         try:
             result = await self._send_via_smtp_row(
-                prov_row, to_email, subject, body,
-                from_email=from_email, from_name=from_name,
-                reply_to=reply_to, html_body=html_body,
+                prov_row,
+                to_email,
+                subject,
+                body,
+                from_email=from_email,
+                from_name=from_name,
+                reply_to=reply_to,
+                html_body=html_body,
             )
             await log_call(
-                pid, f"{prov_row.smtp_host}:{prov_row.smtp_port}",
-                method="SMTP", http_status=200, ok=True, amount_rub=cost,
+                pid,
+                f"{prov_row.smtp_host}:{prov_row.smtp_port}",
+                method="SMTP",
+                http_status=200,
+                ok=True,
+                amount_rub=cost,
             )
             return result
         except EmailServiceError as e:
             await log_call(
-                pid, f"{prov_row.smtp_host}:{prov_row.smtp_port}",
-                method="SMTP", ok=False, error=str(e), amount_rub=0,
+                pid,
+                f"{prov_row.smtp_host}:{prov_row.smtp_port}",
+                method="SMTP",
+                ok=False,
+                error=str(e),
+                amount_rub=0,
             )
             raise
 
@@ -347,6 +410,7 @@ class EmailService:
         from_email: Optional[str],
         from_name: Optional[str],
         html_body: Optional[str],
+        reply_to: Optional[str] = None,
     ) -> dict:
         """AWS SESv2 HTTP API (порт 443) — для postbox/ses когда SMTP заблокирован.
 
@@ -364,18 +428,11 @@ class EmailService:
         mail_from = from_email or prov_row.from_email
         disp_name = from_name or prov_row.from_name
         if not host:
-            raise EmailServiceError(
-                f"{prov_row.provider_id}: smtp_host пуст (нужен endpoint)"
-            )
+            raise EmailServiceError(f"{prov_row.provider_id}: smtp_host пуст (нужен endpoint)")
         if not user or not pwd:
-            raise EmailServiceError(
-                f"{prov_row.provider_id}: smtp_user/smtp_password пусты "
-                "(ID API-ключа и секрет)"
-            )
+            raise EmailServiceError(f"{prov_row.provider_id}: smtp_user/smtp_password пусты (ID API-ключа и секрет)")
         if not mail_from:
-            raise EmailServiceError(
-                f"{prov_row.provider_id}: from_email пуст"
-            )
+            raise EmailServiceError(f"{prov_row.provider_id}: from_email пуст")
 
         # Region — для postbox всегда ru-central1; для ses берём из prov_row.
         region = (prov_row.region or "").strip() or "ru-central1"
@@ -391,6 +448,7 @@ class EmailService:
                 text_body=body if not html_body else None,
                 from_name=disp_name,
                 region=region,
+                reply_to=reply_to,
             )
             return {
                 "success": True,
@@ -398,9 +456,7 @@ class EmailService:
                 "external_message_id": message_id,
             }
         except PostboxHTTPError as e:
-            raise EmailServiceError(
-                f"{prov_row.provider_id} HTTP API: {e.message}"
-            ) from e
+            raise EmailServiceError(f"{prov_row.provider_id} HTTP API: {e.message}") from e
 
     async def _send_via_smtp_row(
         self,
@@ -417,9 +473,7 @@ class EmailService:
         """SMTP-отправка с creds из EmailProviderConfig (новая модель)."""
         host = (prov_row.smtp_host or "").strip()
         if not host:
-            raise EmailServiceError(
-                f"{prov_row.provider_id}: smtp_host пуст"
-            )
+            raise EmailServiceError(f"{prov_row.provider_id}: smtp_host пуст")
         port = int(prov_row.smtp_port or 587)
         user = (prov_row.smtp_user or "").strip()
         pwd = (prov_row.smtp_password or "").strip()
@@ -428,15 +482,11 @@ class EmailService:
         mail_from = from_email or prov_row.from_email or user
         disp_name = from_name or prov_row.from_name or ""
         if not mail_from:
-            raise EmailServiceError(
-                f"{prov_row.provider_id}: from_email пуст"
-            )
+            raise EmailServiceError(f"{prov_row.provider_id}: from_email пуст")
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = (
-            formataddr((disp_name, mail_from)) if disp_name else mail_from
-        )
+        msg["From"] = formataddr((disp_name, mail_from)) if disp_name else mail_from
         msg["To"] = to_email
         if reply_to:
             msg["Reply-To"] = reply_to
@@ -468,12 +518,8 @@ class EmailService:
                 "external_message_id": None,
             }
         except Exception as e:
-            logger.exception(
-                "%s SMTP send failed", prov_row.provider_id
-            )
-            raise EmailServiceError(
-                f"{prov_row.provider_id} SMTP error: {e}"
-            ) from e
+            logger.exception("%s SMTP send failed", prov_row.provider_id)
+            raise EmailServiceError(f"{prov_row.provider_id} SMTP error: {e}") from e
 
     async def _send_via_hyvor_row(
         self,
@@ -492,9 +538,7 @@ class EmailService:
         api_url = (prov_row.smtp_host or "").strip().rstrip("/")
         api_key = (prov_row.api_key or "").strip()
         if not api_url or not api_key:
-            raise EmailServiceError(
-                "hyvor: smtp_host (API URL) или api_key пуст"
-            )
+            raise EmailServiceError("hyvor: smtp_host (API URL) или api_key пуст")
 
         payload = {
             "to": to_email,
@@ -504,9 +548,7 @@ class EmailService:
         eff_from = from_email or prov_row.from_email
         if eff_from:
             payload["from"] = (
-                eff_from
-                if not (from_name or prov_row.from_name)
-                else f"{from_name or prov_row.from_name} <{eff_from}>"
+                eff_from if not (from_name or prov_row.from_name) else f"{from_name or prov_row.from_name} <{eff_from}>"
             )
         if reply_to:
             payload["reply_to"] = reply_to
@@ -537,9 +579,7 @@ class EmailService:
                     error_detail = error_json.get("message", error_detail)
                 except Exception:
                     pass
-                raise EmailServiceError(
-                    f"Hyvor API error: {response.status_code} - {error_detail}"
-                )
+                raise EmailServiceError(f"Hyvor API error: {response.status_code} - {error_detail}")
         except httpx.TimeoutException:
             raise EmailServiceError("Hyvor Relay API timeout")
         except httpx.RequestError as e:
@@ -567,9 +607,7 @@ class EmailService:
             "body": html_body or body,
         }
         if from_email:
-            payload["from"] = (
-                from_email if not from_name else f"{from_name} <{from_email}>"
-            )
+            payload["from"] = from_email if not from_name else f"{from_name} <{from_email}>"
         if reply_to:
             payload["reply_to"] = reply_to
         if html_body:
@@ -590,8 +628,11 @@ class EmailService:
                     from app.core.api_tracker import log_call
 
                     await log_call(
-                        "hyvor", "/api/console/sends", method="POST",
-                        http_status=200, ok=True,
+                        "hyvor",
+                        "/api/console/sends",
+                        method="POST",
+                        http_status=200,
+                        ok=True,
                     )
                     data = response.json()
                     return {
@@ -608,27 +649,34 @@ class EmailService:
                 from app.core.api_tracker import log_call
 
                 await log_call(
-                    "hyvor", "/api/console/sends", method="POST",
-                    http_status=response.status_code, ok=False,
+                    "hyvor",
+                    "/api/console/sends",
+                    method="POST",
+                    http_status=response.status_code,
+                    ok=False,
                     error=error_detail[:200],
                 )
-                raise EmailServiceError(
-                    f"Hyvor API error: {response.status_code} - {error_detail}"
-                )
+                raise EmailServiceError(f"Hyvor API error: {response.status_code} - {error_detail}")
         except httpx.TimeoutException:
             from app.core.api_tracker import log_call
 
             await log_call(
-                "hyvor", "/api/console/sends", method="POST",
-                ok=False, error="timeout",
+                "hyvor",
+                "/api/console/sends",
+                method="POST",
+                ok=False,
+                error="timeout",
             )
             raise EmailServiceError("Hyvor Relay API timeout")
         except httpx.RequestError as e:
             from app.core.api_tracker import log_call
 
             await log_call(
-                "hyvor", "/api/console/sends", method="POST",
-                ok=False, error=str(e),
+                "hyvor",
+                "/api/console/sends",
+                method="POST",
+                ok=False,
+                error=str(e),
             )
             raise EmailServiceError(f"Hyvor Relay API request error: {e}")
 
@@ -647,18 +695,14 @@ class EmailService:
         if not host:
             raise EmailServiceError("SMTP host is not configured (UI or SMTP_HOST)")
 
-        mail_from = from_email or (
-            row.smtp_from_email if row and row.smtp_from_email else user
-        )
+        mail_from = from_email or (row.smtp_from_email if row and row.smtp_from_email else user)
         disp_name = from_name or (row.smtp_from_name if row else None) or ""
         if not mail_from:
             raise EmailServiceError("SMTP From address is not configured")
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = (
-            formataddr((disp_name, mail_from)) if disp_name else mail_from
-        )
+        msg["From"] = formataddr((disp_name, mail_from)) if disp_name else mail_from
         msg["To"] = to_email
         if reply_to:
             msg["Reply-To"] = reply_to
@@ -685,7 +729,10 @@ class EmailService:
             from app.core.api_tracker import log_call
 
             await log_call(
-                "smtp", f"{host}:{port}", method="SMTP", ok=True,
+                "smtp",
+                f"{host}:{port}",
+                method="SMTP",
+                ok=True,
             )
             return {
                 "success": True,
@@ -697,8 +744,11 @@ class EmailService:
             from app.core.api_tracker import log_call
 
             await log_call(
-                "smtp", f"{host}:{port}", method="SMTP",
-                ok=False, error=str(e),
+                "smtp",
+                f"{host}:{port}",
+                method="SMTP",
+                ok=False,
+                error=str(e),
             )
             raise EmailServiceError(f"SMTP error: {e}") from e
 
@@ -711,9 +761,7 @@ class EmailService:
     ) -> EmailLog:
         """Send one campaign email; updates ``EmailLog``."""
         try:
-            idempotency_key = hashlib.sha256(
-                f"{campaign.id}:{search_result.id}:{log.id}".encode()
-            ).hexdigest()[:32]
+            idempotency_key = hashlib.sha256(f"{campaign.id}:{search_result.id}:{log.id}".encode()).hexdigest()[:32]
 
             body = campaign.body
             subject = campaign.subject
@@ -723,9 +771,7 @@ class EmailService:
                 "{{title}}": search_result.title or "",
                 "{{email}}": search_result.email or "",
                 "{{phone}}": search_result.phone or "",
-                "{{seo_score}}": str(search_result.seo_score)
-                if search_result.seo_score
-                else "",
+                "{{seo_score}}": str(search_result.seo_score) if search_result.seo_score else "",
                 "{{issues}}": self._format_issues(search_result),
             }
             for placeholder, value in replacements.items():
@@ -733,21 +779,13 @@ class EmailService:
                 subject = subject.replace(placeholder, value)
 
             row = await self._get_config_row(db)
-            reply_prefix = (
-                row.reply_prefix if row and row.reply_prefix else settings.REPLY_PREFIX
-            )
+            reply_prefix = row.reply_prefix if row and row.reply_prefix else settings.REPLY_PREFIX
 
             reply_to = campaign.reply_to_email
             if not reply_to and campaign.from_email:
-                from_domain = (
-                    campaign.from_email.split("@")[-1]
-                    if "@" in campaign.from_email
-                    else None
-                )
+                from_domain = campaign.from_email.split("@")[-1] if "@" in campaign.from_email else None
                 if from_domain and campaign.user_id:
-                    reply_to = self.generate_reply_to_address(
-                        campaign.user_id, from_domain, reply_prefix=reply_prefix
-                    )
+                    reply_to = self.generate_reply_to_address(campaign.user_id, from_domain, reply_prefix=reply_prefix)
 
             result = await self.send_email(
                 to_email=log.to_email,
@@ -795,14 +833,10 @@ class EmailService:
             issues.append("No sitemap")
         return ", ".join(issues) if issues else "SEO audit completed"
 
-    def verify_webhook_signature(
-        self, payload: bytes, signature: str, secret_override: Optional[str] = None
-    ) -> bool:
+    def verify_webhook_signature(self, payload: bytes, signature: str, secret_override: Optional[str] = None) -> bool:
         secret = secret_override or self.webhook_secret
         if not secret:
-            logger.warning(
-                "Webhook secret not configured, skipping signature verification"
-            )
+            logger.warning("Webhook secret not configured, skipping signature verification")
             return True
         expected_signature = hmac.new(
             secret.encode(),
@@ -822,15 +856,11 @@ class EmailService:
             logger.warning(f"Webhook event missing message_id: {event_type}")
             return None
 
-        result = await db.execute(
-            select(EmailLog).where(EmailLog.external_message_id == external_message_id)
-        )
+        result = await db.execute(select(EmailLog).where(EmailLog.external_message_id == external_message_id))
         log = result.scalar_one_or_none()
 
         if not log:
-            logger.warning(
-                f"EmailLog not found for message_id: {external_message_id}"
-            )
+            logger.warning(f"EmailLog not found for message_id: {external_message_id}")
             return None
 
         now = datetime.utcnow()
@@ -875,9 +905,7 @@ class EmailService:
 
         from app.models.email import EmailCampaign
 
-        result = await db.execute(
-            select(EmailCampaign).where(EmailCampaign.id == campaign_id)
-        )
+        result = await db.execute(select(EmailCampaign).where(EmailCampaign.id == campaign_id))
         campaign = result.scalar_one_or_none()
         if not campaign:
             return
@@ -895,9 +923,7 @@ class EmailService:
         campaign.sent_count = stats.get(EmailStatus.SENT, 0)
         campaign.delivered_count = stats.get(EmailStatus.DELIVERED, 0)
         campaign.bounced_count = stats.get(EmailStatus.BOUNCED, 0)
-        campaign.opened_count = stats.get(EmailStatus.OPENED, 0) + stats.get(
-            EmailStatus.CLICKED, 0
-        )
+        campaign.opened_count = stats.get(EmailStatus.OPENED, 0) + stats.get(EmailStatus.CLICKED, 0)
         campaign.clicked_count = stats.get(EmailStatus.CLICKED, 0)
         campaign.spam_count = stats.get(EmailStatus.SPAM, 0)
         campaign.failed_count = stats.get(EmailStatus.FAILED, 0)

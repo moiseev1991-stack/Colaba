@@ -21,7 +21,7 @@ async def register(
 ):
     """
     Register a new user.
-    
+
     Creates a new user account with email and password.
     """
     return await service.register_user(db=db, user_data=user_data)
@@ -36,7 +36,7 @@ async def login(
 ):
     """
     Login user and get access tokens.
-    
+
     Returns JWT access token and refresh token.
     """
     return await service.login_user(db=db, login_data=login_data)
@@ -51,7 +51,7 @@ async def refresh_token(
 ):
     """
     Refresh access token using refresh token.
-    
+
     Returns new access token and refresh token.
     """
     return await service.refresh_access_token(db=db, refresh_token=refresh_data.refresh_token)
@@ -64,7 +64,23 @@ async def get_me(
 ):
     """
     Get current user information.
-    
+
     Returns information about the authenticated user.
     """
     return await service.get_current_user(db=db, user_id=user_id)
+
+
+@router.patch("/me", response_model=schemas.UserResponse)
+async def update_me(
+    payload: schemas.UserUpdateMe,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Обновление профиля текущего пользователя.
+
+    Пока поддерживается только ``reply_to_email`` — личный email для
+    ответов в outreach-рассылке (поле Reply-To). Передайте null или ""
+    чтобы сбросить. Без заполненного адреса email-рассылка блокируется.
+    """
+    return await service.update_current_user(db=db, user_id=user_id, payload=payload)
