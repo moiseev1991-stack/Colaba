@@ -31,6 +31,26 @@ export const SEO_NAV_LINKS: SeoNavLink[] = [
     hint: 'Альтернативный источник к 2GIS — со склейкой дублей',
   },
   {
+    href: '/parser-google-maps',
+    label: 'Парсер Google Maps',
+    hint: 'Третий источник со склейкой дублей и отзывами Google',
+  },
+  {
+    href: '/parser-email',
+    label: 'Парсер email',
+    hint: 'Сбор почты компаний с сайтов и карт + проверка на живость',
+  },
+  {
+    href: '/parser-telegram',
+    label: 'Парсер Telegram',
+    hint: 'Публичные Telegram-контакты компаний как канал касания',
+  },
+  {
+    href: '/lidogeneraciya',
+    label: 'Лидогенерация',
+    hint: 'Вся воронка — от сбора компаний до тёплого лида',
+  },
+  {
     href: '/baza-klientov',
     label: 'База клиентов под нишу',
     hint: 'Свежая база с контактами и юр.данными — без устаревших списков',
