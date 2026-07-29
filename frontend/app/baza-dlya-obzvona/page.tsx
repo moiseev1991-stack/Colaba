@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function BazaDlyaObzvonaPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/baza-dlya-obzvona"
       decorTheme="contacts"
       showLeadCapture
       customBlock={<CallBaseBlock />}

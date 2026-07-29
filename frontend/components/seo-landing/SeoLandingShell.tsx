@@ -192,6 +192,12 @@ interface SeoLandingShellProps {
    * схему «зачем второй источник», таблицу колонок выгрузки, и т.п.
    */
   customBlock?: React.ReactNode;
+  /**
+   * Путь страницы для хлебных крошек (BreadcrumbList JSON-LD) и канона —
+   * например '/lidogeneraciya'. Если задан, в разметку добавляется
+   * цепочка «Главная → эта страница» для сниппета в поиске.
+   */
+  canonicalPath?: string;
 }
 
 export function SeoLandingShell({
@@ -213,6 +219,7 @@ export function SeoLandingShell({
   showLeadCapture = true,
   niche = FALLBACK_NICHE,
   customBlock,
+  canonicalPath,
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
@@ -311,6 +318,9 @@ export function SeoLandingShell({
       {/* Schema.org FAQPage — из тех же вопросов, что и видимый FAQ.
           Помогает Google/Яндексу собрать rich-сниппет «вопрос-ответ». */}
       <FaqJsonLd items={faq} />
+
+      {/* Schema.org BreadcrumbList — цепочка «Главная → страница». */}
+      {canonicalPath && <BreadcrumbJsonLd path={canonicalPath} name={h1} />}
 
       <SeoLandingFooter currentHref={currentHref} />
     </div>
@@ -1674,6 +1684,38 @@ function FaqJsonLd({ items }: { items: FaqItem[] }) {
         text: it.a as string,
       },
     })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  );
+}
+
+const SITE_ORIGIN = 'https://spinlid.ru';
+
+/** Рендерит JSON-LD BreadcrumbList: Главная → текущая страница. */
+function BreadcrumbJsonLd({ path, name }: { path: string; name: string }) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Главная',
+        item: `${SITE_ORIGIN}/`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name,
+        item: `${SITE_ORIGIN}${normalized}`,
+      },
+    ],
   };
 
   return (

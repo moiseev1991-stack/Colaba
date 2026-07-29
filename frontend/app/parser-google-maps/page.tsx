@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function ParserGoogleMapsPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/parser-google-maps"
       decorTheme="maps"
       showLeadCapture
       customBlock={<GoogleMapsBlock />}

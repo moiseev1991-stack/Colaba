@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function ParserTelegramPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/parser-telegram"
       decorTheme="contacts"
       showLeadCapture
       customBlock={<TelegramParserBlock />}

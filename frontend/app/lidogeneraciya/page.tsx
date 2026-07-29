@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function LidogeneraciyaPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/lidogeneraciya"
       decorTheme="mixed"
       showLeadCapture
       customBlock={<LidgenFunnelBlock />}
