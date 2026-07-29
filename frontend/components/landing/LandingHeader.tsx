@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import './landing.css';
 import { SEO_NAV_LINKS } from './seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
 
@@ -12,7 +13,16 @@ const ANCHORS = [
   { id: 'faq', label: 'FAQ' },
 ] as const;
 
-export function LandingHeader() {
+export function LandingHeader({
+  variant = 'home',
+  forceSolid = false,
+}: {
+  /** 'home' — якоря скроллят секции главной; 'subpage' — якоря ведут на /#id. */
+  variant?: 'home' | 'subpage';
+  /** Держать шапку в «залитом» состоянии всегда (для светлого hero авторизованного юзера). */
+  forceSolid?: boolean;
+} = {}) {
+  const isSubpage = variant === 'subpage';
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
@@ -81,13 +91,25 @@ export function LandingHeader() {
     setMobileOpen(false);
   };
 
+  const navSolid = forceSolid || scrolled;
+
   return (
-    <nav className={`l-nav${scrolled ? ' scrolled' : ''}`} id="l-nav">
+    // Обёртка .landing-light нужна, чтобы CSS-переменные --landing-* резолвились
+    // и на SEO-страницах (у них своя палитра). display:contents — без своего бокса.
+    <div className="landing-light" style={{ display: 'contents' }}>
+    <nav className={`l-nav${navSolid ? ' scrolled' : ''}`} id="l-nav">
       <div className="l-nav__inner">
-        <a href="#top" className="l-nav__logo" onClick={(e) => { e.preventDefault(); scrollTo('top'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <BrandMark size={32} />
-          <span>SpinLid</span>
-        </a>
+        {isSubpage ? (
+          <Link href="/" className="l-nav__logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BrandMark size={32} />
+            <span>SpinLid</span>
+          </Link>
+        ) : (
+          <a href="#top" className="l-nav__logo" onClick={(e) => { e.preventDefault(); scrollTo('top'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BrandMark size={32} />
+            <span>SpinLid</span>
+          </a>
+        )}
 
         <ul className={`l-nav__links${mobileOpen ? ' open' : ''}`}>
           {/* Dropdown «Возможности» — ведёт на 6 SEO-страниц. Открывается
@@ -167,21 +189,31 @@ export function LandingHeader() {
           </li>
           {ANCHORS.map(({ id, label }) => (
             <li key={id}>
-              <button
-                className={activeSection === id ? 'active' : ''}
-                onClick={() => scrollTo(id)}
-              >
-                {label}
-              </button>
+              {isSubpage ? (
+                <Link href={`/#${id}`}>{label}</Link>
+              ) : (
+                <button
+                  className={activeSection === id ? 'active' : ''}
+                  onClick={() => scrollTo(id)}
+                >
+                  {label}
+                </button>
+              )}
             </li>
           ))}
           <li>
             <Link href="/auth/login" className="l-nav__login">Войти</Link>
           </li>
           <li>
-            <button className="l-nav__cta" onClick={() => scrollTo('register', true)}>
-              Создать аккаунт
-            </button>
+            {isSubpage ? (
+              <Link href="/auth/register" className="l-nav__cta">
+                Создать аккаунт
+              </Link>
+            ) : (
+              <button className="l-nav__cta" onClick={() => scrollTo('register', true)}>
+                Создать аккаунт
+              </button>
+            )}
           </li>
         </ul>
 
@@ -197,5 +229,6 @@ export function LandingHeader() {
         </button>
       </div>
     </nav>
+    </div>
   );
 }
