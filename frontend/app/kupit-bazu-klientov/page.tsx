@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function KupitBazuKlientovPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/kupit-bazu-klientov"
       decorTheme="database"
       showLeadCapture
       customBlock={<BuyBaseComparisonBlock />}

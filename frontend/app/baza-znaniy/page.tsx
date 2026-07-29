@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function BazaZnaniyPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/baza-znaniy"
       decorTheme="mixed"
       showLeadCapture={false}
       customBlock={<GlossaryBlock />}

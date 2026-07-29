@@ -3,37 +3,17 @@
 import { usePathname } from 'next/navigation';
 import { ThemeInit } from './ThemeInit';
 import { AppLayout } from './AppLayout';
+import { isPublicPath } from '@/lib/public-paths';
 
-// Публичные роуты, которые НЕ должны быть обёрнуты в AppLayout (sidebar +
-// верхняя панель кабинета). На них собственный заголовок/подвал, а sidebar
+// Единый источник правды о «публичной части» — lib/public-paths.
+// Эти роуты (главная, правовые, все SEO-лендинги) НЕ оборачиваем в
+// AppLayout кабинета: у них собственный заголовок/подвал, а sidebar
 // кабинета для случайно залогиненного юзера выглядит чужеродно.
-const PUBLIC_NON_APP_PATHS = new Set<string>([
-  // Правовые
-  '/terms',
-  '/policy',
-  '/consent',
-  '/offer',
-  '/data-sources',
-  // SEO-лендинги
-  '/parsing-otzyvov',
-  '/parser-2gis',
-  '/parser-yandex-maps',
-  '/baza-klientov',
-  '/sbor-kontaktov',
-  '/holodnaya-rassylka',
-]);
-
-function isPublicNonAppPath(pathname: string | null | undefined): boolean {
-  if (!pathname) return false;
-  return PUBLIC_NON_APP_PATHS.has(pathname);
-}
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLanding = pathname === '/';
   const isAuthPage = pathname?.startsWith('/auth/');
-  const isPublicNonApp = isPublicNonAppPath(pathname);
-  const useAppLayout = !isLanding && !isAuthPage && !isPublicNonApp;
+  // isPublicPath уже включает '/' (главная) и все лендинги.
+  const useAppLayout = !isAuthPage && !isPublicPath(pathname);
 
   return (
     <>

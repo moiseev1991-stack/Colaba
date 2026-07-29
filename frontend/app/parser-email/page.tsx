@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function ParserEmailPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/parser-email"
       decorTheme="contacts"
       showLeadCapture
       customBlock={<EmailParserBlock />}
