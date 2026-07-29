@@ -308,6 +308,10 @@ export function SeoLandingShell({
         {related.length > 0 && <Reveal><RelatedBlock related={related} /></Reveal>}
       </main>
 
+      {/* Schema.org FAQPage — из тех же вопросов, что и видимый FAQ.
+          Помогает Google/Яндексу собрать rich-сниппет «вопрос-ответ». */}
+      <FaqJsonLd items={faq} />
+
       <SeoLandingFooter currentHref={currentHref} />
     </div>
   );
@@ -1632,6 +1636,14 @@ function shortLabel(href: string): string {
       return 'Парсер 2GIS';
     case '/parser-yandex-maps':
       return 'Парсер Я.Карт';
+    case '/parser-google-maps':
+      return 'Парсер Google Maps';
+    case '/parser-email':
+      return 'Парсер email';
+    case '/parser-telegram':
+      return 'Парсер Telegram';
+    case '/lidogeneraciya':
+      return 'Лидогенерация';
     case '/baza-klientov':
       return 'База клиентов';
     case '/sbor-kontaktov':
@@ -1641,4 +1653,33 @@ function shortLabel(href: string): string {
     default:
       return href;
   }
+}
+
+/**
+ * Рендерит JSON-LD разметку FAQPage. Берём только текстовые ответы
+ * (React-ноды в разметку не годятся). Пустой список → ничего не рендерим.
+ */
+function FaqJsonLd({ items }: { items: FaqItem[] }) {
+  const textItems = items.filter((it) => typeof it.a === 'string');
+  if (textItems.length === 0) return null;
+
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: textItems.map((it) => ({
+      '@type': 'Question',
+      name: it.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: it.a as string,
+      },
+    })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  );
 }

@@ -27,6 +27,14 @@ const PUBLIC_PATHS = new Set<string>([
   '/klienty-dlya-web-studii',
   '/klienty-dlya-seo',
   '/klienty-dlya-marketing-agentstva',
+  // 2026-07-29: новые SEO-лендинги под коммерческие/инфо-ключи.
+  '/lidogeneraciya',
+  '/kupit-bazu-klientov',
+  '/baza-dlya-obzvona',
+  '/parser-email',
+  '/parser-google-maps',
+  '/baza-znaniy',
+  '/parser-telegram',
 ]);
 
 /** Публичные страницы, которые поисковикам можно индексировать.
@@ -49,6 +57,13 @@ const INDEXABLE_PATHS = new Set<string>([
   '/klienty-dlya-web-studii',
   '/klienty-dlya-seo',
   '/klienty-dlya-marketing-agentstva',
+  '/lidogeneraciya',
+  '/kupit-bazu-klientov',
+  '/baza-dlya-obzvona',
+  '/parser-email',
+  '/parser-google-maps',
+  '/baza-znaniy',
+  '/parser-telegram',
 ]);
 
 function isIndexable(pathname: string): boolean {
