@@ -26,8 +26,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { SeoLandingFooter } from './SeoLandingFooter';
+import { LandingHeader } from '@/components/landing/LandingHeader';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
-import { BrandMark } from '@/components/BrandMark';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 import { SignalsTableDemo } from '@/components/landing/SignalsTableDemo';
@@ -241,7 +241,11 @@ export function SeoLandingShell({
         fontFamily: 'var(--font-body), system-ui, sans-serif',
       } as React.CSSProperties}
     >
-      <SeoHeader isAuthed={isAuthed} />
+      {/* Единая шапка с главной (LandingHeader). variant="subpage" делает
+          якоря (Диагноз/Тарифы/Примеры/FAQ) ссылками на /#id, а CTA — на
+          /auth/register. forceSolid для залогиненного юзера: у него светлый
+          compact-hero, поэтому прозрачная шапка нечитаема. */}
+      <LandingHeader variant="subpage" forceSolid={isAuthed} />
 
       <main className="flex-1">
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
@@ -359,7 +363,7 @@ function GuestHero({
       {/* Декоративные «стикеры» — тема под конкретную SEO-страницу */}
       <HeroFloatingTags theme={decorTheme} />
 
-      <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-16 md:pt-20 md:pb-24 grid gap-12 md:grid-cols-2 items-center" style={{ zIndex: 1 }}>
+      <div className="relative max-w-6xl mx-auto px-6 pt-24 pb-16 md:pt-28 md:pb-24 grid gap-12 md:grid-cols-2 items-center" style={{ zIndex: 1 }}>
         <div>
           <h1
             className="font-display font-bold tracking-tight mb-5"
@@ -571,7 +575,7 @@ function CompactAuthedHero({ h1, lead }: { h1: string; lead: string }) {
         background: 'hsl(var(--bg))',
       }}
     >
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 pt-24 pb-8">
         <h1
           className="font-display font-semibold tracking-tight mb-2"
           style={{
@@ -1510,159 +1514,6 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
       </div>
     </section>
   );
-}
-
-// ============================================================================
-// Header — лого + sub-nav
-// ============================================================================
-
-function SeoHeader({ isAuthed }: { isAuthed: boolean }) {
-  return (
-    <header
-      className="border-b"
-      style={{
-        borderColor: 'hsl(var(--border))',
-        background: 'hsl(var(--bg))',
-      }}
-    >
-      <div className="max-w-6xl mx-auto px-6 py-3.5 flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-display font-bold text-lg tracking-tight"
-          style={{ color: 'hsl(var(--text))' }}
-        >
-          <BrandMark size={32} />
-          <span>SpinLid</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          {isAuthed ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="hover:underline"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                Дашборд
-              </Link>
-              <Link
-                href="/app/leads"
-                style={{
-                  background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                  color: '#0b1220',
-                  fontWeight: 600,
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                }}
-              >
-                К поиску
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/#pricing"
-                className="hover:underline hidden sm:inline"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                Тарифы
-              </Link>
-              <Link
-                href="/auth/login"
-                className="hover:underline"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                Войти
-              </Link>
-              <Link
-                href="/auth/register"
-                style={{
-                  background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                  color: '#0b1220',
-                  fontWeight: 600,
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                }}
-              >
-                Создать аккаунт
-              </Link>
-            </>
-          )}
-        </nav>
-      </div>
-
-      <div
-        style={{
-          background: 'hsl(var(--surface))',
-          borderTop: '1px solid hsl(var(--border))',
-          borderBottom: '1px solid hsl(var(--border))',
-        }}
-      >
-        <div
-          className="max-w-6xl mx-auto px-6 py-2 flex items-center gap-1 overflow-x-auto"
-          style={{ fontSize: '13px', whiteSpace: 'nowrap' }}
-        >
-          <span
-            style={{
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              fontWeight: 600,
-              color: 'hsl(var(--muted))',
-              marginRight: '8px',
-              flexShrink: 0,
-            }}
-          >
-            Возможности:
-          </span>
-          {SEO_NAV_LINKS.map((s, i) => (
-            <span key={s.href} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <Link
-                href={s.href}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--text))',
-                  textDecoration: 'none',
-                }}
-              >
-                {shortLabel(s.href)}
-              </Link>
-              {i < SEO_NAV_LINKS.length - 1 && (
-                <span style={{ color: 'hsl(var(--muted))', opacity: 0.4 }}>·</span>
-              )}
-            </span>
-          ))}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function shortLabel(href: string): string {
-  switch (href) {
-    case '/parsing-otzyvov':
-      return 'Анализ отзывов';
-    case '/parser-2gis':
-      return 'Парсер 2GIS';
-    case '/parser-yandex-maps':
-      return 'Парсер Я.Карт';
-    case '/parser-google-maps':
-      return 'Парсер Google Maps';
-    case '/parser-email':
-      return 'Парсер email';
-    case '/parser-telegram':
-      return 'Парсер Telegram';
-    case '/lidogeneraciya':
-      return 'Лидогенерация';
-    case '/baza-klientov':
-      return 'База клиентов';
-    case '/sbor-kontaktov':
-      return 'Сбор контактов';
-    case '/holodnaya-rassylka':
-      return 'Холодная рассылка';
-    default:
-      return href;
-  }
 }
 
 /**

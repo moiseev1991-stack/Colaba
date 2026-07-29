@@ -30,6 +30,8 @@ export const PUBLIC_LANDING_PATHS = new Set<string>([
   '/klienty-dlya-web-studii',
   '/klienty-dlya-seo',
   '/klienty-dlya-marketing-agentstva',
+  // Публичное демо выдачи (read-only, без логина)
+  '/demo',
 ]);
 
 export function isPublicPath(pathname: string | null | undefined): boolean {
