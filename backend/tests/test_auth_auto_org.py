@@ -23,9 +23,11 @@ from app.models.organization import OrganizationRole
 async def test_register_user_creates_personal_org():
     """При регистрации нового юзера вызывается авто-создание org.
 
-    Патчим ensure_user_has_personal_organization по пути импорта в auth.service
-    и проверяем, что register_user делегировал в него создание org.
+    Патчим ensure_user_has_personal_organization и проверяем, что
+    register_user делегировал в него создание org. Реальный DB не трогаем.
     """
+    from datetime import datetime
+
     from app.modules.auth import schemas
     from app.modules.auth import service as auth_service
 
@@ -36,33 +38,39 @@ async def test_register_user_creates_personal_org():
     db.execute = AsyncMock(return_value=scalar_result)
     db.add = MagicMock()
     db.commit = AsyncMock()
-    db.refresh = AsyncMock()
 
-    # Патчим функцию в модуле auth.service (туда смотрит ленивый импорт).
-    with patch.object(
-        auth_service,
-        "register_user",
-        wraps=auth_service.register_user,
-    ) as spy_register:
-        # Патчим место импорта — модуль organizations.service, из которого
-        # auth.service берёт helper при выполнении.
-        with patch(
-            "app.modules.organizations.service.ensure_user_has_personal_organization",
-            new_callable=AsyncMock,
-            return_value=None,
-        ):
-            await auth_service.register_user(
-                db,
-                schemas.UserRegister(
-                    email="newuser_auto_org@example.com",
-                    password="VeryStrong123!",
-                ),
-            )
+    # refresh должен заполнить user.id/created_at (как сделала бы реальная БД),
+    # иначе UserResponse.model_validate упадёт на None полях.
+    async def _fake_refresh(obj, *a, **kw):
+        if getattr(obj, "id", None) is None:
+            obj.id = 999
+        if getattr(obj, "created_at", None) is None:
+            obj.created_at = datetime.utcnow()
 
-    # User добавлен в сессию.
+    db.refresh = _fake_refresh
+
+    # Патчим helper в organisations.service, чтобы изолировать тест от
+    # реального создания org (тестируем только, что register вызывает его).
+    with patch(
+        "app.modules.organizations.service.ensure_user_has_personal_organization",
+        new_callable=AsyncMock,
+        return_value=None,
+    ) as mock_ensure:
+        result = await auth_service.register_user(
+            db,
+            schemas.UserRegister(
+                email="newuser_auto_org@example.com",
+                password="VeryStrong123!",
+            ),
+        )
+
+    # User добавлен в сессию и сохранён.
     assert db.add.called, "User должен быть добавлен в db"
-    # commit прошёл (регистрация сохраняет юзера).
     assert db.commit.await_count >= 1
+    # Авто-onboarding вызван — это и есть суть фикса.
+    assert mock_ensure.await_count == 1, "register_user должен вызвать авто-onboarding"
+    # Возвращён валидный UserResponse (id проставлен).
+    assert result.id == 999
 
 
 @pytest.mark.asyncio
