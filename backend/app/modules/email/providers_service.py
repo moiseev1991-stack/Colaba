@@ -44,15 +44,9 @@ _SECRET_FIELDS = {"api_key", "secret_key", "smtp_password"}
 # ────────────────────────────────────────────────────────────────────
 
 
-async def _get_or_create_row(
-    db: AsyncSession, provider_id: str
-) -> EmailProviderConfig:
+async def _get_or_create_row(db: AsyncSession, provider_id: str) -> EmailProviderConfig:
     """Возвращает строку конфига для провайдера; создаёт если нет."""
-    result = await db.execute(
-        select(EmailProviderConfig).where(
-            EmailProviderConfig.provider_id == provider_id
-        )
-    )
+    result = await db.execute(select(EmailProviderConfig).where(EmailProviderConfig.provider_id == provider_id))
     row = result.scalar_one_or_none()
     if row:
         return row
@@ -76,17 +70,11 @@ async def get_all_configs(db: AsyncSession) -> list[EmailProviderConfig]:
     return [rows[pid] for pid in get_all_provider_ids()]
 
 
-async def get_provider_row(
-    db: AsyncSession, provider_id: str
-) -> Optional[EmailProviderConfig]:
+async def get_provider_row(db: AsyncSession, provider_id: str) -> Optional[EmailProviderConfig]:
     """Одна строка по provider_id (без создания)."""
     if provider_id not in get_all_provider_ids():
         return None
-    result = await db.execute(
-        select(EmailProviderConfig).where(
-            EmailProviderConfig.provider_id == provider_id
-        )
-    )
+    result = await db.execute(select(EmailProviderConfig).where(EmailProviderConfig.provider_id == provider_id))
     return result.scalar_one_or_none()
 
 
@@ -126,6 +114,7 @@ def row_to_dict(row: EmailProviderConfig) -> dict[str, Any]:
         "is_enabled": bool(row.is_enabled),
         "is_configured": bool(row.is_configured),
         "priority": int(row.priority),
+        "daily_limit": row.daily_limit,
         "last_test_at": row.last_test_at,
         "last_test_result": row.last_test_result,
         "last_test_error": row.last_test_error,
@@ -140,18 +129,14 @@ async def get_all_configs_public(db: AsyncSession) -> list[dict[str, Any]]:
     return out
 
 
-def _apply_secret_update(
-    current: Optional[str], new_val: Any
-) -> Optional[str]:
+def _apply_secret_update(current: Optional[str], new_val: Any) -> Optional[str]:
     """Если новое значение None/''/'***' — сохраняем старое (не перезаписываем)."""
     if new_val is None or new_val == "" or new_val == MASK:
         return current
     return str(new_val)
 
 
-def _apply_plain_update(
-    current: Optional[Any], new_val: Any
-) -> Optional[Any]:
+def _apply_plain_update(current: Optional[Any], new_val: Any) -> Optional[Any]:
     """Для не-секретных полей: None = не трогать, иначе новое значение."""
     if new_val is None:
         return current
@@ -181,9 +166,7 @@ def compute_is_configured(row: EmailProviderConfig) -> bool:
     return bool(host and user and pwd and from_email)
 
 
-async def update_config(
-    db: AsyncSession, provider_id: str, data: dict[str, Any]
-) -> EmailProviderConfig:
+async def update_config(db: AsyncSession, provider_id: str, data: dict[str, Any]) -> EmailProviderConfig:
     """Partial update конфига с секрет-маской.
 
     Принимает dict с любым набором полей. Секретные поля (api_key,
@@ -238,6 +221,17 @@ async def update_config(
             row.priority = int(data["priority"])
         except (ValueError, TypeError):
             pass
+    # daily_limit: None или '' = снять лимит (NULL), иначе целое >= 0.
+    if "daily_limit" in data:
+        val = data["daily_limit"]
+        if val in (None, ""):
+            row.daily_limit = None
+        else:
+            try:
+                lim = int(val)
+                row.daily_limit = lim if lim > 0 else None
+            except (ValueError, TypeError):
+                pass
     if "notes" in data and data["notes"] is not None:
         row.notes = str(data["notes"])
 
@@ -262,9 +256,7 @@ async def update_config(
     return row
 
 
-async def set_priority(
-    db: AsyncSession, provider_id: str, priority: int
-) -> EmailProviderConfig:
+async def set_priority(db: AsyncSession, provider_id: str, priority: int) -> EmailProviderConfig:
     """Меняет приоритет одного провайдера (0=primary, 1=fallback, 2=tertiary).
 
     При перестановке приоритеты других провайдеров сдвигаются так, чтобы
@@ -272,7 +264,11 @@ async def set_priority(
     """
     if provider_id not in get_all_provider_ids():
         raise ValueError(f"unknown provider_id: {provider_id!r}")
-    priority = max(0, min(2, int(priority)))
+    # Верхняя граница = кол-во провайдеров минус 1 (0..N-1). Раньше было
+    # захардкожено 0..2 под 3 провайдера; с появлением timeweb и будущих
+    # каналов — делаем динамически по реестру.
+    max_priority = max(0, len(get_all_provider_ids()) - 1)
+    priority = max(0, min(max_priority, int(priority)))
 
     rows = await get_all_configs(db)
     # Убираем target из списка, сортируем остальных по приоритету.
@@ -283,7 +279,7 @@ async def set_priority(
         [r for r in rows if r.provider_id != provider_id],
         key=lambda r: r.priority,
     )
-    # Target ставится на новую позицию, остальные заполняют 0..2 без дыр.
+    # Target ставится на новую позицию, остальные заполняют 0..N без дыр.
     new_order = others[:priority] + [target] + others[priority:]
     for idx, r in enumerate(new_order):
         if r.priority != idx:
