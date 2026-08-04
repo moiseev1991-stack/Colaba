@@ -74,9 +74,7 @@ class OAuthService:
         secret_key = hashlib.sha256(bot_token.encode()).digest()
 
         # Calculate hash
-        calculated_hash = hmac.new(
-            secret_key, data_check_string.encode(), hashlib.sha256
-        ).hexdigest()
+        calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
         return hmac.compare_digest(calculated_hash, hash_value)
 
@@ -118,6 +116,7 @@ class OAuthService:
         if not user:
             # Generate a random password for OAuth users
             import secrets
+
             random_password = secrets.token_urlsafe(32)
 
             user = User(
@@ -127,6 +126,7 @@ class OAuthService:
                 is_superuser=False,
             )
             from app.core.security import hash_password
+
             user.hashed_password = hash_password(random_password)
             db.add(user)
             await db.flush()
@@ -142,6 +142,16 @@ class OAuthService:
         )
         db.add(social_account)
         await db.commit()
+
+        # Auto-provision personal organization для нового OAuth-юзера —
+        # аналогично register_user. Без org приложение для него нерабочее
+        # (404 на /dashboard, /searches). Для существующего юзера вызов
+        # идемпотентен (вернёт уже существующую org).
+        from app.modules.organizations.service import (
+            ensure_user_has_personal_organization,
+        )
+
+        await ensure_user_has_personal_organization(db, user)
 
         return user
 

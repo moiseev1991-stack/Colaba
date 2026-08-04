@@ -49,6 +49,17 @@ async def register_user(
     await db.commit()
     await db.refresh(user)
 
+    # Auto-provision personal organization — без неё новый юзер получает
+    # 404 "User has no organizations" на /dashboard и /searches (баг: ранее
+    # регистрация создавала голого User без org). Best practice personal
+    # SaaS (Linear/Notion/Vercel): workspace создаётся автоматически при
+    # регистрации, юзер сразу может работать. См. organizations/service.py.
+    from app.modules.organizations.service import (
+        ensure_user_has_personal_organization,
+    )
+
+    await ensure_user_has_personal_organization(db, user)
+
     return schemas.UserResponse.model_validate(user)
 
 
