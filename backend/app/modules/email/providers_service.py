@@ -137,12 +137,19 @@ def _apply_secret_update(current: Optional[str], new_val: Any) -> Optional[str]:
 
 
 def _apply_plain_update(current: Optional[Any], new_val: Any) -> Optional[Any]:
-    """Для не-секретных полей: None = не трогать, иначе новое значение."""
+    """Для не-секретных полей: None/'' = не трогать, иначе новое значение.
+
+    Пустая строка трактуется как «не менять» (а не «сбросить в NULL»), чтобы
+    семантика совпадала с секретами (_apply_secret_update). Чинит баг, где UI
+    формы провайдеров отправлял '' для незаполненных plain-полей (smtp_user,
+    smtp_host, from_email, ...) и случайно затирал уже сохранённые значения.
+    Если нужно явно очистить поле — это делается через SQLAdmin/прямой SQL
+    (редкая админ-операция), а не через форму UI.
+    """
     if new_val is None:
         return current
-    if isinstance(new_val, str) and new_val == "":
-        # Пустая строка для plain-полей — сброс в NULL (затираем).
-        return None
+    if isinstance(new_val, str) and new_val.strip() == "":
+        return current
     return new_val
 
 
