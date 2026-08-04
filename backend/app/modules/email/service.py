@@ -199,6 +199,7 @@ class EmailService:
                         reply_to=reply_to,
                         html_body=html_body,
                         idempotency_key=idempotency_key,
+                        db=db,
                     )
                 except EmailServiceError as e:
                     logger.warning(
@@ -248,9 +249,24 @@ class EmailService:
         row: Optional[EmailConfig],
         db: Optional[AsyncSession],
     ) -> dict:
-        """Маршрутизация на конкретный send-метод по имени провайдера."""
-        if provider == "hyvor":
-            return await self._send_via_hyvor(
+        """Маршрутизация на конкретный send-метод по имени провайдера.
+
+        Для провайдеров новой модели (зарегистрированных в реестре
+        EMAIL_PROVIDER_REGISTRY: postbox/ses/hyvor/timeweb/...) идём через
+        _send_via_provider_row — он читает креды из email_provider_config,
+        логирует стоимость в api_call_log с правильным provider_id и
+        уважает transport='http' (SESv2 HTTP API для postbox/ses).
+
+        Для legacy force_provider='smtp' (когда клиент явно хочет старый
+        SMTP-путь из email_config/env) — fallback на _send_via_smtp.
+        """
+        from app.modules.email.providers_registry import get_all_provider_ids
+
+        if provider == "smtp":
+            # Явный запрос legacy-SMTP (email_config/env). Используется только
+            # старым эндпоинтом /settings/test-smtp. Новые провайдеры так не
+            # вызываются — у них свой force path ниже.
+            return await self._send_via_smtp(
                 to_email=to_email,
                 subject=subject,
                 body=body,
@@ -258,10 +274,32 @@ class EmailService:
                 from_name=from_name,
                 reply_to=reply_to,
                 html_body=html_body,
-                idempotency_key=idempotency_key,
                 row=row,
             )
-        # postbox, ses, smtp — всё через SMTP-отправку (creds разные).
+
+        if provider in get_all_provider_ids() and db is not None:
+            # Новая модель: читаем строку EmailProviderConfig и делегируем в
+            # тот же путь, что использует fallback-цепочка. Это устраняет
+            # давнюю несогласованность: раньше force_provider='postbox'
+            # молча уходил в legacy-SMTP вместо SESv2 HTTP API.
+            from app.modules.email import providers_service
+
+            prov_row = await providers_service.get_provider_row(db, provider)
+            if prov_row is not None:
+                return await self._send_via_provider_row(
+                    prov_row,
+                    to_email,
+                    subject,
+                    body,
+                    from_email=from_email,
+                    from_name=from_name,
+                    reply_to=reply_to,
+                    html_body=html_body,
+                    idempotency_key=idempotency_key,
+                    db=db,
+                )
+
+        # Неизвестный провайдер или нет db — fallback на legacy-SMTP.
         return await self._send_via_smtp(
             to_email=to_email,
             subject=subject,
@@ -272,6 +310,43 @@ class EmailService:
             html_body=html_body,
             row=row,
         )
+
+    async def _enforce_daily_limit(self, db: AsyncSession, provider_id: str, limit: int) -> None:
+        """Проверяет дневной лимит отправок провайдера.
+
+        Считает успешные записи в api_call_log для ``provider_id`` за
+        текущие сутки (UTC, от полуночи) и поднимает EmailServiceError,
+        если достигнут ``limit``. Назначение — защита нового домена на
+        прогреве от случайного спама (10-15/день первую неделю).
+
+        EmailServiceError (а не тихий skip) даёт два эффекта:
+        1) В fallback-цепочке send_email перейдёт к следующему провайдеру.
+        2) В KP-конвейере KpSend пометится с понятным error_code.
+        """
+        from datetime import datetime, timezone
+
+        from sqlalchemy import func, select
+
+        from app.models.api_call_log import ApiCallLog
+
+        now_utc = datetime.now(timezone.utc)
+        today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        sent_today = (
+            await db.execute(
+                select(func.count(ApiCallLog.id)).where(
+                    ApiCallLog.provider == provider_id,
+                    ApiCallLog.ok.is_(True),
+                    ApiCallLog.created_at >= today_start,
+                )
+            )
+        ).scalar() or 0
+
+        if int(sent_today) >= int(limit):
+            raise EmailServiceError(
+                f"Достигнут дневной лимит провайдера {provider_id}: "
+                f"{limit}/день (прогрев домена). Отправлено сегодня: {sent_today}. "
+                f"[daily_limit]"
+            )
 
     async def _send_via_provider_row(
         self,
@@ -285,16 +360,31 @@ class EmailService:
         reply_to: Optional[str],
         html_body: Optional[str],
         idempotency_key: Optional[str],
+        db: Optional[AsyncSession] = None,
     ) -> dict:
         """Отправка через строку EmailProviderConfig (новая модель).
 
         Логирует стоимость в api_call_log: cost_rub = cost_per_mail
         конкретного провайдера (задаётся админом в UI).
+
+        Day-cap: если у провайдера задан ``daily_limit`` и есть db, перед
+        отправкой считаем успешные записи в api_call_log за текущие сутки
+        (UTC). При превышении поднимаем EmailServiceError с кодом
+        ``daily_limit`` — это разрешает fallback к следующему провайдеру
+        в цепочке и маркирует KpSend с понятным error_code.
         """
         from app.core.api_tracker import log_call
 
         cost = float(prov_row.cost_per_mail or 0)
         pid = prov_row.provider_id
+
+        # Day-cap для прогрева новых доменов (NULL = без лимита). Ручные
+        # тесты админом (force без KP-конвейера) здесь не проходят —
+        # они идут через тот же _send_via_provider_row, но лимит всё равно
+        # честный: тест — это тоже реальная отправка через канал.
+        limit = getattr(prov_row, "daily_limit", None)
+        if limit and db is not None:
+            await self._enforce_daily_limit(db, pid, limit)
 
         if pid == "hyvor":
             try:

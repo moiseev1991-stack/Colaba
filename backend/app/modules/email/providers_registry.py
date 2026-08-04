@@ -212,6 +212,87 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
             },
         ],
     },
+    {
+        "id": "timeweb",
+        "name": "Timeweb (SMTP, прогрев)",
+        "description": (
+            "Канал на новом домене spinlid-team.ru. Классический SMTP с "
+            "авторизацией по email+пароль (в отличие от Postbox/SES, где "
+            "ключи API). Домен на прогреве — ограничен daily_limit "
+            "(10-15 писем/день первую неделю, далее 20-30). Хорош для "
+            "расхлопывания новой репутации без риска для основного домена."
+        ),
+        "default_cost_per_mail": 0.0,  # собственный ящик, бесплатно
+        "default_priority": 3,
+        "fields": [
+            {
+                "key": "smtp_host",
+                "label": "SMTP host",
+                "type": "text",
+                "secret": False,
+                "required": True,
+                "default": "smtp.timeweb.ru",
+                "description": "SMTP-сервер Timeweb.",
+            },
+            {
+                "key": "smtp_port",
+                "label": "SMTP port",
+                "type": "number",
+                "secret": False,
+                "required": True,
+                "default": 465,
+                "description": "465 (implicit SSL) — рекомендуется; 587 (STARTTLS) — альтернатива.",
+            },
+            {
+                "key": "smtp_user",
+                "label": "Логин (email ящика)",
+                "type": "text",
+                "secret": False,
+                "required": True,
+                "default": "dmitry@spinlid-team.ru",
+                "description": (
+                    "Адрес почтового ящика на Timeweb. Это логин для SMTP — "
+                    "в отличие от Postbox/SES, где smtp_user = ID API-ключа."
+                ),
+            },
+            {
+                "key": "smtp_password",
+                "label": "Пароль",
+                "type": "secret",
+                "secret": True,
+                "required": True,
+                "description": "Пароль от почтового ящика (не API-ключ).",
+            },
+            {
+                "key": "smtp_use_ssl",
+                "label": "SSL (порт 465)",
+                "type": "bool",
+                "secret": False,
+                "required": False,
+                "default": True,
+                "description": (
+                    "True = implicit SSL (порт 465). False = STARTTLS (порт 587). Должно совпадать с выбранным портом."
+                ),
+            },
+            {
+                "key": "from_email",
+                "label": "From email",
+                "type": "text",
+                "secret": False,
+                "required": True,
+                "default": "dmitry@spinlid-team.ru",
+                "description": "Адрес отправителя. Обычно = smtp_user.",
+            },
+            {
+                "key": "from_name",
+                "label": "Имя отправителя",
+                "type": "text",
+                "secret": False,
+                "required": False,
+                "description": "Отображаемое имя («Дмитрий, SpinLid»).",
+            },
+        ],
+    },
 ]
 
 

@@ -46,6 +46,7 @@ class EmailProviderConfigUpdate(BaseModel):
     cost_per_mail: Optional[float] = None
     is_enabled: Optional[bool] = None
     priority: Optional[int] = None
+    daily_limit: Optional[int] = None
     notes: Optional[str] = None
 
 
@@ -103,9 +104,7 @@ async def update_provider_settings(
     """
     _check_provider_id(provider_id)
     try:
-        row = await svc.update_config(
-            db, provider_id, body.model_dump(exclude_unset=True)
-        )
+        row = await svc.update_config(db, provider_id, body.model_dump(exclude_unset=True))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return svc.row_to_dict(row)
@@ -144,6 +143,62 @@ async def test_provider(
     _check_provider_id(provider_id)
     result = await _run_test(db, provider_id)
     return TestResult(**result)
+
+
+class SendTestBody(BaseModel):
+    """Тело запроса ручной тестовой отправки через конкретного провайдера.
+
+    Используется эндпоинтом /send-test для проверки работоспособности
+    канала «вживую» (одно реальное письмо получателю). Day-cap НЕ
+    применяется — это диагностический вызов админом, а не массовая рассылка.
+    """
+
+    to_email: str
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    reply_to: Optional[str] = None
+
+
+@router.post("/providers-settings/{provider_id}/send-test", response_model=TestResult)
+async def send_test_email(
+    provider_id: str,
+    body: SendTestBody,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Реальная отправка 1 тестового письма через конкретного провайдера.
+
+    Только superuser. В отличие от /test (проверка подключения), здесь
+    уходит настоящее письмо указанному получателю — для end-to-end проверки
+    канала: креды → отправка → доход → статистика.
+
+    Пишет в api_call_log с правильным provider_id (postbox/ses/timeweb/...),
+    что позволяет сразу увидеть результат в статистике и подтвердить, какой
+    канал реально сработал.
+
+    Day-cap НЕ применяется: это ручной диагностический вызов, а не
+    массовая рассылка. Прогрев домена ограничивает только KP-конвейер.
+    """
+    _check_provider_id(provider_id)
+    from app.modules.email.service import EmailServiceError, email_service
+
+    subject = body.subject or f"Тест отправки через {provider_id}"
+    text = body.body or "Тестовое письмо. Канал работает корректно."
+    try:
+        await email_service.send_email(
+            to_email=body.to_email,
+            subject=subject,
+            body=text,
+            from_email=None,
+            from_name=None,
+            reply_to=body.reply_to,
+            html_body=None,
+            db=db,
+            force_provider=provider_id,
+        )
+        return TestResult(ok=True, error=None)
+    except EmailServiceError as e:
+        return TestResult(ok=False, error=str(e))
 
 
 # ────────────────────────────────────────────────────────────────────
