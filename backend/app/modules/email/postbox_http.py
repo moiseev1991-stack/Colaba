@@ -124,14 +124,12 @@ async def send_email(
 
     def _do_send() -> dict:
         client = _build_client(access_key_id, secret_access_key, region)
-        # Reply-To: если задан, добавляем ReplyToAddresses — лид, отвечая,
+        # Reply-To: если задан, передаём как отдельный параметр send_email
+        # (НЕ внутри Destination — это AWS SESv2 API контракт). Лид, отвечая,
         # шлёт письмо на reply_to, а не на системный From.
-        destination: dict = {"ToAddresses": [to_email]}
-        if reply_to:
-            destination["ReplyToAddresses"] = [reply_to]
-        return client.send_email(
+        kwargs: dict = dict(
             FromEmailAddress=from_addr,
-            Destination=destination,
+            Destination={"ToAddresses": [to_email]},
             Content={
                 "Simple": {
                     "Subject": {"Data": subject or "(без темы)"},
@@ -139,6 +137,9 @@ async def send_email(
                 }
             },
         )
+        if reply_to:
+            kwargs["ReplyToAddresses"] = [reply_to]
+        return client.send_email(**kwargs)
 
     try:
         # anyio.to_thread.run_sync — корректный способ запустить sync-функцию

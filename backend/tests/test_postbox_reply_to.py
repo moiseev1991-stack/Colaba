@@ -44,14 +44,15 @@ async def test_postbox_reply_to_is_passed(monkeypatch):
     )
 
     assert message_id == "test-message-id-123"
-    dest = fake.captured["Destination"]
-    assert dest["ToAddresses"] == ["lead@example.com"]
-    assert dest["ReplyToAddresses"] == ["client@gmail.com"]
+    # ReplyToAddresses — отдельный top-level параметр send_email (AWS SESv2),
+    # НЕ внутри Destination.
+    assert fake.captured["Destination"] == {"ToAddresses": ["lead@example.com"]}
+    assert fake.captured["ReplyToAddresses"] == ["client@gmail.com"]
 
 
 @pytest.mark.asyncio
 async def test_postbox_without_reply_to_has_no_header(monkeypatch):
-    """Без reply_to — Destination не содержит ключа ReplyToAddresses."""
+    """Без reply_to — параметр ReplyToAddresses отсутствует в вызове."""
     fake = _FakeClient()
     monkeypatch.setattr(postbox_http, "_build_client", lambda *a, **kw: fake)
 
@@ -65,8 +66,7 @@ async def test_postbox_without_reply_to_has_no_header(monkeypatch):
         # reply_to не передаём
     )
 
-    dest = fake.captured["Destination"]
-    assert "ReplyToAddresses" not in dest
+    assert "ReplyToAddresses" not in fake.captured
 
 
 @pytest.mark.asyncio
