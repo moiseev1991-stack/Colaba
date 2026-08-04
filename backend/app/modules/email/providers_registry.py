@@ -240,8 +240,12 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
                 "type": "number",
                 "secret": False,
                 "required": True,
-                "default": 465,
-                "description": "465 (implicit SSL) — рекомендуется; 587 (STARTTLS) — альтернатива.",
+                "default": 2525,
+                "description": (
+                    "2525 (STARTTLS) — рекомендуется для VPS, где заблокированы "
+                    "25/465/587; 465 (implicit SSL) — если порты открыты; "
+                    "587 (STARTTLS) — альтернатива."
+                ),
             },
             {
                 "key": "smtp_user",
@@ -269,9 +273,10 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
                 "type": "bool",
                 "secret": False,
                 "required": False,
-                "default": True,
+                "default": False,
                 "description": (
-                    "True = implicit SSL (порт 465). False = STARTTLS (порт 587). Должно совпадать с выбранным портом."
+                    "True = implicit SSL (порт 465). False = STARTTLS (порты "
+                    "587 или 2525). Должно совпадать с выбранным портом."
                 ),
             },
             {
@@ -290,6 +295,22 @@ EMAIL_PROVIDER_REGISTRY: list[dict] = [
                 "secret": False,
                 "required": False,
                 "description": "Отображаемое имя («Дмитрий, SpinLid»).",
+            },
+            {
+                "key": "daily_limit",
+                "label": "Дневной лимит (прогрев)",
+                "type": "number",
+                "secret": False,
+                "required": False,
+                "default": 12,
+                "description": (
+                    "Максимум писем в сутки через этот канал (защита нового "
+                    "домена от попадания в спам). Проверяется в массовой "
+                    "KP-рассылке: при достижении лимита отправка переходит к "
+                    "следующему провайдеру. 0 или пусто = без лимита. "
+                    "Рекомендация для прогрева: неделя 1 — 10-15/день, "
+                    "неделя 2 — 20-30/день."
+                ),
             },
         ],
     },

@@ -7,15 +7,15 @@
 
 import { apiClient } from '@/client';
 
-export type EmailProviderId = 'postbox' | 'ses' | 'hyvor';
+export type EmailProviderId = 'postbox' | 'ses' | 'hyvor' | 'timeweb';
 
 export interface EmailProviderField {
   key: string;
   label: string;
-  type: 'text' | 'secret' | 'number';
+  type: 'text' | 'secret' | 'number' | 'bool';
   secret: boolean;
   required?: boolean;
-  default?: string | number;
+  default?: string | number | boolean;
   description?: string;
 }
 
@@ -36,11 +36,12 @@ export interface EmailProviderConfigDTO {
   from_email: string | null;
   from_name: string | null;
   region: string | null;
+  daily_limit: number | null;
   // Стоимость и статус:
   cost_per_mail: number;
   is_enabled: boolean;
   is_configured: boolean;
-  priority: number; // 0=primary, 1=fallback, 2=tertiary
+  priority: number; // 0=primary, 1=fallback, 2=tertiary, ...
   last_test_at: string | null;
   last_test_result: string | null;
   last_test_error: string | null;
@@ -60,6 +61,7 @@ export interface EmailProviderUpdate {
   from_email?: string | null;
   from_name?: string | null;
   region?: string | null;
+  daily_limit?: number | null;
   cost_per_mail?: number;
   is_enabled?: boolean;
   priority?: number;

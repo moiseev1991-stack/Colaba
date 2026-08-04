@@ -69,6 +69,7 @@ const PRIORITY_LABELS: Record<number, string> = {
   0: 'Основной',
   1: 'Резервный',
   2: 'Дополнительный',
+  3: 'Прогрев',
 };
 
 export default function EmailProvidersSettingsPage() {
@@ -99,9 +100,11 @@ export default function EmailProvidersSettingsPage() {
         form.smtp_host = p.smtp_host ?? '';
         form.smtp_port = p.smtp_port != null ? String(p.smtp_port) : '';
         form.smtp_user = p.smtp_user ?? '';
+        form.smtp_use_ssl = p.smtp_use_ssl ? '1' : '0';
         form.from_email = p.from_email ?? '';
         form.from_name = p.from_name ?? '';
         form.region = p.region ?? '';
+        form.daily_limit = p.daily_limit != null ? String(p.daily_limit) : '';
         next[p.provider_id] = {
           form,
           cost_per_mail: String(p.cost_per_mail ?? 0),
@@ -163,6 +166,11 @@ export default function EmailProvidersSettingsPage() {
       if (!payload.smtp_password) delete payload.smtp_password;
       // smtp_port → number
       if (payload.smtp_port) payload.smtp_port = parseInt(String(payload.smtp_port), 10);
+      // smtp_use_ssl → boolean (в форме хранится как '0'/'1')
+      payload.smtp_use_ssl = s.form.smtp_use_ssl === '1';
+      // daily_limit → number | null (пусто = снять лимит)
+      const dl = String(s.form.daily_limit ?? '').trim();
+      payload.daily_limit = dl === '' ? null : parseInt(dl, 10);
       const updated = await updateEmailProvider(id as EmailProviderId, payload);
       setList((prev) => prev.map((p) => (p.provider_id === id ? updated : p)));
       addToast('success', `Настройки «${updated.name}» сохранены`);
@@ -194,7 +202,12 @@ export default function EmailProvidersSettingsPage() {
   const changePriority = async (id: string, delta: -1 | 1) => {
     const p = list.find((x) => x.provider_id === id);
     if (!p) return;
-    const newPriority = Math.max(0, Math.min(2, p.priority + delta));
+    // Верхняя граница = кол-во провайдеров минус 1 (0..N-1). Раньше было
+    // захардкожено 0..2 под 3 провайдера; с timeweb и будущими каналами —
+    // динамически по кол-ву в списке.
+    const maxPriority = Math.max(0, list.length - 1);
+    const newPriority = Math.max(0, Math.min(maxPriority, p.priority + delta));
+    if (newPriority === p.priority) return;
     try {
       const updated = await setEmailProviderPriority(id as EmailProviderId, newPriority);
       // Перезагружаем все — приоритеты других тоже сдвинулись.
@@ -236,8 +249,10 @@ export default function EmailProvidersSettingsPage() {
         <div
           className="mb-6 rounded-[12px] border p-4"
           style={{
-            borderColor: activeCount > 0 ? 'hsl(var(--signal-good-border))' : 'hsl(var(--signal-warm-border))',
-            background: activeCount > 0 ? 'hsl(var(--signal-good-bg))' : 'hsl(var(--signal-warm-bg))',
+            borderColor:
+              activeCount > 0 ? 'hsl(var(--signal-good-border))' : 'hsl(var(--signal-warm-border))',
+            background:
+              activeCount > 0 ? 'hsl(var(--signal-good-bg))' : 'hsl(var(--signal-warm-bg))',
           }}
         >
           <p className="text-sm font-medium">
@@ -272,11 +287,18 @@ export default function EmailProvidersSettingsPage() {
                 : 'warn'
               : 'bad';
             const statusLabel =
-              status === 'ok' ? 'Готов к отправке' : status === 'warn' ? 'Включён, но не настроен' : 'Отключён';
+              status === 'ok'
+                ? 'Готов к отправке'
+                : status === 'warn'
+                  ? 'Включён, но не настроен'
+                  : 'Отключён';
 
             return (
               <CardV2 key={p.provider_id}>
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4" style={{ borderColor: 'hsl(var(--border))' }}>
+                <div
+                  className="flex flex-wrap items-start justify-between gap-3 border-b pb-4"
+                  style={{ borderColor: 'hsl(var(--border))' }}
+                >
                   <div className="flex items-start gap-3">
                     <div
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px]"
@@ -287,7 +309,11 @@ export default function EmailProvidersSettingsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-semibold">{p.name}</h2>
-                        <SignalPill tone={status === 'ok' ? 'good' : status === 'warn' ? 'warm' : 'muted'}>{statusLabel}</SignalPill>
+                        <SignalPill
+                          tone={status === 'ok' ? 'good' : status === 'warn' ? 'warm' : 'muted'}
+                        >
+                          {statusLabel}
+                        </SignalPill>
                       </div>
                       <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                         Приоритет: {PRIORITY_LABELS[p.priority] ?? p.priority}
@@ -329,7 +355,10 @@ export default function EmailProvidersSettingsPage() {
                   {(p.provider_id === 'postbox' || p.provider_id === 'ses') && (
                     <div
                       className="mt-3 flex flex-wrap items-center gap-3 rounded-[8px] border p-3"
-                      style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}
+                      style={{
+                        borderColor: 'hsl(var(--border))',
+                        background: 'hsl(var(--surface-2))',
+                      }}
                     >
                       <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
                         Способ отправки:
@@ -368,16 +397,41 @@ export default function EmailProvidersSettingsPage() {
                 <div className="mt-4 space-y-3">
                   {p.fields.map((f) => (
                     <div key={f.key}>
-                      <label className="mb-1 block text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
-                        {f.label}
-                        {f.required && <span style={{ color: 'hsl(var(--signal-warm-text))' }}> *</span>}
-                      </label>
-                      <Input
-                        type={f.secret ? 'password' : f.type === 'number' ? 'number' : 'text'}
-                        value={s.form[f.key] ?? ''}
-                        placeholder={f.default != null ? String(f.default) : ''}
-                        onChange={(e) => setField(p.provider_id, f.key, e.target.value)}
-                      />
+                      {f.type === 'bool' ? (
+                        // Boolean-поля (smtp_use_ssl) — чекбокс.
+                        <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <input
+                            type="checkbox"
+                            checked={s.form[f.key] === '1'}
+                            onChange={(e) =>
+                              setField(p.provider_id, f.key, e.target.checked ? '1' : '0')
+                            }
+                            className="h-4 w-4"
+                          />
+                          <span className="font-medium">{f.label}</span>
+                          {f.required && (
+                            <span style={{ color: 'hsl(var(--signal-warm-text))' }}> *</span>
+                          )}
+                        </label>
+                      ) : (
+                        <>
+                          <label
+                            className="mb-1 block text-xs font-medium"
+                            style={{ color: 'hsl(var(--muted))' }}
+                          >
+                            {f.label}
+                            {f.required && (
+                              <span style={{ color: 'hsl(var(--signal-warm-text))' }}> *</span>
+                            )}
+                          </label>
+                          <Input
+                            type={f.secret ? 'password' : f.type === 'number' ? 'number' : 'text'}
+                            value={s.form[f.key] ?? ''}
+                            placeholder={f.default != null ? String(f.default) : ''}
+                            onChange={(e) => setField(p.provider_id, f.key, e.target.value)}
+                          />
+                        </>
+                      )}
                       {f.description && (
                         <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                           {f.description}
@@ -388,7 +442,10 @@ export default function EmailProvidersSettingsPage() {
 
                   {/* Цена за письмо (общая для всех) */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                    <label
+                      className="mb-1 block text-xs font-medium"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
                       Цена за письмо (₽)
                     </label>
                     <Input
@@ -398,7 +455,8 @@ export default function EmailProvidersSettingsPage() {
                       onChange={(e) => setCost(p.provider_id, e.target.value)}
                     />
                     <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                      Стоимость отправки одного письма. Используется для учёта расходов в api_call_log.
+                      Стоимость отправки одного письма. Используется для учёта расходов в
+                      api_call_log.
                     </p>
                   </div>
                 </div>
@@ -418,11 +476,23 @@ export default function EmailProvidersSettingsPage() {
 
                 <div className="mt-5 flex gap-2">
                   <ButtonV2 onClick={() => save(p.provider_id)} disabled={s.saving}>
-                    {s.saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {s.saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                     Сохранить
                   </ButtonV2>
-                  <ButtonV2 variant="secondary" onClick={() => test(p.provider_id)} disabled={s.testing}>
-                    {s.testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  <ButtonV2
+                    variant="secondary"
+                    onClick={() => test(p.provider_id)}
+                    disabled={s.testing}
+                  >
+                    {s.testing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
                     Проверить
                   </ButtonV2>
                 </div>
@@ -431,7 +501,10 @@ export default function EmailProvidersSettingsPage() {
           })}
         </div>
       </div>
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
+      <ToastContainer
+        toasts={toasts}
+        onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+      />
     </div>
   );
 }
