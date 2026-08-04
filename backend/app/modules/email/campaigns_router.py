@@ -26,6 +26,7 @@ router = APIRouter(prefix="/email", tags=["email"])
 # Response schemas
 class CampaignResponse(BaseModel):
     """Email campaign response."""
+
     id: int
     name: str
     subject: str
@@ -50,6 +51,7 @@ class CampaignResponse(BaseModel):
 
 class EmailLogResponse(BaseModel):
     """Email log response."""
+
     id: int
     campaign_id: Optional[int]
     to_email: str
@@ -71,6 +73,7 @@ class EmailLogResponse(BaseModel):
 
 class CampaignStatsResponse(BaseModel):
     """Campaign statistics response."""
+
     total: int
     sent: int
     delivered: int
@@ -85,13 +88,26 @@ class CampaignStatsResponse(BaseModel):
     bounce_rate: float
 
 
+def _status_value(status: object) -> str:
+    """Безопасно достаёт строковое значение статуса.
+
+    EmailCampaign.status и EmailLog.status — Column(String(20)), SQLAlchemy
+    возвращает bare str. Но код исторически писал ``.value`` (ожидая enum).
+    На строке это падает AttributeError → эндпоинты /campaigns и /campaigns/
+    {id}/logs отдают 500. Поддерживаем оба варианта: enum (.value) и строку.
+    """
+    if hasattr(status, "value"):
+        return status.value  # type: ignore[no-any-return]
+    return str(status)
+
+
 def _campaign_to_response(campaign: EmailCampaign) -> CampaignResponse:
     """Convert campaign model to response."""
     return CampaignResponse(
         id=campaign.id,
         name=campaign.name,
         subject=campaign.subject,
-        status=campaign.status.value,
+        status=_status_value(campaign.status),
         total_recipients=campaign.total_recipients,
         sent_count=campaign.sent_count,
         delivered_count=campaign.delivered_count,
@@ -116,7 +132,7 @@ def _log_to_response(log: EmailLog) -> EmailLogResponse:
         to_email=log.to_email,
         to_name=log.to_name,
         subject=log.subject,
-        status=log.status.value,
+        status=_status_value(log.status),
         external_message_id=log.external_message_id,
         error_message=log.error_message,
         created_at=log.created_at,
@@ -138,20 +154,20 @@ async def list_campaigns(
 ):
     """List email campaigns for the current user."""
     query = select(EmailCampaign).where(EmailCampaign.user_id == user_id)
-    
+
     if status:
         try:
             status_enum = CampaignStatus(status)
             query = query.where(EmailCampaign.status == status_enum)
         except ValueError:
             pass
-    
+
     query = query.order_by(EmailCampaign.created_at.desc())
     query = query.offset(offset).limit(limit)
-    
+
     result = await db.execute(query)
     campaigns = result.scalars().all()
-    
+
     return [_campaign_to_response(c) for c in campaigns]
 
 
@@ -171,13 +187,10 @@ async def get_campaign(
         )
     )
     campaign = result.scalar_one_or_none()
-    
+
     if not campaign:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Campaign not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
     return _campaign_to_response(campaign)
 
 
@@ -198,13 +211,10 @@ async def get_campaign_stats(
         )
     )
     campaign = result.scalar_one_or_none()
-    
+
     if not campaign:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Campaign not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
     # Count logs by status
     stats_result = await db.execute(
         select(
@@ -214,9 +224,9 @@ async def get_campaign_stats(
         .where(EmailLog.campaign_id == campaign_id)
         .group_by(EmailLog.status)
     )
-    
+
     stats = {row.status: row.count for row in stats_result}
-    
+
     sent = stats.get(EmailStatus.SENT, 0)
     delivered = stats.get(EmailStatus.DELIVERED, 0)
     opened = stats.get(EmailStatus.OPENED, 0) + stats.get(EmailStatus.CLICKED, 0)
@@ -225,7 +235,7 @@ async def get_campaign_stats(
     spam = stats.get(EmailStatus.SPAM, 0)
     failed = stats.get(EmailStatus.FAILED, 0)
     total = sum(stats.values())
-    
+
     return CampaignStatsResponse(
         total=total,
         sent=sent,
@@ -262,28 +272,25 @@ async def get_campaign_logs(
         )
     )
     campaign = result.scalar_one_or_none()
-    
+
     if not campaign:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Campaign not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
     query = select(EmailLog).where(EmailLog.campaign_id == campaign_id)
-    
+
     if status:
         try:
             status_enum = EmailStatus(status)
             query = query.where(EmailLog.status == status_enum)
         except ValueError:
             pass
-    
+
     query = query.order_by(EmailLog.created_at.desc())
     query = query.offset(offset).limit(limit)
-    
+
     result = await db.execute(query)
     logs = result.scalars().all()
-    
+
     return [_log_to_response(log) for log in logs]
 
 
@@ -302,9 +309,9 @@ async def get_email_stats(
         .where(EmailLog.user_id == user_id)
         .group_by(EmailLog.status)
     )
-    
+
     stats = {row.status: row.count for row in stats_result}
-    
+
     sent = stats.get(EmailStatus.SENT, 0)
     delivered = stats.get(EmailStatus.DELIVERED, 0)
     opened = stats.get(EmailStatus.OPENED, 0) + stats.get(EmailStatus.CLICKED, 0)
@@ -313,7 +320,7 @@ async def get_email_stats(
     spam = stats.get(EmailStatus.SPAM, 0)
     failed = stats.get(EmailStatus.FAILED, 0)
     total = sum(stats.values())
-    
+
     return CampaignStatsResponse(
         total=total,
         sent=sent,
