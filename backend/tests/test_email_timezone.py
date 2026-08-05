@@ -38,10 +38,10 @@ def test_serialize_utc_none_passes_through():
 
 
 def test_pydantic_serializes_with_offset():
-    """End-to-end: Pydantic добавляет '+00:00' к ISO-строке.
+    """End-to-end: Pydantic отдаёт ISO с UTC-маркером.
 
     Это и есть фикс баги — фронтовый ``new Date(iso)`` теперь видит смещение
-    и конвертирует в локаль браузера (Europe/Moscow).
+    (любое из допустимых: 'Z' или '+00:00') и конвертирует в локаль браузера.
     """
     from app.modules.email.campaigns_router import CampaignResponse
 
@@ -65,6 +65,11 @@ def test_pydantic_serializes_with_offset():
         completed_at=None,
     )
     dumped = resp.model_dump(mode="json")
-    assert dumped["created_at"] == "2026-08-05T21:32:23+00:00"
+    # Pydantic отдаёт UTC-aware datetime как 'Z' (или '+00:00' в других
+    # версиях). Оба формата — валидный ISO 8601, понимаются new Date().
+    created = dumped["created_at"]
+    assert created in ("2026-08-05T21:32:23Z", "2026-08-05T21:32:23+00:00"), created
+    # Главное: в строкке есть UTC-маркер (Z или +00:00).
+    assert created.endswith("Z") or created.endswith("+00:00")
     # nullable поле проходит как None, не падая на сериализаторе.
     assert dumped["started_at"] is None
