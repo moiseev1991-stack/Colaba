@@ -2,12 +2,12 @@
 
 import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 from app.core.database import get_db
 from app.modules.auth.router import get_current_user_id
@@ -21,6 +21,25 @@ from app.models.email import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email"])
+
+
+def _serialize_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Сериализует datetime как UTC-aware.
+
+    Колонки Email* — naive DateTime без timezone=True, SQLAlchemy возвращает
+    bare datetime (без tzinfo). Pydantic отдаёт его как ``2026-08-05T21:32:23``
+    без 'Z'/смещения → фронт парсит как локальное время браузера → юзер видит
+    сдвиг на -3 часа (UTC показывается как MSK).
+
+    Делаем datetime aware-UTC (паттерн уже используется в maps/lead_temperature
+    и maps/website_lead_score для той же баги). Тогда Pydantic добавит '+00:00'
+    в ISO-строку, и ``new Date(iso)`` на фронте сам сдвинет в локаль браузера.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 # Response schemas
@@ -48,6 +67,10 @@ class CampaignResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    _ser_created = field_serializer("created_at")(lambda v: _serialize_utc(v))
+    _ser_started = field_serializer("started_at")(lambda v: _serialize_utc(v))
+    _ser_completed = field_serializer("completed_at")(lambda v: _serialize_utc(v))
+
 
 class EmailLogResponse(BaseModel):
     """Email log response."""
@@ -69,6 +92,13 @@ class EmailLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    _ser_created = field_serializer("created_at")(lambda v: _serialize_utc(v))
+    _ser_sent = field_serializer("sent_at")(lambda v: _serialize_utc(v))
+    _ser_delivered = field_serializer("delivered_at")(lambda v: _serialize_utc(v))
+    _ser_opened = field_serializer("opened_at")(lambda v: _serialize_utc(v))
+    _ser_clicked = field_serializer("clicked_at")(lambda v: _serialize_utc(v))
+    _ser_bounced = field_serializer("bounced_at")(lambda v: _serialize_utc(v))
 
 
 class CampaignStatsResponse(BaseModel):
