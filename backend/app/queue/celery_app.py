@@ -57,27 +57,34 @@ celery_app.conf.update(
     worker_prefetch_multiplier=4,
     # Periodic tasks
     beat_schedule={
-        'process-email-replies-every-5-minutes': {
-            'task': 'process_email_replies_task',
-            'schedule': 300.0,  # Every 5 minutes
+        "process-email-replies-every-5-minutes": {
+            "task": "process_email_replies_task",
+            "schedule": 300.0,  # Every 5 minutes
         },
         # maps cron: чистка raw_text отзывов старше 30 дней
-        'purge-review-raw-text-daily': {
-            'task': 'purge_review_raw_text',
-            'schedule': crontab(hour=3, minute=30),
+        "purge-review-raw-text-daily": {
+            "task": "purge_review_raw_text",
+            "schedule": crontab(hour=3, minute=30),
         },
         # reviews_ai cron: переcclusterизация top-30 ниш
-        'recluster-popular-niches-daily': {
-            'task': 'recluster_popular_niches',
-            'schedule': crontab(hour=4, minute=0),
+        "recluster-popular-niches-daily": {
+            "task": "recluster_popular_niches",
+            "schedule": crontab(hour=4, minute=0),
         },
         # multi-source dedup (Phase 3 ТЗ 2026-06-03): ищем пары
         # (2gis-row, yandex_maps-row) одной компании по phone/coords/name
         # и склеиваем под один company_id. Раз в час — баланс между
         # «новые компании склеены быстро» и нагрузкой на БД.
-        'dedup-multisource-hourly': {
-            'task': 'dedup_multisource_phase2',
-            'schedule': crontab(minute=15),  # каждый час в :15
+        "dedup-multisource-hourly": {
+            "task": "dedup_multisource_phase2",
+            "schedule": crontab(minute=15),  # каждый час в :15
+        },
+        # Дневной прогрев доменов: рассылка КП реальным компаниям под разные
+        # легенды. +10 КП/день от 2026-08-10, максимум 100/день. Запуск в
+        # 10:00 МСК (07:00 UTC). См. warmup_service.run_daily_warmup.
+        "daily-warmup": {
+            "task": "daily_warmup_task",
+            "schedule": crontab(hour=7, minute=0),
         },
     },
 )
