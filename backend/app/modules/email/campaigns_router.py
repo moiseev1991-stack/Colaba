@@ -81,6 +81,7 @@ class EmailLogResponse(BaseModel):
     to_name: Optional[str]
     subject: str
     status: str
+    body_preview: Optional[str] = None
     external_message_id: Optional[str]
     error_message: Optional[str]
     created_at: datetime

@@ -30,7 +30,13 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 function formatDateTime(iso: string | undefined): string {
   if (!iso) return '-';
   const d = new Date(iso);
-  return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 // §4.5 ТЗ редизайна 2026-06-03 (фоллоу-ап Phase B-3):
@@ -136,33 +142,38 @@ export default function CampaignsHistoryPage() {
     }
   }, []);
 
-  useEffect(() => { load(page); }, [load, page]);
+  useEffect(() => {
+    load(page);
+  }, [load, page]);
 
-  const toggleExpand = useCallback(async (id: number) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(id);
-    if (logsByCampaign.has(id)) return;
-    setLoadingLogs((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    try {
-      const logs = await getCampaignLogs(id, { limit: 50 });
-      setLogsByCampaign((prev) => new Map(prev).set(id, logs));
-    } catch {
-      setLogsByCampaign((prev) => new Map(prev).set(id, []));
-    } finally {
+  const toggleExpand = useCallback(
+    async (id: number) => {
+      if (expandedId === id) {
+        setExpandedId(null);
+        return;
+      }
+      setExpandedId(id);
+      if (logsByCampaign.has(id)) return;
       setLoadingLogs((prev) => {
         const next = new Set(prev);
-        next.delete(id);
+        next.add(id);
         return next;
       });
-    }
-  }, [expandedId, logsByCampaign]);
+      try {
+        const logs = await getCampaignLogs(id, { limit: 50 });
+        setLogsByCampaign((prev) => new Map(prev).set(id, logs));
+      } catch {
+        setLogsByCampaign((prev) => new Map(prev).set(id, []));
+      } finally {
+        setLoadingLogs((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    },
+    [expandedId, logsByCampaign],
+  );
 
   const deliveryRate = (c: EmailCampaign): number => {
     if (c.sent_count === 0) return 0;
@@ -195,7 +206,11 @@ export default function CampaignsHistoryPage() {
       {loading ? (
         <div
           className="rounded-v2-lg border overflow-hidden p-8 flex items-center justify-center gap-2"
-          style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
+          style={{
+            background: 'hsl(var(--surface))',
+            borderColor: 'hsl(var(--border))',
+            color: 'hsl(var(--muted))',
+          }}
         >
           <Loader2 className="h-5 w-5 animate-spin" /> Загрузка…
         </div>
@@ -205,8 +220,8 @@ export default function CampaignsHistoryPage() {
           title="У вас пока нет рассылок"
           description={
             <>
-              Запустите первую рассылку из результатов поиска. Ниже — пример того, как
-              будет выглядеть эта страница со статистикой по реальным кампаниям.
+              Запустите первую рассылку из результатов поиска. Ниже — пример того, как будет
+              выглядеть эта страница со статистикой по реальным кампаниям.
             </>
           }
           action={
@@ -217,7 +232,14 @@ export default function CampaignsHistoryPage() {
             </Link>
           }
           demoNote="демо-данные — не ваши кампании"
-          demo={<CampaignsTable campaigns={SAMPLE_CAMPAIGNS} variant="demo" deliveryRate={deliveryRate} openRate={openRate} />}
+          demo={
+            <CampaignsTable
+              campaigns={SAMPLE_CAMPAIGNS}
+              variant="demo"
+              deliveryRate={deliveryRate}
+              openRate={openRate}
+            />
+          }
         />
       ) : (
         <div
@@ -245,7 +267,7 @@ export default function CampaignsHistoryPage() {
               <ButtonV2
                 variant="secondary"
                 size="sm"
-                onClick={() => setPage(p => Math.max(0, p - 1))}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
               >
                 ← Назад
@@ -253,7 +275,7 @@ export default function CampaignsHistoryPage() {
               <ButtonV2
                 variant="secondary"
                 size="sm"
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => setPage((p) => p + 1)}
                 disabled={campaigns.length < PAGE_SIZE}
               >
                 Вперёд →
@@ -301,10 +323,21 @@ function CampaignsTable(props: TableProps) {
             <Th title="Когда кампания создана">Дата</Th>
             <Th>Название</Th>
             <Th title="Этап: Черновик → Отправка → Завершена">Статус</Th>
-            <Th align="center" title="Сколько писем уже ушло из общего числа получателей">Отправлено</Th>
-            <Th align="center" title="Письма реально дошли до почтового ящика и не отбились">Доставлено</Th>
-            <Th align="center" title="Сколько получателей открыли письмо (по пикселю в HTML)">Открыто</Th>
-            <Th align="center" title="Письма, которые сервер получателя отбил — адреса не существуют или ящик переполнен. Если >5% — почтовики начнут резать вашу рассылку.">Возвраты</Th>
+            <Th align="center" title="Сколько писем уже ушло из общего числа получателей">
+              Отправлено
+            </Th>
+            <Th align="center" title="Письма реально дошли до почтового ящика и не отбились">
+              Доставлено
+            </Th>
+            <Th align="center" title="Сколько получателей открыли письмо (по пикселю в HTML)">
+              Открыто
+            </Th>
+            <Th
+              align="center"
+              title="Письма, которые сервер получателя отбил — адреса не существуют или ящик переполнен. Если >5% — почтовики начнут резать вашу рассылку."
+            >
+              Возвраты
+            </Th>
             <Th align="right">Действия</Th>
           </tr>
         </thead>
@@ -314,15 +347,29 @@ function CampaignsTable(props: TableProps) {
             if (isDemo) {
               return (
                 <tr key={c.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                  <Td muted nowrap>{formatDateTime(c.created_at)}</Td>
-                  <Td className="truncate max-w-[260px]" title={c.name}>{c.name}</Td>
-                  <Td>
-                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">{pill.label}</SignalPill>
+                  <Td muted nowrap>
+                    {formatDateTime(c.created_at)}
                   </Td>
-                  <Td align="center">{c.sent_count} / {c.total_recipients}</Td>
-                  <Td align="center"><DeliveredCell campaign={c} rate={props.deliveryRate(c)} /></Td>
-                  <Td align="center"><OpenedCell campaign={c} rate={props.openRate(c)} /></Td>
-                  <Td align="center"><BouncedCell campaign={c} /></Td>
+                  <Td className="truncate max-w-[260px]" title={c.name}>
+                    {c.name}
+                  </Td>
+                  <Td>
+                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">
+                      {pill.label}
+                    </SignalPill>
+                  </Td>
+                  <Td align="center">
+                    {c.sent_count} / {c.total_recipients}
+                  </Td>
+                  <Td align="center">
+                    <DeliveredCell campaign={c} rate={props.deliveryRate(c)} />
+                  </Td>
+                  <Td align="center">
+                    <OpenedCell campaign={c} rate={props.openRate(c)} />
+                  </Td>
+                  <Td align="center">
+                    <BouncedCell campaign={c} />
+                  </Td>
                   <Td align="right">
                     <span
                       className="text-xs italic select-none"
@@ -349,22 +396,39 @@ function CampaignsTable(props: TableProps) {
                   )}
                   style={{ borderBottom: '1px solid hsl(var(--border))' }}
                 >
-                  <Td muted nowrap>{formatDateTime(c.created_at)}</Td>
-                  <Td className="truncate max-w-[200px]" title={c.name}>{c.name}</Td>
-                  <Td>
-                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">{pill.label}</SignalPill>
+                  <Td muted nowrap>
+                    {formatDateTime(c.created_at)}
                   </Td>
-                  <Td align="center">{c.sent_count} / {c.total_recipients}</Td>
-                  <Td align="center"><DeliveredCell campaign={c} rate={props.deliveryRate(c)} /></Td>
-                  <Td align="center"><OpenedCell campaign={c} rate={props.openRate(c)} /></Td>
-                  <Td align="center"><BouncedCell campaign={c} /></Td>
+                  <Td className="truncate max-w-[200px]" title={c.name}>
+                    {c.name}
+                  </Td>
+                  <Td>
+                    <SignalPill tone={pill.tone} icon={pill.icon} size="sm">
+                      {pill.label}
+                    </SignalPill>
+                  </Td>
+                  <Td align="center">
+                    {c.sent_count} / {c.total_recipients}
+                  </Td>
+                  <Td align="center">
+                    <DeliveredCell campaign={c} rate={props.deliveryRate(c)} />
+                  </Td>
+                  <Td align="center">
+                    <OpenedCell campaign={c} rate={props.openRate(c)} />
+                  </Td>
+                  <Td align="center">
+                    <BouncedCell campaign={c} />
+                  </Td>
                   <Td align="right">
                     <div className="flex items-center justify-end">
                       <ButtonV2
                         variant="secondary"
                         size="sm"
                         aria-label={isExpanded ? 'Свернуть детали' : 'Показать детали'}
-                        onClick={(e) => { e.stopPropagation(); props.toggleExpand(c.id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          props.toggleExpand(c.id);
+                        }}
                         iconLeft={<Eye />}
                         iconRight={
                           <ChevronDown
@@ -379,7 +443,11 @@ function CampaignsTable(props: TableProps) {
                 </tr>
                 {isExpanded && (
                   <tr style={{ background: 'hsl(var(--surface-2) / 0.4)' }}>
-                    <td colSpan={8} className="p-0" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                    <td
+                      colSpan={8}
+                      className="p-0"
+                      style={{ borderBottom: '1px solid hsl(var(--border))' }}
+                    >
                       <CampaignDrilldown
                         campaign={c}
                         logs={props.logsByCampaign.get(c.id) ?? []}
@@ -461,7 +529,9 @@ function DeliveredCell({ campaign, rate }: { campaign: EmailCampaign; rate: numb
     <span className="inline-flex items-center justify-center gap-1">
       <CheckCircle className="h-3.5 w-3.5" style={{ color: 'var(--signal-good)' }} />
       <span style={{ color: 'hsl(var(--text))' }}>{campaign.delivered_count}</span>
-      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({rate}%)</span>
+      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
+        ({rate}%)
+      </span>
     </span>
   );
 }
@@ -471,7 +541,9 @@ function OpenedCell({ campaign, rate }: { campaign: EmailCampaign; rate: number 
     <span className="inline-flex items-center justify-center gap-1">
       <Eye className="h-3.5 w-3.5" style={{ color: 'var(--signal-cool)' }} />
       <span style={{ color: 'hsl(var(--text))' }}>{campaign.opened_count}</span>
-      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({rate}%)</span>
+      <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
+        ({rate}%)
+      </span>
     </span>
   );
 }
@@ -498,11 +570,12 @@ function CampaignDrilldown({
   logs: EmailLog[];
   loading: boolean;
 }) {
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
   return (
     <div className="px-6 py-5">
       <div className="mb-4 min-w-0">
         <div className="app-mono-label mb-1" style={{ color: 'hsl(var(--muted))' }}>
-          тема письма
+          кампания
         </div>
         <div
           className="text-[14px] font-medium truncate"
@@ -524,13 +597,17 @@ function CampaignDrilldown({
         </span>
         {!loading && logs.length > 0 && (
           <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-            {logs.length} {logs.length < campaign.total_recipients ? `из ${campaign.total_recipients}` : ''}
+            {logs.length}{' '}
+            {logs.length < campaign.total_recipients ? `из ${campaign.total_recipients}` : ''}
           </span>
         )}
       </div>
 
       {loading ? (
-        <div className="p-6 flex items-center justify-center gap-2 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+        <div
+          className="p-6 flex items-center justify-center gap-2 text-sm"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
           <Loader2 className="h-4 w-4 animate-spin" /> Загружаем получателей…
         </div>
       ) : logs.length === 0 ? (
@@ -551,48 +628,155 @@ function CampaignDrilldown({
         >
           <table className="w-full text-[13px]">
             <thead>
-              <tr style={{ background: 'hsl(var(--surface-2))', borderBottom: '1px solid hsl(var(--border))' }}>
-                <th className="text-left py-2 px-3 app-mono-label" style={{ color: 'hsl(var(--muted))' }}>email</th>
-                <th className="text-left py-2 px-3 app-mono-label" style={{ color: 'hsl(var(--muted))' }}>статус</th>
-                <th className="text-left py-2 px-3 app-mono-label" style={{ color: 'hsl(var(--muted))' }}>событие</th>
-                <th className="text-left py-2 px-3 app-mono-label" style={{ color: 'hsl(var(--muted))' }}>ошибка</th>
+              <tr
+                style={{
+                  background: 'hsl(var(--surface-2))',
+                  borderBottom: '1px solid hsl(var(--border))',
+                }}
+              >
+                <th
+                  className="text-left py-2 px-3 app-mono-label"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  получатель
+                </th>
+                <th
+                  className="text-left py-2 px-3 app-mono-label"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  тема письма
+                </th>
+                <th
+                  className="text-left py-2 px-3 app-mono-label"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  статус
+                </th>
+                <th
+                  className="text-left py-2 px-3 app-mono-label"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  событие
+                </th>
+                <th
+                  className="text-left py-2 px-3 app-mono-label"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
+                  ошибка
+                </th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log, idx) => {
                 const info = logStatusInfo(log.status);
                 const eventTime = latestLogEvent(log);
+                const isExpanded = expandedLogId === log.id;
                 return (
-                  <tr
-                    key={log.id}
-                    style={idx < logs.length - 1 ? { borderBottom: '1px solid hsl(var(--border))' } : undefined}
-                  >
-                    <td className="py-2 px-3" style={{ color: 'hsl(var(--text))' }}>
-                      <div className="font-medium truncate max-w-[280px]" title={log.to_email}>
-                        {log.to_name || log.to_email}
-                      </div>
-                      {log.to_name && (
-                        <div className="text-[11px] truncate max-w-[280px]" style={{ color: 'hsl(var(--muted))' }} title={log.to_email}>
-                          {log.to_email}
+                  <Fragment key={log.id}>
+                    <tr
+                      style={{
+                        borderBottom: isExpanded
+                          ? undefined
+                          : idx < logs.length - 1
+                            ? '1px solid hsl(var(--border))'
+                            : undefined,
+                        cursor: log.body_preview ? 'pointer' : 'default',
+                        background: isExpanded ? 'hsl(var(--surface-2))' : undefined,
+                      }}
+                      onClick={() =>
+                        log.body_preview && setExpandedLogId(isExpanded ? null : log.id)
+                      }
+                    >
+                      <td className="py-2 px-3" style={{ color: 'hsl(var(--text))' }}>
+                        <div className="font-medium truncate max-w-[220px]" title={log.to_email}>
+                          {log.to_name || log.to_email}
                         </div>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 whitespace-nowrap">
-                      <SignalPill tone={info.tone} icon={info.icon} size="sm">{info.label}</SignalPill>
-                    </td>
-                    <td className="py-2 px-3 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>
-                      {eventTime ? formatDateTime(eventTime) : '—'}
-                    </td>
-                    <td className="py-2 px-3 max-w-[280px]">
-                      {log.error_message ? (
-                        <span className="text-xs truncate block" style={{ color: 'var(--signal-hot)' }} title={log.error_message}>
-                          {log.error_message}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'hsl(var(--muted))' }}>—</span>
-                      )}
-                    </td>
-                  </tr>
+                        {log.to_name && (
+                          <div
+                            className="text-[11px] truncate max-w-[220px]"
+                            style={{ color: 'hsl(var(--muted))' }}
+                            title={log.to_email}
+                          >
+                            {log.to_email}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 max-w-[320px]">
+                        <div
+                          className="truncate"
+                          style={{ color: 'hsl(var(--text))' }}
+                          title={log.subject}
+                        >
+                          {log.subject || '—'}
+                        </div>
+                        {log.body_preview && (
+                          <div
+                            className="text-[11px] truncate max-w-[320px]"
+                            style={{ color: 'hsl(var(--muted))' }}
+                          >
+                            {isExpanded ? 'скрыть текст ▲' : 'показать текст ▼'}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <SignalPill tone={info.tone} icon={info.icon} size="sm">
+                          {info.label}
+                        </SignalPill>
+                      </td>
+                      <td
+                        className="py-2 px-3 whitespace-nowrap"
+                        style={{ color: 'hsl(var(--muted))' }}
+                      >
+                        {eventTime ? formatDateTime(eventTime) : '—'}
+                      </td>
+                      <td className="py-2 px-3 max-w-[200px]">
+                        {log.error_message ? (
+                          <span
+                            className="text-xs truncate block"
+                            style={{ color: 'var(--signal-hot)' }}
+                            title={log.error_message}
+                          >
+                            {log.error_message}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'hsl(var(--muted))' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && log.body_preview && (
+                      <tr style={{ background: 'hsl(var(--surface-2))' }}>
+                        <td
+                          colSpan={5}
+                          className="py-3 px-4"
+                          style={{ borderBottom: '1px solid hsl(var(--border))' }}
+                        >
+                          <div
+                            className="app-mono-label mb-2"
+                            style={{ color: 'hsl(var(--muted))' }}
+                          >
+                            текст письма (первые 500 символов)
+                          </div>
+                          <div
+                            className="text-[13px] whitespace-pre-wrap"
+                            style={{
+                              color: 'hsl(var(--text))',
+                              lineHeight: 1.5,
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            {log.body_preview}
+                          </div>
+                          <div
+                            className="mt-3 flex gap-4 text-[11px]"
+                            style={{ color: 'hsl(var(--muted))' }}
+                          >
+                            <span>кому: {log.to_email}</span>
+                            <span>message-id: {log.external_message_id || '—'}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
