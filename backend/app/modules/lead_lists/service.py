@@ -47,12 +47,10 @@ async def create_list(
 
 async def list_for_user(db: AsyncSession, *, user_id: int) -> list[LeadList]:
     rows = (
-        await db.execute(
-            select(LeadList)
-            .where(LeadList.user_id == user_id)
-            .order_by(LeadList.created_at.desc())
-        )
-    ).scalars().all()
+        (await db.execute(select(LeadList).where(LeadList.user_id == user_id).order_by(LeadList.created_at.desc())))
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 
@@ -106,15 +104,19 @@ async def list_items_with_companies(
     offset: int = 0,
 ) -> list[Company]:
     rows = (
-        await db.execute(
-            select(Company)
-            .join(LeadListItem, LeadListItem.company_id == Company.id)
-            .where(LeadListItem.lead_list_id == list_id)
-            .order_by(LeadListItem.added_at.desc())
-            .limit(limit)
-            .offset(offset)
+        (
+            await db.execute(
+                select(Company)
+                .join(LeadListItem, LeadListItem.company_id == Company.id)
+                .where(LeadListItem.lead_list_id == list_id)
+                .order_by(LeadListItem.added_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 
@@ -130,24 +132,23 @@ async def add_companies(
     company_ids = list({int(cid) for cid in company_ids})
 
     # Сколько из этих компаний реально существует
-    existing_rows = (
-        await db.execute(
-            select(Company.id).where(Company.id.in_(company_ids))
-        )
-    ).scalars().all()
+    existing_rows = (await db.execute(select(Company.id).where(Company.id.in_(company_ids)))).scalars().all()
     existing_ids = {int(cid) for cid in existing_rows}
     not_found = len(company_ids) - len(existing_ids)
 
     # Какие уже в списке
     already_rows = (
-        await db.execute(
-            select(LeadListItem.company_id)
-            .where(
-                LeadListItem.lead_list_id == list_id,
-                LeadListItem.company_id.in_(existing_ids),
+        (
+            await db.execute(
+                select(LeadListItem.company_id).where(
+                    LeadListItem.lead_list_id == list_id,
+                    LeadListItem.company_id.in_(existing_ids),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     already_in = {int(cid) for cid in already_rows}
 
     to_insert = existing_ids - already_in
@@ -157,11 +158,7 @@ async def add_companies(
 
     # Обновляем кэш items_count
     total = (
-        await db.execute(
-            select(func.count())
-            .select_from(LeadListItem)
-            .where(LeadListItem.lead_list_id == list_id)
-        )
+        await db.execute(select(func.count()).select_from(LeadListItem).where(LeadListItem.lead_list_id == list_id))
     ).scalar_one() or 0
     await db.execute(
         update(LeadList)
@@ -186,11 +183,7 @@ async def remove_company(db: AsyncSession, *, list_id: int, company_id: int) -> 
     )
     if result.rowcount or 0:
         total = (
-            await db.execute(
-                select(func.count())
-                .select_from(LeadListItem)
-                .where(LeadListItem.lead_list_id == list_id)
-            )
+            await db.execute(select(func.count()).select_from(LeadListItem).where(LeadListItem.lead_list_id == list_id))
         ).scalar_one() or 0
         await db.execute(
             update(LeadList)
@@ -253,12 +246,16 @@ async def create_campaign_from_list(
     """
     # Подгружаем компании списка с топ-болями для персонализации
     items = (
-        await db.execute(
-            select(Company)
-            .join(LeadListItem, LeadListItem.company_id == Company.id)
-            .where(LeadListItem.lead_list_id == list_id)
+        (
+            await db.execute(
+                select(Company)
+                .join(LeadListItem, LeadListItem.company_id == Company.id)
+                .where(LeadListItem.lead_list_id == list_id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     items = list(items)
     if not items:
         return {"campaign_id": 0, "total_recipients": 0, "skipped_no_email": 0}
@@ -267,9 +264,7 @@ async def create_campaign_from_list(
 
     top_pains_map: dict[int, list[dict[str, Any]]] = {}
     if auto_personalize:
-        top_pains_map = await get_top_pains_for_companies(
-            db, [c.id for c in items], limit_per_company=1
-        )
+        top_pains_map = await get_top_pains_for_companies(db, [c.id for c in items], limit_per_company=1)
 
     # Создаём кампанию
     campaign = EmailCampaign(
@@ -320,7 +315,8 @@ async def create_campaign_from_list(
             to_email=to_email,
             to_name=company.name,
             subject=rendered_subject[:500],
-            body_preview=rendered_body[:500],
+            # Полный текст письма (без обрезки до 500).
+            body_preview=rendered_body,
             status=EmailStatus.PENDING.value,
         )
         db.add(log)

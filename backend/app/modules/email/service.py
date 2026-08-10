@@ -891,7 +891,10 @@ class EmailService:
             log.status = EmailStatus.SENT
             log.external_message_id = result.get("external_message_id")
             log.sent_at = datetime.utcnow()
-            log.body_preview = body[:500] if body else None
+            # Сохраняем ПОЛНЫЙ текст письма (колонка Text, без лимита).
+            # Раньше обрезали до 500 символов (поле называлось body_preview),
+            # но админ хочет видеть весь текст в истории рассылок.
+            log.body_preview = body if body else None
 
             db.add(log)
             await db.commit()

@@ -754,14 +754,15 @@ function CampaignDrilldown({
                             className="app-mono-label mb-2"
                             style={{ color: 'hsl(var(--muted))' }}
                           >
-                            текст письма (первые 500 символов)
+                            текст письма
                           </div>
                           <div
-                            className="text-[13px] whitespace-pre-wrap"
+                            className="text-[13px] whitespace-pre-wrap overflow-y-auto"
                             style={{
                               color: 'hsl(var(--text))',
                               lineHeight: 1.5,
                               fontFamily: 'inherit',
+                              maxHeight: '400px',
                             }}
                           >
                             {log.body_preview}

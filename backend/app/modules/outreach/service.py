@@ -47,9 +47,7 @@ async def send_email(
 async def send_telegram(chat_id: str, message: str) -> None:
     """Send message via Telegram Bot API.  Raises on failure."""
     if not _telegram_configured():
-        raise RuntimeError(
-            "Telegram Bot не настроен. Укажите TELEGRAM_BOT_TOKEN в переменных окружения."
-        )
+        raise RuntimeError("Telegram Bot не настроен. Укажите TELEGRAM_BOT_TOKEN в переменных окружения.")
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(url, json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"})
@@ -73,9 +71,7 @@ async def bulk_send_outreach(
     from app.models.search import SearchResult
     from app.models.email import EmailCampaign, EmailLog, CampaignStatus, EmailStatus
 
-    result = await db.execute(
-        select(SearchResult).where(SearchResult.id.in_(search_result_ids))
-    )
+    result = await db.execute(select(SearchResult).where(SearchResult.id.in_(search_result_ids)))
     results = result.scalars().all()
 
     sent = 0
@@ -133,27 +129,28 @@ async def bulk_send_outreach(
                     from_name=from_name,
                     db=db,
                 )
-                
+
                 # Update log on success
                 if email_log:
                     email_log.status = EmailStatus.SENT
                     email_log.sent_at = datetime.utcnow()
                     email_log.external_message_id = send_result.get("external_message_id")
-                    email_log.body_preview = sr.outreach_text[:500] if sr.outreach_text else None
+                    # Полный текст письма (без обрезки до 500).
+                    email_log.body_preview = sr.outreach_text if sr.outreach_text else None
                     db.add(email_log)
-                
+
                 detail.append(OutreachResult(search_result_id=rid, status="sent"))
                 sent += 1
             except Exception as exc:
                 logger.warning(f"Failed to send email to {sr.email}: {exc}")
-                
+
                 # Update log on error
                 if email_log:
                     email_log.status = EmailStatus.FAILED
                     email_log.error_message = str(exc)
                     email_log.error_code = "SEND_FAILED"
                     db.add(email_log)
-                
+
                 detail.append(OutreachResult(search_result_id=rid, status="error", reason=str(exc)))
                 errors += 1
 
@@ -194,4 +191,10 @@ async def bulk_send_outreach(
 
     await db.commit()
 
-    return {"sent": sent, "skipped": skipped, "errors": errors, "results": detail, "campaign_id": campaign.id if campaign else None}
+    return {
+        "sent": sent,
+        "skipped": skipped,
+        "errors": errors,
+        "results": detail,
+        "campaign_id": campaign.id if campaign else None,
+    }
