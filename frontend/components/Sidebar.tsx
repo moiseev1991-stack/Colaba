@@ -45,7 +45,7 @@ const EMAIL_SECTION: NavSection = {
   title: 'Email-рассылка',
   items: [
     { href: '/app/email/campaigns', label: 'Кампании', icon: Mail },
-    { href: '/app/email/replies', label: 'Ответы', icon: Inbox },
+    { href: '/app/email/messages', label: 'Сообщения', icon: Inbox },
     { href: '/app/email/stats', label: 'Статистика', icon: BarChart3 },
     { href: '/app/email/settings', label: 'Настройка', icon: Settings2 },
   ],
@@ -56,9 +56,7 @@ const EMAIL_SECTION: NavSection = {
 // модулях, поскольку шаблоны КП общие (хранятся пока в localStorage).
 const PROPOSALS_SECTION: NavSection = {
   title: 'Коммерческие предложения',
-  items: [
-    { href: '/app/leads/proposals', label: 'Шаблоны КП', icon: FileText },
-  ],
+  items: [{ href: '/app/leads/proposals', label: 'Шаблоны КП', icon: FileText }],
 };
 
 export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
@@ -153,7 +151,8 @@ export function getBestMatch(pathname: string | null, items: NavItem[]): string 
   return matches[0]?.href ?? null;
 }
 
-const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[6px]';
+const focusClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[6px]';
 
 function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
   const { module, setModule } = useModule();
@@ -284,7 +283,9 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
                   onClick={() => handlePick(m)}
                   title={disabled ? 'Модуль скоро будет доступен' : undefined}
                   className={`flex w-full items-center gap-2 h-10 px-3 text-left text-[14px] transition-colors ${focusClass} ${
-                    disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-[hsl(var(--nav-hover-bg))]'
+                    disabled
+                      ? 'cursor-not-allowed opacity-50'
+                      : 'hover:bg-[hsl(var(--nav-hover-bg))]'
                   }`}
                   style={{
                     color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
@@ -298,7 +299,11 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
                   />
                   <span className="flex-1 truncate">{MODULE_LABELS[m]}</span>
                   {active && (
-                    <Check className="h-4 w-4 shrink-0" style={{ color: 'hsl(var(--accent))' }} aria-hidden />
+                    <Check
+                      className="h-4 w-4 shrink-0"
+                      style={{ color: 'hsl(var(--accent))' }}
+                      aria-hidden
+                    />
                   )}
                   {disabled && (
                     <span
@@ -379,22 +384,26 @@ export function Sidebar() {
         if (!cancelled) {
           setIsSuperuser(flag);
           if (flag) {
-            try { sessionStorage.setItem('is_superuser', 'true'); } catch { /* no-op */ }
+            try {
+              sessionStorage.setItem('is_superuser', 'true');
+            } catch {
+              /* no-op */
+            }
           }
         }
       } catch {
         /* offline / no auth — Sidebar просто не покажет admin-секцию */
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const effectiveCollapsed = isMobile ? true : collapsed;
 
   // Список секций для рендера: модульные + (опц.) админская.
-  const sections = isSuperuser
-    ? [...config.sections, ADMIN_SECTION]
-    : config.sections;
+  const sections = isSuperuser ? [...config.sections, ADMIN_SECTION] : config.sections;
 
   // Flat list of all items in the active module — for active-link resolution.
   const allItems = sections.flatMap((s) => s.items);
@@ -504,9 +513,7 @@ export function Sidebar() {
                       className={`relative flex items-center h-10 rounded-[8px] text-[14px] transition-all ${focusClass} ${
                         effectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'
                       } ${
-                        active
-                          ? 'font-semibold'
-                          : 'hover:bg-[hsl(var(--nav-hover-bg))] font-medium'
+                        active ? 'font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))] font-medium'
                       }`}
                       style={{
                         color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',

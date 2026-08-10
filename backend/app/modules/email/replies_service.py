@@ -152,6 +152,105 @@ class EmailRepliesService:
 
         return text_body, html_body
 
+    @staticmethod
+    def _normalize_subject(subject: str) -> str:
+        """Убирает Re:/Fwd: префиксы для группировки тредов."""
+        import re
+
+        s = subject or ""
+        # Рекурсивно убираем Re:/Fwd:/RE :/FWD : и т.п. (case-insensitive)
+        while True:
+            new_s = re.sub(r"^\s*(re|fwd|fw)\s*:\s*", "", s, flags=re.IGNORECASE)
+            if new_s == s:
+                break
+            s = new_s
+        return s.strip()[:500]
+
+    async def _find_or_create_thread(
+        self,
+        user_id: int,
+        contact_email: str,
+        contact_name: Optional[str],
+        subject: str,
+        in_reply_to: Optional[str] = None,
+    ) -> int:
+        """Поиск или создание треда (диалога с контактом).
+
+        Стратегия:
+        1. Если есть in_reply_to — ищем email_logs.external_message_id (наш
+           RFC Message-ID исходящего КП). Если найден — берём thread_id оттуда.
+        2. Иначе ищем существующий thread по (user_id, contact_email,
+           normalized_subject).
+        3. Если ничего не найдено — создаём новый thread.
+        """
+        from app.models.email import EmailLog
+        from app.models.email_thread import EmailThread
+
+        contact_email_lower = (contact_email or "").strip().lower()
+        norm_subject = self._normalize_subject(subject)
+
+        thread_id: Optional[int] = None
+
+        # 1. Поиск по In-Reply-To → исходящее КП → его thread.
+        if in_reply_to:
+            # in_reply_to может быть в формате <id> или id — нормализуем.
+            irt_clean = in_reply_to.strip().strip("<>").strip()
+            log_result = await self.db.execute(
+                select(EmailLog.thread_id).where(EmailLog.external_message_id == in_reply_to)
+            )
+            tid = log_result.scalar_one_or_none()
+            if tid:
+                thread_id = tid
+
+        # 2. Поиск существующего thread по контакту + теме.
+        if not thread_id:
+            result = await self.db.execute(
+                select(EmailThread.id).where(
+                    EmailThread.user_id == user_id,
+                    EmailThread.contact_email == contact_email_lower,
+                    EmailThread.subject == norm_subject,
+                )
+            )
+            tid = result.scalar_one_or_none()
+            if tid:
+                thread_id = tid
+
+        # 3. Создание нового thread.
+        if not thread_id:
+            thread = EmailThread(
+                user_id=user_id,
+                contact_email=contact_email_lower,
+                contact_name=contact_name,
+                subject=norm_subject,
+                created_at=datetime.utcnow(),
+            )
+            self.db.add(thread)
+            await self.db.flush()
+            thread_id = thread.id
+
+        return thread_id
+
+    async def _update_thread_cache(self, thread_id: int, reply: EmailReply) -> None:
+        """Обновляет кеш thread после нового входящего ответа.
+
+        last_message_at/preview/direction + unread_count для списка тредов
+        без JOIN'ов. Вызывается после сохранения ответа.
+        """
+        from app.models.email_thread import EmailThread
+
+        thread = await self.db.get(EmailThread, thread_id)
+        if not thread:
+            return
+        thread.last_message_at = reply.received_at or datetime.utcnow()
+        thread.last_message_preview = (reply.body_text or "")[:500]
+        thread.last_message_direction = "incoming"
+        thread.unread_count = (thread.unread_count or 0) + 1
+        if not thread.contact_name and reply.from_name:
+            thread.contact_name = reply.from_name
+        thread.updated_at = datetime.utcnow()
+        self.db.add(thread)
+        await self.db.commit()
+
     async def process_email(self, msg: email.message.Message, message_id: str) -> Optional[EmailReply]:
         """
         Process a single email message.
@@ -229,6 +328,17 @@ class EmailRepliesService:
         in_reply_to = msg.get("In-Reply-To", "")
         references = msg.get("References", "")
 
+        # Поиск или создание thread (диалога с этим контактом).
+        # Сначала пытаемся найти по In-Reply-To → email_logs.external_message_id
+        # (это наш собственный RFC Message-ID, который мы генерируем при отправке КП).
+        thread_id = await self._find_or_create_thread(
+            user_id=user_id,
+            contact_email=from_email,
+            contact_name=from_name,
+            subject=subject,
+            in_reply_to=in_reply_to.strip() if in_reply_to else None,
+        )
+
         # Create EmailReply record
         reply = EmailReply(
             user_id=user_id,
@@ -239,6 +349,7 @@ class EmailRepliesService:
             body_html=html_body,
             in_reply_to=in_reply_to,
             references=references,
+            thread_id=thread_id,
             received_at=datetime.utcnow(),
         )
 
@@ -246,7 +357,10 @@ class EmailRepliesService:
         await self.db.commit()
         await self.db.refresh(reply)
 
-        logger.info(f"Saved reply #{reply.id} from {from_email} for user #{user_id}")
+        # Обновляем кеш thread: последнее сообщение + unread.
+        await self._update_thread_cache(thread_id, reply)
+
+        logger.info(f"Saved reply #{reply.id} from {from_email} for user #{user_id}, thread #{thread_id}")
 
         # Forward to user's personal email
         await self.forward_reply(reply, user.email)

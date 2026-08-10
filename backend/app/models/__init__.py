@@ -19,6 +19,7 @@ from app.models.email import (
     CampaignStatus,
 )
 from app.models.email_reply import EmailReply
+from app.models.email_thread import EmailThread
 from app.models.email_config import EmailConfig
 from app.models.map_provider_config import MapProviderConfig
 from app.models.maps import (
@@ -76,6 +77,7 @@ __all__ = [
     "EmailStatus",
     "CampaignStatus",
     "EmailReply",
+    "EmailThread",
     "EmailConfig",
     "MapProviderConfig",
     "Company",

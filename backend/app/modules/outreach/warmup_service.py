@@ -79,6 +79,69 @@ def first_email(company) -> str:
     return emails[0] if emails else None
 
 
+async def _find_or_create_thread(
+    db,
+    user_id: int,
+    contact_email: str,
+    contact_name,
+    subject: str,
+) -> int:
+    """Поиск или создание треда (диалога с контактом) для КП.
+
+    Ищем существующий по (user_id, contact_email, normalized_subject);
+    если нет — создаём новый.
+    """
+    import re
+
+    from app.models.email_thread import EmailThread
+
+    contact_email_lower = (contact_email or "").strip().lower()
+    # Нормализация subject (без Re:/Fwd:).
+    s = subject or ""
+    while True:
+        new_s = re.sub(r"^\s*(re|fwd|fw)\s*:\s*", "", s, flags=re.IGNORECASE)
+        if new_s == s:
+            break
+        s = new_s
+    norm_subject = s.strip()[:500]
+
+    result = await db.execute(
+        select(EmailThread.id).where(
+            EmailThread.user_id == user_id,
+            EmailThread.contact_email == contact_email_lower,
+            EmailThread.subject == norm_subject,
+        )
+    )
+    tid = result.scalar_one_or_none()
+    if tid:
+        return tid
+
+    thread = EmailThread(
+        user_id=user_id,
+        contact_email=contact_email_lower,
+        contact_name=contact_name,
+        subject=norm_subject,
+        created_at=datetime.utcnow(),
+    )
+    db.add(thread)
+    await db.flush()
+    return thread.id
+
+
+async def _update_thread_outgoing(db, thread_id: int, body: str) -> None:
+    """Обновляет кеш thread после отправки исходящего КП."""
+    from app.models.email_thread import EmailThread
+
+    thread = await db.get(EmailThread, thread_id)
+    if not thread:
+        return
+    thread.last_message_at = datetime.utcnow()
+    thread.last_message_preview = body[:500]
+    thread.last_message_direction = "outgoing"
+    thread.updated_at = datetime.utcnow()
+    db.add(thread)
+
+
 async def get_candidate_companies(db, limit: int):
     """УНИКАЛЬНЫЕ по email компании, которым ещё НЕ отправляли КП.
 
@@ -247,6 +310,21 @@ async def run_daily_warmup() -> dict:
             from_email = tw.from_email if p["provider"] == "timeweb" else pb.from_email
             from_name = p["brand"]
 
+            # 2.5. Поиск/создание thread для этого контакта (для мессенджера).
+            thread_id = await _find_or_create_thread(
+                db,
+                user_id=USER_ID,
+                contact_email=p["to_email"],
+                contact_name=None,
+                subject=subject,
+            )
+
+            # Генерируем RFC Message-ID для threading (клиент ответит →
+            # его In-Reply-To сматчится с этим ID → ответ попадёт в thread).
+            from email.utils import make_msgid
+
+            message_id = make_msgid(idstring=f"kp-{p['company_id']}", domain="spinlid.ru")
+
             # 3. Лог + отправка (с db — иначе force_provider не найдёт креды).
             log = EmailLog(
                 campaign_id=camp.id,
@@ -255,6 +333,8 @@ async def run_daily_warmup() -> dict:
                 to_email=p["to_email"],
                 subject=subject,
                 status=EmailStatus.PENDING.value,
+                thread_id=thread_id,
+                external_message_id=message_id,
             )
             db.add(log)
             await db.flush()
@@ -274,6 +354,9 @@ async def run_daily_warmup() -> dict:
                 log.sent_at = datetime.utcnow()
                 log.body_preview = body
                 sent_count += 1
+
+                # Обновляем кеш thread: последнее сообщение = исходящее КП.
+                await _update_thread_outgoing(db, thread_id, body)
             except EmailServiceError as e:
                 log.status = EmailStatus.FAILED.value
                 log.error_message = str(e)[:500]

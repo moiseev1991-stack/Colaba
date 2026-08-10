@@ -9,33 +9,36 @@ from app.core.database import Base
 
 class EmailReply(Base):
     """Incoming email reply tracking."""
+
     __tablename__ = "email_replies"
 
     id = Column(Integer, primary_key=True, index=True)
-    
+
     # Links
     email_log_id = Column(Integer, ForeignKey("email_logs.id"), nullable=True, index=True)
     campaign_id = Column(Integer, ForeignKey("email_campaigns.id"), nullable=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    
+    thread_id = Column(Integer, ForeignKey("email_threads.id"), nullable=True, index=True)
+
     # Sender info (the person who replied)
     from_email = Column(String(255), nullable=False)
     from_name = Column(String(255), nullable=True)
-    
+
     # Reply content
     subject = Column(String(500), nullable=False)
     body_text = Column(Text, nullable=True)
     body_html = Column(Text, nullable=True)
-    
+
     # Original message reference
     in_reply_to = Column(String(255), nullable=True)  # Message-ID of original email
     references = Column(Text, nullable=True)  # Thread references
-    
+
     # Processing status
     is_processed = Column(Boolean, default=False, nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)  # прочитано в мессенджере
     forwarded_at = Column(DateTime, nullable=True)
     forwarded_to = Column(String(255), nullable=True)  # User's email where we forwarded
-    
+
     # Timestamps
     received_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
