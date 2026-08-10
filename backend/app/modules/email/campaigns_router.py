@@ -163,6 +163,7 @@ def _log_to_response(log: EmailLog) -> EmailLogResponse:
         to_email=log.to_email,
         to_name=log.to_name,
         subject=log.subject,
+        body_preview=log.body_preview,
         status=_status_value(log.status),
         external_message_id=log.external_message_id,
         error_message=log.error_message,
