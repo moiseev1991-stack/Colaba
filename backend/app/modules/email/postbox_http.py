@@ -72,6 +72,45 @@ def _build_client(access_key_id: str, secret_access_key: str, region: str = DEFA
     )
 
 
+def _encode_email_domain(addr: str) -> str:
+    """Кодирует доменную часть email-адреса в punycode (IDNA).
+
+    Обрабатывает форматы:
+      - «user@домен.рф» → «user@xn--...»
+      - «Имя <user@домен.рф>» → «Имя <user@xn--...>»
+
+    ASCII-домены (.ru/.com) проходят без изменений. Нужно для Yandex Cloud
+    Postbox (SESv2-совместимый API), который отклоняет raw-кириллицу.
+    """
+    if not addr or "@" not in addr:
+        return addr
+
+    def _encode_single(email_str: str) -> str:
+        email_str = email_str.strip()
+        if "@" not in email_str:
+            return email_str
+        local, domain = email_str.rsplit("@", 1)
+        # Кодируем только если есть non-ASCII символы
+        try:
+            if not domain.isascii():
+                domain = domain.encode("idna").decode("ascii")
+        except UnicodeError:
+            # если IDNA не справился — отдаём как есть (пусть SES отклонит)
+            pass
+        return f"{local}@{domain}"
+
+    # Формат «Имя <email>»
+    if "<" in addr and ">" in addr:
+        lt = addr.index("<")
+        gt = addr.index(">", lt)
+        prefix = addr[:lt]
+        email_part = addr[lt + 1 : gt]
+        suffix = addr[gt + 1 :]
+        return f"{prefix}<{_encode_single(email_part)}>{suffix}"
+
+    return _encode_single(addr)
+
+
 async def send_email(
     *,
     access_key_id: str,
@@ -114,6 +153,15 @@ async def send_email(
         from_addr = f"{from_name} <{from_email}>"
     else:
         from_addr = from_email
+
+    # Кириллические (и любые non-ASCII) домены → punycode (IDNA).
+    # Yandex Cloud Postbox (SESv2-совместимый) отклоняет raw-кириллицу в
+    # ToAddresses/FromEmailAddress с BadRequest «invalid address».
+    # Кодируем только доменную часть: «32@32вряд.рф» → «32@xn--...».
+    to_email = _encode_email_domain(to_email)
+    from_addr = _encode_email_domain(from_addr)
+    if reply_to:
+        reply_to = _encode_email_domain(reply_to)
 
     # Тело: HTML приоритет, text как fallback.
     body: dict = {}
