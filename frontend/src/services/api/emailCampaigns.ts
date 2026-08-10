@@ -31,6 +31,7 @@ export interface EmailLog {
   to_name?: string;
   subject: string;
   status: 'pending' | 'sent' | 'delivered' | 'bounced' | 'opened' | 'clicked' | 'spam' | 'failed';
+  body_preview?: string;
   external_message_id?: string;
   error_message?: string;
   created_at: string;
@@ -103,7 +104,7 @@ export async function getCampaignStats(id: number): Promise<CampaignStats> {
  */
 export async function getCampaignLogs(
   id: number,
-  params: { limit?: number; offset?: number; status?: string } = {}
+  params: { limit?: number; offset?: number; status?: string } = {},
 ): Promise<EmailLog[]> {
   const response = await apiClient.get<EmailLog[]>(`/email/campaigns/${id}/logs`, { params });
   return response.data ?? [];
@@ -121,9 +122,11 @@ export async function getEmailStats(): Promise<CampaignStats> {
  * Get email replies.
  */
 export async function getReplies(
-  params: { limit?: number; offset?: number } = {}
+  params: { limit?: number; offset?: number } = {},
 ): Promise<{ replies: EmailReply[]; total: number }> {
-  const response = await apiClient.get<{ replies: EmailReply[]; total: number }>('/email/replies', { params });
+  const response = await apiClient.get<{ replies: EmailReply[]; total: number }>('/email/replies', {
+    params,
+  });
   return response.data ?? { replies: [], total: 0 };
 }
 
