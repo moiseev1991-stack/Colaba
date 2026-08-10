@@ -11,11 +11,13 @@ from app.core.rate_limit import limiter
 # Create main API router
 api_router = APIRouter()
 
+
 # Health check endpoint (no rate limit)
 @api_router.get("/health")
 async def api_health() -> dict[str, str]:
     """API health check endpoint."""
     return {"status": "ok", "message": "API is running", "version": "0.1.0"}
+
 
 # Import and include module routers
 from app.modules.auth.router import router as auth_router
@@ -35,6 +37,7 @@ from app.modules.auth.oauth_router import router as oauth_router
 from app.modules.email.router import router as email_router
 from app.modules.email.campaigns_router import router as email_campaigns_router
 from app.modules.email.replies_router import router as email_replies_router
+from app.modules.email.threads_router import router as email_threads_router
 from app.modules.email.settings_router import router as email_settings_router
 from app.modules.maps.router import router as maps_router
 from app.modules.lead_lists.router import router as lead_lists_router
@@ -59,6 +62,7 @@ api_router.include_router(oauth_router)
 api_router.include_router(email_router)
 api_router.include_router(email_campaigns_router)
 api_router.include_router(email_replies_router)
+api_router.include_router(email_threads_router)
 api_router.include_router(email_settings_router)
 api_router.include_router(maps_router)
 api_router.include_router(lead_lists_router)

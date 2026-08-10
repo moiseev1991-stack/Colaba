@@ -889,7 +889,13 @@ class EmailService:
             )
 
             log.status = EmailStatus.SENT
-            log.external_message_id = result.get("external_message_id")
+            # Сохраняем наш собственный RFC Message-ID (не ID провайдера) —
+            # он используется для threading: клиент при ответе подставит его
+            # в In-Reply-To, и мы сматчим ответ с этим КП.
+            from email.utils import make_msgid
+
+            message_id = make_msgid(idstring=f"kp-{log.id}", domain="spinlid.ru")
+            log.external_message_id = message_id
             log.sent_at = datetime.utcnow()
             # Сохраняем ПОЛНЫЙ текст письма (колонка Text, без лимита).
             # Раньше обрезали до 500 символов (поле называлось body_preview),
