@@ -24,17 +24,17 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 def process_email_replies_task():
     """
     Process incoming email replies via IMAP.
-    
+
     Runs periodically every 5 minutes (configured in celery_app.py).
     """
     logger.info("process_email_replies_task started")
-    
+
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     try:
         result = loop.run_until_complete(_process_email_replies_async())
         logger.info("process_email_replies_task completed: processed %d replies", result)
@@ -48,7 +48,37 @@ async def _process_email_replies_async() -> int:
     """Async function to process email replies."""
     async with AsyncSessionLocal() as db:
         from app.modules.email.replies_service import process_email_replies
+
         return await process_email_replies(db)
+
+
+@celery_app.task(name="daily_warmup_task")
+def daily_warmup_task():
+    """Автоматический дневной прогрев доменов через рассылку КП.
+
+    Запускается celery beat каждый день в 10:00 МСК (07:00 UTC).
+    Алгоритм: +10 КП/день от стартовой даты, максимум 100/день.
+    Берёт новые компании (без повторов), случайные легенды/бренды,
+    генерирует КП через LLM и отправляет через postbox/timeweb.
+    См. app.modules.outreach.warmup_service для деталей.
+    """
+    logger.info("daily_warmup_task started")
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    try:
+        from app.modules.outreach.warmup_service import run_daily_warmup
+
+        result = loop.run_until_complete(run_daily_warmup())
+        logger.info("daily_warmup_task completed: %s", result)
+        return result
+    except Exception as e:
+        logger.error("daily_warmup_task failed: %s", e, exc_info=True)
+        raise
 
 
 @celery_app.task(name="execute_search_task", queue="search_queue")
@@ -74,6 +104,7 @@ def execute_search_task(search_id: int):
         return result
     except Exception:
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         logger.error("execute_search_task failed for search_id=%d", search_id, exc_info=True)
         raise
@@ -84,18 +115,20 @@ async def _execute_search_async(search_id: int):
     async with AsyncSessionLocal() as db:
         # Get search
         from sqlalchemy import select
+
         result = await db.execute(select(Search).where(Search.id == search_id))
         search = result.scalar_one_or_none()
-        
+
         if not search:
             return {"error": "Search not found"}
-        
+
         # Update status and start time
         from datetime import datetime
+
         search.status = "processing"
         search.started_at = datetime.utcnow()
         await db.commit()
-        
+
         try:
             # Fetch results using selected provider (без переключения на других провайдеров)
             from app.modules.providers import get_provider_config
@@ -111,9 +144,10 @@ async def _execute_search_async(search_id: int):
 
             # Filter blacklisted domains
             from app.modules.filters.blacklist import is_blacklisted, SEED_BLACKLIST
-            
+
             # Get user's blacklist from DB
             from app.models.filter import BlacklistDomain
+
             blacklist_result = await db.execute(
                 select(BlacklistDomain.domain).where(BlacklistDomain.user_id == search.user_id)
             )
@@ -124,17 +158,17 @@ async def _execute_search_async(search_id: int):
             if provider_id == "yandex_xml":
                 from app.modules.searches.providers.yandex_xml import _fetch_page_sync, _parse_xml_results
                 from app.core.config import settings
-                
+
                 cfg = provider_config or {}
                 folder_id = (cfg.get("folder_id") or getattr(settings, "YANDEX_XML_FOLDER_ID", None) or "").strip()
                 api_key = (cfg.get("api_key") or getattr(settings, "YANDEX_XML_KEY", None) or "").strip()
-                
+
                 if not folder_id or not api_key:
                     raise ValueError(
                         "Yandex Cloud Search API не настроен. Укажите в Провайдеры → Яндекс XML: "
                         "«Идентификатор каталога» (folder_id) и «API-ключ» (сервисного аккаунта)."
                     )
-                
+
                 num_results = min(search.num_results, 100)
                 pages_needed = (num_results + 9) // 10
                 all_results_data = []
@@ -147,8 +181,7 @@ async def _execute_search_async(search_id: int):
                     batch_pages = list(range(page_num, min(page_num + PAGE_BATCH_SIZE, pages_needed)))
                     # Загружаем батч страниц параллельно
                     fetch_tasks = [
-                        asyncio.to_thread(_fetch_page_sync, folder_id, api_key, search.query, p)
-                        for p in batch_pages
+                        asyncio.to_thread(_fetch_page_sync, folder_id, api_key, search.query, p) for p in batch_pages
                     ]
                     try:
                         xml_results_list = await asyncio.gather(*fetch_tasks, return_exceptions=True)
@@ -195,7 +228,7 @@ async def _execute_search_async(search_id: int):
                         page_num += len(batch_pages)
                     if len(all_results_data) >= num_results:
                         break
-                
+
                 results_data = all_results_data[:num_results]
             else:
                 # For other providers: fetch all results at once (original behavior)
@@ -217,7 +250,7 @@ async def _execute_search_async(search_id: int):
                         "Поисковая система не ответила за 120 с. "
                         "Яндекс/Google часто блокируют запросы с серверов. Включите прокси в настройках провайдера или попробуйте позже."
                     )
-                
+
                 # Save results immediately (excluding blacklisted) - commit after each for real-time updates
                 saved_count = 0
                 unique_domains = {}
@@ -225,7 +258,7 @@ async def _execute_search_async(search_id: int):
                     domain = item.get("domain", "")
                     if domain and is_blacklisted(domain, all_blacklist):
                         continue  # Skip blacklisted domains
-                    
+
                     result = SearchResult(
                         search_id=search.id,
                         position=item["position"],
@@ -241,23 +274,24 @@ async def _execute_search_async(search_id: int):
                         unique_domains[domain] = item["url"]
                     # Commit immediately for real-time updates
                     await db.commit()
-                
+
                 # Update search status
                 search.status = "completed"
                 search.result_count = saved_count
                 search.finished_at = datetime.utcnow()
                 await db.commit()
-            
+
             # Update search status (for yandex_xml this was already set, but ensure it's completed)
             if provider_id == "yandex_xml":
                 search.status = "completed"
                 search.result_count = saved_count
                 search.finished_at = datetime.utcnow()
                 await db.commit()
-            
+
             # Trigger domain processing tasks for unique domains (group = один round-trip в Redis)
             if unique_domains:
                 from celery import group
+
                 try:
                     job = group(
                         process_domain_task.s(search_id, domain, first_url)
@@ -266,20 +300,20 @@ async def _execute_search_async(search_id: int):
                     job.apply_async(queue="celery")
                 except Exception as e:
                     logger.warning("Failed to launch domain tasks: %s", e)
-            
+
             return {
                 "search_id": search_id,
                 "status": "completed",
                 "result_count": saved_count,
                 "domains_to_process": len(unique_domains),
             }
-            
+
         except Exception as e:
             import traceback
 
             error_message = str(e)
             logger.error("execute_search_task error for search_id=%d: %s", search_id, error_message, exc_info=True)
-            
+
             search.status = "failed"
             search.finished_at = datetime.utcnow()
             # Сохраняем сообщение об ошибке в config
@@ -327,8 +361,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
     async with AsyncSessionLocal() as db:
         # Get all results for this domain in this search
         result = await db.execute(
-            select(SearchResult)
-            .where(SearchResult.search_id == search_id, SearchResult.domain == domain)
+            select(SearchResult).where(SearchResult.search_id == search_id, SearchResult.domain == domain)
         )
         domain_results = result.scalars().all()
 
@@ -338,8 +371,10 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
         try:
             # 1. Mini-crawl domain with fallback (now includes SEO data), max 5 min per domain
             import time
+
             crawl_start = time.monotonic()
             from app.modules.filters.crawler import crawl_domain_with_fallback
+
             try:
                 crawl_data = await asyncio.wait_for(
                     crawl_domain_with_fallback(first_url, max_pages=10, timeout=20),
@@ -380,6 +415,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
             if phone or email:
                 contact_status = "found"
                 from app.modules.filters.outreach import generate_outreach_text
+
                 outreach = generate_outreach_text(
                     domain=domain,
                     seo_issues=seo_issues,
@@ -402,9 +438,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
             home_title = home_page.get("title")
             home_meta = home_page.get("meta_description")
             crawl_failed = (
-                crawl_data.get("fallback_used") is True
-                or "crawl_failed" in seo_issues
-                or "crawl_timeout" in seo_issues
+                crawl_data.get("fallback_used") is True or "crawl_failed" in seo_issues or "crawl_timeout" in seo_issues
             )
 
             for res in domain_results:
@@ -425,9 +459,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
                     crawl_failed=crawl_failed,
                 )
                 clean_desc = (
-                    clean_description(home_meta)
-                    or clean_description(home_title)
-                    or clean_description(res.snippet)
+                    clean_description(home_meta) or clean_description(home_title) or clean_description(res.snippet)
                 )
 
                 # We keep `pages` in extra_data minimal (no text_content) — the full
@@ -465,11 +497,7 @@ async def _process_domain_async(search_id: int, domain: str, first_url: str):
 
             result_ids = [r.id for r in domain_results]
             if result_ids:
-                await db.execute(
-                    sa_delete(SearchResultPage).where(
-                        SearchResultPage.search_result_id.in_(result_ids)
-                    )
-                )
+                await db.execute(sa_delete(SearchResultPage).where(SearchResultPage.search_result_id.in_(result_ids)))
                 # Crawl is per-domain, so all results for this domain share the
                 # same pages — attach them to every result row to keep filtering
                 # per-result simple.
