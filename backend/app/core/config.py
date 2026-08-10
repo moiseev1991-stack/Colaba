@@ -43,7 +43,7 @@ class Settings(BaseSettings):
         default="http://localhost:3000",
         description="Allowed CORS origins (comma-separated)",
     )
-    
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS_ORIGINS string into a list."""
@@ -76,6 +76,7 @@ class Settings(BaseSettings):
         if v in (False, "false", "0", "no", "", None):
             return False
         return bool(v)
+
     PROXY_URL: str = Field(default="", description="Single proxy: http://host:port or socks5://host:port")
     PROXY_LIST: str = Field(default="", description="Comma-separated proxy list for rotation")
 
@@ -125,7 +126,9 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = Field(default=True, description="Use SSL for SMTP connection")
 
     # Hyvor Relay - Email API Server
-    HYVOR_RELAY_API_URL: str = Field(default="http://hyvor-relay:8000", description="Hyvor Relay API URL (internal Docker)")
+    HYVOR_RELAY_API_URL: str = Field(
+        default="http://hyvor-relay:8000", description="Hyvor Relay API URL (internal Docker)"
+    )
     HYVOR_RELAY_API_KEY: str = Field(default="", description="Hyvor Relay API key for sending emails")
     HYVOR_RELAY_WEBHOOK_SECRET: str = Field(default="", description="Secret to verify Hyvor webhooks")
     HYVOR_RELAY_ENABLED: bool = Field(default=False, description="Use Hyvor Relay instead of direct SMTP")
@@ -146,7 +149,9 @@ class Settings(BaseSettings):
     IMAP_PASSWORD: str = Field(default="", description="IMAP password")
     IMAP_USE_SSL: bool = Field(default=True, description="Use SSL for IMAP connection")
     IMAP_MAILBOX: str = Field(default="INBOX", description="IMAP mailbox to check")
-    REPLY_PREFIX: str = Field(default="reply-", description="Prefix for reply-to email addresses (e.g., reply-123@domain.com)")
+    REPLY_PREFIX: str = Field(
+        default="reply-", description="Prefix for reply-to email addresses (e.g., reply-123@domain.com)"
+    )
 
     # Telegram Bot for outreach sending
     TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token for outreach")
@@ -219,28 +224,52 @@ class Settings(BaseSettings):
 
     # === Maps module ===
     TWOGIS_API_KEY: str = Field(default="", description="2GIS Catalog API key (dev.2gis.com, free 1000 req/day)")
-    TWOGIS_RATE_LIMIT_DELAY: float = Field(default=0.4, description="Delay (sec) between 2GIS requests, anti-throttle. На free-плане лимит 1000 req/day, поэтому 0.4с между запросами безопасно (≤150 req/min).")
-    TWOGIS_REVIEWS_PUBLIC_API_ENABLED: bool = Field(default=True, description="Fallback на public-api.reviews.2gis.com (widget API, без платного ключа). False = только Catalog reviews/list (платно).")
-    TWOGIS_REVIEWS_PUBLIC_API_KEY: str = Field(default="", description="Optional widget key для public-api.reviews.2gis.com. Пусто = пробуем без ключа (часто достаточно).")
-    YANDEX_MAPS_RATE_LIMIT_DELAY: float = Field(default=3.5, description="Base delay (sec) between Yandex Maps requests; jittered ±1s in code")
-    MAPS_CACHE_TTL_DAYS: int = Field(default=14, description="TTL (days) for map_search_cache per (niche, city, source)")
+    TWOGIS_RATE_LIMIT_DELAY: float = Field(
+        default=0.4,
+        description="Delay (sec) between 2GIS requests, anti-throttle. На free-плане лимит 1000 req/day, поэтому 0.4с между запросами безопасно (≤150 req/min).",
+    )
+    TWOGIS_REVIEWS_PUBLIC_API_ENABLED: bool = Field(
+        default=True,
+        description="Fallback на public-api.reviews.2gis.com (widget API, без платного ключа). False = только Catalog reviews/list (платно).",
+    )
+    TWOGIS_REVIEWS_PUBLIC_API_KEY: str = Field(
+        default="",
+        description="Optional widget key для public-api.reviews.2gis.com. Пусто = пробуем без ключа (часто достаточно).",
+    )
+    YANDEX_MAPS_RATE_LIMIT_DELAY: float = Field(
+        default=3.5, description="Base delay (sec) between Yandex Maps requests; jittered ±1s in code"
+    )
+    MAPS_CACHE_TTL_DAYS: int = Field(
+        default=14, description="TTL (days) for map_search_cache per (niche, city, source)"
+    )
     MAPS_MAX_COMPANIES_PER_SEARCH: int = Field(default=200, description="Hard cap on companies parsed per search")
     MAPS_MAX_REVIEWS_PER_COMPANY: int = Field(default=100, description="Hard cap on reviews fetched per company")
 
     # === Reviews AI ===
-    REVIEWS_AI_EMBEDDING_PROVIDER: str = Field(default="openai", description="Embedding provider: 'openai' | 'yandex'")
+    # NOTE: REVIEWS_AI_EMBEDDING_PROVIDER удалён — поддерживается только OpenAI.
     REVIEWS_AI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-small", description="OpenAI model name")
-    REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для sentiment; пусто = auto-pick по подсказке 'haiku'")
-    REVIEWS_AI_NAMING_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для naming кластеров; пусто = auto-pick по подсказке 'sonnet'")
-    REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для генерации драфта холодного письма; пусто = auto-pick")
-    REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME: str = Field(default="", description="ai_assistant.name для AI-описания компании (блок 4C); пусто = reviews_ai_company_description")
+    REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: str = Field(
+        default="", description="ai_assistant.name для sentiment; пусто = auto-pick по подсказке 'haiku'"
+    )
+    REVIEWS_AI_NAMING_ASSISTANT_NAME: str = Field(
+        default="", description="ai_assistant.name для naming кластеров; пусто = auto-pick по подсказке 'sonnet'"
+    )
+    REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME: str = Field(
+        default="", description="ai_assistant.name для генерации драфта холодного письма; пусто = auto-pick"
+    )
+    REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME: str = Field(
+        default="",
+        description="ai_assistant.name для AI-описания компании (блок 4C); пусто = reviews_ai_company_description",
+    )
     # Cosine similarity threshold для матчинга review→pain_tag.
     # 0.78 был слишком высоким: на 2968 отзывов «стоматология/Балашиха» с 2
     # кластерами match присвоил теги только 1 компании из 73 (юзер 2026-06-10).
     # Снижение до 0.55 — на нормализованных text-embedding-3-small это «явная
     # тематическая близость», ниже идёт уже шум. Можно гонять выше через env,
     # если будут ложные срабатывания.
-    REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(default=0.55, description="Cosine similarity threshold для матчинга review→pain_tag")
+    REVIEWS_AI_PAIN_MATCH_THRESHOLD: float = Field(
+        default=0.55, description="Cosine similarity threshold для матчинга review→pain_tag"
+    )
     REVIEWS_AI_MIN_CLUSTER_SIZE: int = Field(default=8, description="HDBSCAN min_cluster_size")
 
     # DaData (блок 2 ТЗ 2026-06-02). Бесплатный тариф 10k запросов/день.
@@ -279,7 +308,7 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """
     Get cached settings instance.
-    
+
     Returns:
         Settings: Application settings instance
     """

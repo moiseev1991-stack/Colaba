@@ -44,11 +44,7 @@ MASK = "***"
 
 async def _get_or_create_row(db: AsyncSession, provider_id: str) -> MapProviderConfig:
     """Возвращает строку конфига для провайдера; создаёт если нет."""
-    result = await db.execute(
-        select(MapProviderConfig).where(
-            MapProviderConfig.provider_id == provider_id
-        )
-    )
+    result = await db.execute(select(MapProviderConfig).where(MapProviderConfig.provider_id == provider_id))
     row = result.scalar_one_or_none()
     if row:
         return row
@@ -99,9 +95,7 @@ async def get_all_configs_public(db: AsyncSession) -> list[dict[str, Any]]:
     return [row_to_dict(r) for r in rows]
 
 
-def _apply_secret_update(
-    current: Optional[str], new_val: Optional[str]
-) -> Optional[str]:
+def _apply_secret_update(current: Optional[str], new_val: Optional[str]) -> Optional[str]:
     """Если новое значение None/''/'***' — сохраняем старое (не перезаписываем)."""
     if new_val is None or new_val == "" or new_val == MASK:
         return current
@@ -126,9 +120,7 @@ def _compute_is_configured(provider_id: str, api_key: Optional[str], secondary_k
     return bool(api_key or secondary_key)
 
 
-async def update_config(
-    db: AsyncSession, provider_id: str, data: dict[str, Any]
-) -> MapProviderConfig:
+async def update_config(db: AsyncSession, provider_id: str, data: dict[str, Any]) -> MapProviderConfig:
     """Partial update конфига с секрет-маской."""
     if provider_id not in get_all_provider_ids():
         raise ValueError(f"unknown provider_id: {provider_id!r}")
@@ -138,18 +130,14 @@ async def update_config(
     if "api_key" in data:
         row.api_key = _apply_secret_update(row.api_key, data["api_key"])
     if "secondary_key" in data:
-        row.secondary_key = _apply_secret_update(
-            row.secondary_key, data["secondary_key"]
-        )
+        row.secondary_key = _apply_secret_update(row.secondary_key, data["secondary_key"])
     if "is_enabled" in data:
         # Pydantic приводит к bool, но на всякий случай — явно.
         row.is_enabled = bool(data["is_enabled"])
     if "notes" in data and data["notes"] is not None:
         row.notes = data["notes"]
 
-    row.is_configured = _compute_is_configured(
-        provider_id, row.api_key, row.secondary_key
-    )
+    row.is_configured = _compute_is_configured(provider_id, row.api_key, row.secondary_key)
     row.updated_at = datetime.utcnow()
 
     db.add(row)
@@ -161,28 +149,36 @@ async def update_config(
 async def get_status(db: AsyncSession) -> dict[str, str]:
     """Краткий статус каждого провайдера для бейджей в UI.
 
-    Значения: 'ok' | 'no_api_key' | 'disabled' | 'no_proxy' (для yandex).
-    Учитывается is_enabled — если админ выключил провайдер в UI,
-    возвращаем 'disabled'.
+    Значения: 'ok' | 'key_invalid' | 'no_api_key' | 'disabled' | 'no_proxy' (yandex).
+
+    'key_invalid' — ключ задан (is_configured=True), но последний ручной тест
+    (/test) за 24 часа показал ошибку. Честнее чем 'ok': раньше сломанный
+    ключ светился 'ok', потому что проверялось только наличие строки в конфиге.
     """
     rows = await get_all_configs(db)
     out: dict[str, str] = {}
+    now = datetime.utcnow()
     for row in rows:
         if not row.is_enabled:
             # Fallback: если в БД выключен, но env-ключ есть — всё равно
-            # считаем что провайдер «доступен» (обратная совместимость;
-            # админ мог настроить через .env и не трогать UI).
+            # считаем что провайдер «доступен» (обратная совместимость).
             env_ok = _env_fallback_status(row.provider_id)
             out[row.provider_id] = "ok" if env_ok else "disabled"
             continue
-        if row.is_configured:
-            out[row.provider_id] = "ok"
-        else:
+        if not row.is_configured:
             out[row.provider_id] = (
-                "no_proxy"
-                if row.provider_id == "yandex_maps" and not app_settings.USE_PROXY
-                else "no_api_key"
+                "no_proxy" if row.provider_id == "yandex_maps" and not app_settings.USE_PROXY else "no_api_key"
             )
+            continue
+        # Ключ задан. Проверяем последний тест: если за 24ч упал — 'key_invalid'.
+        if (
+            row.last_test_result == "error"
+            and row.last_test_at is not None
+            and (now - row.last_test_at).total_seconds() < 86400
+        ):
+            out[row.provider_id] = "key_invalid"
+        else:
+            out[row.provider_id] = "ok"
     return out
 
 
@@ -195,8 +191,7 @@ def _env_fallback_status(provider_id: str) -> bool:
     """Возвращает True если в env есть минимально-достаточный ключ."""
     if provider_id == "twogis":
         return bool(
-            (app_settings.TWOGIS_API_KEY or "").strip()
-            or (app_settings.TWOGIS_REVIEWS_PUBLIC_API_KEY or "").strip()
+            (app_settings.TWOGIS_API_KEY or "").strip() or (app_settings.TWOGIS_REVIEWS_PUBLIC_API_KEY or "").strip()
         )
     if provider_id == "yandex_maps":
         return bool(app_settings.USE_PROXY)
@@ -222,9 +217,7 @@ def load_provider_keys(provider_id: str) -> dict[str, str]:
     env_map = {
         "twogis": {
             "api_key": (app_settings.TWOGIS_API_KEY or "").strip(),
-            "secondary_key": (
-                app_settings.TWOGIS_REVIEWS_PUBLIC_API_KEY or ""
-            ).strip(),
+            "secondary_key": (app_settings.TWOGIS_REVIEWS_PUBLIC_API_KEY or "").strip(),
         },
         "yandex_maps": {
             "api_key": "",
@@ -240,11 +233,7 @@ def load_provider_keys(provider_id: str) -> dict[str, str]:
     try:
         SyncSessionLocal = get_sync_session_factory()
         with SyncSessionLocal() as db:
-            row = (
-                db.query(MapProviderConfig)
-                .filter(MapProviderConfig.provider_id == provider_id)
-                .first()
-            )
+            row = db.query(MapProviderConfig).filter(MapProviderConfig.provider_id == provider_id).first()
             if row and row.is_enabled:
                 api = (row.api_key or "").strip()
                 sec = (row.secondary_key or "").strip()
@@ -266,9 +255,7 @@ def load_provider_keys(provider_id: str) -> dict[str, str]:
 # ────────────────────────────────────────────────────────────────────
 
 
-async def test_provider(
-    db: AsyncSession, provider_id: str
-) -> dict[str, Any]:
+async def test_provider(db: AsyncSession, provider_id: str) -> dict[str, Any]:
     """Реальный тест-вызов провайдера.
 
     Возвращает {ok: bool, result_count?: int, error?: str}.

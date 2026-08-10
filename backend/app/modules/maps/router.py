@@ -30,7 +30,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 def sqlalchemy_func_sum_mention():
     """Хелпер для повторного использования агрегата SUM(company_pain_scores.mention_count)."""
     from app.models.pain_tag import CompanyPainScore
+
     return sa_func.sum(CompanyPainScore.mention_count)
+
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -45,6 +47,8 @@ async def _superuser_id(user=Depends(require_superuser)) -> int:
     `Depends(require_superuser)` + `user.id`.
     """
     return user.id
+
+
 from app.core.rate_limit import limiter
 from app.models.maps import Company, MapSearch, Review
 from app.models.pain_tag import PainTag
@@ -180,6 +184,7 @@ async def create_map_search(
     if search.status == "pending":
         # ставим задачу только если кэш не отработал; импорт локальный — иначе circular
         from app.modules.maps.tasks import parse_map_search as parse_task
+
         parse_task.delay(search.id)
     elif search.status == "from_cache":
         # Кэш отработал и скопировал карточки, но у части компаний может не
@@ -190,11 +195,13 @@ async def create_map_search(
         missing = await service.list_search_companies_missing_reviews(db, search.id)
         if missing:
             from app.modules.maps.tasks import parse_company_reviews
+
             for company_id, source in missing:
                 parse_company_reviews.delay(company_id, source)
             logger.info(
                 "create_map_search #%d from_cache: enqueued %d parse_company_reviews tasks",
-                search.id, len(missing),
+                search.id,
+                len(missing),
             )
 
         # 2026-07-13: from_cache-ветка НИКОГДА не запускала reviews_ai для
@@ -214,6 +221,7 @@ async def create_map_search(
                         analyze_reviews_for_company,
                         recluster_pains_for_niche_task,
                     )
+
                     for cid in all_company_ids:
                         analyze_reviews_for_company.delay(cid)
                     recluster_pains_for_niche_task.apply_async(
@@ -222,12 +230,16 @@ async def create_map_search(
                     )
                     logger.info(
                         "create_map_search #%d from_cache: enqueued analyze for %d companies + recluster (%r, %r) in 180s",
-                        search.id, len(all_company_ids), search.niche, search.city,
+                        search.id,
+                        len(all_company_ids),
+                        search.niche,
+                        search.city,
                     )
                 except Exception as e:
                     logger.warning(
                         "create_map_search #%d from_cache: failed to trigger reviews_ai: %s",
-                        search.id, e,
+                        search.id,
+                        e,
                     )
 
     return search
@@ -369,24 +381,22 @@ async def list_search_companies(
     )
     # Блок 2 ТЗ: юр.данные из DaData одним запросом на страницу.
     from app.models.company_legal import CompanyLegal
+
     legal_map: dict[int, CompanyLegal] = {}
     if items:
         ids = [c.id for c in items]
-        legals = (await db.execute(
-            select(CompanyLegal).where(CompanyLegal.company_id.in_(ids))
-        )).scalars().all()
+        legals = (await db.execute(select(CompanyLegal).where(CompanyLegal.company_id.in_(ids)))).scalars().all()
         legal_map = {int(l.company_id): l for l in legals}
     # 2026-06-12: батчевая загрузка «есть ли decision_maker'ы на сайте» —
     # для pill «ЛПР» в карточке. Один запрос на страницу + dedup в set.
     from app.models.company_decision_maker import CompanyDecisionMaker
+
     dm_company_ids: set[int] = set()
     if items:
         ids = [c.id for c in items]
-        dm_rows = (await db.execute(
-            select(CompanyDecisionMaker.company_id).where(
-                CompanyDecisionMaker.company_id.in_(ids)
-            )
-        )).all()
+        dm_rows = (
+            await db.execute(select(CompanyDecisionMaker.company_id).where(CompanyDecisionMaker.company_id.in_(ids)))
+        ).all()
         dm_company_ids = {int(r[0]) for r in dm_rows}
     # Phase 4 multi-source: источники + контакты per-source одним батчем.
     sources_map = await service.attach_sources_for_companies(db, [c.id for c in items])
@@ -403,10 +413,7 @@ async def list_search_companies(
         # ЛПР есть, если либо DaData отдала директора, либо парсер сайта
         # положил хотя бы одну запись decision_maker.
         legal_has_director = bool(
-            legal
-            and legal.status == "ok"
-            and legal.director_name
-            and legal.director_name.strip()
+            legal and legal.status == "ok" and legal.director_name and legal.director_name.strip()
         )
         out.has_lpr = legal_has_director or (c.id in dm_company_ids)
         if legal and legal.status == "ok":
@@ -484,9 +491,7 @@ async def get_search_heatmap(
 
     # Берём всю выборку поиска под source_filter (без других фильтров).
     flt = MapSearchFilter(source_filter=source_filter)
-    items, total = await service.get_search_results(
-        db, search_id, flt, limit=2000, offset=0
-    )
+    items, total = await service.get_search_results(db, search_id, flt, limit=2000, offset=0)
 
     points: list[HeatmapPoint] = []
     max_intensity = 1.0
@@ -525,9 +530,7 @@ async def get_search_heatmap(
             score = getattr(c, "website_lead_score", None)
             if score is None or score <= 0:
                 continue
-            points.append(
-                HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=float(score) / 100.0)
-            )
+            points.append(HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=float(score) / 100.0))
             contributing += 1
         max_intensity = 1.0
 
@@ -541,9 +544,7 @@ async def get_search_heatmap(
             if r is None or r >= 4.0:
                 continue
             weight = (4.0 - r) / 4.0
-            points.append(
-                HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight)
-            )
+            points.append(HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight))
             contributing += 1
         max_intensity = 1.0
 
@@ -551,6 +552,7 @@ async def get_search_heatmap(
         # log-нормировка по DaData revenue. Без DaData-матча компании
         # пропускаются (legal is None).
         import math
+
         for c in items:
             if c.lat is None or c.lng is None:
                 continue
@@ -560,9 +562,7 @@ async def get_search_heatmap(
                 continue
             # log10(revenue/1k+1) / 8 даёт ~1.0 для 10 млрд ₽, ~0.5 для 1 млн ₽.
             weight = min(1.0, math.log10(float(revenue) / 1000.0 + 1.0) / 8.0)
-            points.append(
-                HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight)
-            )
+            points.append(HeatmapPoint(lat=float(c.lat), lng=float(c.lng), weight=weight))
             contributing += 1
         max_intensity = 1.0
 
@@ -579,6 +579,7 @@ async def get_search_heatmap(
                 contributing=0,
             )
         from app.models.pain_tag import CompanyPainScore
+
         ids = [c.id for c in items if c.lat is not None and c.lng is not None]
         if not ids:
             return HeatmapOut(
@@ -588,13 +589,15 @@ async def get_search_heatmap(
                 total_companies=total,
                 contributing=0,
             )
-        rows = (await db.execute(
-            select(CompanyPainScore.company_id, CompanyPainScore.mention_count).where(
-                CompanyPainScore.pain_tag_id == pain_tag_id,
-                CompanyPainScore.company_id.in_(ids),
-                CompanyPainScore.mention_count > 0,
+        rows = (
+            await db.execute(
+                select(CompanyPainScore.company_id, CompanyPainScore.mention_count).where(
+                    CompanyPainScore.pain_tag_id == pain_tag_id,
+                    CompanyPainScore.company_id.in_(ids),
+                    CompanyPainScore.mention_count > 0,
+                )
             )
-        )).all()
+        ).all()
         if not rows:
             return HeatmapOut(
                 layer=layer,
@@ -665,6 +668,7 @@ async def export_search_csv(
     await _get_owned_search(db, search_id, user_id)
     if company_ids:
         from app.models.maps import MapSearchResult
+
         q = (
             select(Company)
             .join(MapSearchResult, MapSearchResult.company_id == Company.id)
@@ -674,8 +678,10 @@ async def export_search_csv(
         items = list((await db.execute(q)).scalars().all())
     else:
         flt = MapSearchFilter(
-            min_rating=min_rating, max_rating=max_rating,
-            min_reviews=min_reviews, min_negative=min_negative,
+            min_rating=min_rating,
+            max_rating=max_rating,
+            min_reviews=min_reviews,
+            min_negative=min_negative,
             has_owner_replies=has_owner_replies,
             has_website=has_website,
             has_lpr=has_lpr,
@@ -696,20 +702,36 @@ async def export_search_csv(
     output = io.StringIO()
     output.write("﻿")
     writer = csv.writer(output, delimiter=";")
-    writer.writerow([
-        "id", "name", "niche", "city", "address", "phone", "website",
-        "rating", "reviews_count", "reviews_positive", "reviews_negative",
-        "reviews_neutral", "has_owner_replies", "owner_replies_count",
-        "last_review_at", "source",
-        # 2026-06-12: ЛПР в экспорте — юзер просил.
-        # lpr_name + lpr_post: ФИО + должность директора. Источник:
-        #   1) CompanyLegal.director_name (DaData) — приоритет, точные данные
-        #      по ИНН.
-        #   2) первый is_decision_maker=True из CompanyDecisionMaker (сайт)
-        #      — fallback если DaData не нашла матч.
-        # lpr_source: 'dadata' / 'website' / '' — чтобы юзер видел откуда.
-        "lpr_name", "lpr_post", "lpr_source",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "name",
+            "niche",
+            "city",
+            "address",
+            "phone",
+            "website",
+            "rating",
+            "reviews_count",
+            "reviews_positive",
+            "reviews_negative",
+            "reviews_neutral",
+            "has_owner_replies",
+            "owner_replies_count",
+            "last_review_at",
+            "source",
+            # 2026-06-12: ЛПР в экспорте — юзер просил.
+            # lpr_name + lpr_post: ФИО + должность директора. Источник:
+            #   1) CompanyLegal.director_name (DaData) — приоритет, точные данные
+            #      по ИНН.
+            #   2) первый is_decision_maker=True из CompanyDecisionMaker (сайт)
+            #      — fallback если DaData не нашла матч.
+            # lpr_source: 'dadata' / 'website' / '' — чтобы юзер видел откуда.
+            "lpr_name",
+            "lpr_post",
+            "lpr_source",
+        ]
+    )
 
     # Батчевая загрузка ЛПР: DaData director_name + первый decision_maker.
     # Один запрос на всю выгрузку, не N+1.
@@ -720,24 +742,28 @@ async def export_search_csv(
     legal_by_company: dict[int, CompanyLegal] = {}
     dm_by_company: dict[int, CompanyDecisionMaker] = {}
     if item_ids:
-        legals = (await db.execute(
-            select(CompanyLegal).where(CompanyLegal.company_id.in_(item_ids))
-        )).scalars().all()
+        legals = (await db.execute(select(CompanyLegal).where(CompanyLegal.company_id.in_(item_ids)))).scalars().all()
         legal_by_company = {int(l.company_id): l for l in legals}
         # Берём всех is_decision_maker=True, упорядоченных по confidence —
         # первый на компанию это «самый уверенный» ЛПР.
-        dms = (await db.execute(
-            select(CompanyDecisionMaker)
-            .where(
-                CompanyDecisionMaker.company_id.in_(item_ids),
-                CompanyDecisionMaker.is_decision_maker.is_(True),
+        dms = (
+            (
+                await db.execute(
+                    select(CompanyDecisionMaker)
+                    .where(
+                        CompanyDecisionMaker.company_id.in_(item_ids),
+                        CompanyDecisionMaker.is_decision_maker.is_(True),
+                    )
+                    .order_by(
+                        CompanyDecisionMaker.company_id.asc(),
+                        CompanyDecisionMaker.confidence.desc().nullslast(),
+                        CompanyDecisionMaker.id.asc(),
+                    )
+                )
             )
-            .order_by(
-                CompanyDecisionMaker.company_id.asc(),
-                CompanyDecisionMaker.confidence.desc().nullslast(),
-                CompanyDecisionMaker.id.asc(),
-            )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         for dm in dms:
             if int(dm.company_id) not in dm_by_company:
                 dm_by_company[int(dm.company_id)] = dm
@@ -757,18 +783,29 @@ async def export_search_csv(
             lpr_post = (dm.post or "").strip()
             lpr_source = "website"
 
-        writer.writerow([
-            c.id, c.name or "", c.niche or "", c.city or "", c.address or "",
-            c.phone or "", c.website or "",
-            float(c.rating) if c.rating is not None else "",
-            c.reviews_count or 0, c.reviews_positive_count or 0,
-            c.reviews_negative_count or 0, c.reviews_neutral_count or 0,
-            "yes" if c.has_owner_replies else "no",
-            c.owner_replies_count or 0,
-            c.last_review_at.isoformat() if c.last_review_at else "",
-            c.source or "",
-            lpr_name, lpr_post, lpr_source,
-        ])
+        writer.writerow(
+            [
+                c.id,
+                c.name or "",
+                c.niche or "",
+                c.city or "",
+                c.address or "",
+                c.phone or "",
+                c.website or "",
+                float(c.rating) if c.rating is not None else "",
+                c.reviews_count or 0,
+                c.reviews_positive_count or 0,
+                c.reviews_negative_count or 0,
+                c.reviews_neutral_count or 0,
+                "yes" if c.has_owner_replies else "no",
+                c.owner_replies_count or 0,
+                c.last_review_at.isoformat() if c.last_review_at else "",
+                c.source or "",
+                lpr_name,
+                lpr_post,
+                lpr_source,
+            ]
+        )
     output.seek(0)
     filename = f"maps_search_{search_id}.csv"
     return StreamingResponse(
@@ -829,12 +866,16 @@ async def get_company(
     табов количество видимых отзывов не падало с 50 до 10."""
     company = await _get_company_or_404(db, company_id)
     recent = list(
-        (await db.execute(
-            select(Review)
-            .where(Review.company_id == company.id)
-            .order_by(Review.posted_at.desc().nullslast())
-            .limit(50)
-        )).scalars().all()
+        (
+            await db.execute(
+                select(Review)
+                .where(Review.company_id == company.id)
+                .order_by(Review.posted_at.desc().nullslast())
+                .limit(50)
+            )
+        )
+        .scalars()
+        .all()
     )
     detail = CompanyDetailOut.model_validate(company)
     detail.recent_reviews = [ReviewOut.model_validate(r) for r in recent]
@@ -846,9 +887,8 @@ async def get_company(
 
     # Блок 2 ТЗ: юр.данные из company_legal (DaData) — для блока в drawer.
     from app.models.company_legal import CompanyLegal
-    legal = (await db.execute(
-        select(CompanyLegal).where(CompanyLegal.company_id == company.id)
-    )).scalar_one_or_none()
+
+    legal = (await db.execute(select(CompanyLegal).where(CompanyLegal.company_id == company.id))).scalar_one_or_none()
     if legal and legal.status == "ok":
         detail.legal = CompanyLegalOut(
             inn=legal.inn,
@@ -874,15 +914,22 @@ async def get_company(
     # (если они вообще есть — на /контактах часто перечислены менеджеры).
     from app.models.company_decision_maker import CompanyDecisionMaker
     from app.modules.maps.schemas import DecisionMakerOut
-    dm_rows = (await db.execute(
-        select(CompanyDecisionMaker)
-        .where(CompanyDecisionMaker.company_id == company.id)
-        .order_by(
-            CompanyDecisionMaker.is_decision_maker.desc(),
-            CompanyDecisionMaker.confidence.desc(),
-            CompanyDecisionMaker.id.asc(),
+
+    dm_rows = (
+        (
+            await db.execute(
+                select(CompanyDecisionMaker)
+                .where(CompanyDecisionMaker.company_id == company.id)
+                .order_by(
+                    CompanyDecisionMaker.is_decision_maker.desc(),
+                    CompanyDecisionMaker.confidence.desc(),
+                    CompanyDecisionMaker.id.asc(),
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
     detail.decision_makers = [
         DecisionMakerOut(
             name=r.name,
@@ -900,17 +947,14 @@ async def get_company(
         for r in dm_rows
     ]
     # has_lpr: DaData-директор или хоть один decision_maker со страниц сайта.
-    legal_has_director = bool(
-        detail.legal
-        and detail.legal.director_name
-        and detail.legal.director_name.strip()
-    )
+    legal_has_director = bool(detail.legal and detail.legal.director_name and detail.legal.director_name.strip())
     detail.has_lpr = legal_has_director or bool(dm_rows)
 
     # 2026-07-16: общая почта компании (fallback-канал, если персональный
     # ЛПР не найден). Company.emails минус те, что уже привязаны к персоне
     # через CompanyDecisionMaker.contact_value (type=email).
     from app.modules.maps.generic_emails import split_generic_emails
+
     personal_emails = {
         (r.contact_value or "").strip().lower()
         for r in dm_rows
@@ -947,9 +991,8 @@ async def list_company_reviews(
     q = select(Review).where(Review.company_id == company_id)
     if pain_tag_id is not None:
         from app.models.pain_tag import ReviewPainTag
-        q = q.join(
-            ReviewPainTag, ReviewPainTag.review_id == Review.id
-        ).where(ReviewPainTag.pain_tag_id == pain_tag_id)
+
+        q = q.join(ReviewPainTag, ReviewPainTag.review_id == Review.id).where(ReviewPainTag.pain_tag_id == pain_tag_id)
     if sentiment:
         q = q.where(Review.sentiment == sentiment)
     if text_contains and text_contains.strip():
@@ -1018,10 +1061,7 @@ async def get_company_pain_trend(
         base = base.where(Review.source == source)
     rows = list((await db.execute(base)).all())
 
-    points = [
-        {"month": r[0], "source": r[1], "count": int(r[2])}
-        for r in rows
-    ]
+    points = [{"month": r[0], "source": r[1], "count": int(r[2])} for r in rows]
     range_start = points[0]["month"] if points else None
     range_end = points[-1]["month"] if points else None
 
@@ -1120,10 +1160,7 @@ async def get_niche_pain_trend(
         .order_by("month")
     )
     rows = list((await db.execute(base)).all())
-    points = [
-        {"month": r[0], "source": r[1], "count": int(r[2])}
-        for r in rows
-    ]
+    points = [{"month": r[0], "source": r[1], "count": int(r[2])} for r in rows]
     range_start = points[0]["month"] if points else None
     range_end = points[-1]["month"] if points else None
 
@@ -1222,10 +1259,7 @@ async def get_niche_reviews_trend(
         .order_by("month")
     )
     rows = list((await db.execute(base)).all())
-    points = [
-        {"month": r[0], "source": r[1], "count": int(r[2])}
-        for r in rows
-    ]
+    points = [{"month": r[0], "source": r[1], "count": int(r[2])} for r in rows]
     range_start = points[0]["month"] if points else None
     range_end = points[-1]["month"] if points else None
 
@@ -1279,11 +1313,7 @@ async def list_insights_niches(
             .limit(200)
         )
     ).all()
-    return [
-        {"niche": r[0], "companies_count": int(r[1])}
-        for r in rows
-        if r[0]
-    ]
+    return [{"niche": r[0], "companies_count": int(r[1])} for r in rows if r[0]]
 
 
 @router.get("/insights/demand-index")
@@ -1363,14 +1393,11 @@ async def get_demand_index(
                     .scalar_subquery(),
                     0,
                 ).label("companies_affected"),
-            )
-            .where(
+            ).where(
                 PainTag.niche == niche,
                 PainTag.status == "active",
                 PainTag.sentiment == sentiment,
-                ((PainTag.city == city) | (PainTag.city.is_(None)))
-                if city is not None
-                else PainTag.city.is_(None),
+                ((PainTag.city == city) | (PainTag.city.is_(None))) if city is not None else PainTag.city.is_(None),
             )
         )
     ).all()
@@ -1385,15 +1412,17 @@ async def get_demand_index(
         # niche_avg_per_company — то же, что в /pain-benchmark, но без привязки
         # к компании. Используется в шапке выдачи как baseline «среднее по нише».
         niche_avg = tm / companies_total if companies_total > 0 else 0.0
-        items.append({
-            "pain_tag_id": int(tag_id),
-            "label": label,
-            "description": description,
-            "total_mentions": tm,
-            "companies_affected": ca,
-            "share_of_companies": round(share_of_companies, 3),
-            "niche_avg_per_company": round(niche_avg, 2),
-        })
+        items.append(
+            {
+                "pain_tag_id": int(tag_id),
+                "label": label,
+                "description": description,
+                "total_mentions": tm,
+                "companies_affected": ca,
+                "share_of_companies": round(share_of_companies, 3),
+                "niche_avg_per_company": round(niche_avg, 2),
+            }
+        )
 
     items.sort(key=lambda x: (-x["total_mentions"], -x["companies_affected"]))
 
@@ -1430,6 +1459,7 @@ async def get_company_negative_trend(
     «писать сейчас, проблема свежая».
     """
     from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
     await _get_company_or_404(db, company_id)
     now = _dt.now(_tz.utc)
 
@@ -1437,8 +1467,7 @@ async def get_company_negative_trend(
         q = select(sa_func.count(Review.id)).where(
             Review.company_id == company_id,
             Review.posted_at >= since,
-            or_(Review.sentiment.in_(["negative", "neutral"]),
-                and_(Review.sentiment.is_(None), Review.rating <= 3)),
+            or_(Review.sentiment.in_(["negative", "neutral"]), and_(Review.sentiment.is_(None), Review.rating <= 3)),
         )
         if until is not None:
             q = q.where(Review.posted_at < until)
@@ -1546,8 +1575,7 @@ async def get_company_pain_benchmark(
                     .scalar_subquery(),
                     0,
                 ).label("niche_total_mentions"),
-            )
-            .where(
+            ).where(
                 PainTag.niche == company.niche,
                 PainTag.status == "active",
                 # включаем и city-specific, и global (city=NULL).
@@ -1575,16 +1603,18 @@ async def get_company_pain_benchmark(
             verdict = "better"
         else:
             verdict = "on_par"
-        items.append({
-            "pain_tag_id": int(tag_id),
-            "label": label,
-            "description": description,
-            "company_mentions": comp_m,
-            "niche_total_mentions": nt_m,
-            "niche_avg_per_company": round(niche_avg, 2),
-            "ratio": round(ratio, 2),
-            "verdict": verdict,
-        })
+        items.append(
+            {
+                "pain_tag_id": int(tag_id),
+                "label": label,
+                "description": description,
+                "company_mentions": comp_m,
+                "niche_total_mentions": nt_m,
+                "niche_avg_per_company": round(niche_avg, 2),
+                "ratio": round(ratio, 2),
+                "verdict": verdict,
+            }
+        )
 
     # Сортировка: сначала «хуже рынка» по убыванию ratio, потом on_par, потом better.
     verdict_order = {"worse": 0, "on_par": 1, "better": 2}
@@ -1648,17 +1678,18 @@ async def get_company_digest(
     # sqlalchemy напрямую. func.case(...) не работает (Function.__init__ не
     # принимает else_ kwarg) — старый код падал с TypeError на каждом запросе
     # к /maps/companies/{id}/digest.
-    aggregate_row = (await db.execute(
-        select(
-            sa_func.count(Review.id),
-            sa_func.sum(sa_case((Review.sentiment == "positive", 1), else_=0)),
-            sa_func.sum(sa_case((Review.sentiment == "negative", 1), else_=0)),
-            sa_func.sum(sa_case((Review.sentiment == "neutral", 1), else_=0)),
-            sa_func.avg(Review.rating),
-            sa_func.sum(sa_case((Review.has_owner_reply.is_(True), 1), else_=0)),
+    aggregate_row = (
+        await db.execute(
+            select(
+                sa_func.count(Review.id),
+                sa_func.sum(sa_case((Review.sentiment == "positive", 1), else_=0)),
+                sa_func.sum(sa_case((Review.sentiment == "negative", 1), else_=0)),
+                sa_func.sum(sa_case((Review.sentiment == "neutral", 1), else_=0)),
+                sa_func.avg(Review.rating),
+                sa_func.sum(sa_case((Review.has_owner_reply.is_(True), 1), else_=0)),
+            ).where(Review.company_id == company_id, *date_filter)
         )
-        .where(Review.company_id == company_id, *date_filter)
-    )).one()
+    ).one()
     total, pos, neg, neu, avg_r, owner_r = aggregate_row
 
     total_int = int(total or 0)
@@ -1673,25 +1704,31 @@ async def get_company_digest(
     # raw_text != NULL — без текста смысла нет показывать. Сортировка:
     # rating asc (1★ выше 3★), sentiment_score asc (более негативные
     # первыми), длина текста desc (предпочитаем содержательные).
-    negatives_rows = (await db.execute(
-        select(Review)
-        .where(
-            Review.company_id == company_id,
-            Review.raw_text.isnot(None),
-            sa_func.length(sa_func.coalesce(Review.raw_text, "")) > 0,
-            or_(
-                Review.sentiment == "negative",
-                and_(Review.sentiment.is_(None), Review.rating <= 3),
-            ),
+    negatives_rows = (
+        (
+            await db.execute(
+                select(Review)
+                .where(
+                    Review.company_id == company_id,
+                    Review.raw_text.isnot(None),
+                    sa_func.length(sa_func.coalesce(Review.raw_text, "")) > 0,
+                    or_(
+                        Review.sentiment == "negative",
+                        and_(Review.sentiment.is_(None), Review.rating <= 3),
+                    ),
+                )
+                .order_by(
+                    Review.rating.asc().nullslast(),
+                    Review.sentiment_score.asc().nullslast(),
+                    sa_func.length(Review.raw_text).desc(),
+                    Review.posted_at.desc().nullslast(),
+                )
+                .limit(3)
+            )
         )
-        .order_by(
-            Review.rating.asc().nullslast(),
-            Review.sentiment_score.asc().nullslast(),
-            sa_func.length(Review.raw_text).desc(),
-            Review.posted_at.desc().nullslast(),
-        )
-        .limit(3)
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
     top_negatives = [ReviewOut.model_validate(r) for r in negatives_rows]
 
     return CompanyDigestOut(
@@ -1737,10 +1774,7 @@ async def draft_email_for_company(
     if not pains_with_quote:
         raise HTTPException(
             status_code=409,
-            detail=(
-                "Для этой компании ещё нет болей с цитатами. "
-                "Запусти AI-анализ отзывов и попробуй снова."
-            ),
+            detail=("Для этой компании ещё нет болей с цитатами. Запусти AI-анализ отзывов и попробуй снова."),
         )
 
     from app.modules.reviews_ai.llm import call_llm_outreach_draft
@@ -1751,10 +1785,7 @@ async def draft_email_for_company(
         niche=company.niche or "",
         city=company.city or "",
         source=company.source or "карты",
-        pains=[
-            {"label": p["label"], "quote": p.get("top_quote") or ""}
-            for p in pains_with_quote
-        ],
+        pains=[{"label": p["label"], "quote": p.get("top_quote") or ""} for p in pains_with_quote],
     )
     if draft is None:
         raise HTTPException(
@@ -1875,9 +1906,10 @@ async def admin_discover_websites(
     )
     if search_id is not None:
         from app.models.maps import MapSearchResult
-        stmt = stmt.join(
-            MapSearchResult, MapSearchResult.company_id == Company.id
-        ).where(MapSearchResult.map_search_id == search_id)
+
+        stmt = stmt.join(MapSearchResult, MapSearchResult.company_id == Company.id).where(
+            MapSearchResult.map_search_id == search_id
+        )
 
     rows = (await db.execute(stmt)).scalars().all()
     queued = 0
@@ -1917,16 +1949,13 @@ async def admin_queue_legal_enrichment(
 
     # company_id, у которых НЕТ записи в company_legal.
     sub = select(CompanyLegal.company_id)
-    stmt = (
-        select(Company.id)
-        .where(Company.id.not_in(sub))
-        .limit(limit)
-    )
+    stmt = select(Company.id).where(Company.id.not_in(sub)).limit(limit)
     if search_id is not None:
         from app.models.maps import MapSearchResult
-        stmt = stmt.join(
-            MapSearchResult, MapSearchResult.company_id == Company.id
-        ).where(MapSearchResult.map_search_id == search_id)
+
+        stmt = stmt.join(MapSearchResult, MapSearchResult.company_id == Company.id).where(
+            MapSearchResult.map_search_id == search_id
+        )
 
     rows = (await db.execute(stmt)).scalars().all()
     queued = 0
@@ -1972,9 +2001,10 @@ async def admin_queue_company_descriptions(
     )
     if search_id is not None:
         from app.models.maps import MapSearchResult
-        stmt = stmt.join(
-            MapSearchResult, MapSearchResult.company_id == Company.id
-        ).where(MapSearchResult.map_search_id == search_id)
+
+        stmt = stmt.join(MapSearchResult, MapSearchResult.company_id == Company.id).where(
+            MapSearchResult.map_search_id == search_id
+        )
 
     rows = (await db.execute(stmt)).scalars().all()
     queued = 0
@@ -1995,6 +2025,7 @@ async def admin_queue_company_descriptions(
 # Обычный user-доступный endpoint для bulk-обогащения ЛПР по списку
 # конкретных компаний. Принимает выбранные id из UI bulk-toolbar выдачи.
 # Идемпотентно (skip уже обогащённых) + проверяет владение поиском.
+
 
 @router.post("/companies/enrich-team")
 @limiter.limit("10/minute")
@@ -2028,27 +2059,35 @@ async def companies_enrich_team(
     await _get_owned_search(db, int(search_id), user_id)
 
     # Проверка что все id привязаны к этому search_id — защита от подмены.
-    valid_rows = (await db.execute(
-        select(MapSearchResult.company_id)
-        .where(MapSearchResult.map_search_id == int(search_id))
-        .where(MapSearchResult.company_id.in_(company_ids))
-    )).scalars().all()
+    valid_rows = (
+        (
+            await db.execute(
+                select(MapSearchResult.company_id)
+                .where(MapSearchResult.map_search_id == int(search_id))
+                .where(MapSearchResult.company_id.in_(company_ids))
+            )
+        )
+        .scalars()
+        .all()
+    )
     valid_set = {int(x) for x in valid_rows}
     if not valid_set:
         return {"queued": 0, "skipped_no_website": 0, "skipped_already_has_lpr": 0}
 
     # Уже обогащённые (есть запись в company_decision_makers).
-    already_dms = (await db.execute(
-        select(CompanyDecisionMaker.company_id).where(
-            CompanyDecisionMaker.company_id.in_(valid_set)
-        ).distinct()
-    )).scalars().all()
+    already_dms = (
+        (
+            await db.execute(
+                select(CompanyDecisionMaker.company_id).where(CompanyDecisionMaker.company_id.in_(valid_set)).distinct()
+            )
+        )
+        .scalars()
+        .all()
+    )
     already_set = {int(x) for x in already_dms}
 
     # Компании этой выборки + их website (для фильтрации no_website).
-    websites = (await db.execute(
-        select(Company.id, Company.website).where(Company.id.in_(valid_set))
-    )).all()
+    websites = (await db.execute(select(Company.id, Company.website).where(Company.id.in_(valid_set)))).all()
     web_map = {int(r[0]): (r[1] or "").strip() for r in websites}
 
     queued = 0
@@ -2102,9 +2141,10 @@ async def admin_bulk_enrich_team(
     )
     if search_id is not None:
         from app.models.maps import MapSearchResult
-        stmt = stmt.join(
-            MapSearchResult, MapSearchResult.company_id == Company.id
-        ).where(MapSearchResult.map_search_id == search_id)
+
+        stmt = stmt.join(MapSearchResult, MapSearchResult.company_id == Company.id).where(
+            MapSearchResult.map_search_id == search_id
+        )
 
     rows = (await db.execute(stmt)).scalars().all()
     queued = 0
@@ -2140,16 +2180,16 @@ async def admin_bulk_enrich_website_email_playwright(
         .where(func.btrim(func.coalesce(Company.website, "")) != "")
         .where(
             # emails IS NULL или пустой массив
-            (Company.emails.is_(None))
-            | (func.cardinality(Company.emails) == 0)
+            (Company.emails.is_(None)) | (func.cardinality(Company.emails) == 0)
         )
         .limit(limit)
     )
     if search_id is not None:
         from app.models.maps import MapSearchResult
-        stmt = stmt.join(
-            MapSearchResult, MapSearchResult.company_id == Company.id
-        ).where(MapSearchResult.map_search_id == search_id)
+
+        stmt = stmt.join(MapSearchResult, MapSearchResult.company_id == Company.id).where(
+            MapSearchResult.map_search_id == search_id
+        )
 
     rows = (await db.execute(stmt)).scalars().all()
     queued = 0
@@ -2159,7 +2199,9 @@ async def admin_bulk_enrich_website_email_playwright(
             queued += 1
         except Exception as e:
             logger.warning(
-                "admin_bulk_website_email_playwright enqueue for #%s: %s", cid, e,
+                "admin_bulk_website_email_playwright enqueue for #%s: %s",
+                cid,
+                e,
             )
     return {"queued": queued}
 
@@ -2191,19 +2233,14 @@ async def admin_bulk_enrich_marketing_dm(
     from app.core.config import settings as _s
 
     # Компании, у которых уже выставлен is_marketing_dm — пропускаем.
-    already_sub = select(CompanyDecisionMaker.company_id).where(
-        CompanyDecisionMaker.is_marketing_dm.is_(True)
-    )
-    stmt = (
-        select(Company.id)
-        .where(Company.id.not_in(already_sub))
-        .limit(limit)
-    )
+    already_sub = select(CompanyDecisionMaker.company_id).where(CompanyDecisionMaker.is_marketing_dm.is_(True))
+    stmt = select(Company.id).where(Company.id.not_in(already_sub)).limit(limit)
     if search_id is not None:
         from app.models.maps import MapSearchResult
-        stmt = stmt.join(
-            MapSearchResult, MapSearchResult.company_id == Company.id
-        ).where(MapSearchResult.map_search_id == search_id)
+
+        stmt = stmt.join(MapSearchResult, MapSearchResult.company_id == Company.id).where(
+            MapSearchResult.map_search_id == search_id
+        )
 
     rows = (await db.execute(stmt)).scalars().all()
     vk_enabled = bool((_s.VK_SERVICE_TOKEN or "").strip())
@@ -2218,7 +2255,8 @@ async def admin_bulk_enrich_marketing_dm(
         except Exception as e:
             logger.warning(
                 "admin_bulk_enrich_marketing_dm enqueue failed for #%s: %s",
-                cid, e,
+                cid,
+                e,
             )
     return {"queued": queued, "vk_enabled": vk_enabled}
 
@@ -2254,24 +2292,37 @@ async def companies_enrich_marketing_dm(
     if search_id is not None:
         # /app/maps: конкретный поиск — стандартная валидация.
         await _get_owned_search(db, int(search_id), user_id)
-        valid_rows = (await db.execute(
-            select(MapSearchResult.company_id)
-            .where(MapSearchResult.map_search_id == int(search_id))
-            .where(MapSearchResult.company_id.in_(company_ids))
-        )).scalars().all()
+        valid_rows = (
+            (
+                await db.execute(
+                    select(MapSearchResult.company_id)
+                    .where(MapSearchResult.map_search_id == int(search_id))
+                    .where(MapSearchResult.company_id.in_(company_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
     else:
         # 2026-07-16: /app/pains — search_id=null. Проверяем владение через
         # ЛЮБОЙ user-search и берём только компании, реально принадлежащие
         # юзеру (защита от подмены id).
-        valid_rows = (await db.execute(
-            select(MapSearchResult.company_id)
-            .join(
-                MapSearch, MapSearch.id == MapSearchResult.map_search_id,
+        valid_rows = (
+            (
+                await db.execute(
+                    select(MapSearchResult.company_id)
+                    .join(
+                        MapSearch,
+                        MapSearch.id == MapSearchResult.map_search_id,
+                    )
+                    .where(MapSearch.user_id == user_id)
+                    .where(MapSearchResult.company_id.in_(company_ids))
+                    .distinct()
+                )
             )
-            .where(MapSearch.user_id == user_id)
-            .where(MapSearchResult.company_id.in_(company_ids))
-            .distinct()
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
     valid_set = {int(x) for x in valid_rows}
     if not valid_set:
         return {"queued": 0}
@@ -2288,7 +2339,8 @@ async def companies_enrich_marketing_dm(
         except Exception as e:
             logger.warning(
                 "companies_enrich_marketing_dm enqueue failed for #%s: %s",
-                cid, e,
+                cid,
+                e,
             )
     return {"queued": queued, "vk_enabled": vk_enabled}
 
@@ -2348,9 +2400,7 @@ async def companies_enrich_single_source(
     if source not in _ENRICH_SOURCE_TASKS:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"source должен быть один из: {', '.join(sorted(_ENRICH_SOURCE_TASKS))}"
-            ),
+            detail=(f"source должен быть один из: {', '.join(sorted(_ENRICH_SOURCE_TASKS))}"),
         )
     search_id = payload.get("search_id")
 
@@ -2367,9 +2417,7 @@ async def companies_enrich_single_source(
             )
         ).scalar_one_or_none()
         if exists is None:
-            raise HTTPException(
-                status_code=404, detail="Компания не найдена в этом поиске."
-            )
+            raise HTTPException(status_code=404, detail="Компания не найдена в этом поиске.")
     else:
         # 2026-07-16: путь /app/pains — там drawer открывается без search_id,
         # но юзер всё равно должен уметь ре-парсить источники ЛПР. Проверяем
@@ -2378,7 +2426,8 @@ async def companies_enrich_single_source(
             await db.execute(
                 select(MapSearchResult.company_id)
                 .join(
-                    MapSearch, MapSearch.id == MapSearchResult.map_search_id,
+                    MapSearch,
+                    MapSearch.id == MapSearchResult.map_search_id,
                 )
                 .where(MapSearch.user_id == user_id)
                 .where(MapSearchResult.company_id == int(company_id))
@@ -2409,7 +2458,9 @@ async def companies_enrich_single_source(
     except Exception as e:
         logger.warning(
             "companies_enrich_single_source enqueue failed (source=%s, cid=%s): %s",
-            source, company_id, e,
+            source,
+            company_id,
+            e,
         )
         raise HTTPException(
             status_code=503,
@@ -2455,21 +2506,14 @@ async def export_website_leads_xlsx(
     if search_obj is None:
         raise HTTPException(status_code=404, detail="search not found")
 
-    blob = await build_website_leads_xlsx(
-        db, search_id, only_website_leads=only_website_leads
-    )
+    blob = await build_website_leads_xlsx(db, search_id, only_website_leads=only_website_leads)
     filename = build_filename(search_obj)
     return Response(
         content=blob,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument."
-            "spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
             # RFC 5987 для кириллицы в имени.
-            "Content-Disposition": (
-                f"attachment; filename*=UTF-8''{quote(filename)}"
-            ),
+            "Content-Disposition": (f"attachment; filename*=UTF-8''{quote(filename)}"),
         },
     )
 
@@ -2575,13 +2619,12 @@ async def admin_recluster_niche(
     # (analyze ещё не отрабатывал), recluster тихо возвращал 0 и плитки
     # никогда не появлялись. Теперь сначала готовим данные, потом кластеризуем.
     from app.models.maps import MapSearchResult
+
     company_ids_rows = (
-        await db.execute(
-            select(MapSearchResult.company_id).where(
-                MapSearchResult.map_search_id == search.id
-            )
-        )
-    ).scalars().all()
+        (await db.execute(select(MapSearchResult.company_id).where(MapSearchResult.map_search_id == search.id)))
+        .scalars()
+        .all()
+    )
     company_ids = [int(c) for c in company_ids_rows]
 
     try:
@@ -2589,6 +2632,7 @@ async def admin_recluster_niche(
             analyze_reviews_for_company,
             recluster_pains_for_niche_task,
         )
+
         for cid in company_ids:
             analyze_reviews_for_company.delay(cid)
         # Передаём company_ids явно — у Company.niche в БД формулировка из
@@ -2675,94 +2719,117 @@ async def admin_data_inventory(
     from app.models.pain_tag import CompanyPainScore
 
     # companies: сгруппировано по (niche, city)
-    company_stats = list((await db.execute(
-        select(
-            Company.niche,
-            Company.city,
-            sa_func.count(Company.id).label("companies"),
-            sa_func.coalesce(sa_func.sum(Company.reviews_count), 0).label("reviews"),
-        )
-        .where(Company.niche.isnot(None), Company.city.isnot(None))
-        .group_by(Company.niche, Company.city)
-    )).all())
+    company_stats = list(
+        (
+            await db.execute(
+                select(
+                    Company.niche,
+                    Company.city,
+                    sa_func.count(Company.id).label("companies"),
+                    sa_func.coalesce(sa_func.sum(Company.reviews_count), 0).label("reviews"),
+                )
+                .where(Company.niche.isnot(None), Company.city.isnot(None))
+                .group_by(Company.niche, Company.city)
+            )
+        ).all()
+    )
 
     # pain_tags: активные негативные, сгруппировано по (niche, city)
-    tag_stats = list((await db.execute(
-        select(
-            PainTag.niche,
-            PainTag.city,
-            sa_func.count(PainTag.id).label("tags"),
-        )
-        .where(PainTag.status == "active", PainTag.sentiment == "negative")
-        .group_by(PainTag.niche, PainTag.city)
-    )).all())
+    tag_stats = list(
+        (
+            await db.execute(
+                select(
+                    PainTag.niche,
+                    PainTag.city,
+                    sa_func.count(PainTag.id).label("tags"),
+                )
+                .where(PainTag.status == "active", PainTag.sentiment == "negative")
+                .group_by(PainTag.niche, PainTag.city)
+            )
+        ).all()
+    )
 
     # analyzed reviews: считаем reviews с embedding по (Company.niche, Company.city)
-    analyzed_stats = list((await db.execute(
-        select(
-            Company.niche,
-            Company.city,
-            sa_func.count(Review.id).label("analyzed"),
-        )
-        .join(Review, Review.company_id == Company.id)
-        .where(
-            Company.niche.isnot(None),
-            Company.city.isnot(None),
-            Review.embedding.isnot(None),
-        )
-        .group_by(Company.niche, Company.city)
-    )).all())
+    analyzed_stats = list(
+        (
+            await db.execute(
+                select(
+                    Company.niche,
+                    Company.city,
+                    sa_func.count(Review.id).label("analyzed"),
+                )
+                .join(Review, Review.company_id == Company.id)
+                .where(
+                    Company.niche.isnot(None),
+                    Company.city.isnot(None),
+                    Review.embedding.isnot(None),
+                )
+                .group_by(Company.niche, Company.city)
+            )
+        ).all()
+    )
 
     # has_pain_scores: True если есть хоть один CompanyPainScore
-    scored_stats = list((await db.execute(
-        select(
-            Company.niche,
-            Company.city,
-            sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).label("with_scores"),
-        )
-        .join(CompanyPainScore, CompanyPainScore.company_id == Company.id)
-        .where(Company.niche.isnot(None), Company.city.isnot(None))
-        .group_by(Company.niche, Company.city)
-    )).all())
+    scored_stats = list(
+        (
+            await db.execute(
+                select(
+                    Company.niche,
+                    Company.city,
+                    sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).label("with_scores"),
+                )
+                .join(CompanyPainScore, CompanyPainScore.company_id == Company.id)
+                .where(Company.niche.isnot(None), Company.city.isnot(None))
+                .group_by(Company.niche, Company.city)
+            )
+        ).all()
+    )
 
     # companies_with_marketing_dm: сколько компаний в паре (niche, city)
     # имеют помеченного is_marketing_dm=True.
-    mdm_stats = list((await db.execute(
-        select(
-            Company.niche,
-            Company.city,
-            sa_func.count(sa_func.distinct(Company.id)).label("with_mdm"),
-        )
-        .join(
-            CompanyDecisionMaker,
-            CompanyDecisionMaker.company_id == Company.id,
-        )
-        .where(
-            CompanyDecisionMaker.is_marketing_dm.is_(True),
-            Company.niche.isnot(None),
-            Company.city.isnot(None),
-        )
-        .group_by(Company.niche, Company.city)
-    )).all())
+    mdm_stats = list(
+        (
+            await db.execute(
+                select(
+                    Company.niche,
+                    Company.city,
+                    sa_func.count(sa_func.distinct(Company.id)).label("with_mdm"),
+                )
+                .join(
+                    CompanyDecisionMaker,
+                    CompanyDecisionMaker.company_id == Company.id,
+                )
+                .where(
+                    CompanyDecisionMaker.is_marketing_dm.is_(True),
+                    Company.niche.isnot(None),
+                    Company.city.isnot(None),
+                )
+                .group_by(Company.niche, Company.city)
+            )
+        ).all()
+    )
 
     # Глобальные ЛПР-стата по источникам: сколько персон, сколько с рабочим
     # каналом (contact_type + contact_value), сколько помечены как
     # marketing_dm. Даёт видимость «hh 403-ит, website deep-crawl упал»,
     # «vk без токена — 0 контактов», «prodoctorov даёт лучше чем ЕГРЮЛ» и т.д.
-    dm_source_rows = list((await db.execute(
-        select(
-            CompanyDecisionMaker.source,
-            sa_func.count(CompanyDecisionMaker.id).label("total"),
-            sa_func.count(CompanyDecisionMaker.contact_value).label("with_contact"),
-            sa_func.count(
-                sa_case(
-                    (CompanyDecisionMaker.is_marketing_dm.is_(True), 1),
-                    else_=None,
-                )
-            ).label("marketing_dms"),
-        )
-        .group_by(CompanyDecisionMaker.source)
-    )).all())
+    dm_source_rows = list(
+        (
+            await db.execute(
+                select(
+                    CompanyDecisionMaker.source,
+                    sa_func.count(CompanyDecisionMaker.id).label("total"),
+                    sa_func.count(CompanyDecisionMaker.contact_value).label("with_contact"),
+                    sa_func.count(
+                        sa_case(
+                            (CompanyDecisionMaker.is_marketing_dm.is_(True), 1),
+                            else_=None,
+                        )
+                    ).label("marketing_dms"),
+                ).group_by(CompanyDecisionMaker.source)
+            )
+        ).all()
+    )
 
     # Строим единый словарь по (niche, city)
     inventory: dict[tuple[str, str], dict] = {}
@@ -2817,9 +2884,7 @@ async def admin_data_inventory(
             "total": int(total or 0),
             "with_contact": int(with_c or 0),
             "marketing_dms": int(mdm or 0),
-            "contact_rate": (
-                round(float(with_c or 0) / float(total), 3) if total else 0.0
-            ),
+            "contact_rate": (round(float(with_c or 0) / float(total), 3) if total else 0.0),
         }
         for src, total, with_c, mdm in dm_source_rows
     ]
@@ -2830,9 +2895,7 @@ async def admin_data_inventory(
         "total_companies": sum(x["companies_count"] for x in items),
         "total_reviews": sum(x["reviews_count"] for x in items),
         "total_pain_tags": sum(x["pain_tags_count"] for x in items),
-        "total_companies_with_marketing_dm": sum(
-            x["companies_with_marketing_dm"] for x in items
-        ),
+        "total_companies_with_marketing_dm": sum(x["companies_with_marketing_dm"] for x in items),
         "dm_source_stats": dm_source_stats,
         "items": items,
     }
@@ -2849,7 +2912,7 @@ async def admin_rebuild_pain_tags_for_niche(
         regex="^(negative|positive)$",
         description="negative = боли, positive = сильные стороны",
     ),
-    _: "User" = Depends(require_superuser),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Перестроить pain_tags для ниши/города по ВСЕМ компаниям в БД.
@@ -2871,9 +2934,7 @@ async def admin_rebuild_pain_tags_for_niche(
     filters_ = [Company.niche == niche]
     if city:
         filters_.append(Company.city == city)
-    company_ids_rows = (
-        await db.execute(select(Company.id).where(*filters_))
-    ).scalars().all()
+    company_ids_rows = (await db.execute(select(Company.id).where(*filters_))).scalars().all()
     company_ids = [int(c) for c in company_ids_rows]
 
     if not company_ids:
@@ -2894,6 +2955,7 @@ async def admin_rebuild_pain_tags_for_niche(
             analyze_reviews_for_company,
             recluster_pains_for_niche_task,
         )
+
         for cid in company_ids:
             analyze_reviews_for_company.delay(cid)
         recluster_pains_for_niche_task.apply_async(
@@ -2930,7 +2992,7 @@ async def admin_rebuild_pain_tags_for_niche(
 async def admin_rebuild_pain_tags_status(
     niche: str = Query(..., min_length=2, max_length=100),
     city: str | None = Query(default=None, max_length=100),
-    _: "User" = Depends(require_superuser),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Прогресс AI-разметки болей для (ниша, город). Фронт поллит этот
@@ -2955,9 +3017,7 @@ async def admin_rebuild_pain_tags_status(
         company_filter.append(Company.city == city)
 
     companies_total = int(
-        (await db.execute(
-            select(sa_func.count(Company.id)).where(*company_filter)
-        )).scalar_one() or 0
+        (await db.execute(select(sa_func.count(Company.id)).where(*company_filter))).scalar_one() or 0
     )
 
     if companies_total == 0:
@@ -2977,34 +3037,33 @@ async def admin_rebuild_pain_tags_status(
     company_ids_subq = select(Company.id).where(*company_filter).scalar_subquery()
 
     reviews_total = int(
-        (await db.execute(
-            select(sa_func.count(Review.id)).where(
-                Review.company_id.in_(company_ids_subq)
-            )
-        )).scalar_one() or 0
+        (await db.execute(select(sa_func.count(Review.id)).where(Review.company_id.in_(company_ids_subq)))).scalar_one()
+        or 0
     )
     reviews_analyzed = int(
-        (await db.execute(
-            select(sa_func.count(Review.id)).where(
-                Review.company_id.in_(company_ids_subq),
-                Review.ai_processed_at.is_not(None),
+        (
+            await db.execute(
+                select(sa_func.count(Review.id)).where(
+                    Review.company_id.in_(company_ids_subq),
+                    Review.ai_processed_at.is_not(None),
+                )
             )
-        )).scalar_one() or 0
+        ).scalar_one()
+        or 0
     )
 
     tag_filter = [PainTag.status == "active", PainTag.niche == niche]
     if city:
         tag_filter.append(or_(PainTag.city == city, PainTag.city.is_(None)))
-    active_tags = int(
-        (await db.execute(select(sa_func.count(PainTag.id)).where(*tag_filter))).scalar_one() or 0
-    )
+    active_tags = int((await db.execute(select(sa_func.count(PainTag.id)).where(*tag_filter))).scalar_one() or 0)
 
     pain_scores = int(
-        (await db.execute(
-            select(sa_func.count(CompanyPainScore.id)).where(
-                CompanyPainScore.company_id.in_(company_ids_subq)
+        (
+            await db.execute(
+                select(sa_func.count(CompanyPainScore.id)).where(CompanyPainScore.company_id.in_(company_ids_subq))
             )
-        )).scalar_one() or 0
+        ).scalar_one()
+        or 0
     )
 
     percent = int(reviews_analyzed * 100 / reviews_total) if reviews_total > 0 else 100
@@ -3073,6 +3132,7 @@ async def admin_requeue_stale_searches(
         }
 
     from app.modules.maps.tasks import parse_map_search as parse_task
+
     requeued_ids: list[int] = []
     for sid, niche, city, status_, _created in stale:
         try:
@@ -3080,12 +3140,13 @@ async def admin_requeue_stale_searches(
             requeued_ids.append(int(sid))
             logger.info(
                 "admin_requeue_stale_searches: requeued #%d (%r/%r, was %s)",
-                sid, niche, city, status_,
+                sid,
+                niche,
+                city,
+                status_,
             )
         except Exception as e:
-            logger.warning(
-                "admin_requeue_stale_searches: failed to requeue #%d: %s", sid, e
-            )
+            logger.warning("admin_requeue_stale_searches: failed to requeue #%d: %s", sid, e)
 
     return {
         "requeued": len(requeued_ids),
@@ -3120,11 +3181,7 @@ async def admin_soften_pain_labels(
     """
     from app.modules.reviews_ai.llm import _soften_pain_label
 
-    tags = (
-        (await db.execute(select(PainTag).where(PainTag.status == "active")))
-        .scalars()
-        .all()
-    )
+    tags = (await db.execute(select(PainTag).where(PainTag.status == "active"))).scalars().all()
     changed = 0
     for tag in tags:
         new_label = _soften_pain_label(tag.label or "")
@@ -3170,12 +3227,10 @@ async def admin_recluster_niche_diagnostic(
         )
 
     company_ids_rows = (
-        await db.execute(
-            select(MapSearchResult.company_id).where(
-                MapSearchResult.map_search_id == search.id
-            )
-        )
-    ).scalars().all()
+        (await db.execute(select(MapSearchResult.company_id).where(MapSearchResult.map_search_id == search.id)))
+        .scalars()
+        .all()
+    )
     company_ids = [int(c) for c in company_ids_rows]
 
     reviews_with_embedding = (
@@ -3205,7 +3260,10 @@ async def admin_recluster_niche_diagnostic(
 
     try:
         n_tags = await ai_service.recluster_pains_for_niche(
-            db, search.niche, search.city, company_ids=company_ids,
+            db,
+            search.niche,
+            search.city,
+            company_ids=company_ids,
         )
         result["pain_tags_upserted"] = int(n_tags)
 
@@ -3221,6 +3279,7 @@ async def admin_recluster_niche_diagnostic(
 
         # Сколько активных pain-tags теперь для (niche, city)
         from app.models.pain_tag import PainTag
+
         pt_q = select(sa_func.count(PainTag.id)).where(
             PainTag.niche == search.niche,
             PainTag.status == "active",
@@ -3265,12 +3324,10 @@ async def get_ai_progress(
 
     # Все company_id этого поиска
     company_ids_rows = (
-        await db.execute(
-            select(MapSearchResult.company_id).where(
-                MapSearchResult.map_search_id == search.id
-            )
-        )
-    ).scalars().all()
+        (await db.execute(select(MapSearchResult.company_id).where(MapSearchResult.map_search_id == search.id)))
+        .scalars()
+        .all()
+    )
     company_ids = [int(c) for c in company_ids_rows]
     companies_total = len(company_ids)
 
@@ -3287,9 +3344,7 @@ async def get_ai_progress(
         }
 
     reviews_total = (
-        await db.execute(
-            select(sa_func.count(Review.id)).where(Review.company_id.in_(company_ids))
-        )
+        await db.execute(select(sa_func.count(Review.id)).where(Review.company_id.in_(company_ids)))
     ).scalar() or 0
     reviews_with_embedding = (
         await db.execute(
@@ -3318,7 +3373,8 @@ async def get_ai_progress(
     # Нужно чтобы UI отличал «recluster ещё не отработал» (= 0) от
     # «теги созданы, идёт матч → company_pain_scores заполняется».
     pain_tags_q = select(sa_func.count(PainTag.id)).where(
-        PainTag.niche == search.niche, PainTag.status == "active",
+        PainTag.niche == search.niche,
+        PainTag.status == "active",
     )
     if search.city is not None:
         pain_tags_q = pain_tags_q.where(PainTag.city == search.city)
@@ -3413,9 +3469,16 @@ async def list_cities():
 async def niche_suggestions(q: str = Query(default="", min_length=0, max_length=100)):
     """Заглушка автокомплита ниш. До ШАГов 7-11 — статический список пресетов."""
     presets = [
-        "стоматология", "автосервис", "ремонт квартир", "юридические услуги",
-        "бухгалтерские услуги", "клининговая компания", "фитнес клуб",
-        "доставка еды", "рекламное агентство", "строительные компании",
+        "стоматология",
+        "автосервис",
+        "ремонт квартир",
+        "юридические услуги",
+        "бухгалтерские услуги",
+        "клининговая компания",
+        "фитнес клуб",
+        "доставка еды",
+        "рекламное агентство",
+        "строительные компании",
     ]
     if not q:
         return presets
@@ -3467,11 +3530,7 @@ async def list_pain_tags(
         base_filter.append((PainTag.city == city) | (PainTag.city.is_(None)))
 
     if not has_filters:
-        q = (
-            select(PainTag)
-            .where(*base_filter)
-            .order_by(PainTag.occurrences_count.desc())
-        )
+        q = select(PainTag).where(*base_filter).order_by(PainTag.occurrences_count.desc())
         tags = list((await db.execute(q)).scalars().all())
         return [PainTagOut.model_validate(t) for t in tags]
 
@@ -3521,7 +3580,9 @@ async def list_pain_tags(
 async def list_companies_by_pain(
     request: Request,
     pain_key: Optional[str] = Query(default=None, min_length=2, max_length=64),
-    pain_tag_ids: Optional[list[int]] = Query(default=None, description="Конкретные PainTag.id — альтернатива pain_key"),
+    pain_tag_ids: Optional[list[int]] = Query(
+        default=None, description="Конкретные PainTag.id — альтернатива pain_key"
+    ),
     city: Optional[str] = Query(default=None, max_length=100),
     niche: Optional[str] = Query(default=None, max_length=100),
     limit: int = Query(default=50, ge=1, le=200),
@@ -3563,13 +3624,17 @@ async def list_companies_by_pain(
         # заодно валидируем что теги активные и негативные (иначе
         # можно было бы просунуть positive и получить лидов «сильных
         # сторон» в разделе болей).
-        rows = list((await db.execute(
-            select(PainTag.id, PainTag.label).where(
-                PainTag.id.in_(pain_tag_ids),
-                PainTag.status == "active",
-                PainTag.sentiment == "negative",
-            )
-        )).all())
+        rows = list(
+            (
+                await db.execute(
+                    select(PainTag.id, PainTag.label).where(
+                        PainTag.id.in_(pain_tag_ids),
+                        PainTag.status == "active",
+                        PainTag.sentiment == "negative",
+                    )
+                )
+            ).all()
+        )
         for tid, label in rows:
             matched_tag_ids.append(int(tid))
             matched_labels.append(label)
@@ -3587,11 +3652,7 @@ async def list_companies_by_pain(
             # Городские теги + глобальные для ниши (city=NULL).
             tag_filter.append(or_(PainTag.city == city, PainTag.city.is_(None)))
 
-        tag_rows = list(
-            (await db.execute(
-                select(PainTag.id, PainTag.label).where(*tag_filter)
-            )).all()
-        )
+        tag_rows = list((await db.execute(select(PainTag.id, PainTag.label).where(*tag_filter))).all())
         seen_labels: set[str] = set()
         for tid, label in tag_rows:
             if match_pain_key(label) == pain_key:
@@ -3602,7 +3663,12 @@ async def list_companies_by_pain(
 
     if not matched_tag_ids:
         return CompaniesByPainListOut(
-            pain_key=pain_key or "", pain_labels=[], total=0, limit=limit, offset=offset, items=[],
+            pain_key=pain_key or "",
+            pain_labels=[],
+            total=0,
+            limit=limit,
+            offset=offset,
+            items=[],
         )
 
     # Агрегируем по компании: сумма mention_count + top_quote с максимальной
@@ -3611,10 +3677,14 @@ async def list_companies_by_pain(
 
     # Для каждой компании выбираем top_quote c максимальной similarity —
     # оконка row_number() + фильтр rn=1. Одним подзапросом, без Python-loop.
-    quote_row_num = sa_func.row_number().over(
-        partition_by=CompanyPainScore.company_id,
-        order_by=CompanyPainScore.top_quote_similarity.desc().nulls_last(),
-    ).label("rn")
+    quote_row_num = (
+        sa_func.row_number()
+        .over(
+            partition_by=CompanyPainScore.company_id,
+            order_by=CompanyPainScore.top_quote_similarity.desc().nulls_last(),
+        )
+        .label("rn")
+    )
 
     quote_sub = (
         select(
@@ -3625,11 +3695,7 @@ async def list_companies_by_pain(
         .where(CompanyPainScore.pain_tag_id.in_(matched_tag_ids))
         .subquery()
     )
-    best_quote_sub = (
-        select(quote_sub.c.company_id, quote_sub.c.top_quote)
-        .where(quote_sub.c.rn == 1)
-        .subquery()
-    )
+    best_quote_sub = select(quote_sub.c.company_id, quote_sub.c.top_quote).where(quote_sub.c.rn == 1).subquery()
 
     # Итоговый запрос: агрегируем mention_count + join best_quote + join Company
     # с опциональными фильтрами по компании.
@@ -3712,6 +3778,7 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     # fallback на env (обратная совместимость со старыми стендами без UI-настроек).
     try:
         from app.modules.maps.providers_settings_service import get_status as _get_maps_status
+
         maps_status = await _get_maps_status(db)
         twogis = maps_status.get("twogis", twogis_settings)
         yandex_maps = maps_status.get("yandex_maps", yandex_maps_settings)
@@ -3729,9 +3796,10 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     # на свече, AI-пайплайны no-op'нут).
     have_openai = bool((settings.OPENAI_API_KEY or "").strip())
     from app.models.ai_assistant import AiAssistant
-    have_assistant = (await db.execute(
-        select(sa_func.count(AiAssistant.id)).where(AiAssistant.model.isnot(None))
-    )).scalar_one() or 0
+
+    have_assistant = (
+        await db.execute(select(sa_func.count(AiAssistant.id)).where(AiAssistant.model.isnot(None)))
+    ).scalar_one() or 0
     if not have_openai:
         llm = "no_api_key"
     elif have_assistant == 0:
@@ -3747,9 +3815,10 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     details: dict[str, Any] = {}
     try:
         from app.models.company_legal import CompanyLegal
-        enriched_cnt = (await db.execute(
-            select(sa_func.count(CompanyLegal.id)).where(CompanyLegal.status == "ok")
-        )).scalar_one() or 0
+
+        enriched_cnt = (
+            await db.execute(select(sa_func.count(CompanyLegal.id)).where(CompanyLegal.status == "ok"))
+        ).scalar_one() or 0
         details["dadata_enriched"] = int(enriched_cnt)
     except Exception:
         # БД-таблицы может не быть в очень старых стендах — не валим health.
