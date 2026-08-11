@@ -124,8 +124,7 @@ function PainsPageInner() {
   // 280 символов, у длинных «биографий» отрезалась суть).
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
 
-  // Суперюзерская кнопка «Пересобрать AI-теги»
-  const [isSuperuser, setIsSuperuser] = useState(false);
+  // Кнопка «Пересобрать AI-теги» — доступна всем залогиненным (раньше только superuser).
   const [rebuildBusy, setRebuildBusy] = useState(false);
   const [rebuildMsg, setRebuildMsg] = useState<string | null>(null);
   // 2026-07-14: live-прогресс recluster'а. После POST /rebuild-pain-tags-for-niche
@@ -156,35 +155,6 @@ function PainsPageInner() {
   // компании с самой распространённой болью. Юзер сразу видит результаты,
   // а не пустое «0 компаний».
   const autoRunRef = useRef(false);
-
-  useEffect(() => {
-    const cached = typeof window !== 'undefined' ? sessionStorage.getItem('is_superuser') : null;
-    if (cached === 'true') {
-      setIsSuperuser(true);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
-        if (!res.ok || cancelled) return;
-        const body = await res.json();
-        if (!cancelled && Boolean(body?.is_superuser)) {
-          setIsSuperuser(true);
-          try {
-            sessionStorage.setItem('is_superuser', 'true');
-          } catch {
-            /* no-op */
-          }
-        }
-      } catch {
-        /* no-op */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Загружаем топ-теги при смене ниши. Без ниши — глобальный список
   // мгновенно перегружает страницу тысячей тегов, поэтому не показываем.
