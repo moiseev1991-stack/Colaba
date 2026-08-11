@@ -177,13 +177,15 @@ export default function EmailMessagesPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Левая колонка: список тредов */}
+        {/* Левая колонка: список тредов.
+            На десктопе всегда видна; на мобиле скрывается при открытии чата. */}
         <div
-          className="w-full md:w-[340px] border-r overflow-y-auto flex-shrink-0"
+          className={`w-full md:w-[340px] md:!flex border-r overflow-y-auto flex-shrink-0 ${
+            activeThreadId ? 'hidden md:block' : 'block'
+          }`}
           style={{
             borderColor: 'hsl(var(--border))',
             background: 'hsl(var(--surface))',
-            display: activeThreadId ? 'none' : 'block',
           }}
         >
           {threads.length === 0 ? (
@@ -237,8 +239,10 @@ export default function EmailMessagesPage() {
           )}
         </div>
 
-        {/* Правая колонка: переписка */}
-        <div className="flex-1 flex flex-col" style={{ display: activeThreadId ? 'flex' : 'none' }}>
+        {/* Правая колонка: переписка.
+            Всегда видна на десктопе (рядом со списком); на мобиле — только
+            когда выбран диалог. Без выбранного диалога — empty-state. */}
+        <div className={`flex-1 flex-col ${activeThreadId ? 'flex' : 'hidden md:flex'}`}>
           {loadingThread ? (
             <div className="flex items-center justify-center flex-1">
               <Loader2 className="h-6 w-6 animate-spin" style={textMuted} />
