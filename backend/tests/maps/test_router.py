@@ -161,6 +161,7 @@ async def test_create_search_invalid_niche_422():
 async def test_other_user_cannot_access_search_403(monkeypatch):
     """Чужой поиск отдаёт 403."""
     from app.modules.maps import tasks as maps_tasks
+
     monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
 
     # юзер А создаёт поиск
@@ -189,6 +190,7 @@ async def test_other_user_cannot_access_search_403(monkeypatch):
 @pytest.mark.asyncio
 async def test_list_search_companies_with_filters(monkeypatch):
     from app.modules.maps import tasks as maps_tasks
+
     monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
 
     user_id, headers = await _create_user()
@@ -196,12 +198,24 @@ async def test_list_search_companies_with_filters(monkeypatch):
     # Создаём поиск напрямую и кладём в него компании с разными рейтингами
     async with AsyncSessionLocal() as db:
         search = await service.create_map_search(
-            db, user_id=user_id, niche=f"ниша-{uuid.uuid4().hex[:6]}", city="Москва", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=f"ниша-{uuid.uuid4().hex[:6]}",
+            city="Москва",
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=f"a-{uuid.uuid4().hex[:8]}", name="Low", rating=3.0, reviews_count=5),
-            CompanyRaw(source="2gis", external_id=f"b-{uuid.uuid4().hex[:8]}", name="High", rating=4.7, reviews_count=20),
-        ], search.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(
+                    source="2gis", external_id=f"a-{uuid.uuid4().hex[:8]}", name="Low", rating=3.0, reviews_count=5
+                ),
+                CompanyRaw(
+                    source="2gis", external_id=f"b-{uuid.uuid4().hex[:8]}", name="High", rating=4.7, reviews_count=20
+                ),
+            ],
+            search.id,
+        )
         search_id = search.id
 
     async with _client() as c:
@@ -219,6 +233,7 @@ async def test_list_search_companies_with_filters(monkeypatch):
 @pytest.mark.asyncio
 async def test_get_company_detail_returns_recent_reviews(monkeypatch):
     from app.modules.maps import tasks as maps_tasks
+
     monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
 
     user_id, headers = await _create_user()
@@ -226,13 +241,19 @@ async def test_get_company_detail_returns_recent_reviews(monkeypatch):
 
     async with AsyncSessionLocal() as db:
         search = await service.create_map_search(db, user_id=user_id, niche="x", city="y", sources=["2gis"])
-        co = (await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=f"c-{uuid.uuid4().hex[:8]}", name="WithReviews")
-        ], search.id))[0]
-        await service.save_reviews_batch(db, co.id, [
-            ReviewRaw(source="2gis", rating=5, raw_text=f"good-{uuid.uuid4()}"),
-            ReviewRaw(source="2gis", rating=1, raw_text=f"bad-{uuid.uuid4()}"),
-        ])
+        co = (
+            await service.save_companies_batch(
+                db, [CompanyRaw(source="2gis", external_id=f"c-{uuid.uuid4().hex[:8]}", name="WithReviews")], search.id
+            )
+        )[0]
+        await service.save_reviews_batch(
+            db,
+            co.id,
+            [
+                ReviewRaw(source="2gis", rating=5, raw_text=f"good-{uuid.uuid4()}"),
+                ReviewRaw(source="2gis", rating=1, raw_text=f"bad-{uuid.uuid4()}"),
+            ],
+        )
         co_id = co.id
 
     async with _client() as c:
@@ -248,19 +269,32 @@ async def test_get_company_detail_returns_recent_reviews(monkeypatch):
 async def test_export_csv_returns_attachment(monkeypatch):
     """GET /export возвращает CSV-файл с заголовком + строками компаний."""
     from app.modules.maps import tasks as maps_tasks
+
     monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
 
     user_id, headers = await _create_user()
     async with AsyncSessionLocal() as db:
         search = await service.create_map_search(
-            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=_unique_id("x"),
+            city="Москва",
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(
-                source="2gis", external_id=_unique_id("co"), name="Stomatology One",
-                rating=4.5, reviews_count=10, phone="+74950000001",
-            ),
-        ], search.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(
+                    source="2gis",
+                    external_id=_unique_id("co"),
+                    name="Stomatology One",
+                    rating=4.5,
+                    reviews_count=10,
+                    phone="+74950000001",
+                ),
+            ],
+            search.id,
+        )
         search_id = search.id
 
     async with _client() as c:
@@ -282,23 +316,33 @@ async def test_export_csv_with_company_ids_filters_to_selected(monkeypatch):
     """GET /export?company_ids=… (bulk-режим) — отдаёт только выбранные
     карточки и игнорирует остальные фильтры."""
     from app.modules.maps import tasks as maps_tasks
+
     monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
 
     user_id, headers = await _create_user()
     async with AsyncSessionLocal() as db:
         search = await service.create_map_search(
-            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=_unique_id("x"),
+            city="Москва",
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Alpha", rating=4.5, reviews_count=10),
-            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Beta",  rating=4.5, reviews_count=10),
-            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Gamma", rating=4.5, reviews_count=10),
-        ], search.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Alpha", rating=4.5, reviews_count=10),
+                CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Beta", rating=4.5, reviews_count=10),
+                CompanyRaw(source="2gis", external_id=_unique_id("co"), name="Gamma", rating=4.5, reviews_count=10),
+            ],
+            search.id,
+        )
         search_id = search.id
 
         # Берём id двух из трёх для выборочного экспорта.
         from app.models.maps import Company, MapSearchResult
         from sqlalchemy import select
+
         rows = await db.execute(
             select(Company.id, Company.name)
             .join(MapSearchResult, MapSearchResult.company_id == Company.id)
@@ -312,8 +356,7 @@ async def test_export_csv_with_company_ids_filters_to_selected(monkeypatch):
     async with _client() as c:
         # Запрос с двумя ids: Alpha и Gamma; Beta должна не попасть в выдачу.
         r = await c.get(
-            f"/api/v1/maps/search/{search_id}/export"
-            f"?company_ids={alpha_id}&company_ids={gamma_id}",
+            f"/api/v1/maps/search/{search_id}/export?company_ids={alpha_id}&company_ids={gamma_id}",
             headers=headers,
         )
         assert r.status_code == 200, r.text
@@ -328,27 +371,43 @@ async def test_export_csv_with_company_ids_does_not_leak_other_search(monkeypatc
     """GET /export?company_ids=… не должен возвращать компании из чужого
     search_id, даже если их id переданы. Защита от подмены параметра."""
     from app.modules.maps import tasks as maps_tasks
+
     monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda _: None)
 
     user_id, headers = await _create_user()
     async with AsyncSessionLocal() as db:
         search_a = await service.create_map_search(
-            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=_unique_id("x"),
+            city="Москва",
+            sources=["2gis"],
         )
         search_b = await service.create_map_search(
-            db, user_id=user_id, niche=_unique_id("x"), city="Москва", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=_unique_id("x"),
+            city="Москва",
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=_unique_id("co"), name="OnlyInB", rating=4.5, reviews_count=10),
-        ], search_b.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(source="2gis", external_id=_unique_id("co"), name="OnlyInB", rating=4.5, reviews_count=10),
+            ],
+            search_b.id,
+        )
 
         from app.models.maps import Company, MapSearchResult
         from sqlalchemy import select
-        only_in_b_id = (await db.execute(
-            select(Company.id)
-            .join(MapSearchResult, MapSearchResult.company_id == Company.id)
-            .where(MapSearchResult.map_search_id == search_b.id)
-        )).scalar_one()
+
+        only_in_b_id = (
+            await db.execute(
+                select(Company.id)
+                .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+                .where(MapSearchResult.map_search_id == search_b.id)
+            )
+        ).scalar_one()
         search_a_id = search_a.id
 
     async with _client() as c:
@@ -372,6 +431,7 @@ async def test_stream_endpoint_returns_200_text_event_stream():
     async with AsyncSessionLocal() as db:
         from sqlalchemy import update
         from app.models.maps import MapSearch
+
         search = await service.create_map_search(db, user_id=user_id, niche="x", city="y", sources=["2gis"])
         # помечаем completed, чтобы стрим сразу закрылся после done
         await db.execute(update(MapSearch).where(MapSearch.id == search.id).values(status="completed"))
@@ -398,25 +458,26 @@ async def test_create_search_from_cache_enqueues_reviews_for_empty_companies(mon
 
     # parse_map_search.delay не должен вызываться (это not pending case)
     map_calls: list[int] = []
-    monkeypatch.setattr(
-        maps_tasks.parse_map_search, "delay", lambda sid: map_calls.append(sid)
-    )
+    monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda sid: map_calls.append(sid))
     # parse_company_reviews.delay — должен быть вызван по числу пустых компаний
     review_calls: list[tuple[int, str]] = []
     monkeypatch.setattr(
-        maps_tasks.parse_company_reviews, "delay",
+        maps_tasks.parse_company_reviews,
+        "delay",
         lambda cid, src: review_calls.append((cid, src)),
     )
     # analyze_reviews_for_company.delay — должен быть вызван для ВСЕХ компаний
     analyze_calls: list[int] = []
     monkeypatch.setattr(
-        reviews_ai_tasks.analyze_reviews_for_company, "delay",
+        reviews_ai_tasks.analyze_reviews_for_company,
+        "delay",
         lambda cid: analyze_calls.append(cid),
     )
     # recluster_pains_for_niche_task.apply_async — должен быть вызван с countdown=180
     recluster_calls: list[dict] = []
     monkeypatch.setattr(
-        reviews_ai_tasks.recluster_pains_for_niche_task, "apply_async",
+        reviews_ai_tasks.recluster_pains_for_niche_task,
+        "apply_async",
         lambda **kw: recluster_calls.append(kw),
     )
 
@@ -427,13 +488,21 @@ async def test_create_search_from_cache_enqueues_reviews_for_empty_companies(mon
     # сидим прошлый успешный поиск с 3 компаниями (без отзывов) + кэш
     async with AsyncSessionLocal() as db:
         prev = await service.create_map_search(
-            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=niche,
+            city=city,
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=_unique_id("e1"), name="Empty1", niche=niche, city=city),
-            CompanyRaw(source="2gis", external_id=_unique_id("e2"), name="Empty2", niche=niche, city=city),
-            CompanyRaw(source="2gis", external_id=_unique_id("e3"), name="Empty3", niche=niche, city=city),
-        ], prev.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(source="2gis", external_id=_unique_id("e1"), name="Empty1", niche=niche, city=city),
+                CompanyRaw(source="2gis", external_id=_unique_id("e2"), name="Empty2", niche=niche, city=city),
+                CompanyRaw(source="2gis", external_id=_unique_id("e3"), name="Empty3", niche=niche, city=city),
+            ],
+            prev.id,
+        )
         prev.status = "completed"
         prev.finished_at = datetime.now(timezone.utc)
         await db.commit()
@@ -474,12 +543,14 @@ async def test_admin_rebuild_pain_tags_for_niche_happy_path(monkeypatch):
 
     analyze_calls: list[int] = []
     monkeypatch.setattr(
-        reviews_ai_tasks.analyze_reviews_for_company, "delay",
+        reviews_ai_tasks.analyze_reviews_for_company,
+        "delay",
         lambda cid: analyze_calls.append(cid),
     )
     recluster_calls: list[dict] = []
     monkeypatch.setattr(
-        reviews_ai_tasks.recluster_pains_for_niche_task, "apply_async",
+        reviews_ai_tasks.recluster_pains_for_niche_task,
+        "apply_async",
         lambda **kw: recluster_calls.append(kw),
     )
 
@@ -490,25 +561,40 @@ async def test_admin_rebuild_pain_tags_for_niche_happy_path(monkeypatch):
     # 2 компании этой ниши/города + 1 «чужая» (не должна попасть)
     async with AsyncSessionLocal() as db:
         prev = await service.create_map_search(
-            db, user_id=user_id, niche=niche, city=city, sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=niche,
+            city=city,
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=_unique_id("a"), name="A", niche=niche, city=city),
-            CompanyRaw(source="2gis", external_id=_unique_id("b"), name="B", niche=niche, city=city),
-        ], prev.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(source="2gis", external_id=_unique_id("a"), name="A", niche=niche, city=city),
+                CompanyRaw(source="2gis", external_id=_unique_id("b"), name="B", niche=niche, city=city),
+            ],
+            prev.id,
+        )
         # чужая — другой niche
         other = await service.create_map_search(
-            db, user_id=user_id, niche="другая", city=city, sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche="другая",
+            city=city,
+            sources=["2gis"],
         )
-        await service.save_companies_batch(db, [
-            CompanyRaw(source="2gis", external_id=_unique_id("z"), name="Z", niche="другая", city=city),
-        ], other.id)
+        await service.save_companies_batch(
+            db,
+            [
+                CompanyRaw(source="2gis", external_id=_unique_id("z"), name="Z", niche="другая", city=city),
+            ],
+            other.id,
+        )
         await db.commit()
 
     async with _client() as c:
         r = await c.post(
-            f"/api/v1/maps/admin/rebuild-pain-tags-for-niche"
-            f"?niche={niche}&city={city}",
+            f"/api/v1/maps/admin/rebuild-pain-tags-for-niche?niche={niche}&city={city}",
             headers=headers,
         )
         assert r.status_code == 200, r.text
@@ -534,20 +620,21 @@ async def test_admin_rebuild_pain_tags_for_niche_no_companies_returns_skipped(mo
 
     analyze_calls: list[int] = []
     monkeypatch.setattr(
-        reviews_ai_tasks.analyze_reviews_for_company, "delay",
+        reviews_ai_tasks.analyze_reviews_for_company,
+        "delay",
         lambda cid: analyze_calls.append(cid),
     )
     recluster_calls: list[dict] = []
     monkeypatch.setattr(
-        reviews_ai_tasks.recluster_pains_for_niche_task, "apply_async",
+        reviews_ai_tasks.recluster_pains_for_niche_task,
+        "apply_async",
         lambda **kw: recluster_calls.append(kw),
     )
 
     _, headers = await _create_user()
     async with _client() as c:
         r = await c.post(
-            "/api/v1/maps/admin/rebuild-pain-tags-for-niche"
-            "?niche=никогда_такой_ниши_нет_12345&city=Москва",
+            "/api/v1/maps/admin/rebuild-pain-tags-for-niche?niche=никогда_такой_ниши_нет_12345&city=Москва",
             headers=headers,
         )
         assert r.status_code == 200, r.text
@@ -559,15 +646,23 @@ async def test_admin_rebuild_pain_tags_for_niche_no_companies_returns_skipped(mo
 
 
 @pytest.mark.asyncio
-async def test_admin_rebuild_pain_tags_for_niche_requires_superuser():
-    """Обычный юзер (is_superuser=False) → 403."""
+async def test_admin_rebuild_pain_tags_for_niche_accessible_to_regular_user():
+    """Обычный юзер (owner) теперь МОЖЕТ rebuild болей — не 403.
+
+    Раньше endpoint был под require_superuser (403 для не-суперпользователей).
+    После fix/parsing-and-pains (#173) переведён на get_current_user_id, чтобы
+    owner мог построить боли для своих ниш. Тест проверяет что 403 больше нет
+    (валидация 422 или успех 200/202 — оба ОК, главное не 403).
+    """
     _, headers = await _create_user(is_superuser=False)
     async with _client() as c:
         r = await c.post(
-            "/api/v1/maps/admin/rebuild-pain-tags-for-niche?niche=x&city=y",
+            "/api/v1/maps/admin/rebuild-pain-tags-for-niche?niche=coffee&city=Moscow",
             headers=headers,
         )
-        assert r.status_code == 403, r.text
+        assert r.status_code != 403, (
+            f"Owner не должен получать 403 на rebuild болей. Получили {r.status_code}: {r.text[:200]}"
+        )
 
 
 @pytest.mark.asyncio
@@ -578,9 +673,7 @@ async def test_admin_requeue_stale_searches_requeues_only_old_pending(monkeypatc
     from app.modules.maps import tasks as maps_tasks
 
     calls: list[int] = []
-    monkeypatch.setattr(
-        maps_tasks.parse_map_search, "delay", lambda sid: calls.append(sid)
-    )
+    monkeypatch.setattr(maps_tasks.parse_map_search, "delay", lambda sid: calls.append(sid))
 
     niche = _unique_id("stale")
     user_id, headers = await _create_user()
@@ -588,28 +681,44 @@ async def test_admin_requeue_stale_searches_requeues_only_old_pending(monkeypatc
     async with AsyncSessionLocal() as db:
         # старый pending — должен переехать в очередь
         old_pending = await service.create_map_search(
-            db, user_id=user_id, niche=niche, city="Мск", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=niche,
+            city="Мск",
+            sources=["2gis"],
         )
         old_pending.status = "pending"
         old_pending.created_at = datetime.now(timezone.utc) - timedelta(hours=2)
 
         # старый running — тоже переставить
         old_running = await service.create_map_search(
-            db, user_id=user_id, niche=niche, city="СПб", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=niche,
+            city="СПб",
+            sources=["2gis"],
         )
         old_running.status = "running"
         old_running.created_at = datetime.now(timezone.utc) - timedelta(hours=1)
 
         # свежий pending — НЕ трогать
         fresh = await service.create_map_search(
-            db, user_id=user_id, niche=niche, city="Казань", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=niche,
+            city="Казань",
+            sources=["2gis"],
         )
         fresh.status = "pending"
         # (created_at свежий по default)
 
         # старый completed — НЕ трогать
         done = await service.create_map_search(
-            db, user_id=user_id, niche=niche, city="Тула", sources=["2gis"],
+            db,
+            user_id=user_id,
+            niche=niche,
+            city="Тула",
+            sources=["2gis"],
         )
         done.status = "completed"
         done.created_at = datetime.now(timezone.utc) - timedelta(hours=3)
