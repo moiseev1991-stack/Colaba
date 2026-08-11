@@ -29,11 +29,10 @@ def _get_default_sources() -> list[Source]:
     """Дефолт sources для нового поиска: активные провайдеры из БД.
 
     Логика:
-    - Если в БД есть хоть один is_enabled=True провайдер с валидным ключом —
-      возвращаем только их (админ явно выбрал набор через UI).
-    - Иначе — fallback на ["2gis"] (обратная совместимость, env-only стенды).
-
-    Чтение БД синхронное, потому что default_factory вызывается синхронно.
+    - Если в БД есть хоть один is_enabled=True провайдер с валидным ключом,
+      чей последний тест НЕ упал (last_test_result != 'error') — возвращаем их.
+    - Иначе — fallback на ["yandex_maps"] (бесплатно). Раньше был ["2gis"],
+      но 2GIS на free-плане не отдаёт отзывы — yandex надёжнее как дефолт.
     """
     try:
         from app.core.database import get_sync_session_factory
@@ -50,14 +49,13 @@ def _get_default_sources() -> list[Source]:
             sources: list[Source] = [
                 _PROVIDER_ID_TO_SOURCE[r.provider_id]
                 for r in rows
-                if r.provider_id in _PROVIDER_ID_TO_SOURCE
+                if r.provider_id in _PROVIDER_ID_TO_SOURCE and r.last_test_result != "error"
             ]
             if sources:
                 return sources
     except Exception:
-        # БД недоступна, sync engine не настроен, таблицы нет — молча fallback.
         pass
-    return ["2gis"]
+    return ["yandex_maps"]
 
 
 class CompanyRaw(BaseModel):
@@ -275,8 +273,8 @@ class CompanyContactOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    source: str           # '2gis' | 'yandex_maps'
-    type: str             # 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' | ...
+    source: str  # '2gis' | 'yandex_maps'
+    type: str  # 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' | ...
     value: str
     is_primary: bool = False
 
@@ -290,7 +288,7 @@ class CompanySourceOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    source: str                    # '2gis' | 'yandex_maps'
+    source: str  # '2gis' | 'yandex_maps'
     external_id: str
     source_url: str | None = None  # deeplink на карточку в этом источнике
     rating: float | None = None
@@ -465,9 +463,9 @@ class SourceCountsOut(BaseModel):
     """
 
     total: int = 0
-    twogis: int = 0          # с профилем 2gis
-    yandex_maps: int = 0     # с профилем yandex_maps
-    both: int = 0            # с обоими (мультисурсовые)
+    twogis: int = 0  # с профилем 2gis
+    yandex_maps: int = 0  # с профилем yandex_maps
+    both: int = 0  # с обоими (мультисурсовые)
 
 
 class CompaniesListOut(BaseModel):

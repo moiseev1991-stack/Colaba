@@ -53,6 +53,14 @@ REVIEWS_BATCH_SIZE = 20
 # parse_map_search
 # ---------------------------------------------------------------------------
 
+# Человекочитаемые подписи причин сбоя источника — для текста ошибки поиска.
+_REASON_LABELS: dict[str, str] = {
+    "missing_key": "ключ не настроен или невалиден",
+    "captcha": "упёрлись в капчу",
+    "rate_limit": "превышен лимит запросов",
+    "runtime": "ошибка провайдера",
+}
+
 
 def _build_provider(source: str, db):
     """Инстанцирует провайдер. YandexMapsProvider требует db для solver."""
@@ -64,29 +72,24 @@ def _build_provider(source: str, db):
     return cls()
 
 
-async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tuple[int, bool]:
+async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tuple[int, bool, str | None]:
     """Прогоняет provider.search_companies через batch-сейв.
     После каждой партии ставит parse_company_reviews.delay.
 
-    Multi-query expansion: для популярных ниш (см. modules/maps/synonyms.py) гоняет
-    несколько поисковых запросов-синонимов с дедупом по external_id. На free-плане
-    2GIS отдаёт max 50 компаний на запрос, 4 синонима = до 200 уникальных.
-
-    Возвращает (count, completed):
-      - count: сколько компаний реально сохранено и привязано к поиску
-        (пропущенный хвост батча при exception не учитывается).
-      - completed: True если итератор провайдера дошёл до конца без
-        CaptchaWallError/RateLimitError. False означает «парсинг частичный,
-        кэш писать нельзя».
+    Возвращает (count, completed, reason):
+      - reason: код причины сбоя ('missing_key'|'captcha'|'rate_limit'|'runtime'|None).
+        None = источник честно пуст или отдал ≥1 компанию. Оркестратор различает
+        EmptyResult от MissingAPIKey.
     """
     try:
         provider = _build_provider(source, db)
     except MissingAPIKeyError as e:
         logger.warning("parse_map_search source=%s missing api key: %s", source, e)
-        return 0, False
+        return 0, False, "missing_key"
 
     from app.core.config import settings
     from app.modules.maps.synonyms import get_search_queries
+
     limit = settings.MAPS_MAX_COMPANIES_PER_SEARCH
 
     queries = get_search_queries(search.niche)
@@ -94,15 +97,22 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
         return 0, True
     logger.info(
         "parse_map_search source=%s niche=%r expanded to %d queries: %r",
-        source, search.niche, len(queries), queries,
+        source,
+        search.niche,
+        len(queries),
+        queries,
     )
 
     await service.publish_progress_event(
-        search.id, "progress",
+        search.id,
+        "progress",
         {
-            "stage": "parsing", "source": source,
-            "saved": 0, "expected": limit,
-            "queries_total": len(queries), "queries_done": 0,
+            "stage": "parsing",
+            "source": source,
+            "saved": 0,
+            "expected": limit,
+            "queries_total": len(queries),
+            "queries_done": 0,
         },
     )
 
@@ -112,6 +122,15 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
     position_cursor = 0
     completed = True
     completed_flag = [True]  # mutable wrapper для замыкания внутри _consume_query
+    # reason_flag — первая нетривиальная причина сбоя (приоритет
+    # missing_key > captcha > rate_limit > runtime). None = источник честно пуст.
+    reason_flag: list[str | None] = [None]
+
+    def _set_reason(r: str) -> None:
+        priority = {"missing_key": 0, "captcha": 1, "rate_limit": 2, "runtime": 3}
+        cur = reason_flag[0]
+        if cur is None or priority.get(r, 9) < priority.get(cur, 9):
+            reason_flag[0] = r
 
     # Семафор для упорядоченного flush — провайдеры могут давать компании
     # в любом порядке, но save_companies_batch должен идти последовательно,
@@ -127,13 +146,17 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
             to_save = batch
             batch = []
             saved = await service.save_companies_batch(
-                db, to_save, search.id, start_position=position_cursor,
+                db,
+                to_save,
+                search.id,
+                start_position=position_cursor,
             )
             position_cursor += len(to_save)
             saved_count += len(saved)
             for company in saved:
                 await service.publish_progress_event(
-                    search.id, "company",
+                    search.id,
+                    "company",
                     {"company_id": company.id, "name": company.name, "position": position_cursor},
                 )
                 parse_company_reviews.delay(company.id, source)
@@ -159,7 +182,10 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
         nonlocal batch, saved_count
         try:
             async for company_raw in provider.search_companies(
-                query, search.city, limit=limit, **radius_kwargs,
+                query,
+                search.city,
+                limit=limit,
+                **radius_kwargs,
             ):
                 if saved_count >= limit:
                     return
@@ -173,24 +199,43 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                 if len(batch) >= COMPANIES_BATCH_SIZE:
                     await flush_batch()
                     await service.publish_progress_event(
-                        search.id, "progress",
+                        search.id,
+                        "progress",
                         {
-                            "stage": "parsing", "source": source,
-                            "saved": saved_count, "expected": limit,
-                            "queries_total": len(queries), "queries_done": q_idx,
+                            "stage": "parsing",
+                            "source": source,
+                            "saved": saved_count,
+                            "expected": limit,
+                            "queries_total": len(queries),
+                            "queries_done": q_idx,
                         },
                     )
         except CaptchaWallError as e:
             logger.warning("parse_map_search source=%s captcha wall on q=%r: %s", source, query, e)
             completed_flag[0] = False
+            _set_reason("captcha")
         except RateLimitError as e:
             logger.warning("parse_map_search source=%s rate-limit on q=%r: %s", source, query, e)
             completed_flag[0] = False
+            _set_reason("rate_limit")
+        except MissingAPIKeyError as e:
+            # ВАЖНО: этот except ВЫШЕ RuntimeError, иначе маскируется.
+            logger.warning(
+                "parse_map_search source=%s api key invalid on q=%r: %s",
+                source,
+                query,
+                e,
+            )
+            completed_flag[0] = False
+            _set_reason("missing_key")
         except RuntimeError as e:
             logger.warning(
                 "parse_map_search source=%s runtime error on q=%r: %s — синоним пропущен",
-                source, query, e,
+                source,
+                query,
+                e,
             )
+            _set_reason("runtime")
         except Exception as e:
             logger.exception("parse_map_search: неожиданная ошибка в синониме %r: %s", query, e)
 
@@ -208,17 +253,24 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
     try:
         await flush_batch()
         await service.publish_progress_event(
-            search.id, "progress",
+            search.id,
+            "progress",
             {
-                "stage": "parsing", "source": source,
-                "saved": saved_count, "expected": limit,
-                "queries_total": len(queries), "queries_done": len(queries),
+                "stage": "parsing",
+                "source": source,
+                "saved": saved_count,
+                "expected": limit,
+                "queries_total": len(queries),
+                "queries_done": len(queries),
             },
         )
     except Exception as e:
         logger.warning("parse_map_search source=%s flush tail failed: %s", source, e)
 
-    return saved_count, completed
+    # Если что-то сохранили — причина сбоя не релевантна.
+    if saved_count > 0:
+        reason_flag[0] = None
+    return saved_count, completed, reason_flag[0]
 
 
 async def _parse_map_search_async(search_id: int) -> None:
@@ -232,20 +284,16 @@ async def _parse_map_search_async(search_id: int) -> None:
         # будут автоматически привязаны к этому user_id + map_search_id.
         from app.core.api_tracker import set_call_context
 
-        set_call_context(
-            user_id=search.user_id, map_search_id=search.id
-        )
+        set_call_context(user_id=search.user_id, map_search_id=search.id)
 
         search.status = "running"
         search.started_at = datetime.now(timezone.utc)
         await db.commit()
 
         total_found = 0
-        # 2026-07-14: считаем сколько источников ушло в cache-hit —
-        # чтобы не путать «свежий парс дал 0» с «все закешировано, дельта 0».
-        # Раньше при все-cache-hit total_found=0 → писали EmptyResult
-        # с текстом «источник ничего не вернул», хотя в БД уже сотни компаний.
         cache_hits = 0
+        # source_errors: {source: reason} — для честной ошибки вместо EmptyResult.
+        source_errors: dict[str, str] = {}
         # В radius-режиме точка/радиус уникальны — нельзя переиспользовать city-кэш.
         # Иначе после первого city-поиска по (ниша, город) любой radius-поиск в этом
         # городе ловит cache hit, пропускает парсинг и возвращает 0 компаний.
@@ -263,29 +311,37 @@ async def _parse_map_search_async(search_id: int) -> None:
                     # идемпотентно — повторно не ставим таск для компаний с
                     # contacts_extra.fetched_2gis_url / error_2gis.
                     try:
-                        queued = await _reenrich_cached_companies_async(
-                            db, search.niche, search.city, source
-                        )
+                        queued = await _reenrich_cached_companies_async(db, search.niche, search.city, source)
                         if queued:
                             logger.info(
                                 "parse_map_search: re-enqueued enrichment for %d cached companies (%s/%s/%s)",
-                                queued, search.niche, search.city, source,
+                                queued,
+                                search.niche,
+                                search.city,
+                                source,
                             )
                     except Exception as e:
                         logger.warning("parse_map_search: cache-hit re-enrich failed: %s", e)
                     continue
                 try:
-                    count, completed = await _parse_companies_for_source(db, search, source)
+                    count, completed, reason = await _parse_companies_for_source(db, search, source)
+                except MissingAPIKeyError as e:
+                    logger.warning(
+                        "parse_map_search: source=%s missing api key на верхнем уровне: %s",
+                        source,
+                        e,
+                    )
+                    count, completed, reason = 0, False, "missing_key"
                 except RuntimeError as e:
-                    # Третий слой защиты: если что-то прорвалось через все catch'и
-                    # внутри _parse_companies_for_source (например, новая логическая
-                    # ошибка провайдера) — НЕ валим весь поиск, просто считаем что
-                    # этот source ничего не дал. Юзер увидит EmptyResult, не failed.
+                    # Третий слой защиты: если что-то прорвался через все catch'и.
                     logger.warning(
                         "parse_map_search: source=%s бросил RuntimeError на верхнем уровне: %s",
-                        source, e,
+                        source,
+                        e,
                     )
-                    count, completed = 0, False
+                    count, completed, reason = 0, False, "runtime"
+                if reason:
+                    source_errors[source] = reason
                 total_found += count
                 # Кэш пишем только при полном успехе. Если парсинг прервался
                 # (капча, рейтлимит) — лучше не писать кэш, чтобы следующий
@@ -295,27 +351,47 @@ async def _parse_map_search_async(search_id: int) -> None:
                 # из радиуса вместо полной выдачи по городу).
                 if completed and count > 0 and not radius_mode:
                     await service.upsert_cache_entry(
-                        db, search.niche, search.city, source,
-                        companies_count=count, reviews_count=0,
+                        db,
+                        search.niche,
+                        search.city,
+                        source,
+                        companies_count=count,
+                        reviews_count=0,
                     )
 
             search.companies_found = total_found
             search.status = "completed"
             search.finished_at = datetime.now(timezone.utc)
             if total_found == 0 and cache_hits == 0:
-                # Полезный сигнал для UI: успешно завершили, но 0 компаний
-                # и НИ ОДИН источник не был закеширован (иначе это не пустой
-                # результат, а «уже всё есть, дельта 0»).
-                # Самые частые причины — опечатка в нише, узкий запрос,
-                # недоступная категория, либо провайдер сломан/забанен
-                # (капча, изменение разметки, dead proxy).
+                # Различаем причину сбоя по source_errors. Раньше ВСЕ падения
+                # показывались как «источник ничего не вернул».
                 sources_pretty = ", ".join(sources) if sources else "провайдер"
-                search.error = (
-                    f"По этому запросу источник ({sources_pretty}) ничего не вернул. "
-                    f"Попробуй переформулировать нишу, сменить город "
-                    f"или временно выключить проблемный источник."
-                )
-                search.error_type = "EmptyResult"
+                reasons = set(source_errors.values())
+                if reasons == {"missing_key"}:
+                    broken = [s for s, r in source_errors.items() if r == "missing_key"]
+                    broken_pretty = ", ".join(broken) or sources_pretty
+                    search.error = (
+                        f"Не настроен или невалиден ключ для источника ({broken_pretty}). "
+                        f"Получите/обновите ключ в /app/settings/maps-providers."
+                    )
+                    search.error_type = "MissingAPIKeyError"
+                elif reasons and reasons <= {"captcha", "rate_limit"}:
+                    search.error = (
+                        f"Источник ({sources_pretty}) временно недоступен: "
+                        f"капча или rate-limit. Попробуйте позже или смените источник."
+                    )
+                    search.error_type = "ProviderUnavailable"
+                else:
+                    base_msg = (
+                        f"По этому запросу источник ({sources_pretty}) ничего не вернул. "
+                        f"Попробуй переформулировать нишу, сменить город "
+                        f"или временно выключить проблемный источник."
+                    )
+                    if source_errors:
+                        down = ", ".join(f"{s} ({_REASON_LABELS.get(r, r)})" for s, r in source_errors.items())
+                        base_msg += f" Часть источников не отдала данные: {down}."
+                    search.error = base_msg
+                    search.error_type = "EmptyResult"
             elif total_found == 0 and cache_hits > 0:
                 # Все источники закешированы, свежих компаний не добавили.
                 # UI покажет companies_found=0, но БЕЗ error — это нормальный
@@ -324,7 +400,8 @@ async def _parse_map_search_async(search_id: int) -> None:
                 search.error_type = None
             await db.commit()
             await service.publish_progress_event(
-                search.id, "done",
+                search.id,
+                "done",
                 {"companies_found": total_found, "reviews_found": search.reviews_found},
             )
 
@@ -338,18 +415,24 @@ async def _parse_map_search_async(search_id: int) -> None:
             if total_found > 0 and search.niche and search.city:
                 try:
                     from app.modules.reviews_ai.tasks import recluster_pains_for_niche_task
+
                     recluster_pains_for_niche_task.apply_async(
                         args=[search.niche, search.city],
                         countdown=180,
                     )
                     logger.info(
                         "parse_map_search #%d: scheduled recluster for (%r, %r) in 180s",
-                        search.id, search.niche, search.city,
+                        search.id,
+                        search.niche,
+                        search.city,
                     )
                 except Exception as e:
                     logger.warning(
                         "parse_map_search #%d: failed to schedule recluster for (%r, %r): %s",
-                        search.id, search.niche, search.city, e,
+                        search.id,
+                        search.niche,
+                        search.city,
+                        e,
                     )
         except Exception as e:
             logger.exception("parse_map_search: unhandled error")
@@ -406,11 +489,17 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
             if batch:
                 total_inserted += await service.save_reviews_batch(db, company.id, batch)
         except (CaptchaWallError, RateLimitError) as e:
-            logger.warning("parse_company_reviews source=%s for company=%d: %s", source, company_id, e)
+            # ТРАНЗИЕНТНЫЕ — прокидываем наверх для Celery-retry (countdown=30с).
+            # Раньше тихий return 0 терял отзывы при временной капче/rate-limit.
+            logger.warning(
+                "parse_company_reviews source=%s for company=%d транзиентная (будет retry): %s",
+                source,
+                company_id,
+                e,
+            )
+            raise
         except RuntimeError as e:
-            # 2GIS reviews/list endpoint недоступен на free-плане (meta.code=404 Method not found).
-            # Не валим таск: компания уже сохранена, рейтинг и review_count берутся из items-ответа.
-            # Без этой ветки таск ретраился max_retries раз и забивал очередь.
+            # 2GIS reviews/list недоступен на free-плане (meta.code=404).
             logger.warning("parse_company_reviews source=%s for company=%d skipped: %s", source, company_id, e)
 
         await service.update_company_aggregates(db, company.id)
@@ -425,6 +514,7 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
     # ставить всегда безопасно и идемпотентно.
     try:
         from app.modules.reviews_ai.tasks import analyze_reviews_for_company
+
         analyze_reviews_for_company.delay(company_id)
     except Exception as e:
         logger.warning("parse_company_reviews: не смог поставить analyze_reviews_for_company: %s", e)
@@ -435,6 +525,7 @@ async def _parse_company_reviews_async(company_id: int, source: str, limit: int)
 def parse_company_reviews(self, company_id: int, source: str, limit: int | None = None):
     """Парсит отзывы одной компании. Лимит из settings.MAPS_MAX_REVIEWS_PER_COMPANY."""
     from app.core.config import settings
+
     eff_limit = limit if limit is not None else settings.MAPS_MAX_REVIEWS_PER_COMPANY
     try:
         return asyncio.run(_parse_company_reviews_async(company_id, source, eff_limit))
@@ -475,12 +566,14 @@ def _maybe_enrich_contacts(company: Company) -> None:
     # компания ещё не была обогащена (legal-таска сама пропустит дубль).
     try:
         from app.core.config import settings as _s
+
         if (_s.DADATA_API_KEY or "").strip():
             enrich_company_legal.delay(company.id)
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue legal for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
 
     # ТЗ A.2 2026-06-04: ЛПР со страниц /team /о-нас сайта компании.
@@ -492,7 +585,8 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue team-enrich for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
 
     # ТЗ «Маркетинг-ЛПР Finder» 2026-06-20:
@@ -507,7 +601,8 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue hh-enrich for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
 
     # 2026-07-10: prodoctorov.ru парсер медицинских каталогов —
@@ -518,16 +613,19 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue prodoctorov for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
     try:
         from app.core.config import settings as _s
+
         if (_s.VK_SERVICE_TOKEN or "").strip():
             enrich_company_vk.delay(company.id)
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue vk-enrich for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
     # Playwright-email fallback: только если у компании ЕСТЬ website и НЕТ
     # emails (httpx-парсер уже отработал в enrich_company_contacts, если
@@ -535,12 +633,14 @@ def _maybe_enrich_contacts(company: Company) -> None:
     try:
         if company.website and not (company.emails or []):
             enrich_website_email_playwright.apply_async(
-                args=[company.id], countdown=10,
+                args=[company.id],
+                countdown=10,
             )
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue playwright-email for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
 
     try:
@@ -548,17 +648,14 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning(
             "_maybe_enrich_contacts: cannot enqueue marketing_dm for #%d: %s",
-            company.id, e,
+            company.id,
+            e,
         )
 
     try:
         extra = company.contacts_extra or {}
         already_tried_2gis_html = "fetched_2gis_url" in extra or "error_2gis" in extra
-        if (
-            company.source == "2gis"
-            and company.external_id
-            and not already_tried_2gis_html
-        ):
+        if company.source == "2gis" and company.external_id and not already_tried_2gis_html:
             enrich_company_from_2gis_html.delay(company.id)
     except Exception as e:
         logger.warning("_maybe_enrich_contacts: cannot enqueue 2gis_html for #%d: %s", company.id, e)
@@ -569,19 +666,13 @@ def _maybe_enrich_contacts(company: Company) -> None:
     try:
         extra = company.contacts_extra or {}
         already_tried_yandex_html = "fetched_yandex_url" in extra or "error_yandex" in extra
-        if (
-            company.source == "yandex_maps"
-            and company.external_id
-            and not already_tried_yandex_html
-        ):
+        if company.source == "yandex_maps" and company.external_id and not already_tried_yandex_html:
             enrich_company_from_yandex_html.delay(company.id)
     except Exception as e:
         logger.warning("_maybe_enrich_contacts: cannot enqueue yandex_html for #%d: %s", company.id, e)
 
 
-async def _reenrich_cached_companies_async(
-    db, niche: str, city: str, source: str, limit: int = 300
-) -> int:
+async def _reenrich_cached_companies_async(db, niche: str, city: str, source: str, limit: int = 300) -> int:
     """При cache hit — догнать enrichment для уже сохранённых компаний.
 
     Берём компании из БД по (niche, city, source) и для каждой решаем,
@@ -599,9 +690,7 @@ async def _reenrich_cached_companies_async(
         "ORDER BY id DESC LIMIT :lim"
     )
     rows = list(
-        (await db.execute(sql, {"niche": niche, "city": city, "source": source, "lim": int(limit)}))
-        .mappings()
-        .all()
+        (await db.execute(sql, {"niche": niche, "city": city, "source": source, "lim": int(limit)})).mappings().all()
     )
     queued = 0
     for r in rows:
@@ -645,9 +734,7 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
         if not company.website:
             # Помечаем чтобы не пытались снова, но без emails — нечего обогащать
             await db.execute(
-                update(Company)
-                .where(Company.id == company_id)
-                .values(contacts_enriched_at=datetime.now(timezone.utc))
+                update(Company).where(Company.id == company_id).values(contacts_enriched_at=datetime.now(timezone.utc))
             )
             await db.commit()
             return {"status": "no_website"}
@@ -693,6 +780,7 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
         try:
             from app.modules.maps.lead_temperature import recompute_for_company as _rt
             from app.modules.maps.website_lead_score import recompute_for_company as _rw
+
             await _rt(db, company_id)
             await _rw(db, company_id)
             await db.commit()
@@ -823,6 +911,7 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
         # чтобы новые таблицы оставались синхронными.
         try:
             from app.modules.maps.service import _sync_company_to_multisource
+
             company_after = await db.get(Company, company_id, populate_existing=True)
             if company_after:
                 await _sync_company_to_multisource(db, company_after)
@@ -836,6 +925,7 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
         try:
             from app.modules.maps.lead_temperature import recompute_for_company as _rt
             from app.modules.maps.website_lead_score import recompute_for_company as _rw
+
             await _rt(db, company_id)
             await _rw(db, company_id)
             await db.commit()
@@ -857,7 +947,8 @@ async def _enrich_company_from_2gis_html_async(company_id: int) -> dict:
         except Exception as e:
             logger.warning(
                 "discover_company_website enqueue failed for #%d: %s",
-                company_id, e,
+                company_id,
+                e,
             )
 
         return {
@@ -973,6 +1064,7 @@ async def _enrich_company_from_yandex_html_async(company_id: int) -> dict:
         # Phase 3 multi-source: зеркалим в company_contacts
         try:
             from app.modules.maps.service import _sync_company_to_multisource
+
             company_after = await db.get(Company, company_id, populate_existing=True)
             if company_after:
                 await _sync_company_to_multisource(db, company_after)
@@ -983,6 +1075,7 @@ async def _enrich_company_from_yandex_html_async(company_id: int) -> dict:
         try:
             from app.modules.maps.lead_temperature import recompute_for_company as _rt
             from app.modules.maps.website_lead_score import recompute_for_company as _rw
+
             await _rt(db, company_id)
             await _rw(db, company_id)
             await db.commit()
@@ -999,7 +1092,8 @@ async def _enrich_company_from_yandex_html_async(company_id: int) -> dict:
         except Exception as e:
             logger.warning(
                 "discover_company_website enqueue failed for #%d: %s",
-                company_id, e,
+                company_id,
+                e,
             )
 
         return {
@@ -1043,6 +1137,7 @@ async def _generate_company_description_async(company_id: int) -> dict:
     """Wrapper для Celery: тянет компанию + цитаты, дёргает LLM, пишет в БД."""
     async with AsyncSessionLocal() as db:
         from app.modules.maps.company_description import generate_for_company
+
         desc = await generate_for_company(db, company_id, force=False)
         return {
             "company_id": company_id,
@@ -1054,7 +1149,7 @@ async def _generate_company_description_async(company_id: int) -> dict:
 @celery_app.task(
     name="generate_company_description",
     queue="maps",  # Используем существующую очередь, не плодим новые (worker
-                   # стартует с явным -Q maps,maps_2gis_html,maps_reviews,...).
+    # стартует с явным -Q maps,maps_2gis_html,maps_reviews,...).
     bind=True,
     max_retries=1,
     rate_limit="60/m",  # ProxyAPI обычно держит, но без агрессии
@@ -1068,9 +1163,7 @@ def generate_company_description(self, company_id: int):
     try:
         return asyncio.run(_generate_company_description_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "generate_company_description retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("generate_company_description retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
@@ -1098,6 +1191,7 @@ async def _discover_company_website_async(company_id: int) -> dict:
         # Если website уже выглядит как «настоящий» (не псевдо vk/2gis/etc) —
         # не трогаем. Если псевдо (vk.com/t.me) — пробуем угадать настоящий.
         from app.modules.maps.lead_temperature import _has_active_website
+
         if _has_active_website(company):
             return {"status": "skip_has_website"}
 
@@ -1105,11 +1199,7 @@ async def _discover_company_website_async(company_id: int) -> dict:
         if cand is None:
             return {"status": "not_found"}
 
-        await db.execute(
-            sa_update(Company)
-            .where(Company.id == company_id)
-            .values(website=cand.url)
-        )
+        await db.execute(sa_update(Company).where(Company.id == company_id).values(website=cand.url))
         await db.commit()
 
         # Пересчёт скоров — website_lead_score теперь NULL, что
@@ -1119,9 +1209,7 @@ async def _discover_company_website_async(company_id: int) -> dict:
             await _rw(db, company_id)
             await db.commit()
         except Exception:
-            logger.exception(
-                "scores recompute failed after discover_website (#%d)", company_id
-            )
+            logger.exception("scores recompute failed after discover_website (#%d)", company_id)
 
         return {"status": "ok", "url": cand.url, "source": cand.source}
 
@@ -1138,9 +1226,7 @@ def discover_company_website(self, company_id: int):
     try:
         return asyncio.run(_discover_company_website_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "discover_company_website retrying #%d: %s", company_id, exc
-        )
+        logger.warning("discover_company_website retrying #%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=20, max_retries=1)
 
 
@@ -1153,6 +1239,7 @@ async def _enrich_company_legal_async(company_id: int) -> dict:
     """Wrapper для Celery: дёргает DaData и сохраняет в company_legal."""
     async with AsyncSessionLocal() as db:
         from app.modules.maps.legal_enrich import enrich_company
+
         return await enrich_company(db, company_id)
 
 
@@ -1168,9 +1255,7 @@ def enrich_company_legal(self, company_id: int):
     try:
         return asyncio.run(_enrich_company_legal_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_company_legal retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_company_legal retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
@@ -1183,6 +1268,7 @@ async def _enrich_company_team_async(company_id: int) -> dict:
     """Wrapper для Celery: тянет /team /о-нас /контакты, LLM-извлечение ФИО."""
     async with AsyncSessionLocal() as db:
         from app.modules.maps.team_enrich import enrich_company_team
+
         return await enrich_company_team(db, company_id)
 
 
@@ -1201,9 +1287,7 @@ def enrich_company_team(self, company_id: int):
     try:
         return asyncio.run(_enrich_company_team_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_company_team retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_company_team retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
@@ -1215,6 +1299,7 @@ def enrich_company_team(self, company_id: int):
 async def _enrich_company_hh_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.hh_enrich import enrich_from_hh
+
         return await enrich_from_hh(db, company_id)
 
 
@@ -1233,15 +1318,14 @@ def enrich_company_hh(self, company_id: int):
     try:
         return asyncio.run(_enrich_company_hh_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_company_hh retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_company_hh retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
 async def _enrich_company_vk_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.vk_enrich import enrich_from_vk
+
         return await enrich_from_vk(db, company_id)
 
 
@@ -1259,9 +1343,7 @@ def enrich_company_vk(self, company_id: int):
     try:
         return asyncio.run(_enrich_company_vk_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_company_vk retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_company_vk retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
@@ -1270,6 +1352,7 @@ async def _enrich_company_prodoctorov_async(company_id: int) -> dict:
         from app.modules.maps.industry_catalog_prodoctorov import (
             enrich_from_prodoctorov,
         )
+
         return await enrich_from_prodoctorov(db, company_id)
 
 
@@ -1288,9 +1371,7 @@ def enrich_company_prodoctorov(self, company_id: int):
     try:
         return asyncio.run(_enrich_company_prodoctorov_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_company_prodoctorov retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_company_prodoctorov retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
@@ -1299,6 +1380,7 @@ async def _enrich_website_email_playwright_async(company_id: int) -> dict:
         from app.modules.maps.website_email_playwright import (
             enrich_from_website_playwright,
         )
+
         return await enrich_from_website_playwright(db, company_id)
 
 
@@ -1319,7 +1401,9 @@ def enrich_website_email_playwright(self, company_id: int):
         return asyncio.run(_enrich_website_email_playwright_async(company_id))
     except Exception as exc:
         logger.warning(
-            "enrich_website_email_playwright retrying #%d: %s", company_id, exc,
+            "enrich_website_email_playwright retrying #%d: %s",
+            company_id,
+            exc,
         )
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
@@ -1332,6 +1416,7 @@ def enrich_website_email_playwright(self, company_id: int):
 async def _enrich_dm_from_serp_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.serp_dm import enrich_dm_from_serp
+
         return await enrich_dm_from_serp(db, company_id)
 
 
@@ -1348,15 +1433,14 @@ def enrich_dm_from_serp(self, company_id: int):
     try:
         return asyncio.run(_enrich_dm_from_serp_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_dm_from_serp retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_dm_from_serp retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
 async def _enrich_dm_from_telegram_bio_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.telegram_bio_dm import enrich_dm_from_telegram_bio
+
         return await enrich_dm_from_telegram_bio(db, company_id)
 
 
@@ -1374,15 +1458,14 @@ def enrich_dm_from_telegram_bio(self, company_id: int):
     try:
         return asyncio.run(_enrich_dm_from_telegram_bio_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_dm_from_telegram_bio retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_dm_from_telegram_bio retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
 async def _enrich_dm_from_checko_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.checko_dm import enrich_dm_from_checko
+
         return await enrich_dm_from_checko(db, company_id)
 
 
@@ -1399,15 +1482,14 @@ def enrich_dm_from_checko(self, company_id: int):
     try:
         return asyncio.run(_enrich_dm_from_checko_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_dm_from_checko retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_dm_from_checko retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
 async def _enrich_dm_from_owner_replies_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.owner_reply_dm import enrich_dm_from_owner_replies
+
         return await enrich_dm_from_owner_replies(db, company_id)
 
 
@@ -1423,15 +1505,14 @@ def enrich_dm_from_owner_replies(self, company_id: int):
     try:
         return asyncio.run(_enrich_dm_from_owner_replies_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_dm_from_owner_replies retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_dm_from_owner_replies retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
 async def _enrich_marketing_dm_async(company_id: int) -> dict:
     async with AsyncSessionLocal() as db:
         from app.modules.maps.marketing_dm import enrich_marketing_dm
+
         return await enrich_marketing_dm(db, company_id)
 
 
@@ -1450,9 +1531,7 @@ def enrich_marketing_dm(self, company_id: int):
     try:
         return asyncio.run(_enrich_marketing_dm_async(company_id))
     except Exception as exc:
-        logger.warning(
-            "enrich_marketing_dm retrying company=%d: %s", company_id, exc
-        )
+        logger.warning("enrich_marketing_dm retrying company=%d: %s", company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)
 
 
@@ -1461,9 +1540,7 @@ def enrich_marketing_dm(self, company_id: int):
 # ---------------------------------------------------------------------------
 
 
-async def _bulk_enqueue_async(
-    *, source_filter: str | None, missing_phone: bool, limit: int
-) -> int:
+async def _bulk_enqueue_async(*, source_filter: str | None, missing_phone: bool, limit: int) -> int:
     """SELECT компании под условие → ставит таски в очереди.
 
     Идёмпотентно: можно перезапускать, дубль-таски сожрутся ON CONFLICT в БД
@@ -1477,8 +1554,7 @@ async def _bulk_enqueue_async(
             conditions.append("(phone IS NULL OR phone = '')")
         where_sql = " AND ".join(conditions) if conditions else "TRUE"
         sql = text(
-            f"SELECT id, source, external_id, website FROM companies "
-            f"WHERE {where_sql} ORDER BY id DESC LIMIT :lim"
+            f"SELECT id, source, external_id, website FROM companies WHERE {where_sql} ORDER BY id DESC LIMIT :lim"
         )
         params: dict = {"lim": int(limit)}
         if source_filter:
@@ -1500,9 +1576,7 @@ async def _bulk_enqueue_async(
                 # Сбрасываем contacts_enriched_at чтобы таск не вышел no-op-ом
                 async with AsyncSessionLocal() as db2:
                     await db2.execute(
-                        update(Company)
-                        .where(Company.id == int(r["id"]))
-                        .values(contacts_enriched_at=None)
+                        update(Company).where(Company.id == int(r["id"])).values(contacts_enriched_at=None)
                     )
                     await db2.commit()
                 enrich_company_contacts.delay(int(r["id"]))
@@ -1581,5 +1655,6 @@ def dedup_multisource_phase2():
     См. docs/multi-source-companies-plan.md (Phase 3).
     """
     from scripts.dedup_multisource_phase2 import run as dedup_run
+
     asyncio.run(dedup_run(dry_run=False, min_confidence=0.85))
     return {"status": "ok"}

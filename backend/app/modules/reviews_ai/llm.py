@@ -59,14 +59,14 @@ AssistantKind = Literal[
 
 # Подсказки для auto-pick: какие имена модели предпочесть.
 _KIND_HINTS: dict[AssistantKind, list[str]] = {
-    "sentiment":           ["haiku", "gpt-4o-mini", "lite"],     # быстрые/дешёвые
-    "naming":              ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
-    "outreach_draft":      ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback
-    "custom_analysis":     ["gpt-4o-mini", "haiku", "lite"],     # лёгкая модель
-    "company_description": ["gpt-4o-mini", "haiku", "lite"],     # короткий текст — дёшево
-    "team_extract":        ["gpt-4o-mini", "haiku", "lite"],     # парсинг страницы, дёшево
-    "reviews_ner":         ["gpt-4o-mini", "haiku", "lite"],     # NER по отзывам, дёшево
-    "dm_from_text":        ["gpt-4o-mini", "haiku", "lite"],     # NER из SERP/tg/checko/owner-reply, дёшево
+    "sentiment": ["haiku", "gpt-4o-mini", "lite"],  # быстрые/дешёвые
+    "naming": ["sonnet", "gpt-4o", "pro", "opus"],  # качественные
+    "outreach_draft": ["sonnet", "gpt-4o", "gpt-4o-mini"],  # качественные, fallback
+    "custom_analysis": ["gpt-4o-mini", "haiku", "lite"],  # лёгкая модель
+    "company_description": ["gpt-4o-mini", "haiku", "lite"],  # короткий текст — дёшево
+    "team_extract": ["gpt-4o-mini", "haiku", "lite"],  # парсинг страницы, дёшево
+    "reviews_ner": ["gpt-4o-mini", "haiku", "lite"],  # NER по отзывам, дёшево
+    "dm_from_text": ["gpt-4o-mini", "haiku", "lite"],  # NER из SERP/tg/checko/owner-reply, дёшево
 }
 
 
@@ -84,9 +84,7 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
     elif kind == "outreach_draft":
         explicit = (settings.REVIEWS_AI_OUTREACH_DRAFT_ASSISTANT_NAME or "").strip()
     elif kind == "company_description":
-        explicit = getattr(
-            settings, "REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME", ""
-        )
+        explicit = getattr(settings, "REVIEWS_AI_COMPANY_DESCRIPTION_ASSISTANT_NAME", "")
         explicit = (explicit or "reviews_ai_company_description").strip()
     elif kind == "team_extract":
         # Своей env-переменной не заводим (см. подход custom_analysis),
@@ -104,9 +102,9 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
         explicit = ""
 
     if explicit:
-        row = (await db.execute(
-            select(AiAssistant.id).where(AiAssistant.name == explicit).limit(1)
-        )).scalar_one_or_none()
+        row = (
+            await db.execute(select(AiAssistant.id).where(AiAssistant.name == explicit).limit(1))
+        ).scalar_one_or_none()
         if row:
             return int(row)
         logger.info("reviews_ai: ассистент по имени %r не найден, переключаюсь на auto-pick", explicit)
@@ -118,10 +116,15 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
     # method» (Anthropic) или 401 (другие). Раньше auto-pick мог выбрать
     # тестовую запись `isol-sonnet-xxx` (provider=anthropic, api_key="") по
     # хинту "sonnet" → KP отдавал 422 на ровном месте.
-    candidates_raw = list((await db.execute(
-        select(AiAssistant.id, AiAssistant.model, AiAssistant.provider_type, AiAssistant.config)
-        .where(AiAssistant.model.isnot(None))
-    )).all())
+    candidates_raw = list(
+        (
+            await db.execute(
+                select(AiAssistant.id, AiAssistant.model, AiAssistant.provider_type, AiAssistant.config).where(
+                    AiAssistant.model.isnot(None)
+                )
+            )
+        ).all()
+    )
 
     def _is_configured(provider_type: str | None, cfg: dict | None) -> bool:
         key = ((cfg or {}).get("api_key") or "").strip()
@@ -135,11 +138,7 @@ async def pick_assistant_id(db: AsyncSession, kind: AssistantKind) -> int | None
             return True
         return False
 
-    candidates = [
-        (cid, model)
-        for cid, model, pt, cfg in candidates_raw
-        if _is_configured(pt, cfg)
-    ]
+    candidates = [(cid, model) for cid, model, pt, cfg in candidates_raw if _is_configured(pt, cfg)]
     for hint in hints:
         for cid, model in candidates:
             if model and hint in str(model).lower():
@@ -180,7 +179,7 @@ def _extract_json(raw: str) -> Any | None:
         j = s.rfind(closer)
         if i != -1 and j != -1 and j > i:
             try:
-                return json.loads(s[i:j + 1])
+                return json.loads(s[i : j + 1])
             except json.JSONDecodeError:
                 continue
     return None
@@ -225,7 +224,9 @@ async def call_llm_sentiment(
     if not isinstance(data, list):
         logger.warning(
             "call_llm_sentiment: ожидали list, получили %s. n_reviews=%d, raw[:300]=%r",
-            type(data).__name__, len(reviews), (raw or "")[:300],
+            type(data).__name__,
+            len(reviews),
+            (raw or "")[:300],
         )
         return None
     return data
@@ -417,7 +418,7 @@ async def call_llm_strength_naming(
 _ABSTRACT_LABEL_PATTERNS = (
     "качество ",
     "качества ",
-    "обслуживани",       # «Обслуживание», «Обслуживания»
+    "обслуживани",  # «Обслуживание», «Обслуживания»
     "клиентский опыт",
     "клиентского опыта",
     "подход ",
@@ -506,7 +507,7 @@ async def _retry_concrete_label(
         f"Выбирай конкретный симптом: что ИМЕННО раздражает клиентов "
         f"(долгое ожидание, завышенные цены, грубость, не дозвониться, "
         f"переделывание лечения, опоздания, отмены записи и т.п.).\n\n"
-        f"Верни ТОЛЬКО JSON: {{\"label\": \"...\"}}"
+        f'Верни ТОЛЬКО JSON: {{"label": "..."}}'
     )
     try:
         raw = await chat(
@@ -626,8 +627,7 @@ async def call_llm_outreach_draft(
             "Из отзывов клиентов этой компании за последние месяцы видны "
             "такие повторяющиеся проблемы:\n"
             + "\n".join(
-                f"- {p.get('label', '').strip() or 'без названия'}: "
-                f"«{(p.get('quote') or '').strip()}»"
+                f"- {p.get('label', '').strip() or 'без названия'}: «{(p.get('quote') or '').strip()}»"
                 for p in pains[:3]
             )
         )
@@ -642,12 +642,8 @@ async def call_llm_outreach_draft(
         company_context_parts.append(f"рейтинг {rating:.1f}")
     if reviews_count is not None:
         company_context_parts.append(f"отзывов {reviews_count}")
-    company_context_parts.append(
-        "сайта нет" if not has_website else "сайт есть"
-    )
-    company_context_parts.append(
-        "email есть" if has_email else "email пока не найден"
-    )
+    company_context_parts.append("сайта нет" if not has_website else "сайт есть")
+    company_context_parts.append("email есть" if has_email else "email пока не найден")
     company_context = ", ".join(company_context_parts)
 
     angle_labels = {
@@ -666,9 +662,7 @@ async def call_llm_outreach_draft(
             f"Не используй отчество.\n"
         )
     else:
-        recipient_section = (
-            "Имя получателя неизвестно — начни с нейтрального «Здравствуйте!».\n"
-        )
+        recipient_section = "Имя получателя неизвестно — начни с нейтрального «Здравствуйте!».\n"
 
     prompt = OUTREACH_DRAFT_PROMPT.format(
         company_name=company_name or "—",
@@ -681,9 +675,7 @@ async def call_llm_outreach_draft(
         angle_hint=OUTREACH_ANGLE_HINTS[angle],
         company_context=company_context,
         tone_label=OUTREACH_TONE_HINTS.get(tone, OUTREACH_TONE_HINTS["friendly"]),
-        language_label=OUTREACH_LANGUAGE_HINTS.get(
-            language, OUTREACH_LANGUAGE_HINTS["ru"]
-        ),
+        language_label=OUTREACH_LANGUAGE_HINTS.get(language, OUTREACH_LANGUAGE_HINTS["ru"]),
     )
     try:
         raw = await chat(
@@ -768,13 +760,19 @@ async def call_llm_company_description(
 # ---------------------------------------------------------------------------
 
 
-EMBEDDING_BATCH_SIZE = 100
+EMBEDDING_BATCH_SIZE = 32
+
+# Ретраимся на 429/5xx — частая причина 33% сбоёв (батч 100 упирался в TPM).
+# 401/403 НЕ ретраим — ключ невалиден, повтор не поможет.
+_EMB_RETRY_STATUSES = {429, 500, 502, 503, 504, 408, 409}
+_EMB_MAX_RETRIES = 3
 
 
 async def embed_texts(texts: list[str]) -> list[list[float]] | None:
     """OpenAI text-embedding-3-small (1536 dim). Без OPENAI_API_KEY → None.
 
-    Yandex Embeddings (256 dim) реализуется отдельно по ТЗ; первая итерация — OpenAI.
+    Ретраится на 429/5xx с экспоненциальной задержкой (1с, 2с, 4с). Батч
+    уменьшен со 100 до 32, чтобы реже упираться в TPM-лимит OpenAI.
     """
     if not texts:
         return []
@@ -786,6 +784,8 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
     model = settings.REVIEWS_AI_EMBEDDING_MODEL or "text-embedding-3-small"
     base_url = (settings.OPENAI_BASE_URL or "https://api.openai.com/v1").rstrip("/")
 
+    import asyncio
+
     import httpx
 
     from app.core.api_tracker import log_call
@@ -793,45 +793,95 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
     results: list[list[float]] = []
     async with httpx.AsyncClient(timeout=60.0) as client:
         for i in range(0, len(texts), EMBEDDING_BATCH_SIZE):
-            batch = texts[i:i + EMBEDDING_BATCH_SIZE]
-            try:
-                resp = await client.post(
-                    f"{base_url}/embeddings",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={"model": model, "input": batch},
+            batch = texts[i : i + EMBEDDING_BATCH_SIZE]
+            batch_vectors: list[list[float]] | None = None
+            last_status: int | None = None
+            for attempt in range(_EMB_MAX_RETRIES):
+                try:
+                    resp = await client.post(
+                        f"{base_url}/embeddings",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={"model": model, "input": batch},
+                    )
+                except httpx.HTTPError as e:
+                    last_status = None
+                    logger.warning(
+                        "embed_texts: HTTP error (attempt %d/%d): %s",
+                        attempt + 1,
+                        _EMB_MAX_RETRIES,
+                        e,
+                    )
+                    if attempt < _EMB_MAX_RETRIES - 1:
+                        await asyncio.sleep(2**attempt)
+                        continue
+                    await log_call(
+                        "openai_emb",
+                        model,
+                        method="POST",
+                        ok=False,
+                        error=str(e),
+                        model=model,
+                    )
+                    return None
+                if resp.status_code == 200:
+                    batch_vectors = []
+                    j = resp.json()
+                    u = (j or {}).get("usage") or {}
+                    await log_call(
+                        "openai_emb",
+                        model,
+                        method="POST",
+                        http_status=200,
+                        ok=True,
+                        prompt_tokens=u.get("prompt_tokens"),
+                        model=model,
+                    )
+                    for item in j.get("data") or []:
+                        vec = item.get("embedding")
+                        if isinstance(vec, list):
+                            batch_vectors.append(vec)
+                    break
+                if resp.status_code not in _EMB_RETRY_STATUSES:
+                    logger.warning(
+                        "embed_texts: status %d (неретраимый) body=%s",
+                        resp.status_code,
+                        resp.text[:200],
+                    )
+                    await log_call(
+                        "openai_emb",
+                        model,
+                        method="POST",
+                        http_status=resp.status_code,
+                        ok=False,
+                        error=f"http {resp.status_code}",
+                        model=model,
+                    )
+                    return None
+                last_status = resp.status_code
+                logger.warning(
+                    "embed_texts: status %d (attempt %d/%d) — retry через %ds",
+                    resp.status_code,
+                    attempt + 1,
+                    _EMB_MAX_RETRIES,
+                    2**attempt,
                 )
-            except httpx.HTTPError as e:
-                logger.warning("embed_texts: HTTP error %s", e)
+                if attempt < _EMB_MAX_RETRIES - 1:
+                    await asyncio.sleep(2**attempt)
+            if batch_vectors is None:
                 await log_call(
-                    "openai_emb", model, method="POST", ok=False,
-                    error=str(e), model=model,
+                    "openai_emb",
+                    model,
+                    method="POST",
+                    http_status=last_status,
+                    ok=False,
+                    error=f"http {last_status} after {_EMB_MAX_RETRIES} retries",
+                    model=model,
                 )
                 return None
-            if resp.status_code != 200:
-                logger.warning("embed_texts: status %d body=%s", resp.status_code, resp.text[:200])
-                await log_call(
-                    "openai_emb", model, method="POST",
-                    http_status=resp.status_code, ok=False,
-                    error=f"http {resp.status_code}", model=model,
-                )
-                return None
-            # Embeddings тарифицируются по prompt_tokens (input).
-            j = resp.json()
-            u = (j or {}).get("usage") or {}
-            await log_call(
-                "openai_emb", model, method="POST",
-                http_status=200, ok=True,
-                prompt_tokens=u.get("prompt_tokens"),
-                model=model,
-            )
-            data = j.get("data") or []
-            for item in data:
-                vec = item.get("embedding")
-                if isinstance(vec, list):
-                    results.append(vec)
+            results.extend(batch_vectors)
     return results
 
 
@@ -868,11 +918,9 @@ async def call_llm_custom_analysis(
         logger.info("call_llm_custom_analysis: no assistant available")
         return None
 
-    sample_block = "\n".join(
-        f"- «{(t or '').strip()[:400]}»"
-        for t in sample_reviews[:5]
-        if t
-    ) or "(нет текстов отзывов)"
+    sample_block = (
+        "\n".join(f"- «{(t or '').strip()[:400]}»" for t in sample_reviews[:5] if t) or "(нет текстов отзывов)"
+    )
 
     full_prompt = (
         "Ты — аналитик B2B-лидов. Тебе дан критерий от пользователя и данные о "
@@ -971,7 +1019,12 @@ async def call_llm_extract_team(
     out: list[dict[str, Any]] = []
     seen_lower: set[str] = set()
     allowed_categories = {
-        "marketing", "owner", "founder", "management", "hr", "other",
+        "marketing",
+        "owner",
+        "founder",
+        "management",
+        "hr",
+        "other",
     }
     for item in data:
         if not isinstance(item, dict):
@@ -1009,15 +1062,17 @@ async def call_llm_extract_team(
         contact_phone = _clean(item.get("contact_phone"))
         contact_vk = _clean(item.get("contact_vk"))
 
-        out.append({
-            "name": name[:200],
-            "post": (post or "")[:200] or None,
-            "is_dm": is_dm,
-            "role_category": role_category,
-            "contact_email": contact_email,
-            "contact_phone": contact_phone,
-            "contact_vk": contact_vk,
-        })
+        out.append(
+            {
+                "name": name[:200],
+                "post": (post or "")[:200] or None,
+                "is_dm": is_dm,
+                "role_category": role_category,
+                "contact_email": contact_email,
+                "contact_phone": contact_phone,
+                "contact_vk": contact_vk,
+            }
+        )
     return out
 
 
@@ -1049,11 +1104,7 @@ async def call_llm_extract_from_reviews(
         logger.info("call_llm_extract_from_reviews: no assistant available")
         return None
 
-    reviews_block = "\n".join(
-        f"- «{(t or '').strip()[:800]}»"
-        for t in review_texts[:30]
-        if t and t.strip()
-    )
+    reviews_block = "\n".join(f"- «{(t or '').strip()[:800]}»" for t in review_texts[:30] if t and t.strip())
     if not reviews_block.strip():
         return []
 
@@ -1079,7 +1130,12 @@ async def call_llm_extract_from_reviews(
     out: list[dict[str, Any]] = []
     seen_lower: set[str] = set()
     allowed_categories = {
-        "marketing", "owner", "founder", "management", "hr", "other",
+        "marketing",
+        "owner",
+        "founder",
+        "management",
+        "hr",
+        "other",
     }
     for item in data:
         if not isinstance(item, dict):
@@ -1109,12 +1165,14 @@ async def call_llm_extract_from_reviews(
         except (TypeError, ValueError):
             mentions_count = 1
 
-        out.append({
-            "name": name[:200],
-            "post": (post or "")[:200] or None,
-            "role_category": role_category,
-            "mentions_count": mentions_count,
-        })
+        out.append(
+            {
+                "name": name[:200],
+                "post": (post or "")[:200] or None,
+                "role_category": role_category,
+                "mentions_count": mentions_count,
+            }
+        )
     return out
 
 
@@ -1175,7 +1233,12 @@ async def call_llm_extract_dm_from_text(
     out: list[dict[str, Any]] = []
     seen_lower: set[str] = set()
     allowed_categories = {
-        "marketing", "owner", "founder", "management", "hr", "other",
+        "marketing",
+        "owner",
+        "founder",
+        "management",
+        "hr",
+        "other",
     }
     for item in data:
         if not isinstance(item, dict):
@@ -1214,14 +1277,15 @@ async def call_llm_extract_dm_from_text(
             conf = 0.0
         conf = max(0.0, min(1.0, conf))
 
-        out.append({
-            "name": name[:200],
-            "post": (post or "")[:200] or None,
-            "role_category": role_category,
-            "contact_email": contact_email,
-            "contact_vk": contact_vk,
-            "contact_phone": contact_phone,
-            "confidence_hint": conf,
-        })
+        out.append(
+            {
+                "name": name[:200],
+                "post": (post or "")[:200] or None,
+                "role_category": role_category,
+                "contact_email": contact_email,
+                "contact_vk": contact_vk,
+                "contact_phone": contact_phone,
+                "confidence_hint": conf,
+            }
+        )
     return out
-

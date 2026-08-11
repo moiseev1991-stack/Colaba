@@ -186,6 +186,13 @@ services:
       # LLM для reviews_ai в search-worker (sentiment может дёргаться отсюда).
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      # Прокси для HTML-парсеров (Yandex Maps search_companies + fetch_reviews).
+      # ВАЖНО: без этих переменных celery-worker-search работает с USE_PROXY=False
+      # (дефолт config.py) → Яндекс банит server-IP → 0 компаний и 0 отзывов.
+      # Раньше эти env были только в сервисе backend, но парсит именно этот worker.
+      USE_PROXY: ${USE_PROXY:-False}
+      PROXY_URL: ${PROXY_URL:-}
+      PROXY_LIST: ${PROXY_LIST:-}
     depends_on:
       postgres:
         condition: service_healthy

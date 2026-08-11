@@ -117,19 +117,25 @@ function initialFilter(
 
 function statusLabel(status: string): string {
   switch (status) {
-    case 'pending': return 'в очереди';
-    case 'running': return 'парсим…';
-    case 'completed': return 'готово';
-    case 'failed': return 'ошибка';
-    case 'from_cache': return 'из кэша';
-    default: return status;
+    case 'pending':
+      return 'в очереди';
+    case 'running':
+      return 'парсим…';
+    case 'completed':
+      return 'готово';
+    case 'failed':
+      return 'ошибка';
+    case 'from_cache':
+      return 'из кэша';
+    default:
+      return status;
   }
 }
 
 const SOURCE_PRETTY: Record<string, { label: string; dot: string }> = {
   '2gis': { label: '2GIS', dot: '🟢' },
-  'yandex_maps': { label: 'Я.Карты', dot: '🔴' },
-  'google_maps': { label: 'Google Maps', dot: '🔵' },
+  yandex_maps: { label: 'Я.Карты', dot: '🔴' },
+  google_maps: { label: 'Google Maps', dot: '🔵' },
 };
 
 function sourceListPretty(
@@ -177,7 +183,10 @@ export function MapsSearchResults({
   // Multi-source (ТЗ 2026-06-04): счётчики по источникам для сегмент-переключателя
   // «Все · 2GIS · Я.Карты». Берутся из CompaniesListOut.source_counts.
   const [sourceCounts, setSourceCounts] = useState<{
-    total: number; twogis: number; yandex_maps: number; both: number;
+    total: number;
+    twogis: number;
+    yandex_maps: number;
+    both: number;
   } | null>(null);
   const [filter, setFilter] = useState<MapSearchFilter>(() =>
     initialFilter(initialSearch, parseSourceFilter(searchParams?.get('src') ?? null)),
@@ -222,7 +231,10 @@ export function MapsSearchResults({
   const [aiAnalyses, setAiAnalyses] = useState<Map<number, CompanyAnalysisOut>>(new Map());
   const [aiTriggering, setAiTriggering] = useState(false);
   const [aiLastRun, setAiLastRun] = useState<{
-    queued: number; cached: number; over_limit: number; limit_remaining: number;
+    queued: number;
+    cached: number;
+    over_limit: number;
+    limit_remaining: number;
   } | null>(null);
   const aiPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   // Защита от повторного автозапуска: эффект ниже триггерит handleTriggerAi
@@ -235,9 +247,9 @@ export function MapsSearchResults({
   // для top-30 ниш; для редких комбинаций типа «стоматология/Балашиха»
   // company_pain_scores оставался пуст → карточки в fallback. Кнопка
   // даёт юзеру вручную поставить recluster в очередь.
-  const [reclusterState, setReclusterState] = useState<
-    'idle' | 'queueing' | 'queued' | 'error'
-  >('idle');
+  const [reclusterState, setReclusterState] = useState<'idle' | 'queueing' | 'queued' | 'error'>(
+    'idle',
+  );
   const [reclusterMsg, setReclusterMsg] = useState<string>('');
   // 2026-06-18: позитивный recluster (sentiment='positive'). Отдельный
   // state, потому что юзер может запустить его параллельно с обычным
@@ -326,9 +338,8 @@ export function MapsSearchResults({
   // (в рамках сессии где search уже создан в родительском MapsSearchPanel).
   const lastUrlSrcRef = useRef<string | null>(searchParams?.get('src') ?? null);
   useEffect(() => {
-    const current = filter.source_filter && filter.source_filter !== 'all'
-      ? filter.source_filter
-      : null;
+    const current =
+      filter.source_filter && filter.source_filter !== 'all' ? filter.source_filter : null;
     if (lastUrlSrcRef.current === current) return;
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     if (current) params.set('src', current);
@@ -379,7 +390,7 @@ export function MapsSearchResults({
   const stream = useSearchStream(
     initialMode === 'searching' && !TERMINAL_STATUSES.has(initialSearch.status)
       ? initialSearch.id
-      : null
+      : null,
   );
 
   const isTerminal = TERMINAL_STATUSES.has(search.status) || stream.done;
@@ -405,7 +416,10 @@ export function MapsSearchResults({
     const timer = setInterval(async () => {
       try {
         const updated = await getMapSearch(search.id);
-        if (updated.status !== search.status || updated.companies_found !== search.companies_found) {
+        if (
+          updated.status !== search.status ||
+          updated.companies_found !== search.companies_found
+        ) {
           setSearch(updated);
         }
         // Пока парсер работает — параллельно дёргаем список компаний,
@@ -437,7 +451,7 @@ export function MapsSearchResults({
         setIsLoading(false);
       }
     },
-    [search.id]
+    [search.id],
   );
 
   useEffect(() => {
@@ -517,12 +531,15 @@ export function MapsSearchResults({
     }
   }, [activeAiPreset, visibleCompanyIds, stopAiPolling]);
 
-  const onUserPresetWithAi = useCallback((preset: UserPresetOut) => {
-    setActiveAiPreset(preset);
-    setAiAnalyses(new Map());
-    setAiLastRun(null);
-    stopAiPolling();
-  }, [stopAiPolling]);
+  const onUserPresetWithAi = useCallback(
+    (preset: UserPresetOut) => {
+      setActiveAiPreset(preset);
+      setAiAnalyses(new Map());
+      setAiLastRun(null);
+      stopAiPolling();
+    },
+    [stopAiPolling],
+  );
 
   const handleTriggerAi = useCallback(async () => {
     if (!activeAiPreset || visibleCompanyIds.length === 0 || aiTriggering) return;
@@ -535,7 +552,7 @@ export function MapsSearchResults({
     if (ids.length > AI_RUN_MAX) {
       window.alert(
         `Видимых компаний ${ids.length}, AI-анализ за один запуск обрабатывает максимум ${AI_RUN_MAX}. ` +
-          `Запускаю на первых ${AI_RUN_MAX}. Сузь фильтры и нажми ещё раз для остальных.`
+          `Запускаю на первых ${AI_RUN_MAX}. Сузь фильтры и нажми ещё раз для остальных.`,
       );
       ids = ids.slice(0, AI_RUN_MAX);
     }
@@ -548,7 +565,9 @@ export function MapsSearchResults({
       // Если ушли pending — начинаем поллинг каждые 3 сек
       if (result.queued > 0) {
         stopAiPolling();
-        aiPollTimer.current = setInterval(() => { void fetchAnalyses(); }, 3000);
+        aiPollTimer.current = setInterval(() => {
+          void fetchAnalyses();
+        }, 3000);
       }
     } catch (e) {
       // Показываем человечий detail если бэк его прислал (наш handler
@@ -631,7 +650,14 @@ export function MapsSearchResults({
           : 'Не удалось поставить AI-разбор в очередь. Проверь логи.',
       );
     }
-  }, [reclusterState, search.id, refreshCompanies, filter, fetchAiProgressOnce, stopAiProgressPolling]);
+  }, [
+    reclusterState,
+    search.id,
+    refreshCompanies,
+    filter,
+    fetchAiProgressOnce,
+    stopAiProgressPolling,
+  ]);
 
   useEffect(() => stopAiProgressPolling, [stopAiProgressPolling]);
 
@@ -643,9 +669,10 @@ export function MapsSearchResults({
   useEffect(() => {
     let mounted = true;
     if (!search?.niche) return;
-    const from = painPeriodDays != null
-      ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
-      : undefined;
+    const from =
+      painPeriodDays != null
+        ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
+        : undefined;
     listPainTags(search.niche, search.city ?? undefined, {
       source: painSourceFilter ?? undefined,
       from,
@@ -733,15 +760,11 @@ export function MapsSearchResults({
     }
     let mounted = true;
     setReviewsTrendLoading(true);
-    const from = painPeriodDays != null
-      ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
-      : undefined;
-    getNicheReviewsTrend(
-      search.niche,
-      search.city ?? null,
-      painSourceFilter ?? undefined,
-      from,
-    )
+    const from =
+      painPeriodDays != null
+        ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
+        : undefined;
+    getNicheReviewsTrend(search.niche, search.city ?? null, painSourceFilter ?? undefined, from)
       .then((d) => {
         if (mounted) setReviewsTrend(d);
       })
@@ -764,9 +787,10 @@ export function MapsSearchResults({
     }
     let mounted = true;
     setPainTrendLoading(true);
-    const from = painPeriodDays != null
-      ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
-      : undefined;
+    const from =
+      painPeriodDays != null
+        ? new Date(Date.now() - painPeriodDays * 86_400_000).toISOString().slice(0, 10)
+        : undefined;
     getNichePainTrend(
       search.niche,
       painTagForChart.id,
@@ -786,13 +810,7 @@ export function MapsSearchResults({
     return () => {
       mounted = false;
     };
-  }, [
-    painTagForChart,
-    search?.niche,
-    search?.city,
-    painSourceFilter,
-    painPeriodDays,
-  ]);
+  }, [painTagForChart, search?.niche, search?.city, painSourceFilter, painPeriodDays]);
 
   // Автозапуск анализа, если пресет выбрали ещё на форме поиска (initialAiPreset).
   // Условия: пресет активен, парсинг завершён, есть видимые компании, ещё не
@@ -805,7 +823,14 @@ export function MapsSearchResults({
     if (aiTriggering || aiLastRun) return;
     autoTriggeredRef.current = true;
     void handleTriggerAi();
-  }, [activeAiPreset, isTerminal, visibleCompanyIds.length, aiTriggering, aiLastRun, handleTriggerAi]);
+  }, [
+    activeAiPreset,
+    isTerminal,
+    visibleCompanyIds.length,
+    aiTriggering,
+    aiLastRun,
+    handleTriggerAi,
+  ]);
 
   // Если юзер вручную выбрал другой AI-пресет (через MapsFiltersPanel) —
   // разрешаем автозапуск снова. onUserPresetWithAi сбрасывает aiLastRun,
@@ -815,7 +840,9 @@ export function MapsSearchResults({
   }, [aiLastRun]);
 
   const aiDoneCount = Array.from(aiAnalyses.values()).filter((x) => x.status === 'done').length;
-  const aiPendingCount = Array.from(aiAnalyses.values()).filter((x) => x.status === 'pending').length;
+  const aiPendingCount = Array.from(aiAnalyses.values()).filter(
+    (x) => x.status === 'pending',
+  ).length;
 
   // UI-only сортировка по AI score: бэк про неё не знает (sort_by Literal-enum),
   // делаем на клиенте поверх baseList. Компании без AI-score (или с failed) —
@@ -832,13 +859,12 @@ export function MapsSearchResults({
         return baseList;
       }
       const direction = filter.sort_by === 'ai_score_asc' ? 1 : -1;
-      const withScore = baseList
-        .map((c) => {
-          const id = (c.id ?? c.company_id) as number | undefined;
-          const a = typeof id === 'number' ? aiAnalyses.get(id) : undefined;
-          const score = a?.status === 'done' ? (a.score ?? null) : null;
-          return { c, score };
-        });
+      const withScore = baseList.map((c) => {
+        const id = (c.id ?? c.company_id) as number | undefined;
+        const a = typeof id === 'number' ? aiAnalyses.get(id) : undefined;
+        const score = a?.status === 'done' ? (a.score ?? null) : null;
+        return { c, score };
+      });
       return withScore
         .slice()
         .sort((x, y) => {
@@ -1106,21 +1132,17 @@ export function MapsSearchResults({
                 Показываем дружелюбное объяснение вместо пустоты. */}
             {painSentiment === 'positive' && regionPainTags.length === 0 && (
               <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-[12.5px] text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-                <div className="font-semibold">
-                  Анализ сильных сторон ниши скоро будет
-                </div>
+                <div className="font-semibold">Анализ сильных сторон ниши скоро будет</div>
                 <div className="mt-1 text-emerald-800/90 dark:text-emerald-200/80">
-                  AI кластеризует позитивные отзывы отдельно от негативных.
-                  Если кнопка ниже неактивна — кластер ещё не запущен; нажми
-                  «Запустить», и через 2-4 минуты появятся «сильные стороны»
-                  ниши: за что клиенты хвалят компании в этом городе.
+                  AI кластеризует позитивные отзывы отдельно от негативных. Если кнопка ниже
+                  неактивна — кластер ещё не запущен; нажми «Запустить», и через 2-4 минуты появятся
+                  «сильные стороны» ниши: за что клиенты хвалят компании в этом городе.
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     disabled={
-                      positiveReclusterState === 'queueing' ||
-                      positiveReclusterState === 'queued'
+                      positiveReclusterState === 'queueing' || positiveReclusterState === 'queued'
                     }
                     onClick={async () => {
                       setPositiveReclusterState('queueing');
@@ -1133,9 +1155,7 @@ export function MapsSearchResults({
                       } catch (e: any) {
                         setPositiveReclusterState('error');
                         setPositiveReclusterMsg(
-                          e?.response?.data?.detail ||
-                            e?.message ||
-                            'Не удалось поставить задачу.',
+                          e?.response?.data?.detail || e?.message || 'Не удалось поставить задачу.',
                         );
                       }
                     }}
@@ -1205,9 +1225,7 @@ export function MapsSearchResults({
               trend={painTagForChart ? painTrend : reviewsTrend}
               loading={painTagForChart ? painTrendLoading : reviewsTrendLoading}
               headline="Динамика отзывов в нише"
-              onClose={
-                painTagForChart ? () => setPainTagForChart(null) : undefined
-              }
+              onClose={painTagForChart ? () => setPainTagForChart(null) : undefined}
             />
 
             {/* Сравнение с нишей — как в drawer, но без привязки к компании.
@@ -1266,75 +1284,74 @@ export function MapsSearchResults({
                 )}
               </div>
             )}
-            {!isTerminal && (() => {
-              // 2026-06-18: крупный прогресс-индикатор парсинга. Раньше
-              // была декоративная 1.5px полоска с animate-pulse — юзер
-              // не понимал, парсер начал или 80% уже. Теперь:
-              //   - реальный процент из stream.progress (saved/expected
-              //     либо processed/total, оба варианта прилетают с бэка)
-              //   - крупная (h-2.5) полоса на всю ширину блока
-              //   - текст «Парсинг: 192 из ~250 · 2GIS» (источник из event)
-              const p = stream.progress;
-              const saved = p?.saved ?? p?.companies_processed ?? p?.processed;
-              const expected = p?.expected ?? p?.companies_total ?? p?.total;
-              // Fallback: пока бэк не прислал прогресса — берём кол-во
-              // компаний из стрима (companies.length растёт по мере
-              // прихода event=company).
-              const fallbackSaved =
-                typeof saved === 'number' && saved > 0
-                  ? saved
-                  : stream.companies.length;
-              const pct =
-                typeof expected === 'number' && expected > 0
-                  ? Math.min(100, Math.round((fallbackSaved / expected) * 100))
-                  : null;
-              return (
-                <div className="mt-2 space-y-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 text-[12px]">
-                    <span className="font-medium text-slate-700 dark:text-slate-200">
-                      Парсер собирает компании
-                      {p?.source && (
-                        <span className="ml-1 text-slate-500 dark:text-slate-400">
-                          · {p.source}
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-slate-600 dark:text-slate-300">
+            {!isTerminal &&
+              (() => {
+                // 2026-06-18: крупный прогресс-индикатор парсинга. Раньше
+                // была декоративная 1.5px полоска с animate-pulse — юзер
+                // не понимал, парсер начал или 80% уже. Теперь:
+                //   - реальный процент из stream.progress (saved/expected
+                //     либо processed/total, оба варианта прилетают с бэка)
+                //   - крупная (h-2.5) полоса на всю ширину блока
+                //   - текст «Парсинг: 192 из ~250 · 2GIS» (источник из event)
+                const p = stream.progress;
+                const saved = p?.saved ?? p?.companies_processed ?? p?.processed;
+                const expected = p?.expected ?? p?.companies_total ?? p?.total;
+                // Fallback: пока бэк не прислал прогресса — берём кол-во
+                // компаний из стрима (companies.length растёт по мере
+                // прихода event=company).
+                const fallbackSaved =
+                  typeof saved === 'number' && saved > 0 ? saved : stream.companies.length;
+                const pct =
+                  typeof expected === 'number' && expected > 0
+                    ? Math.min(100, Math.round((fallbackSaved / expected) * 100))
+                    : null;
+                return (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 text-[12px]">
+                      <span className="font-medium text-slate-700 dark:text-slate-200">
+                        Парсер собирает компании
+                        {p?.source && (
+                          <span className="ml-1 text-slate-500 dark:text-slate-400">
+                            · {p.source}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {pct != null ? (
+                          <>
+                            {fallbackSaved} из ~{expected} ·{' '}
+                            <span className="font-semibold">{pct}%</span>
+                          </>
+                        ) : fallbackSaved > 0 ? (
+                          <>Уже найдено {fallbackSaved}</>
+                        ) : (
+                          // 2026-06-18: первые секунды парсинга — companies=0
+                          // и progress ещё не пришёл. Раньше юзер видел «Уже
+                          // найдено 0» и считал что парсер сломан. Теперь
+                          // явная подсказка что идёт инициализация.
+                          <>Запускаю парсер, ждём первых ответов источника…</>
+                        )}
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                       {pct != null ? (
-                        <>
-                          {fallbackSaved} из ~{expected} ·{' '}
-                          <span className="font-semibold">{pct}%</span>
-                        </>
-                      ) : fallbackSaved > 0 ? (
-                        <>Уже найдено {fallbackSaved}</>
+                        <div
+                          className="h-full bg-brand-gradient transition-all duration-500"
+                          style={{ width: `${Math.max(2, pct)}%` }}
+                        />
                       ) : (
-                        // 2026-06-18: первые секунды парсинга — companies=0
-                        // и progress ещё не пришёл. Раньше юзер видел «Уже
-                        // найдено 0» и считал что парсер сломан. Теперь
-                        // явная подсказка что идёт инициализация.
-                        <>Запускаю парсер, ждём первых ответов источника…</>
+                        <div className="h-full w-1/3 animate-pulse bg-brand-gradient" />
                       )}
-                    </span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                    {pct != null ? (
-                      <div
-                        className="h-full bg-brand-gradient transition-all duration-500"
-                        style={{ width: `${Math.max(2, pct)}%` }}
-                      />
-                    ) : (
-                      <div className="h-full w-1/3 animate-pulse bg-brand-gradient" />
+                    </div>
+                    {stream.reconnectAttempt > 0 && !stream.error && (
+                      <div className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Связь временно прервана, переподключаюсь… (попытка {stream.reconnectAttempt}
+                        ). Парсер продолжает работу в фоне.
+                      </div>
                     )}
                   </div>
-                  {stream.reconnectAttempt > 0 && !stream.error && (
-                    <div className="text-[11px] text-amber-700 dark:text-amber-400">
-                      Связь временно прервана, переподключаюсь… (попытка{' '}
-                      {stream.reconnectAttempt}). Парсер продолжает работу в фоне.
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+                );
+              })()}
           </div>
           {/* Toolbar шапки. При пустой выдаче (нет multi-source segment,
               view-toggle, export-меню, recluster-кнопки) внутри остаётся
@@ -1361,38 +1378,43 @@ export function MapsSearchResults({
                 (ТЗ 2026-06-04). Прячем когда оба источника пустые (ни одной
                 yandex_maps компании в выдаче — переключатель не нужен).
                 Счётчики берём из source_counts (полная выборка поиска). */}
-            {renderTotal > 0 && sourceCounts && sourceCounts.yandex_maps > 0 && sourceCounts.twogis > 0 && (
-              <div
-                className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600"
-                title={`Найдено: всего ${sourceCounts.total} · 2GIS ${sourceCounts.twogis} · Я.Карты ${sourceCounts.yandex_maps} · в обоих ${sourceCounts.both}`}
-              >
-                {([
-                  { id: 'all', label: 'Все', count: sourceCounts.total },
-                  { id: '2gis', label: '2GIS', count: sourceCounts.twogis },
-                  { id: 'yandex_maps', label: 'Я.Карты', count: sourceCounts.yandex_maps },
-                ] as const).map((opt, idx) => {
-                  const active = (filter.source_filter ?? 'all') === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleFilterChange({ ...filter, source_filter: opt.id })}
-                      aria-pressed={active}
-                      className={
-                        'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
-                        (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
-                        (active
-                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                          : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
-                      }
-                    >
-                      {opt.label}
-                      <span className={active ? 'opacity-80' : 'opacity-60'}>{opt.count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {renderTotal > 0 &&
+              sourceCounts &&
+              sourceCounts.yandex_maps > 0 &&
+              sourceCounts.twogis > 0 && (
+                <div
+                  className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600"
+                  title={`Найдено: всего ${sourceCounts.total} · 2GIS ${sourceCounts.twogis} · Я.Карты ${sourceCounts.yandex_maps} · в обоих ${sourceCounts.both}`}
+                >
+                  {(
+                    [
+                      { id: 'all', label: 'Все', count: sourceCounts.total },
+                      { id: '2gis', label: '2GIS', count: sourceCounts.twogis },
+                      { id: 'yandex_maps', label: 'Я.Карты', count: sourceCounts.yandex_maps },
+                    ] as const
+                  ).map((opt, idx) => {
+                    const active = (filter.source_filter ?? 'all') === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleFilterChange({ ...filter, source_filter: opt.id })}
+                        aria-pressed={active}
+                        className={
+                          'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
+                          (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
+                          (active
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
+                        }
+                      >
+                        {opt.label}
+                        <span className={active ? 'opacity-80' : 'opacity-60'}>{opt.count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
             {/* View toggle: список vs карта. Прячем пока не подгружены
                 компании — нечего показывать на карте. */}
@@ -1494,7 +1516,8 @@ export function MapsSearchResults({
                       >
                         <div className="font-medium">💼 Excel — лиды на сайт</div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
-                          XLSX с двумя вкладками: «Лиды» + «Производство сайта». Только компании без собственного сайта.
+                          XLSX с двумя вкладками: «Лиды» + «Производство сайта». Только компании без
+                          собственного сайта.
                         </div>
                       </button>
                     </div>
@@ -1515,8 +1538,7 @@ export function MapsSearchResults({
                   onClick={() => void handleReclusterNiche()}
                   disabled={reclusterState === 'queueing'}
                   title={
-                    reclusterMsg ||
-                    'AI разберёт отзывы и присвоит pain-теги. Занимает 3-5 минут.'
+                    reclusterMsg || 'AI разберёт отзывы и присвоит pain-теги. Занимает 3-5 минут.'
                   }
                   className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-violet-600 dark:bg-violet-900/40 dark:text-violet-100 dark:hover:bg-violet-900/70"
                 >
@@ -1541,10 +1563,9 @@ export function MapsSearchResults({
           <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-sm text-[color:var(--signal-warm)]">
             <div className="font-medium">Live-обновление приостановлено</div>
             <div className="mt-0.5 text-[12px] opacity-90">
-              Сервер закрыл long-poll после 3 попыток переподключения.
-              Парсер продолжает работу в фоне — нажми «Обновить страницу»
-              когда статус станет «готово» в шапке, либо подожди ~2 минуты
-              и обнови сам.
+              Сервер закрыл long-poll после 3 попыток переподключения. Парсер продолжает работу в
+              фоне — нажми «Обновить страницу» когда статус станет «готово» в шапке, либо подожди ~2
+              минуты и обнови сам.
             </div>
           </div>
         )}
@@ -1553,8 +1574,8 @@ export function MapsSearchResults({
           <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
             <div className="font-medium">Ничего не нашлось</div>
             <div className="mt-1 opacity-90">
-              По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу
-              или сменить город.
+              По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу или сменить
+              город.
             </div>
             <div className="mt-2">
               <button
@@ -1579,12 +1600,16 @@ export function MapsSearchResults({
                 </>
               ) : search.error_type === 'MissingAPIKeyError' ? (
                 <>
-                  Не настроен <code>TWOGIS_API_KEY</code> в <code>.env</code>. Получи демо-ключ
-                  на{' '}
-                  <a href="https://dev.2gis.com" className="underline" target="_blank" rel="noopener noreferrer">
-                    dev.2gis.com
-                  </a>{' '}
-                  и положи в env.
+                  Ключ провайдера карт не настроен или невалиден. Проверьте и обновите ключи в{' '}
+                  <a href="/app/settings/maps-providers" className="underline">
+                    Настройках провайдеров карт
+                  </a>
+                  .
+                </>
+              ) : search.error_type === 'ProviderUnavailable' ? (
+                <>
+                  {search.error ||
+                    'Источник временно недоступен (капча или лимит запросов). Попробуйте позже или смените источник.'}
                 </>
               ) : (
                 <>
@@ -1597,31 +1622,60 @@ export function MapsSearchResults({
         )}
 
         {search.status === 'completed' &&
+          (search.error_type === 'MissingAPIKeyError' ||
+            search.error_type === 'ProviderUnavailable') &&
+          renderTotal === 0 && (
+            <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-4 py-3 text-sm text-[color:var(--signal-hot)]">
+              <div className="font-medium">
+                {search.error_type === 'MissingAPIKeyError'
+                  ? 'Ключ провайдера карт не настроен'
+                  : 'Источник временно недоступен'}
+              </div>
+              <div className="mt-1 opacity-90">
+                {search.error_type === 'MissingAPIKeyError' ? (
+                  <>
+                    Ключ провайдера карт отсутствует или невалиден — поэтому парсинг не выполнен.
+                    Обновите ключи в{' '}
+                    <a href="/app/settings/maps-providers" className="underline">
+                      Настройках провайдеров карт
+                    </a>
+                    .
+                  </>
+                ) : (
+                  search.error ||
+                  'Провайдер встал в капчу или превысил лимит запросов. Попробуйте позже или смените источник.'
+                )}
+              </div>
+            </div>
+          )}
+
+        {search.status === 'completed' &&
           search.error_type === 'EmptyResult' &&
           renderTotal === 0 && (
             <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
               <div className="font-medium">Ничего не нашлось</div>
               <div className="mt-1 opacity-90">{search.error}</div>
-              {reviewsTrend && reviewsTrend.companies_affected > 0 && (() => {
-                const n = reviewsTrend.companies_affected;
-                const mod10 = n % 10;
-                const mod100 = n % 100;
-                const word =
-                  mod100 >= 11 && mod100 <= 14
-                    ? 'компаний'
-                    : mod10 === 1
-                      ? 'компания'
-                      : mod10 >= 2 && mod10 <= 4
-                        ? 'компании'
-                        : 'компаний';
-                return (
-                  <div className="mt-2 text-[12px] opacity-80">
-                    В БД уже собрано {n} {word} этой ниши от прошлых поисков —
-                    блоки «Динамика отзывов» и «Сравнение с нишей» ниже
-                    считаются по ним.
-                  </div>
-                );
-              })()}
+              {reviewsTrend &&
+                reviewsTrend.companies_affected > 0 &&
+                (() => {
+                  const n = reviewsTrend.companies_affected;
+                  const mod10 = n % 10;
+                  const mod100 = n % 100;
+                  const word =
+                    mod100 >= 11 && mod100 <= 14
+                      ? 'компаний'
+                      : mod10 === 1
+                        ? 'компания'
+                        : mod10 >= 2 && mod10 <= 4
+                          ? 'компании'
+                          : 'компаний';
+                  return (
+                    <div className="mt-2 text-[12px] opacity-80">
+                      В БД уже собрано {n} {word} этой ниши от прошлых поисков — блоки «Динамика
+                      отзывов» и «Сравнение с нишей» ниже считаются по ним.
+                    </div>
+                  );
+                })()}
               <button
                 type="button"
                 onClick={onNewSearch}
@@ -1648,8 +1702,8 @@ export function MapsSearchResults({
             <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
               <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
               <div className="mt-1 opacity-90">
-                Ослабь критерии в панели слева (например, убери минимум рейтинга
-                или отключи «Только с сайтом») или сбрось пресет.
+                Ослабь критерии в панели слева (например, убери минимум рейтинга или отключи «Только
+                с сайтом») или сбрось пресет.
               </div>
             </div>
           )}
@@ -1684,8 +1738,7 @@ export function MapsSearchResults({
                     .map((c: any) => (c.id ?? c.company_id) as number | undefined)
                     .filter((x): x is number => typeof x === 'number');
                   const allSelected =
-                    visibleIds.length > 0 &&
-                    visibleIds.every((id) => selectedIds.has(id));
+                    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
                   return allSelected ? 'Снять выбор со всех' : 'Выбрать все на странице';
                 })()}
               </button>
@@ -1708,11 +1761,7 @@ export function MapsSearchResults({
                       // ref-ключом — sessionStorage у новой вкладки свой,
                       // а URL-параметр может не вместить 500 id'ов.
                       const ref = storeBulkKpPending(Array.from(selectedIds));
-                      window.open(
-                        `/app/leads/kp-jobs/new?ref=${ref}`,
-                        '_blank',
-                        'noopener',
-                      );
+                      window.open(`/app/leads/kp-jobs/new?ref=${ref}`, '_blank', 'noopener');
                     }}
                     className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 font-medium text-violet-700 hover:border-violet-400 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/40"
                     title="Откроется новая вкладка: выбор шаблона/тона → старт. Партия попадёт в Историю → КП → Партии."
@@ -1744,7 +1793,9 @@ export function MapsSearchResults({
                         if (r.skipped_no_website > 0) {
                           parts.push(`${r.skipped_no_website} без сайта (искать негде)`);
                         }
-                        setLprBulkMsg(parts.join(' · ') || 'У всех выбранных компаний ЛПР уже найден.');
+                        setLprBulkMsg(
+                          parts.join(' · ') || 'У всех выбранных компаний ЛПР уже найден.',
+                        );
                         // Через ~2 минуты ЛПР должны появиться в БД — перезагружаем список.
                         setTimeout(() => void refreshCompanies(filter), 90_000);
                       } catch (e: any) {
@@ -1776,7 +1827,7 @@ export function MapsSearchResults({
             <ul className="reveal-stack space-y-2.5">
               {renderList.map((c: any, idx: number) => {
                 const id = c.id ?? c.company_id;
-                const aiAnalysis = id != null ? aiAnalyses.get(id) ?? null : null;
+                const aiAnalysis = id != null ? (aiAnalyses.get(id) ?? null) : null;
                 // fallback-key чтобы React не столкнулся с undefined у нескольких
                 // карточек (SSE-компания без сохранённого id) — редко, но возможно
                 return (
@@ -1845,7 +1896,6 @@ export function MapsSearchResults({
           setKpCompanyName(undefined);
         }}
       />
-
     </div>
   );
 }
@@ -1907,7 +1957,8 @@ function RegionPainSummary({
             )}
           </span>
           <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            {niche}{city ? ` · ${city}` : ''}
+            {niche}
+            {city ? ` · ${city}` : ''}
           </span>
           {hasActive && (
             <button
@@ -1930,7 +1981,7 @@ function RegionPainSummary({
                 title={
                   active
                     ? 'Клик ещё раз — снять фильтр по этой боли'
-                    : t.description ?? 'Показать только компании с этой болью'
+                    : (t.description ?? 'Показать только компании с этой болью')
                 }
                 className={
                   'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-[11.5px] font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-1 dark:focus:ring-rose-700 dark:focus:ring-offset-slate-900 ' +
@@ -1967,7 +2018,9 @@ function RegionPainSummary({
               type="button"
               onClick={() => setExpanded((v) => !v)}
               className="inline-flex items-center rounded border border-dashed border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
-              title={expanded ? 'Скрыть, оставить топ-8' : `Показать ещё ${unique.length - 8} плиток`}
+              title={
+                expanded ? 'Скрыть, оставить топ-8' : `Показать ещё ${unique.length - 8} плиток`
+              }
             >
               {expanded ? '× свернуть' : `+ ещё ${unique.length - 8}`}
             </button>
@@ -2005,10 +2058,10 @@ function PainHeaderControlsBar({
         Тип:
       </span>
       <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
-        {([
+        {[
           { v: 'negative' as const, label: 'Боли' },
           { v: 'positive' as const, label: 'Сильные стороны' },
-        ]).map(({ v, label }) => {
+        ].map(({ v, label }) => {
           const active = sentiment === v;
           // 2026-06-19: семантический цвет тогглов всегда, не только в
           // active-состоянии. Юзер: «Боли» должны быть красноватые,
@@ -2041,12 +2094,12 @@ function PainHeaderControlsBar({
         Источник:
       </span>
       <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
-        {([
+        {[
           { v: null, label: 'Все' },
           { v: '2gis' as const, label: '2GIS' },
           { v: 'yandex_maps' as const, label: 'Я.Карты' },
           { v: 'google' as const, label: 'Google' },
-        ]).map(({ v, label }) => {
+        ].map(({ v, label }) => {
           const active = sourceFilter === v;
           return (
             <button
@@ -2070,12 +2123,12 @@ function PainHeaderControlsBar({
         Период:
       </span>
       <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
-        {([
+        {[
           { v: 30, label: '30д' },
           { v: 90, label: '90д' },
           { v: 365, label: 'год' },
           { v: null, label: 'всё' },
-        ]).map(({ v, label }) => {
+        ].map(({ v, label }) => {
           const active = periodDays === v;
           return (
             <button
@@ -2123,13 +2176,13 @@ function RegionPainTrendInline({
 }) {
   const sourceColor: Record<string, string> = {
     '2gis': '#0ea5e9',
-    'yandex_maps': '#f43f5e',
-    'google': '#a855f7',
+    yandex_maps: '#f43f5e',
+    google: '#a855f7',
   };
   const sourceShortLabel: Record<string, string> = {
     '2gis': '2GIS',
-    'yandex_maps': 'Я.Карты',
-    'google': 'Google',
+    yandex_maps: 'Я.Карты',
+    google: 'Google',
   };
 
   // Группировка по месяцу × источнику.
@@ -2149,10 +2202,7 @@ function RegionPainTrendInline({
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
   const groupWidth = months.length > 0 ? innerW / months.length : innerW;
-  const barWidth = Math.max(
-    2,
-    Math.min(24, (groupWidth - 4) / Math.max(1, allSources.length)),
-  );
+  const barWidth = Math.max(2, Math.min(24, (groupWidth - 4) / Math.max(1, allSources.length)));
 
   return (
     <div className="mt-1.5 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -2183,7 +2233,9 @@ function RegionPainTrendInline({
           )}
         </div>
         {loading && !trend ? (
-          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">Загружаем динамику…</div>
+          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+            Загружаем динамику…
+          </div>
         ) : months.length === 0 ? (
           <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
             Нет отзывов с датами в выбранном окне — попробуй расширить период.
@@ -2196,7 +2248,9 @@ function RegionPainTrendInline({
               preserveAspectRatio="none"
               className="block"
               role="img"
-              aria-label={tag ? `Динамика «${tag.label}» по месяцам` : 'Динамика всех отзывов по месяцам'}
+              aria-label={
+                tag ? `Динамика «${tag.label}» по месяцам` : 'Динамика всех отзывов по месяцам'
+              }
             >
               <line
                 x1={PAD.left}
@@ -2251,7 +2305,9 @@ function RegionPainTrendInline({
                         </rect>
                       );
                     })}
-                    {(mi === 0 || mi === months.length - 1 || mi % Math.ceil(months.length / 8) === 0) && (
+                    {(mi === 0 ||
+                      mi === months.length - 1 ||
+                      mi % Math.ceil(months.length / 8) === 0) && (
                       <text
                         x={groupX + (allSources.length * barWidth) / 2}
                         y={PAD.top + innerH + 12}
@@ -2324,8 +2380,7 @@ function AiPainProgressBar({
   // Здесь нормализуем: при stage='ready' прогресс это 100% (работа сделана),
   // а соотношение N/M отображаем отдельной строкой ниже.
   const percent = stage === 'ready' ? 100 : rawPercent;
-  const elapsedSec =
-    startedAt != null ? Math.floor((Date.now() - startedAt) / 1000) : 0;
+  const elapsedSec = startedAt != null ? Math.floor((Date.now() - startedAt) / 1000) : 0;
 
   // Stuck-детектор: эмбеддинги готовы, но pain-тегов так и не появилось > 3 мин.
   const isStuck =
@@ -2399,9 +2454,7 @@ function AiPainProgressBar({
           : 'В работе';
 
   return (
-    <div
-      className={`mt-2 flex overflow-hidden rounded border text-[12px] ${wrapCls}`}
-    >
+    <div className={`mt-2 flex overflow-hidden rounded border text-[12px] ${wrapCls}`}>
       <div aria-hidden className={`w-1 shrink-0 ${stageBarColor}`} />
       <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -2457,12 +2510,8 @@ function AiPainProgressBar({
               </b>
             </span>
             {startedAt && stage !== 'ready' && (
-              <span
-                title="Прошло времени с момента запуска AI-разбора"
-                className="tabular-nums"
-              >
-                {Math.floor(elapsedSec / 60)}:
-                {(elapsedSec % 60).toString().padStart(2, '0')}
+              <span title="Прошло времени с момента запуска AI-разбора" className="tabular-nums">
+                {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
               </span>
             )}
             <span className="ml-auto inline-flex items-center gap-2">
@@ -2490,8 +2539,8 @@ function AiPainProgressBar({
         {isStuck && (
           <div className="space-y-1.5 border-t border-rose-200 pt-2 text-[11.5px] text-rose-800 dark:border-rose-800/60 dark:text-rose-200">
             <div>
-              Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты.
-              Скорее всего celery-задача зависла или кластеризация даёт 0 кластеров.
+              Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты. Скорее
+              всего celery-задача зависла или кластеризация даёт 0 кластеров.
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -2529,8 +2578,8 @@ function AiPainProgressBar({
                   </li>
                   <li>
                     Компаний получили теги:{' '}
-                    <b className="tabular-nums">{diagnostic.companies_with_pains_after}</b>{' '}
-                    из {diagnostic.companies_total}
+                    <b className="tabular-nums">{diagnostic.companies_with_pains_after}</b> из{' '}
+                    {diagnostic.companies_total}
                   </li>
                   {diagnostic.error && (
                     <li className="font-medium text-rose-800 dark:text-rose-200">
@@ -2558,8 +2607,8 @@ function AiPainProgressBar({
         )}
         {stage === 'idle' && (
           <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
-            У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу
-            или подожди, пока подтянутся отзывы.
+            У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу или
+            подожди, пока подтянутся отзывы.
           </div>
         )}
       </div>
