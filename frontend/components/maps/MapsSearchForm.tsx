@@ -14,7 +14,15 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BookmarkPlus, Loader2, Sparkles, ArrowRight, ChevronDown, ChevronRight, X } from 'lucide-react';
+import {
+  BookmarkPlus,
+  Loader2,
+  Sparkles,
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  X,
+} from 'lucide-react';
 
 import { BUILTIN_PRESETS } from '@/components/maps/builtinPresets';
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
@@ -33,10 +41,7 @@ import {
   type MapSearchOut,
   type MapSource,
 } from '@/src/services/api/maps';
-import {
-  listUserPresets,
-  type UserPresetOut,
-} from '@/src/services/api/user-presets';
+import { listUserPresets, type UserPresetOut } from '@/src/services/api/user-presets';
 
 const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
   // медицина / здоровье
@@ -164,7 +169,9 @@ export function MapsSearchForm({ onStarted }: Props) {
   // Когда юзер выбрал встроенный пресет с готовым ai_prompt — храним промпт и
   // имя, чтобы предложить «сохранить как мой пресет с AI» одним кликом.
   // Сам встроенный preset_id'а не имеет → запустить AI-анализ напрямую нельзя.
-  const [builtinAiPrompt, setBuiltinAiPrompt] = useState<{ name: string; prompt: string } | null>(null);
+  const [builtinAiPrompt, setBuiltinAiPrompt] = useState<{ name: string; prompt: string } | null>(
+    null,
+  );
   const [userPresets, setUserPresets] = useState<UserPresetOut[]>([]);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   // Для модалки «копировать встроенный с AI» — открываем её отдельно с
@@ -181,10 +188,12 @@ export function MapsSearchForm({ onStarted }: Props) {
         // ignore — если не залогинен или сеть, форма должна работать без пресетов
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function applyBuiltinPreset(p: typeof BUILTIN_PRESETS[number]) {
+  function applyBuiltinPreset(p: (typeof BUILTIN_PRESETS)[number]) {
     setPresetFilter(p.filter);
     setPresetLabel(p.label);
     // Встроенный пресет сам по себе не имеет preset_id и не может триггерить
@@ -192,9 +201,7 @@ export function MapsSearchForm({ onStarted }: Props) {
     // ai_prompt — показываем юзеру предложение «сохранить как мой пресет с AI».
     setAiPreset(null);
     setBuiltinAiPrompt(
-      p.ai_prompt && p.ai_prompt.trim()
-        ? { name: `${p.label} + AI`, prompt: p.ai_prompt }
-        : null,
+      p.ai_prompt && p.ai_prompt.trim() ? { name: `${p.label} + AI`, prompt: p.ai_prompt } : null,
     );
   }
 
@@ -211,7 +218,7 @@ export function MapsSearchForm({ onStarted }: Props) {
     setAiPreset(null);
     setBuiltinAiPrompt(null);
   }
-  const [sources, setSources] = useState<MapSource[]>(['2gis']);
+  const [sources, setSources] = useState<MapSource[]>(['yandex_maps']);
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [showAllPresets, setShowAllPresets] = useState(false);
@@ -219,9 +226,7 @@ export function MapsSearchForm({ onStarted }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   function toggleSource(s: MapSource) {
-    setSources((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
+    setSources((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
 
   function handlePreset(label: string) {
@@ -243,10 +248,10 @@ export function MapsSearchForm({ onStarted }: Props) {
       .filter(Boolean);
 
     const containsFromBuilder = filterSpec.conditions.find(
-      (c) => c.field === 'review_text' && c.op === 'contains' && c.value.trim()
+      (c) => c.field === 'review_text' && c.op === 'contains' && c.value.trim(),
     );
     const notContains = filterSpec.conditions.find(
-      (c) => c.field === 'review_text' && c.op === 'not_contains' && c.value.trim()
+      (c) => c.field === 'review_text' && c.op === 'not_contains' && c.value.trim(),
     );
 
     const containsAny: string[] = [];
@@ -327,12 +332,16 @@ export function MapsSearchForm({ onStarted }: Props) {
           .split(/[,;\n]/)
           .map((x) => x.trim())
           .filter((x) => x.length >= 2);
-      const niches = mode === 'radius'
-        ? [niche.trim()]
-        : [niche.trim(), ...parseList(extraNiches)].filter((v, i, a) => v && a.indexOf(v) === i);
-      const cities = mode === 'radius'
-        ? ['']
-        : [(city.trim() || 'Москва'), ...parseList(extraCities)].filter((v, i, a) => v && a.indexOf(v) === i);
+      const niches =
+        mode === 'radius'
+          ? [niche.trim()]
+          : [niche.trim(), ...parseList(extraNiches)].filter((v, i, a) => v && a.indexOf(v) === i);
+      const cities =
+        mode === 'radius'
+          ? ['']
+          : [city.trim() || 'Москва', ...parseList(extraCities)].filter(
+              (v, i, a) => v && a.indexOf(v) === i,
+            );
       const pairs: { niche: string; city: string }[] = [];
       for (const n of niches) {
         for (const c of cities) pairs.push({ niche: n, city: c });
@@ -396,7 +405,8 @@ export function MapsSearchForm({ onStarted }: Props) {
       onStarted(search, aiPreset);
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
+        (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data
+          ?.detail ||
         (err as { message?: string })?.message ||
         'Не удалось создать поиск';
       setError(msg);
@@ -414,13 +424,14 @@ export function MapsSearchForm({ onStarted }: Props) {
       const search = await createMapSearch({
         niche: preset.niche,
         city: preset.city,
-        sources: ['2gis'],
+        sources: ['yandex_maps'],
       });
       // Quick-presets — это просто ниша+город, без фильтров и AI.
       onStarted(search, null);
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
+        (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data
+          ?.detail ||
         (err as { message?: string })?.message ||
         'Не удалось запустить пресет';
       setError(msg);
@@ -472,8 +483,8 @@ export function MapsSearchForm({ onStarted }: Props) {
           Поиск лидов
         </h1>
         <p className="mt-1 text-sm max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
-          Введите нишу и город — модуль найдёт компании в 2GIS / Яндекс.Картах,
-          подтянет отзывы и выделит «боли» клиентов.
+          Введите нишу и город — модуль найдёт компании в 2GIS / Яндекс.Картах, подтянет отзывы и
+          выделит «боли» клиентов.
         </p>
       </section>
 
@@ -489,7 +500,10 @@ export function MapsSearchForm({ onStarted }: Props) {
             <div className="flex min-w-0 items-center gap-3">
               <span className="app-step-num app-step-num-active shrink-0">02</span>
               <div className="min-w-0">
-                <h2 className="text-[18px] font-bold leading-tight" style={{ color: 'hsl(var(--text))' }}>
+                <h2
+                  className="text-[18px] font-bold leading-tight"
+                  style={{ color: 'hsl(var(--text))' }}
+                >
                   Параметры поиска
                 </h2>
                 <p className="text-[12px] mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
@@ -497,7 +511,10 @@ export function MapsSearchForm({ onStarted }: Props) {
                 </p>
               </div>
             </div>
-            <span className="app-mono-label hidden md:inline" style={{ color: 'hsl(var(--muted))' }}>
+            <span
+              className="app-mono-label hidden md:inline"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
               ~ 1-2 мин до выдачи
             </span>
           </div>
@@ -512,7 +529,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
                 mode === 'city'
                   ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
               )}
             >
               По городу
@@ -525,11 +542,14 @@ export function MapsSearchForm({ onStarted }: Props) {
                 'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
                 mode === 'radius'
                   ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
               )}
               title="Конкурентный режим: компании в радиусе X км от заданного адреса"
             >
-              По радиусу <span className="ml-1 rounded-sm bg-[var(--signal-warm)]/40 px-1.5 text-[10px] text-[color:var(--signal-warm)]">new</span>
+              По радиусу{' '}
+              <span className="ml-1 rounded-sm bg-[var(--signal-warm)]/40 px-1.5 text-[10px] text-[color:var(--signal-warm)]">
+                new
+              </span>
             </button>
           </div>
 
@@ -558,7 +578,10 @@ export function MapsSearchForm({ onStarted }: Props) {
             {mode === 'city' ? (
               <>
                 <div className="md:col-span-6">
-                  <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
+                  <label
+                    className="block app-mono-label mb-2"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
                     город
                   </label>
                   <CityCombobox
@@ -576,7 +599,10 @@ export function MapsSearchForm({ onStarted }: Props) {
                     </summary>
                     <div className="grid grid-cols-1 gap-3 px-3 pb-3 pt-1 md:grid-cols-2">
                       <div>
-                        <label className="block app-mono-label mb-1.5" style={{ color: 'hsl(var(--muted))' }}>
+                        <label
+                          className="block app-mono-label mb-1.5"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
                           доп. ниши (через запятую)
                         </label>
                         <Input
@@ -589,7 +615,10 @@ export function MapsSearchForm({ onStarted }: Props) {
                         />
                       </div>
                       <div>
-                        <label className="block app-mono-label mb-1.5" style={{ color: 'hsl(var(--muted))' }}>
+                        <label
+                          className="block app-mono-label mb-1.5"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
                           доп. города (через запятую)
                         </label>
                         <Input
@@ -602,8 +631,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                         />
                       </div>
                       <p className="md:col-span-2 text-[11px] text-[hsl(var(--muted))]">
-                        При заполнении создастся N×M отдельных поисков (по одному
-                        на каждую пару). Открыть их можно в «Истории поисков».
+                        При заполнении создастся N×M отдельных поисков (по одному на каждую пару).
+                        Открыть их можно в «Истории поисков».
                       </p>
                     </div>
                   </details>
@@ -612,7 +641,10 @@ export function MapsSearchForm({ onStarted }: Props) {
             ) : (
               <>
                 <div className="md:col-span-6">
-                  <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
+                  <label
+                    className="block app-mono-label mb-2"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
                     адрес центра поиска
                   </label>
                   <Input
@@ -625,7 +657,10 @@ export function MapsSearchForm({ onStarted }: Props) {
                   />
                 </div>
                 <div className="md:col-span-12">
-                  <label className="block app-mono-label mb-2 flex items-center justify-between" style={{ color: 'hsl(var(--muted))' }}>
+                  <label
+                    className="block app-mono-label mb-2 flex items-center justify-between"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
                     <span>радиус поиска</span>
                     <span style={{ color: 'hsl(var(--text))' }}>{radiusKm.toFixed(1)} км</span>
                   </label>
@@ -659,7 +694,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     'rounded-md border px-3 py-1 text-[12px] font-medium transition-colors',
                     reviewMode === 'contains'
                       ? 'border-slate-900 bg-slate-900 text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
                   )}
                 >
                   Содержит
@@ -672,7 +707,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     'rounded-md border px-3 py-1 text-[12px] font-medium transition-colors',
                     reviewMode === 'excludes'
                       ? 'border-slate-900 bg-slate-900 text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
                   )}
                 >
                   Не содержит
@@ -694,13 +729,15 @@ export function MapsSearchForm({ onStarted }: Props) {
                 Несколько слов через запятую — между ними <strong>ИЛИ</strong>.
                 {reviewMode === 'contains' ? (
                   <>
-                    {' '}В выдаче останутся компании, у которых есть отзыв с любым из этих
-                    слов. Пример: «ДТП» в нише «юр.услуги» → автоюристы.
+                    {' '}
+                    В выдаче останутся компании, у которых есть отзыв с любым из этих слов. Пример:
+                    «ДТП» в нише «юр.услуги» → автоюристы.
                   </>
                 ) : (
                   <>
-                    {' '}В выдаче пропадут компании, у которых хоть один отзыв содержит
-                    любое из этих слов. Пример: исключить «реклама», «спам».
+                    {' '}
+                    В выдаче пропадут компании, у которых хоть один отзыв содержит любое из этих
+                    слов. Пример: исключить «реклама», «спам».
                   </>
                 )}
               </p>
@@ -746,8 +783,8 @@ export function MapsSearchForm({ onStarted }: Props) {
             {builtinAiPrompt && (
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-[12px] text-violet-900 dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200">
                 <span className="inline-flex items-center gap-1">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  У этого пресета есть готовый AI-промпт — сохрани как свой, чтобы запустить анализ
+                  <Sparkles className="h-3.5 w-3.5" />У этого пресета есть готовый AI-промпт —
+                  сохрани как свой, чтобы запустить анализ
                 </span>
                 <button
                   type="button"
@@ -773,7 +810,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                       'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
                         ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                        : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700'
+                        : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700',
                     )}
                   >
                     <span className="text-[12px] font-medium text-slate-800">{p.label}</span>
@@ -794,7 +831,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                       'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
                       active
                         ? 'border-brand-500 bg-brand-50'
-                        : 'border-brand-200 bg-brand-50/40 hover:border-brand-400'
+                        : 'border-brand-200 bg-brand-50/40 hover:border-brand-400',
                     )}
                   >
                     <span className="text-[12px] font-medium text-slate-800">
@@ -819,7 +856,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                 популярные ниши
               </p>
               <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-                {showAllPresets ? NICHE_PRESETS.length : Math.min(6, NICHE_PRESETS.length)} / {NICHE_PRESETS.length}
+                {showAllPresets ? NICHE_PRESETS.length : Math.min(6, NICHE_PRESETS.length)} /{' '}
+                {NICHE_PRESETS.length}
               </span>
             </div>
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0">
@@ -861,20 +899,28 @@ export function MapsSearchForm({ onStarted }: Props) {
               источники
             </p>
             <div className="flex flex-wrap gap-3">
-              {(
-                [
-                  { id: '2gis' as MapSource, name: '2GIS', hint: 'основной, работает' },
-                  { id: 'yandex_maps' as MapSource, name: 'Яндекс.Карты', hint: 'нужен прокси' },
-                  { id: 'google_maps' as MapSource, name: 'Google Maps', hint: 'через SerpAPI, нужен ключ' },
-                ]
-              ).map((s) => {
+              {[
+                { id: '2gis' as MapSource, name: '2GIS', hint: 'нужен валидный ключ' },
+                {
+                  id: 'yandex_maps' as MapSource,
+                  name: 'Яндекс.Карты',
+                  hint: 'бесплатно, нужен прокси',
+                },
+                {
+                  id: 'google_maps' as MapSource,
+                  name: 'Google Maps',
+                  hint: 'через SerpAPI (платно)',
+                },
+              ].map((s) => {
                 const checked = sources.includes(s.id);
                 return (
                   <label
                     key={s.id}
                     className={cn(
                       'flex cursor-pointer items-center gap-2.5 rounded-md border px-3.5 py-2.5 text-[13px] transition-colors',
-                      checked ? 'border-brand-500 bg-brand-500/10' : 'border-[hsl(var(--border))] hover:border-brand-400'
+                      checked
+                        ? 'border-brand-500 bg-brand-500/10'
+                        : 'border-[hsl(var(--border))] hover:border-brand-400',
                     )}
                   >
                     <input
@@ -903,7 +949,11 @@ export function MapsSearchForm({ onStarted }: Props) {
               className="inline-flex items-center gap-1.5 app-mono-label hover:text-[hsl(var(--accent))] transition-colors"
               style={{ color: 'hsl(var(--muted))' }}
             >
-              {advancedOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {advancedOpen ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
               расширенные настройки
             </button>
             {advancedOpen && (
@@ -924,7 +974,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   onChange={setFilterSpec}
                   disabled={isLoading}
                   fields={REVIEW_FILTER_FIELDS}
-                  emptyHint='Добавьте условие — например, «В тексте отзыва есть содержит грубость».'
+                  emptyHint="Добавьте условие — например, «В тексте отзыва есть содержит грубость»."
                   defaultTextPlaceholder="Например: не перезвонили, грубость, обман"
                 />
               </div>
@@ -971,22 +1021,32 @@ export function MapsSearchForm({ onStarted }: Props) {
                   <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
                     →
                   </span>{' '}
-                  Спарсим <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{niche.trim()}</span>
+                  Спарсим{' '}
+                  <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{niche.trim()}</span>
                   {mode === 'radius' ? (
                     <>
-                      {' '}в радиусе{' '}
-                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{radiusKm.toFixed(1)} км</span>
+                      {' '}
+                      в радиусе{' '}
+                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>
+                        {radiusKm.toFixed(1)} км
+                      </span>
                       {address.trim() && (
                         <>
-                          {' '}от{' '}
-                          <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{address.trim()}</span>
+                          {' '}
+                          от{' '}
+                          <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>
+                            {address.trim()}
+                          </span>
                         </>
                       )}
                     </>
                   ) : (
                     <>
-                      {' '}в{' '}
-                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{city || 'Москве'}</span>
+                      {' '}
+                      в{' '}
+                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>
+                        {city || 'Москве'}
+                      </span>
                     </>
                   )}{' '}
                   через {sources.map((s) => (s === '2gis' ? '2GIS' : 'Яндекс.Карты')).join(' + ')}
