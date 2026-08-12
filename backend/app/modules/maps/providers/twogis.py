@@ -835,12 +835,20 @@ class TwoGisProvider(MapProvider):
 
         # Публичный widget-API 2GIS ловит rate-limit/бан по серверному IP —
         # гоним через резидентский прокси (MAPS_PROXY_URL), если он задан.
-        from app.modules.searches.providers.common import get_maps_proxy
+        from app.modules.searches.providers.common import (
+            MAPS_PROXY_MAX_ATTEMPTS,
+            MAPS_PROXY_RETRY_DELAY,
+            get_maps_proxy,
+        )
+
+        _proxy = get_maps_proxy()
+        # Резидентский пул иногда отдаёт 503 "No exit node" — транзиентно, ретраим.
+        _max_attempts = MAPS_PROXY_MAX_ATTEMPTS if _proxy else 1
 
         yielded = 0
         offset = 0
         async with httpx.AsyncClient(
-            timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS, proxy=get_maps_proxy()
+            timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS, proxy=_proxy
         ) as client:
             while yielded < limit:
                 params = {**common, "offset": offset}
@@ -848,13 +856,30 @@ class TwoGisProvider(MapProvider):
                     "2gis public reviews: company=%s offset=%d yielded=%d limit=%d",
                     company_external_id, offset, yielded, limit,
                 )
-                try:
-                    resp = await client.get(url, params=params)
-                except httpx.HTTPError as e:
-                    logger.warning(
-                        "2gis public reviews: network error company=%s: %s",
-                        company_external_id, e,
-                    )
+                resp = None
+                for attempt in range(_max_attempts):
+                    try:
+                        resp = await client.get(url, params=params)
+                    except httpx.ProxyError as e:
+                        if attempt < _max_attempts - 1:
+                            await asyncio.sleep(MAPS_PROXY_RETRY_DELAY)
+                            continue
+                        logger.warning(
+                            "2gis public reviews: прокси не выдал ноду за %d попыток company=%s: %s",
+                            _max_attempts, company_external_id, e,
+                        )
+                        return
+                    except httpx.HTTPError as e:
+                        logger.warning(
+                            "2gis public reviews: network error company=%s: %s",
+                            company_external_id, e,
+                        )
+                        return
+                    if resp.status_code == 503 and attempt < _max_attempts - 1:
+                        await asyncio.sleep(MAPS_PROXY_RETRY_DELAY)
+                        continue
+                    break
+                if resp is None:
                     return
 
                 if resp.status_code == 404:
