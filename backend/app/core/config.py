@@ -80,6 +80,18 @@ class Settings(BaseSettings):
     PROXY_URL: str = Field(default="", description="Single proxy: http://host:port or socks5://host:port")
     PROXY_LIST: str = Field(default="", description="Comma-separated proxy list for rotation")
 
+    # Выделенный резидентский РФ-прокси ТОЛЬКО для парсинга отзывов карт
+    # (Яндекс.Карты + 2GIS). Держим отдельно от PROXY_URL, потому что
+    # резидентский трафик дорогой/лимитированный — гоняем через него только
+    # отзывы, а не обычный Google/HTML-поиск. Пусто → отзывы идут через общий
+    # get_proxy_config() (USE_PROXY/PROXY_URL). Формат: http://user:pass@host:port.
+    # Меняется одной строкой в env (Coolify) — так юзер может заменить «сгоревший»
+    # прокси без правки кода.
+    MAPS_PROXY_URL: str = Field(
+        default="",
+        description="Residential proxy for maps reviews only (Yandex/2GIS): http://user:pass@host:port",
+    )
+
     # Cost tracking (учёт внешних API-вызовов в таблице api_call_log)
     EXTERNAL_API_TRACKING_ENABLED: bool = Field(
         default=True,

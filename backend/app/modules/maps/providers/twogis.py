@@ -833,9 +833,15 @@ class TwoGisProvider(MapProvider):
         if widget_key:
             common["key"] = widget_key
 
+        # Публичный widget-API 2GIS ловит rate-limit/бан по серверному IP —
+        # гоним через резидентский прокси (MAPS_PROXY_URL), если он задан.
+        from app.modules.searches.providers.common import get_maps_proxy
+
         yielded = 0
         offset = 0
-        async with httpx.AsyncClient(timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS) as client:
+        async with httpx.AsyncClient(
+            timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS, proxy=get_maps_proxy()
+        ) as client:
             while yielded < limit:
                 params = {**common, "offset": offset}
                 logger.info(
