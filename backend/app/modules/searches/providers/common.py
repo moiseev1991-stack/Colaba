@@ -90,6 +90,13 @@ def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Option
     return None
 
 
+# Резидентский прокси периодически отдаёт 503 "No exit node" (нет свободной
+# РФ-ноды в моменте). Транзиентно — ретраим. Замер на проде 2026-08-12: ~37%
+# попыток без ноды на один запрос, 6 попыток → ~94% успех.
+MAPS_PROXY_MAX_ATTEMPTS = 6
+MAPS_PROXY_RETRY_DELAY = 0.6
+
+
 def get_maps_proxy() -> Optional[str]:
     """Прокси для парсинга отзывов карт (Яндекс/2GIS).
 

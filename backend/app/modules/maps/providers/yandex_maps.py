@@ -25,6 +25,7 @@ Legacy: helper-функции `_extract_companies_from_html`, `_ld_to_company_ra
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -46,6 +47,8 @@ from app.modules.maps.providers.base import (
 from app.modules.maps.schemas import CompanyRaw, ReviewRaw
 from app.modules.maps.utils import extract_city_from_address, mask_author
 from app.modules.searches.providers.common import (
+    MAPS_PROXY_MAX_ATTEMPTS,
+    MAPS_PROXY_RETRY_DELAY,
     detect_blocking,
     fetch_with_retry,
     get_maps_proxy,
@@ -619,19 +622,42 @@ class YandexMapsProvider(MapProvider):
         # (MAPS_PROXY_URL) — Яндекс банит серверные IP по капче именно на
         # /reviews/. get_maps_proxy() падает на общий прокси, если выделенного нет.
         proxy = get_maps_proxy()
-        try:
-            async with httpx.AsyncClient(
-                timeout=20.0, headers=headers, proxy=proxy, follow_redirects=True
-            ) as client:
-                response = await client.get(url)
-        except httpx.HTTPError as e:
-            logger.warning("yandex_maps reviews HTML error: %s", e)
-            return
+        # Резидентский пул периодически отдаёт 503 "No exit node" (нет свободной
+        # РФ-ноды в моменте) — это транзиентно: повторный запрос обычно попадает
+        # на живую ноду. Замер на проде: ~37% попыток без ноды, но 6 ретраев →
+        # ~94% успех. Ретраим только когда прокси задан (без прокси смысла нет).
+        max_attempts = MAPS_PROXY_MAX_ATTEMPTS if proxy else 1
+        response = None
+        for attempt in range(max_attempts):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=20.0, headers=headers, proxy=proxy, follow_redirects=True
+                ) as client:
+                    response = await client.get(url)
+            except httpx.ProxyError as e:
+                # 503 No exit node и прочие ошибки самого прокси — ретраим.
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(MAPS_PROXY_RETRY_DELAY)
+                    continue
+                logger.warning(
+                    "yandex_maps reviews: прокси не выдал ноду за %d попыток business=%s: %s",
+                    max_attempts, company_external_id, e,
+                )
+                return
+            except httpx.HTTPError as e:
+                logger.warning("yandex_maps reviews HTML error: %s", e)
+                return
 
-        if response.status_code != 200:
+            if response.status_code == 503 and attempt < max_attempts - 1:
+                # Некоторые прокси отдают "No exit node" как HTTP 503, а не как ProxyError.
+                await asyncio.sleep(MAPS_PROXY_RETRY_DELAY)
+                continue
+            break
+
+        if response is None or response.status_code != 200:
             logger.warning(
-                "yandex_maps reviews HTML: status=%d for business=%s",
-                response.status_code, company_external_id,
+                "yandex_maps reviews HTML: status=%s for business=%s",
+                getattr(response, "status_code", "none"), company_external_id,
             )
             return
 
