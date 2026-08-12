@@ -90,6 +90,19 @@ def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Option
     return None
 
 
+def get_maps_proxy() -> Optional[str]:
+    """Прокси для парсинга отзывов карт (Яндекс/2GIS).
+
+    Приоритет: выделенный settings.MAPS_PROXY_URL (резидентский РФ-пул) →
+    общий get_proxy_config() (USE_PROXY/PROXY_URL). Резидентский пул сам
+    ротирует exit-IP, поэтому ротацию в коде не делаем — достаточно одного
+    шлюза. Юзер меняет «сгоревший» прокси правкой MAPS_PROXY_URL в env.
+    """
+    if settings.MAPS_PROXY_URL:
+        return settings.MAPS_PROXY_URL
+    return get_proxy_config()
+
+
 async def random_delay(min_seconds: float = 1.0, max_seconds: float = 3.0):
     """
     Случайная задержка между запросами.

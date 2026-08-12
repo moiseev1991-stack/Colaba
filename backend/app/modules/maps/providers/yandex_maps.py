@@ -48,6 +48,7 @@ from app.modules.maps.utils import extract_city_from_address, mask_author
 from app.modules.searches.providers.common import (
     detect_blocking,
     fetch_with_retry,
+    get_maps_proxy,
     get_proxy_config,
     get_random_user_agent,
 )
@@ -614,7 +615,10 @@ class YandexMapsProvider(MapProvider):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "ru-RU,ru;q=0.9",
         }
-        proxy = get_proxy_config() if self._use_proxy else None
+        # Отзывы всегда пробуем через резидентский прокси, если он задан
+        # (MAPS_PROXY_URL) — Яндекс банит серверные IP по капче именно на
+        # /reviews/. get_maps_proxy() падает на общий прокси, если выделенного нет.
+        proxy = get_maps_proxy()
         try:
             async with httpx.AsyncClient(
                 timeout=20.0, headers=headers, proxy=proxy, follow_redirects=True
