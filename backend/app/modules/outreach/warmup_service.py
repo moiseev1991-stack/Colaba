@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 WARMUP_START_DATE = datetime(2026, 8, 10, tzinfo=timezone.utc)
 BASE_DAILY = 10  # стартовый объём в день 1
 DAILY_STEP = 10  # +10 писем каждый день
-MAX_DAILY = 100  # потолок объёма в день (защита)
+MAX_DAILY = 300  # потолок объёма в день (защита от перелива домена)
 
 USER_ID = 1  # sir.nikam@example.com — единый аккаунт прогрева
 
