@@ -42,10 +42,7 @@ _NETWORK_IDLE_TIMEOUT_MS = 12_000
 _SHOW_PHONE_TIMEOUT_MS = 2_000
 _POST_RENDER_WAIT_MS = 1_500
 
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 _SEC_CH_UA_HEADERS = {
     "Sec-Ch-Ua": '"Chromium";v="148", "Not.A/Brand";v="24", "Google Chrome";v="148"',
     "Sec-Ch-Ua-Mobile": "?0",
@@ -62,7 +59,7 @@ _WEBSITE_EXCLUDE_HOSTS = (
     "kinopoisk.ru",
     "music.yandex",
     "dzen.ru",
-    "max.ru",          # Yandex Max шортлинк
+    "max.ru",  # Yandex Max шортлинк
     "max.app",
     "mail.ru",
     "ok.ru",
@@ -82,8 +79,15 @@ _WEBSITE_EXCLUDE_HOSTS = (
 # Yandex-собственные аккаунты в соцсетях/мессенджерах. На карточках встречаются
 # в футере / ссылках «о приложении». Отбрасываем.
 _SOCIAL_EXCLUDE_HANDLES = {
-    "yandex", "yandexmaps", "yandex_maps", "yandex.maps", "mapsyandex",
-    "ya_news", "yandex_news", "yandex_official", "yandexapps",
+    "yandex",
+    "yandexmaps",
+    "yandex_maps",
+    "yandex.maps",
+    "mapsyandex",
+    "ya_news",
+    "yandex_news",
+    "yandex_official",
+    "yandexapps",
 }
 
 
@@ -98,20 +102,21 @@ def _looks_like_real_ru_phone(normalized: str) -> bool:
     first_after_7 = normalized[2]
     return first_after_7 in "3456789"
 
+
 # Регексы для соцсетей/мессенджеров (часть совпадает с enrich.py для 2GIS,
 # но карточки Я.Карт отдают чистые URL внутри ссылок, без link.2gis.ru обёрток).
 _RE_TEL = re.compile(r'href="tel:([^"]+)"', re.IGNORECASE)
 _RE_MAILTO = re.compile(r'href="mailto:([^"]+)"', re.IGNORECASE)
-_RE_TELEGRAM = re.compile(r'https?://(?:t\.me|telegram\.me)/([A-Za-z0-9_]+)', re.IGNORECASE)
-_RE_VK = re.compile(r'https?://(?:vk\.com|vk\.ru|vkontakte\.ru)/([A-Za-z0-9_\.\-]+)', re.IGNORECASE)
-_RE_WHATSAPP = re.compile(r'https?://(?:wa\.me|api\.whatsapp\.com)/(?:send\?phone=)?(\+?\d+)', re.IGNORECASE)
-_RE_INSTAGRAM = re.compile(r'https?://(?:www\.)?instagram\.com/([A-Za-z0-9_\.]+)', re.IGNORECASE)
-_RE_FACEBOOK = re.compile(r'https?://(?:www\.)?(?:facebook\.com|fb\.com)/([A-Za-z0-9_\.]+)', re.IGNORECASE)
-_RE_OK = re.compile(r'https?://(?:www\.)?(?:ok\.ru|odnoklassniki\.ru)/([A-Za-z0-9_\.\-]+)', re.IGNORECASE)
-_RE_YOUTUBE = re.compile(r'https?://(?:www\.)?(?:youtube\.com|youtu\.be)/([A-Za-z0-9_\-/@]+)', re.IGNORECASE)
+_RE_TELEGRAM = re.compile(r"https?://(?:t\.me|telegram\.me)/([A-Za-z0-9_]+)", re.IGNORECASE)
+_RE_VK = re.compile(r"https?://(?:vk\.com|vk\.ru|vkontakte\.ru)/([A-Za-z0-9_\.\-]+)", re.IGNORECASE)
+_RE_WHATSAPP = re.compile(r"https?://(?:wa\.me|api\.whatsapp\.com)/(?:send\?phone=)?(\+?\d+)", re.IGNORECASE)
+_RE_INSTAGRAM = re.compile(r"https?://(?:www\.)?instagram\.com/([A-Za-z0-9_\.]+)", re.IGNORECASE)
+_RE_FACEBOOK = re.compile(r"https?://(?:www\.)?(?:facebook\.com|fb\.com)/([A-Za-z0-9_\.]+)", re.IGNORECASE)
+_RE_OK = re.compile(r"https?://(?:www\.)?(?:ok\.ru|odnoklassniki\.ru)/([A-Za-z0-9_\.\-]+)", re.IGNORECASE)
+_RE_YOUTUBE = re.compile(r"https?://(?:www\.)?(?:youtube\.com|youtu\.be)/([A-Za-z0-9_\-/@]+)", re.IGNORECASE)
 _RE_HREF_HTTPS = re.compile(r'href="(https?://[^"]+)"', re.IGNORECASE)
 # Телефоны — российский формат +7/8 (NNN) NNN-NN-NN с любыми разделителями
-_RE_PHONE_RU = re.compile(r'(?:\+7|8)[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}')
+_RE_PHONE_RU = re.compile(r"(?:\+7|8)[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}")
 
 
 def _playwright_proxy_from_url(proxy_url: str | None) -> dict[str, str] | None:
@@ -141,10 +146,24 @@ def _pick_external_website(html: str) -> str | None:
         if any(bad in host for bad in _WEBSITE_EXCLUDE_HOSTS):
             continue
         # Соцсети — не «сайт» в смысле основного сайта компании
-        if any(s in host for s in ("t.me", "telegram.", "vk.com", "vk.ru",
-                                    "wa.me", "whatsapp.", "instagram.",
-                                    "facebook.", "fb.com", "ok.ru",
-                                    "odnoklassniki.", "youtube.", "youtu.be")):
+        if any(
+            s in host
+            for s in (
+                "t.me",
+                "telegram.",
+                "vk.com",
+                "vk.ru",
+                "wa.me",
+                "whatsapp.",
+                "instagram.",
+                "facebook.",
+                "fb.com",
+                "ok.ru",
+                "odnoklassniki.",
+                "youtube.",
+                "youtu.be",
+            )
+        ):
             continue
         return raw
     return None
@@ -349,3 +368,120 @@ async def enrich_from_yandex_card(external_id: str) -> ContactEnrichResult:
         result.error = f"{type(e).__name__}: {str(e)[:200]}"
 
     return result
+
+
+async def enrich_companies_batch_yandex(
+    external_ids: list[str],
+) -> dict[str, ContactEnrichResult]:
+    """Пакетное обогащение: один Chromium на N компаний.
+
+    Раньше enrich_from_yandex_card запускал свой Chromium на каждую компанию
+    (5с старт + 200-400MB RAM each). При bulk-поиске в 1000 компаний это
+    = 1000 Chromium-стартов = часы. Здесь — один Chromium переиспользуется
+    для всех компаний в батче: ~5-7с на компанию вместо ~40с.
+
+    Возвращает {external_id: ContactEnrichResult}. При ошибке одной компании
+    остальные продолжают обрабатываться (try/except внутри цикла).
+
+    Размер батча рекомендуется 5-10 (одно прокси-окно, ~1 минута общего
+    времени). Больше — риск капчи от Яндекса по одному IP.
+    """
+    results: dict[str, ContactEnrichResult] = {eid: ContactEnrichResult() for eid in external_ids}
+    if not external_ids:
+        return results
+
+    proxy_url = get_proxy_config()
+    proxy_arg = _playwright_proxy_from_url(proxy_url)
+
+    try:
+        from playwright.async_api import async_playwright, TimeoutError as PWTimeout
+    except ImportError:
+        for r in results.values():
+            r.error = "playwright not installed"
+        return results
+
+    try:
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(
+                headless=True,
+                proxy=proxy_arg,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                ],
+            )
+            try:
+                ctx = await browser.new_context(
+                    user_agent=_UA,
+                    locale="ru-RU",
+                    viewport={"width": 1366, "height": 900},
+                    extra_http_headers={
+                        "Accept-Language": "ru-RU,ru;q=0.9",
+                        **_SEC_CH_UA_HEADERS,
+                    },
+                )
+                page = await ctx.new_page()
+
+                for eid in external_ids:
+                    result = results[eid]
+                    if not eid:
+                        result.error = "no_external_id"
+                        continue
+                    url = _CARD_URL.format(external_id=eid)
+                    result.fetched_url = url
+                    try:
+                        try:
+                            await page.goto(url, wait_until="domcontentloaded", timeout=_PAGE_TIMEOUT_MS)
+                        except PWTimeout:
+                            result.error = "page goto timeout"
+                            continue
+                        if "/showcaptcha" in page.url.lower() or "/checkcaptcha" in page.url.lower():
+                            result.error = "captcha on card page"
+                            continue
+                        try:
+                            await page.wait_for_selector(
+                                ".card-feature-view__content", timeout=_NETWORK_IDLE_TIMEOUT_MS
+                            )
+                        except PWTimeout:
+                            pass
+                        try:
+                            await page.wait_for_load_state("networkidle", timeout=_NETWORK_IDLE_TIMEOUT_MS)
+                        except PWTimeout:
+                            pass
+                        try:
+                            show_phone = page.get_by_text("Показать телефон", exact=False).first
+                            await show_phone.click(timeout=_SHOW_PHONE_TIMEOUT_MS)
+                            await page.wait_for_timeout(800)
+                        except Exception:
+                            pass
+                        await page.wait_for_timeout(_POST_RENDER_WAIT_MS)
+                        phone_selectors = [
+                            "[class*='card-phones']",
+                            "[class*='phones-section']",
+                            "[class*='card-phone-view']",
+                            "[class*='card-phone-button']",
+                        ]
+                        for sel in phone_selectors:
+                            try:
+                                for el in await page.query_selector_all(sel):
+                                    try:
+                                        inner = await el.inner_html()
+                                        _extract_phones_from_block(inner, result)
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                pass
+                        html = await page.content()
+                        _extract_from_html(html, result)
+                    except Exception as e:
+                        result.error = f"{type(e).__name__}: {str(e)[:200]}"
+            finally:
+                await browser.close()
+    except Exception as e:
+        # Критическая ошибка (не смог запустить Chromium) — помечаем все
+        for r in results.values():
+            if not r.error:
+                r.error = f"{type(e).__name__}: {str(e)[:200]}"
+
+    return results
