@@ -214,6 +214,52 @@ services:
     # копились в celery default-кью с большим concurrency и долбили 2GIS.
     command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews,maps_2gis_html,maps_yandex_html
 
+  celery-worker-enrich:
+    # Отдельный воркер для enrich-задач (обогащение компаний: VK/HH/prodoctorov/
+    # legal/marketing_dm/discover_website). Раньше они были в очереди maps вместе
+    # с parse_map_search → после bulk-поиска порождали сотни enrich-задач, которые
+    # FIFO-блокировали следующие поиски карт. Теперь enrich в своей очереди —
+    # parse_map_search никогда не ждёт за enrich'ами. concurrency=1 (Playwright
+    # тяжёлый, не душим сервер), prefetch=1 (равномерное распределение).
+    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      LOG_LEVEL: ${LOG_LEVEL}
+      TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_KEY: ${TWOGIS_REVIEWS_PUBLIC_API_KEY:-}
+      TWOGIS_REVIEWS_PUBLIC_API_ENABLED: ${TWOGIS_REVIEWS_PUBLIC_API_ENABLED:-True}
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
+      DADATA_API_KEY: ${DADATA_API_KEY:-}
+      DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
+      VK_SERVICE_TOKEN: ${VK_SERVICE_TOKEN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      USE_PROXY: ${USE_PROXY:-False}
+      PROXY_URL: ${PROXY_URL:-}
+      PROXY_LIST: ${PROXY_LIST:-}
+      MAPS_PROXY_URL: ${MAPS_PROXY_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - leadgen-network
+    restart: unless-stopped
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 -Q maps_enrich
+
   frontend:
     image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}
     build:

@@ -801,7 +801,7 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
         }
 
 
-@celery_app.task(name="enrich_company_contacts", queue="maps", bind=True, max_retries=1)
+@celery_app.task(name="enrich_company_contacts", queue="maps_enrich", bind=True, max_retries=1)
 def enrich_company_contacts(self, company_id: int):
     """Качает сайт компании и достаёт из HTML email/телефоны/мессенджеры.
 
@@ -1148,7 +1148,7 @@ async def _generate_company_description_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="generate_company_description",
-    queue="maps",  # Используем существующую очередь, не плодим новые (worker
+    queue="maps_enrich",  # Используем существующую очередь, не плодим новые (worker
     # стартует с явным -Q maps,maps_2gis_html,maps_reviews,...).
     bind=True,
     max_retries=1,
@@ -1216,7 +1216,7 @@ async def _discover_company_website_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="discover_company_website",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     rate_limit="120/m",
@@ -1245,7 +1245,7 @@ async def _enrich_company_legal_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_company_legal",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     rate_limit="60/m",  # DaData бесплатный 10k/день; не агрессим
@@ -1274,7 +1274,7 @@ async def _enrich_company_team_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_company_team",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # LLM-вызовы дорогие — не больше 30 компаний в минуту, чтобы не
@@ -1305,7 +1305,7 @@ async def _enrich_company_hh_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_company_hh",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # hh публичный API 5 req/сек. У нас 3 запроса на компанию, лимит 60/m
@@ -1331,7 +1331,7 @@ async def _enrich_company_vk_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_company_vk",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # VK service token 3 req/сек; 2 запроса на компанию.
@@ -1358,7 +1358,7 @@ async def _enrich_company_prodoctorov_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_company_prodoctorov",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # prodoctorov 20 req/min — conservative (сайт лёгкий, но парсим много
@@ -1386,7 +1386,7 @@ async def _enrich_website_email_playwright_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_website_email_playwright",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # Playwright тяжёлый (~200MB RAM, 2-3s CPU). 20/m = worst-case
@@ -1422,7 +1422,7 @@ async def _enrich_dm_from_serp_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_dm_from_serp",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # SerpAPI платный + ~1-2 запроса на компанию. 30/m — комфорт.
@@ -1446,7 +1446,7 @@ async def _enrich_dm_from_telegram_bio_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_dm_from_telegram_bio",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # Публичные t.me/{name} страницы без rate-limit'а Telegram, но
@@ -1471,7 +1471,7 @@ async def _enrich_dm_from_checko_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_dm_from_checko",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # checko.ru без явных лимитов, но conservative — 30/m.
@@ -1495,7 +1495,7 @@ async def _enrich_dm_from_owner_replies_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_dm_from_owner_replies",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     rate_limit="60/m",
@@ -1518,7 +1518,7 @@ async def _enrich_marketing_dm_async(company_id: int) -> dict:
 
 @celery_app.task(
     name="enrich_marketing_dm",
-    queue="maps",
+    queue="maps_enrich",
     bind=True,
     max_retries=1,
     # Оркестратор ТОЛЬКО читает БД + считает приоритет. Тяжёлый rate-limit
@@ -1585,7 +1585,7 @@ async def _bulk_enqueue_async(*, source_filter: str | None, missing_phone: bool,
     return queued
 
 
-@celery_app.task(name="bulk_enrich_contacts", queue="maps")
+@celery_app.task(name="bulk_enrich_contacts", queue="maps_enrich")
 def bulk_enrich_contacts(
     source_filter: str | None = "2gis",
     missing_phone: bool = True,
