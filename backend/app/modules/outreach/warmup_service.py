@@ -143,10 +143,12 @@ async def _update_thread_outgoing(db, thread_id: int, body: str) -> None:
 
 
 async def get_candidate_companies(db, limit: int):
-    """УНИКАЛЬНЫЕ по email компании, которым ещё НЕ отправляли КП.
+    """УНИКАЛЬНЫЕ по email компании, которым ещё НЕ отправляли письмо.
 
-    Группируем по первому email (DISTINCT ON), берём по одному company_id на
-    email. Фильтруем мусорные «email» (парсер картинок: 404@2x.png и т.п.).
+    Дедупликация по email-адресу (не по company_id): если хотя бы одно письмо
+    уже ушло на этот адрес (через email_logs ИЛИ kp_sends) — пропускаем.
+    Берём по одному company_id на email (DISTINCT ON).
+    Фильтруем мусорные «email» (парсер картинок: 404@2x.png и т.п.).
     """
     sql = text(
         """
@@ -155,16 +157,20 @@ async def get_candidate_companies(db, limit: int):
                 c.id AS company_id,
                 c.name AS company_name,
                 c.emails,
-                c.emails::jsonb ->> 0 AS first_email
+                lower(c.emails::jsonb ->> 0) AS first_email
             FROM companies c
             WHERE c.emails IS NOT NULL
               AND c.emails::text <> '[]'
               AND c.emails::text LIKE '%@%'
-              AND NOT EXISTS (
-                SELECT 1 FROM kp_sends s
-                WHERE s.company_id = c.id AND s.channel = 'email'
-                  AND s.status = 'sent'
-              )
+        ),
+        already_sent AS (
+            -- Адреса, на которые уже отправляли (email_logs — прогрев/кампании)
+            SELECT DISTINCT lower(to_email) AS email
+            FROM email_logs WHERE status = 'sent'
+            UNION
+            -- Адреса из KP-конвейера (kp_sends)
+            SELECT DISTINCT lower(s.recipient) AS email
+            FROM kp_sends s WHERE s.channel = 'email' AND s.status = 'sent'
         )
         SELECT DISTINCT ON (first_email) company_id, company_name, emails
         FROM candidates
@@ -176,6 +182,7 @@ async def get_candidate_companies(db, limit: int):
           AND lower(first_email) NOT LIKE '%.jpg'
           AND lower(first_email) NOT LIKE '%.jpeg'
           AND lower(first_email) NOT LIKE '%.gif'
+          AND first_email NOT IN (SELECT email FROM already_sent)
         ORDER BY first_email, company_id
         LIMIT :limit
     """

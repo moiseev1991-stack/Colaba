@@ -260,6 +260,34 @@ services:
     restart: unless-stopped
     command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 -Q maps_enrich
 
+  # Celery Beat — планировщик periodic-задач (прогрев доменов каждый день,
+  # парсинг ответов каждые 5 мин, dedup каждый час и т.д.). Без этого сервиса
+  # задачи не запускаются по расписанию. Beat только отправляет задачи в
+  # очередь (через redis), выполняют их celery-worker'ы выше.
+  celery-beat:
+    image: ${BACKEND_IMAGE:-colaba-backend-local}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.slim
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      LOG_LEVEL: ${LOG_LEVEL}
+    networks:
+      - leadgen-network
+    restart: unless-stopped
+    command: celery -A app.queue.celery_app beat --loglevel=info
+
   frontend:
     image: ${FRONTEND_IMAGE:-colaba-frontend-local}:${IMAGE_TAG:-local}
     build:
