@@ -113,3 +113,5 @@ build/
 # Кэш последнего запуска bulk_niche_parse.py — id поисков конкретной сессии.
 /scripts/bulk_niche_parse_last_run.json
 
+
+/scripts/rebuild_pain_tags_last_run.json
