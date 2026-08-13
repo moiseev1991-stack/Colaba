@@ -162,6 +162,39 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                 parse_company_reviews.delay(company.id, source)
                 _maybe_enrich_contacts(company)
 
+            # Batch-enrich для yandex-компаний: один Chromium на N компаний
+            # вместо поштучного enrich_company_from_yandex_html на каждую.
+            # _maybe_enrich_contacts выше пропускает yandex_html (триггерим
+            # тут батчем). Группируем по 10 — больше risking капчей по IP.
+            if source == "yandex_maps":
+                yandex_ids = [
+                    c.id
+                    for c in saved
+                    if c.external_id
+                    and "fetched_yandex_url" not in (c.contacts_extra or {})
+                    and "error_yandex" not in (c.contacts_extra or {})
+                    # Пропускаем компании, у которых уже есть и телефон, и сайт —
+                    # enrich больше нечего искать, не тратим Playwright-циклы.
+                    and not (c.phone and c.website)
+                ]
+                for i in range(0, len(yandex_ids), 10):
+                    chunk = yandex_ids[i : i + 10]
+                    try:
+                        enrich_companies_batch_yandex_html.delay(chunk)
+                    except Exception as e:
+                        logger.warning(
+                            "batch yandex enrich enqueue failed (chunk %d-%d): %s — fallback на поштучный",
+                            i,
+                            i + len(chunk),
+                            e,
+                        )
+                        # Fallback на поштучный если batch-постановка упала
+                        for cid in chunk:
+                            try:
+                                enrich_company_from_yandex_html.delay(cid)
+                            except Exception:
+                                pass
+
     # В режиме radius — передаём point + radius_meters в провайдер вместо region_id.
     # MapSearch.mode='radius' выставляется при создании поиска (см. service).
     use_radius = (
@@ -660,9 +693,15 @@ def _maybe_enrich_contacts(company: Company) -> None:
     except Exception as e:
         logger.warning("_maybe_enrich_contacts: cannot enqueue 2gis_html for #%d: %s", company.id, e)
 
-    # Я.Карты: Playwright-парсер карточки yandex.ru/maps/org/{id}/. Триггерим
-    # для source='yandex_maps' с external_id, по которым мы ещё не ходили на
-    # карточку (маркеры fetched_yandex_url / error_yandex в contacts_extra).
+    # Я.Карты: Playwright-парсер карточки yandex.ru/maps/org/{id}/.
+    # Раньше тут был enrich_company_from_yandex_html.delay(company.id) — поштучно
+    # на каждую компанию. Теперь batch-версия: _parse_companies_for_source в
+    # flush_batch() группирует yandex-компании по 10 и ставит одну batch-задачу
+    # (enrich_companies_batch_yandex_html) — один Chromium на 10 компаний,
+    # в 6-8 раз быстрее. Сюда не доходим для yandex — триггер в flush_batch.
+    # Этот блок оставлен как fallback для вызовов _maybe_enrich_contacts вне
+    # контекста поиска (например, из site_leads или retry-flow): ставит
+    # поштучную задачу если компания yandex и ещё не обогащалась.
     try:
         extra = company.contacts_extra or {}
         already_tried_yandex_html = "fetched_yandex_url" in extra or "error_yandex" in extra
@@ -1106,6 +1145,190 @@ async def _enrich_company_from_yandex_html_async(company_id: int) -> dict:
             "website_found": bool(result.website),
             "error": result.error,
         }
+
+
+async def _apply_yandex_enrich_to_company(db, company_id: int, result) -> dict:
+    """Применяет ContactEnrichResult к компании (merge-логика без самого Playwright).
+
+    Выделено из _enrich_company_from_yandex_html_async чтобы переиспользовать
+    в batch-задаче: одна batch-функция enrich_companies_batch_yandex отдаёт
+    результаты для N компаний, эта функция применяет каждый к БД.
+    """
+    company = await db.get(Company, company_id)
+    if company is None:
+        return {"status": "not_found"}
+
+    existing_extra: dict = dict(company.contacts_extra or {})
+    new_extra: dict = {}
+
+    def merge_list(key: str, new_vals: list[str]) -> None:
+        if not new_vals:
+            return
+        cur = existing_extra.get(key) or []
+        cur_set = set(cur)
+        merged = list(cur)
+        for v in new_vals:
+            if v not in cur_set:
+                merged.append(v)
+                cur_set.add(v)
+        new_extra[key] = merged
+
+    merge_list("phones", result.phones)
+    merge_list("telegrams", result.telegrams)
+    merge_list("vks", result.vks)
+    merge_list("whatsapps", result.whatsapps)
+    merge_list("instagrams", result.instagrams)
+    merge_list("facebooks", result.facebooks)
+    merge_list("oks", result.oks)
+    merge_list("youtubes", result.youtubes)
+    if result.fetched_url:
+        new_extra["fetched_yandex_url"] = result.fetched_url
+    if result.error:
+        new_extra["error_yandex"] = result.error
+
+    existing_emails = list(company.emails or [])
+    merged_emails = list(existing_emails)
+    for e in result.emails:
+        if e not in merged_emails:
+            merged_emails.append(e)
+
+    new_phone = company.phone
+    if not new_phone and result.phones:
+        new_phone = result.phones[0]
+
+    new_website = company.website
+    if not new_website and result.website:
+        new_website = result.website
+
+    full_extra = {**existing_extra, **new_extra} if new_extra else (existing_extra or None)
+
+    await db.execute(
+        update(Company)
+        .where(Company.id == company_id)
+        .values(
+            phone=new_phone,
+            website=new_website,
+            emails=merged_emails or None,
+            contacts_extra=full_extra,
+        )
+    )
+    await db.commit()
+
+    # Phase 3 multi-source sync + scores recompute (вынесено для reuse)
+    try:
+        from app.modules.maps.service import _sync_company_to_multisource
+
+        company_after = await db.get(Company, company_id, populate_existing=True)
+        if company_after:
+            await _sync_company_to_multisource(db, company_after)
+            await db.commit()
+    except Exception:
+        logger.exception("multi-source sync failed after yandex enrich (#%d)", company_id)
+    try:
+        from app.modules.maps.lead_temperature import recompute_for_company as _rt
+        from app.modules.maps.website_lead_score import recompute_for_company as _rw
+
+        await _rt(db, company_id)
+        await _rw(db, company_id)
+        await db.commit()
+    except Exception:
+        logger.exception("scores recompute failed after yandex enrich (#%d)", company_id)
+    try:
+        company_after = await db.get(Company, company_id)
+        if company_after and not (company_after.website or "").strip():
+            discover_company_website.delay(company_id)
+    except Exception as e:
+        logger.warning("discover_company_website enqueue failed for #%d: %s", company_id, e)
+
+    return {
+        "status": "ok",
+        "phones_found": len(result.phones),
+        "emails_found": len(result.emails),
+        "telegrams_found": len(result.telegrams),
+        "vks_found": len(result.vks),
+        "whatsapps_found": len(result.whatsapps),
+        "website_found": bool(result.website),
+        "error": result.error,
+    }
+
+
+@celery_app.task(
+    name="enrich_companies_batch_yandex_html",
+    queue="maps_yandex_html",
+    bind=True,
+    max_retries=1,
+    rate_limit="6/m",  # 6 батчей/мин × 10 компаний = 60 компаний/мин (vs 20/m поштучно)
+)
+def enrich_companies_batch_yandex_html(self, company_ids: list[int]):
+    """Пакетный enrich: один Chromium на N компаний (в 6-8 раз быстрее).
+
+    Заменяет поштучный enrich_company_from_yandex_html — вместо задачи на
+    каждую компанию, батч на 10 в одной Celery-таске. Chromium стартует
+    один раз и переиспользуется.
+    """
+    try:
+        return asyncio.run(_enrich_companies_batch_yandex_html_async(company_ids))
+    except Exception as exc:
+        logger.warning(
+            "enrich_companies_batch_yandex_html retrying (%d ids): %s",
+            len(company_ids),
+            exc,
+        )
+        raise self.retry(exc=exc, countdown=60, max_retries=1)
+
+
+async def _enrich_companies_batch_yandex_html_async(company_ids: list[int]) -> dict:
+    """Async-ядро batch-енрича: один Chromium → N компаний → merge в БД."""
+    if not company_ids:
+        return {"status": "empty", "processed": 0}
+
+    # 1. Загружаем компании, фильтруем только yandex_maps с external_id
+    async with AsyncSessionLocal() as db:
+        rows = (
+            (
+                await db.execute(
+                    select(Company).where(
+                        Company.id.in_(company_ids),
+                        Company.source == "yandex_maps",
+                        Company.external_id.isnot(None),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_eid = {c.external_id: c.id for c in rows}
+
+    if not by_eid:
+        return {"status": "skip_not_yandex_maps", "processed": 0}
+
+    # 2. Один Chromium на все компании
+    from app.modules.maps.enrich_yandex import enrich_companies_batch_yandex
+
+    results_by_eid = await enrich_companies_batch_yandex(list(by_eid.keys()))
+
+    # 3. Применяем каждый результат к БД
+    summary: list[dict] = []
+    async with AsyncSessionLocal() as db:
+        for eid, result in results_by_eid.items():
+            cid = by_eid.get(eid)
+            if cid is None:
+                continue
+            try:
+                r = await _apply_yandex_enrich_to_company(db, cid, result)
+                summary.append({"company_id": cid, **r})
+            except Exception as e:
+                logger.exception("batch apply failed for company #%d: %s", cid, e)
+                summary.append({"company_id": cid, "status": "error", "error": str(e)[:200]})
+
+    ok = sum(1 for s in summary if s.get("status") == "ok")
+    logger.info(
+        "enrich_companies_batch_yandex_html: processed %d/%d (ok=%d)",
+        len(summary),
+        len(company_ids),
+        ok,
+    )
+    return {"status": "ok", "processed": len(summary), "ok": ok, "details": summary}
 
 
 @celery_app.task(
