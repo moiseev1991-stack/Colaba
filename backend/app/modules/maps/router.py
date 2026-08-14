@@ -3575,41 +3575,26 @@ async def list_pain_tags(
     return out
 
 
-@router.get("/pains/companies", response_model=CompaniesByPainListOut)
-@limiter.limit("60/minute")
-async def list_companies_by_pain(
-    request: Request,
-    pain_key: Optional[str] = Query(default=None, min_length=2, max_length=64),
-    pain_tag_ids: Optional[list[int]] = Query(
-        default=None, description="Конкретные PainTag.id — альтернатива pain_key"
-    ),
-    city: Optional[str] = Query(default=None, max_length=100),
-    niche: Optional[str] = Query(default=None, max_length=100),
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    """Глобальный список компаний по конкретной боли.
+# Максимум строк в Excel-экспорте болей — защита от runaway-выгрузки.
+_PAINS_EXPORT_CAP = 5000
 
-    Способа выборки два:
-    - `pain_key` — крупная категория из PAIN_KEYS (call_no_answer,
-      schedule_hard, ...). Мапим label→pain_key через match_pain_key.
-    - `pain_tag_ids` — прямой список PainTag.id (для клика по плитке
-      или combobox-поиска по тексту тега). 2026-07-13: добавлено чтобы
-      UI мог показывать плитку топ-тегов ниши и/или искать по тексту,
-      минуя PAIN_KEYS (у нас всего 8, а pain_tag'ов сотни).
 
-    Ровно один из pain_key/pain_tag_ids обязателен.
+async def _resolve_pain_tags(
+    db: AsyncSession,
+    pain_key: Optional[str],
+    pain_tag_ids: Optional[list[int]],
+    city: Optional[str],
+    niche: Optional[str],
+) -> tuple[list[int], list[str]]:
+    """Резолвит (matched_tag_ids, matched_labels) для выборки по боли.
+
+    Ровно один из pain_key/pain_tag_ids обязателен — иначе HTTP 422.
+    Используется и списком /pains/companies, и его Excel-экспортом.
     """
     from app.modules.outreach.pain_dictionaries import PAIN_KEYS, match_pain_key
-    from app.models.pain_tag import CompanyPainScore
 
     if not pain_key and not pain_tag_ids:
-        raise HTTPException(
-            status_code=422,
-            detail="нужен pain_key или pain_tag_ids",
-        )
+        raise HTTPException(status_code=422, detail="нужен pain_key или pain_tag_ids")
     if pain_key and pain_tag_ids:
         raise HTTPException(
             status_code=422,
@@ -3661,18 +3646,18 @@ async def list_companies_by_pain(
                     matched_labels.append(label)
                     seen_labels.add(label)
 
-    if not matched_tag_ids:
-        return CompaniesByPainListOut(
-            pain_key=pain_key or "",
-            pain_labels=[],
-            total=0,
-            limit=limit,
-            offset=offset,
-            items=[],
-        )
+    return matched_tag_ids, matched_labels
 
-    # Агрегируем по компании: сумма mention_count + top_quote с максимальной
-    # similarity. Оба через оконку — так одним запросом.
+
+def _pain_companies_query(matched_tag_ids: list[int], city: Optional[str], niche: Optional[str]):
+    """Строит (base_select, company_filter) для выборки компаний по боли.
+
+    base_select даёт кортежи (Company, mention_sum, top_quote). company_filter
+    возвращается отдельно — чтобы вызывающий мог переиспользовать его в
+    total-запросе без дублирования условий.
+    """
+    from app.models.pain_tag import CompanyPainScore
+
     mention_sum = sa_func.sum(CompanyPainScore.mention_count).label("mentions")
 
     # Для каждой компании выбираем top_quote c максимальной similarity —
@@ -3685,7 +3670,6 @@ async def list_companies_by_pain(
         )
         .label("rn")
     )
-
     quote_sub = (
         select(
             CompanyPainScore.company_id.label("company_id"),
@@ -3697,8 +3681,6 @@ async def list_companies_by_pain(
     )
     best_quote_sub = select(quote_sub.c.company_id, quote_sub.c.top_quote).where(quote_sub.c.rn == 1).subquery()
 
-    # Итоговый запрос: агрегируем mention_count + join best_quote + join Company
-    # с опциональными фильтрами по компании.
     company_filter = []
     if city:
         company_filter.append(Company.city == city)
@@ -3720,6 +3702,51 @@ async def list_companies_by_pain(
         .group_by(Company.id, best_quote_sub.c.top_quote)
         .order_by(mention_sum.desc(), Company.reviews_count.desc())
     )
+    return base, company_filter
+
+
+@router.get("/pains/companies", response_model=CompaniesByPainListOut)
+@limiter.limit("60/minute")
+async def list_companies_by_pain(
+    request: Request,
+    pain_key: Optional[str] = Query(default=None, min_length=2, max_length=64),
+    pain_tag_ids: Optional[list[int]] = Query(
+        default=None, description="Конкретные PainTag.id — альтернатива pain_key"
+    ),
+    city: Optional[str] = Query(default=None, max_length=100),
+    niche: Optional[str] = Query(default=None, max_length=100),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Глобальный список компаний по конкретной боли.
+
+    Способа выборки два:
+    - `pain_key` — крупная категория из PAIN_KEYS (call_no_answer,
+      schedule_hard, ...). Мапим label→pain_key через match_pain_key.
+    - `pain_tag_ids` — прямой список PainTag.id (для клика по плитке
+      или combobox-поиска по тексту тега). 2026-07-13: добавлено чтобы
+      UI мог показывать плитку топ-тегов ниши и/или искать по тексту,
+      минуя PAIN_KEYS (у нас всего 8, а pain_tag'ов сотни).
+
+    Ровно один из pain_key/pain_tag_ids обязателен.
+    """
+    from app.models.pain_tag import CompanyPainScore
+
+    matched_tag_ids, matched_labels = await _resolve_pain_tags(db, pain_key, pain_tag_ids, city, niche)
+
+    if not matched_tag_ids:
+        return CompaniesByPainListOut(
+            pain_key=pain_key or "",
+            pain_labels=[],
+            total=0,
+            limit=limit,
+            offset=offset,
+            items=[],
+        )
+
+    base, company_filter = _pain_companies_query(matched_tag_ids, city, niche)
 
     # total = число уникальных компаний
     total_stmt = (
@@ -3748,6 +3775,53 @@ async def list_companies_by_pain(
         limit=limit,
         offset=offset,
         items=items,
+    )
+
+
+@router.get("/pains/companies/export")
+@limiter.limit("20/minute")
+async def export_companies_by_pain(
+    request: Request,
+    pain_key: Optional[str] = Query(default=None, min_length=2, max_length=64),
+    pain_tag_ids: Optional[list[int]] = Query(default=None),
+    city: Optional[str] = Query(default=None, max_length=100),
+    niche: Optional[str] = Query(default=None, max_length=100),
+    company_ids: Optional[list[int]] = Query(
+        default=None, description="Выгрузить только выбранные компании (иначе — все по фильтру)"
+    ),
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Excel-выгрузка компаний текущей выборки по боли (та же фильтрация,
+    что и у /pains/companies, но без пагинации — до _PAINS_EXPORT_CAP строк).
+    Если передан company_ids — выгружаем только их (кнопка «экспорт выбранных»).
+    """
+    from urllib.parse import quote
+
+    from app.modules.maps.pains_export import build_pains_xlsx
+
+    matched_tag_ids, matched_labels = await _resolve_pain_tags(db, pain_key, pain_tag_ids, city, niche)
+
+    rows: list = []
+    if matched_tag_ids:
+        base, _company_filter = _pain_companies_query(matched_tag_ids, city, niche)
+        if company_ids:
+            base = base.where(Company.id.in_(company_ids))
+        rows = list((await db.execute(base.limit(_PAINS_EXPORT_CAP))).all())
+
+    blob = build_pains_xlsx(rows, matched_labels, niche, city)
+
+    stem = "-".join([p for p in (niche, city) if p]) or "vybor"
+    filename = f"boli_{stem}.xlsx"
+    headers = {
+        "Content-Disposition": (
+            f"attachment; filename=\"pains_export.xlsx\"; filename*=UTF-8''{quote(filename)}"
+        )
+    }
+    return StreamingResponse(
+        io.BytesIO(blob),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
     )
 
 

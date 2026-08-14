@@ -1840,9 +1840,16 @@ def bulk_enrich_contacts(
 # ---------------------------------------------------------------------------
 
 
+# Сколько дней держим сырой текст отзыва до затирания cron'ом. Считается от
+# даты парсинга (reviews.created_at), не от даты самого отзыва. 2026-08-14:
+# 30 → 180, т.к. при 30 днях тексты июльской пачки занулились разом и в UI/
+# экспорте осталась только плашка «Текст удалён по политике хранения».
+REVIEW_RAW_TEXT_RETENTION_DAYS = 180
+
+
 async def _purge_review_raw_text_async() -> int:
     """UPDATE reviews SET raw_text=NULL, raw_text_purged_at=NOW()
-    WHERE created_at < NOW() - INTERVAL '30 days' AND raw_text IS NOT NULL."""
+    WHERE created_at < NOW() - REVIEW_RAW_TEXT_RETENTION_DAYS AND raw_text IS NOT NULL."""
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             text(
@@ -1850,10 +1857,11 @@ async def _purge_review_raw_text_async() -> int:
                 UPDATE reviews
                 SET raw_text = NULL,
                     raw_text_purged_at = NOW()
-                WHERE created_at < NOW() - INTERVAL '30 days'
+                WHERE created_at < NOW() - (:days * INTERVAL '1 day')
                   AND raw_text IS NOT NULL
                 """
-            )
+            ),
+            {"days": REVIEW_RAW_TEXT_RETENTION_DAYS},
         )
         await db.commit()
         return result.rowcount or 0
