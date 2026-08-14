@@ -819,6 +819,31 @@ export async function listCompaniesByPain(params: {
   return response.data;
 }
 
+/**
+ * URL Excel-выгрузки компаний текущей выборки по боли.
+ * Открывается обычным <a href> (auth прокидывает Next-прокси /api/v1),
+ * как website-leads/export. company_ids — опционально, для «экспорт выбранных».
+ */
+export function buildPainsExportUrl(params: {
+  pain_key?: PainKey;
+  pain_tag_ids?: number[];
+  city?: string;
+  niche?: string;
+  company_ids?: number[];
+}): string {
+  const q = new URLSearchParams();
+  if (params.pain_key) q.set('pain_key', params.pain_key);
+  if (params.pain_tag_ids && params.pain_tag_ids.length > 0) {
+    for (const id of params.pain_tag_ids) q.append('pain_tag_ids', String(id));
+  }
+  if (params.city) q.set('city', params.city);
+  if (params.niche) q.set('niche', params.niche);
+  if (params.company_ids && params.company_ids.length > 0) {
+    for (const id of params.company_ids) q.append('company_ids', String(id));
+  }
+  return `/api/v1/maps/pains/companies/export?${q.toString()}`;
+}
+
 export async function listMapCities(): Promise<string[]> {
   const response = await apiClient.get<string[]>('/maps/cities');
   return response.data;

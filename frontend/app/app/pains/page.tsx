@@ -24,6 +24,7 @@ import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDraw
 import { DraftEmailPopover, type CompanyForDraft } from '@/components/pains/DraftEmailPopover';
 import { CityCombobox } from '@/components/CityCombobox';
 import {
+  buildPainsExportUrl,
   getCompanyReviews,
   listCompaniesByPain,
   listPainTags,
@@ -879,6 +880,20 @@ function PainsPageInner() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <a
+                href={buildPainsExportUrl({
+                  pain_key: selectedTagIds.size > 0 ? undefined : painKey,
+                  pain_tag_ids: selectedTagIds.size > 0 ? Array.from(selectedTagIds) : undefined,
+                  city: city || undefined,
+                  niche: niche || undefined,
+                  company_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
+                })}
+                className="rounded-md border border-emerald-600 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
+                title="Скачать .xlsx: выбранные компании, либо все по текущей боли/фильтру"
+              >
+                ⤓ Экспорт в Excel
+                {selectedIds.size > 0 ? ` (${selectedIds.size})` : ` (${data.total})`}
+              </a>
               <button
                 type="button"
                 onClick={() => {
