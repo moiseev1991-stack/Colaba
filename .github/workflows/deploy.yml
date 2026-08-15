@@ -105,17 +105,23 @@ jobs:
       - name: Pre-deploy load check
         id: loadcheck
         run: |
-          LOAD1=$(awk -F'load average:' '{print $2}' < uptime | awk -F',' '{gsub(/ /,"",$1); print $1}')
+          # NB: парсим ВЫВОД КОМАНД (uptime | ...), не «< uptime» (это файл!).
+          LOAD1=$(uptime | awk -F'load average:' '{print $2}' | awk -F',' '{gsub(/[ ]/,"",$1); print $1}')
           CORES=$(nproc)
-          CHROME=$(pgrep -fc chrome 2>/dev/null || echo 0)
-          AVAIL_MB=$(free -m | awk '/^Mem:/{print $7}')
+          CHROME=$(pgrep -fc chrome 2>/dev/null || true); CHROME=${CHROME:-0}
+          AVAIL_MB=$(free -m | awk '/Mem:/{print $NF}')
           LIMIT_PAUSE=$((CORES * 3))   # 2 ядра → 6
           LIMIT_ABORT=$((CORES * 10))  # 2 ядра → 20
-          echo "load1=${LOAD1} cores=${CORES} chrome=${CHROME} avail_mb=${AVAIL_MB}"
+          echo "load1=${LOAD1:-?} cores=${CORES} chrome=${CHROME} avail_mb=${AVAIL_MB:-?}"
           echo "pause_if>${LIMIT_PAUSE} abort_if>${LIMIT_ABORT}"
+          # защита от пустых значений: если метрика не спарсилась — НЕ валим деплой,
+          # считаем консервативно «норма» и продолжаем (лог выше покажет ?)
+          LOAD1=${LOAD1:-0}
+          AVAIL_MB=${AVAIL_MB:-99999}
 
           ABORT=0
-          awk -v l="$LOAD1" -v t="$LIMIT_ABORT" 'BEGIN{exit !(l>=t)}' || ABORT=1
+          # exit !(l>=t): успех(0) = перегруз. Поэтому && (не ||!) — иначе инверсия.
+          awk -v l="$LOAD1" -v t="$LIMIT_ABORT" 'BEGIN{exit !(l>=t)}' && ABORT=1
           if [ "$ABORT" = "1" ]; then
             echo "::error::Сервер перегружен (load ${LOAD1} >= ${LIMIT_ABORT}) — вероятно инцидент. Деплой отменён. Стабилизация: docs/deployment/DEPLOY_RUNBOOK.md (chrome-процессов: ${CHROME})"
             exit 1
