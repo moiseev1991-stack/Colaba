@@ -160,7 +160,9 @@ async def _parse_companies_for_source(db, search: MapSearch, source: str) -> tup
                     {"company_id": company.id, "name": company.name, "position": position_cursor},
                 )
                 parse_company_reviews.delay(company.id, source)
-                _maybe_enrich_contacts(company)
+                # skip_yandex_html=True: yandex-компании батчатся ниже одним
+                # Chromium (enrich_companies_batch_yandex_html), не поштучно.
+                _maybe_enrich_contacts(company, skip_yandex_html=True)
 
             # Batch-enrich для yandex-компаний: один Chromium на N компаний
             # вместо поштучного enrich_company_from_yandex_html на каждую.
@@ -572,7 +574,7 @@ def parse_company_reviews(self, company_id: int, source: str, limit: int | None 
 # ---------------------------------------------------------------------------
 
 
-def _maybe_enrich_contacts(company: Company) -> None:
+def _maybe_enrich_contacts(company: Company, skip_yandex_html: bool = False) -> None:
     """Хелпер: ставит таски обогащения контактов после сохранения компании.
 
     Два независимых пути:
@@ -699,9 +701,14 @@ def _maybe_enrich_contacts(company: Company) -> None:
     # flush_batch() группирует yandex-компании по 10 и ставит одну batch-задачу
     # (enrich_companies_batch_yandex_html) — один Chromium на 10 компаний,
     # в 6-8 раз быстрее. Сюда не доходим для yandex — триггер в flush_batch.
-    # Этот блок оставлен как fallback для вызовов _maybe_enrich_contacts вне
-    # контекста поиска (например, из site_leads или retry-flow): ставит
+    # Fallback для вызовов вне контекста поиска (site_leads, retry-flow): ставит
     # поштучную задачу если компания yandex и ещё не обогащалась.
+    # ВНУТРИ поиска (flush_batch) skip_yandex_html=True — там батчится
+    # отдельно через enrich_companies_batch_yandex_html (один Chromium на 10
+    # компаний). Без skip была бы ДВОЙНАЯ постановка: batch + поштучная на
+    # ту же компанию (нашлось на проде: 988 дублей из 1349 задач очереди).
+    if skip_yandex_html:
+        return
     try:
         extra = company.contacts_extra or {}
         already_tried_yandex_html = "fetched_yandex_url" in extra or "error_yandex" in extra

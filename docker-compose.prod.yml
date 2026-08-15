@@ -208,11 +208,11 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    # Тяжёлые HTTP-парсеры (поиск + карты + отзывы + HTML-парсер 2gis.ru/firm).
-    # Низкий prefetch + concurrency=2 (для HTML-парсера 2GIS отдельный rate_limit
-    # на самом таске — 20/m). Без отдельной очереди maps_2gis_html таски бы
-    # копились в celery default-кью с большим concurrency и долбили 2GIS.
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews,maps_2gis_html,maps_yandex_html
+    # Лёгкие HTTP-задачи: поиск + отзывы (2-3с/шт). Тяжёлый Playwright
+    # (maps_yandex_html/maps_2gis_html) перенесён на celery-worker-enrich —
+    # раньше они делили этого воркера, и 150-секундные enrich-батчи
+    # блокировали лёгкие отзывы в FIFO.
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews
 
   celery-worker-enrich:
     # Отдельный воркер для enrich-задач (обогащение компаний: VK/HH/prodoctorov/
@@ -258,7 +258,10 @@ services:
     networks:
       - leadgen-network
     restart: unless-stopped
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 -Q maps_enrich
+    # Тяжёлый воркер: DM-finder (maps_enrich) + Playwright-парсеры карточек
+    # Я.Карт/2GIS (maps_yandex_html, maps_2gis_html). concurrency=2 = два
+    # Chromium параллельно (~600MB RAM) — потолок для сервера 3.8GB/2 ядра.
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q maps_enrich,maps_yandex_html,maps_2gis_html
 
   # Celery Beat — планировщик periodic-задач (прогрев доменов каждый день,
   # парсинг ответов каждые 5 мин, dedup каждый час и т.д.). Без этого сервиса
