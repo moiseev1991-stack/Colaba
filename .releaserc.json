@@ -18,18 +18,12 @@
       }
     ],
     [
-      "@semantic-release/git",
-      {
-        "assets": ["CHANGELOG.md", "frontend/package.json"],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-      }
-    ],
-    [
       "@semantic-release/github",
       {
         "successComment": false,
         "failTitle": false
       }
     ]
-  ]
+  ],
+  "_comment": "@semantic-release/git УДАЛЁН (2026-08-15): он коммитил CHANGELOG.md+package.json прямо в main, а branch protection (ruleset) отклоняет пуш из workflow — GH013, Release падал 30/30. Changelog теперь живёт в GitHub Releases (notes плагина github), тег версии ставится как раньше. Если нужен CHANGELOG.md в репо — верни плагин и добавь bypass для GitHub Actions в ruleset."
 }
