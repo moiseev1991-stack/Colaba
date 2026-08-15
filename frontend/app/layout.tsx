@@ -1,6 +1,20 @@
 import './globals.css';
+// Шрифты через @fontsource (npm) вместо next/font/google: build больше не
+// ходит в fonts.googleapis.com. Инциденты 13/15.08: сборка фронта в Coolify
+// падала на transient-таймаутах Google («NextFontError: Failed to fetch
+// Unbounded») — деплой не проходил. @fontsource лежит в node_modules и
+// попадает в кэшируемый npm-слой Docker. CSS-переменные --font-display /
+// --font-body задаёт globals.css (tailwind читает их оттуда).
+import '@fontsource/manrope/400.css';
+import '@fontsource/manrope/500.css';
+import '@fontsource/manrope/600.css';
+import '@fontsource/manrope/700.css';
+import '@fontsource/unbounded/400.css';
+import '@fontsource/unbounded/500.css';
+import '@fontsource/unbounded/600.css';
+import '@fontsource/unbounded/700.css';
+import '@fontsource/unbounded/800.css';
 import type { Metadata, Viewport } from 'next';
-import { Manrope, Unbounded } from 'next/font/google';
 import { AppShell } from '@/components/AppShell';
 import { CookieBanner } from '@/components/CookieBanner';
 import { YandexMetrika } from '@/components/YandexMetrika';
@@ -31,8 +45,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'SpinLid — лиды с диагнозом болей клиентов',
-    description:
-      'Сбор компаний из 2GIS и Яндекс.Карт, контакты и AI-анализ отзывов.',
+    description: 'Сбор компаний из 2GIS и Яндекс.Карт, контакты и AI-анализ отзывов.',
   },
   robots: { index: true, follow: true },
   // 2026-06-20: верификация владельца сайта для трёх вебмастеров.
@@ -49,31 +62,16 @@ export const metadata: Metadata = {
   },
 };
 
-// §1.2 ТЗ редизайна 2026-06-03: подключаем шрифты через next/font.
-// Unbounded — display-шрифт для заголовков (характер, кириллица).
-// Manrope — body-шрифт (отличная читаемость на UI).
-// Оба отдаются на сборке next-build, no runtime CDN — устойчиво в РФ.
-const unbounded = Unbounded({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const manrope = Manrope({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
+// §1.2 ТЗ редизайна 2026-06-03: шрифты Unbounded (display) + Manrope (body).
+// С 2026-08-15 — через @fontsource (см. импорты выше), переменные в globals.css.
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" suppressHydrationWarning className={`${unbounded.variable} ${manrope.variable}`}>
-      <body suppressHydrationWarning style={{ fontFamily: 'var(--font-body), system-ui, sans-serif' }}>
+    <html lang="ru" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        style={{ fontFamily: 'var(--font-body), system-ui, sans-serif' }}
+      >
         <AppShell>{children}</AppShell>
         <CookieBanner />
         <YandexMetrika />
