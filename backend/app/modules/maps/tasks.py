@@ -1272,9 +1272,30 @@ def enrich_companies_batch_yandex_html(self, company_ids: list[int]):
     Заменяет поштучный enrich_company_from_yandex_html — вместо задачи на
     каждую компанию, батч на 10 в одной Celery-таске. Chromium стартует
     один раз и переиспользуется.
+
+    Жёсткий таймаут 8 минут на весь батч: 10 компаний × ~45с худший случай
+    = 450с, +запас. Без него зависший батч (форк-бомба 15.08: 5759 chrome-
+    процессов, load 109) ретраился с НОВЫМ Chromium, пока старый оставался
+    жив — процессы плодились лавиной. TimeoutError = FAILED, не retry.
     """
     try:
-        return asyncio.run(_enrich_companies_batch_yandex_html_async(company_ids))
+        return asyncio.run(
+            asyncio.wait_for(
+                _enrich_companies_batch_yandex_html_async(company_ids),
+                timeout=480,
+            )
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            "enrich_companies_batch_yandex_html TIMEOUT 480s (%d ids) — не ретраим, чтобы не плодить Chromium-процессы",
+            len(company_ids),
+        )
+        return {
+            "status": "timeout",
+            "processed": 0,
+            "ok": 0,
+            "error": "batch timeout 480s",
+        }
     except Exception as exc:
         logger.warning(
             "enrich_companies_batch_yandex_html retrying (%d ids): %s",
