@@ -98,6 +98,44 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ github.token }}
 
+      # ── PRE-FLIGHT: проверка нагрузки сервера перед деплоем ──────────────
+      # Инцидент 15.08: деплой во время форк-бомбы (load 109) упал и сам
+      # усугубил перегруз. Правило: мягкий перегруз → паузим тяжёлые воркеры;
+      # катастрофа → abort (сначала стабилизация по DEPLOY_RUNBOOK.md).
+      - name: Pre-deploy load check
+        id: loadcheck
+        run: |
+          LOAD1=$(awk -F'load average:' '{print $2}' < uptime | awk -F',' '{gsub(/ /,"",$1); print $1}')
+          CORES=$(nproc)
+          CHROME=$(pgrep -fc chrome 2>/dev/null || echo 0)
+          AVAIL_MB=$(free -m | awk '/^Mem:/{print $7}')
+          LIMIT_PAUSE=$((CORES * 3))   # 2 ядра → 6
+          LIMIT_ABORT=$((CORES * 10))  # 2 ядра → 20
+          echo "load1=${LOAD1} cores=${CORES} chrome=${CHROME} avail_mb=${AVAIL_MB}"
+          echo "pause_if>${LIMIT_PAUSE} abort_if>${LIMIT_ABORT}"
+
+          ABORT=0
+          awk -v l="$LOAD1" -v t="$LIMIT_ABORT" 'BEGIN{exit !(l>=t)}' || ABORT=1
+          if [ "$ABORT" = "1" ]; then
+            echo "::error::Сервер перегружен (load ${LOAD1} >= ${LIMIT_ABORT}) — вероятно инцидент. Деплой отменён. Стабилизация: docs/deployment/DEPLOY_RUNBOOK.md (chrome-процессов: ${CHROME})"
+            exit 1
+          fi
+          if [ "$CHROME" -gt 200 ]; then
+            echo "::error::Аномальное число chrome-процессов (${CHROME}) — форк-бомба? Деплой отменён. Runbook: docs/deployment/DEPLOY_RUNBOOK.md"
+            exit 1
+          fi
+          PAUSE=0
+          awk -v l="$LOAD1" -v t="$LIMIT_PAUSE" 'BEGIN{exit !(l>=t)}' && PAUSE=1 || PAUSE=0
+          if [ "$PAUSE" = "1" ] || [ "$AVAIL_MB" -lt 500 ]; then
+            echo "Мягкий перегруз — ставлю на паузу тяжёлые воркеры (enrich, search)"
+            docker pause colaba-celery-worker-enrich-1 2>/dev/null || true
+            docker pause colaba-celery-worker-search-1 2>/dev/null || true
+            echo "paused=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Нагрузка в норме — деплою без паузы"
+            echo "paused=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Sync deploy files to /opt/colaba
         run: |
           mkdir -p /opt/colaba/scripts/deployment
@@ -115,4 +153,23 @@ jobs:
           GHCR_TOKEN: ${{ github.token }}
         run: |
           /opt/colaba/scripts/deployment/deploy.sh
+
+      # ── POST-DEPLOY: гарантированно снимаем паузу (даже если деплой упал) ──
+      - name: Unpause workers (always)
+        if: always() && steps.loadcheck.outputs.paused == 'true'
+        run: |
+          docker unpause colaba-celery-worker-enrich-1 2>/dev/null || true
+          docker unpause colaba-celery-worker-search-1 2>/dev/null || true
+          echo "Воркеры сняты с паузы"
+
+      - name: Post-deploy smoke check
+        if: always()
+        run: |
+          sleep 5
+          if curl -sf -m 10 http://localhost:8000/api/v1/health > /dev/null 2>&1; then
+            echo "Backend health: OK"
+          else
+            echo "::warning::Backend health не отвечает сразу после деплоя — проверь: docker logs colaba-backend-1 --tail=50"
+          fi
+          docker ps --format '{{.Names}}: {{.Status}}' | grep colaba || echo "::warning::Нет colaba-контейнеров!"
 
