@@ -412,17 +412,12 @@ async def enrich_companies_batch_yandex(
                 ],
             )
             try:
-                ctx = await browser.new_context(
-                    user_agent=_UA,
-                    locale="ru-RU",
-                    viewport={"width": 1366, "height": 900},
-                    extra_http_headers={
-                        "Accept-Language": "ru-RU,ru;q=0.9",
-                        **_SEC_CH_UA_HEADERS,
-                    },
-                )
-                page = await ctx.new_page()
-
+                # КОНТЕКСТ+СТРАНИЦА НА КАЖДУЮ КОМПАНИЮ с обязательным закрытием.
+                # Форк-бомба 15.08: один переиспользуемый page на весь батч —
+                # Chromium накапливал renderer-процессы на тяжёлых страницах
+                # Яндекса и не отпускал их (5759 процессов, load 109, OOM).
+                # new_context дешёвый (~50мс), экономия от одного browser.launch
+                # сохраняется. Плюс жёсткий таймаут на компанию.
                 for eid in external_ids:
                     result = results[eid]
                     if not eid:
@@ -430,7 +425,18 @@ async def enrich_companies_batch_yandex(
                         continue
                     url = _CARD_URL.format(external_id=eid)
                     result.fetched_url = url
+                    ctx = None
                     try:
+                        ctx = await browser.new_context(
+                            user_agent=_UA,
+                            locale="ru-RU",
+                            viewport={"width": 1366, "height": 900},
+                            extra_http_headers={
+                                "Accept-Language": "ru-RU,ru;q=0.9",
+                                **_SEC_CH_UA_HEADERS,
+                            },
+                        )
+                        page = await ctx.new_page()
                         try:
                             await page.goto(url, wait_until="domcontentloaded", timeout=_PAGE_TIMEOUT_MS)
                         except PWTimeout:
@@ -476,8 +482,17 @@ async def enrich_companies_batch_yandex(
                         _extract_from_html(html, result)
                     except Exception as e:
                         result.error = f"{type(e).__name__}: {str(e)[:200]}"
+                    finally:
+                        if ctx is not None:
+                            try:
+                                await ctx.close()
+                            except Exception:
+                                pass
             finally:
-                await browser.close()
+                try:
+                    await browser.close()
+                except Exception:
+                    pass
     except Exception as e:
         # Критическая ошибка (не смог запустить Chromium) — помечаем все
         for r in results.values():
