@@ -46,6 +46,28 @@ def test_match_pain_key_schedule_hard():
     assert match_pain_key("не работает онлайн запись") == "schedule_hard"
 
 
+def test_match_pain_key_call_no_answer_via_svyaz():
+    # «связаться / связь с компанией/клиентами» — та же боль «не достучаться».
+    assert match_pain_key("Невозможность связаться с компанией") == "call_no_answer"
+    assert match_pain_key("Неудовлетворительная связь с клиентами") == "call_no_answer"
+
+
+def test_match_pain_key_chat_no_response():
+    assert match_pain_key("Не отвечают в чате") == "chat_no_response"
+    assert match_pain_key("Игнорируют сообщения в WhatsApp") == "chat_no_response"
+    assert match_pain_key("Не отвечают на сообщения в Telegram") == "chat_no_response"
+
+
+def test_match_pain_key_order_online_hard():
+    assert match_pain_key("Невозможность оформить заказ") == "order_online_hard"
+    assert match_pain_key("Сложно оформить заказ онлайн") == "order_online_hard"
+    assert match_pain_key("Брошенная корзина") == "order_online_hard"
+
+
+def test_match_pain_key_schedule_hard_booking():
+    assert match_pain_key("Невозможно забронировать столик") == "schedule_hard"
+
+
 def test_match_pain_key_admin_rude():
     assert match_pain_key("Грубость администратора") == "admin_rude"
 
@@ -104,6 +126,7 @@ def test_fill_pains_unknown_theme_returns_none_dicts():
 
 def _sample_filled():
     from app.modules.outreach.pain_dictionaries import PainFilled
+
     return [
         PainFilled(
             label="Проблемы с дозвоном",
@@ -159,16 +182,27 @@ def test_build_prompt_4hods_email_has_subject_rules():
 
 def test_build_prompt_4hods_skips_hod2_3_when_pain_unknown():
     from app.modules.outreach.pain_dictionaries import PainFilled
-    pains = [PainFilled(
-        label="Некомпетентные врачи",
-        mention_count=10, top_quote="плохо лечат", source=None,
-        pain_key=None, consequence=None, solution=None,
-    )]
+
+    pains = [
+        PainFilled(
+            label="Некомпетентные врачи",
+            mention_count=10,
+            top_quote="плохо лечат",
+            source=None,
+            pain_key=None,
+            consequence=None,
+            solution=None,
+        )
+    ]
     prompt = build_prompt_4hods(
         channel="messenger",
         sender_profile="автоматизирую связь",
-        company_name="X", niche="Y", city="Z",
-        pains=pains, my_offer_step="созвон", tone="neutral",
+        company_name="X",
+        niche="Y",
+        city="Z",
+        pains=pains,
+        my_offer_step="созвон",
+        tone="neutral",
     )
     # ходы 2 и 3 сообщают LLM что данных нет — не выдумывает
     assert "не задано в справочнике" in prompt
@@ -205,9 +239,7 @@ def test_validate_kp_messenger_catches_url():
 def test_validate_kp_catches_multiple_questions():
     v = validate_kp(
         subject="",
-        body=(
-            "Как думаете?\nЕщё вопрос?\nИ третий вопрос?"
-        ),
+        body=("Как думаете?\nЕщё вопрос?\nИ третий вопрос?"),
         channel="messenger",
     )
     assert not v.ok
@@ -217,11 +249,7 @@ def test_validate_kp_catches_multiple_questions():
 def test_validate_kp_catches_stop_word():
     v = validate_kp(
         subject="Уникальное предложение",
-        body=(
-            "Здравствуйте.\n"
-            "Мы динамично развивающаяся компания.\n"
-            "Что скажете?"
-        ),
+        body=("Здравствуйте.\nМы динамично развивающаяся компания.\nЧто скажете?"),
         channel="email",
     )
     assert not v.ok
