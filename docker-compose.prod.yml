@@ -92,6 +92,13 @@ services:
       # SerpAPI ключ для источника Google Maps (см. backend/app/modules/maps/providers/google_maps.py).
       # Без него health/providers.google_maps вернёт "no_api_key".
       SERPAPI_KEY: ${SERPAPI_KEY:-}
+      # Бот-приёмник заявок лендинга /razbor (inbound_leads): webhook + ответы
+      # пользователю + TG-уведомление владельцу. Без токена бот не отвечает.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # chat_id владельца для TG-уведомления о новой заявке (пусто → шлём только на email).
+      OWNER_TG_CHAT_ID: ${OWNER_TG_CHAT_ID:-}
+      # Абсолютный URL админки для ссылки «открыть заявку» в уведомлении.
+      ADMIN_PUBLIC_URL: ${ADMIN_PUBLIC_URL:-}
     depends_on:
       postgres:
         condition: service_healthy
