@@ -787,33 +787,52 @@ async def _enrich_company_contacts_async(company_id: int) -> dict:
 
         result = await fetch_and_extract(company.website)
 
-        extra: dict[str, list[str] | str] = {}
-        if result.phones:
-            extra["phones"] = result.phones
-        if result.telegrams:
-            extra["telegrams"] = result.telegrams
-        if result.vks:
-            extra["vks"] = result.vks
-        if result.whatsapps:
-            extra["whatsapps"] = result.whatsapps
-        if result.instagrams:
-            extra["instagrams"] = result.instagrams
-        if result.facebooks:
-            extra["facebooks"] = result.facebooks
-        if result.oks:
-            extra["oks"] = result.oks
-        if result.youtubes:
-            extra["youtubes"] = result.youtubes
+        # MERGE, не overwrite. Раньше здесь строился extra={} с нуля и писался
+        # поверх company.contacts_extra → если сайт не отдал мессенджеры, а в БД
+        # уже лежали vks/telegrams/whatsapps (от 2GIS/VK/HH-обогащения), они
+        # ЗАТИРАЛИСЬ. На проде это выкашивало каналы рассылки при прогоне
+        # enrich_company_contacts. Теперь доливаем union'ом, ничего не теряя.
+        extra: dict = dict(company.contacts_extra or {})
+
+        def _merge_list(key: str, vals: list[str]) -> None:
+            if not vals:
+                return
+            cur = list(extra.get(key) or [])
+            seen = set(cur)
+            for v in vals:
+                if v not in seen:
+                    cur.append(v)
+                    seen.add(v)
+            extra[key] = cur
+
+        _merge_list("phones", result.phones)
+        _merge_list("telegrams", result.telegrams)
+        _merge_list("vks", result.vks)
+        _merge_list("whatsapps", result.whatsapps)
+        _merge_list("instagrams", result.instagrams)
+        _merge_list("facebooks", result.facebooks)
+        _merge_list("oks", result.oks)
+        _merge_list("youtubes", result.youtubes)
         if result.fetched_url:
             extra["fetched_url"] = result.fetched_url
         if result.error:
             extra["error"] = result.error
 
+        merged_emails = list(company.emails or [])
+        for _e in result.emails:
+            if _e not in merged_emails:
+                merged_emails.append(_e)
+
+        new_phone = company.phone
+        if not new_phone and result.phones:
+            new_phone = result.phones[0]
+
         await db.execute(
             update(Company)
             .where(Company.id == company_id)
             .values(
-                emails=result.emails or None,
+                phone=new_phone,
+                emails=merged_emails or None,
                 contacts_extra=extra or None,
                 contacts_enriched_at=datetime.now(timezone.utc),
             )

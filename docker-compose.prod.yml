@@ -212,7 +212,12 @@ services:
     # (maps_yandex_html/maps_2gis_html) перенесён на celery-worker-enrich —
     # раньше они делили этого воркера, и 150-секундные enrich-батчи
     # блокировали лёгкие отзывы в FIFO.
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q search_queue,maps,maps_reviews
+    # init: true → tini как PID1 реапит осиротевшие chromium/node zombie-процессы.
+    # --max-tasks-per-child=20 → prefork-child пересоздаётся каждые 20 задач, его
+    # незажатые asyncio-subprocess'ы (chromium) репарентятся на tini и реапятся.
+    # Без этого child живёт вечно, зомби chromium копятся до ~4800 → OOM → SSH мрёт.
+    init: true
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 --max-tasks-per-child=20 -Q search_queue,maps,maps_reviews
 
   celery-worker-enrich:
     # Отдельный воркер для enrich-задач (обогащение компаний: VK/HH/prodoctorov/
@@ -261,7 +266,11 @@ services:
     # Тяжёлый воркер: DM-finder (maps_enrich) + Playwright-парсеры карточек
     # Я.Карт/2GIS (maps_yandex_html, maps_2gis_html). concurrency=2 = два
     # Chromium параллельно (~600MB RAM) — потолок для сервера 3.8GB/2 ядра.
-    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 -Q maps_enrich,maps_yandex_html,maps_2gis_html
+    # init: true → tini как PID1 реапит осиротевшие chromium/node zombie-процессы.
+    # --max-tasks-per-child=10 → пересоздаём prefork-child каждые 10 задач (тут
+    # Playwright тяжёлый, chromium течёт быстрее) → зомби реапятся, не копятся до OOM.
+    init: true
+    command: celery -A app.queue.celery_app worker --loglevel=info --concurrency=2 --prefetch-multiplier=1 --max-tasks-per-child=10 -Q maps_enrich,maps_yandex_html,maps_2gis_html
 
   # Celery Beat — планировщик periodic-задач (прогрев доменов каждый день,
   # парсинг ответов каждые 5 мин, dedup каждый час и т.д.). Без этого сервиса
