@@ -34,6 +34,7 @@ from app.admin.views.maps import (
     MapSearchCacheAdmin,
     PainTagAdmin,
 )
+from app.admin.views.inbound_leads import InboundLeadAdmin
 from app.admin.i18n import set_language, get_current_language, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 
 
@@ -122,5 +123,8 @@ def setup_admin(app) -> Admin:
     admin.add_view(MapSearchAdmin)
     admin.add_view(MapSearchCacheAdmin)
     admin.add_view(PainTagAdmin)
+
+    # Register admin views - Заявки (входящие лиды с бота и формы лендинга)
+    admin.add_view(InboundLeadAdmin)
 
     return admin

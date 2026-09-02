@@ -165,8 +165,40 @@ class Settings(BaseSettings):
         default="reply-", description="Prefix for reply-to email addresses (e.g., reply-123@domain.com)"
     )
 
-    # Telegram Bot for outreach sending
-    TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token for outreach")
+    # Telegram Bot for outreach sending.
+    # ВНИМАНИЕ: это единственный источник токена бота. Входящий бот-приёмник
+    # заявок (модуль inbound_leads) переиспользует этот же токен и вебхук —
+    # отдельного TG_BOT_TOKEN нет специально, чтобы не плодить два источника правды.
+    TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token (outreach + приём заявок)")
+
+    # Приём заявок (бот + форма лендинга spinlid-team.ru) → POST /api/v1/inbound-leads.
+    INBOUND_SECRET: str = Field(
+        default="",
+        description="Секрет для заголовка X-Inbound-Secret. Пусто → endpoint отвечает 503 'INBOUND_SECRET не задан'.",
+    )
+    OWNER_TG_CHAT_ID: str = Field(
+        default="",
+        description="Telegram chat_id Дмитрия для уведомлений о новых заявках (узнать у @userinfobot). Пусто → уведомление в TG пропускается с предупреждением в логах.",
+    )
+    ADMIN_PUBLIC_URL: str = Field(
+        default="",
+        description="Публичный базовый URL админки (напр. https://spinlid.ru) для кликабельной ссылки на заявку в уведомлениях. Пусто → ссылка не добавляется.",
+    )
+
+    # Реквизиты оффера «Дмитрий» (лендинг spinlid-team.ru). Используются в
+    # генераторе текстов рассылки и в выгрузках. НЕ упоминают SpinLid/Colaba.
+    PUBLIC_BOT_USERNAME: str = Field(
+        default="",
+        description="Юзернейм бота-приёмника без @ (напр. spinlid_team_bot). Для @упоминаний в TG-текстах и ссылок t.me/<bot>?start=. Пусто → в тексте плейсхолдер и предупреждение в логах.",
+    )
+    PUBLIC_LANDING_URL: str = Field(
+        default="https://spinlid-team.ru",
+        description="URL лендинга оффера для ссылок в email-текстах.",
+    )
+    PUBLIC_CONTACT_EMAIL: str = Field(
+        default="dmitry@spinlid-team.ru",
+        description="Контактный email в подписи email-рассылки.",
+    )
 
     # GreenAPI — WhatsApp Business connector (https://green-api.com).
     # Заводится отдельный «инстанс» (виртуальный номер), у него свои

@@ -70,8 +70,16 @@ def validate_kp(
     subject: str,
     body: str,
     channel: str,
+    bot_username: str | None = None,
+    contact_email: str | None = None,
 ) -> ValidationResult:
-    """Прогоняет все проверки. channel: 'messenger' | 'email'."""
+    """Прогоняет все проверки. channel: 'messenger' | 'email'.
+
+    bot_username / contact_email — если заданы, проверяем что контакт для
+    ответа реально попал в текст (messenger → @бот, email → t.me-ссылка на
+    бота или контактный e-mail в подписи). Пусто → проверку пропускаем
+    (код работает без секретов, см. ТЗ «запуск без секретов»).
+    """
     ch = (channel or "messenger").strip().lower()
     issues: list[ValidationIssue] = []
 
@@ -129,6 +137,25 @@ def validate_kp(
             "url",
             "мессенджер: найдена ссылка в теле — запрещено (триггер бана WA/TG)",
         ))
+
+    # --- Contact for reply --------------------------------------------------
+    body_low = (body or "").lower()
+    bot = (bot_username or "").lstrip("@").strip().lower()
+    if ch == "messenger":
+        if bot and f"@{bot}" not in body_low:
+            issues.append(ValidationIssue(
+                "no_contact",
+                f"мессенджер: нет контакта для ответа @{bot} в тексте",
+            ))
+    else:  # email
+        if bot or contact_email:
+            has_tg = bool(bot) and (f"t.me/{bot}" in body_low or f"@{bot}" in body_low)
+            has_mail = bool(contact_email) and contact_email.strip().lower() in body_low
+            if not (has_tg or has_mail):
+                issues.append(ValidationIssue(
+                    "no_contact",
+                    "email: в подписи нет ни ссылки на бота, ни контактного e-mail",
+                ))
 
     # --- Stop words ---------------------------------------------------------
     combined = f"{subject}\n{body}"

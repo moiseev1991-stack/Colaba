@@ -1075,6 +1075,12 @@ async def generate_kp(
                 }
             )
         filled_pains = fill_pains(pains_dicts, offer_theme="automation")
+        from app.core.config import settings as _settings
+        if channel == "email" and not _settings.PUBLIC_BOT_USERNAME:
+            logger.warning(
+                "generate_kp 4hods email: PUBLIC_BOT_USERNAME не задан — "
+                "в подпись уйдёт плейсхолдер вместо t.me-ссылки на бота"
+            )
         prompt_text = build_prompt_4hods(
             channel=channel,
             sender_profile=sender_profile,
@@ -1085,6 +1091,9 @@ async def generate_kp(
             my_offer_step=my_offer_step or "короткий созвон 10 минут",
             tone=tone,
             recipient_first_name=recipient_first_name,
+            bot_username=_settings.PUBLIC_BOT_USERNAME,
+            contact_email=_settings.PUBLIC_CONTACT_EMAIL,
+            landing_url=_settings.PUBLIC_LANDING_URL,
         )
     else:
         prompt_text = build_kp_prompt(
@@ -1123,11 +1132,14 @@ async def generate_kp(
     #      Не прошло со второй попытки → пишем draft с флагом needs_review.
     validation_summary: str | None = None
     if use_4hods:
+        from app.core.config import settings as _settings
         from .kp_validator import validate_kp, issues_summary
         v = validate_kp(
             subject=str(parsed.get("subject") or ""),
             body=str(parsed.get("body") or ""),
             channel=channel,
+            bot_username=_settings.PUBLIC_BOT_USERNAME,
+            contact_email=_settings.PUBLIC_CONTACT_EMAIL,
         )
         if not v.ok:
             # 1 повтор.
@@ -1140,6 +1152,8 @@ async def generate_kp(
                 subject=str(parsed_retry.get("subject") or ""),
                 body=str(parsed_retry.get("body") or ""),
                 channel=channel,
+                bot_username=_settings.PUBLIC_BOT_USERNAME,
+                contact_email=_settings.PUBLIC_CONTACT_EMAIL,
             )
             if v2.ok:
                 parsed = parsed_retry

@@ -51,6 +51,7 @@ from app.models.kp_generation_job import KpGenerationJob
 from app.models.kp_send import KpSend
 from app.models.site_lead import SiteLead
 from app.models.website_lead import WebsiteLead
+from app.models.inbound_lead import InboundLead
 
 __all__ = [
     "User",
@@ -106,4 +107,5 @@ __all__ = [
     "KpSend",
     "SiteLead",
     "WebsiteLead",
+    "InboundLead",
 ]
