@@ -14,8 +14,8 @@ import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 
 // Username бота-приёмника БЕЗ @ (= PUBLIC_BOT_USERNAME из .env бэкенда).
 // Не секрет. Задаётся на сборке фронта через NEXT_PUBLIC_RAZBOR_BOT;
-// если не задан — плейсхолдер, ссылки «в Telegram» вести некуда.
-const BOT_USERNAME = process.env.NEXT_PUBLIC_RAZBOR_BOT || '__PUBLIC_BOT_USERNAME__';
+// дефолт — реальный бот-приёмник, чтобы ссылки «в Telegram» работали без env.
+const BOT_USERNAME = process.env.NEXT_PUBLIC_RAZBOR_BOT || 'bolshe_lidov_bot';
 const TG_URL = `https://t.me/${BOT_USERNAME}?start=landing`;
 
 // ID счётчика Яндекс.Метрики spinlid.ru (тот же, что в components/YandexMetrika).
