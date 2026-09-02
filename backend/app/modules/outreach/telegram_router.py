@@ -33,36 +33,53 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
 
-WELCOME_TEXT = (
-    "👋 Здравствуйте! Это бот Colaba — сервис поиска клиентов и подготовки "
-    "коммерческих предложений.\n\n"
-    "Здесь вы будете получать КП и ответы на вопросы.\n\n"
-    "👇 Нажмите кнопку ниже «Поделиться контактом», чтобы мы могли "
-    "закрепить ваш номер за вашей компанией."
+# Тексты диалога бота-приёмника (персона «Дмитрий»). НЕ упоминаем SpinLid/Colaba.
+GREETING_TEXT = (
+    "Здравствуйте! Я Дмитрий. Помогаю бизнесу не терять клиентов на недозвонах "
+    "и потерянных заявках.\n\n"
+    "Напишите название вашей компании (или ссылку на неё в 2ГИС/Яндекс.Картах) — "
+    "я посмотрю отзывы и покажу, где теряются клиенты. Это бесплатно."
 )
+ASK_CONTACT_TEXT = "Принял. Как с вами связаться — телефон или удобно здесь, в Telegram?"
+THANKS_TEXT = (
+    "Спасибо! Разбор пришлю в течение пары часов в рабочее время. "
+    "Если срочно — просто напишите сюда."
+)
+EXTRA_ACK_TEXT = "Принял 👍 Отвечу здесь в ближайшее время."
 
+# Одна кнопка «Оставить контакт» (TZ §2.2 — не плодить меню).
 CONTACT_KEYBOARD = {
-    "keyboard": [
-        [
-            {
-                "text": "📱 Поделиться контактом",
-                "request_contact": True,
-            }
-        ]
-    ],
+    "keyboard": [[{"text": "📱 Оставить контакт", "request_contact": True}]],
     "resize_keyboard": True,
     "one_time_keyboard": True,
 }
 
+_PHASE_TEXT = {
+    "greeting": GREETING_TEXT,
+    "ask_contact": ASK_CONTACT_TEXT,
+    "thanks": THANKS_TEXT,
+    "extra": EXTRA_ACK_TEXT,
+}
+
+
+def _parse_start_payload(text: str) -> str:
+    """'/start email' → 'email'. Метка источника из deep-link t.me/<bot>?start=<tag>."""
+    parts = text.split(maxsplit=1)
+    return parts[1].strip()[:120] if len(parts) > 1 else ""
+
 
 @router.post("/webhook")
 async def telegram_webhook(request: Request) -> dict:
-    """Приём Update от Telegram Bot API.
+    """Приём Update от Telegram Bot API — бот-приёмник заявок «Дмитрий».
 
-    Эндпоинт публичный (Telegram шлёт без auth). Секрет можно добавить
-    через URL-path (например /webhook/{secret}) — для MVP без него,
-    но в проде рекомендуется.
+    Эндпоинт публичный (Telegram шлёт без auth). Каждое входящее сообщение
+    маршрутизируется в inbound_leads.service.handle_bot_message (создание/
+    дополнение заявки + уведомление владельцу). По возвращённой фазе шлём
+    ответ из сценария §2.2.
     """
+    from app.core.database import AsyncSessionLocal
+    from app.modules.inbound_leads import service as inbound_service
+
     try:
         update = await request.json()
     except Exception as e:
@@ -71,59 +88,72 @@ async def telegram_webhook(request: Request) -> dict:
 
     message = update.get("message") or {}
     if not message:
-        # Не message-update (callback_query, edited_message, ...) — игнорируем.
         return {"ok": True, "skipped": "no_message"}
 
     from_user = message.get("from") or {}
     chat_id = message.get("chat", {}).get("id")
-    if chat_id is None:
-        return {"ok": True, "skipped": "no_chat_id"}
+    tg_user_id = from_user.get("id")
+    if chat_id is None or tg_user_id is None:
+        return {"ok": True, "skipped": "no_ids"}
 
+    username = from_user.get("username")
     text = (message.get("text") or "").strip()
     contact = message.get("contact")
 
-    # Обработка /start — создаём/обновляем подписчика, шлём welcome.
-    if text == "/start":
-        await _upsert_subscriber(
-            chat_id=chat_id,
-            username=from_user.get("username"),
-            first_name=from_user.get("first_name"),
-        )
-        try:
-            await telegram_bot.send_text_message(
-                chat_id, WELCOME_TEXT, parse_mode="HTML"
-            )
-            # Шлём keyboard с кнопкой «Поделиться контактом» отдельным сообщением
-            # через send_text_message не получится (нужен reply_markup в payload).
-            # Делаем прямой POST — расширение send_text_message не делаем, чтобы
-            # не усложнять KP-флоу.
-            await _send_contact_request_keyboard(chat_id)
-        except telegram_bot.TelegramSendError as e:
-            logger.warning("telegram /start welcome failed: %s", e)
-        return {"ok": True, "handled": "start"}
+    is_start = text.startswith("/start")
+    source_tag = _parse_start_payload(text) if is_start else ""
 
-    # Обработка contact (юзер нажал «Поделиться контактом»).
-    if contact:
-        phone_raw = contact.get("phone_number") or ""
-        phone = _normalize_phone(phone_raw)
+    # Контакт по кнопке «Оставить контакт» → трактуем телефон как контентное
+    # сообщение с контактом (state-машина сама разложит).
+    if contact and not text:
+        text = _normalize_phone(contact.get("phone_number") or "") or (contact.get("phone_number") or "")
+
+    # Держим подписчика в telegram_subscribers (совместимость с КП-конвейером).
+    try:
         await _upsert_subscriber(
             chat_id=chat_id,
-            username=from_user.get("username"),
-            first_name=from_user.get("first_name") or contact.get("first_name"),
-            phone=phone,
+            username=username,
+            first_name=from_user.get("first_name"),
+            phone=(_normalize_phone(contact.get("phone_number") or "") if contact else None),
         )
+    except Exception as e:  # noqa: BLE001 — не роняем приём заявки из-за подписчика
+        logger.warning("telegram webhook: upsert_subscriber failed: %s", e)
+
+    # Основной маршрут — заявка. Своя сессия: webhook вне request-db-scope.
+    phase = "greeting"
+    try:
+        async with AsyncSessionLocal() as db:
+            _lead, phase = await inbound_service.handle_bot_message(
+                db,
+                tg_user_id=int(tg_user_id),
+                tg_username=username,
+                text=text,
+                source_tag=source_tag,
+                is_start=is_start,
+            )
+    except Exception as e:  # noqa: BLE001
+        # TZ §2.5: даже при сбое бэка бот отвечает лиду, заявку не теряем.
+        logger.exception("telegram webhook: handle_bot_message failed: %s", e)
         try:
             await telegram_bot.send_text_message(
                 chat_id,
-                "✅ Спасибо! Ваш номер закреплён. Теперь мы сможем отправить "
-                "вам КП в этот чат.",
-                parse_mode="HTML",
+                "Спасибо! Записал, свяжусь с вами в ближайшее время.",
             )
-        except telegram_bot.TelegramSendError as e:
-            logger.warning("telegram contact-confirm send failed: %s", e)
-        return {"ok": True, "handled": "contact"}
+        except telegram_bot.TelegramSendError:
+            pass
+        return {"ok": True, "handled": "fallback"}
 
-    return {"ok": True, "skipped": "unhandled_text"}
+    reply = _PHASE_TEXT.get(phase, THANKS_TEXT)
+    try:
+        if phase == "ask_contact":
+            # На шаге запроса контакта показываем единственную кнопку.
+            await _send_reply_with_keyboard(chat_id, reply, CONTACT_KEYBOARD)
+        else:
+            await telegram_bot.send_text_message(chat_id, reply)
+    except telegram_bot.TelegramSendError as e:
+        logger.warning("telegram webhook: reply send failed: %s", e)
+
+    return {"ok": True, "handled": phase}
 
 
 @router.post("/setup-webhook")
@@ -256,8 +286,8 @@ def _normalize_phone(raw: str) -> Optional[str]:
     return digits or None
 
 
-async def _send_contact_request_keyboard(chat_id: int) -> None:
-    """Шлёт reply-клавиатуру с кнопкой request_contact.
+async def _send_reply_with_keyboard(chat_id: int, text: str, keyboard: dict) -> None:
+    """Шлёт текст с reply-клавиатурой одним сообщением.
 
     Прямой POST — send_text_message не умеет reply_markup.
     """
@@ -269,13 +299,9 @@ async def _send_contact_request_keyboard(chat_id: int) -> None:
     if not token:
         return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": " ",
-        "reply_markup": CONTACT_KEYBOARD,
-    }
+    payload = {"chat_id": chat_id, "text": text, "reply_markup": keyboard}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             await client.post(url, json=payload)
     except httpx.HTTPError as e:
-        logger.warning("telegram _send_contact_request_keyboard: %s", e)
+        logger.warning("telegram _send_reply_with_keyboard: %s", e)

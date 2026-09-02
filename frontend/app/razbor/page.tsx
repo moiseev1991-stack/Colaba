@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import '@/components/landing/landing.css';
+import { LandingHeader } from '@/components/landing/LandingHeader';
+import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 
-// Изолированный лендинг оффера «Дмитрий». Персона «Дмитрий»: ни шапки/футера/меню
-// SpinLid, ни одной ссылки на остальной сайт. Дизайн — на токенах сайта
-// (шрифты Unbounded/Manrope и бренд-градиент emerald→cyan из globals.css),
-// чтобы страница смотрелась как часть продукта, но оставалась самостоятельной.
+// Лендинг оффера «Дмитрий» как полноценная страница сайта: сверху общая шапка
+// SpinLid (LandingHeader variant="subpage" — логотип и пункты ведут на главную),
+// hero в стиле главной (тёмный фон-декор + бейдж + градиентный заголовок +
+// floating-карточки). Ниже — оффер на своих .razbor-стилях.
 // Форма шлёт same-origin на /api/v1/inbound-leads/public (CORS не нужен).
 // Счётчик Метрики грузит общий <YandexMetrika/>; на успех — цель lead_form.
 
@@ -91,21 +94,12 @@ const STYLES = `
 .razbor section{padding:52px 0}
 .razbor section + section{border-top:1px solid var(--line)}
 
-/* HERO */
-.razbor .hero{
-  position:relative;overflow:hidden;padding:66px 0 58px;
-  background:
-    radial-gradient(1100px 420px at 78% -10%, rgba(6,182,212,.16), transparent 60%),
-    radial-gradient(900px 420px at 8% 6%, rgba(16,185,129,.16), transparent 55%),
-    linear-gradient(180deg,#eef6f2 0%,var(--bg) 100%);
-}
-.razbor .eyebrow{
-  display:inline-flex;align-items:center;gap:8px;margin:0 0 18px;padding:7px 14px;
-  background:#d1fae5;color:#047857;border-radius:999px;font-weight:700;font-size:13.5px;
-  letter-spacing:.01em;
-}
-.razbor .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:#10b981}
-.razbor .hero .sub{font-size:19px;color:var(--muted);margin:0 0 28px;max-width:640px}
+/* HERO — визуал в стиле главной (класс .l-hero под .landing-light).
+   .razbor-обёртка остаётся, поэтому trust-список подкрашиваем под тёмный фон. */
+.razbor .l-hero{padding:0}
+.razbor .l-hero .trust{margin-top:34px}
+.razbor .l-hero .trust li{color:rgba(255,255,255,.82)}
+.razbor .l-hero .trust li::before{background:rgba(16,185,129,.22);color:#79f0c7}
 .razbor .cta{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
   background:var(--grad);color:#fff;text-decoration:none;font-weight:750;font-size:18px;
@@ -116,8 +110,6 @@ const STYLES = `
 .razbor .cta:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(16,185,129,.36)}
 .razbor .cta:active{transform:translateY(0)}
 .razbor .cta:disabled{opacity:.65;cursor:default;transform:none;box-shadow:0 8px 22px rgba(16,185,129,.2)}
-.razbor .tg-hint{margin:16px 0 0;font-size:15.5px;color:var(--muted)}
-.razbor .tg-hint a{color:var(--accent);font-weight:700}
 .razbor .trust{display:flex;flex-wrap:wrap;gap:10px 22px;margin:30px 0 0;padding:0;list-style:none}
 .razbor .trust li{position:relative;padding-left:26px;font-size:15px;color:var(--muted);font-weight:600}
 .razbor .trust li::before{
@@ -179,15 +171,6 @@ const STYLES = `
 .razbor .faq details[open] summary::after{content:"\\2212"}
 .razbor .faq .fa{padding:0 20px 18px;color:var(--muted);font-size:16px;line-height:1.55}
 
-/* ABOUT */
-.razbor .about{display:flex;gap:20px;align-items:flex-start}
-.razbor .avatar{
-  flex:0 0 92px;width:92px;height:92px;border-radius:20px;
-  background:#e2efe9;border:1px dashed #a9cabd;color:#6f9585;
-  display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;font-weight:600;
-}
-.razbor .about .name{font-weight:800;font-size:20px;margin:0 0 6px;font-family:var(--font-display),sans-serif}
-
 /* FORM */
 .razbor .form-sec{background:linear-gradient(180deg,#eef6f2,#e8f2ee)}
 .razbor form{
@@ -227,11 +210,8 @@ const STYLES = `
   .razbor{font-size:16px}
   .razbor h1{font-size:29px}
   .razbor h2{font-size:22px}
-  .razbor .hero{padding:50px 0 42px}
-  .razbor .hero .sub{font-size:17.5px}
   .razbor .cards{grid-template-columns:1fr}
   .razbor section{padding:42px 0}
-  .razbor .about{flex-direction:column;gap:14px}
 }
 `;
 
@@ -251,6 +231,23 @@ export default function RazborPage() {
   const [hp, setHp] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  // Reveal-on-scroll для hero (классы .reveal стартуют opacity:0 в landing.css —
+  // без этого наблюдателя контент останется невидимым).
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          e.target.classList.add('visible');
+          obs.unobserve(e.target);
+        });
+      },
+      { threshold: 0.08, rootMargin: '0px 0px -50px 0px' }
+    );
+    document.querySelectorAll('.razbor .reveal').forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
   async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
@@ -307,32 +304,102 @@ export default function RazborPage() {
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(LD_JSON) }} />
 
-      <header className="hero">
-        <div className="wrap">
-          <span className="eyebrow">Бесплатно · 10 минут · без обязательств</span>
-          <h1>Ваши клиенты уходят к конкурентам, пока вы не берёте трубку</h1>
-          <p className="sub">
-            Разберу по отзывам вашей компании, где теряются клиенты, и покажу, как это закрыть. Бесплатно, за 10 минут, без
-            обязательств.
-          </p>
-          <a href="#form" className="cta">
-            Получить бесплатный разбор
-          </a>
-          <p className="tg-hint">
-            или напишите в{' '}
-            <a href={TG_URL} rel="noopener" target="_blank">
-              Telegram
-            </a>
-          </p>
-          <ul className="trust">
-            <li>По вашим реальным отзывам</li>
-            <li>Разбираю лично, не вебинар</li>
-            <li>Ничего не продаю на разборе</li>
-          </ul>
-        </div>
-      </header>
+      <LandingHeader variant="subpage" />
 
-      <section>
+      <div className="landing-light">
+        <section className="l-hero" id="top">
+          <div className="l-hero__bg">
+            <div className="l-hero__overlay" />
+          </div>
+          <HeroBackgroundDecor />
+
+          <div className="l-hero__inner">
+            <div>
+              <div className="l-hero__badge reveal">
+                <span className="l-hero__badge-dot" />
+                Бесплатно · 10 минут · без обязательств
+              </div>
+
+              <h1 className="l-hero__title reveal">
+                Ваши клиенты уходят к конкурентам,<br />
+                <span className="grad-text">пока вы не берёте трубку</span>
+              </h1>
+
+              <p className="l-hero__sub reveal">
+                Разберу по отзывам вашей компании, где теряются клиенты, и покажу,
+                как это закрыть. Бесплатно, за 10 минут, без обязательств.
+              </p>
+
+              <div className="l-hero__actions reveal">
+                <a className="l-btn l-btn--primary" href="#form">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Получить бесплатный разбор
+                </a>
+                <a className="l-btn l-btn--ghost" href={TG_URL} rel="noopener" target="_blank">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Написать в Telegram
+                </a>
+              </div>
+
+              <ul className="trust reveal">
+                <li>По вашим реальным отзывам</li>
+                <li>Разбираю лично, не вебинар</li>
+                <li>Ничего не продаю на разборе</li>
+              </ul>
+            </div>
+
+            <div className="l-hero__float-cards">
+              <div className="l-hero__float-card l-hero__float-card--1 reveal">
+                <div className="l-hfc__icon l-hfc__icon--green">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="l-hfc__val">Звонок</div>
+                  <div className="l-hfc__label">не пропущен</div>
+                </div>
+              </div>
+
+              <div className="l-hero__float-card l-hero__float-card--2 reveal">
+                <div className="l-hfc__icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="l-hfc__val">Заявка</div>
+                  <div className="l-hfc__label">ответ за минуту</div>
+                </div>
+              </div>
+
+              <div className="l-hero__float-card l-hero__float-card--3 reveal">
+                <div className="l-hfc__icon l-hfc__icon--purple">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="l-hfc__val">Запись</div>
+                  <div className="l-hfc__label">клиент сам, 24/7</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <a href="#uznaete" className="l-hero__scroll-hint" aria-label="Листайте вниз">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        </section>
+      </div>
+
+      <section id="uznaete">
         <div className="wrap">
           <h2>Узнаёте себя?</h2>
           <div className="cards">
@@ -390,23 +457,6 @@ export default function RazborPage() {
                 <div className="fa">{f.a}</div>
               </details>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="wrap">
-          <h2>Кто я</h2>
-          <div className="about">
-            <div className="avatar">[фото]</div>
-            <div>
-              <p className="name">Дмитрий</p>
-              <p>
-                Занимаюсь приёмом клиентов для малого бизнеса: звонки, заявки, запись, сообщения. Помогаю не терять людей на
-                этапе обращения.
-              </p>
-              <p className="note">Связь напрямую со мной — без менеджеров и колл-центров.</p>
-            </div>
           </div>
         </div>
       </section>

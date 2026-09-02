@@ -305,16 +305,23 @@ async def match_reviews_to_pain_tags(
             assigned.setdefault(rid, []).append(tag_id)
 
         # ---------- Bulk INSERT review_pain_tags ----------
+        # Чанкуем: asyncpg не даёт >32767 bind-параметров на один запрос,
+        # а тут 3 параметра на строку. У крупных ниш (стоматология, курьерская)
+        # хитов десятки тысяч → без чанков падало InterfaceError. 5000 строк =
+        # 15000 параметров, с запасом под лимит.
         if rpt_rows:
-            rpt_ins = (
-                pg_insert(ReviewPainTag)
-                .values(rpt_rows)
-                .on_conflict_do_update(
-                    index_elements=["review_id", "pain_tag_id"],
-                    set_={"similarity": pg_insert(ReviewPainTag).excluded.similarity},
+            RPT_BATCH = 5000
+            for _b in range(0, len(rpt_rows), RPT_BATCH):
+                chunk = rpt_rows[_b:_b + RPT_BATCH]
+                rpt_ins = (
+                    pg_insert(ReviewPainTag)
+                    .values(chunk)
+                    .on_conflict_do_update(
+                        index_elements=["review_id", "pain_tag_id"],
+                        set_={"similarity": pg_insert(ReviewPainTag).excluded.similarity},
+                    )
                 )
-            )
-            await db.execute(rpt_ins)
+                await db.execute(rpt_ins)
 
         # ---------- Bulk INSERT/UPDATE company_pain_scores ----------
         # Для каждой агрегированной пары делаем один upsert. Это всё ещё
@@ -566,18 +573,31 @@ async def recluster_pains_for_niche(
         # для двух случаев, поэтому для упрощения — на конфликт основного UNIQUE.
         # После миграции 035 (2026-06-16) основной UNIQUE расширен sentiment-колонкой,
         # чтобы один и тот же label мог сосуществовать в negative- и positive-наборах.
-        ins = ins.on_conflict_do_update(
-            index_elements=["niche", "city", "label", "sentiment"],
-            set_={
-                "description": ins.excluded.description,
-                "centroid": centroid.tolist(),
-                "occurrences_count": ins.excluded.occurrences_count,
-                "cluster_size": ins.excluded.cluster_size,
-                "examples": ins.excluded.examples,
-                "status": "active",
-                "updated_at": now,
-            },
-        ).returning(PainTag.id)
+        conflict_set = {
+            "description": ins.excluded.description,
+            "centroid": centroid.tolist(),
+            "occurrences_count": ins.excluded.occurrences_count,
+            "cluster_size": ins.excluded.cluster_size,
+            "examples": ins.excluded.examples,
+            "status": "active",
+            "updated_at": now,
+        }
+        # Для city IS NULL (рекластер ниши целиком) уникальность держит ЧАСТИЧНЫЙ
+        # индекс ux_pain_tags_global (niche, label, sentiment) WHERE city IS NULL —
+        # композитный uq_pain_tags_niche_city_label_sentiment на NULL-city не срабатывает
+        # (NULL != NULL), поэтому ON CONFLICT на него не ловит дубликат и повторный
+        # прогон падал UniqueViolation. Нацеливаемся на нужный индекс по city.
+        if city is None:
+            ins = ins.on_conflict_do_update(
+                index_elements=["niche", "label", "sentiment"],
+                index_where=text("city IS NULL"),
+                set_=conflict_set,
+            ).returning(PainTag.id)
+        else:
+            ins = ins.on_conflict_do_update(
+                index_elements=["niche", "city", "label", "sentiment"],
+                set_=conflict_set,
+            ).returning(PainTag.id)
         # centroid отдельно через UPDATE (insert above values() не включал centroid из-за типа)
         result = await db.execute(ins)
         tag_id = result.scalar_one()

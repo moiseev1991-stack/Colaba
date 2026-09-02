@@ -18,14 +18,18 @@ from __future__ import annotations
 
 from .pain_dictionaries import PainFilled
 
+# Плейсхолдер, когда PUBLIC_BOT_USERNAME не задан в .env — код не падает,
+# в текст попадает явная заглушка (см. build_prompt_4hods).
+_BOT_PLACEHOLDER = "[бот_не_задан]"
+
 
 # ---------------------------------------------------------------------------
 # Инструкции LLM (system-level, независят от компании)
 # ---------------------------------------------------------------------------
 
-# Мессенджер (WA/TG/MAX): 4-6 строк, без ссылок, один вопрос в конце.
+# Telegram: 4-6 строк, без ссылок, один вопрос в конце, контакт для ответа = @бот.
 KP_4HODS_MESSENGER_HEADER = (
-    "Ты пишешь короткое холодное сообщение в мессенджер (WhatsApp/Telegram) на русском языке "
+    "Ты пишешь короткое холодное сообщение в Telegram на русском языке "
     "от лица: {sender_profile}.\n"
     "\n"
     "СТРОГИЙ ФОРМАТ: ровно 4 хода, 4–6 строк суммарно. Ниже данные для каждого хода —\n"
@@ -125,17 +129,20 @@ def _fmt_hod4(my_offer_step: str) -> str:
 KP_4HODS_TAIL_MESSENGER = (
     "\n"
     "ПРАВИЛА:\n"
-    "1. 4–6 строк суммарно. Без темы. Без ссылок (ни одной, WhatsApp банит).\n"
+    "1. 4–6 строк суммарно. Без темы. Без ссылок (ни одной https:// или t.me/).\n"
     "2. Один вопрос в конце. Больше нигде вопросов не задаём.\n"
     "3. Не начинай с «Здравствуйте, мы компания X». Представление коротко в подписи.\n"
     "4. Не выдумывай точных цифр («потеряете 47500 ₽»). Абстрактные оценки ок.\n"
     "5. ЗАПРЕЩЕНО: «уникальное», «инновационное», «предлагаем сотрудничество»,\n"
     "   «взаимовыгодное», «динамично развивающаяся», «мы — компания»,\n"
     "   «10-летний опыт», «спешим предложить».\n"
-    "6. Тон: {tone}. Живой человек написал лично, не маркетинг.\n"
+    "6. Контакт для ответа — вставь ЕСТЕСТВЕННО (рядом с вопросом или в подписи):\n"
+    "   ответить можно в Telegram — {bot_handle}. Пиши ровно {bot_handle} как @-упоминание,\n"
+    "   НЕ оформляй как ссылку (без https://, без t.me/).\n"
+    "7. Тон: {tone}. Живой человек написал лично, не маркетинг.\n"
     "\n"
     "Верни строго JSON: {{\"subject\": \"\", \"body\": \"...\"}} — subject для\n"
-    "мессенджера пусто, body — сообщение.\n"
+    "Telegram пусто, body — сообщение.\n"
 )
 
 KP_4HODS_TAIL_EMAIL = (
@@ -144,12 +151,17 @@ KP_4HODS_TAIL_EMAIL = (
     "1. Тема письма: до 8 слов, сжатый ход 1 (например: «12 жалоб на дозвон в отзывах {company_name}»).\n"
     "2. Тело: 6–9 строк, абзацы по 1–3 предложения.\n"
     "3. Один вопрос в конце. Больше нигде вопросов нет.\n"
-    "4. Ссылка допустима максимум ОДНА (в подписи или в CTA) — только если явно уместна.\n"
+    "4. В самом тексте письма (вне подписи) ссылок быть не должно — все ссылки только в подписи.\n"
     "5. Не выдумывай точных цифр («потеряете 47500 ₽»).\n"
     "6. ЗАПРЕЩЕНО: «уникальное», «инновационное», «предлагаем сотрудничество»,\n"
     "   «взаимовыгодное», «динамично развивающаяся», «мы — компания»,\n"
     "   «10-летний опыт», «спешим предложить».\n"
-    "7. Тон: {tone}. Уважительно, на «вы», без канцелярита.\n"
+    "7. ПОДПИСЬ (обязательна, отдели пустой строкой в конце body). В подписи —\n"
+    "   имя отправителя и контакты ровно в таком виде (это исключение из правила про ссылки):\n"
+    "   Telegram: {tg_deeplink}\n"
+    "   e-mail: {contact_email}\n"
+    "   сайт: {landing_url}\n"
+    "8. Тон: {tone}. Уважительно, на «вы», без канцелярита.\n"
     "\n"
     "Верни строго JSON: {{\"subject\": \"...\", \"body\": \"...\"}}\n"
 )
@@ -159,6 +171,15 @@ TONE_HINTS = {
     "neutral": "нейтральный, по-деловому",
     "bold": "уверенный, прямой, но без давления",
 }
+
+
+def _with_utm(url: str, source: str) -> str:
+    """Добавляет utm_source к URL, не дублируя, если уже есть query."""
+    url = (url or "").strip()
+    if not url:
+        return ""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}utm_source={source}"
 
 
 # ---------------------------------------------------------------------------
@@ -177,13 +198,27 @@ def build_prompt_4hods(
     my_offer_step: str,
     tone: str,
     recipient_first_name: str | None = None,
+    bot_username: str | None = None,
+    contact_email: str = "",
+    landing_url: str = "",
 ) -> str:
     """Собирает промпт «4 хода». Данные подставляются как заполненный
     каркас, LLM их не меняет.
+
+    Контакты рассылки (персона «Дмитрий», без SpinLid/Colaba):
+      - messenger: контакт для ответа = @<bot_username> (без ссылки);
+      - email: подпись с t.me/<bot>?start=email, contact_email, landing_url.
+    Если bot_username пуст — в текст идёт явный плейсхолдер, код не падает.
     """
     channel = (channel or "messenger").strip().lower()
     if channel not in ("messenger", "email"):
         channel = "messenger"
+
+    bot = (bot_username or "").lstrip("@").strip()
+    bot_handle = f"@{bot}" if bot else _BOT_PLACEHOLDER
+    tg_deeplink = f"https://t.me/{bot}?start=email" if bot else _BOT_PLACEHOLDER
+    landing_link = _with_utm(landing_url or "", "email") or "[сайт_не_задан]"
+    contact_email = (contact_email or "").strip() or "[email_не_задан]"
     header_tpl = (
         KP_4HODS_MESSENGER_HEADER if channel == "messenger" else KP_4HODS_EMAIL_HEADER
     )
@@ -228,10 +263,19 @@ def build_prompt_4hods(
             "эту боль» БЕЗ технологий.".format(niche=niche or "компаниям")
         )
     parts.append(_fmt_hod4(my_offer_step))
-    parts.append(
-        tail_tpl.format(
+    if channel == "messenger":
+        tail = tail_tpl.format(
             tone=TONE_HINTS.get(tone, tone or "нейтральный"),
             company_name=company_name or "—",
+            bot_handle=bot_handle,
         )
-    )
+    else:
+        tail = tail_tpl.format(
+            tone=TONE_HINTS.get(tone, tone or "нейтральный"),
+            company_name=company_name or "—",
+            tg_deeplink=tg_deeplink,
+            contact_email=contact_email,
+            landing_url=landing_link,
+        )
+    parts.append(tail)
     return "\n".join(parts)
