@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 
-// Изолированный лендинг оффера «Дмитрий» (Часть 1). Свои метатеги, og и
-// favicon — НЕ наследуются от сайта. `title.absolute` обходит шаблон
-// «%s | SpinLid» из корневого layout, openGraph/twitter/applicationName/icons
-// задаются заново, чтобы на странице и в её мета не было ни слова SpinLid
-// и ни одной ссылки на остальной сайт. metadataBase (https://spinlid.ru)
-// берётся из корневого layout — og:image резолвится в абсолютный URL.
+// Изолированный лендинг оффера «Дмитрий» (Часть 1). Свои метатеги и og —
+// НЕ наследуются от сайта. `title.absolute` обходит шаблон «%s | SpinLid»
+// из корневого layout, openGraph/twitter/applicationName задаются заново,
+// чтобы в тексте мета не было ни слова SpinLid и ни одной ссылки на сайт.
+// favicon с 2026-09-02 — брендовый, как у основного сайта (по просьбе Димы).
+// metadataBase (https://spinlid.ru) берётся из корневого layout — og:image
+// резолвится в абсолютный URL.
 export const metadata: Metadata = {
   title: { absolute: 'Бесплатный разбор: где ваш бизнес теряет клиентов' },
   description:
@@ -29,7 +30,10 @@ export const metadata: Metadata = {
       'Смотрю отзывы вашей компании и показываю, где уходят клиенты и как это закрыть. 10 минут, бесплатно, без обязательств.',
     images: ['/razbor/og.png'],
   },
-  icons: { icon: [{ url: '/razbor/favicon.svg', type: 'image/svg+xml' }] },
+  icons: {
+    icon: [{ url: '/razbor/favicon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/razbor/apple-icon.svg', type: 'image/svg+xml' }],
+  },
   // По ТЗ: noindex НЕ ставим (страница индексируется), но в sitemap не добавлена.
   robots: { index: true, follow: true },
 };

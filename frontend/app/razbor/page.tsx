@@ -97,9 +97,15 @@ const STYLES = `
 /* HERO — визуал в стиле главной (класс .l-hero под .landing-light).
    .razbor-обёртка остаётся, поэтому trust-список подкрашиваем под тёмный фон. */
 .razbor .l-hero{padding:0}
-.razbor .l-hero .trust{margin-top:34px}
-.razbor .l-hero .trust li{color:rgba(255,255,255,.82)}
-.razbor .l-hero .trust li::before{background:rgba(16,185,129,.22);color:#79f0c7}
+.razbor .l-hero .trust{margin-top:34px;gap:14px 16px}
+.razbor .l-hero .trust li{
+  color:#eafff6;font-size:16.5px;font-weight:700;padding:11px 18px 11px 48px;
+  background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.34);border-radius:999px;
+}
+.razbor .l-hero .trust li::before{
+  width:28px;height:28px;left:12px;top:50%;transform:translateY(-50%);
+  background:rgba(16,185,129,.28);color:#79f0c7;font-size:16px;
+}
 .razbor .cta{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
   background:var(--grad);color:#fff;text-decoration:none;font-weight:750;font-size:18px;
@@ -117,6 +123,13 @@ const STYLES = `
   background:#d1fae5;color:#047857;font-size:12px;font-weight:800;
   display:flex;align-items:center;justify-content:center;
 }
+
+/* INTRO — короткий вводный абзац сразу под hero */
+.razbor .intro{padding-top:46px;padding-bottom:46px}
+.razbor .intro .intro-lead{
+  font-size:20px;line-height:1.55;color:var(--ink);font-weight:500;margin:0;max-width:780px;
+}
+.razbor .intro .intro-lead b{color:var(--accent-strong);font-weight:800}
 
 /* PAIN CARDS */
 .razbor .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -399,6 +412,17 @@ export default function RazborPage() {
         </section>
       </div>
 
+      <section className="intro" id="intro">
+        <div className="wrap">
+          <p className="intro-lead">
+            Разбор — это не общий вебинар, а взгляд на <b>конкретно вашу компанию</b>. Я смотрю
+            ваши реальные отзывы и то, как обрабатываются звонки, заявки и записи, и показываю,
+            где именно уходят клиенты и во сколько это обходится каждый месяц. Всё <b>бесплатно
+            и без обязательств</b>: вы получаете понятные выводы, а решение остаётся за вами.
+          </p>
+        </div>
+      </section>
+
       <section id="uznaete">
         <div className="wrap">
           <h2>Узнаёте себя?</h2>
@@ -544,7 +568,6 @@ export default function RazborPage() {
           <div className="row">
             <a href="/razbor/privacy">Политика конфиденциальности</a>
           </div>
-          <div className="row">Реквизиты: [___]</div>
         </div>
       </footer>
     </div>
