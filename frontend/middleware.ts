@@ -35,6 +35,10 @@ const PUBLIC_PATHS = new Set<string>([
   '/parser-google-maps',
   '/baza-znaniy',
   '/parser-telegram',
+  // 2026-09-02: изолированный лендинг оффера «Дмитрий». Открывается без логина
+  // (холодный трафик из писем/TG), иначе middleware редиректил на /auth/login.
+  '/razbor',
+  '/razbor/privacy',
 ]);
 
 /** Публичные страницы, которые поисковикам можно индексировать.
@@ -64,6 +68,11 @@ const INDEXABLE_PATHS = new Set<string>([
   '/parser-google-maps',
   '/baza-znaniy',
   '/parser-telegram',
+  // 2026-09-02: лендинг «Дмитрий». По ТЗ noindex НЕ ставим (в sitemap не
+  // добавлен, но X-Robots-Tag: noindex вешать нельзя — иначе превью в
+  // мессенджерах и прямой заход теряют индексируемость метатегов).
+  '/razbor',
+  '/razbor/privacy',
 ]);
 
 function isIndexable(pathname: string): boolean {

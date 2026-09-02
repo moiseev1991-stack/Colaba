@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Бесплатный разбор: где ваш бизнес теряет клиентов</title>
+  <meta name="description" content="Разберу по отзывам вашей компании, где теряются клиенты, и покажу, как это закрыть. Бесплатно, за 10 минут, без обязательств.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+  <!-- Open Graph: превью решает клик из Telegram -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Где ваш бизнес теряет клиентов — бесплатный разбор">
+  <meta property="og:description" content="Смотрю отзывы вашей компании и показываю, где уходят клиенты и как это закрыть. 10 минут, бесплатно, без обязательств.">
+  <meta property="og:image" content="https://spinlid-team.ru/og.png">
+  <meta property="og:url" content="https://spinlid-team.ru/">
+  <meta property="og:site_name" content="Разбор потерь клиентов">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <style>
+    :root{
+      --accent:#1f7a5a;          /* один тёплый акцент */
+      --accent-dark:#155c43;
+      --ink:#1a2420;
+      --muted:#5c6b64;
+      --bg:#f6f8f6;
+      --card:#ffffff;
+      --line:#e2e9e5;
+      --radius:16px;
+      --maxw:720px;
+    }
+    *{box-sizing:border-box}
+    html{-webkit-text-size-adjust:100%}
+    body{
+      margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      color:var(--ink);background:var(--bg);line-height:1.55;font-size:17px;
+      -webkit-font-smoothing:antialiased;
+    }
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+    h1{font-size:30px;line-height:1.2;margin:0 0 14px;font-weight:800;letter-spacing:-.01em}
+    h2{font-size:23px;line-height:1.25;margin:0 0 20px;font-weight:750}
+    p{margin:0 0 14px}
+    .lead{font-size:19px;color:var(--muted)}
+    section{padding:46px 0}
+    section + section{border-top:1px solid var(--line)}
+
+    /* Hero */
+    .hero{padding:56px 0 48px;background:linear-gradient(180deg,#eef4f1 0%,var(--bg) 100%)}
+    .hero .sub{font-size:18px;color:var(--muted);margin:0 0 26px}
+    .cta{
+      display:inline-block;background:var(--accent);color:#fff;text-decoration:none;
+      font-weight:700;font-size:18px;padding:16px 26px;border-radius:12px;border:0;cursor:pointer;
+      min-height:52px;line-height:1.2;transition:background .15s ease;
+    }
+    .cta:hover{background:var(--accent-dark)}
+    .hero .tg-hint{margin:14px 0 0;font-size:15px;color:var(--muted)}
+    .hero .tg-hint a{color:var(--accent);font-weight:600}
+
+    /* Карточки */
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px}
+    .card b{display:block;font-size:17px;margin-bottom:6px}
+    .card span{color:var(--muted);font-size:15.5px}
+
+    /* Результаты — список с галочкой */
+    .results{list-style:none;padding:0;margin:0;display:grid;gap:14px}
+    .results li{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px 16px 50px;position:relative;font-size:16.5px}
+    .results li::before{content:"✓";position:absolute;left:18px;top:15px;color:var(--accent);font-weight:800;font-size:19px}
+
+    /* Шаги */
+    .steps{counter-reset:s;list-style:none;padding:0;margin:0 0 18px;display:grid;gap:16px}
+    .steps li{position:relative;padding-left:52px;font-size:16.5px;min-height:36px}
+    .steps li::before{
+      counter-increment:s;content:counter(s);position:absolute;left:0;top:-2px;
+      width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;
+    }
+    .note{color:var(--muted);font-size:15.5px;margin:0}
+
+    /* Кто я */
+    .about{display:flex;gap:18px;align-items:flex-start}
+    .avatar{
+      flex:0 0 84px;width:84px;height:84px;border-radius:50%;
+      background:#e2e9e5;border:1px dashed #b9c8c1;color:#8aa197;
+      display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;
+    }
+    .about .name{font-weight:750;font-size:19px;margin:0 0 6px}
+
+    /* Форма */
+    .form-sec{background:#eef4f1}
+    form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+    label{display:block;font-weight:650;font-size:15px;margin:0 0 6px}
+    .field{margin-bottom:16px}
+    input[type=text]{
+      width:100%;font-size:17px;padding:14px 14px;border:1px solid #cdd8d3;border-radius:10px;
+      background:#fff;color:var(--ink);min-height:50px;
+    }
+    input[type=text]:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+    form .cta{width:100%;text-align:center}
+    .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+    .consent{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--muted);margin:2px 0 18px}
+    .consent input{margin-top:3px;width:18px;height:18px;flex:0 0 18px}
+    .consent a{color:var(--accent)}
+    .under-form{color:var(--muted);font-size:15px;margin:14px 0 0;text-align:center}
+    .under-form a{color:var(--accent);font-weight:600}
+    .msg{margin:14px 0 0;padding:14px 16px;border-radius:10px;font-size:16px;display:none}
+    .msg.ok{display:block;background:#e5f4ee;color:var(--accent-dark);border:1px solid #b9e0cf}
+    .msg.err{display:block;background:#fdecec;color:#9a2b2b;border:1px solid #f3c9c9}
+
+    /* Футер */
+    footer{padding:34px 0 46px;color:var(--muted);font-size:15px}
+    footer a{color:var(--accent)}
+    footer .row{margin-bottom:8px}
+
+    @media (max-width:520px){
+      body{font-size:16px}
+      h1{font-size:26px}
+      h2{font-size:21px}
+      .cards{grid-template-columns:1fr}
+      section{padding:38px 0}
+      .hero{padding:44px 0 38px}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="wrap">
+      <h1>Ваши клиенты уходят к конкурентам, пока вы не берёте трубку</h1>
+      <p class="sub">Разберу по отзывам вашей компании, где теряются клиенты, и покажу, как это закрыть. Бесплатно, за 10 минут, без обязательств.</p>
+      <a href="#form" class="cta">Получить бесплатный разбор</a>
+      <p class="tg-hint">или напишите в <a id="tg-hero" href="#" rel="noopener">Telegram</a></p>
+    </div>
+  </header>
+
+  <!-- ================= БОЛИ ================= -->
+  <section>
+    <div class="wrap">
+      <h2>Узнаёте себя?</h2>
+      <div class="cards">
+        <div class="card"><b>Не дозвониться</b><span>Телефон занят или никто не берёт — и клиент звонит конкуренту.</span></div>
+        <div class="card"><b>Заявки теряются</b><span>Человек написал или оставил заявку, а ему никто не ответил.</span></div>
+        <div class="card"><b>Сложно записаться</b><span>Запись только по телефону и только в рабочие часы.</span></div>
+        <div class="card"><b>Хаос в клиентах</b><span>Кто звонил, кому перезвонить, что обещали — всё на бумажках.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ЧТО Я ДЕЛАЮ ================= -->
+  <section>
+    <div class="wrap">
+      <h2>Что я делаю</h2>
+      <ul class="results">
+        <li>Клиент записывается сам за 30 секунд — даже ночью, даже когда линия занята.</li>
+        <li>Ни одна заявка не пропадает — на каждую приходит ответ в течение минуты.</li>
+        <li>Пропущенный звонок догоняется автоматически — клиент получает сообщение, пока не остыл.</li>
+        <li>Все клиенты и договорённости в одном месте — ничего не забывается.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= КАК ПРОХОДИТ РАЗБОР ================= -->
+  <section>
+    <div class="wrap">
+      <h2>Как проходит разбор</h2>
+      <ol class="steps">
+        <li>Вы оставляете заявку — я смотрю отзывы и работу вашей компании.</li>
+        <li>За 10 минут показываю: где конкретно теряются клиенты и сколько это стоит в месяц.</li>
+        <li>Дальше решаете сами. Разбор бесплатный, ничего покупать не обязательно.</li>
+      </ol>
+      <p class="note">Разбор делаю лично, по конкретно вашей компании — не презентация и не вебинар.</p>
+    </div>
+  </section>
+
+  <!-- ================= КТО Я ================= -->
+  <section>
+    <div class="wrap">
+      <h2>Кто я</h2>
+      <div class="about">
+        <div class="avatar">[фото]</div>
+        <div>
+          <p class="name">Дмитрий</p>
+          <p>Занимаюсь приёмом клиентов для малого бизнеса: звонки, заявки, запись, сообщения. Помогаю не терять людей на этапе обращения.</p>
+          <p class="note">Связь напрямую со мной — без менеджеров и колл-центров.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ФОРМА ================= -->
+  <section class="form-sec" id="form">
+    <div class="wrap">
+      <h2>Получить бесплатный разбор</h2>
+      <form id="lead-form" novalidate>
+        <div class="field">
+          <label for="company">Название или ссылка на вашу точку в 2ГИС / Яндекс.Картах</label>
+          <input type="text" id="company" name="company" autocomplete="organization" placeholder="Например: Кофейня «Утро» или ссылка на карточку">
+        </div>
+        <div class="field">
+          <label for="contact">Телефон или Telegram</label>
+          <input type="text" id="contact" name="contact" autocomplete="tel" placeholder="+7 900 000-00-00 или @username">
+        </div>
+        <!-- honeypot: скрыто от людей, видно ботам -->
+        <div class="hp" aria-hidden="true">
+          <label for="company_url">Не заполняйте это поле</label>
+          <input type="text" id="company_url" name="company_url" tabindex="-1" autocomplete="off">
+        </div>
+        <label class="consent">
+          <input type="checkbox" id="consent" name="consent">
+          <span>Согласен на обработку персональных данных согласно <a href="/privacy" target="_blank" rel="noopener">политике конфиденциальности</a>.</span>
+        </label>
+        <button type="submit" class="cta">Получить бесплатный разбор</button>
+        <div class="msg" id="form-msg" role="status"></div>
+      </form>
+      <p class="under-form">Отвечаю лично в течение пары часов в рабочее время. Можно сразу написать в <a id="tg-form" href="#" rel="noopener">Telegram</a>.</p>
+    </div>
+  </section>
+
+  <!-- ================= ФУТЕР ================= -->
+  <footer>
+    <div class="wrap">
+      <div class="row">Telegram: <a id="tg-footer" href="#" rel="noopener">написать</a></div>
+      <div class="row">E-mail: <a href="mailto:dmitry@spinlid-team.ru">dmitry@spinlid-team.ru</a></div>
+      <div class="row"><a href="/privacy">Политика конфиденциальности</a></div>
+      <div class="row">Реквизиты: [___]</div>
+    </div>
+  </footer>
+
+  <script>
+  /* ================== КОНФИГ (заменить перед деплоем) ================== */
+  var CONFIG = {
+    // База API (backend). Прод: https://spinlid.ru  (без слэша в конце)
+    API_BASE: "https://spinlid.ru",
+    // Username бота-приёмника БЕЗ @ (значение PUBLIC_BOT_USERNAME из .env)
+    BOT_USERNAME: "__PUBLIC_BOT_USERNAME__",
+    // ID счётчика Яндекс.Метрики (число). Пусто "" — метрика отключена.
+    METRIKA_ID: ""
+  };
+  /* ==================================================================== */
+
+  (function(){
+    // Ссылки на Telegram-бота с меткой источника.
+    var tgUrl = "https://t.me/" + CONFIG.BOT_USERNAME + "?start=landing";
+    ["tg-hero","tg-form","tg-footer"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.href = tgUrl;
+    });
+
+    // Метка источника из utm_source (?utm_source=email и т.п.).
+    function sourceTag(){
+      try{
+        var p = new URLSearchParams(location.search);
+        return (p.get("utm_source") || p.get("start") || "landing").slice(0,120);
+      }catch(e){ return "landing"; }
+    }
+
+    var form = document.getElementById("lead-form");
+    var msg = document.getElementById("form-msg");
+    var submitting = false;
+
+    function show(kind, text){
+      msg.className = "msg " + kind;
+      msg.textContent = text;
+    }
+
+    form.addEventListener("submit", function(ev){
+      ev.preventDefault();
+      if(submitting) return;
+
+      var company = document.getElementById("company").value.trim();
+      var contact = document.getElementById("contact").value.trim();
+      var consent = document.getElementById("consent").checked;
+      var hp = document.getElementById("company_url").value;
+
+      if(!company && !contact){
+        show("err","Напишите название компании или контакт — по одному из полей я вас найду.");
+        return;
+      }
+      if(!consent){
+        show("err","Отметьте согласие на обработку данных, чтобы я мог с вами связаться.");
+        return;
+      }
+
+      submitting = true;
+      var btn = form.querySelector("button[type=submit]");
+      btn.disabled = true; btn.textContent = "Отправляю…";
+
+      fetch(CONFIG.API_BASE + "/api/v1/inbound-leads/public", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          company_text: company,
+          contact_text: contact,
+          source_tag: sourceTag(),
+          consent: consent,
+          hp: hp
+        })
+      })
+      .then(function(r){ if(!r.ok) throw new Error("http "+r.status); return r.json(); })
+      .then(function(){
+        show("ok","Готово! Заявку получил — напишу вам лично в течение пары часов в рабочее время.");
+        form.reset();
+        // Цель Яндекс.Метрики на успешную отправку.
+        if(CONFIG.METRIKA_ID && window.ym){ try{ ym(CONFIG.METRIKA_ID,"reachGoal","lead_form"); }catch(e){} }
+      })
+      .catch(function(){
+        show("err","Не получилось отправить. Попробуйте ещё раз или напишите мне в Telegram — ссылка ниже.");
+      })
+      .finally(function(){
+        submitting = false;
+        btn.disabled = false; btn.textContent = "Получить бесплатный разбор";
+      });
+    });
+
+    // Яндекс.Метрика (грузится только если задан ID).
+    if(CONFIG.METRIKA_ID){
+      (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+      (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+      ym(CONFIG.METRIKA_ID,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+    }
+  })();
+  </script>
+</body>
+</html>

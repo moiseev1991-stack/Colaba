@@ -32,6 +32,11 @@ export const PUBLIC_LANDING_PATHS = new Set<string>([
   '/klienty-dlya-marketing-agentstva',
   // Публичное демо выдачи (read-only, без логина)
   '/demo',
+  // Изолированный лендинг оффера «Дмитрий» (без общего layout сайта).
+  // Тут — чтобы AppShell не оборачивал в кабинетный layout и чтобы
+  // грузился счётчик Метрики (цель lead_form на форме). В sitemap НЕ добавлять.
+  '/razbor',
+  '/razbor/privacy',
 ]);
 
 export function isPublicPath(pathname: string | null | undefined): boolean {
