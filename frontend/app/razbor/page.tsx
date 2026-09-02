@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 
-// Изолированный лендинг оффера «Дмитрий». Контент и тексты 1-в-1 из
-// прежней статики landing/index.html. Никакой шапки/футера/меню SpinLid,
-// ни одной ссылки на остальной сайт. Форма шлёт same-origin на
-// /api/v1/inbound-leads/public (проксируется на backend — CORS не нужен).
-// Счётчик Метрики грузит общий <YandexMetrika/> (роут в public-paths),
-// на успешную отправку дёргаем цель lead_form.
+// Изолированный лендинг оффера «Дмитрий». Персона «Дмитрий»: ни шапки/футера/меню
+// SpinLid, ни одной ссылки на остальной сайт. Дизайн — на токенах сайта
+// (шрифты Unbounded/Manrope и бренд-градиент emerald→cyan из globals.css),
+// чтобы страница смотрелась как часть продукта, но оставалась самостоятельной.
+// Форма шлёт same-origin на /api/v1/inbound-leads/public (CORS не нужен).
+// Счётчик Метрики грузит общий <YandexMetrika/>; на успех — цель lead_form.
 
 // Username бота-приёмника БЕЗ @ (= PUBLIC_BOT_USERNAME из .env бэкенда).
 // Не секрет. Задаётся на сборке фронта через NEXT_PUBLIC_RAZBOR_BOT;
@@ -18,84 +18,220 @@ const TG_URL = `https://t.me/${BOT_USERNAME}?start=landing`;
 // ID счётчика Яндекс.Метрики spinlid.ru (тот же, что в components/YandexMetrika).
 const METRIKA_ID = 110073452;
 
+// FAQ — единый источник и для видимого блока, и для JSON-LD (FAQPage).
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'Сколько стоит разбор?',
+    a: 'Ничего. Разбор бесплатный и ни к чему не обязывает: я показываю, где теряются клиенты, а решение остаётся за вами.',
+  },
+  {
+    q: 'Сколько времени это займёт?',
+    a: 'Около 10 минут. Я заранее смотрю отзывы вашей компании и то, как устроен приём обращений, а на разборе показываю выводы.',
+  },
+  {
+    q: 'Что именно вы смотрите?',
+    a: 'Открытые отзывы вашей компании на картах и то, как обрабатываются звонки, заявки и сообщения — где конкретно уходят обращения.',
+  },
+  {
+    q: 'Мне нужно будет что-то купить?',
+    a: 'Нет. Разбор самостоятельный и бесплатный. Если захотите — обсудим, как закрыть найденные потери, но это не обязательно.',
+  },
+  {
+    q: 'Как быстро вы ответите на заявку?',
+    a: 'Лично в течение пары часов в рабочее время. Можно сразу написать в Telegram — отвечаю там же.',
+  },
+];
+
+// JSON-LD: Service (бесплатная услуга разбора, провайдер — персона «Дмитрий»,
+// без единого упоминания бренда) + FAQPage из массива FAQ. Микроразметка для
+// сниппетов в поиске; читается ботами прямо из SSR-HTML.
+const LD_JSON = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Service',
+      name: 'Бесплатный разбор потерь клиентов',
+      serviceType: 'Аудит приёма обращений и записи клиентов',
+      description:
+        'Разбор по отзывам вашей компании: где теряются клиенты на звонках, заявках и записи, и как это закрыть. Бесплатно, за 10 минут, без обязательств.',
+      areaServed: { '@type': 'Country', name: 'Россия' },
+      provider: { '@type': 'Person', name: 'Дмитрий' },
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'RUB', availability: 'https://schema.org/InStock' },
+      url: 'https://spinlid.ru/razbor',
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: FAQ.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+  ],
+};
+
 const STYLES = `
 .razbor{
-  --accent:#1f7a5a; --accent-dark:#155c43; --ink:#1a2420; --muted:#5c6b64;
-  --bg:#f6f8f6; --card:#ffffff; --line:#e2e9e5; --radius:16px; --maxw:720px;
-  color:var(--ink); background:var(--bg); line-height:1.55; font-size:17px;
-  min-height:100vh; -webkit-font-smoothing:antialiased;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --accent:#059669; --accent-strong:#047857;
+  --grad:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);
+  --ink:#0f1e17; --muted:#566b62; --bg:#f4f8f6; --card:#ffffff; --line:#e4ede9;
+  --radius:16px; --radius-lg:22px; --maxw:880px;
+  --shadow:0 4px 16px rgba(15,23,42,.07); --shadow-hover:0 14px 34px rgba(16,185,129,.16);
+  color:var(--ink); background:var(--bg); line-height:1.55; font-size:17px; min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  font-family:var(--font-body),'Manrope',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
 }
 .razbor *{box-sizing:border-box}
-.razbor .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
-.razbor h1{font-size:30px;line-height:1.2;margin:0 0 14px;font-weight:800;letter-spacing:-.01em}
-.razbor h2{font-size:23px;line-height:1.25;margin:0 0 20px;font-weight:750}
+.razbor .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+.razbor h1,.razbor h2,.razbor h3{font-family:var(--font-display),'Unbounded',system-ui,sans-serif;letter-spacing:-.01em}
+.razbor h1{font-size:38px;line-height:1.12;margin:0 0 16px;font-weight:800}
+.razbor h2{font-size:26px;line-height:1.2;margin:0 0 22px;font-weight:700}
 .razbor p{margin:0 0 14px}
 .razbor .lead{font-size:19px;color:var(--muted)}
-.razbor section{padding:46px 0}
+.razbor section{padding:52px 0}
 .razbor section + section{border-top:1px solid var(--line)}
-.razbor .hero{padding:56px 0 48px;background:linear-gradient(180deg,#eef4f1 0%,var(--bg) 100%)}
-.razbor .hero .sub{font-size:18px;color:var(--muted);margin:0 0 26px}
-.razbor .cta{
-  display:inline-block;background:var(--accent);color:#fff;text-decoration:none;
-  font-weight:700;font-size:18px;padding:16px 26px;border-radius:12px;border:0;cursor:pointer;
-  min-height:52px;line-height:1.2;transition:background .15s ease;
+
+/* HERO */
+.razbor .hero{
+  position:relative;overflow:hidden;padding:66px 0 58px;
+  background:
+    radial-gradient(1100px 420px at 78% -10%, rgba(6,182,212,.16), transparent 60%),
+    radial-gradient(900px 420px at 8% 6%, rgba(16,185,129,.16), transparent 55%),
+    linear-gradient(180deg,#eef6f2 0%,var(--bg) 100%);
 }
-.razbor .cta:hover{background:var(--accent-dark)}
-.razbor .cta:disabled{opacity:.7;cursor:default}
-.razbor .hero .tg-hint{margin:14px 0 0;font-size:15px;color:var(--muted)}
-.razbor .hero .tg-hint a{color:var(--accent);font-weight:600}
-.razbor .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.razbor .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px}
-.razbor .card b{display:block;font-size:17px;margin-bottom:6px}
-.razbor .card span{color:var(--muted);font-size:15.5px}
+.razbor .eyebrow{
+  display:inline-flex;align-items:center;gap:8px;margin:0 0 18px;padding:7px 14px;
+  background:#d1fae5;color:#047857;border-radius:999px;font-weight:700;font-size:13.5px;
+  letter-spacing:.01em;
+}
+.razbor .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:#10b981}
+.razbor .hero .sub{font-size:19px;color:var(--muted);margin:0 0 28px;max-width:640px}
+.razbor .cta{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  background:var(--grad);color:#fff;text-decoration:none;font-weight:750;font-size:18px;
+  padding:17px 30px;border-radius:14px;border:0;cursor:pointer;min-height:56px;line-height:1.1;
+  box-shadow:0 8px 22px rgba(16,185,129,.28);transition:transform .18s ease,box-shadow .18s ease;
+  font-family:var(--font-body),'Manrope',sans-serif;
+}
+.razbor .cta:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(16,185,129,.36)}
+.razbor .cta:active{transform:translateY(0)}
+.razbor .cta:disabled{opacity:.65;cursor:default;transform:none;box-shadow:0 8px 22px rgba(16,185,129,.2)}
+.razbor .tg-hint{margin:16px 0 0;font-size:15.5px;color:var(--muted)}
+.razbor .tg-hint a{color:var(--accent);font-weight:700}
+.razbor .trust{display:flex;flex-wrap:wrap;gap:10px 22px;margin:30px 0 0;padding:0;list-style:none}
+.razbor .trust li{position:relative;padding-left:26px;font-size:15px;color:var(--muted);font-weight:600}
+.razbor .trust li::before{
+  content:"\\2713";position:absolute;left:0;top:-1px;width:20px;height:20px;border-radius:50%;
+  background:#d1fae5;color:#047857;font-size:12px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* PAIN CARDS */
+.razbor .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.razbor .card{
+  position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px 20px 20px;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease;
+  overflow:hidden;
+}
+.razbor .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grad)}
+.razbor .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
+.razbor .card b{display:block;font-size:17.5px;margin-bottom:7px;font-weight:750}
+.razbor .card span{color:var(--muted);font-size:15.5px;line-height:1.5}
+
+/* RESULTS */
 .razbor .results{list-style:none;padding:0;margin:0;display:grid;gap:14px}
-.razbor .results li{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px 16px 50px;position:relative;font-size:16.5px}
-.razbor .results li::before{content:"\\2713";position:absolute;left:18px;top:15px;color:var(--accent);font-weight:800;font-size:19px}
-.razbor .steps{counter-reset:s;list-style:none;padding:0;margin:0 0 18px;display:grid;gap:16px}
-.razbor .steps li{position:relative;padding-left:52px;font-size:16.5px;min-height:36px}
+.razbor .results li{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px 18px 56px;position:relative;font-size:16.5px;box-shadow:var(--shadow);
+}
+.razbor .results li::before{
+  content:"\\2713";position:absolute;left:18px;top:50%;transform:translateY(-50%);
+  width:26px;height:26px;border-radius:50%;background:var(--grad);color:#fff;font-weight:800;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* STEPS */
+.razbor .steps{counter-reset:s;list-style:none;padding:0;margin:0 0 18px;display:grid;gap:18px}
+.razbor .steps li{position:relative;padding-left:60px;font-size:16.5px;min-height:40px;padding-top:6px}
 .razbor .steps li::before{
-  counter-increment:s;content:counter(s);position:absolute;left:0;top:-2px;
-  width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;
-  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;
+  counter-increment:s;content:counter(s);position:absolute;left:0;top:0;
+  width:42px;height:42px;border-radius:14px;background:var(--grad);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;
+  box-shadow:0 6px 16px rgba(16,185,129,.28);font-family:var(--font-display),sans-serif;
 }
 .razbor .note{color:var(--muted);font-size:15.5px;margin:0}
-.razbor .about{display:flex;gap:18px;align-items:flex-start}
+
+/* FAQ */
+.razbor .faq{display:grid;gap:12px}
+.razbor .faq details{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:0;box-shadow:var(--shadow);overflow:hidden;
+}
+.razbor .faq summary{
+  cursor:pointer;list-style:none;padding:18px 48px 18px 20px;font-weight:700;font-size:17px;
+  position:relative;
+}
+.razbor .faq summary::-webkit-details-marker{display:none}
+.razbor .faq summary::after{
+  content:"+";position:absolute;right:20px;top:50%;transform:translateY(-50%);
+  color:var(--accent);font-size:24px;font-weight:700;line-height:1;transition:transform .2s ease;
+}
+.razbor .faq details[open] summary::after{content:"\\2212"}
+.razbor .faq .fa{padding:0 20px 18px;color:var(--muted);font-size:16px;line-height:1.55}
+
+/* ABOUT */
+.razbor .about{display:flex;gap:20px;align-items:flex-start}
 .razbor .avatar{
-  flex:0 0 84px;width:84px;height:84px;border-radius:50%;
-  background:#e2e9e5;border:1px dashed #b9c8c1;color:#8aa197;
-  display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;
+  flex:0 0 92px;width:92px;height:92px;border-radius:20px;
+  background:#e2efe9;border:1px dashed #a9cabd;color:#6f9585;
+  display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;font-weight:600;
 }
-.razbor .about .name{font-weight:750;font-size:19px;margin:0 0 6px}
-.razbor .form-sec{background:#eef4f1}
-.razbor form{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
-.razbor label{display:block;font-weight:650;font-size:15px;margin:0 0 6px}
-.razbor .field{margin-bottom:16px}
+.razbor .about .name{font-weight:800;font-size:20px;margin:0 0 6px;font-family:var(--font-display),sans-serif}
+
+/* FORM */
+.razbor .form-sec{background:linear-gradient(180deg,#eef6f2,#e8f2ee)}
+.razbor form{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);
+  padding:26px;box-shadow:0 10px 30px rgba(15,23,42,.08);
+}
+.razbor label{display:block;font-weight:700;font-size:15px;margin:0 0 7px}
+.razbor .field{margin-bottom:18px}
 .razbor input[type=text]{
-  width:100%;font-size:17px;padding:14px 14px;border:1px solid #cdd8d3;border-radius:10px;
-  background:#fff;color:var(--ink);min-height:50px;
+  width:100%;font-size:17px;padding:15px 15px;border:1px solid #cdddd5;border-radius:12px;
+  background:#fff;color:var(--ink);min-height:52px;transition:border-color .15s ease,box-shadow .15s ease;
+  font-family:var(--font-body),'Manrope',sans-serif;
 }
-.razbor input[type=text]:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
-.razbor form .cta{width:100%;text-align:center}
+.razbor input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,.16)}
+.razbor form .cta{width:100%}
 .razbor .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.razbor .consent{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--muted);margin:2px 0 18px}
-.razbor .consent input{margin-top:3px;width:18px;height:18px;flex:0 0 18px}
-.razbor .consent a{color:var(--accent)}
-.razbor .under-form{color:var(--muted);font-size:15px;margin:14px 0 0;text-align:center}
-.razbor .under-form a{color:var(--accent);font-weight:600}
-.razbor .msg{margin:14px 0 0;padding:14px 16px;border-radius:10px;font-size:16px}
-.razbor .msg.ok{background:#e5f4ee;color:var(--accent-dark);border:1px solid #b9e0cf}
+.razbor .consent{display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:var(--muted);margin:2px 0 20px}
+.razbor .consent input{margin-top:3px;width:19px;height:19px;flex:0 0 19px;accent-color:var(--accent)}
+.razbor .consent a{color:var(--accent);font-weight:600}
+.razbor .under-form{color:var(--muted);font-size:15px;margin:16px 0 0;text-align:center}
+.razbor .under-form a{color:var(--accent);font-weight:700}
+.razbor .msg{margin:16px 0 0;padding:15px 17px;border-radius:12px;font-size:16px}
+.razbor .msg.ok{background:#e5f4ee;color:#047857;border:1px solid #b9e0cf}
 .razbor .msg.err{background:#fdecec;color:#9a2b2b;border:1px solid #f3c9c9}
-.razbor footer{padding:34px 0 46px;color:var(--muted);font-size:15px}
-.razbor footer a{color:var(--accent)}
+
+/* CTA STRIP */
+.razbor .cta-strip{text-align:center}
+.razbor .cta-strip h2{margin-bottom:12px}
+.razbor .cta-strip p{color:var(--muted);margin:0 0 24px}
+
+/* FOOTER */
+.razbor footer{padding:38px 0 52px;color:var(--muted);font-size:15px}
+.razbor footer a{color:var(--accent);font-weight:600}
 .razbor footer .row{margin-bottom:8px}
-@media (max-width:520px){
+
+@media (max-width:640px){
   .razbor{font-size:16px}
-  .razbor h1{font-size:26px}
-  .razbor h2{font-size:21px}
+  .razbor h1{font-size:29px}
+  .razbor h2{font-size:22px}
+  .razbor .hero{padding:50px 0 42px}
+  .razbor .hero .sub{font-size:17.5px}
   .razbor .cards{grid-template-columns:1fr}
-  .razbor section{padding:38px 0}
-  .razbor .hero{padding:44px 0 38px}
+  .razbor section{padding:42px 0}
+  .razbor .about{flex-direction:column;gap:14px}
 }
 `;
 
@@ -169,9 +305,11 @@ export default function RazborPage() {
   return (
     <div className="razbor">
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(LD_JSON) }} />
 
       <header className="hero">
         <div className="wrap">
+          <span className="eyebrow">Бесплатно · 10 минут · без обязательств</span>
           <h1>Ваши клиенты уходят к конкурентам, пока вы не берёте трубку</h1>
           <p className="sub">
             Разберу по отзывам вашей компании, где теряются клиенты, и покажу, как это закрыть. Бесплатно, за 10 минут, без
@@ -186,6 +324,11 @@ export default function RazborPage() {
               Telegram
             </a>
           </p>
+          <ul className="trust">
+            <li>По вашим реальным отзывам</li>
+            <li>Разбираю лично, не вебинар</li>
+            <li>Ничего не продаю на разборе</li>
+          </ul>
         </div>
       </header>
 
@@ -234,6 +377,20 @@ export default function RazborPage() {
             <li>Дальше решаете сами. Разбор бесплатный, ничего покупать не обязательно.</li>
           </ol>
           <p className="note">Разбор делаю лично, по конкретно вашей компании — не презентация и не вебинар.</p>
+        </div>
+      </section>
+
+      <section>
+        <div className="wrap">
+          <h2>Частые вопросы</h2>
+          <div className="faq">
+            {FAQ.map((f) => (
+              <details key={f.q}>
+                <summary>{f.q}</summary>
+                <div className="fa">{f.a}</div>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
