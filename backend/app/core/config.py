@@ -80,18 +80,6 @@ class Settings(BaseSettings):
     PROXY_URL: str = Field(default="", description="Single proxy: http://host:port or socks5://host:port")
     PROXY_LIST: str = Field(default="", description="Comma-separated proxy list for rotation")
 
-    # Выделенный резидентский РФ-прокси ТОЛЬКО для парсинга отзывов карт
-    # (Яндекс.Карты + 2GIS). Держим отдельно от PROXY_URL, потому что
-    # резидентский трафик дорогой/лимитированный — гоняем через него только
-    # отзывы, а не обычный Google/HTML-поиск. Пусто → отзывы идут через общий
-    # get_proxy_config() (USE_PROXY/PROXY_URL). Формат: http://user:pass@host:port.
-    # Меняется одной строкой в env (Coolify) — так юзер может заменить «сгоревший»
-    # прокси без правки кода.
-    MAPS_PROXY_URL: str = Field(
-        default="",
-        description="Residential proxy for maps reviews only (Yandex/2GIS): http://user:pass@host:port",
-    )
-
     # Cost tracking (учёт внешних API-вызовов в таблице api_call_log)
     EXTERNAL_API_TRACKING_ENABLED: bool = Field(
         default=True,
@@ -170,6 +158,14 @@ class Settings(BaseSettings):
     # заявок (модуль inbound_leads) переиспользует этот же токен и вебхук —
     # отдельного TG_BOT_TOKEN нет специально, чтобы не плодить два источника правды.
     TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token (outreach + приём заявок)")
+
+    # Cloudflare Worker-relay для Bot API. Прод-ДЦ (РФ) НЕ достаёт api.telegram.org
+    # напрямую — блок. Воркер на *.workers.dev доступен из РФ и прозрачно проксирует
+    # /bot<token>/<method> на api.telegram.org. Пусто → шлём напрямую (локалка/дев).
+    # Формат: https://<worker>.workers.dev (без завершающего /).
+    TELEGRAM_RELAY_URL: str = Field(default="", description="Cloudflare Worker relay base URL for Telegram Bot API")
+    # Секрет для заголовка X-Relay-Key — воркер отклоняет запросы без него (403).
+    TELEGRAM_RELAY_KEY: str = Field(default="", description="Shared secret sent as X-Relay-Key to the Telegram relay worker")
 
     # Приём заявок (бот + форма лендинга spinlid-team.ru) → POST /api/v1/inbound-leads.
     INBOUND_SECRET: str = Field(

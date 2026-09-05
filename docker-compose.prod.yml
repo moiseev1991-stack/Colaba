@@ -81,8 +81,6 @@ services:
       USE_PROXY: ${USE_PROXY}
       PROXY_URL: ${PROXY_URL}
       PROXY_LIST: ${PROXY_LIST}
-      # Выделенный резидентский прокси только для парсинга отзывов карт (Яндекс/2GIS).
-      MAPS_PROXY_URL: ${MAPS_PROXY_URL:-}
       # Maps providers — без ключа /api/v1/maps/health/providers вернёт no_api_key
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
       # Widget API ключ для бесплатного fallback на public-api.reviews.2gis.com.
@@ -95,6 +93,10 @@ services:
       # Бот-приёмник заявок лендинга /razbor (inbound_leads): webhook + ответы
       # пользователю + TG-уведомление владельцу. Без токена бот не отвечает.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # Cloudflare Worker-relay для Bot API: прод-ДЦ (РФ) не достаёт api.telegram.org
+      # напрямую, воркер на *.workers.dev проксирует. Пусто → шлём напрямую.
+      TELEGRAM_RELAY_URL: ${TELEGRAM_RELAY_URL:-}
+      TELEGRAM_RELAY_KEY: ${TELEGRAM_RELAY_KEY:-}
       # chat_id владельца для TG-уведомления о новой заявке (пусто → шлём только на email).
       OWNER_TG_CHAT_ID: ${OWNER_TG_CHAT_ID:-}
       # Абсолютный URL админки для ссылки «открыть заявку» в уведомлении.
@@ -205,9 +207,6 @@ services:
       USE_PROXY: ${USE_PROXY:-False}
       PROXY_URL: ${PROXY_URL:-}
       PROXY_LIST: ${PROXY_LIST:-}
-      # Резидентский прокси только для отзывов (Яндекс/2GIS). Именно этот worker
-      # парсит отзывы (очереди maps_reviews/maps_yandex_html/maps_2gis_html).
-      MAPS_PROXY_URL: ${MAPS_PROXY_URL:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -262,7 +261,6 @@ services:
       USE_PROXY: ${USE_PROXY:-False}
       PROXY_URL: ${PROXY_URL:-}
       PROXY_LIST: ${PROXY_LIST:-}
-      MAPS_PROXY_URL: ${MAPS_PROXY_URL:-}
     depends_on:
       postgres:
         condition: service_healthy
