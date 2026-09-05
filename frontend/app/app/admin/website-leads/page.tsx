@@ -11,8 +11,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 
+// origin — из какой таблицы пришла заявка. website: главная + SEO-лендинги
+// (модуль website_leads). inbound: форма /razbor (модуль inbound_leads, своё
+// API /api/v1/inbound-leads). Раньше страница читала только website_leads,
+// поэтому заявки с /razbor тут не показывались. Объединяем оба потока.
+type Origin = 'website' | 'inbound';
+
 type Lead = {
   id: number;
+  origin: Origin;
   name: string;
   channel: string;
   contact: string;
@@ -31,6 +38,39 @@ const STATUSES: ReadonlyArray<{ value: string; label: string; color: string }> =
   { value: 'qualified', label: 'В работе', color: '#a855f7' },
   { value: 'spam', label: 'Спам', color: '#94a3b8' },
 ];
+
+// Статусы у inbound_leads свои (new/in_progress/replied/closed). В UI держим
+// единый набор website-статусов, а на границе с API /inbound-leads
+// конвертируем 1:1 туда-обратно.
+const INBOUND_TO_UI: Record<string, string> = {
+  new: 'new',
+  in_progress: 'contacted',
+  replied: 'qualified',
+  closed: 'spam',
+};
+const UI_TO_INBOUND: Record<string, string> = {
+  new: 'new',
+  contacted: 'in_progress',
+  qualified: 'replied',
+  spam: 'closed',
+};
+
+function mapInboundLead(i: any): Lead {
+  return {
+    id: i.id,
+    origin: 'inbound',
+    name: i.name || '',
+    channel: i.tg_username ? 'telegram' : '',
+    contact: i.contact_text || (i.tg_username ? `@${i.tg_username}` : ''),
+    wish: i.company_text || '',
+    source_page: i.source_tag || (i.source === 'landing_form' ? 'razbor' : i.source || ''),
+    referrer: '',
+    ip: '',
+    user_agent: '',
+    status: INBOUND_TO_UI[i.status] ?? 'new',
+    created_at: i.created_at,
+  };
+}
 
 const CHANNEL_LABEL: Record<string, string> = {
   email: 'Email',
@@ -67,31 +107,42 @@ export default function AdminWebsiteLeadsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.set('status_filter', statusFilter);
-      if (includeDeleted) params.set('include_deleted', 'true');
-      params.set('limit', '200');
-      const res = await fetch(`/api/v1/website-leads?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      if (res.status === 401 || res.status === 403) {
+      // Фильтр по статусу применяем на клиенте (у двух источников разные
+      // словари статусов), поэтому тянем всё и мержим.
+      const wsParams = new URLSearchParams();
+      if (includeDeleted) wsParams.set('include_deleted', 'true');
+      wsParams.set('limit', '200');
+      const [wsRes, inRes] = await Promise.all([
+        fetch(`/api/v1/website-leads?${wsParams.toString()}`, { cache: 'no-store' }),
+        fetch('/api/v1/inbound-leads?limit=200', { cache: 'no-store' }),
+      ]);
+      if ([wsRes.status, inRes.status].some((s) => s === 401 || s === 403)) {
         setError('Доступ запрещён. Эта страница доступна только администраторам.');
         setItems([]);
         return;
       }
-      if (!res.ok) {
-        setError(`Не удалось загрузить заявки (HTTP ${res.status}).`);
+      if (!wsRes.ok) {
+        setError(`Не удалось загрузить заявки (HTTP ${wsRes.status}).`);
         return;
       }
-      const data = await res.json();
-      setItems(data.items ?? []);
-      setTotal(data.total ?? 0);
+      const wsData = await wsRes.json();
+      const wsItems: Lead[] = (wsData.items ?? []).map((i: any) => ({ ...i, origin: 'website' as const }));
+      let inItems: Lead[] = [];
+      if (inRes.ok) {
+        const inData = await inRes.json();
+        inItems = (inData.items ?? []).map(mapInboundLead);
+      }
+      const merged = [...wsItems, ...inItems].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+      setItems(merged);
+      setTotal(merged.length);
     } catch {
       setError('Сеть не отвечает.');
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, includeDeleted]);
+  }, [includeDeleted]);
 
   useEffect(() => {
     load();
@@ -105,14 +156,21 @@ export default function AdminWebsiteLeadsPage() {
     return byStatus;
   }, [items]);
 
-  async function changeStatus(id: number, newStatus: string) {
+  const visible = useMemo(
+    () => (statusFilter ? items.filter((i) => i.status === statusFilter) : items),
+    [items, statusFilter],
+  );
+
+  async function changeStatus(id: number, origin: Origin, newStatus: string) {
     const prev = items;
-    setItems((curr) => curr.map((i) => (i.id === id ? { ...i, status: newStatus } : i)));
+    setItems((curr) => curr.map((i) => (i.id === id && i.origin === origin ? { ...i, status: newStatus } : i)));
     try {
-      const res = await fetch(`/api/v1/website-leads/${id}`, {
+      const base = origin === 'inbound' ? '/api/v1/inbound-leads' : '/api/v1/website-leads';
+      const apiStatus = origin === 'inbound' ? UI_TO_INBOUND[newStatus] : newStatus;
+      const res = await fetch(`${base}/${id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: apiStatus }),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
@@ -125,6 +183,8 @@ export default function AdminWebsiteLeadsPage() {
   }
 
   async function softDelete(id: number) {
+    // Удаление есть только у website_leads. Заявки с /razbor (inbound) не
+    // удаляем кнопкой — у их API нет DELETE; помечать «Спам» можно статусом.
     if (!confirm('Удалить заявку (soft-delete)?')) return;
     try {
       const res = await fetch(`/api/v1/website-leads/${id}`, { method: 'DELETE' });
@@ -249,15 +309,15 @@ export default function AdminWebsiteLeadsPage() {
                 </td>
               </tr>
             )}
-            {!loading && items.length === 0 && (
+            {!loading && visible.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center py-8" style={{ color: 'hsl(var(--muted))' }}>
                   Пока заявок нет.
                 </td>
               </tr>
             )}
-            {items.map((it) => (
-              <tr key={it.id} style={{ borderTop: '1px solid hsl(var(--border))' }}>
+            {visible.map((it) => (
+              <tr key={`${it.origin}-${it.id}`} style={{ borderTop: '1px solid hsl(var(--border))' }}>
                 <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>
                   {formatDate(it.created_at)}
                 </td>
@@ -285,7 +345,7 @@ export default function AdminWebsiteLeadsPage() {
                 <td className="px-3 py-2">
                   <select
                     value={it.status}
-                    onChange={(e) => changeStatus(it.id, e.target.value)}
+                    onChange={(e) => changeStatus(it.id, it.origin, e.target.value)}
                     className="rounded px-2 py-1 text-sm"
                     style={{
                       background: 'hsl(var(--bg))',
@@ -299,15 +359,21 @@ export default function AdminWebsiteLeadsPage() {
                   </select>
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => softDelete(it.id)}
-                    className="rounded p-1"
-                    style={{ color: '#94a3b8' }}
-                    title="Удалить"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {it.origin === 'website' ? (
+                    <button
+                      type="button"
+                      onClick={() => softDelete(it.id)}
+                      className="rounded p-1"
+                      style={{ color: '#94a3b8' }}
+                      title="Удалить"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  ) : (
+                    <span title="Заявка с /razbor — пометьте статусом «Спам»" style={{ color: 'hsl(var(--border))' }}>
+                      /razbor
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
