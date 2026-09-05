@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from datetime import datetime
@@ -15,6 +16,10 @@ from app.models.maps import Company
 from app.modules.inbound_leads import notify, schemas
 
 logger = logging.getLogger(__name__)
+
+# Держим strong-ref на фоновые задачи уведомлений, иначе GC может убить task
+# до завершения (asyncio.create_task хранит только weak-ref).
+_bg_notify_tasks: set[asyncio.Task] = set()
 
 # tg_user_id-заявки в этих статусах дописываются, а не создаются заново.
 _OPEN_STATUSES = ("new", "in_progress")
@@ -175,9 +180,11 @@ async def submit_lead(
     await db.commit()
     await db.refresh(lead)
 
-    # 3) Уведомления (best-effort). Форма всегда приходит с содержимым →
-    #    уведомляем сразу.
-    await _notify_new_lead(db, lead)
+    # 3) Уведомления (best-effort) — В ФОНЕ. TG идёт через медленную SOCKS5-цепочку
+    #    (до 3 прокси × 15с), и если ждать её в запросе, шлюз рвёт соединение по
+    #    таймауту → форма показывает ошибку, хотя заявка уже сохранена и уведомление
+    #    в итоге доходит. Поэтому отвечаем 201 сразу, а уведомляем отдельной задачей.
+    _spawn_notify(lead.id)
 
     return schemas.InboundLeadSubmitResponse(
         id=lead.id,
@@ -185,6 +192,31 @@ async def submit_lead(
         matched_company_id=lead.matched_company_id,
         is_new=True,
     )
+
+
+async def _notify_new_lead_bg(lead_id: int) -> None:
+    """Фоновая обёртка уведомления: своя сессия БД (сессия запроса уже закрыта)."""
+    from app.core.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            lead = await db.get(InboundLead, lead_id)
+            if lead is not None:
+                await _notify_new_lead(db, lead)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("inbound_leads: фоновое уведомление по заявке %s упало: %s", lead_id, e)
+
+
+def _spawn_notify(lead_id: int) -> None:
+    """Планирует уведомление владельцу вне цикла запроса (fire-and-forget)."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.warning("inbound_leads: нет running loop, уведомление по %s пропущено", lead_id)
+        return
+    task = loop.create_task(_notify_new_lead_bg(lead_id))
+    _bg_notify_tasks.add(task)
+    task.add_done_callback(_bg_notify_tasks.discard)
 
 
 async def _notify_new_lead(db: AsyncSession, lead: InboundLead) -> None:
