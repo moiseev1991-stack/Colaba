@@ -12,11 +12,10 @@ import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
 // Форма шлёт same-origin на /api/v1/inbound-leads/public (CORS не нужен).
 // Счётчик Метрики грузит общий <YandexMetrika/>; на успех — цель lead_form.
 
-// Username бота-приёмника БЕЗ @ (= PUBLIC_BOT_USERNAME из .env бэкенда).
-// Не секрет. Задаётся на сборке фронта через NEXT_PUBLIC_RAZBOR_BOT;
-// дефолт — реальный бот-приёмник, чтобы ссылки «в Telegram» работали без env.
-const BOT_USERNAME = process.env.NEXT_PUBLIC_RAZBOR_BOT || 'bolshe_lidov_bot';
-const TG_URL = `https://t.me/${BOT_USERNAME}?start=landing`;
+// Личный TG-контакт Дмитрия БЕЗ @ (кнопка «написать в Telegram» ведёт сюда).
+// Не секрет. Переопределяется на сборке через NEXT_PUBLIC_RAZBOR_BOT.
+const BOT_USERNAME = process.env.NEXT_PUBLIC_RAZBOR_BOT || 'Demetrio19';
+const TG_URL = `https://t.me/${BOT_USERNAME}`;
 
 // ID счётчика Яндекс.Метрики spinlid.ru (тот же, что в components/YandexMetrika).
 const METRIKA_ID = 110073452;
