@@ -99,6 +99,9 @@ services:
       OWNER_TG_CHAT_ID: ${OWNER_TG_CHAT_ID:-}
       # Абсолютный URL админки для ссылки «открыть заявку» в уведомлении.
       ADMIN_PUBLIC_URL: ${ADMIN_PUBLIC_URL:-}
+      # Куда слать email-уведомление о новой заявке с формы /razbor (inbound_leads).
+      # Без проброса контейнер использует дефолт dmitry@spinlid-team.ru.
+      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
     depends_on:
       postgres:
         condition: service_healthy
