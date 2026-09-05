@@ -93,10 +93,10 @@ services:
       # Бот-приёмник заявок лендинга /razbor (inbound_leads): webhook + ответы
       # пользователю + TG-уведомление владельцу. Без токена бот не отвечает.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      # Cloudflare Worker-relay для Bot API: прод-ДЦ (РФ) не достаёт api.telegram.org
-      # напрямую, воркер на *.workers.dev проксирует. Пусто → шлём напрямую.
-      TELEGRAM_RELAY_URL: ${TELEGRAM_RELAY_URL:-}
-      TELEGRAM_RELAY_KEY: ${TELEGRAM_RELAY_KEY:-}
+      # Прокси для Bot API: прод-ДЦ (РФ) не достаёт api.telegram.org напрямую.
+      # socks5://user:pass@host:port. Пусто → шлём напрямую. FALLBACK — через запятую.
+      TELEGRAM_PROXY: ${TELEGRAM_PROXY:-}
+      TELEGRAM_PROXY_FALLBACK: ${TELEGRAM_PROXY_FALLBACK:-}
       # chat_id владельца для TG-уведомления о новой заявке (пусто → шлём только на email).
       OWNER_TG_CHAT_ID: ${OWNER_TG_CHAT_ID:-}
       # Абсолютный URL админки для ссылки «открыть заявку» в уведомлении.

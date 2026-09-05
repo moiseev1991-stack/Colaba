@@ -159,13 +159,12 @@ class Settings(BaseSettings):
     # отдельного TG_BOT_TOKEN нет специально, чтобы не плодить два источника правды.
     TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API token (outreach + приём заявок)")
 
-    # Cloudflare Worker-relay для Bot API. Прод-ДЦ (РФ) НЕ достаёт api.telegram.org
-    # напрямую — блок. Воркер на *.workers.dev доступен из РФ и прозрачно проксирует
-    # /bot<token>/<method> на api.telegram.org. Пусто → шлём напрямую (локалка/дев).
-    # Формат: https://<worker>.workers.dev (без завершающего /).
-    TELEGRAM_RELAY_URL: str = Field(default="", description="Cloudflare Worker relay base URL for Telegram Bot API")
-    # Секрет для заголовка X-Relay-Key — воркер отклоняет запросы без него (403).
-    TELEGRAM_RELAY_KEY: str = Field(default="", description="Shared secret sent as X-Relay-Key to the Telegram relay worker")
+    # Прокси для Bot API. Прод-ДЦ (РФ) НЕ достаёт api.telegram.org напрямую — блок.
+    # Ходим через SOCKS5/HTTP-прокси. Формат: socks5://user:pass@host:port.
+    # Пусто → шлём напрямую (локалка/дев).
+    TELEGRAM_PROXY: str = Field(default="", description="Proxy URL for Telegram Bot API (socks5://user:pass@host:port)")
+    # Запасные прокси — comma-separated; перебор при ConnectError/timeout основного.
+    TELEGRAM_PROXY_FALLBACK: str = Field(default="", description="Comma-separated fallback proxy URLs for Telegram Bot API")
 
     # Приём заявок (бот + форма лендинга spinlid-team.ru) → POST /api/v1/inbound-leads.
     INBOUND_SECRET: str = Field(

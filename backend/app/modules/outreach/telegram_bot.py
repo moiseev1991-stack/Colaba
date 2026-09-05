@@ -8,12 +8,17 @@ Bot API (https://core.telegram.org/bots/api) — официальный спос
 Конфиг читается из channel_config (telegram.config.bot_token) с fallback на
 env TELEGRAM_BOT_TOKEN (используется также OAuth Login Widget). Если пусто —
 is_configured() → False и enqueue пишет skipped(telegram_not_configured).
+
+Прод-ДЦ (РФ) не достаёт api.telegram.org напрямую — ходим через прокси из env
+TELEGRAM_PROXY (socks5://user:pass@host:port). При ConnectError/timeout —
+перебор запасных из TELEGRAM_PROXY_FALLBACK. Пусто → прямой вызов (dev).
 """
 
 from __future__ import annotations
 
 import logging
 from typing import Any, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
@@ -25,19 +30,74 @@ DEFAULT_TIMEOUT_SEC = 15
 TG_API_BASE = "https://api.telegram.org"
 
 
-def _api_base() -> str:
-    """База Bot API: Cloudflare Worker-relay если задан, иначе api.telegram.org.
+def _proxy_chain() -> list[Optional[str]]:
+    """Список прокси для перебора: [основной, *запасные].
 
-    Прод-ДЦ (РФ) не достаёт api.telegram.org напрямую — воркер на *.workers.dev
-    прозрачно проксирует /bot<token>/<method>. Локально/в дев relay пуст → прямой вызов.
+    Пусто в TELEGRAM_PROXY → [None] (прямой вызов, dev). Запасные —
+    comma-separated в TELEGRAM_PROXY_FALLBACK.
     """
-    return (settings.TELEGRAM_RELAY_URL or "").strip().rstrip("/") or TG_API_BASE
+    primary = (settings.TELEGRAM_PROXY or "").strip()
+    if not primary:
+        return [None]
+    chain: list[Optional[str]] = [primary]
+    fallback = (settings.TELEGRAM_PROXY_FALLBACK or "").strip()
+    if fallback:
+        chain += [p.strip() for p in fallback.split(",") if p.strip()]
+    return chain
 
 
-def _relay_headers() -> dict[str, str]:
-    """X-Relay-Key для воркера (без него воркер отвечает 403). Пусто при прямом вызове."""
-    key = (settings.TELEGRAM_RELAY_KEY or "").strip()
-    return {"X-Relay-Key": key} if (settings.TELEGRAM_RELAY_URL or "").strip() and key else {}
+def _mask_proxy(proxy: Optional[str]) -> str:
+    """Прячет креды прокси в логах: socks5://user:***@host:port."""
+    if not proxy:
+        return "direct"
+    try:
+        parts = urlsplit(proxy)
+        netloc = parts.hostname or ""
+        if parts.port:
+            netloc = f"{netloc}:{parts.port}"
+        if parts.username:
+            netloc = f"{parts.username}:***@{netloc}"
+        return urlunsplit((parts.scheme, netloc, "", "", ""))
+    except Exception:
+        return "proxy"
+
+
+async def _tg_request(
+    method: str,
+    token: str,
+    *,
+    json_body: Optional[dict[str, Any]] = None,
+    timeout: float = DEFAULT_TIMEOUT_SEC,
+) -> dict[str, Any]:
+    """Вызывает Bot API method, перебирая прокси при сетевой ошибке.
+
+    Возвращает распарсенный JSON. Поднимает TelegramSendError(network_error),
+    если все прокси в цепочке недоступны.
+    """
+    url = f"{TG_API_BASE}/bot{token}/{method}"
+    last_err: Optional[Exception] = None
+    for proxy in _proxy_chain():
+        try:
+            async with httpx.AsyncClient(timeout=timeout, proxy=proxy) as client:
+                if json_body is None:
+                    r = await client.get(url)
+                else:
+                    r = await client.post(url, json=json_body)
+        except Exception as e:
+            # Любая сетевая/SOCKS-ошибка (ConnectError, timeout, ProxyError,
+            # socksio ProtocolError) — прокси мёртв, пробуем следующий.
+            last_err = e
+            logger.warning(
+                "telegram_bot: %s via %s failed (%s), trying next proxy",
+                method,
+                _mask_proxy(proxy),
+                type(e).__name__,
+            )
+            continue
+        return r.json()
+    raise TelegramSendError(
+        f"network: все прокси недоступны ({last_err})", code="network_error"
+    )
 
 
 class TelegramSendError(Exception):
@@ -99,18 +159,12 @@ async def get_bot_info() -> dict[str, Any]:
     token = _get_bot_token_sync()
     if not token:
         raise TelegramSendError("TELEGRAM_BOT_TOKEN не задан", code="not_configured")
-    url = f"{_api_base()}/bot{token}/getMe"
-    try:
-        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SEC) as client:
-            r = await client.get(url, headers=_relay_headers())
-            data = r.json()
-        if not data.get("ok"):
-            raise TelegramSendError(
-                f"getMe failed: {data.get('description', 'unknown')}", code="http_error"
-            )
-        return data
-    except httpx.HTTPError as e:
-        raise TelegramSendError(f"network: {e}", code="network_error") from e
+    data = await _tg_request("getMe", token)
+    if not data.get("ok"):
+        raise TelegramSendError(
+            f"getMe failed: {data.get('description', 'unknown')}", code="http_error"
+        )
+    return data
 
 
 async def send_text_message(
@@ -139,18 +193,12 @@ async def send_text_message(
     # Telegram лимит — 4096 символов на сообщение. С запасом режем на 4000.
     truncated = text[:4000] if len(text) > 4000 else text
 
-    url = f"{_api_base()}/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": truncated,
         "parse_mode": parse_mode,
     }
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            r = await client.post(url, json=payload, headers=_relay_headers())
-            data = r.json()
-    except httpx.HTTPError as e:
-        raise TelegramSendError(f"network: {e}", code="network_error") from e
+    data = await _tg_request("sendMessage", token, json_body=payload, timeout=timeout)
 
     # Bot API всегда возвращает 200 OK с {ok: bool, ...}. error_code в data.
     if not data.get("ok"):
@@ -187,13 +235,7 @@ async def setup_webhook(public_url: str) -> dict[str, Any]:
     if not token:
         raise TelegramSendError("TELEGRAM_BOT_TOKEN не задан", code="not_configured")
     webhook_url = f"{public_url.rstrip('/')}/api/v1/telegram/webhook"
-    url = f"{_api_base()}/bot{token}/setWebhook"
-    try:
-        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SEC) as client:
-            r = await client.post(url, json={"url": webhook_url}, headers=_relay_headers())
-            return r.json()
-    except httpx.HTTPError as e:
-        raise TelegramSendError(f"network: {e}", code="network_error") from e
+    return await _tg_request("setWebhook", token, json_body={"url": webhook_url})
 
 
 async def delete_webhook() -> dict[str, Any]:
@@ -201,13 +243,9 @@ async def delete_webhook() -> dict[str, Any]:
     token = _get_bot_token_sync()
     if not token:
         raise TelegramSendError("TELEGRAM_BOT_TOKEN не задан", code="not_configured")
-    url = f"{_api_base()}/bot{token}/deleteWebhook"
-    try:
-        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SEC) as client:
-            r = await client.post(url, json={"drop_pending_updates": True}, headers=_relay_headers())
-            return r.json()
-    except httpx.HTTPError as e:
-        raise TelegramSendError(f"network: {e}", code="network_error") from e
+    return await _tg_request(
+        "deleteWebhook", token, json_body={"drop_pending_updates": True}
+    )
 
 
 def mask_token(token: Optional[str]) -> str:
