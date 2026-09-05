@@ -619,8 +619,8 @@ class YandexMapsProvider(MapProvider):
             "Accept-Language": "ru-RU,ru;q=0.9",
         }
         # Отзывы всегда пробуем через резидентский прокси, если он задан
-        # (MAPS_PROXY_URL) — Яндекс банит серверные IP по капче именно на
-        # /reviews/. get_maps_proxy() падает на общий прокси, если выделенного нет.
+        # (get_maps_proxy) — Яндекс банит серверные IP по капче именно на
+        # /reviews/. get_maps_proxy() берёт общий get_proxy_config().
         proxy = get_maps_proxy()
         # Резидентский пул периодически отдаёт 503 "No exit node" (нет свободной
         # РФ-ноды в моменте) — это транзиентно: повторный запрос обычно попадает

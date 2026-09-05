@@ -90,9 +90,8 @@ def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Option
     return None
 
 
-# Резидентский прокси периодически отдаёт 503 "No exit node" (нет свободной
-# РФ-ноды в моменте). Транзиентно — ретраим. Замер на проде 2026-08-12: ~37%
-# попыток без ноды на один запрос, 6 попыток → ~94% успех.
+# Прокси иногда отдаёт 503 "No exit node" (нет свободной ноды в моменте).
+# Транзиентно — ретраим до MAPS_PROXY_MAX_ATTEMPTS раз.
 MAPS_PROXY_MAX_ATTEMPTS = 6
 MAPS_PROXY_RETRY_DELAY = 0.6
 
@@ -100,13 +99,8 @@ MAPS_PROXY_RETRY_DELAY = 0.6
 def get_maps_proxy() -> Optional[str]:
     """Прокси для парсинга отзывов карт (Яндекс/2GIS).
 
-    Приоритет: выделенный settings.MAPS_PROXY_URL (резидентский РФ-пул) →
-    общий get_proxy_config() (USE_PROXY/PROXY_URL). Резидентский пул сам
-    ротирует exit-IP, поэтому ротацию в коде не делаем — достаточно одного
-    шлюза. Юзер меняет «сгоревший» прокси правкой MAPS_PROXY_URL в env.
+    Использует общий get_proxy_config() (USE_PROXY/PROXY_URL/PROXY_LIST).
     """
-    if settings.MAPS_PROXY_URL:
-        return settings.MAPS_PROXY_URL
     return get_proxy_config()
 
 

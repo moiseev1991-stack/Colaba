@@ -834,7 +834,7 @@ class TwoGisProvider(MapProvider):
             common["key"] = widget_key
 
         # Публичный widget-API 2GIS ловит rate-limit/бан по серверному IP —
-        # гоним через резидентский прокси (MAPS_PROXY_URL), если он задан.
+        # гоним через резидентский прокси (get_maps_proxy), если он задан.
         from app.modules.searches.providers.common import (
             MAPS_PROXY_MAX_ATTEMPTS,
             MAPS_PROXY_RETRY_DELAY,
