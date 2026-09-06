@@ -93,6 +93,7 @@ async def create_public_inbound_lead(
         name=payload.name,
         company_text=payload.company_text,
         contact_text=payload.contact_text,
+        company_id=payload.company_id,
     )
     return await service.submit_lead(db, internal)
 

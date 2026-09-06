@@ -39,6 +39,10 @@ const PUBLIC_PATHS = new Set<string>([
   // (холодный трафик из писем/TG), иначе middleware редиректил на /auth/login.
   '/razbor',
   '/razbor/privacy',
+  // 2026-09-06: лендинги под группы болей (deep-link из письма/выгрузки).
+  '/razbor/zvonki',
+  '/razbor/ocheredi',
+  '/razbor/zakazy',
 ]);
 
 /** Публичные страницы, которые поисковикам можно индексировать.
@@ -73,6 +77,9 @@ const INDEXABLE_PATHS = new Set<string>([
   // мессенджерах и прямой заход теряют индексируемость метатегов).
   '/razbor',
   '/razbor/privacy',
+  '/razbor/zvonki',
+  '/razbor/ocheredi',
+  '/razbor/zakazy',
 ]);
 
 function isIndexable(pathname: string): boolean {

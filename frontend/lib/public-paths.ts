@@ -37,6 +37,10 @@ export const PUBLIC_LANDING_PATHS = new Set<string>([
   // грузился счётчик Метрики (цель lead_form на форме). В sitemap НЕ добавлять.
   '/razbor',
   '/razbor/privacy',
+  // Лендинги под группы болей (deep-link из письма/выгрузки). В sitemap НЕ добавлять.
+  '/razbor/zvonki',
+  '/razbor/ocheredi',
+  '/razbor/zakazy',
 ]);
 
 export function isPublicPath(pathname: string | null | undefined): boolean {

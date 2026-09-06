@@ -155,6 +155,50 @@ _PAIN_KEY_PATTERNS: dict[str, tuple[tuple[str, ...], ...]] = {
 }
 
 
+# --- Группы оффера (лендинги под боль + deep-link в бота) --------------------
+#
+# ТЗ 2026-09-06: лид из письма попадает на страницу под СВОЮ боль. Группа
+# выводится из доминирующей боли компании (pain_key). Единый источник правды —
+# и для бота (персональное приветствие), и для выгрузки (персональные ссылки).
+#
+#   A  · дозвон/запись   → /razbor/zvonki
+#   B  · очереди/ожидание → /razbor/ocheredi
+#   D1 · статус/оформление заказа → /razbor/zakazy
+#   C  · персонал        → общий /razbor
+#   D2 · прочее / нет ключа → общий /razbor
+
+OFFER_GROUP_BY_KEY: dict[str, str] = {
+    "call_no_answer": "A",
+    "callback_lost": "A",
+    "chat_no_response": "A",
+    "schedule_hard": "A",
+    "schedule_wait": "B",
+    "queue_wait": "B",
+    "order_online_hard": "D1",
+    "admin_rude": "C",
+    "food_slow": "D2",
+    "unclear_pricing": "D2",
+}
+
+# Группа → slug лендинга. Для C/D2 slug пуст → общий /razbor.
+GROUP_LANDING_SLUG: dict[str, str] = {"A": "zvonki", "B": "ocheredi", "D1": "zakazy"}
+
+
+def offer_group_for_key(pain_key: str | None) -> str:
+    """pain_key → буква группы оффера. None/неизвестный ключ → 'D2' (прочее)."""
+    return OFFER_GROUP_BY_KEY.get(pain_key or "", "D2")
+
+
+def landing_slug_for_group(group: str) -> str:
+    """Группа → slug страницы (zvonki/ocheredi/zakazy). C/D2 → '' (общий /razbor)."""
+    return GROUP_LANDING_SLUG.get(group, "")
+
+
+def landing_slug_for_key(pain_key: str | None) -> str:
+    """pain_key → slug лендинга напрямую ('' для общего /razbor)."""
+    return landing_slug_for_group(offer_group_for_key(pain_key))
+
+
 def match_pain_key(label: str) -> str | None:
     """Определяет pain_key по человеко-читаемому label от PainTag.
 
