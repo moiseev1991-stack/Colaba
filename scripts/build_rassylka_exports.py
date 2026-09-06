@@ -1,10 +1,11 @@
 """Часть 4 ТЗ «автоматизация приёма клиентов» — два файла выгрузки для подрядчиков.
 
 Источник: БД `companies_with_pains` (Company + CompanyPainScore + PainTag +
-CompanyContact + CompanyDecisionMaker). Берём все компании, у которых есть хотя
-бы одна распознанная боль (любая из 5 групп A/B/C/D1/D2). Никого по группам не
-отсеиваем: A/B/D1 → ссылка на страницу группы, C/D2 → общий /razbor. Отсекаются
-лишь боли без ключа (нерелевантные офферу).
+CompanyContact + CompanyDecisionMaker). Берём ВСЕ компании, у которых есть хотя
+бы одна негативная активная боль. Никого не отсеиваем: доминирующая боль даёт
+группу оффера — A/B/D1 → ссылка на страницу группы (/razbor/{zvonki,ocheredi,
+zakazy}), C/D2 → общий /razbor. Боль, чей ключ словарь не распознал, НЕ режем —
+компания уходит в D2 (общий оффер), чтобы в файл попали все компании с болью.
 
 На выходе (папка data/exports/, имена с сегодняшней датой):
   • rassylka_email_YYYY-MM-DD.xlsx    — только валидные email (синтаксис + MX)
@@ -109,6 +110,7 @@ _SUBJECTS: dict[str, str] = {
     "schedule_hard": "Запись клиентов в «{name}»",
     "schedule_wait": "Долгое ожидание записи в «{name}»",
     "order_online_hard": "Оформление заказа на сайте «{name}»",
+    "order_wait": "«Где мой заказ?» — сроки в «{name}»",
     "queue_wait": "Очереди и ожидание в «{name}»",
 }
 
@@ -319,10 +321,13 @@ async def load() -> tuple[dict, dict, dict, dict]:
         ).all()
         tag_label = {tid: label for tid, label in tag_rows}
         tag_key = {tid: match_pain_key(label) for tid, label in tag_rows}
-        # Берём все распознанные боли (любая из 5 групп). Отсеиваем только теги
-        # без ключа (match_pain_key → None) — по ним оффера нет.
-        auto_tag_ids = [tid for tid, k in tag_key.items() if k is not None]
-        if not auto_tag_ids:
+        # ТЗ 2026-09-06: в файл попадают ВСЕ компании с болью. Тег без ключа
+        # (match_pain_key → None) НЕ отсеиваем — компания просто уходит в
+        # группу D2 (общий /razbor, общий оффер без ХОД2/ХОД3). Ключ лишь
+        # уточняет группу (A/B/C/D1). Раньше фильтр `k is not None` резал ~6× —
+        # выпадали все компании, чью доминирующую боль словарь не распознал.
+        tag_ids = list(tag_label)
+        if not tag_ids:
             return {}, {}, {}, {}
 
         cps_rows = (
@@ -333,7 +338,7 @@ async def load() -> tuple[dict, dict, dict, dict]:
                     CompanyPainScore.mention_count,
                     CompanyPainScore.top_quote,
                     CompanyPainScore.top_quote_similarity,
-                ).where(CompanyPainScore.pain_tag_id.in_(auto_tag_ids))
+                ).where(CompanyPainScore.pain_tag_id.in_(tag_ids))
             )
         ).all()
 

@@ -57,7 +57,14 @@ async def _top_pains(db: AsyncSession, company_id: int, limit: int = 3) -> list[
         stmt = (
             select(PainTag.label, CPS.mention_count)
             .join(PainTag, PainTag.id == CPS.pain_tag_id)
-            .where(CPS.company_id == company_id)
+            .where(
+                CPS.company_id == company_id,
+                # Только НЕГАТИВНЫЕ активные теги — иначе у компаний с сильным
+                # позитивом наверх лезут хвалебные теги («внимательные мастера»),
+                # и приветствие бота хвалит клиента вместо указания на боль.
+                PainTag.sentiment == "negative",
+                PainTag.status == "active",
+            )
             .order_by(CPS.mention_count.desc())
             .limit(limit)
         )
@@ -71,11 +78,18 @@ async def _top_pains(db: AsyncSession, company_id: int, limit: int = 3) -> list[
 async def _top_quote(db: AsyncSession, company_id: int) -> str:
     """Лучшая цитата из отзывов компании (макс. similarity) — для разбора владельцу."""
     try:
-        from app.models.pain_tag import CompanyPainScore as CPS
+        from app.models.pain_tag import CompanyPainScore as CPS, PainTag
 
         stmt = (
             select(CPS.top_quote)
-            .where(CPS.company_id == company_id, CPS.top_quote.isnot(None))
+            .join(PainTag, PainTag.id == CPS.pain_tag_id)
+            .where(
+                CPS.company_id == company_id,
+                CPS.top_quote.isnot(None),
+                # Цитата — только из негативного тега (боль), не из похвалы.
+                PainTag.sentiment == "negative",
+                PainTag.status == "active",
+            )
             .order_by(CPS.top_quote_similarity.desc().nulls_last())
             .limit(1)
         )

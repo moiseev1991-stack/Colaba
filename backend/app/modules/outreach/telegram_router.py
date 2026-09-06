@@ -95,13 +95,27 @@ def _parse_start_payload(text: str) -> tuple[str, Optional[int]]:
     return group, cid
 
 
+def _plural_raz(n: int) -> str:
+    """Склонение слова «раз» по числу: 1/21 раз, 2-4/22-24 раза, 5-20 раз."""
+    n = abs(int(n))
+    if 11 <= n % 100 <= 14:
+        return "раз"
+    d = n % 10
+    if d == 1:
+        return "раз"
+    if 2 <= d <= 4:
+        return "раза"
+    return "раз"
+
+
 def _first_pain_phrase(pains: list[str]) -> str:
     """['не дозвониться (7)', ...] → '7 раз пишут про не дозвониться'. Пусто → ''."""
     if not pains:
         return ""
     m = re.match(r"^(.*?)\s*\((\d+)\)\s*$", pains[0])
     if m:
-        return f"{m.group(2)} раз пишут про {m.group(1).strip().lower()}"
+        cnt = int(m.group(2))
+        return f"{cnt} {_plural_raz(cnt)} пишут про {m.group(1).strip().lower()}"
     return f"повторяется: {pains[0].strip().lower()}"
 
 

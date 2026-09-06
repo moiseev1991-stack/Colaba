@@ -180,15 +180,16 @@ class Settings(BaseSettings):
         description="Публичный базовый URL админки (напр. https://spinlid.ru) для кликабельной ссылки на заявку в уведомлениях. Пусто → ссылка не добавляется.",
     )
 
-    # Реквизиты оффера «Дмитрий» (лендинг spinlid-team.ru). Используются в
+    # Реквизиты оффера «Дмитрий» (лендинг spinlid.ru/razbor). Используются в
     # генераторе текстов рассылки и в выгрузках. НЕ упоминают SpinLid/Colaba.
     PUBLIC_BOT_USERNAME: str = Field(
         default="",
         description="Юзернейм бота-приёмника без @ (напр. spinlid_team_bot). Для @упоминаний в TG-текстах и ссылок t.me/<bot>?start=. Пусто → в тексте плейсхолдер и предупреждение в логах.",
     )
     PUBLIC_LANDING_URL: str = Field(
-        default="https://spinlid-team.ru",
-        description="URL лендинга оффера для ссылок в email-текстах.",
+        default="https://spinlid.ru/razbor",
+        description="URL лендинга оффера для ссылок в email-текстах. Базовый /razbor; "
+        "к нему добавляется slug группы (/zvonki, /ocheredi, /zakazy).",
     )
     PUBLIC_CONTACT_EMAIL: str = Field(
         default="dmitry@spinlid-team.ru",
