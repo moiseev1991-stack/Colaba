@@ -15,7 +15,9 @@ TelegramSubscriber.phone — это ключ связи с компанией д
 
 from __future__ import annotations
 
+import html
 import logging
+import re
 from datetime import datetime
 from typing import Any, Optional
 
@@ -62,10 +64,70 @@ _PHASE_TEXT = {
 }
 
 
-def _parse_start_payload(text: str) -> str:
-    """'/start email' → 'email'. Метка источника из deep-link t.me/<bot>?start=<tag>."""
+# Тема группы для приветствия «вы про … — верно?» (когда компания неизвестна).
+_GROUP_TOPIC = {
+    "zvonki": "недозвоны и потерянные заявки",
+    "ocheredi": "очереди и ожидание клиентов",
+    "zakazy": "статусы заказов («где мой заказ?»)",
+}
+
+# payload deep-link: <группа>_<company_id>, напр. 'zvonki_3080'. Группа —
+# буквенный slug, id — хвост из цифр. Также поддержаны голые метки
+# (landing/email/tg/zvonki без id) — прежнее поведение.
+_PAYLOAD_RE = re.compile(r"^([a-z][a-z0-9]*?)(?:_(\d{1,18}))?$", re.IGNORECASE)
+
+
+def _parse_start_payload(text: str) -> tuple[str, Optional[int]]:
+    """'/start zvonki_3080' → ('zvonki', 3080); '/start email' → ('email', None).
+
+    Возвращает (group_tag, company_id). Некорректный payload → ('', None).
+    """
     parts = text.split(maxsplit=1)
-    return parts[1].strip()[:120] if len(parts) > 1 else ""
+    if len(parts) < 2:
+        return "", None
+    raw = parts[1].strip()[:120]
+    m = _PAYLOAD_RE.match(raw)
+    if not m:
+        # Непонятный payload — сохраняем как метку, без id.
+        return raw[:120], None
+    group = (m.group(1) or "").lower()
+    cid = int(m.group(2)) if m.group(2) else None
+    return group, cid
+
+
+def _first_pain_phrase(pains: list[str]) -> str:
+    """['не дозвониться (7)', ...] → '7 раз пишут про не дозвониться'. Пусто → ''."""
+    if not pains:
+        return ""
+    m = re.match(r"^(.*?)\s*\((\d+)\)\s*$", pains[0])
+    if m:
+        return f"{m.group(2)} раз пишут про {m.group(1).strip().lower()}"
+    return f"повторяется: {pains[0].strip().lower()}"
+
+
+def _build_start_greeting(group_tag: str, brief: Optional[dict]) -> Optional[str]:
+    """Текст приветствия на /start. None → использовать общий GREETING_TEXT.
+
+    Компания известна (brief с name) → персональное приветствие, спрашиваем
+    только контакт. Иначе группа известна → приветствие под тему группы.
+    """
+    if brief and brief.get("name"):
+        name = html.escape(str(brief["name"]))
+        pain = html.escape(_first_pain_phrase(brief.get("pains") or []))
+        pain_clause = f" — {pain}" if pain else ""
+        return (
+            f"Здравствуйте! Вы из «{name}»? Смотрел ваши отзывы{pain_clause}. "
+            "Могу за 10 минут показать, где это теряет клиентов и как закрыть. "
+            "Как с вами связаться — телефон или удобно здесь?"
+        )
+    topic = _GROUP_TOPIC.get((group_tag or "").lower())
+    if topic:
+        return (
+            f"Здравствуйте! Я Дмитрий. Вы пришли по теме «{topic}» — верно?\n\n"
+            "Напишите название вашей компании (или ссылку на неё в 2ГИС/Яндекс.Картах) — "
+            "я посмотрю отзывы и покажу, где теряются клиенты. Это бесплатно."
+        )
+    return None
 
 
 @router.post("/webhook")
@@ -101,7 +163,7 @@ async def telegram_webhook(request: Request) -> dict:
     contact = message.get("contact")
 
     is_start = text.startswith("/start")
-    source_tag = _parse_start_payload(text) if is_start else ""
+    group_tag, company_id = _parse_start_payload(text) if is_start else ("", None)
 
     # Контакт по кнопке «Оставить контакт» → трактуем телефон как контентное
     # сообщение с контактом (state-машина сама разложит).
@@ -121,15 +183,17 @@ async def telegram_webhook(request: Request) -> dict:
 
     # Основной маршрут — заявка. Своя сессия: webhook вне request-db-scope.
     phase = "greeting"
+    start_ctx: Optional[dict] = None
     try:
         async with AsyncSessionLocal() as db:
-            _lead, phase = await inbound_service.handle_bot_message(
+            _lead, phase, start_ctx = await inbound_service.handle_bot_message(
                 db,
                 tg_user_id=int(tg_user_id),
                 tg_username=username,
                 text=text,
-                source_tag=source_tag,
+                source_tag=group_tag,
                 is_start=is_start,
+                company_id=company_id,
             )
     except Exception as e:  # noqa: BLE001
         # TZ §2.5: даже при сбое бэка бот отвечает лиду, заявку не теряем.
@@ -143,9 +207,17 @@ async def telegram_webhook(request: Request) -> dict:
             pass
         return {"ok": True, "handled": "fallback"}
 
+    # На /start приветствие может быть персональным (компания из deep-link) или
+    # под тему группы. Если компанию уже знаем — сразу просим контакт (клавиатура).
     reply = _PHASE_TEXT.get(phase, THANKS_TEXT)
+    show_keyboard = phase == "ask_contact"
+    if is_start:
+        custom = _build_start_greeting(group_tag, (start_ctx or {}).get("brief"))
+        if custom:
+            reply = custom
+        show_keyboard = bool((start_ctx or {}).get("company_known"))
     try:
-        if phase == "ask_contact":
+        if show_keyboard:
             # На шаге запроса контакта показываем единственную кнопку.
             await _send_reply_with_keyboard(chat_id, reply, CONTACT_KEYBOARD)
         else:

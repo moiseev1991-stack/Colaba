@@ -19,6 +19,10 @@ class InboundLeadSubmit(BaseModel):
     company_text: str = ""   # название или ссылка на 2ГИС/Я.Карты
     contact_text: str = ""   # телефон / username / «пишите сюда»
 
+    # Известный id компании (из deep-link/URL-параметра ?c=). Если задан и
+    # существует — matched_company_id ставится сразу, без матчинга по тексту.
+    company_id: Optional[int] = None
+
     # Лента входящих сообщений. Принимаем и строки, и объекты {text, at}.
     raw_messages: list[Any] = Field(default_factory=list)
 
@@ -35,7 +39,8 @@ class InboundLeadPublicSubmit(BaseModel):
     company_text: str = Field(default="", max_length=2000)  # название/ссылка 2ГИС/Я.Карт
     contact_text: str = Field(default="", max_length=255)    # телефон / Telegram
     name: str = Field(default="", max_length=255)
-    source_tag: str = Field(default="", max_length=120)      # utm_source / ?start=landing
+    source_tag: str = Field(default="", max_length=120)      # группа страницы (zvonki/...) / utm_source
+    company_id: Optional[int] = None                          # из ?c=<id> — известная компания
 
     consent: bool = False   # чекбокс согласия на обработку ПДн (обязателен)
     hp: str = Field(default="", max_length=255)  # honeypot: должно быть пусто

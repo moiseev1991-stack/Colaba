@@ -68,6 +68,60 @@ async def _top_pains(db: AsyncSession, company_id: int, limit: int = 3) -> list[
         return []
 
 
+async def _top_quote(db: AsyncSession, company_id: int) -> str:
+    """Лучшая цитата из отзывов компании (макс. similarity) — для разбора владельцу."""
+    try:
+        from app.models.pain_tag import CompanyPainScore as CPS
+
+        stmt = (
+            select(CPS.top_quote)
+            .where(CPS.company_id == company_id, CPS.top_quote.isnot(None))
+            .order_by(CPS.top_quote_similarity.desc().nulls_last())
+            .limit(1)
+        )
+        row = (await db.execute(stmt)).scalar_one_or_none()
+        return (row or "").strip()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("inbound_leads: не удалось получить цитату компании %s: %s", company_id, e)
+        return ""
+
+
+async def company_brief(db: AsyncSession, company_id: int) -> dict:
+    """Сводка по компании для уведомления/приветствия: name, niche, city, pains, quote.
+
+    Никогда не бросает — при сбое возвращает пустые поля.
+    """
+    brief = {"name": "", "niche": "", "city": "", "pains": [], "quote": ""}
+    company = await db.get(Company, company_id)
+    if company is None:
+        return brief
+    brief["name"] = company.name or ""
+    brief["niche"] = company.niche or ""
+    brief["city"] = company.city or ""
+    brief["pains"] = await _top_pains(db, company_id)
+    brief["quote"] = await _top_quote(db, company_id)
+    return brief
+
+
+async def _resolve_company(
+    db: AsyncSession, company_id: Optional[int], company_text: str
+) -> Optional[Company]:
+    """Приоритет: валидный company_id → по нему; иначе — матчинг по тексту.
+
+    Битый/чужой id молча игнорируется (fallback на текст), чтобы подделанный
+    ?c= не создавал заявку на левую компанию.
+    """
+    if company_id:
+        try:
+            company = await db.get(Company, company_id)
+            if company is not None:
+                return company
+            logger.info("inbound_leads: company_id=%s не найден, матчу по тексту", company_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("inbound_leads: lookup company_id=%s упал: %s", company_id, e)
+    return await match_company(db, company_text)
+
+
 async def match_company(db: AsyncSession, company_text: str) -> Optional[Company]:
     """Пытается сматчить присланный текст (название/ссылка) с таблицей companies.
 
@@ -161,8 +215,9 @@ async def submit_lead(
             is_new=False,
         )
 
-    # 2) Новая заявка + матчинг компании.
-    company = await match_company(db, payload.company_text)
+    # 2) Новая заявка. Известный company_id (из deep-link/?c=) — авторитетнее
+    #    текстового матчинга: если id существует, берём его; иначе матчим текст.
+    company = await _resolve_company(db, payload.company_id, payload.company_text)
     lead = InboundLead(
         source=payload.source,
         source_tag=payload.source_tag or "",
@@ -233,18 +288,15 @@ async def _notify_new_lead(db: AsyncSession, lead: InboundLead) -> None:
         company = await match_company(db, lead.company_text)
         if company:
             lead.matched_company_id = company.id
-    company_name = ""
-    pains: list[str] = []
+    brief: dict = {"name": "", "niche": "", "city": "", "pains": [], "quote": ""}
     if lead.matched_company_id:
-        company = await db.get(Company, lead.matched_company_id)
-        company_name = company.name if company else ""
-        pains = await _top_pains(db, lead.matched_company_id)
+        brief = await company_brief(db, lead.matched_company_id)
     lead.owner_notified = True
     lead.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(lead)
-    await notify.notify_owner_telegram(lead, company_name, pains)
-    await notify.notify_owner_email(lead, company_name, pains, db=db)
+    await notify.notify_owner_telegram(lead, brief)
+    await notify.notify_owner_email(lead, brief, db=db)
 
 
 async def handle_bot_message(
@@ -255,7 +307,8 @@ async def handle_bot_message(
     text: str,
     source_tag: str = "",
     is_start: bool = False,
-) -> tuple[InboundLead, str]:
+    company_id: Optional[int] = None,
+) -> tuple[InboundLead, str, Optional[dict]]:
     """Обрабатывает одно входящее сообщение бота-приёмника.
 
     Состояние диалога держим в полях заявки (без внешнего стейта):
@@ -263,8 +316,15 @@ async def handle_bot_message(
       company_text есть, contact пусто → ждём контакт;
       оба есть                    → «дополнение» (пересылаем владельцу).
 
-    Возвращает (lead, phase), где phase ∈ {greeting, ask_contact, thanks, extra}
-    — по нему webhook выбирает ответный текст.
+    company_id (из deep-link ?start=<группа>_<id>): если валиден — компанию
+    уже знаем, matched_company_id ставим сразу, приветствие персональное,
+    название НЕ спрашиваем (только контакт).
+
+    Возвращает (lead, phase, start_ctx):
+      phase ∈ {greeting, ask_contact, thanks, extra} — ответный текст;
+      start_ctx — None для контентных сообщений; на /start —
+        {"group": <slug>, "brief": <dict|None>, "company_known": bool}
+        для сборки приветствия в webhook.
     """
     stmt = (
         select(InboundLead)
@@ -295,13 +355,30 @@ async def handle_bot_message(
     if source_tag and not lead.source_tag:
         lead.source_tag = source_tag
 
-    # /start — только фиксируем факт входа, ничего не парсим, не уведомляем.
+    # /start — фиксируем вход, ничего не парсим и не уведомляем. Если пришёл
+    # валидный company_id — сразу привязываем компанию и готовим персональное
+    # приветствие (название не спрашиваем).
     if is_start:
+        brief: Optional[dict] = None
+        company_known = False
+        if company_id and not lead.matched_company_id:
+            company = await db.get(Company, company_id)
+            if company is not None:
+                lead.matched_company_id = company.id
+                brief = await company_brief(db, company.id)
+                if brief.get("name") and not lead.company_text:
+                    # Компанию знаем — фиксируем, чтобы дальше ждать контакт.
+                    lead.company_text = brief["name"]
+                company_known = True
+        elif lead.matched_company_id:
+            brief = await company_brief(db, lead.matched_company_id)
+            company_known = bool(brief.get("name"))
         lead.raw_messages = list(lead.raw_messages or []) + [{"at": now, "text": "/start"}]
         lead.updated_at = datetime.utcnow()
         await db.commit()
         await db.refresh(lead)
-        return lead, "greeting"
+        phase = "ask_contact" if company_known else "greeting"
+        return lead, phase, {"group": source_tag, "brief": brief, "company_known": company_known}
 
     # Контентное сообщение.
     lead.raw_messages = list(lead.raw_messages or []) + [{"at": now, "text": text}]
@@ -333,14 +410,14 @@ async def handle_bot_message(
     if not lead.owner_notified and (lead.company_text or lead.contact_text):
         await _notify_new_lead(db, lead)
         phase = "thanks" if lead.contact_text else "ask_contact"
-        return lead, phase
+        return lead, phase, None
 
     if lead.owner_notified:
         await notify.forward_extra_to_owner(lead, text)
-        return lead, "extra"
+        return lead, "extra", None
 
     # Пограничный случай: ещё нечего уведомлять.
-    return lead, ("thanks" if lead.contact_text else "ask_contact")
+    return lead, ("thanks" if lead.contact_text else "ask_contact"), None
 
 
 async def list_leads(
