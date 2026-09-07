@@ -3814,9 +3814,7 @@ async def export_companies_by_pain(
     stem = "-".join([p for p in (niche, city) if p]) or "vybor"
     filename = f"boli_{stem}.xlsx"
     headers = {
-        "Content-Disposition": (
-            f"attachment; filename=\"pains_export.xlsx\"; filename*=UTF-8''{quote(filename)}"
-        )
+        "Content-Disposition": (f"attachment; filename=\"pains_export.xlsx\"; filename*=UTF-8''{quote(filename)}")
     }
     return StreamingResponse(
         io.BytesIO(blob),
@@ -3865,6 +3863,57 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     # DaData
     dadata = "ok" if (settings.DADATA_API_KEY or "").strip() else "no_api_key"
 
+    # Честность статусов (урок аудита 2026-09-07): месяц health говорил
+    # «ok» при 0-16% реальных успехов (2GIS ключ мёртв, DaData 403-квота).
+    # Понижаем ok → 'failing', если за 24ч в api_call_log у провайдера
+    # >=5 вызовов и ok% < 20 — это записанные РЕАЛЬНЫЕ вызовы (сам health
+    # по-прежнему наружу не ходит). details.recent_* несёт цифры для UI.
+    details: dict[str, Any] = {}
+    try:
+        from datetime import datetime as _dt, timedelta as _td
+
+        from app.models.api_call_log import ApiCallLog as _Log
+
+        _since = _dt.now(timezone.utc) - _td(hours=24)
+        _rows = (
+            await db.execute(
+                select(
+                    _Log.provider,
+                    sa_func.count(_Log.id),
+                    sa_func.count().filter(_Log.ok.is_(True)),
+                )
+                .where(_Log.created_at >= _since)
+                .group_by(_Log.provider)
+            )
+        ).all()
+        _live = {p: {"calls": int(t), "ok_pct": round(int(o) / int(t) * 100, 1) if t else 100.0} for p, t, o in _rows}
+        # api_call_log provider → (локальная переменная статуса, показывать в details)
+        _map = {
+            "2gis": "twogis",
+            "dadata": "dadata",
+            "serpapi": "google_maps",
+            "openai_emb": "llm",
+        }
+        for prov, key in _map.items():
+            info = _live.get(prov)
+            if not info or info["calls"] < 5:
+                continue
+            details_key = f"recent_{prov}_24h"
+            details[details_key] = info
+            if info["ok_pct"] < 20:
+                # понижаем только «ok» — no_api_key/no_proxy информативнее
+                if key == "twogis" and twogis == "ok":
+                    twogis = "failing"
+                elif key == "dadata" and dadata == "ok":
+                    dadata = "failing"
+                elif key == "google_maps" and google_maps == "ok":
+                    google_maps = "failing"
+                elif key == "llm" and llm == "ok":
+                    llm = "failing"
+    except Exception:
+        # старый стенд без таблицы — health не валится
+        pass
+
     # LLM: ключ от OpenAI/ProxyAPI/Anthropic + хотя бы один ai_assistant
     # с непустой model в БД (иначе pick_assistant_id вернёт None — vendор
     # на свече, AI-пайплайны no-op'нут).
@@ -3886,7 +3935,6 @@ async def health_providers(db: AsyncSession = Depends(get_db)):
     sentry = "on" if sentry_dsn else "off"
 
     # Details: счётчики для DaData/AI которые юзер хочет видеть рядом.
-    details: dict[str, Any] = {}
     try:
         from app.models.company_legal import CompanyLegal
 
