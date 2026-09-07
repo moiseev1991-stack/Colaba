@@ -110,6 +110,41 @@ function safeNextPath(pathname: string, search: string): string {
   return next.startsWith('/') ? next : '/';
 }
 
+// Security-заголовки (аудит 2026-09-07 P1.1: с августа отсутствовали).
+// CSP даём ТОЛЬКО frame-ancestors + base-uri — не ломает инлайн-стили и
+// скрипты Next (полная CSP требует nonce-разборки — отдельная задача).
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'");
+  return response;
+}
+
+// Префиксы реальных защищённых страниц (аудит 2026-09-07 P1.3): раньше
+// ЛЮБОЙ неизвестный путь анонима редиректился на /auth/login (307) —
+// «redirect-ловушка» без 404. Теперь guard-редирект только на известных
+// защищённых префиксах; неизвестные пути уходят в честный not-found.tsx.
+const PROTECTED_PREFIXES = [
+  '/app',
+  '/dashboard',
+  '/settings',
+  '/profile',
+  '/organizations',
+  '/payment',
+  '/monitor',
+  '/runs',
+  '/insights',
+  '/admin',
+  '/leads/dashboard',
+  '/tenders',
+];
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
@@ -122,13 +157,19 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     url.search = '';
-    return NextResponse.redirect(url);
+    return applySecurityHeaders(NextResponse.redirect(url));
   }
 
   if (isAuthed && pathname === '/app') {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    return applySecurityHeaders(NextResponse.redirect(url));
+  }
+
+  // Неизвестный путь: не защищён и не публичен из известных → пропускаем,
+  // Next отрендерит 404 (not-found.tsx). Аноним не уводится на логин.
+  if (!isProtectedPath(pathname)) {
+    return applySecurityHeaders(NextResponse.next());
   }
 
   // На непубличных страницах (кабинет, dashboard, settings, etc.) добавляем
@@ -146,6 +187,7 @@ export function middleware(request: NextRequest) {
           })()
         : NextResponse.next();
 
+  applySecurityHeaders(response);
   if (!isIndexable(pathname)) {
     return withNoindexHeader(response);
   }

@@ -81,6 +81,18 @@ app.add_middleware(
 )
 
 
+# Security-заголовки на API-ответы (аудит 2026-09-07 P1.1: с августа
+# отсутствовали и на фронте, и на API — clickjacking/MIME-sniffing).
+# Фронт получает свои через Next middleware (frontend/middleware.ts).
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 # Cost-tracking middleware: выставляет current_user_id в contextvars
 # из Bearer-токена, чтобы все api_call_log записи в рамках HTTP-запроса
 # (DaData/LLM/2GIS вызванные из эндпоинтов, не celery) привязывались к юзеру.
@@ -107,6 +119,7 @@ async def api_tracker_context_middleware(request, call_next):
         pass
 
     return await call_next(request)
+
 
 # Rate limiting
 app.state.limiter = limiter
@@ -168,6 +181,7 @@ async def readiness_check() -> JSONResponse:
     # PostgreSQL check
     try:
         from sqlalchemy import text
+
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         checks["postgres"] = "ok"
@@ -178,6 +192,7 @@ async def readiness_check() -> JSONResponse:
     # Redis check
     try:
         import redis.asyncio as aioredis
+
         r = aioredis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
         await r.ping()
         await r.aclose()
@@ -199,6 +214,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 # Setup SQLAdmin (must be after app creation)
 from app.admin import setup_admin
+
 setup_admin(app)
 
 
