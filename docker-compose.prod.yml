@@ -55,9 +55,6 @@ services:
       REDIS_URL: ${REDIS_URL}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
-      # TG-алерты интеграций (monitor/tasks): задаче нужен токен и чат владельца
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      OWNER_TG_CHAT_ID: ${OWNER_TG_CHAT_ID:-}
       CORS_ORIGINS: ${CORS_ORIGINS}
       LOG_LEVEL: ${LOG_LEVEL}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
