@@ -40,6 +40,10 @@ celery_app = Celery(
         "app.modules.maps.tasks",
         "app.modules.reviews_ai.tasks",
         "app.modules.outreach.tasks",
+        # 2026-09-08: beat-задача check_integrations_alert падала в worker
+        # как unregistered — модуль не был в include (нашёл живьём на проде
+        # в 00:30 при первом срабатывании расписания).
+        "app.modules.monitor.tasks",
     ],
 )
 
