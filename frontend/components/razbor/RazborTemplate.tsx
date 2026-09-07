@@ -10,7 +10,8 @@ import type { RazborConfig } from './config';
 // футер) одинаковы для всех страниц.
 //
 // ВАЖНО: страница изолирована от сайта SpinLid — нет глобальной шапки/футера,
-// ссылок на продукт, регистрации. Своя минимальная шапка «Дмитрий» + Telegram.
+// ссылок на продукт, регистрации. Своя минимальная шапка: меню-переходы между
+// страницами разбора (Главная/Звонки/Очереди/Заказы) + кнопка Telegram.
 //
 // URL-параметры: ?c=<company_id> — id сматченной компании из письма/выгрузки;
 // ?utm_source=email|tg — источник перехода. Если c пришёл — прокидываем его
@@ -22,13 +23,12 @@ const BOT_USERNAME = process.env.NEXT_PUBLIC_RAZBOR_BOT || 'bolshe_lidov_bot';
 // ID счётчика Яндекс.Метрики spinlid.ru (тот же, что в components/YandexMetrika).
 const METRIKA_ID = 110073452;
 
-// Якорное меню по разделам страницы (не навигация SpinLid — только скролл внутри лендинга).
-const NAV: [string, string][] = [
-  ['#quotes', 'Отзывы'],
-  ['#uznaete', 'Узнаёте себя'],
-  ['#solutions', 'Что я делаю'],
-  ['#how', 'Как проходит'],
-  ['#faq', 'Вопросы'],
+// Меню-переходы между страницами разбора (по группам болей). slug '' — общий /razbor.
+const PAGES: { href: string; label: string; slug: string }[] = [
+  { href: '/razbor', label: 'Главная', slug: '' },
+  { href: '/razbor/zvonki', label: 'Звонки', slug: 'zvonki' },
+  { href: '/razbor/ocheredi', label: 'Очереди', slug: 'ocheredi' },
+  { href: '/razbor/zakazy', label: 'Заказы', slug: 'zakazy' },
 ];
 
 // Обезличенные цитаты из реальных отзывов на картах (тексты согласованы).
@@ -144,20 +144,20 @@ const STYLES = `
 /* HEADER */
 .rz-head{position:sticky;top:0;z-index:40;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(7,11,20,.72);border-bottom:1px solid var(--line)}
 .rz-head__in{max-width:var(--maxw);margin:0 auto;padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.rz-brand{display:flex;align-items:center;gap:11px;text-decoration:none}
-.rz-brand__mark{width:36px;height:36px;border-radius:11px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#04120c;font-weight:800;font-size:17px;font-family:var(--font-display),sans-serif;box-shadow:0 6px 18px rgba(16,185,129,.35);flex:0 0 36px}
-.rz-brand__name{font-family:var(--font-display),sans-serif;font-weight:700;color:var(--ink);font-size:17px;line-height:1.1}
-.rz-brand__sub{display:block;font-family:var(--font-body),sans-serif;font-weight:600;font-size:11.5px;color:var(--muted);margin-top:2px}
+.rz-brand{display:flex;align-items:center;text-decoration:none}
+.rz-brand__name{font-family:var(--font-display),sans-serif;font-weight:800;color:var(--ink);font-size:18px;line-height:1.1;letter-spacing:-.01em}
 .rz-head__tg{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 17px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--card-brd);color:var(--ink);text-decoration:none;font-weight:650;font-size:15px;transition:background .18s,border-color .18s}
 .rz-head__tg:hover{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.45);color:var(--ink)}
 .rz-head__tg svg{color:#5eead4}
-.rz-nav{display:flex;align-items:center;gap:20px;margin:0 auto 0 14px}
-.razbor .rz-nav a{color:var(--body);text-decoration:none;font-size:14.5px;font-weight:600;white-space:nowrap;transition:color .15s}
+.rz-nav{display:flex;align-items:center;gap:22px;margin:0 auto 0 20px}
+.razbor .rz-nav a{color:var(--body);text-decoration:none;font-size:15px;font-weight:600;white-space:nowrap;transition:color .15s}
 .razbor .rz-nav a:hover{color:var(--ink)}
+.razbor .rz-nav a.rz-nav__active{color:#5eead4}
 .rz-head__right{display:flex;align-items:center;gap:10px}
 .rz-burger{display:none;width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--card-brd);color:var(--ink);cursor:pointer;align-items:center;justify-content:center}
 .rz-menu{display:flex;flex-direction:column;padding:4px 16px 16px}
 .razbor .rz-menu a{color:var(--ink);text-decoration:none;padding:13px 4px;font-size:16px;font-weight:600;border-bottom:1px solid var(--line)}
+.razbor .rz-menu a.rz-nav__active{color:#5eead4}
 .razbor .rz-menu .rz-head__tg{margin-top:14px;justify-content:center;border-bottom:none;padding:0 17px}
 
 /* BUTTONS */
@@ -306,7 +306,6 @@ const STYLES = `
   .razbor section{padding:48px 0}
   .razbor .wrap{padding:0 16px}
   .rz-head__in{padding:10px 16px}
-  .rz-brand__sub{display:none}
   .rz-paingrid,.rz-solgrid{grid-template-columns:1fr}
   .rz-actions .rz-btn{width:100%}
   .rz-hero__in{gap:28px}
@@ -427,20 +426,21 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson(config)) }} />
 
-      {/* §0 — своя минимальная шапка + якорное меню по разделам (без навигации SpinLid) */}
+      {/* §0 — своя минимальная шапка: меню-переходы между страницами разбора + Telegram (без бренда SpinLid) */}
       <header className="rz-head">
         <div className="rz-head__in">
-          <a href="#top" className="rz-brand" aria-label="В начало" onClick={() => setMenuOpen(false)}>
-            <span className="rz-brand__mark">Д</span>
-            <span>
-              <span className="rz-brand__name">Дмитрий</span>
-              <span className="rz-brand__sub">разбор по вашим отзывам</span>
-            </span>
+          <a href="/razbor" className="rz-brand" aria-label="Разбор потерь клиентов" onClick={() => setMenuOpen(false)}>
+            <span className="rz-brand__name">Разбор</span>
           </a>
-          <nav className="rz-nav" aria-label="Разделы">
-            {NAV.map(([href, label]) => (
-              <a key={href} href={href}>
-                {label}
+          <nav className="rz-nav" aria-label="Страницы разбора">
+            {PAGES.map((p) => (
+              <a
+                key={p.href}
+                href={p.href}
+                className={p.slug === config.slug ? 'rz-nav__active' : undefined}
+                aria-current={p.slug === config.slug ? 'page' : undefined}
+              >
+                {p.label}
               </a>
             ))}
           </nav>
@@ -452,7 +452,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             <button
               type="button"
               className="rz-burger"
-              aria-label="Меню разделов"
+              aria-label="Меню страниц"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((o) => !o)}
             >
@@ -467,10 +467,16 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
           </div>
         </div>
         {menuOpen && (
-          <nav className="rz-menu" aria-label="Разделы">
-            {NAV.map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)}>
-                {label}
+          <nav className="rz-menu" aria-label="Страницы разбора">
+            {PAGES.map((p) => (
+              <a
+                key={p.href}
+                href={p.href}
+                className={p.slug === config.slug ? 'rz-nav__active' : undefined}
+                aria-current={p.slug === config.slug ? 'page' : undefined}
+                onClick={() => setMenuOpen(false)}
+              >
+                {p.label}
               </a>
             ))}
             <a className="rz-head__tg" href={tgUrl} rel="noopener" target="_blank" onClick={() => setMenuOpen(false)}>
