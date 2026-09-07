@@ -269,8 +269,8 @@ const STYLES = `
 .razbor .rz-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,.18)}
 .rz-form .rz-btn{width:100%}
 .rz-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.rz-consent{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:var(--muted);margin:2px 0 20px}
-.rz-consent input{margin-top:3px;width:19px;height:19px;flex:0 0 19px;accent-color:var(--accent)}
+.razbor .rz-consent{display:flex;gap:11px;align-items:flex-start;font-size:14px;font-weight:400;color:var(--muted);margin:2px 0 20px}
+.razbor .rz-consent input{margin-top:2px;width:18px;height:18px;flex:0 0 18px;accent-color:var(--accent);cursor:pointer}
 .rz-consent a{color:var(--accent2);font-weight:600}
 .rz-msg{margin:16px 0 0;padding:14px 16px;border-radius:12px;font-size:15.5px}
 .rz-msg.err{background:rgba(251,113,133,.12);color:#fecdd3;border:1px solid rgba(251,113,133,.32)}
