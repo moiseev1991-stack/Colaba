@@ -86,5 +86,12 @@ celery_app.conf.update(
             "task": "daily_warmup_task",
             "schedule": crontab(hour=7, minute=0),
         },
+        # Алерты здоровья интеграций (урок аудита 2026-09-07: месяц молча
+        # стояли OpenAI-402/DaData-403/2GIS-0%). Раз в 30 мин: ok% за час
+        # по api_call_log → TG владельцу. Анти-спам 6ч на провайдера.
+        "check-integrations-alert": {
+            "task": "check_integrations_alert",
+            "schedule": crontab(minute="*/30"),
+        },
     },
 )
