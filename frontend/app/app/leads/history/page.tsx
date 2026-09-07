@@ -29,11 +29,7 @@ import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
-import {
-  deleteSearch,
-  listSearches,
-  type SearchResponse,
-} from '@/src/services/api/search';
+import { deleteSearch, listSearches, type SearchResponse } from '@/src/services/api/search';
 import {
   listKpDrafts,
   listKpJobs,
@@ -107,13 +103,7 @@ function LeadsHistoryInner() {
   const searchParams = useSearchParams();
   const initialTab = useMemo<Tab>(() => {
     const raw = searchParams?.get('tab');
-    if (
-      raw === 'sites' ||
-      raw === 'kp' ||
-      raw === 'kp-jobs' ||
-      raw === 'sends' ||
-      raw === 'maps'
-    )
+    if (raw === 'sites' || raw === 'kp' || raw === 'kp-jobs' || raw === 'sends' || raw === 'maps')
       return raw;
     return 'maps';
   }, [searchParams]);
@@ -165,13 +155,22 @@ function LeadsHistoryInner() {
 function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const [items, setItems] = useState<MapSearchOut[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  // История карт-поисков пагинируется: первая страница + «Показать ещё».
+  // До 07.09 грузились только первые 50 и показать остальные было нельзя
+  // (при 5000+ поисков марафона пользователь «не видел» свою историю).
+  const PAGE = 50;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    listMyMapSearches(50, 0)
+    listMyMapSearches(PAGE, 0)
       .then((rows) => {
-        if (!cancelled) setItems(rows);
+        if (!cancelled) {
+          setItems(rows);
+          setHasMore(rows.length === PAGE);
+        }
       })
       .catch(() => {
         if (!cancelled) setItems([]);
@@ -183,6 +182,19 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
       cancelled = true;
     };
   }, []);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const rows = await listMyMapSearches(PAGE, items.length);
+      setItems((prev) => [...prev, ...rows]);
+      setHasMore(rows.length === PAGE);
+    } catch {
+      /* no-op: остаёмся на текущей странице */
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -211,8 +223,7 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
             tabIndex={0}
             onClick={() => router.push(`/app/leads?map_search_id=${m.id}`)}
             onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === 'Enter')
-                router.push(`/app/leads?map_search_id=${m.id}`);
+              if (e.key === 'Enter') router.push(`/app/leads?map_search_id=${m.id}`);
             }}
             className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
           >
@@ -225,8 +236,7 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 {m.niche} · {m.city}
               </div>
               <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                {formatDateTime(m.created_at)} · {m.sources} ·{' '}
-                {m.companies_found ?? 0}{' '}
+                {formatDateTime(m.created_at)} · {m.sources} · {m.companies_found ?? 0}{' '}
                 {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
               </div>
             </div>
@@ -244,6 +254,18 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
           </CardV2>
         </li>
       ))}
+      {hasMore && (
+        <li className="pt-2">
+          <ButtonV2
+            variant="secondary"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="w-full"
+          >
+            {loadingMore ? 'Загружаю…' : `Показать ещё (показано ${items.length})`}
+          </ButtonV2>
+        </li>
+      )}
     </ul>
   );
 }
@@ -343,18 +365,14 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   {r.query}
                 </div>
                 <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                  {formatDateTime(r.created_at)} · {r.search_provider} ·{' '}
-                  {r.result_count ?? 0}{' '}
+                  {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0}{' '}
                   {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
                 </div>
               </div>
               <SignalPill tone={statusTone(r.status)} size="sm">
                 {statusLabel(r.status)}
               </SignalPill>
-              <div
-                className="flex items-center gap-1.5"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={() => router.push(`/runs/${r.id}`)}
@@ -366,9 +384,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() =>
-                      setOpenMenuId(openMenuId === r.id ? null : r.id)
-                    }
+                    onClick={() => setOpenMenuId(openMenuId === r.id ? null : r.id)}
                     className="grid h-9 w-9 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text))]"
                     aria-label="Меню"
                   >
@@ -482,17 +498,15 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   if (items.length === 0) {
     return (
       <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
-        Сгенерированных КП пока нет. Выбери компании в выдаче поиска и нажми
-        «Сформировать КП» — все письма появятся здесь.
+        Сгенерированных КП пока нет. Выбери компании в выдаче поиска и нажми «Сформировать КП» — все
+        письма появятся здесь.
       </CardV2>
     );
   }
 
   return (
     <>
-      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">
-        Всего КП: {total}
-      </div>
+      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">Всего КП: {total}</div>
       <ul className="reveal-stack space-y-2">
         {items.map((d) => (
           <li key={d.id}>
@@ -544,8 +558,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
 
       <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
         <span>
-          Показано {page * KP_PAGE_SIZE + 1}–
-          {Math.min((page + 1) * KP_PAGE_SIZE, total)} из {total}
+          Показано {page * KP_PAGE_SIZE + 1}–{Math.min((page + 1) * KP_PAGE_SIZE, total)} из {total}
         </span>
         <div className="flex gap-2">
           <ButtonV2
@@ -592,11 +605,7 @@ function jobStatusBadge(status: KpJobListItem['status']): {
   }
 }
 
-function KpJobsHistoryTab({
-  router,
-}: {
-  router: ReturnType<typeof useRouter>;
-}) {
+function KpJobsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const [items, setItems] = useState<KpJobListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -629,18 +638,14 @@ function KpJobsHistoryTab({
   }
 
   if (error) {
-    return (
-      <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">
-        {error}
-      </CardV2>
-    );
+    return <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">{error}</CardV2>;
   }
 
   if (items.length === 0) {
     return (
       <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
-        Партий КП пока нет. Выбери компании в выдаче поиска и нажми
-        «Сформировать КП» — каждая партия попадёт сюда отдельной строкой.
+        Партий КП пока нет. Выбери компании в выдаче поиска и нажми «Сформировать КП» — каждая
+        партия попадёт сюда отдельной строкой.
       </CardV2>
     );
   }
@@ -651,12 +656,7 @@ function KpJobsHistoryTab({
         const badge = jobStatusBadge(j.status);
         const total = j.total || 0;
         const progressPct =
-          total > 0
-            ? Math.min(
-                100,
-                Math.round(((j.generated + j.failed) / total) * 100),
-              )
-            : 0;
+          total > 0 ? Math.min(100, Math.round(((j.generated + j.failed) / total) * 100)) : 0;
         return (
           <li key={j.id}>
             <CardV2 className="overflow-hidden">
@@ -672,10 +672,7 @@ function KpJobsHistoryTab({
                       Партия #{j.id}
                     </span>
                     <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                        badge.cls,
-                      )}
+                      className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', badge.cls)}
                     >
                       {badge.label}
                     </span>
@@ -684,12 +681,9 @@ function KpJobsHistoryTab({
                     </span>
                   </div>
                   <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                    {formatDateTime(j.created_at)} ·{' '}
-                    {j.generated + j.failed}/{total}
+                    {formatDateTime(j.created_at)} · {j.generated + j.failed}/{total}
                     {j.failed > 0 && (
-                      <span className="ml-1 text-rose-600">
-                        · ошибок {j.failed}
-                      </span>
+                      <span className="ml-1 text-rose-600">· ошибок {j.failed}</span>
                     )}
                   </div>
                   {(j.status === 'queued' || j.status === 'running') && (
@@ -701,9 +695,7 @@ function KpJobsHistoryTab({
                     </div>
                   )}
                 </div>
-                <span className="shrink-0 text-[12px] font-medium text-violet-700">
-                  Открыть →
-                </span>
+                <span className="shrink-0 text-[12px] font-medium text-violet-700">Открыть →</span>
               </button>
             </CardV2>
           </li>
@@ -739,11 +731,7 @@ const SEND_STATUS_META: Record<
   skipped: { label: 'Пропущено', tone: 'muted' },
 };
 
-function KpSendsHistoryTab({
-  router,
-}: {
-  router: ReturnType<typeof useRouter>;
-}) {
+function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const [items, setItems] = useState<KpSendListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -781,26 +769,20 @@ function KpSendsHistoryTab({
     );
   }
   if (error) {
-    return (
-      <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">
-        {error}
-      </CardV2>
-    );
+    return <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">{error}</CardV2>;
   }
   if (items.length === 0) {
     return (
       <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
-        Отправок пока нет. Открой партию КП в «Партиях КП», выбери каналы и
-        нажми «Отправить» — попытки появятся здесь.
+        Отправок пока нет. Открой партию КП в «Партиях КП», выбери каналы и нажми «Отправить» —
+        попытки появятся здесь.
       </CardV2>
     );
   }
 
   return (
     <>
-      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">
-        Всего отправок: {total}
-      </div>
+      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">Всего отправок: {total}</div>
       <ul className="space-y-2">
         {items.map((s) => {
           const ch = CHANNEL_META[s.channel];
@@ -842,9 +824,7 @@ function KpSendsHistoryTab({
                   {s.job_id && (
                     <button
                       type="button"
-                      onClick={() =>
-                        router.push(`/app/leads/kp-jobs/${s.job_id}`)
-                      }
+                      onClick={() => router.push(`/app/leads/kp-jobs/${s.job_id}`)}
                       className="shrink-0 text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline"
                     >
                       Партия #{s.job_id} →
@@ -859,8 +839,8 @@ function KpSendsHistoryTab({
 
       <CardV2 className="mt-4 flex items-center justify-between px-4 py-3 text-sm text-[hsl(var(--muted))]">
         <span>
-          Показано {page * SEND_PAGE_SIZE + 1}–
-          {Math.min((page + 1) * SEND_PAGE_SIZE, total)} из {total}
+          Показано {page * SEND_PAGE_SIZE + 1}–{Math.min((page + 1) * SEND_PAGE_SIZE, total)} из{' '}
+          {total}
         </span>
         <div className="flex gap-2">
           <ButtonV2
