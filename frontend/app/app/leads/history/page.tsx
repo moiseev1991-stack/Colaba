@@ -157,9 +157,9 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  // История карт-поисков пагинируется: первая страница + «Показать ещё».
-  // До 07.09 грузились только первые 50 и показать остальные было нельзя
-  // (при 5000+ поисков марафона пользователь «не видел» свою историю).
+  // Пагинация истории карт-поисков: первая страница + «Показать ещё».
+  // Раньше грузились только первые 50 и увидеть остальные было нельзя
+  // (при 5000+ поисков марафона история выглядела «неполной»).
   const PAGE = 50;
 
   useEffect(() => {
