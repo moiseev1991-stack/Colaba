@@ -74,7 +74,13 @@ def test_match_pain_key_admin_rude():
 
 def test_match_pain_key_food_slow():
     assert match_pain_key("Долгое ожидание еды") == "food_slow"
-    assert match_pain_key("долгое ожидание заказа") == "food_slow"
+
+
+def test_match_pain_key_order_wait():
+    # «ожидание заказа/доставки/сроков» → D1 (order_wait), а не общепитовский food_slow
+    assert match_pain_key("долгое ожидание заказа") == "order_wait"
+    assert match_pain_key("Долгая доставка") == "order_wait"
+    assert match_pain_key("Срыв сроков выполнения работ") == "order_wait"
 
 
 def test_match_pain_key_unknown_returns_none():
