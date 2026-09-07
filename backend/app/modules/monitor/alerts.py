@@ -64,6 +64,7 @@ async def collect_provider_health(db) -> list[dict]:
     for provider, total, ok in rows:
         ok_pct = (ok / total * 100) if total else 100.0
         top_status = None
+        top_error = None
         if ok_pct < 100:
             top_status = (
                 await db.execute(
@@ -78,6 +79,24 @@ async def collect_provider_health(db) -> list[dict]:
                     .limit(1)
                 )
             ).first()
+            # Половина клиентских ошибок (httpx-исключения) пишется без
+            # http_status — статуса нет, но error-текст есть («Client error
+            # '403' ...»). Берём топ-текст как fallback-подсказку.
+            if top_status is None or top_status[0] is None:
+                top_error = (
+                    await db.execute(
+                        select(ApiCallLog.error, func.count(ApiCallLog.id))
+                        .where(
+                            ApiCallLog.created_at >= since,
+                            ApiCallLog.provider == provider,
+                            ApiCallLog.ok.is_(False),
+                            ApiCallLog.error.isnot(None),
+                        )
+                        .group_by(ApiCallLog.error)
+                        .order_by(func.count(ApiCallLog.id).desc())
+                        .limit(1)
+                    )
+                ).first()
         out.append(
             {
                 "provider": provider,
@@ -85,6 +104,7 @@ async def collect_provider_health(db) -> list[dict]:
                 "ok": ok,
                 "ok_pct": round(ok_pct, 1),
                 "top_status": top_status[0] if top_status else None,
+                "top_error": (top_error[0][:60] if top_error and top_error[0] else None),
             }
         )
     return out
@@ -104,7 +124,8 @@ def build_alert_text(bad: list[dict]) -> str:
     lines = ["⚠️ <b>Интеграции деградируют</b> (за последний час):", ""]
     for s in bad:
         label = PROVIDER_LABELS.get(s["provider"], s["provider"])
-        status = f", топ-статус {s['top_status']}" if s["top_status"] else ""
+        hint_src = s.get("top_status") or s.get("top_error")
+        status = f", топ: {hint_src}" if hint_src else ""
         hint = ""
         if s["top_status"] == 402:
             hint = " — <b>нет оплаты на аккаунте!</b>"
