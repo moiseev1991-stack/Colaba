@@ -122,6 +122,29 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
+// Префиксы реальных защищённых страниц (аудит 2026-09-07 P1.3): раньше
+// ЛЮБОЙ неизвестный путь анонима редиректился на /auth/login (307) —
+// «redirect-ловушка» без 404. Теперь guard-редирект только на известных
+// защищённых префиксах; неизвестные пути уходят в честный not-found.tsx.
+const PROTECTED_PREFIXES = [
+  '/app',
+  '/dashboard',
+  '/settings',
+  '/profile',
+  '/organizations',
+  '/payment',
+  '/monitor',
+  '/runs',
+  '/insights',
+  '/admin',
+  '/leads/dashboard',
+  '/tenders',
+];
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
@@ -141,6 +164,12 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return applySecurityHeaders(NextResponse.redirect(url));
+  }
+
+  // Неизвестный путь: не защищён и не публичен из известных → пропускаем,
+  // Next отрендерит 404 (not-found.tsx). Аноним не уводится на логин.
+  if (!isProtectedPath(pathname)) {
+    return applySecurityHeaders(NextResponse.next());
   }
 
   // На непубличных страницах (кабинет, dashboard, settings, etc.) добавляем
