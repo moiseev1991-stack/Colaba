@@ -54,6 +54,7 @@ class GoogleMapsProvider(MapProvider):
         else:
             # Приоритет: БД (если is_enabled и ключ задан) → fallback на env.
             from app.modules.maps.providers_settings_service import load_provider_keys
+
             keys = load_provider_keys("google_maps")
             self._api_key = keys.get("api_key") or (settings.SERPAPI_KEY or "")
         self._delay = rate_limit_delay
@@ -64,9 +65,7 @@ class GoogleMapsProvider(MapProvider):
                 "задайте через UI /app/settings/maps-providers"
             )
 
-    async def _request(
-        self, client: httpx.AsyncClient, params: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _request(self, client: httpx.AsyncClient, params: dict[str, Any]) -> dict[str, Any]:
         """SerpAPI запрос с retry-логикой.
 
         - 401 → MissingAPIKeyError
@@ -88,7 +87,11 @@ class GoogleMapsProvider(MapProvider):
                 last_exc = e
                 logger.warning("serpapi: network error %s (attempt %d)", e, attempt + 1)
                 await log_call(
-                    "serpapi", engine, method="GET", ok=False, error=str(e),
+                    "serpapi",
+                    engine,
+                    method="GET",
+                    ok=False,
+                    error=str(e),
                     latency_ms=int((perf_counter() - t0) * 1000),
                 )
                 await asyncio.sleep(5)
@@ -97,32 +100,64 @@ class GoogleMapsProvider(MapProvider):
             latency_ms = int((perf_counter() - t0) * 1000)
             if status == 401:
                 await log_call(
-                    "serpapi", engine, method="GET", http_status=status,
-                    ok=False, error="auth", latency_ms=latency_ms,
+                    "serpapi",
+                    engine,
+                    method="GET",
+                    http_status=status,
+                    ok=False,
+                    error="auth",
+                    latency_ms=latency_ms,
                 )
-                raise MissingAPIKeyError(
-                    "SerpAPI ответил 401 — ключ невалидный или закончился free tier"
-                )
+                raise MissingAPIKeyError("SerpAPI ответил 401 — ключ невалидный или закончился free tier")
             if status == 429:
-                logger.warning("serpapi: 429 rate-limited (attempt %d), backoff 30s", attempt + 1)
-                await log_call(
-                    "serpapi", engine, method="GET", http_status=429,
-                    ok=False, error="rate_limited", latency_ms=latency_ms,
+                # Аудит 2026-09-07: serpapi ok 40%, 555₽/мес — половина
+                # вызовов в rate_limit. Честь Retry-After от SerpAPI (если
+                # дали, капом 120с), иначе экспонента 30→60→120 вместо
+                # фиксированных 30с — молотить план в лоб бессмысленно.
+                retry_after = 0
+                try:
+                    retry_after = int(resp.headers.get("Retry-After", "0") or 0)
+                except ValueError:
+                    retry_after = 0
+                backoff = min(retry_after if retry_after > 0 else 30 * (2**attempt), 120)
+                logger.warning(
+                    "serpapi: 429 rate-limited (attempt %d), backoff %ds (Retry-After=%s)",
+                    attempt + 1,
+                    backoff,
+                    retry_after or "—",
                 )
-                await asyncio.sleep(30)
+                await log_call(
+                    "serpapi",
+                    engine,
+                    method="GET",
+                    http_status=status,
+                    ok=False,
+                    error="rate_limited",
+                    latency_ms=latency_ms,
+                )
+                await asyncio.sleep(backoff)
                 continue
             if status >= 500:
                 logger.warning("serpapi: %d server error (attempt %d), backoff 5s", status, attempt + 1)
                 await log_call(
-                    "serpapi", engine, method="GET", http_status=status,
-                    ok=False, error="server_error", latency_ms=latency_ms,
+                    "serpapi",
+                    engine,
+                    method="GET",
+                    http_status=status,
+                    ok=False,
+                    error="server_error",
+                    latency_ms=latency_ms,
                 )
                 await asyncio.sleep(5)
                 continue
             resp.raise_for_status()
             await log_call(
-                "serpapi", engine, method="GET", http_status=status,
-                ok=True, latency_ms=latency_ms,
+                "serpapi",
+                engine,
+                method="GET",
+                http_status=status,
+                ok=True,
+                latency_ms=latency_ms,
             )
             return resp.json()
         if last_exc is not None:
@@ -255,9 +290,7 @@ class GoogleMapsProvider(MapProvider):
                     break
                 await asyncio.sleep(self._delay)
 
-    def _review_to_raw(
-        self, item: dict[str, Any], company_external_id: str
-    ) -> ReviewRaw | None:
+    def _review_to_raw(self, item: dict[str, Any], company_external_id: str) -> ReviewRaw | None:
         """Конвертирует SerpAPI review в ReviewRaw."""
         review_id = item.get("review_id") or item.get("link") or item.get("snippet")
         if not review_id:
@@ -287,12 +320,7 @@ class GoogleMapsProvider(MapProvider):
         if isinstance(owner_response, str) and owner_response.strip():
             owner_reply_text = owner_response.strip()[:4000]
         elif isinstance(owner_response, dict):
-            txt = (
-                owner_response.get("snippet")
-                or owner_response.get("description")
-                or owner_response.get("text")
-                or ""
-            )
+            txt = owner_response.get("snippet") or owner_response.get("description") or owner_response.get("text") or ""
             if isinstance(txt, str) and txt.strip():
                 owner_reply_text = txt.strip()[:4000]
 
