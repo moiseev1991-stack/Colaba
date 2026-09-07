@@ -3,7 +3,16 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { User as UserIcon, LogOut, CreditCard, Settings, Activity, Sparkles, Moon, Sun } from 'lucide-react';
+import {
+  User as UserIcon,
+  LogOut,
+  CreditCard,
+  Settings,
+  Activity,
+  Sparkles,
+  Moon,
+  Sun,
+} from 'lucide-react';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
 import { getTheme, setTheme } from '@/lib/storage';
@@ -82,7 +91,8 @@ export function AppHeader() {
     router.push('/auth/login');
   };
 
-  const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
+  const focusClass =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
 
   return (
     <header
@@ -105,7 +115,12 @@ export function AppHeader() {
               glow="var(--shadow-v2-sm)"
             />
           </span>
-          <span className="font-display font-semibold text-[15px] tracking-tight" style={{ color: 'hsl(var(--text))' }}>SpinLid</span>
+          <span
+            className="font-display font-semibold text-[15px] tracking-tight"
+            style={{ color: 'hsl(var(--text))' }}
+          >
+            SpinLid
+          </span>
         </Link>
       </div>
 
@@ -130,7 +145,9 @@ export function AppHeader() {
           type="button"
           onClick={toggleTheme}
           className={`inline-flex h-8 w-8 min-w-0 items-center justify-center rounded-[8px] transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-          aria-label={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+          aria-label={
+            theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'
+          }
           title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
         >
           {theme === 'dark' ? (
@@ -144,7 +161,9 @@ export function AppHeader() {
         <Link
           href="/monitor"
           className={`hidden md:flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass} ${pathname === '/monitor' ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : ''}`}
-          style={{ color: pathname === '/monitor' ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))' }}
+          style={{
+            color: pathname === '/monitor' ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
+          }}
         >
           <Activity className="h-4 w-4" /> Request Monitor
         </Link>
@@ -153,7 +172,10 @@ export function AppHeader() {
         <div className="relative overflow-visible" ref={menuRef}>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((v) => !v);
+            }}
             className={`inline-flex h-8 w-8 min-w-0 items-center justify-center rounded-[8px] hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
             aria-label="Профиль"
             aria-expanded={menuOpen}
@@ -168,12 +190,15 @@ export function AppHeader() {
               style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
             >
               {userEmail && (
-                <div className="px-4 py-2 text-[12px] truncate border-b" style={{ color: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))' }}>
+                <div
+                  className="px-4 py-2 text-[12px] truncate border-b"
+                  style={{ color: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))' }}
+                >
                   {userEmail}
                 </div>
               )}
               <Link
-                href="/profile"
+                href="/app/settings/profile"
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
                 style={{ color: 'hsl(var(--text))' }}
@@ -211,4 +236,3 @@ export function AppHeader() {
     </header>
   );
 }
-
