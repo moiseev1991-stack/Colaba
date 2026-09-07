@@ -22,6 +22,15 @@ const BOT_USERNAME = process.env.NEXT_PUBLIC_RAZBOR_BOT || 'bolshe_lidov_bot';
 // ID счётчика Яндекс.Метрики spinlid.ru (тот же, что в components/YandexMetrika).
 const METRIKA_ID = 110073452;
 
+// Якорное меню по разделам страницы (не навигация SpinLid — только скролл внутри лендинга).
+const NAV: [string, string][] = [
+  ['#quotes', 'Отзывы'],
+  ['#uznaete', 'Узнаёте себя'],
+  ['#solutions', 'Что я делаю'],
+  ['#how', 'Как проходит'],
+  ['#faq', 'Вопросы'],
+];
+
 // Обезличенные цитаты из реальных отзывов на картах (тексты согласованы).
 // Один общий блок-доказательство для всех групп.
 const QUOTES: string[] = [
@@ -125,7 +134,7 @@ const STYLES = `
 .razbor h1,.razbor h2,.razbor h3{font-family:var(--font-display),'Unbounded',system-ui,sans-serif;color:var(--ink);letter-spacing:-.02em}
 .razbor p{margin:0 0 14px}
 .razbor a{color:var(--accent2)}
-.razbor section{padding:64px 0;position:relative}
+.razbor section{padding:64px 0;position:relative;scroll-margin-top:70px}
 .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 
 /* REVEAL ON SCROLL */
@@ -142,6 +151,14 @@ const STYLES = `
 .rz-head__tg{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 17px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--card-brd);color:var(--ink);text-decoration:none;font-weight:650;font-size:15px;transition:background .18s,border-color .18s}
 .rz-head__tg:hover{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.45);color:var(--ink)}
 .rz-head__tg svg{color:#5eead4}
+.rz-nav{display:flex;align-items:center;gap:20px;margin:0 auto 0 14px}
+.razbor .rz-nav a{color:var(--body);text-decoration:none;font-size:14.5px;font-weight:600;white-space:nowrap;transition:color .15s}
+.razbor .rz-nav a:hover{color:var(--ink)}
+.rz-head__right{display:flex;align-items:center;gap:10px}
+.rz-burger{display:none;width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--card-brd);color:var(--ink);cursor:pointer;align-items:center;justify-content:center}
+.rz-menu{display:flex;flex-direction:column;padding:4px 16px 16px}
+.razbor .rz-menu a{color:var(--ink);text-decoration:none;padding:13px 4px;font-size:16px;font-weight:600;border-bottom:1px solid var(--line)}
+.razbor .rz-menu .rz-head__tg{margin-top:14px;justify-content:center;border-bottom:none;padding:0 17px}
 
 /* BUTTONS */
 .rz-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:56px;padding:0 26px;border-radius:14px;font-weight:700;font-size:17px;text-decoration:none;cursor:pointer;border:1px solid transparent;transition:transform .18s ease,box-shadow .18s ease,background .18s ease;font-family:var(--font-body),'Manrope',sans-serif;white-space:nowrap}
@@ -151,6 +168,10 @@ const STYLES = `
 .rz-btn--ghost{background:rgba(255,255,255,.045);color:var(--ink);border-color:var(--card-brd)}
 .rz-btn--ghost:hover{transform:translateY(-2px);background:rgba(255,255,255,.09);border-color:rgba(45,212,191,.45)}
 .rz-btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none}
+/* ссылки-кнопки: перебиваем .razbor a (cyan), иначе текст primary сливается с градиентом */
+.razbor a.rz-btn--primary{color:#04120c}
+.razbor a.rz-btn--ghost{color:var(--ink)}
+.razbor a.rz-head__tg{color:var(--ink)}
 
 /* HERO */
 .rz-hero{position:relative;overflow:hidden;min-height:85vh;display:flex;align-items:center;padding:56px 0 72px}
@@ -228,14 +249,6 @@ const STYLES = `
 .rz-step:not(:last-child)::after{content:"";position:absolute;right:-16px;top:46px;width:12px;height:12px;border-top:2px solid rgba(45,212,191,.55);border-right:2px solid rgba(45,212,191,.55);transform:rotate(45deg)}
 .rz-note{color:var(--muted);font-size:15px;margin:22px 0 0;text-align:center}
 
-/* ABOUT / КТО Я */
-.rz-about{display:flex;gap:24px;align-items:flex-start;background:var(--card);border:1px solid var(--card-brd);border-radius:22px;padding:30px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 16px 44px rgba(0,0,0,.28)}
-.rz-about__ava{width:88px;height:88px;flex:0 0 88px;border-radius:22px;background:var(--grad);color:#04120c;display:flex;align-items:center;justify-content:center;font-family:var(--font-display),sans-serif;font-weight:800;font-size:40px;box-shadow:0 10px 28px rgba(16,185,129,.34)}
-.rz-about__body h2{margin:0 0 12px;font-size:clamp(1.4rem,2.6vw,2rem)}
-.rz-about__body p{color:var(--body);font-size:16px;line-height:1.55;margin:0 0 12px}
-.rz-about__body p:last-child{margin-bottom:0}
-@media (max-width:640px){.rz-about{flex-direction:column;gap:16px;padding:22px 18px}.rz-about__ava{width:68px;height:68px;flex:0 0 68px;font-size:30px;border-radius:18px}}
-
 /* FAQ */
 .rz-faq{display:grid;gap:12px;max-width:var(--maxw-narrow);margin:0 auto}
 .rz-faq details{background:var(--card);border:1px solid var(--card-brd);border-radius:14px;overflow:hidden;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -284,6 +297,9 @@ const STYLES = `
   .rz-step:not(:last-child)::after{display:none}
   .rz-steps{grid-template-columns:1fr;gap:14px}
   .rz-qgrid{grid-template-columns:1fr}
+  .rz-nav{display:none}
+  .rz-head__in .rz-head__tg{display:none}
+  .rz-burger{display:inline-flex}
 }
 @media (max-width:640px){
   .razbor{font-size:16px}
@@ -310,6 +326,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // company_id (?c=) и utm_source (?utm_source=) из URL — читаем на клиенте.
   const [companyId, setCompanyId] = useState<number | null>(null);
@@ -410,21 +427,58 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson(config)) }} />
 
-      {/* §0 — своя минимальная шапка, без навигации SpinLid */}
+      {/* §0 — своя минимальная шапка + якорное меню по разделам (без навигации SpinLid) */}
       <header className="rz-head">
         <div className="rz-head__in">
-          <a href="#top" className="rz-brand" aria-label="В начало">
+          <a href="#top" className="rz-brand" aria-label="В начало" onClick={() => setMenuOpen(false)}>
             <span className="rz-brand__mark">Д</span>
             <span>
               <span className="rz-brand__name">Дмитрий</span>
               <span className="rz-brand__sub">разбор по вашим отзывам</span>
             </span>
           </a>
-          <a className="rz-head__tg" href={tgUrl} rel="noopener" target="_blank">
-            {TgIcon}
-            Написать в Telegram
-          </a>
+          <nav className="rz-nav" aria-label="Разделы">
+            {NAV.map(([href, label]) => (
+              <a key={href} href={href}>
+                {label}
+              </a>
+            ))}
+          </nav>
+          <div className="rz-head__right">
+            <a className="rz-head__tg" href={tgUrl} rel="noopener" target="_blank">
+              {TgIcon}
+              Написать в Telegram
+            </a>
+            <button
+              type="button"
+              className="rz-burger"
+              aria-label="Меню разделов"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                {menuOpen ? (
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                ) : (
+                  <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+        {menuOpen && (
+          <nav className="rz-menu" aria-label="Разделы">
+            {NAV.map(([href, label]) => (
+              <a key={href} href={href} onClick={() => setMenuOpen(false)}>
+                {label}
+              </a>
+            ))}
+            <a className="rz-head__tg" href={tgUrl} rel="noopener" target="_blank" onClick={() => setMenuOpen(false)}>
+              {TgIcon}
+              Написать в Telegram
+            </a>
+          </nav>
+        )}
       </header>
 
       {/* §1 — HERO */}
@@ -573,7 +627,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
       </section>
 
       {/* §5 — ЧТО Я ДЕЛАЮ */}
-      <section>
+      <section id="solutions">
         <div className="wrap">
           <h2 className="rz-h2 reveal">Что я делаю</h2>
           <p className="rz-sub2 reveal">Показываю, чем закрыть найденные потери — по шагам и по-простому.</p>
@@ -593,7 +647,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
       </section>
 
       {/* §6 — КАК ПРОХОДИТ РАЗБОР */}
-      <section>
+      <section id="how">
         <div className="wrap">
           <h2 className="rz-h2 reveal">Как проходит разбор</h2>
           <div className="rz-steps">
@@ -614,28 +668,8 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
         </div>
       </section>
 
-      {/* КТО Я */}
-      <section id="about">
-        <div className="wrap wrap--narrow">
-          <div className="rz-about reveal">
-            <div className="rz-about__ava" aria-hidden>Д</div>
-            <div className="rz-about__body">
-              <h2>Кто я</h2>
-              <p>
-                Меня зовут Дмитрий. Я помогаю малому бизнесу не терять клиентов на приёме обращений —
-                звонках, заявках и записи.
-              </p>
-              <p>
-                Разбор делаю сам: читаю отзывы вашей компании и показываю, где именно уходят клиенты.
-                Связь напрямую со мной — без менеджеров и колл-центра.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* FAQ */}
-      <section>
+      <section id="faq">
         <div className="wrap wrap--narrow">
           <h2 className="rz-h2 reveal rz-center">Частые вопросы</h2>
           <div className="rz-faq">
