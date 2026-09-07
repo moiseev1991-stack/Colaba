@@ -12,12 +12,14 @@ from app.core.database import Base
 
 class DeploymentEnvironment(str, Enum):
     """Deployment environment."""
+
     STAGING = "staging"
     PRODUCTION = "production"
 
 
 class DeploymentStatus(str, Enum):
     """Deployment status."""
+
     SUCCESS = "success"
     FAILED = "failed"
     ROLLED_BACK = "rolled_back"
@@ -25,23 +27,28 @@ class DeploymentStatus(str, Enum):
 
 class Deployment(Base):
     """Deployment history model."""
+
     __tablename__ = "deployments"
 
     id = Column(Integer, primary_key=True, index=True)
     version = Column(String(50), nullable=False)  # e.g., "1.2.3"
     git_sha = Column(String(50), nullable=False)  # e.g., "abc1234"
     environment = Column(
-        SQLEnum(DeploymentEnvironment),
+        # values_callable обязателен: без него SQLAlchemy биндит ИМЕНА
+        # ("PRODUCTION"), а PG-native enum хранит значения ("production") →
+        # invalid input value for enum deploymentenvironment (500 на
+        # /deployments/latest с августа; аудит 2026-09-07).
+        SQLEnum(DeploymentEnvironment, values_callable=lambda e: [m.value for m in e]),
         default=DeploymentEnvironment.PRODUCTION,
-        nullable=False
+        nullable=False,
     )
     changelog = Column(Text, nullable=True)  # Generated changelog
     deployed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     deployed_by = Column(String(255), nullable=True)  # GitHub actor
     status = Column(
-        SQLEnum(DeploymentStatus),
+        SQLEnum(DeploymentStatus, values_callable=lambda e: [m.value for m in e]),
         default=DeploymentStatus.SUCCESS,
-        nullable=False
+        nullable=False,
     )
 
     def __repr__(self):

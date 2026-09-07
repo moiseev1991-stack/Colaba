@@ -24,12 +24,11 @@ async def list_deployments(
     environment: Optional[str] = Query(None, description="Filter by environment"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> DeploymentList:
-    """Get list of deployments."""
-    deployments, total = await service.get_deployments(
-        db, environment=environment, limit=limit, offset=offset
-    )
+    """Get list of deployments (auth). Аудит 2026-09-07: было без auth."""
+    deployments, total = await service.get_deployments(db, environment=environment, limit=limit, offset=offset)
     return DeploymentList(
         items=[DeploymentResponse.model_validate(d) for d in deployments],
         total=total,
@@ -39,9 +38,10 @@ async def list_deployments(
 @router.get("/latest", response_model=DeploymentResponse)
 async def get_latest_deployment(
     environment: str = Query("production", description="Environment to check"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> DeploymentResponse:
-    """Get the latest deployment for an environment."""
+    """Get the latest deployment for an environment (auth)."""
     deployment = await service.get_latest_deployment(db, environment)
     if not deployment:
         raise HTTPException(
@@ -65,9 +65,10 @@ async def create_deployment(
 @router.get("/{deployment_id}", response_model=DeploymentResponse)
 async def get_deployment(
     deployment_id: int,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> DeploymentResponse:
-    """Get a specific deployment by ID."""
+    """Get a specific deployment by ID (auth)."""
     deployment = await db.get(Deployment, deployment_id)
     if not deployment:
         raise HTTPException(
