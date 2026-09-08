@@ -99,7 +99,7 @@ async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, t
     # http_status и re-raise (поведение caller'ов не меняем).
     try:
         r = await c.chat.completions.create(
-            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature
+            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, extra_body=extra_body
         )
     except Exception as e:
         status_code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "status_code", None)
@@ -307,10 +307,22 @@ async def _chat_openai_compatible(
     if not base_url and _pt == "xai":
         base_url = "https://api.x.ai/v1"
     if not base_url and _pt == "zai":
-        # Z.ai (Zhipu GLM): OpenAI-совместимый эндпоинт, docs.z.ai
-        base_url = "https://api.z.ai/api/paas/v4"
+        # Z.ai (Zhipu GLM). Дефолт — Coding-эндпоинт: у владельца подписка
+        # GLM Coding Plan, а paas/v4 (pay-as-you-go) подписку не видит →
+        # 429 '1113 Insufficient balance'. Coding Plan поддерживает
+        # OpenAI-протокол: docs.z.ai/devpack/tool/others.
+        base_url = "https://api.z.ai/api/coding/paas/v4"
     if not base_url and _pt == "moonshot":
         base_url = "https://api.moonshot.ai/v1"
+    # GLM-4.5+/5.x — reasoning-модели: без отключения thinking съедают
+    # max_tokens на размышления (живой тест: 259 токенов reasoning на вопрос
+    # в одно слово) и content пуст при малых лимитах (sentiment ~200 токенов).
+    # Наши задачи (sentiment/naming/КП) reasoning не требуют. Override —
+    # config.thinking = "enabled" у ассистента.
+    extra_body = None
+    if _pt == "zai":
+        thinking = cfg.get("thinking") or "disabled"
+        extra_body = {"thinking": {"type": str(thinking)}}
     c = AsyncOpenAI(api_key=api_key, base_url=base_url)
     # Инцидент 08.09 (продолжение #222): _chat_openai закрыли, а этот путь
     # — самый используемый (groq/deepseek/openrouter/zai/moonshot/other) —
