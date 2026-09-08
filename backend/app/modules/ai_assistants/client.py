@@ -99,7 +99,7 @@ async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, t
     # http_status и re-raise (поведение caller'ов не меняем).
     try:
         r = await c.chat.completions.create(
-            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, extra_body=extra_body
+            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature
         )
     except Exception as e:
         status_code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "status_code", None)
@@ -330,7 +330,7 @@ async def _chat_openai_compatible(
     # живым тестом GLM-5.3-Flash: zai 1113 balance — 0 строк в логе.
     try:
         r = await c.chat.completions.create(
-            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature
+            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, extra_body=extra_body
         )
     except Exception as e:
         status_code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "status_code", None)
