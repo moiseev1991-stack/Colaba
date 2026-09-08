@@ -76,5 +76,8 @@ def test_client_default_base_urls():
     from app.modules.ai_assistants import client
 
     src = inspect.getsource(client._chat_openai_compatible)
-    assert "https://api.z.ai/api/paas/v4" in src
+    # Coding-эндпоинт: подписка GLM Coding Plan (fix после живого A/B на
+    # проде: paas/v4 подписку не видит → 429 1113).
+    assert "https://api.z.ai/api/coding/paas/v4" in src
     assert "https://api.moonshot.ai/v1" in src
+    assert 'extra_body={"thinking"' in src or "thinking" in src
