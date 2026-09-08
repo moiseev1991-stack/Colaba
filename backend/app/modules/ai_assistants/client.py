@@ -50,7 +50,7 @@ async def chat(
         return await _chat_anthropic(model, cfg, messages, max_tokens, temperature)
     if pt == "google":
         return await _chat_google(model, cfg, messages, max_tokens, temperature)
-    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral"):
+    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral", "zai", "moonshot"):
         return await _chat_openai_compatible(pt, model, cfg, messages, max_tokens, temperature)
     if pt == "azure_openai":
         return await _chat_azure_openai(cfg, model, messages, max_tokens, temperature)
@@ -76,7 +76,7 @@ async def vision(assistant_id: int, image_b64: str, prompt: str, db: AsyncSessio
         return await _vision_anthropic(model, cfg, image_b64, prompt)
     if pt == "google":
         return await _vision_google(model, cfg, image_b64, prompt)
-    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral", "other"):
+    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral", "zai", "moonshot", "other"):
         return await _vision_openai_compatible(model, cfg, image_b64, prompt)
     if pt == "azure_openai":
         return await _vision_azure_openai(cfg, model, image_b64, prompt)
@@ -89,7 +89,7 @@ async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, t
 
     from app.core.api_tracker import log_call
 
-    api_key = (cfg.get("api_key") or settings.OPENAI_API_KEY or "")
+    api_key = cfg.get("api_key") or settings.OPENAI_API_KEY or ""
     base_url = cfg.get("base_url") or (settings.OPENAI_BASE_URL or None)
     org = cfg.get("organization") or None
     c = AsyncOpenAI(api_key=api_key, base_url=base_url, organization=org)
@@ -97,7 +97,9 @@ async def _chat_openai(model: str, cfg: dict, messages: list, max_tokens: int, t
     # r.usage: CompletionUsage(prompt_tokens, completion_tokens, total_tokens).
     u = getattr(r, "usage", None)
     await log_call(
-        "openai", model or "openai", method="CHAT",
+        "openai",
+        model or "openai",
+        method="CHAT",
         prompt_tokens=getattr(u, "prompt_tokens", None),
         completion_tokens=getattr(u, "completion_tokens", None),
         model=model,
@@ -110,7 +112,7 @@ async def _vision_openai(model: str, cfg: dict, image_b64: str, prompt: str) -> 
 
     from app.core.api_tracker import log_call
 
-    api_key = (cfg.get("api_key") or settings.OPENAI_API_KEY or "")
+    api_key = cfg.get("api_key") or settings.OPENAI_API_KEY or ""
     base_url = cfg.get("base_url") or (settings.OPENAI_BASE_URL or None)
     org = cfg.get("organization") or None
     c = AsyncOpenAI(api_key=api_key, base_url=base_url, organization=org)
@@ -126,7 +128,9 @@ async def _vision_openai(model: str, cfg: dict, image_b64: str, prompt: str) -> 
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=512)
     u = getattr(r, "usage", None)
     await log_call(
-        "openai", model or "openai-vision", method="VISION",
+        "openai",
+        model or "openai-vision",
+        method="VISION",
         prompt_tokens=getattr(u, "prompt_tokens", None),
         completion_tokens=getattr(u, "completion_tokens", None),
         model=model,
@@ -144,13 +148,19 @@ async def _chat_ollama(model: str, cfg: dict, messages: list, max_tokens: int, t
     async with httpx.AsyncClient(timeout=120.0) as client:
         r = await client.post(
             f"{base}/api/chat",
-            json={"model": model, "messages": messages, "options": {"num_predict": max_tokens, "temperature": temperature}},
+            json={
+                "model": model,
+                "messages": messages,
+                "options": {"num_predict": max_tokens, "temperature": temperature},
+            },
         )
         r.raise_for_status()
         data = r.json()
     # Ollama: prompt_eval_count / eval_count (output).
     await log_call(
-        "ollama", model or "ollama", method="CHAT",
+        "ollama",
+        model or "ollama",
+        method="CHAT",
         prompt_tokens=data.get("prompt_eval_count"),
         completion_tokens=data.get("eval_count"),
         model=model,
@@ -183,7 +193,7 @@ async def _chat_anthropic(model: str, cfg: dict, messages: list, max_tokens: int
     # Симметрия с OpenAI-веткой: при пустом config.api_key падаем на env
     # (ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL). Иначе Anthropic SDK кидает
     # «Could not resolve authentication method» — это ронит KP /generate 422.
-    api_key = (cfg.get("api_key") or settings.ANTHROPIC_API_KEY or "")
+    api_key = cfg.get("api_key") or settings.ANTHROPIC_API_KEY or ""
     base_url = cfg.get("base_url") or (settings.ANTHROPIC_BASE_URL or None)
     c = AsyncAnthropic(api_key=api_key, base_url=base_url)
     # Anthropic: system + user/assistant. We map messages to the last user and prior assistant.
@@ -209,7 +219,9 @@ async def _chat_anthropic(model: str, cfg: dict, messages: list, max_tokens: int
     from app.core.api_tracker import log_call
 
     await log_call(
-        "anthropic", model or "anthropic", method="CHAT",
+        "anthropic",
+        model or "anthropic",
+        method="CHAT",
         prompt_tokens=getattr(u, "input_tokens", None),
         completion_tokens=getattr(u, "output_tokens", None),
         model=model,
@@ -220,7 +232,7 @@ async def _chat_anthropic(model: str, cfg: dict, messages: list, max_tokens: int
 async def _vision_anthropic(model: str, cfg: dict, image_b64: str, prompt: str) -> str:
     from anthropic import AsyncAnthropic
 
-    api_key = (cfg.get("api_key") or settings.ANTHROPIC_API_KEY or "")
+    api_key = cfg.get("api_key") or settings.ANTHROPIC_API_KEY or ""
     base_url = cfg.get("base_url") or (settings.ANTHROPIC_BASE_URL or None)
     c = AsyncAnthropic(api_key=api_key, base_url=base_url)
     content = [
@@ -241,7 +253,9 @@ async def _chat_google(model: str, cfg: dict, messages: list, max_tokens: int, t
     last_user = next((m["content"] for m in reversed(messages) if (m.get("role") or "").lower() == "user"), "")
     if isinstance(last_user, list):
         last_user = " ".join(str(x.get("text", x)) if isinstance(x, dict) else str(x) for x in last_user)
-    r = await m.generate_content_async(last_user, generation_config=genai.types.GenerationConfig(max_output_tokens=max_tokens, temperature=temperature))
+    r = await m.generate_content_async(
+        last_user, generation_config=genai.types.GenerationConfig(max_output_tokens=max_tokens, temperature=temperature)
+    )
     return (r.text or "").strip()
 
 
@@ -273,13 +287,20 @@ async def _chat_openai_compatible(
         base_url = "https://api.deepseek.com"
     if not base_url and _pt == "xai":
         base_url = "https://api.x.ai/v1"
+    if not base_url and _pt == "zai":
+        # Z.ai (Zhipu GLM): OpenAI-совместимый эндпоинт, docs.z.ai
+        base_url = "https://api.z.ai/api/paas/v4"
+    if not base_url and _pt == "moonshot":
+        base_url = "https://api.moonshot.ai/v1"
     c = AsyncOpenAI(api_key=api_key, base_url=base_url)
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
     u = getattr(r, "usage", None)
     from app.core.api_tracker import log_call
 
     await log_call(
-        _pt, model or _pt, method="CHAT",
+        _pt,
+        model or _pt,
+        method="CHAT",
         prompt_tokens=getattr(u, "prompt_tokens", None),
         completion_tokens=getattr(u, "completion_tokens", None),
         model=model,

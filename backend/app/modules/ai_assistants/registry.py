@@ -57,7 +57,9 @@ AI_ASSISTANT_REGISTRY: list[dict] = [
         "name": "OpenRouter",
         "config_keys": ["api_key", "base_url"],
         "model_examples": ["openai/gpt-4o", "anthropic/claude-3.5-sonnet"],
-        "default_vision": lambda m: "gpt-4o" in (m or "").lower() or "claude-3" in (m or "").lower() or "vision" in (m or "").lower(),
+        "default_vision": lambda m: (
+            "gpt-4o" in (m or "").lower() or "claude-3" in (m or "").lower() or "vision" in (m or "").lower()
+        ),
     },
     {
         "provider_type": "azure_openai",
@@ -78,6 +80,25 @@ AI_ASSISTANT_REGISTRY: list[dict] = [
         "name": "DeepSeek",
         "config_keys": ["api_key", "base_url"],
         "model_examples": ["deepseek-chat", "deepseek-reasoner"],
+        "default_vision": lambda m: "vision" in (m or "").lower(),
+    },
+    {
+        # Z.ai (Zhipu AI, GLM-модели). OpenAI-совместимый API:
+        # https://docs.z.ai/guides/develop/openai/python — работать должен
+        # через _chat_openai_compatible. Base URL дефолт — в client.py.
+        "provider_type": "zai",
+        "name": "Z.ai (GLM)",
+        "config_keys": ["api_key", "base_url"],
+        "model_examples": ["glm-4.6", "glm-4.5", "glm-4.5-air", "glm-4.6v"],
+        "default_vision": lambda m: (m or "").endswith("v") or "-v" in (m or "") or "vision" in (m or "").lower(),
+    },
+    {
+        # Moonshot Kimi — РФ-доступный OpenAI-совместимый провайдер.
+        # base_url дефолт — в client.py.
+        "provider_type": "moonshot",
+        "name": "Moonshot (Kimi)",
+        "config_keys": ["api_key", "base_url"],
+        "model_examples": ["kimi-k2-0905-preview", "moonshot-v1-128k"],
         "default_vision": lambda m: "vision" in (m or "").lower(),
     },
     {
@@ -106,9 +127,27 @@ def get_settings_schema(provider_type: str) -> list[dict]:
     schemas = {
         "api_key": {"key": "api_key", "label": "API Key", "type": "string", "required": True, "secret": True},
         "base_url": {"key": "base_url", "label": "Base URL", "type": "string", "required": False, "secret": False},
-        "organization": {"key": "organization", "label": "Organization", "type": "string", "required": False, "secret": False},
-        "api_version": {"key": "api_version", "label": "API Version", "type": "string", "required": False, "secret": False},
-        "deployment_name": {"key": "deployment_name", "label": "Deployment Name", "type": "string", "required": True, "secret": False},
+        "organization": {
+            "key": "organization",
+            "label": "Organization",
+            "type": "string",
+            "required": False,
+            "secret": False,
+        },
+        "api_version": {
+            "key": "api_version",
+            "label": "API Version",
+            "type": "string",
+            "required": False,
+            "secret": False,
+        },
+        "deployment_name": {
+            "key": "deployment_name",
+            "label": "Deployment Name",
+            "type": "string",
+            "required": True,
+            "secret": False,
+        },
         "model": {"key": "model", "label": "Model", "type": "string", "required": False, "secret": False},
     }
     out = []
