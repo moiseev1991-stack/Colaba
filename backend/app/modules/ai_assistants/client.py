@@ -312,7 +312,31 @@ async def _chat_openai_compatible(
     if not base_url and _pt == "moonshot":
         base_url = "https://api.moonshot.ai/v1"
     c = AsyncOpenAI(api_key=api_key, base_url=base_url)
-    r = await c.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
+    # Инцидент 08.09 (продолжение #222): _chat_openai закрыли, а этот путь
+    # — самый используемый (groq/deepseek/openrouter/zai/moonshot/other) —
+    # оставался слепым: 429/402 улетали без записи в api_call_log. Поймано
+    # живым тестом GLM-5.3-Flash: zai 1113 balance — 0 строк в логе.
+    try:
+        r = await c.chat.completions.create(
+            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature
+        )
+    except Exception as e:
+        status_code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "status_code", None)
+        try:
+            from app.core.api_tracker import log_call as _lc
+
+            await _lc(
+                _pt,
+                model or _pt,
+                method="CHAT",
+                http_status=status_code,
+                ok=False,
+                error=f"{type(e).__name__}: {str(e)[:120]}",
+                model=model,
+            )
+        except Exception:
+            pass  # логирование провала не должно глушить исходную ошибку
+        raise
     u = getattr(r, "usage", None)
     from app.core.api_tracker import log_call
 
