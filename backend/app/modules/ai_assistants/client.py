@@ -50,7 +50,7 @@ async def chat(
         return await _chat_anthropic(model, cfg, messages, max_tokens, temperature)
     if pt == "google":
         return await _chat_google(model, cfg, messages, max_tokens, temperature)
-    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral"):
+    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral", "zai", "moonshot"):
         return await _chat_openai_compatible(pt, model, cfg, messages, max_tokens, temperature)
     if pt == "azure_openai":
         return await _chat_azure_openai(cfg, model, messages, max_tokens, temperature)
@@ -76,7 +76,7 @@ async def vision(assistant_id: int, image_b64: str, prompt: str, db: AsyncSessio
         return await _vision_anthropic(model, cfg, image_b64, prompt)
     if pt == "google":
         return await _vision_google(model, cfg, image_b64, prompt)
-    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral", "other"):
+    if pt in ("groq", "together", "openrouter", "deepseek", "xai", "mistral", "zai", "moonshot", "other"):
         return await _vision_openai_compatible(model, cfg, image_b64, prompt)
     if pt == "azure_openai":
         return await _vision_azure_openai(cfg, model, image_b64, prompt)
@@ -306,6 +306,11 @@ async def _chat_openai_compatible(
         base_url = "https://api.deepseek.com"
     if not base_url and _pt == "xai":
         base_url = "https://api.x.ai/v1"
+    if not base_url and _pt == "zai":
+        # Z.ai (Zhipu GLM): OpenAI-совместимый эндпоинт, docs.z.ai
+        base_url = "https://api.z.ai/api/paas/v4"
+    if not base_url and _pt == "moonshot":
+        base_url = "https://api.moonshot.ai/v1"
     c = AsyncOpenAI(api_key=api_key, base_url=base_url)
     r = await c.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, temperature=temperature)
     u = getattr(r, "usage", None)
