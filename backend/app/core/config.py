@@ -164,7 +164,9 @@ class Settings(BaseSettings):
     # Пусто → шлём напрямую (локалка/дев).
     TELEGRAM_PROXY: str = Field(default="", description="Proxy URL for Telegram Bot API (socks5://user:pass@host:port)")
     # Запасные прокси — comma-separated; перебор при ConnectError/timeout основного.
-    TELEGRAM_PROXY_FALLBACK: str = Field(default="", description="Comma-separated fallback proxy URLs for Telegram Bot API")
+    TELEGRAM_PROXY_FALLBACK: str = Field(
+        default="", description="Comma-separated fallback proxy URLs for Telegram Bot API"
+    )
 
     # Приём заявок (бот + форма лендинга spinlid-team.ru) → POST /api/v1/inbound-leads.
     INBOUND_SECRET: str = Field(
@@ -261,6 +263,11 @@ class Settings(BaseSettings):
 
     # OAuth Frontend URL (for redirects)
     OAUTH_FRONTEND_URL: str = Field(default="http://localhost:4000", description="Frontend URL for OAuth callbacks")
+
+    # Прогрев доменов: дата старта плана (ISO, YYYY-MM-DD). Пусто = исторический
+    # дефолт 2026-08-10. 09.09.2026 перезапущен на 2026-09-05 («день 5»)
+    # после 3-недельного простоя — см. warmup_service.
+    WARMUP_START_DATE: str = Field(default="", description="ISO-дата старта warmup-плана")
 
     # === Maps module ===
     TWOGIS_API_KEY: str = Field(default="", description="2GIS Catalog API key (dev.2gis.com, free 1000 req/day)")
