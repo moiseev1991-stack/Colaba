@@ -776,13 +776,16 @@ async def embed_texts(texts: list[str]) -> list[list[float]] | None:
     """
     if not texts:
         return []
-    api_key = settings.OPENAI_API_KEY
+    # 09.09: embeddings можно направить на отдельный провайдер
+    # (EMBEDDINGS_API_KEY/BASE_URL/MODEL), по умолчанию — OPENAI_* (ProxyAPI).
+    # z.ai Coding Plan embedding-модели не отдаёт (1211 Unknown Model).
+    api_key = settings.EMBEDDINGS_API_KEY or settings.OPENAI_API_KEY
     if not api_key:
         logger.info("embed_texts: OPENAI_API_KEY пуст — пайплайн без embeddings")
         return None
 
-    model = settings.REVIEWS_AI_EMBEDDING_MODEL or "text-embedding-3-small"
-    base_url = (settings.OPENAI_BASE_URL or "https://api.openai.com/v1").rstrip("/")
+    model = settings.EMBEDDINGS_MODEL or settings.REVIEWS_AI_EMBEDDING_MODEL or "text-embedding-3-small"
+    base_url = (settings.EMBEDDINGS_BASE_URL or settings.OPENAI_BASE_URL or "https://api.openai.com/v1").rstrip("/")
 
     import asyncio
 
