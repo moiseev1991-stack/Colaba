@@ -62,6 +62,7 @@ services:
       # Дефолт api.openai.com блокируется для RU IP; на проде ставим в .env
       # https://api.proxyapi.ru/openai/v1
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      WARMUP_START_DATE: ${WARMUP_START_DATE:-}
       REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
       REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
       # Блок 2 ТЗ 2026-06-02: юр.данные через DaData (free tier 10k/день).
@@ -150,6 +151,7 @@ services:
       # LLM для reviews_ai (sentiment + naming + embeddings) — через ProxyAPI.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      WARMUP_START_DATE: ${WARMUP_START_DATE:-}
       REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
       REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
       # Блок 2 ТЗ 2026-06-02: юр.данные через DaData (free tier 10k/день).
@@ -203,6 +205,7 @@ services:
       # LLM для reviews_ai в search-worker (sentiment может дёргаться отсюда).
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      WARMUP_START_DATE: ${WARMUP_START_DATE:-}
       # Прокси для HTML-парсеров (Yandex Maps search_companies + fetch_reviews).
       # ВАЖНО: без этих переменных celery-worker-search работает с USE_PROXY=False
       # (дефолт config.py) → Яндекс банит server-IP → 0 компаний и 0 отзывов.
@@ -261,6 +264,7 @@ services:
       VK_SERVICE_TOKEN: ${VK_SERVICE_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      WARMUP_START_DATE: ${WARMUP_START_DATE:-}
       USE_PROXY: ${USE_PROXY:-False}
       PROXY_URL: ${PROXY_URL:-}
       PROXY_LIST: ${PROXY_LIST:-}
