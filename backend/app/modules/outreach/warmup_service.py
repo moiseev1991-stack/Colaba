@@ -305,28 +305,49 @@ async def run_daily_warmup() -> dict:
         await db.flush()
 
         sent_count = 0
+
+        # 09.09: параллельная генерация КП. Раньше: цикл генерил каждое КП
+        # последовательно перед отправкой (~100с/КП на GLM) — 50 КП = 80 мин,
+        # soft time limit убивал прогон посередине. Теперь генерация идёт
+        # пулом (семафор KP_GEN_CONCURRENCY=3) ДО отправки: 50 КП ≈ 30 мин.
+        # Отправка остаётся последовательной — щадим провайдеров/домены.
+        gen_sem = asyncio.Semaphore(3)
+
+        async def _gen(p):
+            async with gen_sem:
+                try:
+                    return await generate_kp(
+                        db,
+                        user_id=USER_ID,
+                        company_id=p["company_id"],
+                        template_key=p["legend"],
+                        tone="neutral",
+                    )
+                except (KpGenerationError, Exception) as e:
+                    msg = getattr(e, "message", str(e))[:80]
+                    logger.warning(
+                        "Warmup: KP generation failed for company %s (%s): %s",
+                        p["company_id"],
+                        p["legend"],
+                        msg,
+                    )
+                    return None
+
+        gen_results = await asyncio.gather(*[_gen(p) for p in plan])
+        logger.info(
+            "Warmup day %d: generated %d/%d KPs in parallel",
+            day_number,
+            sum(1 for r in gen_results if r),
+            len(plan),
+        )
+
         for i, p in enumerate(plan):
-            # 1. Генерация КП под легенду.
-            try:
-                result = await generate_kp(
-                    db,
-                    user_id=USER_ID,
-                    company_id=p["company_id"],
-                    template_key=p["legend"],
-                    tone="neutral",
-                )
-                draft = result.draft_row
-                subject = draft.subject
-                body = draft.body
-            except (KpGenerationError, Exception) as e:
-                msg = getattr(e, "message", str(e))[:80]
-                logger.warning(
-                    "Warmup: KP generation failed for company %s (%s): %s",
-                    p["company_id"],
-                    p["legend"],
-                    msg,
-                )
+            result = gen_results[i]
+            if result is None:
                 continue
+            draft = result.draft_row
+            subject = draft.subject
+            body = draft.body
 
             # 2. from_email по каналу, from_name = бренд легенды.
             from_email = tw.from_email if p["provider"] == "timeweb" else pb.from_email
