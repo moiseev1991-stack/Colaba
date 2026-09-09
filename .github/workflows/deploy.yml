@@ -81,7 +81,10 @@ jobs:
     name: Deploy on server (self-hosted runner)
     needs: build_images
     runs-on: self-hosted
-    timeout-minutes: 10  # Fail if no runner picks up job within 10 min
+    # 09.09: пулл образов с GHCR на self-hosted runner занял 16 мин —
+    # job умирал по 10-мин таймауту прямо на пулле (deploy #230 дважды).
+    # 25 мин: 10 на ожидание раннера + 15 на медленный pull.
+    timeout-minutes: 25
     permissions:
       contents: read
       packages: read
