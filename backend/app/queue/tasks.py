@@ -52,7 +52,11 @@ async def _process_email_replies_async() -> int:
         return await process_email_replies(db)
 
 
-@celery_app.task(name="daily_warmup_task")
+# 09.09: GLM-генерация ~100с/КП (reasoning-модель медленнее gpt-4o-mini) —
+# стандартный soft limit 25 мин убил прогон дня 5 на 15-м письме из 50.
+# 2 часа хватает на ~70 КП; при квоте выше — оставшиеся пойдут следующим
+# днём (дедуп по email_logs не даёт дублей). TODO: параллельная генерация.
+@celery_app.task(name="daily_warmup_task", soft_time_limit=7200, time_limit=7500)
 def daily_warmup_task():
     """Автоматический дневной прогрев доменов через рассылку КП.
 
