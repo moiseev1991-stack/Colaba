@@ -29,8 +29,23 @@ from app.modules.outreach.kp_service import generate_kp, KpGenerationError
 logger = logging.getLogger(__name__)
 
 # Дата старта прогрева. От неё считается номер дня и квота.
-# 2026-08-10 — первый день (стартовая кампания из 6 КП).
-WARMUP_START_DATE = datetime(2026, 8, 10, tzinfo=timezone.utc)
+# Настраивается через env WARMUP_START_DATE (ISO, YYYY-MM-DD) — на случай
+# перезапуска плана после паузы: 09.09.2026 прогрев перезапущен с «дня 5»
+# (2026-09-05) после 3-недельного простоя ProxyAPI — прыгать сразу на
+# вычисленный «день 31» нельзя: mailbox-прогрев после паузы возобновляют
+# с малых объёмов, иначе домены улетают в спам.
+from app.core.config import settings as _settings
+
+_start_raw = (getattr(_settings, "WARMUP_START_DATE", "") or "").strip()
+try:
+    WARMUP_START_DATE = (
+        datetime.fromisoformat(_start_raw).replace(tzinfo=timezone.utc)
+        if _start_raw
+        else datetime(2026, 8, 10, tzinfo=timezone.utc)
+    )
+except ValueError:
+    logger.warning("WARMUP_START_DATE=%r не ISO — берём дефолт 2026-08-10", _start_raw)
+    WARMUP_START_DATE = datetime(2026, 8, 10, tzinfo=timezone.utc)
 BASE_DAILY = 10  # стартовый объём в день 1
 DAILY_STEP = 10  # +10 писем каждый день
 MAX_DAILY = 300  # потолок объёма в день (защита от перелива домена)
