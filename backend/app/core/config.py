@@ -264,6 +264,17 @@ class Settings(BaseSettings):
     # OAuth Frontend URL (for redirects)
     OAUTH_FRONTEND_URL: str = Field(default="http://localhost:4000", description="Frontend URL for OAuth callbacks")
 
+    # Embeddings-провайдер (отдельно от chat-ассистентов). По умолчанию —
+    # OPENAI_API_KEY/BASE_URL (ProxyAPI). 09.09: z.ai Coding Plan НЕ даёт
+    # доступ к embedding-моделям (1211 Unknown Model) — поэтому embeddings
+    # нельзя направить на подписку. Эти env позволяют переключить embeddings
+    # на любой OpenAI-совместимый endpoint без правки кода: заведёшь
+    # отдельный pay-as-you-go ключ z.ai / OpenAI / любой совместимый —
+    # пропишешь сюда, перезапустишь воркеры.
+    EMBEDDINGS_API_KEY: str = Field(default="", description="API-ключ embeddings; пусто = OPENAI_API_KEY")
+    EMBEDDINGS_BASE_URL: str = Field(default="", description="Base URL embeddings; пусто = OPENAI_BASE_URL")
+    EMBEDDINGS_MODEL: str = Field(default="", description="Модель embeddings; пусто = REVIEWS_AI_EMBEDDING_MODEL")
+
     # Прогрев доменов: дата старта плана (ISO, YYYY-MM-DD). Пусто = исторический
     # дефолт 2026-08-10. 09.09.2026 перезапущен на 2026-09-05 («день 5»)
     # после 3-недельного простоя — см. warmup_service.
