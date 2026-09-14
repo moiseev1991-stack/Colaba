@@ -193,6 +193,13 @@ async def create_map_search(
         # Celery. Перепоставим задачи: те, у кого reviews_count > 0, не лезут
         # сюда; для остальных воркер сходит в 2GIS widget API ещё раз.
         missing = await service.list_search_companies_missing_reviews(db, search.id)
+        # 14.09: google_maps убран из re-enqueue. Каждое cache-касание
+        # перепоставляло задачи для ~430 google-компаний без отзывов →
+        # SerpAPI google_maps_reviews 2450 вызовов/сутки × 429 (план
+        # исчерпан) → шторм ретраев в никуда. Замысел ветки (см. комментарий
+        # выше) — бесплатный 2GIS widget; yandex тоже оставляем (HTML),
+        # google-отзывы собираются только при свежем поиске, не из кэша.
+        missing = [(cid, s) for cid, s in missing if s != "google_maps"]
         if missing:
             from app.modules.maps.tasks import parse_company_reviews
 
