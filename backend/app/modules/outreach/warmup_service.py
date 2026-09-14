@@ -313,16 +313,22 @@ async def run_daily_warmup() -> dict:
         # Отправка остаётся последовательной — щадим провайдеров/домены.
         gen_sem = asyncio.Semaphore(3)
 
+        # 14.09: фикс параллельной генерации. Одна AsyncSession не разрешает
+        # конкурентные операции ("session is provisioning a new connection;
+        # concurrent operations are not permitted") — день 10 отправил 28/100
+        # КП, остальные умерли на генерации. Каждой параллельной задаче —
+        # собственная сессия; external db в _gen не используется.
         async def _gen(p):
             async with gen_sem:
                 try:
-                    return await generate_kp(
-                        db,
-                        user_id=USER_ID,
-                        company_id=p["company_id"],
-                        template_key=p["legend"],
-                        tone="neutral",
-                    )
+                    async with AsyncSessionLocal() as gen_db:
+                        return await generate_kp(
+                            gen_db,
+                            user_id=USER_ID,
+                            company_id=p["company_id"],
+                            template_key=p["legend"],
+                            tone="neutral",
+                        )
                 except (KpGenerationError, Exception) as e:
                     msg = getattr(e, "message", str(e))[:80]
                     logger.warning(
