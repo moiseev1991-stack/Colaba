@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { apiClient, tokenStorage } from '@/client';
+import { authErrorMessage } from '@/lib/authErrors';
+import { OAUTH_ENABLED } from '@/lib/featureFlags';
 
 function GoogleIcon() {
   return (
@@ -57,10 +59,9 @@ export function QuickSignup() {
       await apiClient.post('/auth/register', { email, password });
       await apiClient.post('/auth/login', { email, password });
       tokenStorage.setTokens('', '');
-      window.location.href = '/app';
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || (err.code === 'ERR_NETWORK' ? 'Сервер недоступен' : err.message) || 'Ошибка';
-      setErrors({ form: Array.isArray(msg) ? msg.join(', ') : String(msg) });
+      window.location.href = '/app/leads';
+    } catch (err: unknown) {
+      setErrors({ form: authErrorMessage(err, 'register') });
     } finally {
       setLoading(false);
     }
@@ -78,10 +79,9 @@ export function QuickSignup() {
     try {
       await apiClient.post('/auth/login', { email, password });
       tokenStorage.setTokens('', '');
-      window.location.href = '/app';
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || (err.code === 'ERR_NETWORK' ? 'Сервер недоступен' : err.message) || 'Ошибка входа';
-      setErrors({ form: Array.isArray(msg) ? msg.join(', ') : String(msg) });
+      window.location.href = '/app/leads';
+    } catch (err: unknown) {
+      setErrors({ form: authErrorMessage(err, 'login') });
     } finally {
       setLoading(false);
     }
@@ -204,19 +204,25 @@ export function QuickSignup() {
             'Войти'
           )}
         </button>
-        <div className="flex items-center gap-3">
-          <span className="flex-1 h-px" style={{ backgroundColor: 'var(--landing-border)', opacity: 0.6 }} />
-          <span className="text-xs shrink-0" style={{ color: 'var(--landing-muted)' }}>или</span>
-          <span className="flex-1 h-px" style={{ backgroundColor: 'var(--landing-border)', opacity: 0.6 }} />
-        </div>
-        <button
-          type="button"
-          className="w-full h-11 rounded-[12px] border flex items-center justify-center gap-2 text-sm font-medium transition-colors hover:bg-[var(--landing-accent-soft)]"
-          style={{ borderColor: 'var(--landing-border)', color: 'var(--landing-text)' }}
-        >
-          <GoogleIcon />
-          Продолжить с Google
-        </button>
+        {/* Вход через Google скрыт флагом, пока OAuth не починен на бэкенде (кнопка никуда не вела) */}
+        {OAUTH_ENABLED && (
+          <>
+            <div className="flex items-center gap-3">
+              <span className="flex-1 h-px" style={{ backgroundColor: 'var(--landing-border)', opacity: 0.6 }} />
+              <span className="text-xs shrink-0" style={{ color: 'var(--landing-muted)' }}>или</span>
+              <span className="flex-1 h-px" style={{ backgroundColor: 'var(--landing-border)', opacity: 0.6 }} />
+            </div>
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/api/v1/auth/oauth/google'; }}
+              className="w-full h-11 rounded-[12px] border flex items-center justify-center gap-2 text-sm font-medium transition-colors hover:bg-[var(--landing-accent-soft)]"
+              style={{ borderColor: 'var(--landing-border)', color: 'var(--landing-text)' }}
+            >
+              <GoogleIcon />
+              Продолжить с Google
+            </button>
+          </>
+        )}
         <p className="text-center text-[13px]" style={{ color: 'var(--landing-muted)' }}>
           {tab === 'register' ? (
             <>
