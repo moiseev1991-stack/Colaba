@@ -414,9 +414,19 @@ async def run_daily_warmup() -> dict:
             db.add(log)
             await db.commit()
 
-            # интервал 90 сек между отправками (для прогрева).
+            # Интервал между отправками (прогрев доменов). 15.09: зашитые
+            # 90с × 100+ КП = 2.5ч > time-limit 2ч — кампания математически
+            # умирала на ~76-м письме (дни 10-11: 76/100, 75/110). Теперь
+            # настраивается env WARMUP_SEND_INTERVAL (default 30с — postbox
+            # тянет, это пауза, а не дневной лимит провайдера).
+            try:
+                from app.core.config import settings as _s
+
+                send_interval = float(getattr(_s, "WARMUP_SEND_INTERVAL", 0) or 30)
+            except Exception:
+                send_interval = 30.0
             if i < len(plan) - 1:
-                await asyncio.sleep(90)
+                await asyncio.sleep(send_interval)
 
         camp.sent_count = sent_count
         camp.failed_count = len(plan) - sent_count

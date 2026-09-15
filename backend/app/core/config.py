@@ -275,6 +275,10 @@ class Settings(BaseSettings):
     EMBEDDINGS_BASE_URL: str = Field(default="", description="Base URL embeddings; пусто = OPENAI_BASE_URL")
     EMBEDDINGS_MODEL: str = Field(default="", description="Модель embeddings; пусто = REVIEWS_AI_EMBEDDING_MODEL")
 
+    # Интервал между отправками КП в warmup (сек). 90с × 100+ КП > 2ч
+    # time-limit — кампании умирали на ~76-м письме. 30с — безопасно для postbox.
+    WARMUP_SEND_INTERVAL: float = Field(default=30.0, description="Пауза между отправками КП, сек")
+
     # Прогрев доменов: дата старта плана (ISO, YYYY-MM-DD). Пусто = исторический
     # дефолт 2026-08-10. 09.09.2026 перезапущен на 2026-09-05 («день 5»)
     # после 3-недельного простоя — см. warmup_service.
