@@ -33,7 +33,7 @@ import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
 import { NegativeTrendBadge } from '@/components/maps/NegativeTrendBadge';
 import { KpQuickBlock } from '@/components/maps/KpQuickBlock';
 import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
-import { Dialog } from '@/components/ui/dialog';
+import { Drawer } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
@@ -324,11 +324,10 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   const showMultiSourceMeta = sourcesProfiles.length >= 2;
 
   return (
-    <Dialog
+    <Drawer
       open={open}
       onClose={onClose}
       title={detail?.name ?? 'Загрузка…'}
-      position="right"
     >
       {!detail ? (
         <div className="py-6 text-sm text-slate-500 dark:text-slate-400">Загружаем карточку…</div>
@@ -676,7 +675,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
           })()}
         </div>
       )}
-    </Dialog>
+    </Drawer>
   );
 }
 

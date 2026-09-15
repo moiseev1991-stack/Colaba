@@ -1,6 +1,8 @@
 'use client';
 
 import { Component, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/states';
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean; error?: Error };
@@ -26,29 +28,11 @@ export class AppErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div
-          role="alert"
-          className="min-h-screen flex flex-col items-center justify-center gap-6 p-8"
-          style={{ background: 'hsl(var(--bg))', fontFamily: 'system-ui, sans-serif' }}
-        >
-          <div className="text-center max-w-md">
-            <h1
-              className="font-display font-semibold tracking-tight text-xl mb-2"
-              style={{ color: 'hsl(var(--text))' }}
-            >
-              Что-то пошло не так
-            </h1>
-            <p className="text-sm mb-6" style={{ color: 'hsl(var(--muted))' }}>
-              Приложение столкнулось с ошибкой. Попробуйте обновить страницу.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-brand-gradient text-white rounded-v2-sm hover:shadow-v2-hover shadow-v2-sm font-medium"
-            >
-              Обновить страницу
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          fullScreen
+          description="Приложение столкнулось с ошибкой. Попробуйте обновить страницу."
+          action={<Button onClick={() => window.location.reload()}>Обновить страницу</Button>}
+        />
       );
     }
     return this.props.children;

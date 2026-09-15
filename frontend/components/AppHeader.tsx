@@ -7,6 +7,7 @@ import { User as UserIcon, LogOut, CreditCard, Activity, Sparkles } from 'lucide
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
 import { BrandMark } from '@/components/BrandMark';
+import { buttonClass } from '@/components/ui/button';
 import { MobileNav } from '@/components/MobileNav';
 
 // Переключатель темы убран: тёмная тема выключена до MVP (см. lib/storage.ts).
@@ -98,12 +99,10 @@ export function AppHeader() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
-        {/* «Купить подписку» — главный фиолетовый акцент (§1.1 ТЗ: МАКСИМУМ
-            одна accent-кнопка на экран). Бренд CTA — это обычный primary
-            бренд-градиент в карточках, здесь — accent чтобы выделить покупку. */}
+        {/* «Купить подписку» — главная кнопка шапки; стиль общий с Button (PR 3.3). */}
         <Link
           href="/#pricing"
-          className="inline-flex min-h-9 items-center gap-2 rounded-v2-sm bg-accent-gradient px-3 md:px-4 text-small md:text-sm font-semibold text-white shadow-v2-sm transition-all hover:shadow-v2-hover hover:scale-[1.02] active:scale-[0.98]"
+          className={buttonClass({ size: 'sm', className: 'min-h-9 gap-2 md:px-4 md:text-sm' })}
         >
           <Sparkles className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline">Купить подписку</span>

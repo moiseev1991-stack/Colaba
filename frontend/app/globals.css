@@ -851,15 +851,16 @@
 }
 
 /* === Status Badges — sharp rectangular === */
+/* PR 3.3: в стиле компонента Badge (components/ui/badge.tsx) */
 .app-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-weight: 500;
+  letter-spacing: normal;
   text-transform: uppercase;
   font-family: var(--font-body), system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -871,17 +872,9 @@
   color: hsl(var(--success));
 }
 
-.app-badge-success:hover {
-  box-shadow: 0 0 12px hsl(var(--success) / 0.3);
-}
-
 .app-badge-warning {
   background: hsl(var(--warning) / 0.12);
   color: hsl(var(--warning));
-}
-
-.app-badge-warning:hover {
-  box-shadow: 0 0 12px hsl(var(--warning) / 0.3);
 }
 
 .app-badge-danger {
@@ -889,17 +882,9 @@
   color: hsl(var(--danger));
 }
 
-.app-badge-danger:hover {
-  box-shadow: 0 0 12px hsl(var(--danger) / 0.3);
-}
-
 .app-badge-accent {
   background: hsl(var(--accent-weak));
   color: hsl(var(--accent));
-}
-
-.app-badge-accent:hover {
-  box-shadow: 0 0 12px hsl(var(--accent) / 0.3);
 }
 
 /* === Floating Orbs (subtle background decoration) === */

@@ -28,6 +28,8 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PageContainer, PageHeader } from '@/components/ui/page';
+import { Tabs } from '@/components/ui/tabs';
 import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
 import { formatMapSources } from '@/lib/mapSources';
 import { deleteSearch, listSearches, type SearchResponse } from '@/src/services/api/search';
@@ -111,43 +113,17 @@ function LeadsHistoryInner() {
   const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1
-          className="font-display font-semibold tracking-tight"
-          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
-        >
-          История поисков лидов
-        </h1>
-      </div>
+    <PageContainer>
+      <PageHeader title="История поисков лидов" />
 
-      <div
-        className="mb-4 flex flex-wrap gap-1 border-b"
-        style={{ borderColor: 'hsl(var(--border))' }}
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => setTab(t.value)}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-small font-medium transition-colors',
-              tab === t.value
-                ? 'border-[hsl(var(--accent))] text-[hsl(var(--accent))]'
-                : 'border-transparent text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs className="mb-4" aria-label="Разделы истории" items={TABS} value={tab} onChange={setTab} />
 
       {tab === 'maps' && <MapsHistoryTab router={router} />}
       {tab === 'sites' && <SitesHistoryTab router={router} />}
       {tab === 'kp' && <KpHistoryTab router={router} />}
       {tab === 'kp-jobs' && <KpJobsHistoryTab router={router} />}
       {tab === 'sends' && <KpSendsHistoryTab router={router} />}
-    </div>
+    </PageContainer>
   );
 }
 
