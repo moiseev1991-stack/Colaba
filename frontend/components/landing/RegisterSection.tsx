@@ -1,11 +1,15 @@
 import { QuickSignup } from './QuickSignup';
-import { LeadDemoPanel } from './LeadDemoPanel';
+import { OFFER } from '@/lib/offer';
 
+// Секция 8 главной (PR 2.2): единственная форма на странице — регистрация (решение Р2).
+// Правая демо-панель убрана: пример выдачи и возможности уже показаны выше.
 export function RegisterSection() {
   return (
     <section id="register" className="landing-section l-register">
-      <div className="register-section-container relative z-10">
-        <div className="section-label reveal">Регистрация</div>
+      <div className="register-section-container relative z-10" style={{ maxWidth: '520px', margin: '0 auto' }}>
+        <div className="section-label reveal" style={{ display: 'flex', justifyContent: 'center' }}>
+          Регистрация
+        </div>
         <h2
           className="reveal"
           style={{
@@ -14,46 +18,25 @@ export function RegisterSection() {
             color: 'var(--landing-text)',
             marginBottom: '8px',
             letterSpacing: '-0.5px',
+            textAlign: 'center',
           }}
         >
-          Начните за 1 минуту
+          Попробуйте бесплатно
         </h2>
         <p
           className="reveal"
           style={{
             fontSize: '15px',
             color: 'var(--landing-muted)',
-            marginBottom: '40px',
-            maxWidth: '520px',
+            marginBottom: '32px',
+            textAlign: 'center',
           }}
         >
-          Без кредитной карты · 30 секунд · можно удалить аккаунт
+          {OFFER.short} · без кредитной карты · аккаунт можно удалить
         </p>
 
-        <div
-          className="reveal l-register__grid"
-        >
-          {/* Left: form */}
-          <div className="l-register__form-wrap">
-            <p
-              style={{
-                fontSize: '13px',
-                fontWeight: 600,
-                color: 'var(--landing-muted)',
-                marginBottom: '20px',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-              }}
-            >
-              Создайте аккаунт
-            </p>
-            <QuickSignup />
-          </div>
-
-          {/* Right: demo panel */}
-          <div style={{ minWidth: 0 }}>
-            <LeadDemoPanel />
-          </div>
+        <div className="reveal l-register__form-wrap">
+          <QuickSignup />
         </div>
       </div>
     </section>

@@ -7,9 +7,9 @@ import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
 
 const ANCHORS = [
-  { id: 'diagnosis', label: 'Диагноз' },
+  { id: 'how', label: 'Как работает' },
+  { id: 'audience', label: 'Для кого' },
   { id: 'pricing', label: 'Цены' },
-  { id: 'examples', label: 'Примеры' },
   { id: 'faq', label: 'FAQ' },
 ] as const;
 

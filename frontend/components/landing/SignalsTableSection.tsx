@@ -1,23 +1,19 @@
 'use client';
 
+import Link from 'next/link';
 import { SignalsTableDemo } from './SignalsTableDemo';
 
 /**
- * Обёртка SignalsTableDemo под главную landing-страницу. Подхватывает
- * CSS-переменные landing.css (--landing-*), идёт сразу после Hero —
- * сначала показываем «как выглядит вся выдача с диагнозом» (breadth),
- * потом DiagnosisSection раскрывает одну компанию в глубину (depth).
+ * Секция 2 главной — пример выдачи. Единственная таблица-пример на странице (PR 2.2):
+ * раньше та же таблица повторялась ещё в «Примерах». Полный пример — на /demo.
  */
 export function SignalsTableSection() {
   return (
     <section id="signals" className="landing-section" style={{ paddingBottom: '24px' }}>
       <div className="container" style={{ maxWidth: '1160px' }}>
-        <div className="section-label reveal">Так выглядит выдача</div>
+        <div className="section-label reveal">Пример выдачи</div>
         <h2 className="section-title reveal" style={{ marginBottom: '12px' }}>
-          Не «вот 1000 контактов», а{' '}
-          <span style={{ color: 'var(--landing-accent)' }}>
-            вот кому, с чем и как написать
-          </span>
+          Кому написать и <span style={{ color: 'var(--landing-accent)' }}>на что жалуются</span> их клиенты
         </h2>
         <p
           className="reveal"
@@ -29,9 +25,8 @@ export function SignalsTableSection() {
             lineHeight: 1.6,
           }}
         >
-          AI читает отзывы на 2GIS и Я.Картах, выделяет повторяющиеся боли клиентов
-          и подкладывает цитату-доказательство под каждую. Вы открываете выдачу — и сразу
-          видите, кто болит и чем именно.
+          SpinLid читает отзывы на 2GIS и Яндекс.Картах, группирует жалобы клиентов и прикладывает
+          цитату к каждой. Открываете выдачу — и сразу видно, у какой компании какая проблема.
         </p>
         <div className="reveal">
           <SignalsTableDemo />
@@ -40,12 +35,15 @@ export function SignalsTableSection() {
           className="reveal"
           style={{
             marginTop: '14px',
-            fontSize: '12px',
+            fontSize: '13px',
             color: 'var(--landing-muted)',
             textAlign: 'center',
           }}
         >
-          ПРИМЕР · так выглядит таблица «По картам» в кабинете
+          Так выглядит таблица в кабинете ·{' '}
+          <Link href="/demo" style={{ color: 'var(--landing-accent)', fontWeight: 600 }}>
+            Смотреть полный пример →
+          </Link>
         </div>
       </div>
     </section>

@@ -13,10 +13,11 @@ import { LEGAL_LINKS, SITE_NAME, SUPPORT_EMAIL } from '@/lib/site';
  */
 
 const PRODUCT_LINKS = [
-  { href: '/#diagnosis', label: 'Диагноз' },
+  { href: '/demo', label: 'Пример выдачи' },
+  { href: '/#how', label: 'Как это работает' },
+  { href: '/#audience', label: 'Для кого' },
   { href: '/#features', label: 'Возможности' },
   { href: '/#pricing', label: 'Цены' },
-  { href: '/#examples', label: 'Примеры' },
   { href: '/#faq', label: 'FAQ' },
 ];
 

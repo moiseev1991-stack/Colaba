@@ -408,7 +408,7 @@ function GuestHero({
               Создать аккаунт
             </Link>
             <Link
-              href="/#diagnosis"
+              href="/demo"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -422,7 +422,7 @@ function GuestHero({
                 border: '1px solid rgba(255,255,255,0.25)',
               }}
             >
-              Посмотреть демо
+              Смотреть пример
             </Link>
           </div>
         </div>

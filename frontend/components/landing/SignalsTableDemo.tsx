@@ -136,7 +136,7 @@ export function SignalsTableDemo() {
             <tr>
               <th style={HEADER_CELL}>Компания</th>
               <th style={HEADER_CELL}>Рейтинг</th>
-              <th style={HEADER_CELL}>Pain-теги</th>
+              <th style={HEADER_CELL}>Жалобы клиентов</th>
               <th style={HEADER_CELL}>Цитата клиента</th>
               <th style={HEADER_CELL}>Контакт</th>
             </tr>
