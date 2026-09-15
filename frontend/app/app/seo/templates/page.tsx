@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { ToastContainer, type Toast } from '@/components/Toast';
+import { confirmDialog } from '@/components/ui/confirm';
 import {
   getOutreachTemplates,
   getOutreachTemplatesSync,
@@ -48,7 +49,7 @@ export default function SeoTemplatesPage() {
   }, [load]);
 
   const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Удалить шаблон «${name}»?`)) return;
+    if (!(await confirmDialog(`Удалить шаблон «${name}»?`))) return;
     try {
       await deleteOutreachTemplate(id);
       addToast('success', 'Шаблон удалён');

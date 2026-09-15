@@ -54,6 +54,7 @@ import {
   type CompanyAnalysisOut,
 } from '@/src/services/api/reviews-ai';
 import type { UserPresetOut } from '@/src/services/api/user-presets';
+import { toast } from '@/components/ui/toast';
 
 // Leaflet трогает window — выключаем SSR. ssr: false внутри 'use client'
 // поддерживается в Next.js 14, см. https://nextjs.org/docs/app/building-your-application/optimizing/lazy-loading
@@ -551,7 +552,7 @@ export function MapsSearchResults({
     const AI_RUN_MAX = 500;
     let ids = visibleCompanyIds;
     if (ids.length > AI_RUN_MAX) {
-      window.alert(
+      toast.info(
         `Видимых компаний ${ids.length}, AI-анализ за один запуск обрабатывает максимум ${AI_RUN_MAX}. ` +
           `Запускаю на первых ${AI_RUN_MAX}. Сузь фильтры и нажми ещё раз для остальных.`,
       );
@@ -581,7 +582,7 @@ export function MapsSearchResults({
       } else if (Array.isArray(detail) && detail.length > 0) {
         msg = `Ошибка проверки запроса: ${JSON.stringify(detail[0])}`;
       }
-      window.alert(msg);
+      toast.error(msg);
     } finally {
       setAiTriggering(false);
     }

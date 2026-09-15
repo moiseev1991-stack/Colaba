@@ -17,6 +17,8 @@ import {
 } from '@/src/services/api/organizations';
 import { apiClient } from '@/client';
 import { useRouter, useParams } from 'next/navigation';
+import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 
 // §4.17 ТЗ редизайна 2026-06-03 (Phase C batch 5): пользователи организации на v2.
 
@@ -72,7 +74,7 @@ export default function OrganizationUsersPage() {
 
   const handleAddUser = async () => {
     if (!newUserId || !newUserRole) {
-      alert('Пожалуйста, заполните все поля');
+      toast.error('Пожалуйста, заполните все поля');
       return;
     }
     try {
@@ -85,7 +87,7 @@ export default function OrganizationUsersPage() {
       setShowAddUser(false);
       await loadData();
     } catch (err: any) {
-      alert(`Ошибка при добавлении пользователя: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Ошибка при добавлении пользователя: ${err.response?.data?.detail || err.message}`);
     }
   };
 
@@ -94,19 +96,19 @@ export default function OrganizationUsersPage() {
       await updateUserRole(organizationId, userId, { role: newRole });
       await loadData();
     } catch (err: any) {
-      alert(`Ошибка при обновлении роли: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Ошибка при обновлении роли: ${err.response?.data?.detail || err.message}`);
     }
   };
 
   const handleRemoveUser = async (userId: number) => {
-    if (!confirm('Вы уверены, что хотите удалить пользователя из организации?')) {
+    if (!(await confirmDialog('Удалить пользователя из организации?'))) {
       return;
     }
     try {
       await removeUserFromOrganization(organizationId, userId);
       await loadData();
     } catch (err: any) {
-      alert(`Ошибка при удалении пользователя: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Ошибка при удалении пользователя: ${err.response?.data?.detail || err.message}`);
     }
   };
 

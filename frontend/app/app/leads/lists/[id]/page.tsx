@@ -16,6 +16,7 @@ import { BulkDraftsModal } from '@/components/maps/BulkDraftsModal';
 import { CreateCampaignFromListModal } from '@/components/maps/CreateCampaignFromListModal';
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
+import { confirmDialog } from '@/components/ui/confirm';
 import {
   getLeadList,
   removeLeadListItem,
@@ -63,7 +64,7 @@ export default function LeadListDetailPage() {
 
   async function remove(company: CompanyOut) {
     if (!data) return;
-    if (!confirm(`Убрать «${company.name}» из списка?`)) return;
+    if (!(await confirmDialog({ title: `Убрать «${company.name}» из списка?`, confirmLabel: 'Убрать' }))) return;
     try {
       await removeLeadListItem(data.id, company.id);
       setData({

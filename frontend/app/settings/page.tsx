@@ -6,6 +6,7 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { PageHeader } from '@/components/PageHeader';
 import { Check } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 // §4.17 ТЗ редизайна 2026-06-03 (Phase C batch 5): конфигурация на v2.
 // 4 идентичных чекбокс-блока вынесены в SeoCheckbox helper. CardV2 для секций.
@@ -43,7 +44,7 @@ export default function SettingsPage() {
   const handleApplyChanges = () => {
     setSavedSeoSettings(seoSettings);
     setHasChanges(false);
-    alert('Изменения применены');
+    toast.success('Изменения применены');
   };
 
   const handleResetChanges = () => {

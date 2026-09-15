@@ -10,6 +10,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ListPlus, Trash2 } from 'lucide-react';
+import { confirmDialog } from '@/components/ui/confirm';
 
 import {
   createLeadList,
@@ -58,7 +59,7 @@ export default function LeadListsPage() {
   }
 
   async function remove(id: number) {
-    if (!confirm('Удалить список вместе со связями?')) return;
+    if (!(await confirmDialog('Удалить список?'))) return;
     setDeletingId(id);
     try {
       await deleteLeadList(id);

@@ -18,6 +18,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { confirmDialog } from '@/components/ui/confirm';
 
 interface InventoryItem {
   niche: string;
@@ -158,9 +159,12 @@ export default function DataInventoryPage() {
   // с задержкой 7с (rate-limit 10/min). Yandex_maps only — 2GIS-ключ заблокирован.
   const runMassParse = async () => {
     if (parseBusy) return;
-    if (!confirm(
-      `Запустить парсинг матрицы: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.\n\nПродолжить?`,
-    )) return;
+    if (!(await confirmDialog({
+      title: 'Запустить массовый парсинг?',
+      description: `Матрица: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.`,
+      confirmLabel: 'Запустить',
+      danger: false,
+    }))) return;
     setParseBusy(true);
     setParseResults([]);
     const pairs: Array<[string, string]> = [];

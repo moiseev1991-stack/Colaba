@@ -22,6 +22,7 @@ import {
   type OutreachTemplate,
 } from '@/src/services/api/outreachTemplates';
 import { PAIN_KEY_LABELS, type PainKey } from '@/src/services/api/maps';
+import { confirmDialog } from '@/components/ui/confirm';
 
 const PAIN_KEYS: PainKey[] = [
   'call_no_answer',
@@ -125,7 +126,7 @@ export default function TemplatesPage() {
   };
 
   const del = async (id: number) => {
-    if (!confirm('Удалить шаблон?')) return;
+    if (!(await confirmDialog('Удалить шаблон?'))) return;
     try {
       await deleteOutreachTemplate(id);
       await reload();

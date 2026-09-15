@@ -44,6 +44,7 @@ import {
   type KpSendStatus,
 } from '@/src/services/api/outreach-kp';
 import { cn } from '@/lib/utils';
+import { confirmDialog } from '@/components/ui/confirm';
 
 type Tab = 'maps' | 'sites' | 'kp' | 'kp-jobs' | 'sends';
 
@@ -288,7 +289,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить этот запуск и все его результаты?')) return;
+    if (!(await confirmDialog({ title: 'Удалить этот запуск?', description: 'Вместе с ним удалятся все его результаты.' }))) return;
     setDeletingId(id);
     try {
       await deleteSearch(id);

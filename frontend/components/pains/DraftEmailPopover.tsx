@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from '@/components/ui/toast';
 
 import {
   getOutreachTemplates,
@@ -110,7 +111,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
       return `=== ${c.name} ===\nTo: (email компании неизвестен)\nSubject: ${s}\n\n${b}`;
     });
     await navigator.clipboard.writeText(parts.join('\n\n---\n\n'));
-    alert(`Скопировано ${companies.length} писем в буфер`);
+    toast.success(`Скопировано ${companies.length} писем в буфер`);
   };
 
   const copyOne = async () => {
@@ -118,7 +119,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
     await navigator.clipboard.writeText(
       `Subject: ${preview.subject}\n\n${preview.body}`,
     );
-    alert('Скопировано в буфер');
+    toast.success('Скопировано в буфер');
   };
 
   const mailto = () => {

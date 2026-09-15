@@ -3,6 +3,8 @@
 import { usePathname } from 'next/navigation';
 import { ThemeInit } from './ThemeInit';
 import { AppLayout } from './AppLayout';
+import { ConfirmHost } from './ui/confirm';
+import { Toaster } from './ui/toast';
 
 // Каркас кабинета (сайдбар, шапка) — только для страниц кабинета. Раньше он
 // включался для всего, что не публичное, и 404 анонима рисовалась внутри
@@ -35,6 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <ThemeInit />
       {useAppLayout ? <AppLayout>{children}</AppLayout> : children}
+      {/* Общие уведомления и подтверждения (PR 3.3b): toast.* и confirmDialog() из components/ui. */}
+      <Toaster />
+      <ConfirmHost />
     </>
   );
 }
