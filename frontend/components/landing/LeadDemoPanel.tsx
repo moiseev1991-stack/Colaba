@@ -1,19 +1,21 @@
-import { Search, Download, Send, FileEdit, History } from 'lucide-react';
+import { Search, Download, Copy, FileEdit, History } from 'lucide-react';
 
+// Правая колонка блока регистрации. С 15.09 без «статусов доставки»:
+// SpinLid не рассылает письма — готовит черновик, отправляет пользователь.
 const DEMO_LEADS = [
-  { company: 'ООО Альфа-Снаб', city: 'Москва', contact: 'sales@alfa…', status: 'Отправлено', statusVariant: 'sent' as const },
-  { company: 'ИП Петров', city: 'СПб', contact: '+7 9** ***-**-**', status: 'Открыто', statusVariant: 'opened' as const },
-  { company: 'Ромашка-Строй', city: 'Казань', contact: 'info@roma…', status: 'Ошибка', statusVariant: 'error' as const },
-  { company: 'ТехСервис', city: 'Екатеринбург', contact: '+7 9** ***-**-**', status: 'В работе', statusVariant: 'pending' as const },
-  { company: 'СтройМастер', city: 'Новосибирск', contact: 'office@stroy…', status: 'Доставлено', statusVariant: 'delivered' as const },
+  { company: 'ООО Альфа-Снаб', city: 'Москва', contact: 'sales@alfa…', pain: 'Срывают сроки' },
+  { company: 'ИП Петров', city: 'СПб', contact: '+7 9** ***-**-**', pain: 'Не перезванивают' },
+  { company: 'Ромашка-Строй', city: 'Казань', contact: 'info@roma…', pain: 'Дорого' },
+  { company: 'ТехСервис', city: 'Екатеринбург', contact: '+7 9** ***-**-**', pain: 'Долгое ожидание' },
+  { company: 'СтройМастер', city: 'Новосибирск', contact: 'office@stroy…', pain: 'Грубят' },
 ];
 
 const BENEFITS = [
   { icon: Search, title: 'Сбор лидов по ключевым запросам', subtitle: 'Ищем компании по нише + региону, собираем контакты' },
   { icon: Download, title: 'Экспорт CSV и копирование контактов', subtitle: 'Выгрузка в таблицу, копирование в 1 клик' },
-  { icon: Send, title: 'Отправка КП и статусы', subtitle: 'Доставлено / открыто / ошибка — видно в кабинете' },
+  { icon: Copy, title: 'Черновик письма под боль', subtitle: 'Копируете в свою почту или CRM — отправляете сами' },
   { icon: FileEdit, title: 'Редактор КП (шаблоны)', subtitle: 'Шаблоны под разные ниши, быстрые правки' },
-  { icon: History, title: 'История лидов и запусков', subtitle: 'Все поиски, результаты и статусы — в одном месте' },
+  { icon: History, title: 'История поисков', subtitle: 'Все поиски и результаты — в одном месте' },
 ];
 
 const cardStyle = {
@@ -22,17 +24,12 @@ const cardStyle = {
   borderRadius: 16,
 };
 
-function StatusBadge({ label, variant }: { label: string; variant: 'sent' | 'opened' | 'error' | 'delivered' | 'pending' }) {
-  const colors: Record<string, { bg: string; text: string }> = {
-    sent: { bg: 'rgba(37, 99, 235, 0.12)', text: 'var(--landing-accent)' },
-    opened: { bg: 'rgba(22, 163, 74, 0.12)', text: 'var(--landing-success)' },
-    delivered: { bg: 'rgba(22, 163, 74, 0.12)', text: 'var(--landing-success)' },
-    error: { bg: 'rgba(239, 68, 68, 0.12)', text: 'var(--landing-danger)' },
-    pending: { bg: 'rgba(245, 158, 11, 0.12)', text: 'var(--landing-warning)' },
-  };
-  const c = colors[variant] || colors.sent;
+function PainPill({ label }: { label: string }) {
   return (
-    <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+    <span
+      className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+      style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)', color: 'var(--landing-warning)' }}
+    >
       {label}
     </span>
   );
@@ -51,7 +48,7 @@ export function LeadDemoPanel() {
                 <th className="text-left py-1.5 font-medium">Компания</th>
                 <th className="text-left py-1.5 font-medium">Город</th>
                 <th className="text-left py-1.5 font-medium">Контакт</th>
-                <th className="text-left py-1.5 font-medium">Статус КП</th>
+                <th className="text-left py-1.5 font-medium">Главная боль</th>
               </tr>
             </thead>
             <tbody style={{ color: 'var(--landing-text)' }}>
@@ -61,7 +58,7 @@ export function LeadDemoPanel() {
                   <td className="py-2 pr-2">{row.city}</td>
                   <td className="py-2 pr-2 opacity-80">{row.contact}</td>
                   <td className="py-2">
-                    <StatusBadge label={row.status} variant={row.statusVariant} />
+                    <PainPill label={row.pain} />
                   </td>
                 </tr>
               ))}
@@ -70,15 +67,17 @@ export function LeadDemoPanel() {
         </div>
       </div>
 
-      {/* Card B: KP status badges */}
+      {/* Card B: черновик письма */}
       <div className="rounded-[16px] border p-4" style={{ ...cardStyle, borderColor: 'var(--landing-border)' }}>
-        <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--landing-text)' }}>КП и статусы доставки</h4>
+        <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--landing-text)' }}>Черновик письма</h4>
         <div className="flex flex-wrap gap-1.5 mb-2">
-          <StatusBadge label="Доставлено" variant="delivered" />
-          <StatusBadge label="Открыто" variant="opened" />
-          <StatusBadge label="Ошибка" variant="error" />
+          <PainPill label="Боль из отзывов" />
+          <PainPill label="Цитата клиента" />
+          <PainPill label="Ваша услуга" />
         </div>
-        <p className="text-[12px]" style={{ color: 'var(--landing-muted)' }}>Статусы сохраняются в истории лидов</p>
+        <p className="text-[12px]" style={{ color: 'var(--landing-muted)' }}>
+          Текст под каждую компанию — копируете в свою почту или CRM
+        </p>
       </div>
 
       {/* Card C: Что вы получите */}

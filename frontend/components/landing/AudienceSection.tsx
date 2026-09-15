@@ -21,7 +21,6 @@ const SOURCES = [
   { dot: 'blue',   label: '2GIS — компании и отзывы' },
   { dot: 'orange', label: 'DaData — оборот, возраст, ИНН' },
   { dot: 'purple', label: 'AI — диагноз по отзывам и письма' },
-  { dot: 'cyan',   label: 'Email-кампании с отслеживанием' },
   { dot: 'red',    label: 'Blacklist доменов и компаний' },
   { dot: 'green',  label: 'История запусков и пресеты' },
 ];

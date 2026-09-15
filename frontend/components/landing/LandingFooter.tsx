@@ -42,7 +42,7 @@ export function LandingFooter() {
             style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.5 }}
             suppressHydrationWarning
           >
-            © {new Date().getFullYear()} · Сбор лидов и рассылка КП
+            © {new Date().getFullYear()} · Сбор лидов и письма под боль клиента
             <br />
             <a
               href={`mailto:${SUPPORT_EMAIL}`}

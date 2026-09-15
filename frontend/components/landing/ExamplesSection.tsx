@@ -1,17 +1,11 @@
 'use client';
 
 // ТЗ лендинг-рефакта 2026-06-03 §6+§8: на главном лендинге демонстрируем
-// то, что продаёт SpinLid — компании с диагнозом и кампании КП. Вкладки
+// то, что продаёт SpinLid — компании с диагнозом. Вкладки
 // «SEO» и «Госзакупки» убраны (модули есть в кабинете, но не продают суть).
 // Все таблицы помечены «ПРИМЕР» — без претензии на реальных клиентов (§3).
 
-import { useState } from 'react';
-import { Loader2, Download, Copy, MessageSquareQuote } from 'lucide-react';
-
-const TABS = [
-  { id: 'diagnosis', label: 'Компании с диагнозом' },
-  { id: 'campaigns', label: 'Кампании КП' },
-];
+import { Download, Copy, MessageSquareQuote } from 'lucide-react';
 
 type Pain = { label: string; count: number };
 
@@ -77,33 +71,6 @@ const MOCK_DIAGNOSIS: {
   },
 ];
 
-const MOCK_CAMPAIGNS = [
-  { name: 'Стоматологии Москвы — холодное письмо', recipients: 247, sent: 247, opened: 89, errors: 12, date: '02.06.2026', status: 'OK' },
-  { name: 'Автосервисы СПб — повторное касание', recipients: 180, sent: 96, opened: 28, errors: 4, date: '01.06.2026', status: 'processing' },
-  { name: 'Клиники Воронежа — приглашение на demo', recipients: 64, sent: 64, opened: 22, errors: 1, date: '30.05.2026', status: 'OK' },
-];
-
-function StatusBadge({ status }: { status: string }) {
-  if (status === 'processing') {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs"
-        style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: 'var(--landing-warning)' }}
-      >
-        <Loader2 className="h-3 w-3 animate-spin" /> В работе
-      </span>
-    );
-  }
-  return (
-    <span
-      className="rounded px-2 py-0.5 text-xs"
-      style={{ backgroundColor: 'rgba(14,169,122,0.15)', color: 'var(--landing-accent)' }}
-    >
-      OK
-    </span>
-  );
-}
-
 function PainPill({ pain }: { pain: Pain }) {
   return (
     <span
@@ -129,8 +96,6 @@ function PainPill({ pain }: { pain: Pain }) {
 }
 
 export function ExamplesSection() {
-  const [tab, setTab] = useState('diagnosis');
-
   return (
     <section id="examples" className="landing-section l-examples">
       <div className="container">
@@ -138,19 +103,6 @@ export function ExamplesSection() {
         <h2 className="section-title reveal">
           Как выглядит <span style={{ color: 'var(--landing-accent)' }}>в кабинете</span>
         </h2>
-
-        {/* Tabs */}
-        <div className="l-examples__tabs reveal">
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`l-examples__tab${tab === id ? ' active' : ''}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
         {/* «ПРИМЕР»-плашка (§3) */}
         <div
@@ -204,7 +156,6 @@ export function ExamplesSection() {
 
         {/* Table */}
         <div className="l-examples__table-wrap reveal" style={{ overflowX: 'auto' }}>
-          {tab === 'diagnosis' && (
             <table className="l-examples__table" style={{ minWidth: '720px' }}>
               <thead>
                 <tr>
@@ -266,31 +217,6 @@ export function ExamplesSection() {
                 ))}
               </tbody>
             </table>
-          )}
-          {tab === 'campaigns' && (
-            <table className="l-examples__table" style={{ minWidth: '680px' }}>
-              <thead>
-                <tr>
-                  {['Кампания', 'Получателей', 'Отправлено', 'Открыто', 'Ошибки', 'Дата', 'Статус'].map(h => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {MOCK_CAMPAIGNS.map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 600 }}>{r.name}</td>
-                    <td>{r.recipients}</td>
-                    <td>{r.sent}</td>
-                    <td>{r.opened}</td>
-                    <td style={{ color: r.errors ? 'var(--landing-danger)' : undefined }}>{r.errors}</td>
-                    <td>{r.date}</td>
-                    <td><StatusBadge status={r.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
       </div>
     </section>

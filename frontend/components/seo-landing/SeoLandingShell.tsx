@@ -499,12 +499,12 @@ const HERO_DECOR: Record<string, DecorItem[]> = {
     { Icon: Mail, text: '12 480 email собрано', color: '#ec4899', top: '78%', left: '50%', rotate: -3 },
     { Icon: Phone, text: '+7 (812) 555-90-12', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
   ],
-  // /holodnaya-rassylka — конверты, статусы доставки, кампании
+  // /holodnaya-rassylka — черновики писем под боль (SpinLid не рассылает)
   mailing: [
-    { Icon: Send, text: 'Кампания · 500 писем', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
-    { Icon: MailCheck, text: 'доставлено 487', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
-    { Icon: Mail, text: 'открыто 213 (44%)', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
-    { Icon: MailX, text: 'отказы 13 (2.6%)', color: '#ef4444', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Send, text: 'отправляете сами', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
+    { Icon: MailCheck, text: 'черновик готов', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Mail, text: 'цитата из отзыва', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: MailX, text: 'без «мы предлагаем»', color: '#ef4444', top: '8%', left: '78%', rotate: 6 },
     { Icon: Sparkles, text: 'персональный pain', color: '#f59e0b', top: '78%', left: '50%', rotate: -3 },
     { Icon: AtSign, text: 'ivan@example.ru', color: '#3b82f6', top: '58%', left: '86%', rotate: -5 },
   ],
@@ -515,7 +515,7 @@ const HERO_DECOR: Record<string, DecorItem[]> = {
     { Icon: Hash, text: 'DaData · ИНН/ОГРН', color: '#3b82f6', top: '70%', left: '8%', rotate: 5 },
     { Icon: Sparkles, text: 'AI · pain-теги', color: '#a855f7', top: '8%', left: '78%', rotate: 6 },
     { Icon: Users, text: 'ЛПР · /team', color: '#f59e0b', top: '60%', left: '88%', rotate: -5 },
-    { Icon: Mail, text: 'Рассылка · CTR 44%', color: '#06b6d4', top: '78%', left: '52%', rotate: -3 },
+    { Icon: Mail, text: 'черновик письма', color: '#06b6d4', top: '78%', left: '52%', rotate: -3 },
   ],
 };
 
@@ -1422,7 +1422,7 @@ function FinalCta() {
         >
           Регистрация за 30 секунд, без кредитной карты.
           <br />
-          Первые 500 лидов и 5 кампаний КП — бесплатно.
+          Бесплатно во время беты.
         </p>
         <Link
           href="/auth/register"

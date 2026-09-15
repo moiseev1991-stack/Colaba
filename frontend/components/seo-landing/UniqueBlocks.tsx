@@ -6,7 +6,7 @@
  *   /parser-yandex-maps  → TwoSourcesBlock        («Зачем второй источник»)
  *   /baza-klientov       → BaseRowFieldsBlock     («Что в каждой строке базы»)
  *   /sbor-kontaktov      → ContactsSourcesBlock   («Откуда берём контакты»)
- *   /holodnaya-rassylka  → MailHygieneBlock       («Гигиена рассылок»)
+ *   /holodnaya-rassylka  → (без уникального блока: SpinLid не рассылает письма)
  *
  * Все блоки используют одну стилистическую обёртку SeoSection,
  * чтобы выглядеть как часть Shell'а (фон, отступы, типографика).
@@ -410,7 +410,7 @@ export function ContactsSourcesBlock() {
           className="font-display font-semibold text-lg mb-3"
           style={{ color: 'hsl(var(--text))' }}
         >
-          Чистка перед тем как отдать в рассылку
+          Чистка перед выгрузкой
         </div>
         <ul
           className="space-y-1.5 text-sm leading-relaxed list-disc pl-5"
@@ -418,103 +418,10 @@ export function ContactsSourcesBlock() {
         >
           <li>Телефоны — к +7 (XXX) XXX-XX-XX, мобильные и городские отдельно.</li>
           <li>Email — lower-case + отсев дублей info@/sales@/contact@ если есть личный.</li>
-          <li>Проверка MX-записи домена email перед запуском кампании.</li>
-          <li>Blacklist собственных доменов и конкурентов — не уйдут случайно в рассылку.</li>
+          <li>Проверка MX-записи домена email — мёртвые адреса отсеиваются.</li>
+          <li>Blacklist собственных доменов и конкурентов — не попадут в выгрузку.</li>
         </ul>
       </div>
-    </SeoSection>
-  );
-}
-
-// ============================================================================
-// /holodnaya-rassylka — «Гигиена рассылок»
-// ============================================================================
-
-const HYGIENE_ITEMS: { Icon: LucideIcon; title: string; body: string }[] = [
-  {
-    Icon: Sparkles,
-    title: 'Расписание без всплесков',
-    body: 'Письма уходят равномерно в течение дня (не «1000 за 5 минут»), почтовые провайдеры не считают это спам-залпом.',
-  },
-  {
-    Icon: AtSign,
-    title: 'Отписка одной кнопкой',
-    body: 'Ссылка отписки в подвале каждого письма, клик мгновенно блокирует адрес. Не нужно отвечать «STOP» — это снижает жалобы.',
-  },
-  {
-    Icon: Shield,
-    title: 'Автоматический blacklist',
-    body: 'Hard bounce и жалобы на спам → адрес автоматом в чёрный список. На него больше никогда не уйдёт письмо ни в одной кампании.',
-  },
-  {
-    Icon: ShieldCheck,
-    title: 'Все ответы в одном ящике',
-    body: 'Все ответы (включая автоматические «Out of office») собираются в один ящик. Не нужно следить за рассылочным адресом.',
-  },
-  {
-    Icon: FileText,
-    title: 'SPF / DKIM / DMARC',
-    body: 'У всех рассылочных доменов настроены подписи DKIM и DMARC-политика. Провайдеры видят: письмо от того, за кого себя выдаёт.',
-  },
-  {
-    Icon: Phone,
-    title: 'Прогретые отправители',
-    body: 'Используем доменные пары с историей рассылок, чтобы первое же сообщение не уходило в спам. На холодном домене — медленный прогрев.',
-  },
-];
-
-export function MailHygieneBlock() {
-  return (
-    <SeoSection
-      bg="surface"
-      label="Антиспам и репутация"
-      title="Гигиена рассылок"
-      description="Холодные рассылки боятся не «забанят» — а медленного протухания репутации домена. SpinLid держит шесть базовых правил, которые суммарно снимают почти все стандартные риски."
-    >
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {HYGIENE_ITEMS.map(({ Icon, title, body }) => (
-          <div
-            key={title}
-            className="rounded-2xl border p-5"
-            style={{
-              background: 'hsl(var(--bg))',
-              borderColor: 'hsl(var(--border))',
-            }}
-          >
-            <div
-              className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.14))',
-                border: '1px solid rgba(16,185,129,0.30)',
-              }}
-            >
-              <Icon size={20} color="#0b1220" />
-            </div>
-            <div
-              className="font-display font-semibold text-sm mb-1.5"
-              style={{ color: 'hsl(var(--text))' }}
-            >
-              {title}
-            </div>
-            <div
-              className="text-[12.5px] leading-relaxed"
-              style={{ color: 'hsl(var(--muted))' }}
-            >
-              {body}
-            </div>
-          </div>
-        ))}
-      </div>
-      <p
-        className="mt-6 text-center text-[12px]"
-        style={{ color: 'hsl(var(--muted))' }}
-      >
-        Это не «гарантия 100% inbox» — гарантии в email невозможны. Это
-        набор практик, которые работают совместно с персонализацией под
-        боль клиента и снижают жалобы до уровня прогретой транзакционной
-        рассылки.
-      </p>
     </SeoSection>
   );
 }
@@ -546,7 +453,7 @@ const LIDGEN_STAGES: { Icon: LucideIcon; step: string; title: string; body: stri
     Icon: Send,
     step: '04',
     title: 'Касание',
-    body: 'Встроенная рассылка с подстановкой болей в шаблон. Статусы доставки, открытий и ответов — сразу видно, какие лиды прогрелись.',
+    body: 'Черновик письма с подстановкой болей в шаблон. Отправляете сами — со своей почты или из CRM.',
   },
 ];
 
@@ -699,7 +606,7 @@ const CALL_BASE_FIELDS: { Icon: LucideIcon; label: string; hint: string }[] = [
   { Icon: Quote, label: 'Зацепка из отзыва', hint: 'Готовая фраза на первые 10 секунд: «видел жалобы на долгое ожидание — как раз по этому звоню».' },
   { Icon: Building2, label: 'Ниша и размер', hint: 'Рубрика, рейтинг, число отзывов — понятно, крупный это игрок или частник.' },
   { Icon: Clock, label: 'Часовой пояс города', hint: 'Чтобы не звонить в Владивосток в 7 утра по Москве.' },
-  { Icon: Globe, label: 'Сайт и email', hint: 'Не дозвонились — отправляете КП на почту прямо из карточки.' },
+  { Icon: Globe, label: 'Сайт и email', hint: 'Не дозвонились — копируете готовое КП и пишете на почту.' },
 ];
 
 export function CallBaseBlock() {
@@ -753,9 +660,9 @@ const EMAIL_SOURCES: { Icon: LucideIcon; label: string; hint: string; color: str
 ];
 
 const EMAIL_VALIDATION: { Icon: LucideIcon; title: string; body: string }[] = [
-  { Icon: MailCheck, title: 'Синтаксис и MX', body: 'Проверяем формат адреса и наличие MX-записи у домена — мёртвые ящики отсеиваются до рассылки.' },
+  { Icon: MailCheck, title: 'Синтаксис и MX', body: 'Проверяем формат адреса и наличие MX-записи у домена — мёртвые ящики отсеиваются заранее.' },
   { Icon: Filter, title: 'Дедуп и приоритет', body: 'Убираем дубли, при наличии личного адреса не тащим общий info@ — письмо доходит до человека.' },
-  { Icon: Shield, title: 'Blacklist', body: 'Свои домены и конкурентов в чёрный список — не уйдут в рассылку случайно.' },
+  { Icon: Shield, title: 'Blacklist', body: 'Свои домены и конкурентов в чёрный список — не попадут в выгрузку случайно.' },
 ];
 
 export function EmailParserBlock() {
@@ -943,7 +850,7 @@ const GLOSSARY_TERMS: { term: string; anchor: string; body: string; link?: { hre
     term: 'Холодная рассылка',
     anchor: 'holodnaya-rassylka',
     body: 'Email- или мессенджер-рассылка по компаниям, которые вас не ждут. Работает, когда письмо персонализировано под боль конкретной компании, а не отправлено всем одинаковым шаблоном.',
-    link: { href: '/holodnaya-rassylka', label: 'Как делать холодную рассылку' },
+    link: { href: '/holodnaya-rassylka', label: 'Как писать холодные письма под боль' },
   },
   {
     term: 'ЛПР',
