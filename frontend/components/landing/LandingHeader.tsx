@@ -163,7 +163,7 @@ export function LandingHeader({
                       transition: 'background-color 0.15s',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(45,212,191,0.12)';
+                      e.currentTarget.style.background = 'rgba(16,185,129,0.12)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';

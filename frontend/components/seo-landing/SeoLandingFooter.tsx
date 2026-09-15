@@ -49,7 +49,7 @@ export function SeoLandingFooter({ currentHref }: { currentHref?: string }) {
             href="/"
             style={{
               display: 'inline-block',
-              fontFamily: 'var(--font-display), Unbounded, sans-serif',
+              fontFamily: 'var(--font-body), system-ui, sans-serif',
               fontWeight: 700,
               fontSize: '20px',
               color: '#fff',

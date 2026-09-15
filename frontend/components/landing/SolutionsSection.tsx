@@ -74,8 +74,8 @@ export function SolutionsSection() {
                   height: '36px',
                   borderRadius: '10px',
                   background:
-                    'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                  color: '#0b1220',
+                    'var(--brand-700)',
+                  color: '#fff',
                   fontWeight: 700,
                   fontSize: '14px',
                   marginBottom: '14px',
@@ -85,7 +85,7 @@ export function SolutionsSection() {
               </div>
               <div
                 style={{
-                  fontFamily: 'var(--font-display), Unbounded, sans-serif',
+                  fontFamily: 'var(--font-body), system-ui, sans-serif',
                   fontSize: '17px',
                   fontWeight: 600,
                   marginBottom: '6px',
@@ -107,7 +107,7 @@ export function SolutionsSection() {
               <div
                 style={{
                   marginTop: '14px',
-                  color: '#06b6d4',
+                  color: '#047857',
                   fontSize: '13px',
                   fontWeight: 600,
                 }}

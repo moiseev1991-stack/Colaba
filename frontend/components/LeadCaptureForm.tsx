@@ -176,7 +176,7 @@ export function LeadCaptureForm({ embedInHero = false }: { embedInHero?: boolean
         style={{
           background: embedInHero
             ? 'rgba(255,255,255,0.96)'
-            : 'linear-gradient(135deg, rgba(45,212,191,0.08) 0%, rgba(6,182,212,0.08) 100%)',
+            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
           border: '1px solid hsl(var(--border))',
         }}
       >
@@ -219,7 +219,7 @@ export function LeadCaptureForm({ embedInHero = false }: { embedInHero?: boolean
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
             fontWeight: 600,
-            background: 'rgba(45,212,191,0.15)',
+            background: 'rgba(16, 185, 129, 0.15)',
             color: '#0e9384',
             marginBottom: '12px',
           }}
@@ -324,8 +324,8 @@ export function LeadCaptureForm({ embedInHero = false }: { embedInHero?: boolean
           disabled={submitting}
           className="w-full rounded-lg py-3 text-base font-semibold disabled:opacity-60"
           style={{
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-            color: '#0b1220',
+            background: 'var(--brand-700)',
+            color: '#fff',
             cursor: submitting ? 'not-allowed' : 'pointer',
           }}
         >

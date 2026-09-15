@@ -20,7 +20,7 @@ export function LegalPageShell({ title, updatedAt, children }: LegalPageShellPro
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             href="/"
-            className="font-display font-bold text-lg tracking-tight"
+            className="font-bold text-lg tracking-tight"
             style={{ color: 'hsl(var(--text))' }}
           >
             SpinLid

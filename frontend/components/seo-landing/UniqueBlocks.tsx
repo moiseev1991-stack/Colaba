@@ -71,7 +71,7 @@ function SeoSection({
           </div>
         )}
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           {title}
@@ -124,9 +124,9 @@ export function TwoGisFieldsBlock() {
             }}
           >
             <div className="flex items-center gap-2 mb-1.5">
-              <Icon size={16} strokeWidth={2.2} color="#0891b2" />
+              <Icon size={16} strokeWidth={2.2} color="#047857" />
               <div
-                className="font-display font-semibold text-sm"
+                className="font-semibold text-sm"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {label}
@@ -143,9 +143,9 @@ export function TwoGisFieldsBlock() {
               style={{
                 background:
                   fill === 'Эксклюзив'
-                    ? 'rgba(45,212,191,0.15)'
+                    ? 'rgba(16, 185, 129, 0.15)'
                     : 'rgba(8,145,178,0.10)',
-                color: fill === 'Эксклюзив' ? '#0d9488' : '#0891b2',
+                color: fill === 'Эксклюзив' ? '#059669' : '#047857',
               }}
             >
               {fill}
@@ -192,7 +192,7 @@ export function TwoSourcesBlock() {
             <MapPin size={22} color="#19c129" />
           </div>
           <div
-            className="font-display font-semibold mb-1"
+            className="font-semibold mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             Только 2GIS
@@ -208,18 +208,18 @@ export function TwoSourcesBlock() {
           className="rounded-2xl border-2 p-5 text-center"
           style={{
             background:
-              'linear-gradient(135deg, rgba(45,212,191,0.10), rgba(6,182,212,0.05))',
-            borderColor: 'rgba(45,212,191,0.45)',
+              'linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.05))',
+            borderColor: 'rgba(16, 185, 129, 0.45)',
           }}
         >
           <div
             className="inline-flex items-center justify-center w-12 h-12 rounded-full mx-auto mb-3"
-            style={{ background: 'rgba(6,182,212,0.18)' }}
+            style={{ background: 'rgba(16, 185, 129, 0.18)' }}
           >
-            <Sparkles size={22} color="#0891b2" />
+            <Sparkles size={22} color="#047857" />
           </div>
           <div
-            className="font-display font-semibold mb-1"
+            className="font-semibold mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             2GIS ∪ Я.Карты − дубли
@@ -245,7 +245,7 @@ export function TwoSourcesBlock() {
             <MapPin size={22} color="#d97706" />
           </div>
           <div
-            className="font-display font-semibold mb-1"
+            className="font-semibold mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             Только Я.Карты
@@ -306,13 +306,13 @@ export function BaseRowFieldsBlock() {
           >
             <div
               className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg"
-              style={{ background: 'rgba(6,182,212,0.10)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.10)' }}
             >
-              <Icon size={16} color="#0891b2" />
+              <Icon size={16} color="#047857" />
             </div>
             <div className="min-w-0">
               <div
-                className="font-display font-semibold text-sm"
+                className="font-semibold text-sm"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {label}
@@ -343,7 +343,7 @@ export function BaseRowFieldsBlock() {
 // ============================================================================
 
 const CONTACT_SOURCES: { source: string; gives: string; fill: string; color: string; Icon: LucideIcon }[] = [
-  { source: 'Карточка 2GIS / Я.Карт', gives: 'Телефон, иногда email', fill: '~80% телефонов', color: '#0891b2', Icon: MapPin },
+  { source: 'Карточка 2GIS / Я.Карт', gives: 'Телефон, иногда email', fill: '~80% телефонов', color: '#047857', Icon: MapPin },
   { source: 'Сайт компании (краулер)', gives: 'Email c /contacts /about, телефоны', fill: '~50% email', color: '#a855f7', Icon: Globe },
   { source: 'DaData по ИНН', gives: 'ФИО директора, юр.лицо', fill: '~70% юр.лиц', color: '#2563eb', Icon: ShieldCheck },
 ];
@@ -372,7 +372,7 @@ export function ContactsSourcesBlock() {
               <Icon size={22} color={color} />
             </div>
             <div
-              className="font-display font-semibold text-sm mb-1"
+              className="font-semibold text-sm mb-1"
               style={{ color: 'hsl(var(--text))' }}
             >
               {source}
@@ -402,12 +402,12 @@ export function ContactsSourcesBlock() {
       >
         <div
           className="text-[11px] font-semibold uppercase tracking-widest mb-2"
-          style={{ color: '#0891b2' }}
+          style={{ color: '#047857' }}
         >
           Нормализация
         </div>
         <div
-          className="font-display font-semibold text-lg mb-3"
+          className="font-semibold text-lg mb-3"
           style={{ color: 'hsl(var(--text))' }}
         >
           Чистка перед выгрузкой
@@ -476,19 +476,19 @@ export function LidgenFunnelBlock() {
             }}
           >
             <div
-              className="absolute top-4 right-4 font-display font-bold text-2xl"
+              className="absolute top-4 right-4 font-bold text-2xl"
               style={{ color: 'hsl(var(--border))' }}
             >
               {step}
             </div>
             <div
               className="inline-flex items-center justify-center w-11 h-11 rounded-xl mb-3"
-              style={{ background: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.30)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16, 185, 129, 0.30)' }}
             >
-              <Icon size={22} color="#0891b2" />
+              <Icon size={22} color="#047857" />
             </div>
             <div
-              className="font-display font-semibold text-sm mb-1.5"
+              className="font-semibold text-sm mb-1.5"
               style={{ color: 'hsl(var(--text))' }}
             >
               {title}
@@ -550,7 +550,7 @@ export function BuyBaseComparisonBlock() {
         >
           <div className="flex items-center gap-2 mb-4">
             <XCircle size={20} color="#ef4444" />
-            <div className="font-display font-semibold" style={{ color: 'hsl(var(--text))' }}>
+            <div className="font-semibold" style={{ color: 'hsl(var(--text))' }}>
               Готовая база за 3 000-15 000 ₽
             </div>
           </div>
@@ -568,20 +568,20 @@ export function BuyBaseComparisonBlock() {
         <div
           className="rounded-2xl border-2 p-6"
           style={{
-            background: 'linear-gradient(135deg, rgba(45,212,191,0.08), rgba(6,182,212,0.04))',
-            borderColor: 'rgba(45,212,191,0.45)',
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.04))',
+            borderColor: 'rgba(16, 185, 129, 0.45)',
           }}
         >
           <div className="flex items-center gap-2 mb-4">
-            <CheckCircle2 size={20} color="#0d9488" />
-            <div className="font-display font-semibold" style={{ color: 'hsl(var(--text))' }}>
+            <CheckCircle2 size={20} color="#059669" />
+            <div className="font-semibold" style={{ color: 'hsl(var(--text))' }}>
               Свежая база в SpinLid
             </div>
           </div>
           <ul className="space-y-2.5">
             {BUY_BASE_GOOD.map((t) => (
               <li key={t} className="flex items-start gap-2 text-[13px] leading-snug" style={{ color: 'hsl(var(--text))' }}>
-                <CheckCircle2 size={15} color="#0d9488" className="shrink-0 mt-0.5" />
+                <CheckCircle2 size={15} color="#059669" className="shrink-0 mt-0.5" />
                 <span>{t}</span>
               </li>
             ))}
@@ -626,12 +626,12 @@ export function CallBaseBlock() {
           >
             <div
               className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg"
-              style={{ background: 'rgba(6,182,212,0.10)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.10)' }}
             >
-              <Icon size={16} color="#0891b2" />
+              <Icon size={16} color="#047857" />
             </div>
             <div className="min-w-0">
-              <div className="font-display font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
+              <div className="font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
                 {label}
               </div>
               <div className="text-[12px] leading-snug mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
@@ -655,7 +655,7 @@ export function CallBaseBlock() {
 
 const EMAIL_SOURCES: { Icon: LucideIcon; label: string; hint: string; color: string }[] = [
   { Icon: Globe, label: 'Страницы сайта', hint: 'Краулер обходит /contacts, /about, /team, подвал — там, где компании публикуют почту.', color: '#a855f7' },
-  { Icon: MapPin, label: 'Карточки 2GIS / Я.Карт', hint: 'Если email указан в карточке организации — забираем оттуда.', color: '#0891b2' },
+  { Icon: MapPin, label: 'Карточки 2GIS / Я.Карт', hint: 'Если email указан в карточке организации — забираем оттуда.', color: '#047857' },
   { Icon: FileText, label: 'Страницы контактов и оферты', hint: 'Юр. email часто лежит в реквизитах и договоре-оферте на сайте.', color: '#2563eb' },
 ];
 
@@ -686,7 +686,7 @@ export function EmailParserBlock() {
             >
               <Icon size={22} color={color} />
             </div>
-            <div className="font-display font-semibold text-sm mb-1" style={{ color: 'hsl(var(--text))' }}>
+            <div className="font-semibold text-sm mb-1" style={{ color: 'hsl(var(--text))' }}>
               {label}
             </div>
             <div className="text-[12.5px] leading-snug" style={{ color: 'hsl(var(--muted))' }}>
@@ -704,8 +704,8 @@ export function EmailParserBlock() {
             style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
           >
             <div className="flex items-center gap-2 mb-1.5">
-              <Icon size={16} color="#0d9488" />
-              <div className="font-display font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
+              <Icon size={16} color="#059669" />
+              <div className="font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
                 {title}
               </div>
             </div>
@@ -755,7 +755,7 @@ export function GoogleMapsBlock() {
             >
               <Icon size={22} color="#4285f4" />
             </div>
-            <div className="font-display font-semibold text-sm mb-1.5" style={{ color: 'hsl(var(--text))' }}>
+            <div className="font-semibold text-sm mb-1.5" style={{ color: 'hsl(var(--text))' }}>
               {title}
             </div>
             <div className="text-[12.5px] leading-relaxed" style={{ color: 'hsl(var(--muted))' }}>
@@ -800,7 +800,7 @@ export function TelegramParserBlock() {
           >
             <div className="flex items-center gap-2 mb-1.5">
               <Icon size={16} color="#229ed9" />
-              <div className="font-display font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
+              <div className="font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
                 {label}
               </div>
             </div>
@@ -898,8 +898,8 @@ export function GlossaryBlock() {
             style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={16} color="#0891b2" />
-              <h3 className="font-display font-semibold text-base" style={{ color: 'hsl(var(--text))' }}>
+              <BookOpen size={16} color="#047857" />
+              <h3 className="font-semibold text-base" style={{ color: 'hsl(var(--text))' }}>
                 {term}
               </h3>
             </div>
@@ -910,7 +910,7 @@ export function GlossaryBlock() {
               <Link
                 href={link.href}
                 className="inline-flex items-center gap-1 mt-3 text-[12.5px] font-semibold"
-                style={{ color: '#0891b2' }}
+                style={{ color: '#047857' }}
               >
                 {link.label} →
               </Link>

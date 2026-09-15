@@ -82,7 +82,7 @@ export function DiagnosisSection() {
                 marginTop: '8px',
                 padding: '16px 18px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, rgba(14,169,122,0.08), rgba(79,70,229,0.06))',
+                background: 'linear-gradient(135deg, rgba(14,169,122,0.08), rgba(16,185,129,0.05))',
                 border: '1px solid var(--landing-border-accent)',
               }}
             >
@@ -292,7 +292,8 @@ function DiagnosisStep({ num, title, desc }: { num: string; title: string; desc:
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: 'var(--font-body), system-ui, sans-serif',
+          fontVariantNumeric: 'tabular-nums',
           fontWeight: 700,
           fontSize: '14px',
           boxShadow: 'var(--landing-shadow-accent)',

@@ -9,6 +9,7 @@ import '@fontsource/manrope/400.css';
 import '@fontsource/manrope/500.css';
 import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
+import '@fontsource/manrope/800.css';
 import '@fontsource/unbounded/400.css';
 import '@fontsource/unbounded/500.css';
 import '@fontsource/unbounded/600.css';
@@ -20,7 +21,7 @@ import { CookieBanner } from '@/components/CookieBanner';
 import { YandexMetrika } from '@/components/YandexMetrika';
 
 export const viewport: Viewport = {
-  themeColor: '#2dd4bf',
+  themeColor: '#059669',
 };
 
 export const metadata: Metadata = {

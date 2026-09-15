@@ -392,13 +392,13 @@ function GuestHero({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: '#0b1220',
+                background: 'var(--brand-700)',
+                color: '#fff',
                 fontWeight: 600,
                 fontSize: '15px',
                 padding: '13px 22px',
                 borderRadius: '10px',
-                boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+                boxShadow: '0 10px 28px rgba(16, 185, 129, 0.32)',
               }}
             >
               Создать аккаунт
@@ -591,7 +591,7 @@ function CompactAuthedHero({ h1, lead }: { h1: string; lead: string }) {
         <Link
           href="/app/leads"
           className="mt-4 inline-flex items-center gap-2 text-sm font-semibold hover:underline"
-          style={{ color: '#06b6d4' }}
+          style={{ color: '#047857' }}
         >
           Открыть в кабинете →
         </Link>
@@ -638,7 +638,7 @@ function DemoCompanyCard({
         <div className="flex items-start justify-between gap-3 mb-1">
           <div>
             <div
-              className="font-display font-semibold"
+              className="font-semibold"
               style={{ color: '#0f172a', fontSize: '18px' }}
             >
               {company.name}
@@ -674,8 +674,8 @@ function DemoCompanyCard({
             type="button"
             className="flex-1 text-[13px] font-semibold py-2 rounded-lg"
             style={{
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-              color: '#0b1220',
+              background: 'var(--brand-700)',
+              color: '#fff',
               cursor: 'default',
             }}
           >
@@ -765,9 +765,9 @@ function TrustCell({
   return (
     <div className="px-3 py-3 md:px-4 md:py-4" style={{ background: 'hsl(var(--bg))' }}>
       <div
-        className="font-display font-bold text-xl md:text-2xl"
+        className="font-bold text-xl md:text-2xl"
         style={{
-          background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+          background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -807,7 +807,7 @@ function SignalsTableShowcase() {
           Так выглядит выдача
         </div>
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Не «вот 1000 контактов», а кому, с чем и как написать
@@ -842,7 +842,7 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
     <section className="py-14 md:py-20">
       <div className="max-w-5xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           200 отзывов → 3 конкретные боли
@@ -896,17 +896,17 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
             <div
               className="flex items-center justify-center rounded-full w-14 h-14 font-bold text-lg"
               style={{
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: '#0b1220',
+                background: 'var(--brand-700)',
+                color: '#fff',
               }}
             >
               AI
             </div>
-            <div className="text-3xl" style={{ color: '#06b6d4' }}>
+            <div className="text-3xl" style={{ color: '#047857' }}>
               →
             </div>
           </div>
-          <div className="md:hidden flex justify-center my-2 text-2xl" style={{ color: '#06b6d4' }}>
+          <div className="md:hidden flex justify-center my-2 text-2xl" style={{ color: '#047857' }}>
             ↓
           </div>
 
@@ -915,13 +915,13 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
             className="rounded-2xl border p-5"
             style={{
               background:
-                'linear-gradient(135deg, rgba(45,212,191,0.10), rgba(6,182,212,0.05))',
-              borderColor: 'rgba(45, 212, 191, 0.35)',
+                'linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.05))',
+              borderColor: 'rgba(16, 185, 129, 0.35)',
             }}
           >
             <div
               className="text-[11px] font-semibold uppercase tracking-wider mb-3"
-              style={{ color: '#0891b2' }}
+              style={{ color: '#047857' }}
             >
               Стало: {tagsSummary.length} {tagsSummary.length === 1 ? 'боль с цитатой' : 'боли с цитатами'}
             </div>
@@ -977,7 +977,7 @@ function HowItWorksSection({
     >
       <div className="max-w-5xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           {title}
@@ -999,9 +999,9 @@ function HowItWorksSection({
                     className="inline-flex items-center justify-center w-11 h-11 rounded-xl"
                     style={{
                       background:
-                        'linear-gradient(135deg, rgba(16,185,129,0.22), rgba(6,182,212,0.18))',
+                        'linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16, 185, 129, 0.18))',
                       border: '1px solid rgba(16,185,129,0.35)',
-                      boxShadow: '0 4px 14px rgba(6,182,212,0.18)',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.18)',
                     }}
                   >
                     <Icon size={22} strokeWidth={2.2} color="#0b1220" />
@@ -1014,7 +1014,7 @@ function HowItWorksSection({
                   </div>
                 </div>
                 <h3
-                  className="font-display font-semibold text-base mb-1.5"
+                  className="font-semibold text-base mb-1.5"
                   style={{ color: 'hsl(var(--text))' }}
                 >
                   {step.title}
@@ -1057,7 +1057,7 @@ function SourcesSection() {
           5 источников данных
         </div>
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Не один парсер — пять открытых источников
@@ -1082,7 +1082,7 @@ function SourcesSection() {
                 <Icon size={22} strokeWidth={2.2} color={color} />
               </div>
               <div
-                className="font-display font-semibold text-sm mb-0.5"
+                className="font-semibold text-sm mb-0.5"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {label}
@@ -1122,7 +1122,7 @@ function ScreensSection({
     >
       <div className="max-w-6xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Как это выглядит в кабинете
@@ -1161,7 +1161,7 @@ function ScreenMock({
     <div>
       <div className="mb-2.5">
         <div
-          className="font-display font-semibold text-sm"
+          className="font-semibold text-sm"
           style={{ color: 'hsl(var(--text))' }}
         >
           {title}
@@ -1225,7 +1225,7 @@ function CompareTable() {
     <section className="py-16 md:py-20">
       <div className="max-w-4xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Чем отличается от обычного парсера
@@ -1251,8 +1251,8 @@ function CompareTable() {
               className="px-4 py-3 text-center"
               style={{
                 background:
-                  'linear-gradient(135deg, rgba(45,212,191,0.15), rgba(6,182,212,0.10))',
-                color: '#0891b2',
+                  'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.10))',
+                color: '#047857',
               }}
             >
               SpinLid
@@ -1275,7 +1275,7 @@ function CompareTable() {
                 className="px-4 py-3 text-center"
                 style={{
                   background:
-                    'linear-gradient(135deg, rgba(45,212,191,0.06), rgba(6,182,212,0.04))',
+                    'linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.04))',
                 }}
               >
                 <CompareCell value={r.b} />
@@ -1323,21 +1323,21 @@ function KillerBlock({ title, body }: { title: string; body: string }) {
           className="rounded-3xl p-7 md:p-9 border"
           style={{
             background:
-              'linear-gradient(135deg, rgba(45,212,191,0.10), rgba(6,182,212,0.06))',
-            borderColor: 'rgba(45, 212, 191, 0.35)',
+              'linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.06))',
+            borderColor: 'rgba(16, 185, 129, 0.35)',
           }}
         >
           <div
             className="inline-block text-xs font-semibold tracking-widest uppercase mb-3 px-3 py-1 rounded-full"
             style={{
-              color: '#0b1220',
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+              color: '#fff',
+              background: 'var(--brand-700)',
             }}
           >
             Фишка SpinLid
           </div>
           <h2
-            className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3"
+            className="font-semibold tracking-tight text-2xl md:text-3xl mb-3"
             style={{ color: 'hsl(var(--text))' }}
           >
             {title}
@@ -1359,7 +1359,7 @@ function FaqSection({ items }: { items: FaqItem[] }) {
     <section className="py-14" style={{ background: 'hsl(var(--surface))' }}>
       <div className="max-w-3xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-7 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-7 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Частые вопросы
@@ -1400,14 +1400,14 @@ function FinalCta() {
       className="py-16"
       style={{
         background:
-          'radial-gradient(700px 300px at 50% 50%, rgba(45, 212, 191, 0.2), transparent), #0b1220',
+          'radial-gradient(700px 300px at 50% 50%, rgba(16, 185, 129, 0.2), transparent), #0b1220',
         color: '#fff',
         textAlign: 'center',
       }}
     >
       <div className="max-w-3xl mx-auto px-6">
         <h2
-          className="font-display font-bold tracking-tight mb-3"
+          className="font-bold tracking-tight mb-3"
           style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)' }}
         >
           Готовы попробовать?
@@ -1430,13 +1430,13 @@ function FinalCta() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-            color: '#0b1220',
+            background: 'var(--brand-700)',
+            color: '#fff',
             fontWeight: 600,
             fontSize: '15px',
             padding: '13px 24px',
             borderRadius: '10px',
-            boxShadow: '0 12px 32px rgba(6, 182, 212, 0.4)',
+            boxShadow: '0 12px 32px rgba(16, 185, 129, 0.4)',
           }}
         >
           Создать аккаунт →
@@ -1463,8 +1463,8 @@ function CompactAuthedCta() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-            color: '#0b1220',
+            background: 'var(--brand-700)',
+            color: '#fff',
             fontWeight: 600,
             fontSize: '15px',
             padding: '12px 24px',
@@ -1483,7 +1483,7 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
     <section className="py-10 md:py-14">
       <div className="max-w-5xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-lg md:text-xl mb-5"
+          className="font-semibold tracking-tight text-lg md:text-xl mb-5"
           style={{ color: 'hsl(var(--text))' }}
         >
           Смежные возможности
@@ -1500,7 +1500,7 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
               }}
             >
               <div
-                className="font-display font-semibold text-sm mb-1"
+                className="font-semibold text-sm mb-1"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {link.title}
