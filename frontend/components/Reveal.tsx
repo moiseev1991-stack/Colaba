@@ -19,6 +19,11 @@ interface RevealProps {
   as?: keyof JSX.IntrinsicElements;
 }
 
+// 'initial' — серверный рендер и первый клиентский: контент виден (и без JS).
+// 'hidden'  — после гидрации, только для блоков ниже экрана: ждём скролла.
+// 'visible' — показан.
+type Phase = 'initial' | 'hidden' | 'visible';
+
 export function Reveal({
   children,
   delayMs = 0,
@@ -29,30 +34,25 @@ export function Reveal({
   as: Tag = 'div',
 }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<Phase>('initial');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      setVisible(true);
-      return;
-    }
-
     const el = ref.current;
     if (!el) return;
 
-    if (typeof IntersectionObserver === 'undefined') {
-      setVisible(true);
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const onScreen = el.getBoundingClientRect().top < window.innerHeight;
+    if (prefersReduced || onScreen || typeof IntersectionObserver === 'undefined') {
+      setPhase('visible');
       return;
     }
 
+    setPhase('hidden');
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            setVisible(true);
+            setPhase('visible');
             io.disconnect();
             break;
           }
@@ -64,12 +64,13 @@ export function Reveal({
     return () => io.disconnect();
   }, [threshold]);
 
-  const animStyle: CSSProperties = {
-    opacity: visible ? 1 : 0,
-    transform: visible ? 'translate3d(0,0,0)' : `translate3d(0, ${offsetY}px, 0)`,
-    transition: `opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1) ${delayMs}ms, transform 600ms cubic-bezier(0.22, 0.61, 0.36, 1) ${delayMs}ms`,
-    willChange: 'opacity, transform',
-  };
+  const transition = `opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1) ${delayMs}ms, transform 600ms cubic-bezier(0.22, 0.61, 0.36, 1) ${delayMs}ms`;
+  const animStyle: CSSProperties =
+    phase === 'hidden'
+      ? { opacity: 0, transform: `translate3d(0, ${offsetY}px, 0)`, transition, willChange: 'opacity, transform' }
+      : phase === 'visible'
+        ? { opacity: 1, transform: 'translate3d(0,0,0)', transition }
+        : {};
 
   const Component = Tag as 'div';
   return (

@@ -2,18 +2,24 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import './landing.css';
-import { SEO_NAV_LINKS } from './seoNavLinks';
+import '@/components/landing/landing.css';
+import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { BrandMark } from '@/components/BrandMark';
 
 const ANCHORS = [
-  { id: 'diagnosis', label: 'Диагноз' },
-  { id: 'pricing', label: 'Тарифы' },
-  { id: 'examples', label: 'Примеры' },
+  { id: 'how', label: 'Как работает' },
+  { id: 'audience', label: 'Для кого' },
+  { id: 'pricing', label: 'Цены' },
   { id: 'faq', label: 'FAQ' },
 ] as const;
 
-export function LandingHeader({
+/**
+ * Единая шапка публичных страниц. variant='home' — главная (якоря скроллят секции);
+ * variant='subpage' — SEO-страницы, /demo, юрстраницы (якоря ведут на /#id).
+ * На светлых страницах передавайте forceSolid: иначе до прокрутки шапка прозрачная с белым текстом.
+ * Шапка фиксированная, высота 66px — у контента под ней нужен отступ сверху.
+ */
+export function PublicHeader({
   variant = 'home',
   forceSolid = false,
 }: {
@@ -95,7 +101,7 @@ export function LandingHeader({
 
   return (
     // Обёртка .landing-light нужна, чтобы CSS-переменные --landing-* резолвились
-    // и на SEO-страницах (у них своя палитра). display:contents — без своего бокса.
+    // на любых публичных страницах, а не только на главной. display:contents — без своего бокса.
     <div className="landing-light" style={{ display: 'contents' }}>
     <nav className={`l-nav${navSolid ? ' scrolled' : ''}`} id="l-nav">
       <div className="l-nav__inner">
@@ -163,7 +169,7 @@ export function LandingHeader({
                       transition: 'background-color 0.15s',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(45,212,191,0.12)';
+                      e.currentTarget.style.background = 'rgba(16,185,129,0.12)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';

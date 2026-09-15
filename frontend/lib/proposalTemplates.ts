@@ -77,14 +77,14 @@ export const PLACEHOLDERS: Array<{
   {
     key: 'my_name',
     label: 'Ваше имя',
-    example: 'Дмитрий Моисеев',
+    example: 'Иван Петров',
     group: 'sender',
     hint: 'из профиля ниже',
   },
   {
     key: 'my_company',
     label: 'Ваша компания',
-    example: 'Colaba',
+    example: 'Веб-студия «Пиксель»',
     group: 'sender',
     hint: 'из профиля ниже',
   },

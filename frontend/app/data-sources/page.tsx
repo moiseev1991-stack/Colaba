@@ -25,7 +25,7 @@ export default function DataSourcesPage() {
         не используем утечки баз данных.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         1. Какие источники мы используем
       </h2>
       <ul className="list-disc pl-6 space-y-1">
@@ -48,7 +48,7 @@ export default function DataSourcesPage() {
         </li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         2. Принципы работы с данными
       </h2>
       <ul className="list-disc pl-6 space-y-1">
@@ -68,7 +68,7 @@ export default function DataSourcesPage() {
         </li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         3. Актуальность данных
       </h2>
       <p>
@@ -78,7 +78,7 @@ export default function DataSourcesPage() {
         данные перед использованием в коммерческой рассылке.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         4. Удаление компании из выдачи Сервиса
       </h2>
       <p>
@@ -103,7 +103,7 @@ export default function DataSourcesPage() {
         непосредственно у владельца источника.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         5. Ответственность пользователя за использование данных
       </h2>
       <p>

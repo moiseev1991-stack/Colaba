@@ -1,5 +1,5 @@
 /**
- * Единая иконка-марка SpinLid. Бирюзовый бренд-градиент (teal→cyan),
+ * Единая иконка-марка SpinLid. Изумрудный бренд-градиент,
  * стилизованная спираль. Используется в шапке лендинга, шапке SEO-страниц,
  * AppHeader кабинета, в favicon/apple-icon/OG.
  *
@@ -14,7 +14,7 @@ interface BrandMarkProps {
   /** Класс для обёртки (для позиционирования). */
   className?: string;
   /**
-   * CSS-градиент подложки. Дефолт — landing-палитра teal→cyan.
+   * CSS-градиент подложки. Дефолт — изумрудный градиент публичных страниц.
    * Для кабинета передаём продуктовый `--brand-gradient` (emerald→cyan).
    */
   gradient?: string;
@@ -24,8 +24,8 @@ interface BrandMarkProps {
   glow?: string;
 }
 
-const DEFAULT_GRADIENT = 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)';
-const DEFAULT_GLOW = '0 0 12px rgba(45, 212, 191, 0.4)';
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #34d399 0%, #059669 100%)';
+const DEFAULT_GLOW = '0 0 12px rgba(16, 185, 129, 0.35)';
 
 export function BrandMark({
   size = 32,
@@ -55,7 +55,7 @@ export function BrandMark({
       </span>
     );
   }
-  return <BrandSpiral size={size} color={spiralColor ?? '#06b6d4'} className={className} />;
+  return <BrandSpiral size={size} color={spiralColor ?? '#059669'} className={className} />;
 }
 
 function BrandSpiral({

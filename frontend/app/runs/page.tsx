@@ -133,7 +133,7 @@ export default function RunsHistoryPage() {
         showToast('error', 'Нет данных для CSV');
         return;
       }
-      downloadCSV(exportToCSV(rows), `colaba-run-${runId}.csv`);
+      downloadCSV(exportToCSV(rows), `spinlid-run-${runId}.csv`);
       showToast('success', 'CSV скачан');
     } catch (err: any) {
       showToast('error', err.response?.data?.detail || err.message || 'Ошибка экспорта');

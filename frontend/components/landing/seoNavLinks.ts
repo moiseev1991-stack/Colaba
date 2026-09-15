@@ -1,6 +1,6 @@
 /**
  * Список SEO-лендингов — общий источник для навигации:
- * - LandingHeader (dropdown «Возможности»)
+ * - PublicHeader (dropdown «Возможности»)
  * - SeoLandingShell (header → шапка)
  * - блок «Решения» на главной (после ModulesSection)
  *
@@ -62,7 +62,7 @@ export const SEO_NAV_LINKS: SeoNavLink[] = [
   },
   {
     href: '/holodnaya-rassylka',
-    label: 'Холодная рассылка КП',
-    hint: 'От базы до статусов доставки — в одном инструменте',
+    label: 'Холодные письма под боль',
+    hint: 'Персональный текст для каждой компании — отправляете сами',
   },
 ];

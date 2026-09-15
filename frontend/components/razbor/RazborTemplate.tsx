@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
+import { initRevealOnScroll } from '@/lib/revealOnScroll';
 import type { RazborConfig } from './config';
 
 // Единый шаблон лендинга «разбора». Все группы болей рендерятся этим
@@ -110,8 +111,8 @@ const PAIN_ICONS = [
 
 const STYLES = `
 .razbor{
-  --accent:#10b981; --accent2:#06b6d4;
-  --grad:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);
+  --accent:#10b981; --accent2:#34d399;
+  --grad:linear-gradient(135deg,#34d399 0%,#10b981 100%);
   --ink:#eef6f3; --body:#a3b6c4; --muted:#7d90a1;
   --bg:#070b14;
   --card:rgba(255,255,255,.045); --card-brd:rgba(255,255,255,.09);
@@ -122,42 +123,43 @@ const STYLES = `
   line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased;
   font-family:var(--font-body),'Manrope',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   background:
-    radial-gradient(900px 620px at 14% -4%, rgba(6,182,212,.16), transparent 60%),
+    radial-gradient(900px 620px at 14% -4%, rgba(16,185,129,.14), transparent 60%),
     radial-gradient(820px 720px at 100% 6%, rgba(16,185,129,.14), transparent 55%),
-    radial-gradient(760px 720px at 50% 38%, rgba(99,102,241,.08), transparent 60%),
+    radial-gradient(760px 720px at 50% 38%, rgba(16,185,129,.06), transparent 60%),
     radial-gradient(760px 640px at 2% 82%, rgba(16,185,129,.07), transparent 60%),
     var(--bg);
 }
 .razbor *{box-sizing:border-box}
 .razbor .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
 .razbor .wrap--narrow{max-width:var(--maxw-narrow)}
-.razbor h1,.razbor h2,.razbor h3{font-family:var(--font-display),'Unbounded',system-ui,sans-serif;color:var(--ink);letter-spacing:-.02em}
+.razbor h1,.razbor h2,.razbor h3{color:var(--ink);letter-spacing:-.02em}
+.razbor h1{font-family:var(--font-display),'Unbounded',system-ui,sans-serif}
 .razbor p{margin:0 0 14px}
 .razbor a{color:var(--accent2)}
 .razbor section{padding:64px 0;position:relative;scroll-margin-top:70px}
 .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 
 /* REVEAL ON SCROLL */
-.razbor .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
-.razbor .reveal.visible{opacity:1;transform:none}
+.razbor.js-reveal .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.razbor.js-reveal .reveal.visible{opacity:1;transform:none}
 
 /* HEADER */
 .rz-head{position:sticky;top:0;z-index:40;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(7,11,20,.72);border-bottom:1px solid var(--line)}
 .rz-head__in{max-width:var(--maxw);margin:0 auto;padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .rz-brand{display:flex;align-items:center;text-decoration:none}
-.rz-brand__name{font-family:var(--font-display),sans-serif;font-weight:800;color:var(--ink);font-size:18px;line-height:1.1;letter-spacing:-.01em}
+.rz-brand__name{font-family:var(--font-body),'Manrope',sans-serif;font-weight:800;color:var(--ink);font-size:18px;line-height:1.1;letter-spacing:-.01em}
 .rz-head__tg{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 17px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--card-brd);color:var(--ink);text-decoration:none;font-weight:650;font-size:15px;transition:background .18s,border-color .18s}
-.rz-head__tg:hover{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.45);color:var(--ink)}
-.rz-head__tg svg{color:#5eead4}
+.rz-head__tg:hover{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.45);color:var(--ink)}
+.rz-head__tg svg{color:#6ee7b7}
 .rz-nav{display:flex;align-items:center;gap:22px;margin:0 auto 0 20px}
 .razbor .rz-nav a{color:var(--body);text-decoration:none;font-size:15px;font-weight:600;white-space:nowrap;transition:color .15s}
 .razbor .rz-nav a:hover{color:var(--ink)}
-.razbor .rz-nav a.rz-nav__active{color:#5eead4}
+.razbor .rz-nav a.rz-nav__active{color:#6ee7b7}
 .rz-head__right{display:flex;align-items:center;gap:10px}
 .rz-burger{display:none;width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--card-brd);color:var(--ink);cursor:pointer;align-items:center;justify-content:center}
 .rz-menu{display:flex;flex-direction:column;padding:4px 16px 16px}
 .razbor .rz-menu a{color:var(--ink);text-decoration:none;padding:13px 4px;font-size:16px;font-weight:600;border-bottom:1px solid var(--line)}
-.razbor .rz-menu a.rz-nav__active{color:#5eead4}
+.razbor .rz-menu a.rz-nav__active{color:#6ee7b7}
 .razbor .rz-menu .rz-head__tg{margin-top:14px;justify-content:center;border-bottom:none;padding:0 17px}
 
 /* BUTTONS */
@@ -166,7 +168,7 @@ const STYLES = `
 .rz-btn--primary:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(16,185,129,.44)}
 .rz-btn--primary:active{transform:translateY(0)}
 .rz-btn--ghost{background:rgba(255,255,255,.045);color:var(--ink);border-color:var(--card-brd)}
-.rz-btn--ghost:hover{transform:translateY(-2px);background:rgba(255,255,255,.09);border-color:rgba(45,212,191,.45)}
+.rz-btn--ghost:hover{transform:translateY(-2px);background:rgba(255,255,255,.09);border-color:rgba(16,185,129,.45)}
 .rz-btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none}
 /* ссылки-кнопки: перебиваем .razbor a (cyan), иначе текст primary сливается с градиентом */
 .razbor a.rz-btn--primary{color:#04120c}
@@ -183,12 +185,12 @@ const STYLES = `
 .rz-actions{display:flex;flex-wrap:wrap;gap:14px}
 .rz-trust{display:flex;flex-wrap:wrap;gap:11px;margin:26px 0 0;padding:0;list-style:none}
 .rz-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;background:rgba(16,185,129,.09);border:1px solid rgba(16,185,129,.26);color:#c9f7e6;font-weight:650;font-size:14px}
-.rz-pill svg{color:#5eead4;flex:0 0 16px}
+.rz-pill svg{color:#6ee7b7;flex:0 0 16px}
 
 /* HERO FLOAT CARDS */
 .rz-cards{display:grid;gap:13px}
 .rz-fcard{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;background:var(--card);border:1px solid var(--card-brd);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 10px 30px rgba(0,0,0,.28)}
-.rz-fcard__ic{width:44px;height:44px;border-radius:12px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;background:rgba(16,185,129,.16);color:#5eead4}
+.rz-fcard__ic{width:44px;height:44px;border-radius:12px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;background:rgba(16,185,129,.16);color:#6ee7b7}
 .rz-fcard__ic--cyan{background:rgba(6,182,212,.16);color:#67e8f9}
 .rz-fcard__ic--violet{background:rgba(129,140,248,.16);color:#a5b4fc}
 .rz-fcard__ic--amber{background:rgba(251,191,36,.15);color:#fcd34d}
@@ -198,7 +200,7 @@ const STYLES = `
 .rz-cards .reveal:nth-child(2){transition-delay:.17s}
 .rz-cards .reveal:nth-child(3){transition-delay:.29s}
 .rz-cards .reveal:nth-child(4){transition-delay:.41s}
-@keyframes rzPulse{0%,100%{box-shadow:0 10px 30px rgba(0,0,0,.28)}50%{box-shadow:0 10px 30px rgba(0,0,0,.28),0 0 0 3px rgba(45,212,191,.2)}}
+@keyframes rzPulse{0%,100%{box-shadow:0 10px 30px rgba(0,0,0,.28)}50%{box-shadow:0 10px 30px rgba(0,0,0,.28),0 0 0 3px rgba(16,185,129,.2)}}
 .rz-fcard--pulse{animation:rzPulse 2.8s ease-in-out infinite}
 
 /* SCROLL HINT */
@@ -235,7 +237,7 @@ const STYLES = `
 .rz-solgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 .rz-sol{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--card-brd);border-radius:16px;padding:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .rz-sol:hover{transform:translateY(-4px);border-color:rgba(16,185,129,.4);box-shadow:0 16px 40px rgba(16,185,129,.14)}
-.rz-sol__ic{width:42px;height:42px;border-radius:12px;flex:0 0 42px;background:rgba(16,185,129,.16);color:#5eead4;display:flex;align-items:center;justify-content:center}
+.rz-sol__ic{width:42px;height:42px;border-radius:12px;flex:0 0 42px;background:rgba(16,185,129,.16);color:#6ee7b7;display:flex;align-items:center;justify-content:center}
 .rz-sol p{margin:0;color:var(--ink);font-size:15.5px;font-weight:600;line-height:1.5}
 .rz-solgrid .reveal:nth-child(2){transition-delay:.08s}
 .rz-solgrid .reveal:nth-child(3){transition-delay:.16s}
@@ -246,7 +248,7 @@ const STYLES = `
 .rz-step{position:relative;background:var(--card);border:1px solid var(--card-brd);border-radius:16px;padding:24px 22px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .rz-step__n{width:46px;height:46px;border-radius:14px;background:var(--grad);color:#04120c;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-family:var(--font-display),sans-serif;box-shadow:0 8px 20px rgba(16,185,129,.3)}
 .rz-step p{margin:0;color:var(--body);font-size:15.5px;line-height:1.5}
-.rz-step:not(:last-child)::after{content:"";position:absolute;right:-16px;top:46px;width:12px;height:12px;border-top:2px solid rgba(45,212,191,.55);border-right:2px solid rgba(45,212,191,.55);transform:rotate(45deg)}
+.rz-step:not(:last-child)::after{content:"";position:absolute;right:-16px;top:46px;width:12px;height:12px;border-top:2px solid rgba(16,185,129,.55);border-right:2px solid rgba(16,185,129,.55);transform:rotate(45deg)}
 .rz-note{color:var(--muted);font-size:15px;margin:22px 0 0;text-align:center}
 
 /* FAQ */
@@ -312,7 +314,7 @@ const STYLES = `
   .rz-form{padding:22px 18px}
 }
 @media (prefers-reduced-motion: reduce){
-  .razbor .reveal{opacity:1;transform:none;transition:none}
+  .razbor.js-reveal .reveal{opacity:1;transform:none;transition:none}
   .rz-fcard--pulse,.rz-scroll{animation:none}
 }
 `;
@@ -343,21 +345,11 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
     }
   }, []);
 
-  // Reveal-on-scroll (классы .reveal стартуют opacity:0).
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return;
-          e.target.classList.add('visible');
-          obs.unobserve(e.target);
-        });
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
-    );
-    document.querySelectorAll('.razbor .reveal').forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
-  }, []);
+  // Появление блоков при прокрутке; без JS контент виден (см. lib/revealOnScroll.ts).
+  useEffect(
+    () => initRevealOnScroll(document.querySelector('.razbor'), { rootMargin: '0px 0px -40px 0px' }),
+    []
+  );
 
   // Группа для deep-link и source_tag формы. Пустой slug (общий /razbor) → 'landing'.
   const group = config.slug || 'landing';
@@ -492,20 +484,20 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
         <HeroBackgroundDecor />
         <div className="rz-hero__in">
           <div>
-            <div className="rz-badge reveal">
+            <div className="rz-badge">
               <span className="rz-badge__dot" />
               Бесплатно · 10 минут · без обязательств
             </div>
 
-            <h1 className="rz-h1 reveal">
+            <h1 className="rz-h1">
               {config.hero.titleTop}
               <br />
               <span className="grad-text">{config.hero.titleAccent}</span>
             </h1>
 
-            <p className="rz-sub reveal">{config.hero.sub}</p>
+            <p className="rz-sub">{config.hero.sub}</p>
 
-            <div className="rz-actions reveal">
+            <div className="rz-actions">
               <a className="rz-btn rz-btn--primary" href="#form">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -518,7 +510,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </a>
             </div>
 
-            <ul className="rz-trust reveal">
+            <ul className="rz-trust">
               {['По вашим реальным отзывам', 'Разбираю лично, не вебинар', 'Ничего не продаю на разборе'].map((t) => (
                 <li className="rz-pill" key={t}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -531,7 +523,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
           </div>
 
           <div className="rz-cards">
-            <div className="rz-fcard rz-fcard--pulse reveal">
+            <div className="rz-fcard rz-fcard--pulse">
               <div className="rz-fcard__ic">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -543,7 +535,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </div>
             </div>
 
-            <div className="rz-fcard reveal">
+            <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--cyan">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -555,7 +547,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </div>
             </div>
 
-            <div className="rz-fcard reveal">
+            <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--violet">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -567,7 +559,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </div>
             </div>
 
-            <div className="rz-fcard reveal">
+            <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--amber">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2l2.9 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 7.1-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

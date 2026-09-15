@@ -4,7 +4,7 @@
   "description": "Сбор компаний из 2GIS и Яндекс.Карт, контакты и AI-анализ отзывов",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#2dd4bf",
+  "theme_color": "#059669",
   "background_color": "#0b1220",
   "lang": "ru",
   "icons": [

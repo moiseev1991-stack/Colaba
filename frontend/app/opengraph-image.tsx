@@ -15,7 +15,7 @@ export default async function OpengraphImage() {
           display: 'flex',
           flexDirection: 'column',
           background:
-            'radial-gradient(900px 500px at 50% 0%, rgba(45,212,191,0.25), transparent), #0b1220',
+            'radial-gradient(900px 500px at 50% 0%, rgba(16,185,129,0.25), transparent), #0b1220',
           color: '#fff',
           padding: '80px',
           fontFamily: 'system-ui, sans-serif',
@@ -31,8 +31,8 @@ export default async function OpengraphImage() {
               height: '96px',
               borderRadius: '22px',
               background:
-                'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-              boxShadow: '0 0 36px rgba(45, 212, 191, 0.5)',
+                'linear-gradient(135deg, #34d399 0%, #059669 100%)',
+              boxShadow: '0 0 36px rgba(16, 185, 129, 0.5)',
             }}
           >
             <svg width="64" height="64" viewBox="0 0 32 32" fill="none">
@@ -64,7 +64,7 @@ export default async function OpengraphImage() {
           <span
             style={{
               backgroundImage:
-                'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+                'linear-gradient(135deg, #34d399 0%, #059669 100%)',
               backgroundClip: 'text',
               color: 'transparent',
             }}

@@ -1,71 +1,67 @@
-// ТЗ лендинг-рефакта 2026-06-03 §6: ушли от перечня «4 модуля» как главного
-// посыла. Теперь раздел продаёт связку «диагноз → письмо → отправка»,
-// SEO-аудит и Госзакупки убраны из верха (они есть в кабинете, но не продают
-// суть). Шесть карточек — все про главную фишку: компании → отзывы → боли
-// → черновик → отправка → история.
+// Секция 5 главной «Что внутри» (PR 2.2): шесть возможностей простым языком —
+// без внутренних терминов вроде «AI-температура лида» и «свой AI-промпт».
 
 const MODULES = [
   {
     svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" />
         <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2" />
       </svg>
     ),
     title: 'Поиск компаний на картах',
-    desc: 'Ниша + город → реальные карточки из 2GIS и Яндекс.Карт: название, рейтинг, телефоны, сайт, адрес.',
-    bullets: ['12 подмосковных городов с фильтром-сателлитом', 'Playwright тащит контакты со страницы 2GIS', 'Фильтры по рейтингу, негативу, наличию сайта'],
+    desc: 'Ниша и город — и вы получаете компании с Яндекс.Карт и 2GIS: название, рейтинг, телефон, сайт, адрес.',
+    bullets: ['Москва, Санкт-Петербург и другие города', 'Телефоны, сайты и мессенджеры из карточек', 'Фильтры по рейтингу, жалобам и наличию сайта'],
   },
   {
     svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    title: 'AI-диагноз из отзывов',
-    desc: 'Отзывы клиентов проходят через AI: на каждой компании — топ-3 боли с количеством упоминаний и цитатой-доказательством.',
-    bullets: ['Кластеризация болей по нише', 'Цитаты клиентов под каждым тегом', 'AI-температура лида 0-100'],
+    title: 'Жалобы клиентов из отзывов',
+    desc: 'AI читает отзывы и показывает главные жалобы по каждой компании — сколько раз о них пишут и цитату.',
+    bullets: ['Жалобы сгруппированы по темам', 'Цитата клиента под каждой жалобой', 'Видно, каким компаниям помощь нужна больше'],
   },
   {
     svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2v6m0 0l-3-3m3 3l3-3M3 12h6m0 0l-3-3m3 3l-3 3M21 12h-6m0 0l3 3m-3-3l3-3M12 22v-6m0 0l3 3m-3-3l-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'Письмо под боль одним кликом',
-    desc: 'AI генерирует черновик: «вижу в отзывах жалобу на X, могу показать решение» — с упоминанием конкретной цитаты.',
-    bullets: ['Шаблоны под нишу и тон письма', 'Регенерация и ручная правка', 'Bulk-драфты на весь список'],
+    title: 'Черновик письма в один клик',
+    desc: 'Письмо начинается с конкретной жалобы из отзывов, а не с «Здравствуйте, мы предлагаем».',
+    bullets: ['Шаблоны под нишу и тон письма', 'Можно перегенерировать или поправить руками', 'Черновики сразу на весь список'],
   },
   {
     svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" />
-        <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'Email-кампании и статусы',
-    desc: 'Запускайте рассылки по выбранным компаниям. В реальном времени — кто получил, открыл, кликнул, не доставлено.',
-    bullets: ['SMTP или Hyvor Relay', 'Доставлено / Открыто / Кликнул / Ошибка', 'Ответы — в одном ящике через catch-all'],
+    title: 'Списки и выгрузка',
+    desc: 'Собирайте компании в списки и выгружайте в Excel или CSV — для CRM, обзвона или своей почты.',
+    bullets: ['Списки по нишам и городам', 'Excel и CSV в один клик', 'Письмо — скопировать в свою почту'],
   },
   {
     svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 8h6M9 12h6M9 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Юр.данные и платёжеспособность',
-    desc: 'DaData подтягивает ИНН, ОГРН, оборот за последний год и возраст компании. Фильтр «платёжеспособные».',
-    bullets: ['Бесплатно через DaData', 'Бейдж «оборот ~N млн ₽ · открыта X лет»', 'Фильтр по возрасту и обороту'],
+    title: 'Данные о компании',
+    desc: 'ИНН, оборот и возраст компании из открытых реестров — чтобы писать тем, кто может заплатить.',
+    bullets: ['Оборот и возраст рядом с карточкой', 'Фильтр по обороту и возрасту', 'Только открытые источники'],
   },
   {
     svg: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'История, пресеты, экспорт',
-    desc: 'Сохранённые фильтры (включая «свой AI-промпт»), повтор удачных поисков, экспорт в Excel и CSV.',
-    bullets: ['Свои пресеты с AI-скорингом', 'Excel «лиды на сайт» — 2 вкладки', 'Карты + фильтр источника 2GIS/Я.Карты'],
+    title: 'История и сохранённые фильтры',
+    desc: 'Повторяйте удачные поиски в один клик и храните свои наборы фильтров.',
+    bullets: ['История всех поисков', 'Сохранённые наборы фильтров', 'Результаты не пропадают'],
   },
 ];
 
@@ -75,7 +71,7 @@ export function ModulesSection() {
       <div className="container">
         <div className="section-label reveal">Возможности</div>
         <h2 className="section-title reveal">
-          Что умеет <span className="accent" style={{ color: 'var(--landing-accent)' }}>SpinLid</span>
+          Что <span style={{ color: 'var(--landing-accent)' }}>внутри</span>
         </h2>
         <div className="l-skills__grid">
           {MODULES.map(({ svg, title, desc, bullets }) => (

@@ -3,7 +3,7 @@
  * SSR-friendly, без JS-зависимостей. Уважает prefers-reduced-motion.
  *
  * Состав:
- * 1. 5 крупных цветных mesh-blob'ов с blur + плавающая анимация
+ * 1. 5 крупных mesh-blob'ов в оттенках изумруда (единый акцент) с blur + плавающая анимация
  * 2. Тонкая dot-matrix с радиальной маской
  * 3. SVG-граф «потоков данных» — кривые с pulse-точками
  * 4. Затемнение к низу для плавного перехода к следующей секции
@@ -27,11 +27,11 @@ export function HeroBackgroundDecor() {
       `}</style>
 
       {/* Mesh-blobs */}
-      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', top:'-15%', left:'-10%', width:720, height:720, background:'radial-gradient(circle, #06b6d4 0%, transparent 65%)', filter:'blur(80px)', opacity:0.55, pointerEvents:'none', animation:'heroBlobA 22s ease-in-out infinite', zIndex: 0 }} />
-      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', top:'10%', right:'-15%', width:760, height:760, background:'radial-gradient(circle, #2dd4bf 0%, transparent 60%)', filter:'blur(90px)', opacity:0.5, pointerEvents:'none', animation:'heroBlobB 26s ease-in-out infinite', zIndex: 0 }} />
-      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', bottom:'-20%', left:'20%', width:680, height:680, background:'radial-gradient(circle, #6366f1 0%, transparent 60%)', filter:'blur(90px)', opacity:0.45, pointerEvents:'none', animation:'heroBlobC 24s ease-in-out infinite', zIndex: 0 }} />
-      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', top:'40%', left:'35%', width:480, height:480, background:'radial-gradient(circle, #a855f7 0%, transparent 65%)', filter:'blur(100px)', opacity:0.3, pointerEvents:'none', animation:'heroBlobA 30s ease-in-out infinite reverse', zIndex: 0 }} />
-      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', bottom:'5%', right:'15%', width:420, height:420, background:'radial-gradient(circle, #ec4899 0%, transparent 65%)', filter:'blur(90px)', opacity:0.28, pointerEvents:'none', animation:'heroBlobB 28s ease-in-out infinite reverse', zIndex: 0 }} />
+      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', top:'-15%', left:'-10%', width:720, height:720, background:'radial-gradient(circle, #10b981 0%, transparent 65%)', filter:'blur(80px)', opacity:0.45, pointerEvents:'none', animation:'heroBlobA 22s ease-in-out infinite', zIndex: 0 }} />
+      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', top:'10%', right:'-15%', width:760, height:760, background:'radial-gradient(circle, #059669 0%, transparent 60%)', filter:'blur(90px)', opacity:0.4, pointerEvents:'none', animation:'heroBlobB 26s ease-in-out infinite', zIndex: 0 }} />
+      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', bottom:'-20%', left:'20%', width:680, height:680, background:'radial-gradient(circle, #047857 0%, transparent 60%)', filter:'blur(90px)', opacity:0.35, pointerEvents:'none', animation:'heroBlobC 24s ease-in-out infinite', zIndex: 0 }} />
+      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', top:'40%', left:'35%', width:480, height:480, background:'radial-gradient(circle, #34d399 0%, transparent 65%)', filter:'blur(100px)', opacity:0.14, pointerEvents:'none', animation:'heroBlobA 30s ease-in-out infinite reverse', zIndex: 0 }} />
+      <div aria-hidden className="hero-bg-blob" style={{ position:'absolute', bottom:'5%', right:'15%', width:420, height:420, background:'radial-gradient(circle, #065f46 0%, transparent 65%)', filter:'blur(90px)', opacity:0.3, pointerEvents:'none', animation:'heroBlobB 28s ease-in-out infinite reverse', zIndex: 0 }} />
 
       {/* Dot-matrix */}
       <div aria-hidden style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(circle, rgba(148, 163, 184, 0.18) 1px, transparent 1px)', backgroundSize:'28px 28px', maskImage:'radial-gradient(ellipse 90% 70% at 50% 50%, #000 30%, transparent 95%)', WebkitMaskImage:'radial-gradient(ellipse 90% 70% at 50% 50%, #000 30%, transparent 95%)', pointerEvents:'none', zIndex: 0 }} />
@@ -40,20 +40,20 @@ export function HeroBackgroundDecor() {
       <svg aria-hidden viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', opacity:0.55, zIndex: 0 }}>
         <defs>
           <linearGradient id="hero-bg-line-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0" />
-            <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+            <stop offset="0%" stopColor="#6ee7b7" stopOpacity="0" />
+            <stop offset="50%" stopColor="#10b981" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#047857" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d="M 80 120 Q 350 60, 600 200 T 1100 140" stroke="url(#hero-bg-line-grad)" strokeWidth="1.5" fill="none" strokeDasharray="6 8" className="hero-bg-line" style={{ animation:'heroDash 8s linear infinite' }} />
         <path d="M 60 460 Q 380 540, 640 420 T 1140 480" stroke="url(#hero-bg-line-grad)" strokeWidth="1.2" fill="none" strokeDasharray="4 10" className="hero-bg-line" style={{ animation:'heroDash 12s linear infinite reverse' }} />
         {[
-          { cx: 80, cy: 120, c: '#06b6d4', d: '0s' },
-          { cx: 600, cy: 200, c: '#2dd4bf', d: '1.2s' },
-          { cx: 1100, cy: 140, c: '#a855f7', d: '0.5s' },
-          { cx: 60, cy: 460, c: '#06b6d4', d: '2s' },
-          { cx: 640, cy: 420, c: '#ec4899', d: '0.8s' },
-          { cx: 1140, cy: 480, c: '#2dd4bf', d: '1.5s' },
+          { cx: 80, cy: 120, c: '#10b981', d: '0s' },
+          { cx: 600, cy: 200, c: '#34d399', d: '1.2s' },
+          { cx: 1100, cy: 140, c: '#6ee7b7', d: '0.5s' },
+          { cx: 60, cy: 460, c: '#10b981', d: '2s' },
+          { cx: 640, cy: 420, c: '#10b981', d: '0.8s' },
+          { cx: 1140, cy: 480, c: '#34d399', d: '1.5s' },
         ].map((p, i) => (
           <g key={i}>
             <circle cx={p.cx} cy={p.cy} r="14" fill={p.c} className="hero-bg-pulse" style={{ animation:`heroPulse 3s ease-in-out infinite`, animationDelay:p.d }} />

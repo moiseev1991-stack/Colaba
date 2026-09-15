@@ -4,31 +4,29 @@
    конфликтовать с глобальными --bg, --text, --accent из :root
    ============================================================ */
 
-/* ── Подключение шрифтов (если не подключены глобально) ────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/* ── Шрифты: Manrope (текст) и Unbounded (только H1) из @fontsource, см. app/layout.tsx ── */
 
 /* ── Design tokens ──────────────────────────────────────────── */
+/* Акцент — изумрудная шкала --brand-* из app/globals.css. brand-600 (#059669) задан
+   литералом: в .dark шкала переопределяет его светлым, а лендинг всегда светлый. */
 .landing-light {
-  --landing-accent:        #0ea97a;
-  --landing-accent-light:  #e6faf4;
-  --landing-accent-mid:    rgba(14, 169, 122, 0.15);
-  --landing-accent-soft:   rgba(14, 169, 122, 0.12);
-  --landing-accent-hover:  #0c9469;
-  --landing-indigo:        #4f46e5;
-  --landing-indigo-light:  #eef2ff;
-  --landing-purple:        #7c3aed;
+  --landing-accent:        #059669;
+  --landing-accent-light:  var(--brand-50);
+  --landing-accent-mid:    rgba(5, 150, 105, 0.15);
+  --landing-accent-soft:   rgba(5, 150, 105, 0.12);
+  --landing-accent-hover:  var(--brand-700);
 
-  --landing-grad-hero:     linear-gradient(135deg, #0f0c29 0%, #1a1464 35%, #0d3b30 100%);
-  --landing-grad-accent:   linear-gradient(135deg, #0ea97a, #4f46e5);
-  --landing-grad-accent-rev: linear-gradient(135deg, #4f46e5, #0ea97a);
+  --landing-grad-hero:     linear-gradient(135deg, #0b1220 0%, #0c1a24 45%, #053b2b 100%);
+  --landing-grad-accent:   linear-gradient(135deg, #059669 0%, var(--brand-700) 100%);
+  --landing-grad-accent-rev: linear-gradient(135deg, var(--brand-700) 0%, #059669 100%);
   --landing-grad-gold:     linear-gradient(135deg, #f59e0b, #ef4444);
-  --landing-grad-text:     linear-gradient(130deg, #79f0c7 0%, #a78bfa 60%, #f472b6 100%);
+  --landing-grad-text:     linear-gradient(130deg, #a7f3d0 0%, #6ee7b7 45%, #34d399 100%);
 
   --landing-bg:            #f8fafc;
   --landing-card:          #ffffff;
   --landing-bg-alt:        #f1f5f9;
   --landing-border:        #e2e8f0;
-  --landing-border-accent: rgba(14, 169, 122, 0.22);
+  --landing-border-accent: rgba(5, 150, 105, 0.22);
 
   --landing-text:          #0f172a;
   --landing-text-body:     #334155;
@@ -48,12 +46,11 @@
   --landing-shadow-md:     0 6px 24px rgba(15,23,42,0.09), 0 2px 6px rgba(15,23,42,0.05);
   --landing-shadow-lg:     0 12px 48px rgba(15,23,42,0.13), 0 4px 12px rgba(15,23,42,0.06);
   --landing-shadow-xl:     0 24px 64px rgba(15,23,42,0.16), 0 8px 20px rgba(15,23,42,0.08);
-  --landing-shadow-accent: 0 4px 20px rgba(14, 169, 122, 0.3);
-  --landing-shadow-indigo: 0 4px 20px rgba(79, 70, 229, 0.25);
+  --landing-shadow-accent: 0 4px 20px rgba(4, 120, 87, 0.28);
 
   background: var(--landing-bg);
   color: var(--landing-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body), system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.65;
   overflow-x: hidden;
 }
@@ -113,15 +110,23 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Анимации появления (reveal) ────────────────────────────── */
-.landing-light .reveal {
+/* Прячем только когда JS готов: класс .js-reveal ставит app/page.tsx.
+   Без JS и до гидрации контент виден; первый экран reveal не использует. */
+.landing-light.js-reveal .reveal {
   opacity: 0;
   transform: translateY(28px);
   transition: opacity 0.6s cubic-bezier(.22,1,.36,1),
               transform 0.6s cubic-bezier(.22,1,.36,1);
 }
-.landing-light .reveal.visible {
+.landing-light.js-reveal .reveal.visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-light.js-reveal .reveal { opacity: 1; transform: none; transition: none; }
+  .landing-light .l-hero__float-card,
+  .landing-light .l-hero__scroll-hint { animation: none; }
 }
 
 /* ── Кнопки ─────────────────────────────────────────────────── */
@@ -139,7 +144,7 @@ html { scroll-behavior: smooth; }
   white-space: nowrap;
   position: relative;
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   text-decoration: none;
 }
 .landing-light .l-btn::after {
@@ -152,13 +157,13 @@ html { scroll-behavior: smooth; }
 .landing-light .l-btn:hover::after { background: rgba(255,255,255,0.1); }
 
 .landing-light .l-btn--primary {
-  background: var(--landing-grad-accent);
+  background: var(--brand-700);
   color: #fff;
   box-shadow: var(--landing-shadow-accent);
 }
 .landing-light .l-btn--primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(14,169,122,0.42);
+  box-shadow: 0 8px 28px rgba(4,120,87,0.35);
 }
 
 .landing-light .l-btn--ghost {
@@ -193,11 +198,11 @@ html { scroll-behavior: smooth; }
 .landing-light .l-tag {
   display: inline-block;
   padding: 4px 12px;
-  background: var(--landing-indigo-light);
-  border: 1px solid rgba(79,70,229,0.15);
+  background: var(--brand-50);
+  border: 1px solid rgba(5,150,105,0.18);
   border-radius: 20px;
   font-size: 11px;
-  color: var(--landing-indigo);
+  color: var(--brand-700);
   font-weight: 600;
   letter-spacing: 0.2px;
 }
@@ -231,7 +236,7 @@ html { scroll-behavior: smooth; }
   flex-shrink: 0;
   transition: color 0.3s;
   text-decoration: none;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
 }
 .l-nav.scrolled .l-nav__logo { color: var(--landing-text); }
 
@@ -255,7 +260,7 @@ html { scroll-behavior: smooth; }
   background: none;
   border: none;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   text-decoration: none;
   display: block;
 }
@@ -272,7 +277,7 @@ html { scroll-behavior: smooth; }
 }
 
 .l-nav__cta {
-  background: var(--landing-grad-accent) !important;
+  background: var(--brand-700) !important;
   color: #fff !important;
   box-shadow: var(--landing-shadow-accent) !important;
   border-radius: var(--landing-radius-sm) !important;
@@ -349,7 +354,7 @@ html { scroll-behavior: smooth; }
 }
 .landing-light .l-hero__orb--1 {
   width: 700px; height: 700px;
-  background: radial-gradient(circle, rgba(79,70,229,0.22) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(16,185,129,0.14) 0%, transparent 65%);
   top: -200px; left: -150px;
   animation-duration: 15s;
 }
@@ -402,12 +407,13 @@ html { scroll-behavior: smooth; }
 }
 
 .landing-light .l-hero__title {
-  font-size: clamp(42px, 5.5vw, 72px);
-  font-weight: 800;
-  line-height: 1.05;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(30px, 3.8vw, 50px);
+  font-weight: 700;
+  line-height: 1.1;
   color: #fff;
   margin-bottom: 22px;
-  letter-spacing: -2px;
+  letter-spacing: -0.02em;
 }
 .landing-light .l-hero__sub {
   font-size: 17px;
@@ -431,7 +437,8 @@ html { scroll-behavior: smooth; }
   font-size: 24px;
   font-weight: 800;
   color: #fff;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .landing-light .l-hero__stat-val span { color: #79f0c7; }
@@ -475,15 +482,15 @@ html { scroll-behavior: smooth; }
 .landing-light .l-hfc__icon {
   width: 36px; height: 36px;
   border-radius: 9px;
-  background: rgba(79,70,229,0.3);
-  border: 1px solid rgba(79,70,229,0.4);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  color: #a78bfa;
+  color: #e2e8f0;
 }
 .landing-light .l-hfc__icon--green  { background: rgba(14,169,122,0.25); border-color: rgba(14,169,122,0.35); color: #79f0c7; }
-.landing-light .l-hfc__icon--purple { background: rgba(124,58,237,0.25); border-color: rgba(124,58,237,0.35); color: #c4b5fd; }
-.landing-light .l-hfc__val   { font-size: 16px; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+.landing-light .l-hfc__icon--purple { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); color: #cbd5e1; }
+.landing-light .l-hfc__val   { font-size: 16px; font-weight: 800; color: #fff; font-family: var(--font-body), system-ui, sans-serif; font-variant-numeric: tabular-nums; line-height: 1; }
 .landing-light .l-hfc__label { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 3px; }
 
 .landing-light .l-hero__scroll-hint {
@@ -516,7 +523,7 @@ html { scroll-behavior: smooth; }
   pointer-events: none;
 }
 .landing-light .l-impact .section-label { color: #79f0c7; }
-.landing-light .l-impact .section-label::before { background: linear-gradient(90deg, #79f0c7, #a78bfa); }
+.landing-light .l-impact .section-label::before { background: linear-gradient(90deg, #6ee7b7, #10b981); }
 .landing-light .l-impact .section-title { color: #fff; }
 
 .landing-light .l-impact__grid {
@@ -559,7 +566,8 @@ html { scroll-behavior: smooth; }
   color: #fff;
   font-variant-numeric: tabular-nums;
   line-height: 1; display: inline;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 .landing-light .l-impact-stat__sign { font-size: 26px; font-weight: 800; color: #79f0c7; display: inline; }
 .landing-light .l-impact-stat__label { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 10px; line-height: 1.5; }
@@ -711,7 +719,7 @@ html { scroll-behavior: smooth; }
 .landing-light .l-pricing-card__badge {
   display: inline-block;
   padding: 3px 12px;
-  background: var(--landing-grad-accent);
+  background: var(--brand-700);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -743,7 +751,8 @@ html { scroll-behavior: smooth; }
   font-size: 56px;
   font-weight: 800;
   color: var(--landing-text);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .landing-light .l-pricing-card__period { font-size: 16px; color: var(--landing-muted); }
@@ -799,7 +808,7 @@ html { scroll-behavior: smooth; }
 }
 .landing-light .l-contact__inner { position: relative; z-index: 1; }
 .landing-light .l-contact .section-label { color: #79f0c7; justify-content: center; }
-.landing-light .l-contact .section-label::before { background: linear-gradient(90deg, #79f0c7, #a78bfa); }
+.landing-light .l-contact .section-label::before { background: linear-gradient(90deg, #6ee7b7, #10b981); }
 .landing-light .l-contact .section-title { color: #fff; margin-bottom: 16px; }
 .landing-light .l-contact__sub {
   font-size: 17px;
@@ -810,52 +819,13 @@ html { scroll-behavior: smooth; }
 }
 .landing-light .l-contact__actions { justify-content: center; display: flex; flex-wrap: wrap; gap: 12px; }
 
-/* ── Footer ─────────────────────────────────────────────────── */
-.landing-light .l-footer {
-  padding: 28px 0;
-  border-top: 1px solid var(--landing-border);
-  background: var(--landing-card);
-}
-.landing-light .l-footer__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 28px;
-}
-.landing-light .l-footer__logo {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--landing-text);
-  font-family: 'Inter', sans-serif;
-  text-decoration: none;
-}
-.landing-light .l-footer__note { font-size: 12px; color: var(--landing-dim); }
-.landing-light .l-footer__links {
-  display: flex;
-  gap: 20px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.landing-light .l-footer__links a {
-  font-size: 13px;
-  color: var(--landing-muted);
-  text-decoration: none;
-  transition: color var(--landing-transition);
-}
-.landing-light .l-footer__links a:hover { color: var(--landing-accent); }
-
 /* ── HowItWorks ─────────────────────────────────────────────── */
 .landing-light .l-how {
   background: var(--landing-bg-alt);
 }
 .landing-light .l-how__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 32px;
 }
 .landing-light .l-how__step {
@@ -871,7 +841,8 @@ html { scroll-behavior: smooth; }
   font-size: 20px;
   font-weight: 800;
   color: #fff;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   box-shadow: var(--landing-shadow-accent);
 }
 .landing-light .l-how__step h3 {
@@ -911,7 +882,7 @@ html { scroll-behavior: smooth; }
   border: none;
   cursor: pointer;
   transition: background var(--landing-transition);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   gap: 16px;
 }
 .landing-light .l-faq__q:hover { background: var(--landing-accent-soft); }
@@ -982,7 +953,7 @@ html { scroll-behavior: smooth; }
   color: var(--landing-muted);
   cursor: pointer;
   transition: var(--landing-transition);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
 }
 .landing-light .l-examples__tab:hover { border-color: var(--landing-accent); color: var(--landing-accent); }
 .landing-light .l-examples__tab.active {
@@ -1091,7 +1062,7 @@ html { scroll-behavior: smooth; }
   .landing-light .l-hero__title { letter-spacing: -1px; }
   .landing-light .l-pricing__grid { grid-template-columns: 1fr; }
   .landing-light .l-skills__grid { grid-template-columns: 1fr; }
-  .landing-light .l-how__grid { grid-template-columns: 1fr 1fr; }
+  .landing-light .l-how__grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 480px) {
@@ -1209,4 +1180,11 @@ html { scroll-behavior: smooth; }
 .l-nav.scrolled .l-nav__links a.active,
 .l-nav.scrolled .l-nav__links button.active {
   color: var(--landing-text) !important;
+}
+
+/* ── Hero: карточка-пример справа (PR 2.2) ───────────────────── */
+.landing-light .l-hero__frame { display: flex; justify-content: flex-end; }
+@media (max-width: 900px) {
+  .landing-light .l-hero__inner { grid-template-columns: 1fr; }
+  .landing-light .l-hero__frame { display: none; }
 }

@@ -9,6 +9,7 @@ import '@fontsource/manrope/400.css';
 import '@fontsource/manrope/500.css';
 import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
+import '@fontsource/manrope/800.css';
 import '@fontsource/unbounded/400.css';
 import '@fontsource/unbounded/500.css';
 import '@fontsource/unbounded/600.css';
@@ -20,7 +21,7 @@ import { CookieBanner } from '@/components/CookieBanner';
 import { YandexMetrika } from '@/components/YandexMetrika';
 
 export const viewport: Viewport = {
-  themeColor: '#2dd4bf',
+  themeColor: '#059669',
 };
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     template: '%s | SpinLid',
   },
   description:
-    'Соберём компании из 2GIS и Яндекс.Карт по нише и городу, вытащим контакты и через AI выделим боли клиентов из отзывов. Сразу пригодится для холодной рассылки КП.',
+    'Соберём компании из 2GIS и Яндекс.Карт по нише и городу, вытащим контакты и через AI выделим боли клиентов из отзывов. И подготовим черновик письма под каждую боль.',
   applicationName: 'SpinLid',
   openGraph: {
     type: 'website',

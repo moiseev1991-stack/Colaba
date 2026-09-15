@@ -25,8 +25,8 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { SeoLandingFooter } from './SeoLandingFooter';
-import { LandingHeader } from '@/components/landing/LandingHeader';
+import { PublicHeader } from '@/components/public/PublicHeader';
+import { PublicFooter } from '@/components/public/PublicFooter';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
@@ -223,12 +223,16 @@ export function SeoLandingShell({
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
-  let currentHref: string | undefined;
-  try {
-    const path = headers().get('x-pathname') || headers().get('next-url') || '';
-    const match = SEO_NAV_LINKS.find((s) => path.endsWith(s.href));
-    currentHref = match?.href;
-  } catch {}
+  // Текущая страница — чтобы в подвале («Решения») не было ссылки на саму себя.
+  // Берём canonicalPath: заголовков x-pathname/next-url в серверном рендере нет,
+  // и раньше фильтр молча не срабатывал. Заголовки — запасной вариант.
+  let currentHref: string | undefined = canonicalPath;
+  if (!currentHref) {
+    try {
+      const path = headers().get('x-pathname') || headers().get('next-url') || '';
+      currentHref = SEO_NAV_LINKS.find((s) => path.endsWith(s.href))?.href;
+    } catch {}
+  }
 
   return (
     <div
@@ -241,11 +245,11 @@ export function SeoLandingShell({
         fontFamily: 'var(--font-body), system-ui, sans-serif',
       } as React.CSSProperties}
     >
-      {/* Единая шапка с главной (LandingHeader). variant="subpage" делает
-          якоря (Диагноз/Тарифы/Примеры/FAQ) ссылками на /#id, а CTA — на
+      {/* Единая шапка публичных страниц (PublicHeader). variant="subpage" делает
+          якоря (Диагноз/Цены/Примеры/FAQ) ссылками на /#id, а CTA — на
           /auth/register. forceSolid для залогиненного юзера: у него светлый
           compact-hero, поэтому прозрачная шапка нечитаема. */}
-      <LandingHeader variant="subpage" forceSolid={isAuthed} />
+      <PublicHeader variant="subpage" forceSolid={isAuthed} />
 
       <main className="flex-1">
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
@@ -304,7 +308,7 @@ export function SeoLandingShell({
         {/* Фишка-блок (брендовая плашка) */}
         <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
 
-        {/* Карточка-форма «бесплатный тест + скидка первым 50» — только
+        {/* Карточка-форма «бесплатная бета» — только
             для неавторизованных и только на тех страницах, где явно
             включён showLeadCapture (топ-3 SEO-лендинги). */}
         {showLeadCapture && !isAuthed && <Reveal><LeadCaptureForm /></Reveal>}
@@ -326,7 +330,7 @@ export function SeoLandingShell({
       {/* Schema.org BreadcrumbList — цепочка «Главная → страница». */}
       {canonicalPath && <BreadcrumbJsonLd path={canonicalPath} name={h1} />}
 
-      <SeoLandingFooter currentHref={currentHref} />
+      <PublicFooter currentHref={currentHref} />
     </div>
   );
 }
@@ -392,19 +396,19 @@ function GuestHero({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: '#0b1220',
+                background: 'var(--brand-700)',
+                color: '#fff',
                 fontWeight: 600,
                 fontSize: '15px',
                 padding: '13px 22px',
                 borderRadius: '10px',
-                boxShadow: '0 10px 28px rgba(6, 182, 212, 0.32)',
+                boxShadow: '0 10px 28px rgba(16, 185, 129, 0.32)',
               }}
             >
               Создать аккаунт
             </Link>
             <Link
-              href="/#diagnosis"
+              href="/demo"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -418,7 +422,7 @@ function GuestHero({
                 border: '1px solid rgba(255,255,255,0.25)',
               }}
             >
-              Посмотреть демо
+              Смотреть пример
             </Link>
           </div>
         </div>
@@ -499,12 +503,12 @@ const HERO_DECOR: Record<string, DecorItem[]> = {
     { Icon: Mail, text: '12 480 email собрано', color: '#ec4899', top: '78%', left: '50%', rotate: -3 },
     { Icon: Phone, text: '+7 (812) 555-90-12', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
   ],
-  // /holodnaya-rassylka — конверты, статусы доставки, кампании
+  // /holodnaya-rassylka — черновики писем под боль (SpinLid не рассылает)
   mailing: [
-    { Icon: Send, text: 'Кампания · 500 писем', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
-    { Icon: MailCheck, text: 'доставлено 487', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
-    { Icon: Mail, text: 'открыто 213 (44%)', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
-    { Icon: MailX, text: 'отказы 13 (2.6%)', color: '#ef4444', top: '8%', left: '78%', rotate: 6 },
+    { Icon: Send, text: 'отправляете сами', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
+    { Icon: MailCheck, text: 'черновик готов', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    { Icon: Mail, text: 'цитата из отзыва', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
+    { Icon: MailX, text: 'без «мы предлагаем»', color: '#ef4444', top: '8%', left: '78%', rotate: 6 },
     { Icon: Sparkles, text: 'персональный pain', color: '#f59e0b', top: '78%', left: '50%', rotate: -3 },
     { Icon: AtSign, text: 'ivan@example.ru', color: '#3b82f6', top: '58%', left: '86%', rotate: -5 },
   ],
@@ -515,7 +519,7 @@ const HERO_DECOR: Record<string, DecorItem[]> = {
     { Icon: Hash, text: 'DaData · ИНН/ОГРН', color: '#3b82f6', top: '70%', left: '8%', rotate: 5 },
     { Icon: Sparkles, text: 'AI · pain-теги', color: '#a855f7', top: '8%', left: '78%', rotate: 6 },
     { Icon: Users, text: 'ЛПР · /team', color: '#f59e0b', top: '60%', left: '88%', rotate: -5 },
-    { Icon: Mail, text: 'Рассылка · CTR 44%', color: '#06b6d4', top: '78%', left: '52%', rotate: -3 },
+    { Icon: Mail, text: 'черновик письма', color: '#06b6d4', top: '78%', left: '52%', rotate: -3 },
   ],
 };
 
@@ -591,7 +595,7 @@ function CompactAuthedHero({ h1, lead }: { h1: string; lead: string }) {
         <Link
           href="/app/leads"
           className="mt-4 inline-flex items-center gap-2 text-sm font-semibold hover:underline"
-          style={{ color: '#06b6d4' }}
+          style={{ color: '#047857' }}
         >
           Открыть в кабинете →
         </Link>
@@ -638,7 +642,7 @@ function DemoCompanyCard({
         <div className="flex items-start justify-between gap-3 mb-1">
           <div>
             <div
-              className="font-display font-semibold"
+              className="font-semibold"
               style={{ color: '#0f172a', fontSize: '18px' }}
             >
               {company.name}
@@ -674,8 +678,8 @@ function DemoCompanyCard({
             type="button"
             className="flex-1 text-[13px] font-semibold py-2 rounded-lg"
             style={{
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-              color: '#0b1220',
+              background: 'var(--brand-700)',
+              color: '#fff',
               cursor: 'default',
             }}
           >
@@ -745,8 +749,8 @@ function TrustStrip() {
         >
           <TrustCell value="5" label="источников данных" hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData" />
           <TrustCell value="~60 сек" label="до результата" hint="первый поиск" />
-          <TrustCell value="1 поиск" label="и 5 КП бесплатно" hint="без кредитной карты" />
-          <TrustCell value="0 ₽" label="за старт" hint="платный тариф — при росте" />
+          <TrustCell value="Бета" label="бесплатно" hint="без кредитной карты" />
+          <TrustCell value="0 ₽" label="во время беты" hint="цены объявим заранее" />
         </div>
       </div>
     </section>
@@ -765,9 +769,9 @@ function TrustCell({
   return (
     <div className="px-3 py-3 md:px-4 md:py-4" style={{ background: 'hsl(var(--bg))' }}>
       <div
-        className="font-display font-bold text-xl md:text-2xl"
+        className="font-bold text-xl md:text-2xl"
         style={{
-          background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+          background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -807,7 +811,7 @@ function SignalsTableShowcase() {
           Так выглядит выдача
         </div>
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Не «вот 1000 контактов», а кому, с чем и как написать
@@ -842,7 +846,7 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
     <section className="py-14 md:py-20">
       <div className="max-w-5xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           200 отзывов → 3 конкретные боли
@@ -896,17 +900,17 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
             <div
               className="flex items-center justify-center rounded-full w-14 h-14 font-bold text-lg"
               style={{
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: '#0b1220',
+                background: 'var(--brand-700)',
+                color: '#fff',
               }}
             >
               AI
             </div>
-            <div className="text-3xl" style={{ color: '#06b6d4' }}>
+            <div className="text-3xl" style={{ color: '#047857' }}>
               →
             </div>
           </div>
-          <div className="md:hidden flex justify-center my-2 text-2xl" style={{ color: '#06b6d4' }}>
+          <div className="md:hidden flex justify-center my-2 text-2xl" style={{ color: '#047857' }}>
             ↓
           </div>
 
@@ -915,13 +919,13 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
             className="rounded-2xl border p-5"
             style={{
               background:
-                'linear-gradient(135deg, rgba(45,212,191,0.10), rgba(6,182,212,0.05))',
-              borderColor: 'rgba(45, 212, 191, 0.35)',
+                'linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.05))',
+              borderColor: 'rgba(16, 185, 129, 0.35)',
             }}
           >
             <div
               className="text-[11px] font-semibold uppercase tracking-wider mb-3"
-              style={{ color: '#0891b2' }}
+              style={{ color: '#047857' }}
             >
               Стало: {tagsSummary.length} {tagsSummary.length === 1 ? 'боль с цитатой' : 'боли с цитатами'}
             </div>
@@ -977,7 +981,7 @@ function HowItWorksSection({
     >
       <div className="max-w-5xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           {title}
@@ -999,9 +1003,9 @@ function HowItWorksSection({
                     className="inline-flex items-center justify-center w-11 h-11 rounded-xl"
                     style={{
                       background:
-                        'linear-gradient(135deg, rgba(16,185,129,0.22), rgba(6,182,212,0.18))',
+                        'linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16, 185, 129, 0.18))',
                       border: '1px solid rgba(16,185,129,0.35)',
-                      boxShadow: '0 4px 14px rgba(6,182,212,0.18)',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.18)',
                     }}
                   >
                     <Icon size={22} strokeWidth={2.2} color="#0b1220" />
@@ -1014,7 +1018,7 @@ function HowItWorksSection({
                   </div>
                 </div>
                 <h3
-                  className="font-display font-semibold text-base mb-1.5"
+                  className="font-semibold text-base mb-1.5"
                   style={{ color: 'hsl(var(--text))' }}
                 >
                   {step.title}
@@ -1057,7 +1061,7 @@ function SourcesSection() {
           5 источников данных
         </div>
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Не один парсер — пять открытых источников
@@ -1082,7 +1086,7 @@ function SourcesSection() {
                 <Icon size={22} strokeWidth={2.2} color={color} />
               </div>
               <div
-                className="font-display font-semibold text-sm mb-0.5"
+                className="font-semibold text-sm mb-0.5"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {label}
@@ -1122,7 +1126,7 @@ function ScreensSection({
     >
       <div className="max-w-6xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Как это выглядит в кабинете
@@ -1161,7 +1165,7 @@ function ScreenMock({
     <div>
       <div className="mb-2.5">
         <div
-          className="font-display font-semibold text-sm"
+          className="font-semibold text-sm"
           style={{ color: 'hsl(var(--text))' }}
         >
           {title}
@@ -1225,7 +1229,7 @@ function CompareTable() {
     <section className="py-16 md:py-20">
       <div className="max-w-4xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Чем отличается от обычного парсера
@@ -1251,8 +1255,8 @@ function CompareTable() {
               className="px-4 py-3 text-center"
               style={{
                 background:
-                  'linear-gradient(135deg, rgba(45,212,191,0.15), rgba(6,182,212,0.10))',
-                color: '#0891b2',
+                  'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.10))',
+                color: '#047857',
               }}
             >
               SpinLid
@@ -1275,7 +1279,7 @@ function CompareTable() {
                 className="px-4 py-3 text-center"
                 style={{
                   background:
-                    'linear-gradient(135deg, rgba(45,212,191,0.06), rgba(6,182,212,0.04))',
+                    'linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.04))',
                 }}
               >
                 <CompareCell value={r.b} />
@@ -1323,21 +1327,21 @@ function KillerBlock({ title, body }: { title: string; body: string }) {
           className="rounded-3xl p-7 md:p-9 border"
           style={{
             background:
-              'linear-gradient(135deg, rgba(45,212,191,0.10), rgba(6,182,212,0.06))',
-            borderColor: 'rgba(45, 212, 191, 0.35)',
+              'linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.06))',
+            borderColor: 'rgba(16, 185, 129, 0.35)',
           }}
         >
           <div
             className="inline-block text-xs font-semibold tracking-widest uppercase mb-3 px-3 py-1 rounded-full"
             style={{
-              color: '#0b1220',
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
+              color: '#fff',
+              background: 'var(--brand-700)',
             }}
           >
             Фишка SpinLid
           </div>
           <h2
-            className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3"
+            className="font-semibold tracking-tight text-2xl md:text-3xl mb-3"
             style={{ color: 'hsl(var(--text))' }}
           >
             {title}
@@ -1359,7 +1363,7 @@ function FaqSection({ items }: { items: FaqItem[] }) {
     <section className="py-14" style={{ background: 'hsl(var(--surface))' }}>
       <div className="max-w-3xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-7 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-7 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           Частые вопросы
@@ -1400,14 +1404,14 @@ function FinalCta() {
       className="py-16"
       style={{
         background:
-          'radial-gradient(700px 300px at 50% 50%, rgba(45, 212, 191, 0.2), transparent), #0b1220',
+          'radial-gradient(700px 300px at 50% 50%, rgba(16, 185, 129, 0.2), transparent), #0b1220',
         color: '#fff',
         textAlign: 'center',
       }}
     >
       <div className="max-w-3xl mx-auto px-6">
         <h2
-          className="font-display font-bold tracking-tight mb-3"
+          className="font-bold tracking-tight mb-3"
           style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)' }}
         >
           Готовы попробовать?
@@ -1422,7 +1426,7 @@ function FinalCta() {
         >
           Регистрация за 30 секунд, без кредитной карты.
           <br />
-          Первые 500 лидов и 5 кампаний КП — бесплатно.
+          Бесплатно во время беты.
         </p>
         <Link
           href="/auth/register"
@@ -1430,13 +1434,13 @@ function FinalCta() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-            color: '#0b1220',
+            background: 'var(--brand-700)',
+            color: '#fff',
             fontWeight: 600,
             fontSize: '15px',
             padding: '13px 24px',
             borderRadius: '10px',
-            boxShadow: '0 12px 32px rgba(6, 182, 212, 0.4)',
+            boxShadow: '0 12px 32px rgba(16, 185, 129, 0.4)',
           }}
         >
           Создать аккаунт →
@@ -1463,8 +1467,8 @@ function CompactAuthedCta() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-            color: '#0b1220',
+            background: 'var(--brand-700)',
+            color: '#fff',
             fontWeight: 600,
             fontSize: '15px',
             padding: '12px 24px',
@@ -1483,7 +1487,7 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
     <section className="py-10 md:py-14">
       <div className="max-w-5xl mx-auto px-6">
         <h2
-          className="font-display font-semibold tracking-tight text-lg md:text-xl mb-5"
+          className="font-semibold tracking-tight text-lg md:text-xl mb-5"
           style={{ color: 'hsl(var(--text))' }}
         >
           Смежные возможности
@@ -1500,7 +1504,7 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
               }}
             >
               <div
-                className="font-display font-semibold text-sm mb-1"
+                className="font-semibold text-sm mb-1"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {link.title}

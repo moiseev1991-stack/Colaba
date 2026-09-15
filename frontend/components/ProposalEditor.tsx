@@ -60,11 +60,11 @@ const SENDER_FIELDS: ReadonlyArray<{
   example: string;
   fullWidth?: boolean;
 }> = [
-  { key: 'myName', varName: 'my_name', label: 'Ваше имя', example: 'Дмитрий Моисеев' },
-  { key: 'myCompany', varName: 'my_company', label: 'Ваша компания', example: 'Colaba' },
+  { key: 'myName', varName: 'my_name', label: 'Ваше имя', example: 'Иван Петров' },
+  { key: 'myCompany', varName: 'my_company', label: 'Ваша компания', example: 'Веб-студия «Пиксель»' },
   { key: 'myOffer', varName: 'my_offer', label: 'Ваша услуга', example: 'разработка сайта под ключ' },
   { key: 'myPhone', varName: 'my_phone', label: 'Ваш телефон', example: '+7 999 123-45-67' },
-  { key: 'myLink', varName: 'my_link', label: 'Ваш сайт', example: 'colaba.ru', fullWidth: true },
+  { key: 'myLink', varName: 'my_link', label: 'Ваш сайт', example: 'example.ru', fullWidth: true },
 ];
 
 // Sample lead used in the live preview. Real values get filled in from the

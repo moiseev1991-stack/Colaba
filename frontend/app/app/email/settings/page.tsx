@@ -425,8 +425,8 @@ export default function EmailSettingsPage() {
                     updateField('sender_signature_html', e.target.value)
                   }
                   placeholder={
-                    '**Дима Моисеев**, Colaba\n' +
-                    '[colaba.ru](https://colaba.ru) · +7 999 000-00-00'
+                    '**Иван Петров**, веб-студия «Пиксель»\n' +
+                    '[example.ru](https://example.ru) · +7 999 000-00-00'
                   }
                 />
                 <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>

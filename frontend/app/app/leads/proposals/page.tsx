@@ -75,7 +75,7 @@ export default function ProposalsListPage() {
         Шаблоны <span className="text-gradient-brand">коммерческих предложений</span>
       </h1>
       <p className="mb-8 max-w-[640px] text-[15px] leading-relaxed text-[hsl(var(--muted))]">
-        Один раз пишете шаблон с переменными — Colaba подставляет имя компании, домен и контакт
+        Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт
         в каждое отправление. Можно несколько шаблонов под разные ситуации.
       </p>
 

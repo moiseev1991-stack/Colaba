@@ -26,12 +26,12 @@ export default function ConsentPage() {
         «О персональных данных».
       </p>
 
-      <p className="text-sm italic" style={{ color: 'hsl(var(--muted))' }}>
+      <p className="text-sm italic" style={{ color: '#64748b' }}>
         Реквизиты оператора — <code>[___]</code> — будут указаны после
         регистрации юр. лица / ИП. Документ — каркас под проверку юристом.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">1. Оператор</h2>
+      <h2 className="text-xl font-semibold pt-4">1. Оператор</h2>
       <p>
         <code>[___]</code> (далее — «Оператор»), контакт:{' '}
         <a href="mailto:support@spinlid.ru" className="underline">
@@ -40,7 +40,7 @@ export default function ConsentPage() {
         .
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">2. Перечень ПДн</h2>
+      <h2 className="text-xl font-semibold pt-4">2. Перечень ПДн</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>email-адрес;</li>
         <li>имя (если указано пользователем);</li>
@@ -49,7 +49,7 @@ export default function ConsentPage() {
         <li>история действий в Сервисе.</li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         3. Цели и действия с ПДн
       </h2>
       <p>
@@ -63,7 +63,7 @@ export default function ConsentPage() {
         автоматизированная и неавтоматизированная обработка.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         4. Передача третьим лицам
       </h2>
       <p>
@@ -77,7 +77,7 @@ export default function ConsentPage() {
         .
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         5. Срок действия и отзыв согласия
       </h2>
       <p>
@@ -94,7 +94,7 @@ export default function ConsentPage() {
         обрабатывает запрос на отзыв в течение 30 календарных дней.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">6. Подтверждение</h2>
+      <h2 className="text-xl font-semibold pt-4">6. Подтверждение</h2>
       <p>
         Проставляя отметку «Я согласен с Пользовательским соглашением и даю
         согласие на обработку персональных данных» при регистрации, пользователь

@@ -21,13 +21,13 @@ export default function OfferPage() {
         «Сервис»).
       </p>
 
-      <p className="text-sm italic" style={{ color: 'hsl(var(--muted))' }}>
+      <p className="text-sm italic" style={{ color: '#64748b' }}>
         Документ — каркас. Будет наполнен реквизитами Исполнителя и
         конкретными условиями тарифов перед запуском биллинга и проверен
         юристом.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">1. Стороны</h2>
+      <h2 className="text-xl font-semibold pt-4">1. Стороны</h2>
       <p>
         <strong>Исполнитель</strong>: <code>[___]</code>, реквизиты:{' '}
         <code>[___]</code>.
@@ -36,14 +36,14 @@ export default function OfferPage() {
         акцептовавшее настоящую оферту.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">2. Предмет оферты</h2>
+      <h2 className="text-xl font-semibold pt-4">2. Предмет оферты</h2>
       <p>
         Исполнитель предоставляет Заказчику доступ к платным функциям Сервиса в
         объёме выбранного тарифа, а Заказчик обязуется оплатить услуги в
         соответствии с условиями выбранного тарифа.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">3. Тарифы и порядок оплаты</h2>
+      <h2 className="text-xl font-semibold pt-4">3. Тарифы и порядок оплаты</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>Тариф «Starter» — <code>[___]</code> руб./мес.</li>
         <li>Тариф «Pro» — <code>[___]</code> руб./мес.</li>
@@ -55,14 +55,14 @@ export default function OfferPage() {
         провайдера.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">4. Момент акцепта</h2>
+      <h2 className="text-xl font-semibold pt-4">4. Момент акцепта</h2>
       <p>
         Акцептом настоящей оферты является оплата выбранного тарифа Заказчиком.
         С момента поступления оплаты на расчётный счёт Исполнителя договор
         считается заключённым на условиях настоящей оферты.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         5. Срок действия услуг
       </h2>
       <p>
@@ -71,7 +71,7 @@ export default function OfferPage() {
         соответствующей настройки и подтверждённого способа оплаты.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         6. Возвраты и отказ от услуги
       </h2>
       <p>
@@ -81,7 +81,7 @@ export default function OfferPage() {
         возврат не производится, услуги считаются оказанными в полном объёме.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         7. Ответственность сторон
       </h2>
       <p>
@@ -94,7 +94,7 @@ export default function OfferPage() {
         соответствующие требования.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         8. Применимое право и порядок споров
       </h2>
       <p>
@@ -103,7 +103,7 @@ export default function OfferPage() {
         соглашением.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">9. Реквизиты Исполнителя</h2>
+      <h2 className="text-xl font-semibold pt-4">9. Реквизиты Исполнителя</h2>
       <p>
         <code>[___]</code>
         <br />

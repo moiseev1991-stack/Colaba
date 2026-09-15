@@ -1,19 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
 import { ModuleProvider, useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
 import { Sidebar } from './Sidebar';
 import { AppHeader } from './AppHeader';
 import { MobileTabBar } from './MobileTabBar';
-
-const LEGAL_LINKS = [
-  { href: '/terms', label: 'Соглашение' },
-  { href: '/policy', label: 'Политика' },
-  { href: '/consent', label: 'Согласие на ПДн' },
-  { href: '/offer', label: 'Оферта' },
-  { href: '/data-sources', label: 'Источники' },
-];
-const SUPPORT_EMAIL = 'support@spinlid.ru';
 
 function MobileModuleTabs() {
   const { module, setModule } = useModule();
@@ -100,7 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {LEGAL_LINKS.map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="hover:underline" target="_blank">
-                    {l.label}
+                    {l.short}
                   </Link>
                 </li>
               ))}

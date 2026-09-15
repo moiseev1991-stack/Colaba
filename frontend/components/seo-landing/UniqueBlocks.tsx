@@ -6,7 +6,7 @@
  *   /parser-yandex-maps  → TwoSourcesBlock        («Зачем второй источник»)
  *   /baza-klientov       → BaseRowFieldsBlock     («Что в каждой строке базы»)
  *   /sbor-kontaktov      → ContactsSourcesBlock   («Откуда берём контакты»)
- *   /holodnaya-rassylka  → MailHygieneBlock       («Гигиена рассылок»)
+ *   /holodnaya-rassylka  → (без уникального блока: SpinLid не рассылает письма)
  *
  * Все блоки используют одну стилистическую обёртку SeoSection,
  * чтобы выглядеть как часть Shell'а (фон, отступы, типографика).
@@ -71,7 +71,7 @@ function SeoSection({
           </div>
         )}
         <h2
-          className="font-display font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
+          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
           style={{ color: 'hsl(var(--text))' }}
         >
           {title}
@@ -124,9 +124,9 @@ export function TwoGisFieldsBlock() {
             }}
           >
             <div className="flex items-center gap-2 mb-1.5">
-              <Icon size={16} strokeWidth={2.2} color="#0891b2" />
+              <Icon size={16} strokeWidth={2.2} color="#047857" />
               <div
-                className="font-display font-semibold text-sm"
+                className="font-semibold text-sm"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {label}
@@ -143,9 +143,9 @@ export function TwoGisFieldsBlock() {
               style={{
                 background:
                   fill === 'Эксклюзив'
-                    ? 'rgba(45,212,191,0.15)'
+                    ? 'rgba(16, 185, 129, 0.15)'
                     : 'rgba(8,145,178,0.10)',
-                color: fill === 'Эксклюзив' ? '#0d9488' : '#0891b2',
+                color: fill === 'Эксклюзив' ? '#059669' : '#047857',
               }}
             >
               {fill}
@@ -157,8 +157,8 @@ export function TwoGisFieldsBlock() {
         className="mt-6 text-center text-[12px]"
         style={{ color: 'hsl(var(--muted))' }}
       >
-        Краулер сайта работает через Playwright — берём страницы /contacts,
-        /about, /team. Если у компании нет сайта — телефон с 2GIS остаётся
+        Смотрим страницы «Контакты», «О компании» и «Команда» на сайте.
+        Если у компании нет сайта — телефон с 2GIS остаётся
         главным контактом.
       </p>
     </SeoSection>
@@ -192,7 +192,7 @@ export function TwoSourcesBlock() {
             <MapPin size={22} color="#19c129" />
           </div>
           <div
-            className="font-display font-semibold mb-1"
+            className="font-semibold mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             Только 2GIS
@@ -208,18 +208,18 @@ export function TwoSourcesBlock() {
           className="rounded-2xl border-2 p-5 text-center"
           style={{
             background:
-              'linear-gradient(135deg, rgba(45,212,191,0.10), rgba(6,182,212,0.05))',
-            borderColor: 'rgba(45,212,191,0.45)',
+              'linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.05))',
+            borderColor: 'rgba(16, 185, 129, 0.45)',
           }}
         >
           <div
             className="inline-flex items-center justify-center w-12 h-12 rounded-full mx-auto mb-3"
-            style={{ background: 'rgba(6,182,212,0.18)' }}
+            style={{ background: 'rgba(16, 185, 129, 0.18)' }}
           >
-            <Sparkles size={22} color="#0891b2" />
+            <Sparkles size={22} color="#047857" />
           </div>
           <div
-            className="font-display font-semibold mb-1"
+            className="font-semibold mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             2GIS ∪ Я.Карты − дубли
@@ -245,7 +245,7 @@ export function TwoSourcesBlock() {
             <MapPin size={22} color="#d97706" />
           </div>
           <div
-            className="font-display font-semibold mb-1"
+            className="font-semibold mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             Только Я.Карты
@@ -306,13 +306,13 @@ export function BaseRowFieldsBlock() {
           >
             <div
               className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg"
-              style={{ background: 'rgba(6,182,212,0.10)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.10)' }}
             >
-              <Icon size={16} color="#0891b2" />
+              <Icon size={16} color="#047857" />
             </div>
             <div className="min-w-0">
               <div
-                className="font-display font-semibold text-sm"
+                className="font-semibold text-sm"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {label}
@@ -343,7 +343,7 @@ export function BaseRowFieldsBlock() {
 // ============================================================================
 
 const CONTACT_SOURCES: { source: string; gives: string; fill: string; color: string; Icon: LucideIcon }[] = [
-  { source: 'Карточка 2GIS / Я.Карт', gives: 'Телефон, иногда email', fill: '~80% телефонов', color: '#0891b2', Icon: MapPin },
+  { source: 'Карточка 2GIS / Я.Карт', gives: 'Телефон, иногда email', fill: '~80% телефонов', color: '#047857', Icon: MapPin },
   { source: 'Сайт компании (краулер)', gives: 'Email c /contacts /about, телефоны', fill: '~50% email', color: '#a855f7', Icon: Globe },
   { source: 'DaData по ИНН', gives: 'ФИО директора, юр.лицо', fill: '~70% юр.лиц', color: '#2563eb', Icon: ShieldCheck },
 ];
@@ -372,7 +372,7 @@ export function ContactsSourcesBlock() {
               <Icon size={22} color={color} />
             </div>
             <div
-              className="font-display font-semibold text-sm mb-1"
+              className="font-semibold text-sm mb-1"
               style={{ color: 'hsl(var(--text))' }}
             >
               {source}
@@ -402,15 +402,15 @@ export function ContactsSourcesBlock() {
       >
         <div
           className="text-[11px] font-semibold uppercase tracking-widest mb-2"
-          style={{ color: '#0891b2' }}
+          style={{ color: '#047857' }}
         >
           Нормализация
         </div>
         <div
-          className="font-display font-semibold text-lg mb-3"
+          className="font-semibold text-lg mb-3"
           style={{ color: 'hsl(var(--text))' }}
         >
-          Чистка перед тем как отдать в рассылку
+          Чистка перед выгрузкой
         </div>
         <ul
           className="space-y-1.5 text-sm leading-relaxed list-disc pl-5"
@@ -418,103 +418,10 @@ export function ContactsSourcesBlock() {
         >
           <li>Телефоны — к +7 (XXX) XXX-XX-XX, мобильные и городские отдельно.</li>
           <li>Email — lower-case + отсев дублей info@/sales@/contact@ если есть личный.</li>
-          <li>Проверка MX-записи домена email перед запуском кампании.</li>
-          <li>Blacklist собственных доменов и конкурентов — не уйдут случайно в рассылку.</li>
+          <li>Проверка MX-записи домена email — мёртвые адреса отсеиваются.</li>
+          <li>Blacklist собственных доменов и конкурентов — не попадут в выгрузку.</li>
         </ul>
       </div>
-    </SeoSection>
-  );
-}
-
-// ============================================================================
-// /holodnaya-rassylka — «Гигиена рассылок»
-// ============================================================================
-
-const HYGIENE_ITEMS: { Icon: LucideIcon; title: string; body: string }[] = [
-  {
-    Icon: Sparkles,
-    title: 'Расписание без всплесков',
-    body: 'Письма уходят равномерно в течение дня (не «1000 за 5 минут»), почтовые провайдеры не считают это спам-залпом.',
-  },
-  {
-    Icon: AtSign,
-    title: 'Отписка одной кнопкой',
-    body: 'Ссылка отписки в подвале каждого письма, клик мгновенно блокирует адрес. Не нужно отвечать «STOP» — это снижает жалобы.',
-  },
-  {
-    Icon: Shield,
-    title: 'Автоматический blacklist',
-    body: 'Hard bounce и жалобы на спам → адрес автоматом в чёрный список. На него больше никогда не уйдёт письмо ни в одной кампании.',
-  },
-  {
-    Icon: ShieldCheck,
-    title: 'Catch-all для ответов',
-    body: 'Все ответы (включая автоматические «Out of office») собираются в один ящик через catch-all. Не нужно следить за рассылочным адресом.',
-  },
-  {
-    Icon: FileText,
-    title: 'SPF / DKIM / DMARC',
-    body: 'У всех рассылочных доменов настроены подписи DKIM и DMARC-политика. Провайдеры видят: письмо от того, за кого себя выдаёт.',
-  },
-  {
-    Icon: Phone,
-    title: 'Прогретые отправители',
-    body: 'Используем доменные пары с историей рассылок, чтобы первое же сообщение не уходило в спам. На холодном домене — медленный прогрев.',
-  },
-];
-
-export function MailHygieneBlock() {
-  return (
-    <SeoSection
-      bg="surface"
-      label="Антиспам и репутация"
-      title="Гигиена рассылок"
-      description="Холодные рассылки боятся не «забанят» — а медленного протухания репутации домена. SpinLid держит шесть базовых правил, которые суммарно снимают почти все стандартные риски."
-    >
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {HYGIENE_ITEMS.map(({ Icon, title, body }) => (
-          <div
-            key={title}
-            className="rounded-2xl border p-5"
-            style={{
-              background: 'hsl(var(--bg))',
-              borderColor: 'hsl(var(--border))',
-            }}
-          >
-            <div
-              className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.14))',
-                border: '1px solid rgba(16,185,129,0.30)',
-              }}
-            >
-              <Icon size={20} color="#0b1220" />
-            </div>
-            <div
-              className="font-display font-semibold text-sm mb-1.5"
-              style={{ color: 'hsl(var(--text))' }}
-            >
-              {title}
-            </div>
-            <div
-              className="text-[12.5px] leading-relaxed"
-              style={{ color: 'hsl(var(--muted))' }}
-            >
-              {body}
-            </div>
-          </div>
-        ))}
-      </div>
-      <p
-        className="mt-6 text-center text-[12px]"
-        style={{ color: 'hsl(var(--muted))' }}
-      >
-        Это не «гарантия 100% inbox» — гарантии в email невозможны. Это
-        набор практик, которые работают совместно с персонализацией под
-        боль клиента и снижают жалобы до уровня прогретой транзакционной
-        рассылки.
-      </p>
     </SeoSection>
   );
 }
@@ -546,7 +453,7 @@ const LIDGEN_STAGES: { Icon: LucideIcon; step: string; title: string; body: stri
     Icon: Send,
     step: '04',
     title: 'Касание',
-    body: 'Встроенная рассылка с подстановкой болей в шаблон. Статусы доставки, открытий и ответов — сразу видно, какие лиды прогрелись.',
+    body: 'Черновик письма с подстановкой болей в шаблон. Отправляете сами — со своей почты или из CRM.',
   },
 ];
 
@@ -569,19 +476,19 @@ export function LidgenFunnelBlock() {
             }}
           >
             <div
-              className="absolute top-4 right-4 font-display font-bold text-2xl"
+              className="absolute top-4 right-4 font-bold text-2xl"
               style={{ color: 'hsl(var(--border))' }}
             >
               {step}
             </div>
             <div
               className="inline-flex items-center justify-center w-11 h-11 rounded-xl mb-3"
-              style={{ background: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.30)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.10)', border: '1px solid rgba(16, 185, 129, 0.30)' }}
             >
-              <Icon size={22} color="#0891b2" />
+              <Icon size={22} color="#047857" />
             </div>
             <div
-              className="font-display font-semibold text-sm mb-1.5"
+              className="font-semibold text-sm mb-1.5"
               style={{ color: 'hsl(var(--text))' }}
             >
               {title}
@@ -643,7 +550,7 @@ export function BuyBaseComparisonBlock() {
         >
           <div className="flex items-center gap-2 mb-4">
             <XCircle size={20} color="#ef4444" />
-            <div className="font-display font-semibold" style={{ color: 'hsl(var(--text))' }}>
+            <div className="font-semibold" style={{ color: 'hsl(var(--text))' }}>
               Готовая база за 3 000-15 000 ₽
             </div>
           </div>
@@ -661,20 +568,20 @@ export function BuyBaseComparisonBlock() {
         <div
           className="rounded-2xl border-2 p-6"
           style={{
-            background: 'linear-gradient(135deg, rgba(45,212,191,0.08), rgba(6,182,212,0.04))',
-            borderColor: 'rgba(45,212,191,0.45)',
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.04))',
+            borderColor: 'rgba(16, 185, 129, 0.45)',
           }}
         >
           <div className="flex items-center gap-2 mb-4">
-            <CheckCircle2 size={20} color="#0d9488" />
-            <div className="font-display font-semibold" style={{ color: 'hsl(var(--text))' }}>
+            <CheckCircle2 size={20} color="#059669" />
+            <div className="font-semibold" style={{ color: 'hsl(var(--text))' }}>
               Свежая база в SpinLid
             </div>
           </div>
           <ul className="space-y-2.5">
             {BUY_BASE_GOOD.map((t) => (
               <li key={t} className="flex items-start gap-2 text-[13px] leading-snug" style={{ color: 'hsl(var(--text))' }}>
-                <CheckCircle2 size={15} color="#0d9488" className="shrink-0 mt-0.5" />
+                <CheckCircle2 size={15} color="#059669" className="shrink-0 mt-0.5" />
                 <span>{t}</span>
               </li>
             ))}
@@ -699,7 +606,7 @@ const CALL_BASE_FIELDS: { Icon: LucideIcon; label: string; hint: string }[] = [
   { Icon: Quote, label: 'Зацепка из отзыва', hint: 'Готовая фраза на первые 10 секунд: «видел жалобы на долгое ожидание — как раз по этому звоню».' },
   { Icon: Building2, label: 'Ниша и размер', hint: 'Рубрика, рейтинг, число отзывов — понятно, крупный это игрок или частник.' },
   { Icon: Clock, label: 'Часовой пояс города', hint: 'Чтобы не звонить в Владивосток в 7 утра по Москве.' },
-  { Icon: Globe, label: 'Сайт и email', hint: 'Не дозвонились — отправляете КП на почту прямо из карточки.' },
+  { Icon: Globe, label: 'Сайт и email', hint: 'Не дозвонились — копируете готовое КП и пишете на почту.' },
 ];
 
 export function CallBaseBlock() {
@@ -719,12 +626,12 @@ export function CallBaseBlock() {
           >
             <div
               className="flex items-center justify-center w-9 h-9 shrink-0 rounded-lg"
-              style={{ background: 'rgba(6,182,212,0.10)' }}
+              style={{ background: 'rgba(16, 185, 129, 0.10)' }}
             >
-              <Icon size={16} color="#0891b2" />
+              <Icon size={16} color="#047857" />
             </div>
             <div className="min-w-0">
-              <div className="font-display font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
+              <div className="font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
                 {label}
               </div>
               <div className="text-[12px] leading-snug mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
@@ -748,14 +655,14 @@ export function CallBaseBlock() {
 
 const EMAIL_SOURCES: { Icon: LucideIcon; label: string; hint: string; color: string }[] = [
   { Icon: Globe, label: 'Страницы сайта', hint: 'Краулер обходит /contacts, /about, /team, подвал — там, где компании публикуют почту.', color: '#a855f7' },
-  { Icon: MapPin, label: 'Карточки 2GIS / Я.Карт', hint: 'Если email указан в карточке организации — забираем оттуда.', color: '#0891b2' },
+  { Icon: MapPin, label: 'Карточки 2GIS / Я.Карт', hint: 'Если email указан в карточке организации — забираем оттуда.', color: '#047857' },
   { Icon: FileText, label: 'Страницы контактов и оферты', hint: 'Юр. email часто лежит в реквизитах и договоре-оферте на сайте.', color: '#2563eb' },
 ];
 
 const EMAIL_VALIDATION: { Icon: LucideIcon; title: string; body: string }[] = [
-  { Icon: MailCheck, title: 'Синтаксис и MX', body: 'Проверяем формат адреса и наличие MX-записи у домена — мёртвые ящики отсеиваются до рассылки.' },
+  { Icon: MailCheck, title: 'Синтаксис и MX', body: 'Проверяем формат адреса и наличие MX-записи у домена — мёртвые ящики отсеиваются заранее.' },
   { Icon: Filter, title: 'Дедуп и приоритет', body: 'Убираем дубли, при наличии личного адреса не тащим общий info@ — письмо доходит до человека.' },
-  { Icon: Shield, title: 'Blacklist', body: 'Свои домены и конкурентов в чёрный список — не уйдут в рассылку случайно.' },
+  { Icon: Shield, title: 'Blacklist', body: 'Свои домены и конкурентов в чёрный список — не попадут в выгрузку случайно.' },
 ];
 
 export function EmailParserBlock() {
@@ -779,7 +686,7 @@ export function EmailParserBlock() {
             >
               <Icon size={22} color={color} />
             </div>
-            <div className="font-display font-semibold text-sm mb-1" style={{ color: 'hsl(var(--text))' }}>
+            <div className="font-semibold text-sm mb-1" style={{ color: 'hsl(var(--text))' }}>
               {label}
             </div>
             <div className="text-[12.5px] leading-snug" style={{ color: 'hsl(var(--muted))' }}>
@@ -797,8 +704,8 @@ export function EmailParserBlock() {
             style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
           >
             <div className="flex items-center gap-2 mb-1.5">
-              <Icon size={16} color="#0d9488" />
-              <div className="font-display font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
+              <Icon size={16} color="#059669" />
+              <div className="font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
                 {title}
               </div>
             </div>
@@ -848,7 +755,7 @@ export function GoogleMapsBlock() {
             >
               <Icon size={22} color="#4285f4" />
             </div>
-            <div className="font-display font-semibold text-sm mb-1.5" style={{ color: 'hsl(var(--text))' }}>
+            <div className="font-semibold text-sm mb-1.5" style={{ color: 'hsl(var(--text))' }}>
               {title}
             </div>
             <div className="text-[12.5px] leading-relaxed" style={{ color: 'hsl(var(--muted))' }}>
@@ -893,7 +800,7 @@ export function TelegramParserBlock() {
           >
             <div className="flex items-center gap-2 mb-1.5">
               <Icon size={16} color="#229ed9" />
-              <div className="font-display font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
+              <div className="font-semibold text-sm" style={{ color: 'hsl(var(--text))' }}>
                 {label}
               </div>
             </div>
@@ -943,7 +850,7 @@ const GLOSSARY_TERMS: { term: string; anchor: string; body: string; link?: { hre
     term: 'Холодная рассылка',
     anchor: 'holodnaya-rassylka',
     body: 'Email- или мессенджер-рассылка по компаниям, которые вас не ждут. Работает, когда письмо персонализировано под боль конкретной компании, а не отправлено всем одинаковым шаблоном.',
-    link: { href: '/holodnaya-rassylka', label: 'Как делать холодную рассылку' },
+    link: { href: '/holodnaya-rassylka', label: 'Как писать холодные письма под боль' },
   },
   {
     term: 'ЛПР',
@@ -991,8 +898,8 @@ export function GlossaryBlock() {
             style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={16} color="#0891b2" />
-              <h3 className="font-display font-semibold text-base" style={{ color: 'hsl(var(--text))' }}>
+              <BookOpen size={16} color="#047857" />
+              <h3 className="font-semibold text-base" style={{ color: 'hsl(var(--text))' }}>
                 {term}
               </h3>
             </div>
@@ -1003,7 +910,7 @@ export function GlossaryBlock() {
               <Link
                 href={link.href}
                 className="inline-flex items-center gap-1 mt-3 text-[12.5px] font-semibold"
-                style={{ color: '#0891b2' }}
+                style={{ color: '#047857' }}
               >
                 {link.label} →
               </Link>

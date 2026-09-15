@@ -61,7 +61,7 @@ export function CookieBanner() {
         Мы используем cookies для работы сайта и аналитики. Подробнее —{' '}
         <Link
           href="/policy"
-          style={{ color: '#5eead4', textDecoration: 'underline' }}
+          style={{ color: '#6ee7b7', textDecoration: 'underline' }}
         >
           в Политике
         </Link>
@@ -70,8 +70,8 @@ export function CookieBanner() {
       <button
         onClick={accept}
         style={{
-          background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-          color: '#0f172a',
+          background: 'var(--brand-700)',
+          color: '#fff',
           border: 'none',
           borderRadius: '8px',
           padding: '8px 16px',
