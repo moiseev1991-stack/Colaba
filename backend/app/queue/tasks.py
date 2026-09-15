@@ -56,7 +56,9 @@ async def _process_email_replies_async() -> int:
 # стандартный soft limit 25 мин убил прогон дня 5 на 15-м письме из 50.
 # 2 часа хватает на ~70 КП; при квоте выше — оставшиеся пойдут следующим
 # днём (дедуп по email_logs не даёт дублей). TODO: параллельная генерация.
-@celery_app.task(name="daily_warmup_task", soft_time_limit=7200, time_limit=7500)
+# 15.09: 2ч не хватало: 90с/письмо × 100 КП = 2.5ч — дни 10-11 умирали
+# на 76-м письме. 4ч покрывает 300 КП × 30с (пик плана) с запасом.
+@celery_app.task(name="daily_warmup_task", soft_time_limit=14400, time_limit=14700)
 def daily_warmup_task():
     """Автоматический дневной прогрев доменов через рассылку КП.
 
