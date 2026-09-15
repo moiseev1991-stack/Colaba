@@ -290,7 +290,7 @@ export default function RunResultsPage() {
       </nav>
 
       {/* Title */}
-      <h1 className="app-page-title mb-5 text-[28px]">{searchQuery}</h1>
+      <h1 className="app-page-title mb-5 text-heading">{searchQuery}</h1>
 
       {/* Meta bar — sharp grid */}
       <div
@@ -304,7 +304,7 @@ export default function RunResultsPage() {
         <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ background: 'hsl(var(--surface))' }}>
           <div>
             <div className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>обновлено</div>
-            <div className="text-[14px] font-semibold mt-1" style={{ color: 'hsl(var(--text))' }}>
+            <div className="text-sm font-semibold mt-1" style={{ color: 'hsl(var(--text))' }}>
               {lastUpdated ? lastUpdated.toLocaleTimeString('ru-RU') : '—'}
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function RunResultsPage() {
             <a
               href={`/api/v1/searches/${runId}/results/export/csv`}
               download
-              className="inline-flex items-center gap-1.5 h-9 px-3 text-[12px] font-bold transition-colors hover:bg-[hsl(var(--accent-weak))]"
+              className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-bold transition-colors hover:bg-[hsl(var(--accent-weak))]"
               style={{
                 background: 'hsl(var(--surface-2))',
                 border: '1px solid hsl(var(--border))',
@@ -350,8 +350,8 @@ export default function RunResultsPage() {
       {/* Error state */}
       {searchStatus === 'failed' && (
         <div className="mb-4 p-4" style={{ background: 'hsl(var(--danger) / 0.08)', border: '1px solid hsl(var(--danger) / 0.3)', borderRadius: 6 }}>
-          <h3 className="text-[13px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--danger))' }}>Поиск не удался</h3>
-          <p className="text-[14px]" style={{ color: 'hsl(var(--danger))' }}>{typeof configError === 'string' ? configError : 'Неизвестная ошибка'}</p>
+          <h3 className="text-small font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--danger))' }}>Поиск не удался</h3>
+          <p className="text-sm" style={{ color: 'hsl(var(--danger))' }}>{typeof configError === 'string' ? configError : 'Неизвестная ошибка'}</p>
           {typeof configErrorType === 'string' && (
             <p className="mt-1 app-mono-label" style={{ color: 'hsl(var(--danger))' }}>тип: {configErrorType}</p>
           )}
@@ -361,8 +361,8 @@ export default function RunResultsPage() {
       {/* Timeout */}
       {pollTimeout && (
         <div className="mb-4 p-4" style={{ background: 'hsl(var(--warning) / 0.08)', border: '1px solid hsl(var(--warning) / 0.3)', borderRadius: 6 }}>
-          <h3 className="text-[13px] font-bold uppercase tracking-wider mb-1" style={{ color: 'hsl(var(--warning))' }}>Слишком долго</h3>
-          <p className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
+          <h3 className="text-small font-bold uppercase tracking-wider mb-1" style={{ color: 'hsl(var(--warning))' }}>Слишком долго</h3>
+          <p className="text-small" style={{ color: 'hsl(var(--text))' }}>
             Обновление остановлено по тайм-ауту (5 минут). Обновите страницу или попробуйте другой источник.
           </p>
         </div>
@@ -416,7 +416,7 @@ function ProgressPanel({ title, subtitle, percent, accent }: { title: string; su
   return (
     <div className="mb-4 px-4 py-3" style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 6 }}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[13px] font-bold" style={{ color: 'hsl(var(--text))' }}>{title}</span>
+        <span className="text-small font-bold" style={{ color: 'hsl(var(--text))' }}>{title}</span>
         <span className="app-mono-label" style={{ color: accent }}>{percent}%</span>
       </div>
       <div className="w-full h-1.5 overflow-hidden" style={{ background: 'hsl(var(--border))', borderRadius: 2 }}>

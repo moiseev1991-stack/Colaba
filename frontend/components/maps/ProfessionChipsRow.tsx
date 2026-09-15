@@ -109,7 +109,7 @@ export function ProfessionChipsRow({ filter, onChange }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/40">
-      <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Под профессию
       </span>
       {PROFESSION_PRESETS.map((p) => {
@@ -121,7 +121,7 @@ export function ProfessionChipsRow({ filter, onChange }: Props) {
             onClick={() => toggle(p)}
             title={p.hint}
             className={cn(
-              'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold transition-colors',
+              'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors',
               active
                 ? 'bg-violet-600 text-white shadow-sm hover:bg-violet-700'
                 : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-violet-50 hover:text-violet-700 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-violet-900/30 dark:hover:text-violet-200',
@@ -136,7 +136,7 @@ export function ProfessionChipsRow({ filter, onChange }: Props) {
         <button
           type="button"
           onClick={() => onChange(clearProfessionFields(filter))}
-          className="ml-auto inline-flex items-center gap-1 rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11.5px] font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-700/50 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-900/20"
+          className="ml-auto inline-flex items-center gap-1 rounded-md border border-rose-200 bg-white px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-700/50 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-900/20"
           title="Снять профессиональный фильтр"
         >
           <RotateCcw className="h-3 w-3" />

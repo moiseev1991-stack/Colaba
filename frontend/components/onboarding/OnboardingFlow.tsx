@@ -145,7 +145,7 @@ export function OnboardingFlow() {
             <li key={n} className="flex flex-1 items-center gap-2">
               <div
                 className={cn(
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold',
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
                   done
                     ? 'bg-violet-600 text-white'
                     : active
@@ -157,7 +157,7 @@ export function OnboardingFlow() {
               </div>
               <span
                 className={cn(
-                  'truncate text-[12.5px] font-medium',
+                  'truncate text-small font-medium',
                   active
                     ? 'text-slate-900 dark:text-slate-100'
                     : done
@@ -223,7 +223,7 @@ export function OnboardingFlow() {
         <button
           type="button"
           onClick={handleBack}
-          className="mt-3 inline-flex items-center gap-1 text-[13px] text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+          className="mt-3 inline-flex items-center gap-1 text-small text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
         >
           <ChevronLeft className="h-4 w-4" />
           Назад

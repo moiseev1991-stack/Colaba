@@ -95,7 +95,7 @@ export default function LeadListsPage() {
       )}
 
       <div className="rounded-md border border-dashed border-slate-300 px-4 py-3">
-        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
           Новый список
         </div>
         <div className="flex gap-2">
@@ -135,7 +135,7 @@ export default function LeadListsPage() {
                 >
                   {l.name}
                 </Link>
-                <div className="text-[12px] text-slate-500">
+                <div className="text-xs text-slate-500">
                   {l.items_count} {l.items_count === 1 ? 'компания' : 'компаний'} ·{' '}
                   {new Date(l.created_at).toLocaleDateString('ru-RU')}
                 </div>
@@ -143,7 +143,7 @@ export default function LeadListsPage() {
               <button
                 onClick={() => remove(l.id)}
                 disabled={deletingId === l.id}
-                className="inline-flex items-center gap-1 rounded-v2-sm border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)] disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-v2-sm border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)] disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {deletingId === l.id ? '…' : 'Удалить'}

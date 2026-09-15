@@ -32,7 +32,7 @@ export default function LeadsSettingsPage() {
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <h1
         className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
-        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
       >
         <Settings className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Настройки поиска лидов
@@ -52,12 +52,12 @@ export default function LeadsSettingsPage() {
                 />
               </div>
               <h2
-                className="font-display font-semibold tracking-tight text-[15px] mb-1"
+                className="font-display font-semibold tracking-tight text-base mb-1"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {title}
               </h2>
-              <p className="text-[13px]" style={{ color: 'hsl(var(--muted))' }}>{desc}</p>
+              <p className="text-small" style={{ color: 'hsl(var(--muted))' }}>{desc}</p>
             </CardV2>
           </Link>
         ))}

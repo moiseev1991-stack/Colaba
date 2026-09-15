@@ -468,8 +468,8 @@ export function MapsSearchForm({ onStarted }: Props) {
               className="group flex flex-col items-start gap-1 rounded-md border border-slate-200 bg-white p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
             >
               <span className="text-sm font-semibold text-slate-900">{p.title}</span>
-              <span className="text-[12px] text-slate-500">{p.hint}</span>
-              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 group-hover:text-slate-900">
+              <span className="text-xs text-slate-500">{p.hint}</span>
+              <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-slate-700 group-hover:text-slate-900">
                 Запустить <ArrowRight className="h-3 w-3" />
               </span>
             </button>
@@ -481,7 +481,7 @@ export function MapsSearchForm({ onStarted }: Props) {
       <section className="mb-6 app-reveal">
         <h1
           className="font-display font-semibold tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
         >
           Поиск лидов
         </h1>
@@ -503,12 +503,12 @@ export function MapsSearchForm({ onStarted }: Props) {
             <div className="flex min-w-0 items-center gap-3">
               <div className="min-w-0">
                 <h2
-                  className="text-[18px] font-bold leading-tight"
+                  className="text-xl font-bold leading-tight"
                   style={{ color: 'hsl(var(--text))' }}
                 >
                   Параметры поиска
                 </h2>
-                <p className="text-[12px] mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
                   Ниша и город — обязательны. Остальное — по желанию.
                 </p>
               </div>
@@ -549,7 +549,7 @@ export function MapsSearchForm({ onStarted }: Props) {
               title="Конкурентный режим: компании в радиусе X км от заданного адреса"
             >
               По радиусу{' '}
-              <span className="ml-1 rounded-sm bg-[var(--signal-warm)]/40 px-1.5 text-[10px] text-[color:var(--signal-warm)]">
+              <span className="ml-1 rounded-sm bg-[var(--signal-warm)]/40 px-1.5 text-xs text-[color:var(--signal-warm)]">
                 new
               </span>
             </button>
@@ -567,7 +567,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 value={niche}
                 onChange={(e) => setNiche(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-11 text-[15px]"
+                className="w-full h-11 text-base"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -596,7 +596,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 </div>
                 <div className="md:col-span-12">
                   <details className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/60">
-                    <summary className="cursor-pointer select-none px-3 py-2 text-[12px] font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]">
                       + Расширенный поиск: ещё ниши/города (массовый прогон)
                     </summary>
                     <div className="grid grid-cols-1 gap-3 px-3 pb-3 pt-1 md:grid-cols-2">
@@ -613,7 +613,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                           value={extraNiches}
                           onChange={(e) => setExtraNiches(e.target.value)}
                           disabled={isLoading}
-                          className="w-full h-10 text-[13px]"
+                          className="w-full h-10 text-small"
                         />
                       </div>
                       <div>
@@ -629,10 +629,10 @@ export function MapsSearchForm({ onStarted }: Props) {
                           value={extraCities}
                           onChange={(e) => setExtraCities(e.target.value)}
                           disabled={isLoading}
-                          className="w-full h-10 text-[13px]"
+                          className="w-full h-10 text-small"
                         />
                       </div>
-                      <p className="md:col-span-2 text-[11px] text-[hsl(var(--muted))]">
+                      <p className="md:col-span-2 text-xs text-[hsl(var(--muted))]">
                         При заполнении создастся N×M отдельных поисков (по одному на каждую пару).
                         Открыть их можно в «Истории поисков».
                       </p>
@@ -655,7 +655,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     disabled={isLoading}
-                    className="w-full h-11 text-[15px]"
+                    className="w-full h-11 text-base"
                   />
                 </div>
                 <div className="md:col-span-12">
@@ -676,7 +676,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     disabled={isLoading}
                     className="w-full"
                   />
-                  <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                  <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                     Найдём компании в радиусе {radiusKm.toFixed(1)} км от точки. Удобно для
                     конкурентной разведки — «что у моих соседей по району».
                   </p>
@@ -693,7 +693,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   onClick={() => setReviewMode('contains')}
                   disabled={isLoading}
                   className={cn(
-                    'rounded-md border px-3 py-1 text-[12px] font-medium transition-colors',
+                    'rounded-md border px-3 py-1 text-xs font-medium transition-colors',
                     reviewMode === 'contains'
                       ? 'border-slate-900 bg-slate-900 text-white'
                       : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
@@ -706,7 +706,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   onClick={() => setReviewMode('excludes')}
                   disabled={isLoading}
                   className={cn(
-                    'rounded-md border px-3 py-1 text-[12px] font-medium transition-colors',
+                    'rounded-md border px-3 py-1 text-xs font-medium transition-colors',
                     reviewMode === 'excludes'
                       ? 'border-slate-900 bg-slate-900 text-white'
                       : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
@@ -725,9 +725,9 @@ export function MapsSearchForm({ onStarted }: Props) {
                 value={reviewWord}
                 onChange={(e) => setReviewWord(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-11 text-[15px]"
+                className="w-full h-11 text-base"
               />
-              <p className="mt-1.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+              <p className="mt-1.5 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                 Несколько слов через запятую — между ними <strong>ИЛИ</strong>.
                 {reviewMode === 'contains' ? (
                   <>
@@ -757,7 +757,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   <button
                     type="button"
                     onClick={clearPreset}
-                    className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800"
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800"
                   >
                     <X className="h-3 w-3" /> убрать
                   </button>
@@ -766,24 +766,24 @@ export function MapsSearchForm({ onStarted }: Props) {
                   type="button"
                   onClick={() => setSaveModalOpen(true)}
                   title="Сохранить текущие фильтры как пресет"
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50"
                 >
                   <BookmarkPlus className="h-3 w-3" /> сохранить
                 </button>
               </div>
             </div>
             {presetLabel && (
-              <div className="mb-2 rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-1 text-[12px] text-[color:var(--signal-good)]">
+              <div className="mb-2 rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-1 text-xs text-[color:var(--signal-good)]">
                 Применён: <strong>{presetLabel}</strong> — применится к выдаче сразу после поиска.
                 {aiPreset && (
-                  <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-[11px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
+                  <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
                     <Sparkles className="h-3 w-3" /> AI-анализ запустится автоматически
                   </span>
                 )}
               </div>
             )}
             {builtinAiPrompt && (
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-[12px] text-violet-900 dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-xs text-violet-900 dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200">
                 <span className="inline-flex items-center gap-1">
                   <Sparkles className="h-3.5 w-3.5" />У этого пресета есть готовый AI-промпт —
                   сохрани как свой, чтобы запустить анализ
@@ -791,7 +791,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 <button
                   type="button"
                   onClick={() => setCopyBuiltinModalOpen(true)}
-                  className="rounded-md bg-violet-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-violet-700"
+                  className="rounded-md bg-violet-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-violet-700"
                 >
                   Сохранить как мой пресет с AI
                 </button>
@@ -815,8 +815,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                         : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700',
                     )}
                   >
-                    <span className="text-[12px] font-medium text-slate-800">{p.label}</span>
-                    <span className="text-[10px] leading-tight text-slate-500">{p.shortHint}</span>
+                    <span className="text-xs font-medium text-slate-800">{p.label}</span>
+                    <span className="text-xs leading-tight text-slate-500">{p.shortHint}</span>
                   </button>
                 );
               })}
@@ -836,15 +836,15 @@ export function MapsSearchForm({ onStarted }: Props) {
                         : 'border-brand-200 bg-brand-50/40 hover:border-brand-400',
                     )}
                   >
-                    <span className="text-[12px] font-medium text-slate-800">
+                    <span className="text-xs font-medium text-slate-800">
                       {p.name}
                       {hasAi && (
-                        <span className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-[9px] font-semibold text-violet-800">
+                        <span className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-xs font-semibold text-violet-800">
                           AI
                         </span>
                       )}
                     </span>
-                    <span className="text-[10px] leading-tight text-emerald-700/80">мой</span>
+                    <span className="text-xs leading-tight text-emerald-700/80">мой</span>
                   </button>
                 );
               })}
@@ -919,7 +919,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   <label
                     key={s.id}
                     className={cn(
-                      'flex cursor-pointer items-center gap-2.5 rounded-md border px-3.5 py-2.5 text-[13px] transition-colors',
+                      'flex cursor-pointer items-center gap-2.5 rounded-md border px-3.5 py-2.5 text-small transition-colors',
                       checked
                         ? 'border-brand-500 bg-brand-500/10'
                         : 'border-[hsl(var(--border))] hover:border-brand-400',
@@ -969,7 +969,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   borderRadius: 4,
                 }}
               >
-                <p className="text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
                   Фильтры применяются к выдаче — компания пройдёт, только если у неё есть отзывы,
                   удовлетворяющие условиям.
                 </p>
@@ -987,7 +987,7 @@ export function MapsSearchForm({ onStarted }: Props) {
 
           {error && (
             <div
-              className="mb-5 rounded-md px-3 py-2 text-[13px]"
+              className="mb-5 rounded-md px-3 py-2 text-small"
               style={{
                 color: 'hsl(var(--danger))',
                 background: 'hsl(var(--danger) / 0.1)',
@@ -1019,7 +1019,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                 </>
               )}
             </button>
-            <div className="text-[13px] flex-1 leading-snug" style={{ color: 'hsl(var(--muted))' }}>
+            <div className="text-small flex-1 leading-snug" style={{ color: 'hsl(var(--muted))' }}>
               {isReady ? (
                 <>
                   <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>

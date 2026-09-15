@@ -516,7 +516,7 @@ export default function DataInventoryPage() {
                           )}
                         </div>
                         {rb?.msg && (
-                          <p className="text-[10.5px] leading-tight text-slate-500 max-w-[220px] ml-auto">
+                          <p className="text-xs leading-tight text-slate-500 max-w-[220px] ml-auto">
                             {rb.msg}
                           </p>
                         )}
@@ -584,10 +584,10 @@ function StatCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-2xl font-semibold text-slate-900">
+      <div className="text-heading font-semibold text-slate-900">
         {value.toLocaleString('ru-RU')}
       </div>
-      {hint && <div className="text-[11px] text-slate-500 mt-0.5">{hint}</div>}
+      {hint && <div className="text-xs text-slate-500 mt-0.5">{hint}</div>}
     </div>
   );
 }

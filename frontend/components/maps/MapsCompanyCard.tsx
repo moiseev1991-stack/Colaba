@@ -183,11 +183,11 @@ export function MapsCompanyCard({
         {/* Шапка: название + рейтинг (numeric, Pipedrive deal-value style) */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-[15px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+            <h3 className="truncate text-base font-semibold leading-tight text-slate-900 dark:text-slate-100">
               {company.name || '—'}
             </h3>
             {fullAddress && (
-              <div className="mt-0.5 truncate text-[12px] text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
                 {fullAddress}
               </div>
             )}
@@ -199,10 +199,10 @@ export function MapsCompanyCard({
             >
               <div className="flex items-center gap-1 text-slate-900 dark:text-slate-100">
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                <span className="text-[15px] font-bold tabular-nums">{Number(rating).toFixed(1)}</span>
+                <span className="text-base font-bold tabular-nums">{Number(rating).toFixed(1)}</span>
               </div>
               {reviewsTotal > 0 && (
-                <div className="mt-0.5 text-[10.5px] tabular-nums text-slate-500 dark:text-slate-400">
+                <div className="mt-0.5 text-xs tabular-nums text-slate-500 dark:text-slate-400">
                   {reviewsTotal} {reviewsTotal === 1 ? 'отзыв' : reviewsTotal < 5 ? 'отзыва' : 'отзывов'}
                 </div>
               )}
@@ -329,7 +329,7 @@ export function MapsCompanyCard({
           )}
           {multiSourceList.length > 0 ? (
             <span
-              className="ml-auto text-[11px] font-medium tabular-nums text-slate-500 dark:text-slate-400"
+              className="ml-auto text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400"
               title={
                 activeSource && activeSource !== 'all'
                   ? `Фильтр: только ${sourceLabel(activeSource)}.`
@@ -351,7 +351,7 @@ export function MapsCompanyCard({
             </span>
           ) : (
             company.source && (
-              <span className="ml-auto text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                 {sourceTitle}
               </span>
             )
@@ -369,7 +369,7 @@ export function MapsCompanyCard({
               {fallbackTags.slice(0, 5).map((t: PainTagShort) => (
                 <span
                   key={t.id}
-                  className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11.5px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   {t.label}
                 </span>
@@ -379,7 +379,7 @@ export function MapsCompanyCard({
         )}
 
         {/* Контакты */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           {phone && (
             <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
               <Phone className="h-3 w-3 text-slate-500" />
@@ -417,7 +417,7 @@ export function MapsCompanyCard({
                 {emails[0]}
               </a>
               {emails.length > 1 && (
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   +{emails.length - 1}
                 </span>
               )}
@@ -435,7 +435,7 @@ export function MapsCompanyCard({
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-300"
+                      className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-300"
                       title={`Открыть карточку в ${s.label}`}
                     >
                       <ExternalLink className="h-3 w-3" />
@@ -451,7 +451,7 @@ export function MapsCompanyCard({
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="ml-auto inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                className="ml-auto inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 title={`Открыть карточку в ${sourceTitle}`}
               >
                 <ExternalLink className="h-3 w-3" />
@@ -471,7 +471,7 @@ export function MapsCompanyCard({
                   e.stopPropagation();
                   onAddToList(company);
                 }}
-                className="inline-flex h-9 items-center gap-1.5 rounded border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex h-9 items-center gap-1.5 rounded border border-slate-300 bg-white px-3 text-small font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <ListPlus className="h-4 w-4" />В список
               </button>
@@ -489,7 +489,7 @@ export function MapsCompanyCard({
                     ? 'Сгенерировать общее КП по шаблону (у компании ещё нет проанализированных болей в отзывах)'
                     : 'Сгенерировать КП под боль клиентов из отзывов'
                 }
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
+                className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-small font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
               >
                 <Sparkles className="h-4 w-4" />
                 {draftEmailLoading ? 'Готовлю…' : 'КП'}
@@ -536,7 +536,7 @@ function StatusPill({
     <span
       title={title}
       className={cn(
-        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11.5px] font-medium leading-tight',
+        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium leading-tight',
         cls,
       )}
     >
@@ -563,7 +563,7 @@ function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
   });
   return (
     <div className="space-y-2 rounded border border-slate-200 bg-slate-50/60 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
-      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Боли клиентов из отзывов
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -571,12 +571,12 @@ function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
           <span
             key={p.pain_tag_id}
             title={p.description ?? p.label}
-            className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11.5px] font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
             <span className="leading-tight">{p.label}</span>
             {p.mention_count > 1 && (
-              <span className="rounded-sm bg-slate-100 px-1 text-[10px] tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+              <span className="rounded-sm bg-slate-100 px-1 text-xs tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                 {p.mention_count}
               </span>
             )}
@@ -584,7 +584,7 @@ function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
         ))}
       </div>
       {pains[0]?.top_quote && (
-        <div className="border-l-2 border-rose-400 bg-white pl-2.5 py-1 text-[12.5px] italic leading-snug text-slate-700 dark:border-rose-500 dark:bg-slate-900 dark:text-slate-200">
+        <div className="border-l-2 border-rose-400 bg-white pl-2.5 py-1 text-small italic leading-snug text-slate-700 dark:border-rose-500 dark:bg-slate-900 dark:text-slate-200">
           «{pains[0].top_quote}»
         </div>
       )}
@@ -595,16 +595,16 @@ function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
 function NegativeSnippetsBlock({ snippets }: { snippets: string[] }) {
   return (
     <div className="space-y-1.5 rounded border border-amber-200 bg-amber-50/60 px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-900/20">
-      <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">
         <span>Фрагменты негативных отзывов</span>
-        <span className="rounded-sm border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-normal normal-case tracking-normal text-amber-900 dark:border-amber-700 dark:bg-amber-800/50 dark:text-amber-100">
+        <span className="rounded-sm border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-xs font-normal normal-case tracking-normal text-amber-900 dark:border-amber-700 dark:bg-amber-800/50 dark:text-amber-100">
           AI считает
         </span>
       </div>
       {snippets.slice(0, 2).map((quote, idx) => (
         <div
           key={idx}
-          className="border-l-2 border-amber-500 bg-white pl-2.5 py-1 text-[12.5px] italic leading-snug text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+          className="border-l-2 border-amber-500 bg-white pl-2.5 py-1 text-small italic leading-snug text-slate-800 dark:bg-slate-900 dark:text-slate-200"
         >
           «{quote}»
         </div>

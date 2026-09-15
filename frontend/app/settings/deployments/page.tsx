@@ -134,7 +134,7 @@ export default function DeploymentsPage() {
       <div className="mb-8">
         <h1
           className="flex items-center gap-2 font-display font-semibold tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
         >
           <Rocket className="h-6 w-6 text-brand-600 dark:text-brand-400" />
           История деплоев

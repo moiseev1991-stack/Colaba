@@ -59,7 +59,7 @@ export default function SettingsPage() {
         {/* SEO Block */}
         <CardV2 className="p-6">
           <h2
-            className="font-display font-semibold tracking-tight text-2xl mb-6"
+            className="font-display font-semibold tracking-tight text-heading mb-6"
             style={{ color: 'hsl(var(--text))' }}
           >
             SEO
@@ -121,7 +121,7 @@ export default function SettingsPage() {
 
         <CardV2 className="p-6">
           <h2
-            className="font-display font-semibold tracking-tight text-2xl mb-2"
+            className="font-display font-semibold tracking-tight text-heading mb-2"
             style={{ color: 'hsl(var(--text))' }}
           >
             Контакты
@@ -131,7 +131,7 @@ export default function SettingsPage() {
 
         <CardV2 className="p-6">
           <h2
-            className="font-display font-semibold tracking-tight text-2xl mb-2"
+            className="font-display font-semibold tracking-tight text-heading mb-2"
             style={{ color: 'hsl(var(--text))' }}
           >
             Поиск цен
@@ -181,7 +181,7 @@ function SettingsLinkBlock({ title, desc, href, cta }: { title: string; desc: st
   return (
     <CardV2 className="p-6">
       <h2
-        className="font-display font-semibold tracking-tight text-2xl mb-2"
+        className="font-display font-semibold tracking-tight text-heading mb-2"
         style={{ color: 'hsl(var(--text))' }}
       >
         {title}

@@ -210,7 +210,7 @@ export function CityCombobox({
           {city ? (
             <>
               <span
-                className="text-[14px] font-semibold truncate"
+                className="text-sm font-semibold truncate"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 {city}
@@ -226,7 +226,7 @@ export function CityCombobox({
               )}
             </>
           ) : (
-            <span className="text-[14px]" style={{ color: 'hsl(var(--muted))' }}>
+            <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
               {placeholder}
             </span>
           )}
@@ -330,7 +330,7 @@ export function CityCombobox({
                           onMouseEnter={() => setHighlightedIdx(idx)}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => selectCity(option)}
-                          className="w-full text-left px-4 py-2 text-[14px] flex items-center gap-2.5 transition-colors"
+                          className="w-full text-left px-4 py-2 text-sm flex items-center gap-2.5 transition-colors"
                           style={{
                             color:
                               isHighlighted || isSelected

@@ -71,7 +71,7 @@ export default function EmailStatsPage() {
 
       <h1
         className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
-        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
       >
         <BarChart3 className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Статистика доставки
@@ -128,7 +128,7 @@ export default function EmailStatsPage() {
           style={{ borderBottom: '1px solid hsl(var(--border))' }}
         >
           <h2
-            className="font-display font-semibold tracking-tight text-[15px]"
+            className="font-display font-semibold tracking-tight text-base"
             style={{ color: 'hsl(var(--text))' }}
           >
             Последние рассылки
@@ -150,13 +150,13 @@ export default function EmailStatsPage() {
                 >
                   <div className="min-w-0">
                     <div
-                      className="text-[14px] font-medium truncate"
+                      className="text-sm font-medium truncate"
                       style={{ color: 'hsl(var(--text))' }}
                       title={c.name}
                     >
                       {c.name}
                     </div>
-                    <div className="text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                    <div className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
                       {c.sent_count} отправлено / {c.delivered_count} доставлено / {c.opened_count} открыто
                     </div>
                   </div>
@@ -164,7 +164,7 @@ export default function EmailStatsPage() {
                     <SignalPill tone={pill.tone} icon={pill.icon} size="sm">{pill.label}</SignalPill>
                     <Link
                       href={`/app/email/campaigns/${c.id}`}
-                      className="text-[12px] font-medium text-brand-600 dark:text-brand-400 hover:underline"
+                      className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
                     >
                       Подробнее
                     </Link>

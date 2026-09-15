@@ -359,7 +359,7 @@ export function KpModal({
               <Sparkles className="mr-1.5 inline h-4 w-4 -translate-y-0.5 text-violet-600" />
               КП {companyName ? `— ${companyName}` : ''}
             </h3>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               Холодное письмо под боль клиентов из отзывов компании.
             </p>
           </div>
@@ -377,7 +377,7 @@ export function KpModal({
           {/* Селект шаблона + тон + (custom) поле «о себе» */}
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Шаблон отправителя
               </label>
               {templatesLoading ? (
@@ -398,7 +398,7 @@ export function KpModal({
                         type="button"
                         onClick={() => setSelectedKey(t.key)}
                         className={cn(
-                          'rounded-md border px-2.5 py-1 text-[12.5px] font-medium transition-colors',
+                          'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
                           active
                             ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
                             : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
@@ -412,7 +412,7 @@ export function KpModal({
                 </div>
               )}
               {selectedTemplate && !isCustom && selectedTemplate.sender_profile && (
-                <p className="mt-1 text-[11px] italic text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-xs italic text-slate-500 dark:text-slate-400">
                   Пишешь от лица: {selectedTemplate.sender_profile}
                 </p>
               )}
@@ -420,7 +420,7 @@ export function KpModal({
 
             {isCustom && (
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Кто ты — 1-2 предложения
                 </label>
                 <textarea
@@ -435,7 +435,7 @@ export function KpModal({
             )}
 
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Тон письма
               </label>
               <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
@@ -447,7 +447,7 @@ export function KpModal({
                       type="button"
                       onClick={() => setTone(opt.value)}
                       className={cn(
-                        'rounded px-2.5 py-1 text-[12px] font-medium transition-colors',
+                        'rounded px-2.5 py-1 text-xs font-medium transition-colors',
                         active
                           ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-700'
                           : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
@@ -466,9 +466,9 @@ export function KpModal({
               Только для company-ветки (site_lead КП не имеет отзывов). */}
           {targetCompanyId != null && !painsLoading && availablePains.length > 0 && (
             <div className="mt-4">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Боли для КП{' '}
-                <span className="normal-case text-[10px] text-slate-500">
+                <span className="normal-case text-xs text-slate-500">
                   · выбрано {selectedPainIds.length} из 3 макс
                   {availablePains.length > 6 && ` · всего у компании ${availablePains.length}`}
                 </span>
@@ -484,7 +484,7 @@ export function KpModal({
                     <label
                       key={p.pain_tag_id}
                       className={cn(
-                        'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-[12px] transition-colors',
+                        'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-xs transition-colors',
                         checked
                           ? 'bg-violet-100 dark:bg-violet-900/30'
                           : 'hover:bg-slate-100 dark:hover:bg-slate-800/40',
@@ -514,7 +514,7 @@ export function KpModal({
                           · {p.mention_count} упоминаний
                         </span>
                         {p.top_quote && (
-                          <span className="block truncate text-[11px] italic text-slate-500 dark:text-slate-400">
+                          <span className="block truncate text-xs italic text-slate-500 dark:text-slate-400">
                             «{p.top_quote.slice(0, 90)}
                             {p.top_quote.length > 90 ? '…' : ''}»
                           </span>
@@ -525,7 +525,7 @@ export function KpModal({
                 })}
               </div>
               {selectedPainIds.length === 0 && (
-                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                   Выбрана 0 болей — КП сгенерируется «общим» по шаблону.
                 </p>
               )}
@@ -542,7 +542,7 @@ export function KpModal({
                 <button
                   type="button"
                   onClick={() => setCustomPainOpen(true)}
-                  className="text-[12px] font-medium text-violet-700 hover:text-violet-900 dark:text-violet-300"
+                  className="text-xs font-medium text-violet-700 hover:text-violet-900 dark:text-violet-300"
                 >
                   + Создать свою боль
                 </button>
@@ -550,7 +550,7 @@ export function KpModal({
               {customPainOpen && !customPainSaved && (
                 <div className="space-y-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Название
                     </label>
                     <input
@@ -559,11 +559,11 @@ export function KpModal({
                       onChange={(e) => setCustomPainLabelInput(e.target.value)}
                       placeholder="Например: долго отвечают в WhatsApp"
                       maxLength={120}
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       Описание — LLM напишет КП по нему
                     </label>
                     <textarea
@@ -572,7 +572,7 @@ export function KpModal({
                       rows={3}
                       maxLength={1200}
                       placeholder="1–4 предложения: в чём именно проблема, как это выглядит у клиентов, чем оборачивается. Опиши так, будто рассказываешь коллеге."
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -589,7 +589,7 @@ export function KpModal({
                         });
                         setCustomPainOpen(false);
                       }}
-                      className="rounded-md bg-violet-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Создать
                     </button>
@@ -600,11 +600,11 @@ export function KpModal({
                         setCustomPainLabelInput('');
                         setCustomPainDescriptionInput('');
                       }}
-                      className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                     >
                       Отмена
                     </button>
-                    <span className="ml-auto text-[10px] text-slate-500 dark:text-slate-400">
+                    <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                       минимум 2 симв. + 10 симв.
                     </span>
                   </div>
@@ -613,13 +613,13 @@ export function KpModal({
               {customPainSaved && (
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <div className="text-[11px] uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                    <div className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-300">
                       Своя боль (уйдёт в КП)
                     </div>
-                    <div className="text-[13px] font-medium text-slate-900 dark:text-slate-100">
+                    <div className="text-small font-medium text-slate-900 dark:text-slate-100">
                       {customPainSaved.label}
                     </div>
-                    <div className="text-[11px] italic text-slate-600 dark:text-slate-400">
+                    <div className="text-xs italic text-slate-600 dark:text-slate-400">
                       {customPainSaved.description}
                     </div>
                   </div>
@@ -632,7 +632,7 @@ export function KpModal({
                         setCustomPainSaved(null);
                         setCustomPainOpen(true);
                       }}
-                      className="text-[11px] text-violet-700 hover:text-violet-900 dark:text-violet-300"
+                      className="text-xs text-violet-700 hover:text-violet-900 dark:text-violet-300"
                     >
                       Изменить
                     </button>
@@ -643,7 +643,7 @@ export function KpModal({
                         setCustomPainLabelInput('');
                         setCustomPainDescriptionInput('');
                       }}
-                      className="text-[11px] text-slate-500 hover:text-rose-700 dark:text-slate-400"
+                      className="text-xs text-slate-500 hover:text-rose-700 dark:text-slate-400"
                     >
                       Убрать
                     </button>
@@ -669,13 +669,13 @@ export function KpModal({
                 disabled
                 className="mt-0.5 h-4 w-4 accent-slate-400"
               />
-              <span className="flex-1 text-[12px] text-slate-500 dark:text-slate-400">
+              <span className="flex-1 text-xs text-slate-500 dark:text-slate-400">
                 <span className="font-medium">Промпт «4 хода»</span>
-                <span className="ml-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                <span className="ml-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                   beta
                 </span>
                 <span className="ml-1">· ТЗ 2026-07-11 · временно выключен</span>
-                <span className="block text-[11px]">
+                <span className="block text-xs">
                   Каркас: наблюдение → что стоит клиенту → решение результатом (без техник) → микрошаг.
                 </span>
               </span>
@@ -690,7 +690,7 @@ export function KpModal({
               disabled={
                 !hasTarget || !selectedKey || generating || templatesLoading
               }
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-600 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-600 px-4 text-small font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {generating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -706,7 +706,7 @@ export function KpModal({
                   : 'Сгенерировать КП'}
             </button>
             {generating && (
-              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Обычно 5-15 секунд. LLM собирает контекст из отзывов компании.
               </p>
             )}
@@ -725,12 +725,12 @@ export function KpModal({
               {/* Subject — editable input */}
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Тема · можно править
                   </label>
                   <button
                     onClick={() => copy(editSubject, 'subject')}
-                    className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'subject' ? 'скопировано' : 'копировать'}
@@ -748,12 +748,12 @@ export function KpModal({
               {/* Body — editable textarea */}
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Текст · можно править
                   </label>
                   <button
                     onClick={() => copy(editBody, 'body')}
-                    className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'body' ? 'скопировано' : 'копировать'}
@@ -773,7 +773,7 @@ export function KpModal({
                   type="button"
                   disabled={!dirty || saveState === 'saving'}
                   onClick={handleSave}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-[12.5px] font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-small font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saveState === 'saving' ? (
                     <>
@@ -787,16 +787,16 @@ export function KpModal({
                   )}
                 </button>
                 {dirty && saveState !== 'saving' && (
-                  <span className="text-[11px] text-amber-700 dark:text-amber-400">
+                  <span className="text-xs text-amber-700 dark:text-amber-400">
                     Есть несохранённые изменения
                   </span>
                 )}
                 {saveState === 'error' && saveError && (
-                  <span className="text-[11px] text-rose-700 dark:text-rose-300">
+                  <span className="text-xs text-rose-700 dark:text-rose-300">
                     {saveError}
                   </span>
                 )}
-                <span className="ml-auto text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                   Сохранённая версия попадёт в Историю → КП.
                 </span>
               </div>
@@ -809,7 +809,7 @@ export function KpModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             {draft?.remaining_free != null
               ? `Осталось ${draft.remaining_free} бесплатных КП в месяце.`
               : 'Драфт сгенерирован AI. Перечитай перед отправкой.'}
@@ -866,15 +866,15 @@ function ArgumentsBlock({ args }: { args: KpArgumentsUsed }) {
 
   return (
     <div className="rounded-md border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-700/40 dark:bg-violet-900/20">
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">
+      <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">
         На чём построено письмо
         {painsList.length > 1 && (
-          <span className="ml-1.5 rounded-full bg-violet-200 px-1.5 py-0.5 text-[9px] normal-case text-violet-900 dark:bg-violet-800 dark:text-violet-100">
+          <span className="ml-1.5 rounded-full bg-violet-200 px-1.5 py-0.5 text-xs normal-case text-violet-900 dark:bg-violet-800 dark:text-violet-100">
             {painsList.length} болей
           </span>
         )}
       </div>
-      <ul className="space-y-2 text-[12px] text-slate-700 dark:text-slate-200">
+      <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-200">
         {painsList.map((p, idx) => {
           const src = sourceLabelOf(p.source);
           return (

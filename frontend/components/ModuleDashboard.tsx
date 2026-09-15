@@ -102,7 +102,7 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as Period)}
-            className="rounded-v2-sm border px-3 py-2 text-[13px]"
+            className="rounded-v2-sm border px-3 py-2 text-small"
             style={{
               background: 'hsl(var(--surface))',
               borderColor: 'hsl(var(--border))',
@@ -149,7 +149,7 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
 
       {/* Chart — широкая, выше, brand-gradient столбцы */}
       <CardV2 className="mb-8 p-5 reveal-item">
-        <h3 className="mb-4 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+        <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
           Запросы по дням
         </h3>
         {loading ? (
@@ -170,7 +170,7 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
                       style={{ height: `${Math.max(h, 4)}px`, minHeight: 4 }}
                     />
                   </div>
-                  <span className="max-w-full truncate text-[10px] text-[hsl(var(--muted))]">{d.date.slice(5)}</span>
+                  <span className="max-w-full truncate text-xs text-[hsl(var(--muted))]">{d.date.slice(5)}</span>
                 </div>
               );
             })}
@@ -180,7 +180,7 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
 
       {/* Recent runs — карточки на всю ширину (§4.2 + §4.3) */}
       <section>
-        <h2 className="mb-4 font-display text-[18px] font-semibold tracking-tight text-[hsl(var(--text))]">
+        <h2 className="mb-4 font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
           Последние запуски
         </h2>
         {loading ? (
@@ -200,19 +200,19 @@ export function ModuleDashboard({ module, title, runBaseUrl = '/runs' }: Props) 
                   className="block"
                 >
                   <CardV2 interactive reveal className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
-                    <span className="hidden w-10 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+                    <span className="hidden w-10 shrink-0 text-center text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
                       #{String(idx + 1).padStart(2, '0')}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]" title={r.query}>
+                      <div className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]" title={r.query}>
                         {r.query}
                       </div>
-                      <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                      <div className="mt-0.5 text-xs uppercase tracking-wider text-[hsl(var(--muted))]">
                         {formatDateTime(r.created_at)} · {r.results} {r.results === 1 ? 'лид' : 'лидов'}
                       </div>
                     </div>
                     <SignalPill tone={statusTone(r.status)} size="sm">{statusLabel(r.status)}</SignalPill>
-                    <span className="hidden items-center gap-1 text-[13px] font-medium text-brand-600 dark:text-brand-400 sm:inline-flex">
+                    <span className="hidden items-center gap-1 text-small font-medium text-brand-600 dark:text-brand-400 sm:inline-flex">
                       <Eye className="h-4 w-4" /> Открыть
                     </span>
                   </CardV2>

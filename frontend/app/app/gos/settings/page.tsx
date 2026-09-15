@@ -3,7 +3,7 @@ import { Package } from 'lucide-react';
 export default function GosSettingsPage() {
   return (
     <div className="mx-auto max-w-[900px] px-6 py-8">
-      <h1 className="text-[20px] font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
+      <h1 className="text-xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
         Настройки — Госзакупки
       </h1>
 
@@ -11,7 +11,7 @@ export default function GosSettingsPage() {
         <div className="flex items-start gap-4">
           <Package className="h-8 w-8 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h2 className="text-[15px] font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>Источник данных</h2>
+            <h2 className="text-base font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>Источник данных</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               Данные загружаются напрямую из <strong>zakupki.gov.ru</strong> (Единая информационная система).
               Дополнительная настройка не требуется.

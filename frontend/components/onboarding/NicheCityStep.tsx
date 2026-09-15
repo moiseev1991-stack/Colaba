@@ -57,7 +57,7 @@ export function NicheCityStep({
 
   return (
     <div>
-      <h2 className="text-[22px] font-semibold text-slate-900 dark:text-slate-100">
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
         Где ищем клиентов?
       </h2>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -67,7 +67,7 @@ export function NicheCityStep({
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         <div>
-          <label className="mb-1 block text-[12px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Ниша
           </label>
           <input
@@ -79,7 +79,7 @@ export function NicheCityStep({
             autoFocus
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Примеры:
             </span>
             {NICHE_EXAMPLES.map((ex) => (
@@ -87,7 +87,7 @@ export function NicheCityStep({
                 key={ex}
                 type="button"
                 onClick={() => setNiche(ex)}
-                className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11.5px] font-medium text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-violet-900/30 dark:hover:text-violet-200"
+                className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-violet-900/30 dark:hover:text-violet-200"
               >
                 {ex}
               </button>
@@ -96,7 +96,7 @@ export function NicheCityStep({
         </div>
 
         <div>
-          <label className="mb-1 block text-[12px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Город
           </label>
           <div className="relative">

@@ -68,7 +68,7 @@ export function RequestMonitorTable() {
     <div className="w-full max-w-4xl mx-auto rounded-[14px] overflow-hidden border border-gray-700 bg-[#0f172a] shadow-xl">
       <div className="px-4 py-3 border-b border-gray-700/80 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-100">Request Monitor</h2>
+          <h2 className="text-base font-semibold text-gray-100">Request Monitor</h2>
           <p className="text-sm text-gray-500">
             Last updated: {data ? formatLastUpdated(data.updated_at) : '--:--:--'}
           </p>

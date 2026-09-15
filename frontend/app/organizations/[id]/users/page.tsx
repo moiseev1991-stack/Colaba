@@ -194,7 +194,7 @@ export default function OrganizationUsersPage() {
         {showAddUser && (
           <CardV2 className="p-6">
             <h3
-              className="font-display font-semibold tracking-tight text-lg mb-4"
+              className="font-display font-semibold tracking-tight text-base mb-4"
               style={{ color: 'hsl(var(--text))' }}
             >
               Добавить пользователя

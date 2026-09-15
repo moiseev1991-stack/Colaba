@@ -330,7 +330,7 @@ export default function SeoPage() {
     <div className="mx-auto w-full max-w-[1250px] min-w-0 px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-8 overflow-x-hidden">
       <h1
         className="flex items-center gap-2 mb-4 sm:mb-6 font-display font-semibold tracking-tight"
-        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
       >
         <SearchIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Поиск / SEO-аудит
@@ -369,7 +369,7 @@ export default function SeoPage() {
 
         {/* Form */}
         <div className="app-card-enhanced p-4 sm:p-5 md:p-6">
-          <p className="text-[13px] mb-4" style={{ color: 'hsl(var(--muted))' }}>
+          <p className="text-small mb-4" style={{ color: 'hsl(var(--muted))' }}>
             Укажите ключевое слово, провайдер и город. Результат: домены, SEO-оценка, контакты.
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -430,31 +430,31 @@ export default function SeoPage() {
         {/* Horizontal summary bar */}
         <div className="app-card-enhanced px-3 py-3 sm:px-4 sm:py-3.5 md:px-5 md:py-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            <span className="text-[13px] font-semibold shrink-0" style={{ color: 'hsl(var(--text))' }}>Сводка запуска</span>
+            <span className="text-small font-semibold shrink-0" style={{ color: 'hsl(var(--text))' }}>Сводка запуска</span>
             <div className="h-4 w-px shrink-0 hidden sm:block" style={{ background: 'hsl(var(--border))' }} />
             <div className="flex items-center gap-x-5 flex-1 min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+              <div className="flex items-center gap-1.5 text-small shrink-0">
                 <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Запрос:</span>
                 <span className="font-medium truncate max-w-[160px]" title={query || '—'} style={{ color: 'hsl(var(--text))' }}>{query || '—'}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+              <div className="flex items-center gap-1.5 text-small shrink-0">
                 <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Провайдер:</span>
                 <span className="font-medium truncate max-w-[200px]" title={PROVIDERS[searchProvider] || searchProvider} style={{ color: 'hsl(var(--text))' }}>{PROVIDERS[searchProvider] || searchProvider}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+              <div className="flex items-center gap-1.5 text-small shrink-0">
                 <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Город:</span>
                 <span className="font-medium truncate max-w-[120px]" title={city || '—'} style={{ color: 'hsl(var(--text))' }}>{city || '—'}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+              <div className="flex items-center gap-1.5 text-small shrink-0">
                 <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Глубина:</span>
                 <span className="font-medium whitespace-nowrap" style={{ color: 'hsl(var(--text))' }}>Top {advanced.depth}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+              <div className="flex items-center gap-1.5 text-small shrink-0">
                 <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Фильтры:</span>
                 <span className="font-medium truncate max-w-[120px]" title={filtersLabel} style={{ color: 'hsl(var(--text))' }}>{filtersLabel}</span>
               </div>
               {templates.length > 0 && (
-                <div className="flex items-center gap-1.5 text-[13px] shrink-0">
+                <div className="flex items-center gap-1.5 text-small shrink-0">
                   <span className="whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>Шаблон КП:</span>
                   <span className="font-medium truncate max-w-[140px]" style={{ color: 'hsl(var(--text))' }}>
                     {templateId != null ? templates.find((t) => t.id === templateId)?.name ?? '—' : 'Без шаблона'}
@@ -491,14 +491,14 @@ export default function SeoPage() {
 
         {/* Presets */}
         <div>
-          <h3 className="text-[14px] font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>Быстрые шаблоны</h3>
+          <h3 className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>Быстрые шаблоны</h3>
           <div className="flex flex-wrap gap-2">
             {displayedPresets.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => handlePreset(p)}
-                className="px-3 py-1.5 rounded-pill text-[13px] border transition-colors hover:bg-[hsl(var(--surface-2))] hover:border-brand-500/40"
+                className="px-3 py-1.5 rounded-pill text-small border transition-colors hover:bg-[hsl(var(--surface-2))] hover:border-brand-500/40"
                 style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}
               >
                 {p}
@@ -508,7 +508,7 @@ export default function SeoPage() {
               <button
                 type="button"
                 onClick={() => setShowMorePresets(!showMorePresets)}
-                className="px-3 py-1.5 rounded-pill text-[13px] font-medium text-brand-600 dark:text-brand-400"
+                className="px-3 py-1.5 rounded-pill text-small font-medium text-brand-600 dark:text-brand-400"
               >
                 {showMorePresets ? 'Свернуть' : 'Показать ещё'}
               </button>
@@ -524,7 +524,7 @@ export default function SeoPage() {
             className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
             style={{ '--tw-bg-opacity': '1' } as React.CSSProperties}
           >
-            <span className="text-[14px] font-medium" style={{ color: 'hsl(var(--text))' }}>Расширенные настройки</span>
+            <span className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>Расширенные настройки</span>
             {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
           {advancedOpen && (
@@ -712,7 +712,7 @@ export default function SeoPage() {
 
         {/* Last runs */}
         <div className="app-card-enhanced">
-          <h3 className="text-[13px] sm:text-[14px] font-medium px-3 py-2.5 sm:px-4 sm:py-3 border-b" style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}>
+          <h3 className="text-small sm:text-sm font-medium px-3 py-2.5 sm:px-4 sm:py-3 border-b" style={{ color: 'hsl(var(--text))', borderColor: 'hsl(var(--border))' }}>
             Последние SEO-запуски
           </h3>
           {runsLoading ? (
@@ -736,14 +736,14 @@ export default function SeoPage() {
                     style={{ borderColor: 'hsl(var(--border))' }}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[13px] font-semibold truncate flex-1" style={{ color: 'hsl(var(--text))' }} title={r.query}>
+                      <span className="text-small font-semibold truncate flex-1" style={{ color: 'hsl(var(--text))' }} title={r.query}>
                         {r.query}
                       </span>
                       <SignalPill tone={statusTone(r.status)} size="sm">
                         {statusLabel(r.status)}
                       </SignalPill>
                     </div>
-                    <div className="flex flex-col gap-0.5 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                    <div className="flex flex-col gap-0.5 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                       <span>{formatDateTime(r.created_at)}</span>
                       <span>{r.result_count ?? 0} доменов · {PROVIDERS[r.search_provider] ?? r.search_provider}</span>
                     </div>
@@ -759,7 +759,7 @@ export default function SeoPage() {
                           resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }, 150);
                       }}
-                      className="mt-0.5 self-start inline-flex items-center gap-1 px-2.5 py-1 rounded-v2-sm text-[11px] font-medium border bg-[hsl(var(--surface))] transition-colors hover:bg-[hsl(var(--surface-2))]"
+                      className="mt-0.5 self-start inline-flex items-center gap-1 px-2.5 py-1 rounded-v2-sm text-xs font-medium border bg-[hsl(var(--surface))] transition-colors hover:bg-[hsl(var(--surface-2))]"
                       style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                     >
                       <Eye className="h-3 w-3" /> Открыть
@@ -773,12 +773,12 @@ export default function SeoPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--surface-2))' }}>
-                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Дата/время</th>
-                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Запрос</th>
-                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Провайдер</th>
-                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Статус</th>
-                      <th className="text-left py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Доменов</th>
-                      <th className="text-right py-2 px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Действия</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Дата/время</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Запрос</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Провайдер</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Статус</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Доменов</th>
+                      <th className="text-right py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(var(--muted))' }}>Действия</th>
                     </tr>
                   </thead>
                   <tbody>

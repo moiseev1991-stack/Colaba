@@ -242,7 +242,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
       >
         <ActiveIcon className="h-4 w-4" />
       </span>
-      <span className="flex-1 text-left text-[14px] font-semibold truncate">
+      <span className="flex-1 text-left text-sm font-semibold truncate">
         {MODULE_LABELS[module]}
       </span>
       <ChevronDown
@@ -283,7 +283,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
                   disabled={disabled}
                   onClick={() => handlePick(m)}
                   title={disabled ? 'Модуль скоро будет доступен' : undefined}
-                  className={`flex w-full items-center gap-2 h-10 px-3 text-left text-[14px] transition-colors ${focusClass} ${
+                  className={`flex w-full items-center gap-2 h-10 px-3 text-left text-sm transition-colors ${focusClass} ${
                     disabled
                       ? 'cursor-not-allowed opacity-50'
                       : 'hover:bg-[hsl(var(--nav-hover-bg))]'
@@ -308,7 +308,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
                   )}
                   {disabled && (
                     <span
-                      className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
+                      className="text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
                       style={{
                         background: 'hsl(var(--surface-2))',
                         color: 'hsl(var(--muted))',
@@ -460,7 +460,7 @@ export function Sidebar() {
           <div key={sectionIdx} className={sectionIdx > 0 ? 'mt-5' : ''}>
             {!effectiveCollapsed && section.title && (
               <div
-                className="mb-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+                className="mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wider"
                 style={{ color: 'hsl(var(--accent))' }}
               >
                 {section.title}
@@ -483,7 +483,7 @@ export function Sidebar() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`relative flex items-center h-10 rounded-[8px] text-[14px] transition-all ${focusClass} ${
+                      className={`relative flex items-center h-10 rounded-[8px] text-sm transition-all ${focusClass} ${
                         effectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'
                       } ${
                         active ? 'font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))] font-medium'

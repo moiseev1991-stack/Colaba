@@ -39,11 +39,11 @@ export function KpQuickBlock({ companyId, companyName, hasPains }: Props) {
     <div className="rounded-md border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-3 dark:border-violet-700/40 dark:from-violet-900/30 dark:to-slate-900">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-violet-900 dark:text-violet-100">
+          <div className="flex items-center gap-1.5 text-small font-semibold text-violet-900 dark:text-violet-100">
             <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             Коммерческое предложение
           </div>
-          <p className="mt-0.5 text-[11.5px] text-slate-600 dark:text-slate-300">
+          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
             {hasPains
               ? 'Холодное письмо под главную боль клиентов с цитатой из отзыва.'
               : 'Общее письмо по шаблону. Боли клиентов появятся после AI-анализа отзывов.'}
@@ -53,7 +53,7 @@ export function KpQuickBlock({ companyId, companyName, hasPains }: Props) {
           type="button"
           onClick={() => setOpen(true)}
           title={tooltip}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-violet-600 px-3 text-small font-semibold text-white shadow-sm hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600"
         >
           <Sparkles className="h-4 w-4" />
           КП

@@ -168,7 +168,7 @@ export default function LegacyLeadsPanel() {
           <div>
             <h1
               className="font-display font-semibold tracking-tight"
-              style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+              style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
             >
               Поиск лидов
             </h1>
@@ -200,10 +200,10 @@ export default function LegacyLeadsPanel() {
             <div className="flex items-center gap-3">
               <span className="app-step-num app-step-num-active">02</span>
               <div>
-                <h2 className="text-[18px] font-bold leading-tight" style={{ color: 'hsl(var(--text))' }}>
+                <h2 className="text-xl font-bold leading-tight" style={{ color: 'hsl(var(--text))' }}>
                   Параметры запуска
                 </h2>
-                <p className="text-[12px] mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
                   Заполните три поля — запустим поиск через секунду
                 </p>
               </div>
@@ -225,7 +225,7 @@ export default function LegacyLeadsPanel() {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-11 text-[15px]"
+                className="w-full h-11 text-base"
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               />
             </div>
@@ -337,7 +337,7 @@ export default function LegacyLeadsPanel() {
                       className="w-4 h-4"
                       style={{ accentColor: 'hsl(var(--accent))' }}
                     />
-                    <span className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
+                    <span className="text-small" style={{ color: 'hsl(var(--text))' }}>
                       Только сайты с телефоном
                     </span>
                   </label>
@@ -373,7 +373,7 @@ export default function LegacyLeadsPanel() {
                 </>
               )}
             </button>
-            <div className="text-[13px] flex-1 leading-snug" style={{ color: 'hsl(var(--muted))' }}>
+            <div className="text-small flex-1 leading-snug" style={{ color: 'hsl(var(--muted))' }}>
               {isValid ? (
                 <>
                   <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
@@ -396,7 +396,7 @@ export default function LegacyLeadsPanel() {
       <section className="mb-10 app-reveal app-reveal-delay-2">
         <div className="flex items-center gap-3 mb-4">
           <span className="app-step-num">03</span>
-          <h2 className="text-[18px] font-bold" style={{ color: 'hsl(var(--text))' }}>
+          <h2 className="text-xl font-bold" style={{ color: 'hsl(var(--text))' }}>
             Что вы получите
           </h2>
         </div>
@@ -418,7 +418,7 @@ export default function LegacyLeadsPanel() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <span className="app-step-num">04</span>
-            <h2 className="text-[18px] font-bold" style={{ color: 'hsl(var(--text))' }}>
+            <h2 className="text-xl font-bold" style={{ color: 'hsl(var(--text))' }}>
               Последние запуски
             </h2>
             {hasRuns && (
@@ -468,7 +468,7 @@ export default function LegacyLeadsPanel() {
                   #{String(idx + 1).padStart(2, '0')}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-[14px] font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={r.query}>
+                  <div className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={r.query}>
                     {r.query}
                   </div>
                   <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
@@ -476,7 +476,7 @@ export default function LegacyLeadsPanel() {
                   </div>
                 </div>
                 <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
-                <div className="inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'hsl(var(--accent))' }}>
+                <div className="inline-flex items-center gap-1 text-small font-semibold" style={{ color: 'hsl(var(--accent))' }}>
                   <Eye className="h-4 w-4" />
                   <span className="hidden sm:inline">Открыть</span>
                 </div>
@@ -512,10 +512,10 @@ function FeatureTile({ num, icon, title, children }: { num: string; icon: React.
         <span className="app-feature-num">{num}</span>
       </div>
       <div>
-        <div className="text-[15px] font-bold mb-1" style={{ color: 'hsl(var(--text))' }}>
+        <div className="text-base font-bold mb-1" style={{ color: 'hsl(var(--text))' }}>
           {title}
         </div>
-        <div className="text-[13px] leading-snug" style={{ color: 'hsl(var(--muted))' }}>
+        <div className="text-small leading-snug" style={{ color: 'hsl(var(--muted))' }}>
           {children}
         </div>
       </div>

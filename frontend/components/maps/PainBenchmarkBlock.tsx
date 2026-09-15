@@ -49,13 +49,13 @@ export function PainBenchmarkBlock({ companyId }: Props) {
   return (
     <div className="rounded border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-2 flex flex-wrap items-baseline gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Сравнение с нишей
         </span>
-        <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
           {data.niche}{cityLabel}
         </span>
-        <span className="text-[10.5px] text-slate-500 dark:text-slate-400">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           выборка: {data.niche_companies_total} компаний
         </span>
       </div>
@@ -97,7 +97,7 @@ export function PainBenchmarkBlock({ companyId }: Props) {
               className="flex items-center gap-2"
               title={it.description ?? it.label}
             >
-              <span className="min-w-0 flex-[2] truncate text-[12px] text-slate-800 dark:text-slate-100">
+              <span className="min-w-0 flex-[2] truncate text-xs text-slate-800 dark:text-slate-100">
                 {it.label}
               </span>
               <div className="flex flex-[3] items-center gap-1.5">
@@ -107,12 +107,12 @@ export function PainBenchmarkBlock({ companyId }: Props) {
                     style={{ width: `${widthPct}%` }}
                   />
                 </div>
-                <span className="shrink-0 tabular-nums text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
                   {it.company_mentions} vs {it.niche_avg_per_company.toFixed(1)}
                 </span>
               </div>
               <span
-                className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10.5px] font-medium ${tone.badge}`}
+                className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${tone.badge}`}
               >
                 {tone.icon}
                 {tone.label}
@@ -122,7 +122,7 @@ export function PainBenchmarkBlock({ companyId }: Props) {
         })}
       </ul>
 
-      <div className="mt-2 text-[10.5px] text-slate-500 dark:text-slate-400">
+      <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
         Сравнение по среднему числу упоминаний боли на компанию в этой нише и
         городе. Используй «×N хуже рынка» как аргумент в холодном письме.
       </div>

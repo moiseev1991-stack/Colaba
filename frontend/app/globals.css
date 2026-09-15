@@ -857,11 +857,12 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   transition: all 0.2s ease;
 }
 
@@ -1099,7 +1100,8 @@
 /* === Stats Number Animation === */
 .app-stat-number {
   font-variant-numeric: tabular-nums;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 /* === Glowing Border on Focus === */
@@ -1145,7 +1147,7 @@
 /* === Page Title — bold, with mono-bracket prefix on left === */
 .app-page-title {
   position: relative;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
   color: hsl(var(--text));
   letter-spacing: -0.5px;
@@ -1201,11 +1203,16 @@
 
 /* === Mono numeric label (e.g. "01 / 03") === */
 .app-mono-label {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* PR 3.2: была капс-подпись 11px на незагруженном JetBrains Mono — теперь обычная подпись 12px */
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: hsl(var(--color-text-muted));
+}
+.app-mono-label::first-letter {
+  text-transform: uppercase; /* подписи в разметке строчные — первая буква заглавная */
 }
 
 /* === Hero card: architectural slab with hairline borders === */
@@ -1257,7 +1264,7 @@
   gap: 10px;
   height: 52px;
   padding: 0 28px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.1px;
   color: white;
@@ -1324,8 +1331,9 @@
   border-color: transparent;
 }
 .app-feature-num {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   color: hsl(var(--muted));
@@ -1399,12 +1407,13 @@
 
 /* === Big stat readout (used in hero strip) === */
 .app-mega-stat {
-  font-size: 44px;
+  font-size: 28px;
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -1.5px;
   font-variant-numeric: tabular-nums;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 /* === Step ribbon (numbered process indicator) === */
@@ -1417,8 +1426,9 @@
   border-radius: 4px;
   background: hsl(var(--accent-weak));
   color: hsl(var(--accent));
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -1429,8 +1439,9 @@
 
 /* === Inline tag with brackets — used for niche category labels === */
 .app-bracket-tag {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.05em;
   color: hsl(var(--muted));
@@ -1615,4 +1626,11 @@
     transform: none;
     box-shadow: var(--shadow-v2);
   }
+}
+
+/* PR 3.2: заголовки кабинета — Manrope (решение Р3: Unbounded только на лендингах).
+   Классы font-display в кабинете не трогаем — переопределяем переменную, пока на странице
+   есть кабинет (.app-main из AppLayout). :root, а не обёртка — чтобы попали и порталы. */
+:root:has(.app-main) {
+  --font-display: var(--font-body);
 }

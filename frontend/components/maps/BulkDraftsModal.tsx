@@ -70,7 +70,7 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
           <h3 className="text-sm font-semibold text-slate-900">
             Драфты писем для «{listName}»
-            <span className="ml-2 text-[11px] font-normal text-slate-500">
+            <span className="ml-2 text-xs font-normal text-slate-500">
               ({itemsCount} {itemsCount === 1 ? 'компания' : 'компаний'})
             </span>
           </h3>
@@ -134,7 +134,7 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                   из {result.total_companies} компаний
                 </div>
                 {(result.skipped_no_pains > 0 || result.skipped_llm_error > 0) && (
-                  <div className="mt-1 text-[12px] text-[color:var(--signal-good)]/80">
+                  <div className="mt-1 text-xs text-[color:var(--signal-good)]/80">
                     Пропущено: {result.skipped_no_pains} без болей, {result.skipped_llm_error}{' '}
                     с ошибкой LLM.
                   </div>
@@ -153,7 +153,7 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                           {i + 1}. {d.company_name}
                         </div>
                         {d.suggested_to_emails.length > 0 && (
-                          <div className="mt-0.5 text-[12px] text-slate-500">
+                          <div className="mt-0.5 text-xs text-slate-500">
                             → {d.suggested_to_emails.join(', ')}
                           </div>
                         )}
@@ -161,7 +161,7 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                       <div className="flex flex-col gap-1">
                         <button
                           onClick={() => copy(`${d.subject}\n\n${d.body}`, `all-${d.company_id}`)}
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                          className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           <Copy className="h-3 w-3" />
                           {copiedKey === `all-${d.company_id}` ? 'скопировано' : 'копировать'}
@@ -169,7 +169,7 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                         {d.suggested_to_emails.length > 0 && (
                           <a
                             href={`mailto:${d.suggested_to_emails[0]}?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}`}
-                            className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-medium text-white hover:bg-slate-800"
+                            className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-800"
                           >
                             <Mail className="h-3 w-3" />
                             почта
@@ -180,11 +180,11 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
 
                     {d.used_pain_label && (
                       <div className="mt-2 rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-2 py-1.5">
-                        <div className="text-[11px] font-medium text-[color:var(--signal-warm)]">
+                        <div className="text-xs font-medium text-[color:var(--signal-warm)]">
                           использована боль: {d.used_pain_label}
                         </div>
                         {d.used_pain_quote && (
-                          <div className="mt-0.5 flex items-start gap-1 text-[12px] text-slate-700">
+                          <div className="mt-0.5 flex items-start gap-1 text-xs text-slate-700">
                             <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--signal-warm)]" />
                             <span className="italic">«{d.used_pain_quote}»</span>
                           </div>
@@ -192,13 +192,13 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                       </div>
                     )}
 
-                    <div className="mt-2 text-[12px]">
+                    <div className="mt-2 text-xs">
                       <div className="font-medium text-slate-700">Тема:</div>
                       <div className="rounded bg-slate-50 px-2 py-1 text-slate-900">
                         {d.subject}
                       </div>
                     </div>
-                    <div className="mt-2 text-[12px]">
+                    <div className="mt-2 text-xs">
                       <div className="font-medium text-slate-700">Текст:</div>
                       <pre className="whitespace-pre-wrap rounded bg-slate-50 px-2 py-1 font-sans text-slate-900">
                         {d.body}

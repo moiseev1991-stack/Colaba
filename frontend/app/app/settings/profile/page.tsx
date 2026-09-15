@@ -83,14 +83,14 @@ export default function ProfileSettingsPage() {
       />
 
       {loading ? (
-        <CardV2 className="flex items-center gap-2 px-4 py-6 text-[14px] text-[hsl(var(--muted))]">
+        <CardV2 className="flex items-center gap-2 px-4 py-6 text-sm text-[hsl(var(--muted))]">
           <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
         </CardV2>
       ) : (
         <>
           {/* Login email — readonly, для контекста */}
           <CardV2 className="mb-4 px-4 py-3">
-            <div className="flex items-center gap-2 text-[13px]">
+            <div className="flex items-center gap-2 text-small">
               <Mail className="h-4 w-4 text-[hsl(var(--muted))]" />
               <span className="text-[hsl(var(--muted))]">Вход в аккаунт:</span>
               <span className="font-medium text-[hsl(var(--text))]">{loginEmail}</span>
@@ -100,15 +100,15 @@ export default function ProfileSettingsPage() {
           {/* Reply-To email — редактируемое поле */}
           <CardV2 className="px-4 py-4">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <label htmlFor="reply_to" className="text-[14px] font-medium text-[hsl(var(--text))]">
+              <label htmlFor="reply_to" className="text-sm font-medium text-[hsl(var(--text))]">
                 Email для ответов
               </label>
               {filled ? (
-                <span className="inline-flex items-center gap-1 text-[12px] text-emerald-700">
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
                   <CheckCircle2 className="h-3.5 w-3.5" /> заполнен
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[12px] text-amber-700">
+                <span className="inline-flex items-center gap-1 text-xs text-amber-700">
                   <AlertCircle className="h-3.5 w-3.5" /> не указан
                 </span>
               )}
@@ -123,7 +123,7 @@ export default function ProfileSettingsPage() {
               autoComplete="email"
             />
 
-            <p className="mt-2 text-[12px] leading-relaxed text-[hsl(var(--muted))]">
+            <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--muted))]">
               На этот адрес лиди будут отвечать на ваши КП (поле Reply-To). Может отличаться от
               логина — например, вы входите как
               <span className="text-[hsl(var(--text))]"> {loginEmail || 'user@spinlid.ru'}</span>, а
@@ -132,7 +132,7 @@ export default function ProfileSettingsPage() {
             </p>
 
             {!filled && (
-              <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
                 <span>
                   Пока поле пустое — отправить email-рассылку нельзя. Лид должен иметь возможность

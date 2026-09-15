@@ -15,6 +15,13 @@ module.exports = {
         body: ['var(--font-body)', 'system-ui', 'sans-serif'],
         sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
       },
+      // PR 3.2 — шкала шрифта кабинета, 6 ступеней:
+      // xs 12 · small 13 · sm 14 · base 16 · xl 20 · heading 28 (минимум 12px).
+      // Размеры вне шкалы (text-[11px], text-lg, text-2xl…) в кабинете сведены к ним.
+      fontSize: {
+        small:   ['13px', { lineHeight: '18px' }],
+        heading: ['28px', { lineHeight: '36px' }],
+      },
       colors: {
         // === §1.1 редизайн 2026-06-03 — единая бренд-шкала ===
         brand: {

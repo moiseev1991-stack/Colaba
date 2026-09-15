@@ -85,7 +85,7 @@ export function AppHeader() {
             />
           </span>
           <span
-            className="font-display font-semibold text-[15px] tracking-tight"
+            className="font-display font-semibold text-base tracking-tight"
             style={{ color: 'hsl(var(--text))' }}
           >
             SpinLid
@@ -103,7 +103,7 @@ export function AppHeader() {
             бренд-градиент в карточках, здесь — accent чтобы выделить покупку. */}
         <Link
           href="/#pricing"
-          className="inline-flex min-h-9 items-center gap-2 rounded-v2-sm bg-accent-gradient px-3 md:px-4 text-[13px] md:text-[14px] font-semibold text-white shadow-v2-sm transition-all hover:shadow-v2-hover hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex min-h-9 items-center gap-2 rounded-v2-sm bg-accent-gradient px-3 md:px-4 text-small md:text-sm font-semibold text-white shadow-v2-sm transition-all hover:shadow-v2-hover hover:scale-[1.02] active:scale-[0.98]"
         >
           <Sparkles className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline">Купить подписку</span>
@@ -112,7 +112,7 @@ export function AppHeader() {
         {/* Request Monitor — desktop only */}
         <Link
           href="/monitor"
-          className={`hidden md:flex items-center gap-2 h-9 px-3 rounded-[8px] text-[14px] font-medium transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass} ${pathname === '/monitor' ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : ''}`}
+          className={`hidden md:flex items-center gap-2 h-9 px-3 rounded-[8px] text-sm font-medium transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass} ${pathname === '/monitor' ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : ''}`}
           style={{
             color: pathname === '/monitor' ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
           }}
@@ -143,7 +143,7 @@ export function AppHeader() {
             >
               {userEmail && (
                 <div
-                  className="px-4 py-2 text-[12px] truncate border-b"
+                  className="px-4 py-2 text-xs truncate border-b"
                   style={{ color: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))' }}
                 >
                   {userEmail}
@@ -152,7 +152,7 @@ export function AppHeader() {
               <Link
                 href="/app/settings/profile"
                 onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
+                className={`flex items-center gap-2 h-9 px-4 text-sm w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
                 style={{ color: 'hsl(var(--text))' }}
               >
                 <UserIcon className="h-4 w-4" /> Профиль
@@ -160,7 +160,7 @@ export function AppHeader() {
               <Link
                 href="/payment"
                 onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
+                className={`flex items-center gap-2 h-9 px-4 text-sm w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
                 style={{ color: 'hsl(var(--text))' }}
               >
                 <CreditCard className="h-4 w-4" /> Оплата
@@ -168,7 +168,7 @@ export function AppHeader() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
+                className={`flex items-center gap-2 h-9 px-4 text-sm w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
                 style={{ color: 'hsl(var(--text))' }}
               >
                 <LogOut className="h-4 w-4" /> Выйти

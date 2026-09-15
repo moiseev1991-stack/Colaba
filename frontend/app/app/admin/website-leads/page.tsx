@@ -208,7 +208,7 @@ export default function AdminWebsiteLeadsPage() {
     <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 py-4 sm:py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+          <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
             Заявки с сайта
           </h1>
           <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>

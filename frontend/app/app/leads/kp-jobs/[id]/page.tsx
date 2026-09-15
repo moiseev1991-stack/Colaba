@@ -222,12 +222,12 @@ export default function KpJobPage({ params }: PageProps) {
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-4">
-        <h1 className="font-display text-[22px] font-semibold tracking-tight text-[hsl(var(--text))]">
+        <h1 className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
           <Sparkles className="mr-1.5 inline h-5 w-5 -translate-y-0.5 text-violet-600" />
           Партия КП{job ? ` #${job.id}` : ''}
         </h1>
         {job && (
-          <p className="mt-1 text-[12px] text-[hsl(var(--muted))]">
+          <p className="mt-1 text-xs text-[hsl(var(--muted))]">
             {templateLabel(job.template_key)} · тон:{' '}
             {job.tone === 'bold' ? 'уверенный' : 'нейтральный'} · {formatDateTime(job.created_at)}
           </p>
@@ -237,10 +237,10 @@ export default function KpJobPage({ params }: PageProps) {
       {/* Progress */}
       {job && (
         <CardV2 className="mb-5 px-4 py-3">
-          <div className="mb-2 flex flex-wrap items-center gap-3 text-[13px]">
+          <div className="mb-2 flex flex-wrap items-center gap-3 text-small">
             <span
               className={cn(
-                'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                'rounded-full px-2 py-0.5 text-xs font-medium',
                 job.status === 'done' && 'bg-emerald-100 text-emerald-700',
                 job.status === 'running' && 'bg-violet-100 text-violet-700',
                 job.status === 'cancelled' && 'bg-amber-100 text-amber-700',
@@ -275,7 +275,7 @@ export default function KpJobPage({ params }: PageProps) {
       )}
 
       {job?.status === 'failed' && (
-        <CardV2 className="mb-4 border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+        <CardV2 className="mb-4 border-rose-200 bg-rose-50 px-4 py-3 text-small text-rose-700">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -314,7 +314,7 @@ export default function KpJobPage({ params }: PageProps) {
               карточки ниже (table prerender'ится, но скрыт). */}
           <CardV2 className="hidden overflow-hidden p-0 sm:block">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
+              <table className="w-full border-collapse text-small">
                 <colgroup>
                   <col className="w-10" />
                   <col />
@@ -326,7 +326,7 @@ export default function KpJobPage({ params }: PageProps) {
                   <col className="w-24" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-2))] text-left text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                  <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-2))] text-left text-xs uppercase tracking-wider text-[hsl(var(--muted))]">
                     <th className="px-3 py-2 font-medium">#</th>
                     <th className="px-3 py-2 font-medium">Компания</th>
                     <th className="px-3 py-2 font-medium">Город</th>
@@ -368,7 +368,7 @@ export default function KpJobPage({ params }: PageProps) {
                         )}
                         onClick={clickable ? () => setDrawerCompanyId(it.company_id) : undefined}
                       >
-                        <td className="px-3 py-2.5 text-[11px] tabular-nums text-[hsl(var(--muted))]">
+                        <td className="px-3 py-2.5 text-xs tabular-nums text-[hsl(var(--muted))]">
                           {idx + 1}
                         </td>
                         <td className="max-w-0 px-3 py-2.5">
@@ -381,7 +381,7 @@ export default function KpJobPage({ params }: PageProps) {
                             <div className="flex min-w-0 items-center gap-1.5">
                               {it.company_legal_short && (
                                 <span
-                                  className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                  className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                                   title={it.company_legal_short}
                                 >
                                   {it.company_legal_short}
@@ -422,7 +422,7 @@ export default function KpJobPage({ params }: PageProps) {
                         <td className="max-w-0 px-3 py-2.5">
                           {hasRecipient ? (
                             <span
-                              className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                               title={it.recipient_email!}
                             >
                               <AtSign className="h-3 w-3 shrink-0 text-slate-500" />
@@ -430,7 +430,7 @@ export default function KpJobPage({ params }: PageProps) {
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
+                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
                               title="У компании не найден email — КП по почте не уйдёт"
                             >
                               <MailX className="h-3 w-3 shrink-0" />
@@ -448,7 +448,7 @@ export default function KpJobPage({ params }: PageProps) {
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
+                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
                               title={`Открыть WhatsApp: ${phoneDisplay}`}
                             >
                               <Phone className="h-3 w-3 shrink-0" />
@@ -461,14 +461,14 @@ export default function KpJobPage({ params }: PageProps) {
                             <a
                               href={telLink}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                               title={`Позвонить: ${phoneDisplay}`}
                             >
                               <Phone className="h-3 w-3 shrink-0" />
                               <span className="truncate">{phoneDisplay}</span>
                             </a>
                           ) : (
-                            <span className="text-[11px] text-[hsl(var(--muted))]">—</span>
+                            <span className="text-xs text-[hsl(var(--muted))]">—</span>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
@@ -492,7 +492,7 @@ export default function KpJobPage({ params }: PageProps) {
                                 );
                               })()}
                             {clickable && (
-                              <span className="text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline">
+                              <span className="text-xs font-medium text-violet-700 underline-offset-2 hover:underline">
                                 Открыть
                               </span>
                             )}
@@ -541,11 +541,11 @@ export default function KpJobPage({ params }: PageProps) {
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] tabular-nums text-[hsl(var(--muted))]">
+                          <span className="text-xs tabular-nums text-[hsl(var(--muted))]">
                             #{idx + 1}
                           </span>
                           {it.company_legal_short && (
-                            <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                               {it.company_legal_short}
                             </span>
                           )}
@@ -557,7 +557,7 @@ export default function KpJobPage({ params }: PageProps) {
                           </span>
                         </div>
                         {it.company_city && (
-                          <div className="mt-0.5 text-[11px] text-[hsl(var(--muted))]">
+                          <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
                             {it.company_city}
                           </div>
                         )}
@@ -572,21 +572,21 @@ export default function KpJobPage({ params }: PageProps) {
                     </SignalPill>
                   </div>
                   {it.subject && (
-                    <div className="mt-2 line-clamp-2 text-[12.5px] text-[hsl(var(--text))]">
+                    <div className="mt-2 line-clamp-2 text-small text-[hsl(var(--text))]">
                       {it.subject}
                     </div>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {hasRecipient ? (
                       <span
-                        className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                         title={it.recipient_email!}
                       >
                         <AtSign className="h-3 w-3 shrink-0 text-slate-500" />
                         <span className="truncate">{it.recipient_email}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
                         <MailX className="h-3 w-3" />
                         нет email
                       </span>
@@ -597,7 +597,7 @@ export default function KpJobPage({ params }: PageProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200"
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200"
                       >
                         <Phone className="h-3 w-3" />
                         {phoneDisplay}
@@ -606,7 +606,7 @@ export default function KpJobPage({ params }: PageProps) {
                       <a
                         href={telLink}
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                       >
                         <Phone className="h-3 w-3" />
                         {phoneDisplay}
@@ -632,7 +632,7 @@ export default function KpJobPage({ params }: PageProps) {
                           );
                         })()}
                       {clickable && (
-                        <span className="text-[12px] font-medium text-violet-700">Открыть →</span>
+                        <span className="text-xs font-medium text-violet-700">Открыть →</span>
                       )}
                     </div>
                   </div>
@@ -1129,7 +1129,7 @@ function SendBar({
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
         {/* Шапка: общий статус партии — что вообще готово и сколько уже улетело */}
         <div className="flex flex-col gap-1 border-b border-[hsl(var(--border))] pb-3">
-          <div className="text-[13px] font-semibold text-[hsl(var(--text))]">
+          <div className="text-small font-semibold text-[hsl(var(--text))]">
             {isActive
               ? `Отправляем: ${status!.sent} из ${status!.total}…`
               : hasAnySend
@@ -1141,7 +1141,7 @@ function SendBar({
           {/* Разбор «куда уйдёт» — независим от выбранного режима, чтобы
               юзер понимал, какие данные у нас вообще есть. Чекбоксы
               ниже только включают/выключают каналы — числа не меняют. */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[hsl(var(--muted))]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[hsl(var(--muted))]">
             <span className="inline-flex items-center gap-1">
               <Mail className="h-3.5 w-3.5 text-violet-600" /> {breakdown.emailEligible} email
             </span>
@@ -1186,7 +1186,7 @@ function SendBar({
                       : 'Включить канал — компании с этим контактом снова попадут в отправку.'
                 }
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
                   !working
                     ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
                     : 'disabled:cursor-not-allowed disabled:opacity-60',
@@ -1213,7 +1213,7 @@ function SendBar({
                 <Icon className="h-3.5 w-3.5" />
                 {label}
                 {!working && (
-                  <span className="ml-0.5 rounded bg-slate-200 px-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                  <span className="ml-0.5 rounded bg-slate-200 px-1 text-xs font-medium uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                     скоро
                   </span>
                 )}
@@ -1223,10 +1223,10 @@ function SendBar({
         </div>
 
         {/* Ошибки */}
-        {error && <div className="mt-2 text-[12px] text-rose-700">{error}</div>}
-        {callListError && <div className="mt-2 text-[12px] text-rose-700">{callListError}</div>}
+        {error && <div className="mt-2 text-xs text-rose-700">{error}</div>}
+        {callListError && <div className="mt-2 text-xs text-rose-700">{callListError}</div>}
         {status?.last_error && !error && (
-          <div className="mt-2 truncate text-[12px] text-rose-700" title={status.last_error}>
+          <div className="mt-2 truncate text-xs text-rose-700" title={status.last_error}>
             Последняя ошибка: {status.last_error}
           </div>
         )}
@@ -1258,7 +1258,7 @@ function SendBar({
             ответить на КП (ответ уйдёт на системный From, а не клиенту).
             Показываем только когда выбран email-канал и reply_to пуст. */}
         {replyToMissing && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-small text-amber-900">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div>
               Не указан email для ответов — лиди не смогут вам ответить.{' '}
@@ -1350,7 +1350,7 @@ function SendBar({
           </div>
         )}
         {!isActive && hasAnySend && inFlight === 0 && (
-          <div className="mt-2 text-[11px] text-[hsl(var(--muted))]">
+          <div className="mt-2 text-xs text-[hsl(var(--muted))]">
             Полный лог — в{' '}
             <a className="underline" href="/app/leads/history?tab=sends">
               «Отправки»
@@ -1413,7 +1413,7 @@ function RecipientsPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-[hsl(var(--text))] hover:bg-slate-50 dark:hover:bg-slate-900/40"
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-small font-medium text-[hsl(var(--text))] hover:bg-slate-50 dark:hover:bg-slate-900/40"
         aria-expanded={expanded}
       >
         <span className="inline-flex items-center gap-2">
@@ -1421,14 +1421,14 @@ function RecipientsPanel({
           Кто получит КП ({includedCount}
           {totalCount !== includedCount ? ` из ${totalCount}` : ''})
         </span>
-        <span className="text-[11px] font-normal text-[hsl(var(--muted))]">
+        <span className="text-xs font-normal text-[hsl(var(--muted))]">
           {expanded ? 'Скрыть' : 'Показать список'}
         </span>
       </button>
 
       {expanded && (
         <div className="border-t border-[hsl(var(--border))] px-3 py-2">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="text-[hsl(var(--muted))]">
               Снимай галочку у тех, кому слать не нужно — counter обновится.
             </span>
@@ -1437,7 +1437,7 @@ function RecipientsPanel({
                 type="button"
                 onClick={onIncludeAll}
                 disabled={isActive || excludedIds.size === 0}
-                className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                className="rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
               >
                 Включить все
               </button>
@@ -1445,7 +1445,7 @@ function RecipientsPanel({
                 type="button"
                 onClick={onExcludeAll}
                 disabled={isActive || excludedIds.size === totalCount}
-                className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                className="rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
               >
                 Снять все
               </button>
@@ -1510,7 +1510,7 @@ function RecipientRow({
   return (
     <li
       className={cn(
-        'flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-[12px]',
+        'flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-xs',
         excluded ? 'opacity-50' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40',
       )}
     >
@@ -1534,14 +1534,14 @@ function RecipientRow({
       <div className="min-w-0 flex-1">
         <div className="truncate font-medium text-[hsl(var(--text))]">{title}</div>
         {subtitleParts.length > 0 && (
-          <div className="truncate text-[11px] text-[hsl(var(--muted))]">
+          <div className="truncate text-xs text-[hsl(var(--muted))]">
             {subtitleParts.join(' · ')}
           </div>
         )}
       </div>
       <span
         className={cn(
-          'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium',
+          'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium',
           chip.cls,
         )}
         title={chip.title}
@@ -1793,15 +1793,15 @@ function DraftDrawer({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {item.company_legal_short && (
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     {item.company_legal_short}
                   </span>
                 )}
-                <h2 className="truncate font-display text-[15px] font-semibold text-[hsl(var(--text))]">
+                <h2 className="truncate font-display text-base font-semibold text-[hsl(var(--text))]">
                   {companyTitle}
                 </h2>
               </div>
-              <p className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+              <p className="mt-0.5 text-xs uppercase tracking-wider text-[hsl(var(--muted))]">
                 {templateLabel(item.template_key)}
                 {item.company_city ? ` · ${item.company_city}` : ''}
                 {item.draft_created_at ? ` · ${formatDateTime(item.draft_created_at)}` : ''}
@@ -1814,7 +1814,7 @@ function DraftDrawer({
                 type="button"
                 onClick={() => setEditing(true)}
                 title="Редактировать тему и тело письма"
-                className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-[12px] font-medium text-violet-700 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/60"
+                className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/60"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Редактировать
@@ -1836,11 +1836,11 @@ function DraftDrawer({
               предупреждение «нет email», но это уже не дед-энд — справа
               рядом блок «Телефон» с альтернативными каналами. */}
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
               Email
             </label>
             {item.recipient_email ? (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[13px] dark:border-emerald-700/50 dark:bg-emerald-900/30">
+              <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-small dark:border-emerald-700/50 dark:bg-emerald-900/30">
                 <AtSign className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
                 <div className="min-w-0 flex-1 truncate">
                   <span className="font-medium text-emerald-900 dark:text-emerald-100">
@@ -1849,7 +1849,7 @@ function DraftDrawer({
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12.5px] dark:border-amber-700/50 dark:bg-amber-900/30">
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-small dark:border-amber-700/50 dark:bg-amber-900/30">
                 <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
                 <div className="text-amber-800 dark:text-amber-200">
                   Email не найден — добавь в карточке компании, чтобы включить отправку.
@@ -1876,7 +1876,7 @@ function DraftDrawer({
             const phoneDisplay = formatPhoneForDisplay(item.company_phone);
             return (
               <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
                   Телефон
                 </label>
                 {waLink ? (
@@ -1885,33 +1885,33 @@ function DraftDrawer({
                       href={waLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[13px] transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/60"
+                      className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-small transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/60"
                     >
                       <Phone className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
                       <div className="min-w-0 flex-1 truncate">
                         <span className="font-medium text-emerald-900 dark:text-emerald-100">
                           {phoneDisplay}
                         </span>
-                        <span className="ml-1.5 text-[11px] uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
+                        <span className="ml-1.5 text-xs uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
                           WhatsApp
                         </span>
                       </div>
                     </a>
-                    <p className="text-[11px] leading-tight text-[hsl(var(--muted))]">
+                    <p className="text-xs leading-tight text-[hsl(var(--muted))]">
                       Клик — wa.me с пред-заполненным КП. Шлём руками (bulk-коннектора WA пока нет).
                     </p>
                   </div>
                 ) : telLink ? (
                   <a
                     href={telLink}
-                    className="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-[13px] transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    className="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-small transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
                   >
                     <Phone className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
                     <div className="min-w-0 flex-1 truncate">
                       <span className="font-medium text-slate-900 dark:text-slate-100">
                         {phoneDisplay}
                       </span>
-                      <span className="ml-1.5 text-[11px] uppercase tracking-wider text-slate-600/80 dark:text-slate-400">
+                      <span className="ml-1.5 text-xs uppercase tracking-wider text-slate-600/80 dark:text-slate-400">
                         Городской · звонок
                       </span>
                     </div>
@@ -1923,14 +1923,14 @@ function DraftDrawer({
 
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              <label className="block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
                 Тема
               </label>
               {!editing && item.draft_id !== null && (
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="text-[11px] font-medium text-violet-700 hover:underline dark:text-violet-300"
+                  className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
                 >
                   Изменить
                 </button>
@@ -1943,7 +1943,7 @@ function DraftDrawer({
                 onChange={(e) => setSubject(e.target.value)}
                 maxLength={500}
                 autoFocus
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[14px] font-medium text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             ) : (
               <button
@@ -1951,7 +1951,7 @@ function DraftDrawer({
                 onClick={() => item.draft_id !== null && setEditing(true)}
                 disabled={item.draft_id === null}
                 title={item.draft_id !== null ? 'Клик — отредактировать тему' : undefined}
-                className="w-full rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[14px] font-medium text-slate-800 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+                className="w-full rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-sm font-medium text-slate-800 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
               >
                 {subject || <span className="italic text-slate-500">Тема пустая.</span>}
               </button>
@@ -1960,14 +1960,14 @@ function DraftDrawer({
 
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              <label className="block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
                 Тело письма
               </label>
               {!editing && item.draft_id !== null && (
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="text-[11px] font-medium text-violet-700 hover:underline dark:text-violet-300"
+                  className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
                 >
                   Изменить
                 </button>
@@ -1978,7 +1978,7 @@ function DraftDrawer({
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={Math.max(10, Math.min(28, body.split('\n').length + 2))}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-[13px] leading-relaxed text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-small leading-relaxed text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             ) : (
               <button
@@ -1986,7 +1986,7 @@ function DraftDrawer({
                 onClick={() => item.draft_id !== null && setEditing(true)}
                 disabled={item.draft_id === null}
                 title={item.draft_id !== null ? 'Клик — отредактировать тело письма' : undefined}
-                className="w-full whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-left text-[13px] leading-relaxed text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+                className="w-full whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-left text-small leading-relaxed text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
               >
                 {body || <span className="italic text-slate-500">Тело письма пустое.</span>}
               </button>
@@ -2001,7 +2001,7 @@ function DraftDrawer({
           {item.draft_id !== null && <ChannelPreviewBlock subject={subject} body={body} />}
 
           {saveError && (
-            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
               {saveError}
             </div>
           )}
@@ -2076,7 +2076,7 @@ function DraftDrawer({
             singleSendState &&
             typeof singleSendState === 'object' &&
             'error' in singleSendState && (
-              <div className="w-full text-right text-[12px] text-rose-700">
+              <div className="w-full text-right text-xs text-rose-700">
                 {singleSendState.error}
               </div>
             )}
@@ -2169,7 +2169,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
 
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
         Как это будет выглядеть в…
       </label>
       <div className="mb-2 flex flex-wrap gap-1">
@@ -2181,7 +2181,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
               type="button"
               onClick={() => setChannel(key)}
               className={cn(
-                'rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
+                'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
                 active
                   ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
                   : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
@@ -2194,7 +2194,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
       </div>
       <div
         className={cn(
-          'rounded-md border px-3 py-2 text-[12.5px] leading-relaxed',
+          'rounded-md border px-3 py-2 text-small leading-relaxed',
           overLimit
             ? 'border-rose-300 bg-rose-50 dark:border-rose-700/50 dark:bg-rose-950/30'
             : warn
@@ -2203,7 +2203,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
         )}
       >
         {channel === 'email' && subject && (
-          <div className="mb-1.5 border-b border-slate-200 pb-1.5 text-[12px] dark:border-slate-700">
+          <div className="mb-1.5 border-b border-slate-200 pb-1.5 text-xs dark:border-slate-700">
             <span className="font-medium text-[hsl(var(--muted))]">Тема: </span>
             <span className="text-[hsl(var(--text))]">{subject}</span>
           </div>
@@ -2212,7 +2212,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
           {rendered || <span className="italic text-slate-500">Тело пустое</span>}
         </pre>
       </div>
-      <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+      <div className="mt-1 flex items-center justify-between gap-2 text-xs">
         <span className="text-[hsl(var(--muted))]">
           {channel === 'email'
             ? 'В письме уйдут шапка с лого и контакты SpinLid (подпись внизу).'
@@ -2233,7 +2233,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
         </span>
       </div>
       {overLimit && meta.limit !== null && (
-        <p className="mt-1 text-[11px] text-rose-700 dark:text-rose-300">
+        <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
           Превышен лимит {meta.label} на {(length - meta.limit).toLocaleString('ru-RU')} симв. —
           урежь тело перед отправкой через этот канал.
         </p>

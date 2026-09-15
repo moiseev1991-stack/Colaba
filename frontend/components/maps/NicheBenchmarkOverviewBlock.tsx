@@ -72,15 +72,15 @@ export function NicheBenchmarkOverviewBlock({
   return (
     <div className="mt-2 rounded border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
-        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {sentiment === 'positive'
             ? 'Сравнение с нишей · сильные стороны'
             : 'Сравнение с нишей · боли'}
         </span>
-        <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
           {data.niche}{cityLabel}
         </span>
-        <span className="text-[10.5px] text-slate-500 dark:text-slate-400">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           выборка: {data.companies_total} компаний
         </span>
       </div>
@@ -98,7 +98,7 @@ export function NicheBenchmarkOverviewBlock({
           const clickable = !!onPainClick;
           const row = (
             <>
-              <span className="min-w-0 flex-[2] truncate text-[11.5px] text-slate-800 dark:text-slate-100">
+              <span className="min-w-0 flex-[2] truncate text-xs text-slate-800 dark:text-slate-100">
                 {it.label}
               </span>
               <div className="flex flex-[3] items-center gap-1.5">
@@ -111,14 +111,14 @@ export function NicheBenchmarkOverviewBlock({
                     style={{ width: `${widthPct}%` }}
                   />
                 </div>
-                <span className="shrink-0 tabular-nums text-[10.5px] text-slate-500 dark:text-slate-400">
+                <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
                   {sharePct}%
                 </span>
               </div>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 {affected}/{companiesTotal} комп.
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 ср. {avgPerCompany.toFixed(1)}
               </span>
             </>
@@ -151,7 +151,7 @@ export function NicheBenchmarkOverviewBlock({
         })}
       </ul>
 
-      <div className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+      <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
         Бар = доля компаний ниши, у которых эта боль упоминается. Среднее — упоминаний на компанию.
       </div>
     </div>

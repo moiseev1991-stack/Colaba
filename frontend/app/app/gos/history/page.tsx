@@ -6,7 +6,7 @@ export default function GosHistoryPage() {
   return (
     <div className="mx-auto max-w-[1100px] px-6 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>История поиска госзакупок</h1>
+        <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>История поиска госзакупок</h1>
         <Link
           href="/app/gos"
           className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-sm transition-colors"
