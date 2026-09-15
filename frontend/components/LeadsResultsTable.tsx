@@ -364,7 +364,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
               setPage(1);
             }}
             placeholder="Найти по компании, домену, контакту…"
-            className="flex-1 bg-transparent text-[13px] outline-none placeholder:opacity-50"
+            className="flex-1 bg-transparent text-small outline-none placeholder:opacity-50"
             style={{ color: 'hsl(var(--text))' }}
           />
           {searchQuery && (
@@ -429,7 +429,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
             <button
               type="button"
               onClick={exportSelected}
-              className="inline-flex items-center gap-1.5 h-9 px-3 text-[13px] font-semibold border transition-colors hover:bg-[hsl(var(--surface))]"
+              className="inline-flex items-center gap-1.5 h-9 px-3 text-small font-semibold border transition-colors hover:bg-[hsl(var(--surface))]"
               style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', borderRadius: 4, color: 'hsl(var(--text))' }}
             >
               <Copy className="h-4 w-4" /> CSV
@@ -493,7 +493,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
             <tbody>
               {pageItems.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-12 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>
+                  <td colSpan={11} className="text-center py-12 text-sm" style={{ color: 'hsl(var(--muted))' }}>
                     Нет результатов под выбранные фильтры
                   </td>
                 </tr>
@@ -527,7 +527,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                     </td>
                     <td className="px-3 py-3 align-middle">
                       <div
-                        className="text-[14px] font-bold leading-tight truncate"
+                        className="text-sm font-bold leading-tight truncate"
                         style={{ color: 'hsl(var(--text))' }}
                         title={`${company} (${r.domain})`}
                       >
@@ -543,7 +543,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                     </td>
                     <td className="px-3 py-3 align-middle">
                       <div
-                        className="text-[13px] leading-snug truncate"
+                        className="text-small leading-snug truncate"
                         style={{ color: 'hsl(var(--text) / 0.85)' }}
                         title={description}
                       >
@@ -554,7 +554,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                           {r.keywordHits.map((kw) => (
                             <span
                               key={kw}
-                              className="inline-flex items-center px-1.5 h-4 text-[10px] font-semibold"
+                              className="inline-flex items-center px-1.5 h-4 text-xs font-semibold"
                               style={{
                                 background: 'hsl(var(--success) / 0.15)',
                                 color: 'hsl(var(--success))',
@@ -731,7 +731,7 @@ function FilterToggle({ checked, onChange, label, count }: { checked: boolean; o
         className="w-4 h-4"
         style={{ accentColor: 'hsl(var(--accent))' }}
       />
-      <span className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
+      <span className="text-small" style={{ color: 'hsl(var(--text))' }}>
         {label}
       </span>
       {typeof count === 'number' && (
@@ -767,7 +767,7 @@ function MessengerCell({
   // when we extracted one; otherwise just a static "yes, mentioned" badge.
   const pill = (
     <span
-      className="inline-flex items-center justify-center h-6 px-2 text-[11px] font-bold whitespace-nowrap"
+      className="inline-flex items-center justify-center h-6 px-2 text-xs font-bold whitespace-nowrap"
       style={{
         background: `${meta.color}22`,
         color: meta.color,
@@ -801,7 +801,7 @@ function ContactCell({ value, icon, href, onCopy }: { value: string; icon: React
     <div className="flex items-center gap-2 min-w-0">
       <a
         href={href}
-        className="flex items-center gap-1.5 text-[13px] font-medium truncate hover:underline"
+        className="flex items-center gap-1.5 text-small font-medium truncate hover:underline"
         style={{ color: 'hsl(var(--text))' }}
         title={value}
       >
@@ -880,7 +880,7 @@ function SiteTypeBadge({ type }: { type: SiteType }) {
         color: meta.tint,
         border: `1px solid ${meta.tint}55`,
         borderRadius: 3,
-        fontSize: 11,
+        fontSize: 12,
         letterSpacing: '0.04em',
       }}
     >

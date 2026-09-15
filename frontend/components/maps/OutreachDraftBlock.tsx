@@ -110,7 +110,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
 
       {/* Селект угла услуги */}
       <div className="mb-2">
-        <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
           Угол услуги
         </label>
         <select
@@ -159,7 +159,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
 
       {/* Состояние из кэша */}
       {draft?.cached && (
-        <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
           Из кэша · угол:{' '}
           <span className="font-medium text-slate-700 dark:text-slate-200">
             {draft.angle_used}
@@ -167,7 +167,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
         </div>
       )}
       {draft && !draft.cached && (
-        <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
           Сгенерировано · угол:{' '}
           <span className="font-medium text-slate-700 dark:text-slate-200">
             {draft.angle_used}
@@ -186,7 +186,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
       {draft && (
         <div className="space-y-2">
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
               Тема
             </label>
             <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
                 type="text"
                 value={subjectEdit}
                 onChange={(e) => setSubjectEdit(e.target.value)}
-                className="h-8 flex-1 text-[12px]"
+                className="h-8 flex-1 text-xs"
               />
               <button
                 type="button"
@@ -206,27 +206,27 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
               </button>
             </div>
             {copied === 'subject' && (
-              <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+              <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
                 Скопировано
               </div>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
               Тело
             </label>
             <textarea
               value={bodyEdit}
               onChange={(e) => setBodyEdit(e.target.value)}
               rows={10}
-              className="w-full resize-y rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[12px] leading-relaxed text-slate-800 outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              className="w-full resize-y rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs leading-relaxed text-slate-800 outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
             />
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => copyToClipboard(bodyEdit, 'body')}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <Copy className="h-3 w-3" />
                 Тело
@@ -239,7 +239,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
                     'all',
                   )
                 }
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <Copy className="h-3 w-3" />
                 Всё
@@ -248,20 +248,20 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
                 <button
                   type="button"
                   onClick={openInMail}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-1 text-[11px] text-white hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-1 text-xs text-white hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
                   title={`Открыть в почтовом клиенте, адрес: ${firstEmail}`}
                 >
                   <Mail className="h-3 w-3" />
                   Открыть в почте
                 </button>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
                   <Send className="h-3 w-3" />
                   email не найден — скопируй вручную
                 </span>
               )}
               {(copied === 'body' || copied === 'all') && (
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400">
                   Скопировано
                 </span>
               )}
@@ -271,14 +271,14 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
           {/* Какие боли пошли в письмо */}
           {draft.pains_used && draft.pains_used.length > 0 && (
             <div>
-              <div className="mb-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <div className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                 Боли в письме:
               </div>
               <div className="flex flex-wrap gap-1">
                 {draft.pains_used.map((p) => (
                   <span
                     key={p.pain_tag_id}
-                    className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                    className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
                     title={p.top_quote ?? undefined}
                   >
                     {p.label}
@@ -292,7 +292,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
 
       {/* Пустое состояние */}
       {!draft && !isLoading && !error && (
-        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           Выбери угол услуги и жми «Сгенерировать». Письмо построится из
           реальных болей клиентов этой компании (если они есть) или из угла
           услуги.

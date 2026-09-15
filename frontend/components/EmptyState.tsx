@@ -45,12 +45,12 @@ export function EmptyState({
             {icon}
           </div>
         )}
-        <h3 className="text-[16px] font-bold mb-2" style={{ color: 'hsl(var(--text))' }}>
+        <h3 className="text-base font-bold mb-2" style={{ color: 'hsl(var(--text))' }}>
           {title}
         </h3>
         {description && (
           <div
-            className="text-[13px] max-w-[480px] mx-auto leading-snug"
+            className="text-small max-w-[480px] mx-auto leading-snug"
             style={{ color: 'hsl(var(--muted))' }}
           >
             {description}
@@ -75,7 +75,7 @@ export function EmptyState({
               background: 'rgb(252 211 77 / 0.08)',
             }}
           >
-            <span className="inline-flex items-center px-1.5 h-5 text-[10px] font-bold uppercase tracking-wider rounded-v2-sm bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border border-[color:var(--signal-warm)]/40">
+            <span className="inline-flex items-center px-1.5 h-5 text-xs font-bold uppercase tracking-wider rounded-v2-sm bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] border border-[color:var(--signal-warm)]/40">
               Пример
             </span>
             <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>

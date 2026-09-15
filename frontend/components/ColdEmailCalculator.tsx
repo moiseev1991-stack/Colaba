@@ -139,12 +139,12 @@ export function ColdEmailCalculator({
       >
         <span className="flex items-center gap-2">
           <Calculator className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-          <span className="font-display text-[14px] font-semibold tracking-tight text-[hsl(var(--text))]">
+          <span className="font-display text-sm font-semibold tracking-tight text-[hsl(var(--text))]">
             {title}
           </span>
           {/* Свёрнутое состояние — показываем компактный итог справа от заголовка. */}
           {collapsed && letterCount > 0 && (
-            <span className="ml-1 text-[12px] text-[hsl(var(--muted))]">
+            <span className="ml-1 text-xs text-[hsl(var(--muted))]">
               ~{formatCount(result.deals)} сделок · {formatRub(result.revenue)}
             </span>
           )}
@@ -182,10 +182,10 @@ export function ColdEmailCalculator({
           />
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-[12px] font-medium text-[hsl(var(--text))]">
+              <span className="text-xs font-medium text-[hsl(var(--text))]">
                 Средний чек
               </span>
-              <span className="font-mono text-[12px] tabular-nums text-[hsl(var(--text))]">
+              <span className="font-mono text-xs tabular-nums text-[hsl(var(--text))]">
                 {formatRub(prefs.avg_deal_value)}
               </span>
             </div>
@@ -198,7 +198,7 @@ export function ColdEmailCalculator({
                 const n = Number(e.target.value);
                 if (Number.isFinite(n) && n >= 0) update({ avg_deal_value: n });
               }}
-              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] tabular-nums focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-small tabular-nums focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -219,17 +219,17 @@ export function ColdEmailCalculator({
             />
             <div className="mt-2 border-t border-violet-200 pt-2 dark:border-violet-800/40">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[12px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+                <span className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
                   Выручка
                 </span>
-                <span className="font-display text-[18px] font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+                <span className="font-display text-xl font-semibold tabular-nums text-violet-700 dark:text-violet-300">
                   {formatRub(result.revenue)}
                 </span>
               </div>
             </div>
           </div>
 
-          <p className="text-[11px] leading-relaxed text-[hsl(var(--muted))]">
+          <p className="text-xs leading-relaxed text-[hsl(var(--muted))]">
             Цифры — оценка, не гарантия. На реальный отклик влияют качество
             болей, корректность email-а у компании, спам-репутация домена,
             время суток отправки. Используй как ориентир для решения
@@ -265,10 +265,10 @@ function SliderRow({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[12px] font-medium text-[hsl(var(--text))]">
+        <span className="text-xs font-medium text-[hsl(var(--text))]">
           {label}
         </span>
-        <span className="font-mono text-[12px] tabular-nums text-[hsl(var(--text))]">
+        <span className="font-mono text-xs tabular-nums text-[hsl(var(--text))]">
           {value.toFixed(step < 1 ? 1 : 0).replace('.', ',')}
           {unit}
         </span>
@@ -283,7 +283,7 @@ function SliderRow({
         className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-100 accent-violet-600 dark:bg-violet-950/60"
         aria-label={label}
       />
-      <p className="mt-1 text-[10.5px] leading-tight text-[hsl(var(--muted))]">
+      <p className="mt-1 text-xs leading-tight text-[hsl(var(--muted))]">
         {hint}
       </p>
     </div>
@@ -300,7 +300,7 @@ function FunnelLine({ label, value, dim }: FunnelLineProps) {
   return (
     <div
       className={cn(
-        'flex items-baseline justify-between gap-2 py-0.5 text-[13px]',
+        'flex items-baseline justify-between gap-2 py-0.5 text-small',
         dim && 'text-[hsl(var(--muted))]',
       )}
     >

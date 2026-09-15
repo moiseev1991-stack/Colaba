@@ -70,7 +70,7 @@ export default function NewTemplatePage() {
 
       <h1
         className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
-        style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
       >
         <FileText className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         Новый шаблон КП
@@ -118,7 +118,7 @@ export default function NewTemplatePage() {
             />
           </div>
           <div
-            className="rounded-v2-sm p-3 text-[12px]"
+            className="rounded-v2-sm p-3 text-xs"
             style={{ background: 'hsl(var(--surface-2))' }}
           >
             <p className="font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>

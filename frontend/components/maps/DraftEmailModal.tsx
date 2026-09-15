@@ -50,7 +50,7 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
           </h3>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="h-4 w-4" />
           </button>
@@ -79,12 +79,12 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
             <div className="space-y-4">
               {draft.used_pains.length > 0 && (
                 <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2">
-                  <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-[color:var(--signal-warm)]">
+                  <div className="mb-1 text-xs font-medium uppercase tracking-wide text-[color:var(--signal-warm)]">
                     Основано на болях
                   </div>
                   <ul className="space-y-1.5">
                     {draft.used_pains.map((p) => (
-                      <li key={p.pain_tag_id} className="text-[12px]">
+                      <li key={p.pain_tag_id} className="text-xs">
                         <span className="font-medium text-[color:var(--signal-warm)]">{p.label}</span>
                         {p.top_quote && (
                           <div className="mt-0.5 flex items-start gap-1 text-slate-700">
@@ -99,7 +99,7 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
               )}
 
               {draft.suggested_to_emails.length > 0 && (
-                <div className="text-[12px] text-slate-600">
+                <div className="text-xs text-slate-600">
                   <span className="font-medium text-slate-700">Email-адреса с сайта:</span>{' '}
                   {draft.suggested_to_emails.map((e, i) => (
                     <span key={e}>
@@ -117,12 +117,12 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Тема
                   </label>
                   <button
                     onClick={() => copy(draft.subject, 'subject')}
-                    className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700"
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'subject' ? 'скопировано' : 'копировать'}
@@ -135,12 +135,12 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Текст
                   </label>
                   <button
                     onClick={() => copy(draft.body, 'body')}
-                    className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700"
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'body' ? 'скопировано' : 'копировать'}
@@ -155,7 +155,7 @@ export function DraftEmailModal({ open, draft, loading, error, onClose }: Props)
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
-          <span className="text-[11px] text-slate-500">
+          <span className="text-xs text-slate-500">
             Драфт сгенерирован AI. Перечитай перед отправкой.
           </span>
           <div className="flex gap-2">

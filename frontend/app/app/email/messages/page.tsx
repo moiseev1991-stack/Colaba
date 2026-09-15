@@ -221,12 +221,12 @@ export default function EmailMessagesPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className="text-[11px]" style={textMuted}>
+                    <span className="text-xs" style={textMuted}>
                       {formatRelativeRu(t.last_message_at)}
                     </span>
                     {t.unread_count > 0 && (
                       <span
-                        className="text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center text-white"
+                        className="text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center text-white"
                         style={{ background: 'var(--signal-hot)' }}
                       >
                         {t.unread_count}
@@ -311,7 +311,7 @@ export default function EmailMessagesPage() {
                         <div className="text-sm whitespace-pre-wrap break-words">
                           {msg.body || '(пусто)'}
                         </div>
-                        <div className="text-[10px] mt-1 opacity-60">
+                        <div className="text-xs mt-1 opacity-60">
                           {formatTimeRu(msg.timestamp)}
                           {isOutgoing && msg.status === 'failed' && (
                             <span className="ml-2" style={{ color: 'var(--signal-hot)' }}>

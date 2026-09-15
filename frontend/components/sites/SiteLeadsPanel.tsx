@@ -127,11 +127,11 @@ export function SiteLeadsPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="flex items-center gap-2 text-[18px] font-semibold text-slate-900 dark:text-slate-100">
+        <h2 className="flex items-center gap-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
           <Globe className="h-5 w-5 text-violet-600" />
           Поиск по сайтам с вхождением
         </h2>
-        <p className="mt-0.5 text-[13px] text-slate-600 dark:text-slate-400">
+        <p className="mt-0.5 text-small text-slate-600 dark:text-slate-400">
           Найдём сайты, где встречается заданное вхождение (например
           «© 2021» — заброшенные сайты, готовые лиды для веб-студии).
           На карточке результата — кнопка «КП», открывает модалку с
@@ -141,7 +141,7 @@ export function SiteLeadsPanel() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             value={entry}
@@ -156,7 +156,7 @@ export function SiteLeadsPanel() {
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <span className="mr-1 self-center text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <span className="mr-1 self-center text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Готовые сценарии
           </span>
           {SITE_ENTRY_PRESETS.map((p, idx) => {
@@ -169,7 +169,7 @@ export function SiteLeadsPanel() {
                 title={p.hint}
                 disabled={status === 'searching'}
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                  'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                   active
                     ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-violet-900/30 dark:hover:text-violet-200',
@@ -218,7 +218,7 @@ export function SiteLeadsPanel() {
 
       {status === 'ready' && (
         <>
-          <div className="text-[12px] text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             Найдено {results.length} сайтов с «{entry}»
           </div>
           {results.length === 0 ? (

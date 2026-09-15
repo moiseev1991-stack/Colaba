@@ -234,7 +234,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
           {preview && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1">
+                <div className="text-xs uppercase tracking-wider text-slate-500 font-medium mb-1">
                   Subject
                 </div>
                 <div className="rounded border border-slate-200 bg-white px-2 py-1 text-sm">
@@ -242,7 +242,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
                 </div>
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1">
+                <div className="text-xs uppercase tracking-wider text-slate-500 font-medium mb-1">
                   Body
                 </div>
                 <textarea

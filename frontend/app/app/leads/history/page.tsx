@@ -29,6 +29,7 @@ import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
+import { formatMapSources } from '@/lib/mapSources';
 import { deleteSearch, listSearches, type SearchResponse } from '@/src/services/api/search';
 import {
   listKpDrafts,
@@ -114,7 +115,7 @@ function LeadsHistoryInner() {
       <div className="mb-6 flex items-center justify-between">
         <h1
           className="font-display font-semibold tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
         >
           История поисков лидов
         </h1>
@@ -130,7 +131,7 @@ function LeadsHistoryInner() {
             type="button"
             onClick={() => setTab(t.value)}
             className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-[13px] font-medium transition-colors',
+              '-mb-px border-b-2 px-3 py-2 text-small font-medium transition-colors',
               tab === t.value
                 ? 'border-[hsl(var(--accent))] text-[hsl(var(--accent))]'
                 : 'border-transparent text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]',
@@ -230,13 +231,13 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
             <Map className="h-4 w-4 shrink-0 text-[hsl(var(--accent))]" />
             <div className="min-w-0 flex-1">
               <div
-                className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]"
                 title={`${m.niche} ${m.city}`}
               >
                 {m.niche} · {m.city}
               </div>
-              <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                {formatDateTime(m.created_at)} · {m.sources} · {m.companies_found ?? 0}{' '}
+              <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
+                {formatDateTime(m.created_at)} · {formatMapSources(m.sources)} · {m.companies_found ?? 0}{' '}
                 {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
               </div>
             </div>
@@ -354,17 +355,17 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
               }}
               className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
             >
-              <span className="hidden w-10 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+              <span className="hidden w-10 shrink-0 text-center text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
                 #{String(page * PAGE_SIZE + idx + 1).padStart(2, '0')}
               </span>
               <div className="min-w-0 flex-1">
                 <div
-                  className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                  className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]"
                   title={r.query}
                 >
                   {r.query}
                 </div>
-                <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
                   {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0}{' '}
                   {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
                 </div>
@@ -376,7 +377,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 <button
                   type="button"
                   onClick={() => router.push(`/runs/${r.id}`)}
-                  className="hidden min-h-9 items-center gap-1 px-2 text-[13px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                  className="hidden min-h-9 items-center gap-1 px-2 text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
                 >
                   <Eye className="h-4 w-4" />
                   Открыть
@@ -506,7 +507,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
 
   return (
     <>
-      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">Всего КП: {total}</div>
+      <div className="mb-3 text-xs text-[hsl(var(--muted))]">Всего КП: {total}</div>
       <ul className="reveal-stack space-y-2">
         {items.map((d) => (
           <li key={d.id}>
@@ -519,12 +520,12 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
                 <div className="min-w-0 flex-1">
                   <div
-                    className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                    className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]"
                     title={d.subject}
                   >
                     {d.subject}
                   </div>
-                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                  <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
                     {formatDateTime(d.created_at)} · {templateLabel(d.template_key)}
                     {d.company_name ? ` · ${d.company_name}` : ''}
                     {d.company_city ? ` · ${d.company_city}` : ''}
@@ -537,7 +538,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                       e.stopPropagation();
                       router.push(`/app/leads?open_company_id=${d.company_id}`);
                     }}
-                    className="hidden min-h-9 items-center gap-1 px-2 text-[13px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                    className="hidden min-h-9 items-center gap-1 px-2 text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
                     title="Открыть карточку компании"
                   >
                     <Eye className="h-4 w-4" />
@@ -546,7 +547,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 )}
               </button>
               {openId === d.id && (
-                <div className="mt-3 whitespace-pre-wrap rounded-v2-sm border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[13px] leading-relaxed text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <div className="mt-3 whitespace-pre-wrap rounded-v2-sm border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-small leading-relaxed text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   {d.body_preview}
                   {d.body_preview.length >= 240 && '…'}
                 </div>
@@ -668,19 +669,19 @@ function KpJobsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) 
                 <Sparkles className="h-4 w-4 shrink-0 text-violet-600" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-display text-[14px] font-semibold text-[hsl(var(--text))]">
+                    <span className="font-display text-sm font-semibold text-[hsl(var(--text))]">
                       Партия #{j.id}
                     </span>
                     <span
-                      className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', badge.cls)}
+                      className={cn('rounded-full px-2 py-0.5 text-xs font-medium', badge.cls)}
                     >
                       {badge.label}
                     </span>
-                    <span className="text-[12px] text-[hsl(var(--muted))]">
+                    <span className="text-xs text-[hsl(var(--muted))]">
                       {templateLabel(j.template_key)}
                     </span>
                   </div>
-                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                  <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
                     {formatDateTime(j.created_at)} · {j.generated + j.failed}/{total}
                     {j.failed > 0 && (
                       <span className="ml-1 text-rose-600">· ошибок {j.failed}</span>
@@ -695,7 +696,7 @@ function KpJobsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) 
                     </div>
                   )}
                 </div>
-                <span className="shrink-0 text-[12px] font-medium text-violet-700">Открыть →</span>
+                <span className="shrink-0 text-xs font-medium text-violet-700">Открыть →</span>
               </button>
             </CardV2>
           </li>
@@ -782,7 +783,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
 
   return (
     <>
-      <div className="mb-3 text-[12px] text-[hsl(var(--muted))]">Всего отправок: {total}</div>
+      <div className="mb-3 text-xs text-[hsl(var(--muted))]">Всего отправок: {total}</div>
       <ul className="space-y-2">
         {items.map((s) => {
           const ch = CHANNEL_META[s.channel];
@@ -797,7 +798,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]"
+                        className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]"
                         title={s.subject || ''}
                       >
                         {s.subject || `КП #${s.draft_id}`}
@@ -806,7 +807,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
                         {st.label}
                       </SignalPill>
                     </div>
-                    <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                    <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
                       {formatDateTime(s.created_at)} · {ch.label}
                       {s.recipient ? ` → ${s.recipient}` : ''}
                       {s.company_name ? ` · ${s.company_name}` : ''}
@@ -814,7 +815,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
                     </div>
                     {s.error_message && (
                       <div
-                        className="mt-1 truncate text-[12px] text-rose-700"
+                        className="mt-1 truncate text-xs text-rose-700"
                         title={s.error_message}
                       >
                         {s.error_message}
@@ -825,7 +826,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
                     <button
                       type="button"
                       onClick={() => router.push(`/app/leads/kp-jobs/${s.job_id}`)}
-                      className="shrink-0 text-[12px] font-medium text-violet-700 underline-offset-2 hover:underline"
+                      className="shrink-0 text-xs font-medium text-violet-700 underline-offset-2 hover:underline"
                     >
                       Партия #{s.job_id} →
                     </button>

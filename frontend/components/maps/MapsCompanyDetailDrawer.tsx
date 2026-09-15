@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import {
   ExternalLink,
   Globe,
@@ -462,14 +463,14 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                   const seen = new Set<string>();
                   return detail.pain_tags.filter((t) => {
                     const k = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
-                    if (!k || seen.has(k)) return false;
+                    if (!k || seen.has(k) || isUnnamedPainLabel(t.label)) return false;
                     seen.add(k);
                     return true;
                   });
                 })().map((t) => (
                   <span
                     key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11.5px] text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                    className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
                     {t.label}
@@ -486,7 +487,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
               недоступных у компании источников рендерим как disabled
               серый pill (без перехода). */}
           <div className="mb-2 rounded-md border border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-800/40">
-            <div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Источник отзывов
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -504,12 +505,12 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                     disabled={!available}
                     onClick={() => available && setSourceTab(st)}
                     className={cn(
-                      'rounded px-2 py-1 text-[12px] font-semibold transition-colors',
+                      'rounded px-2 py-1 text-xs font-semibold transition-colors',
                       active
                         ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
                         : available
                           ? 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700'
-                          : 'bg-slate-100 text-slate-400 ring-1 ring-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:ring-slate-700',
+                          : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:ring-slate-700',
                     )}
                     title={
                       available
@@ -543,7 +544,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             return (
           <div ref={reviewsAnchorRef}>
             {activePainTagId != null && (
-              <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-rose-200 bg-rose-50/60 px-2 py-1.5 text-[12px] dark:border-rose-700/60 dark:bg-rose-900/20">
+              <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-rose-200 bg-rose-50/60 px-2 py-1.5 text-xs dark:border-rose-700/60 dark:bg-rose-900/20">
                 <span className="text-slate-700 dark:text-slate-200">
                   Отзывы темы <strong>«{activePainLabel}»</strong>
                   {reviews.length > 0 ? ` · найдено ${reviews.length}` : ''}
@@ -554,7 +555,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                     setActivePainTagId(null);
                     setActivePainLabel('');
                   }}
-                  className="ml-auto rounded border border-rose-300 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 hover:bg-rose-100 dark:border-rose-700 dark:text-rose-200 dark:hover:bg-rose-900/40"
+                  className="ml-auto rounded border border-rose-300 px-1.5 py-0.5 text-xs font-medium text-rose-800 hover:bg-rose-100 dark:border-rose-700 dark:text-rose-200 dark:hover:bg-rose-900/40"
                 >
                   × снять фильтр темы
                 </button>
@@ -591,7 +592,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                     type="button"
                     onClick={() => setTab(t)}
                     className={cn(
-                      'rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors',
+                      'rounded-md px-3 py-1.5 text-small font-semibold transition-colors',
                       tone,
                     )}
                   >
@@ -604,26 +605,26 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             {/* === Drawer filter row: text search + has_owner_reply === */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-500" />
                 <Input
                   type="text"
                   placeholder="Поиск в тексте отзыва…"
                   value={textQuery}
                   onChange={(e) => setTextQuery(e.target.value)}
-                  className="h-8 text-[13px] pl-8 pr-7"
+                  className="h-8 text-small pl-8 pr-7"
                 />
                 {textQuery && (
                   <button
                     type="button"
                     onClick={() => setTextQuery('')}
                     aria-label="Очистить поиск"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] text-slate-600 dark:text-slate-300">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={onlyWithOwnerReply}
@@ -640,7 +641,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                     setTextQuery('');
                     setOnlyWithOwnerReply(false);
                   }}
-                  className="text-[12px] text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  className="text-xs text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   сбросить
                 </button>
@@ -658,7 +659,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             ) : (
               <>
                 {hasActiveFilters && !isLoading && (
-                  <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className="mb-2 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-500">
                     показано {reviews.length}
                     {textQuery ? ` · по запросу «${debouncedText}»` : ''}
                   </div>
@@ -717,15 +718,15 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   // «не загружено» vs «нет в реестре». А когда матч есть, но конкретное
   // поле пусто — пишем «нет данных» серым, а не молча скрываем.
 
-  const missing = <span className="text-slate-400 italic">нет данных</span>;
+  const missing = <span className="text-slate-500 italic">нет данных</span>;
 
   if (!legal) {
     return (
       <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
-        <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
           Юр.данные (DaData)
         </div>
-        <div className="text-[12px] text-slate-600 dark:text-slate-300">
+        <div className="text-xs text-slate-600 dark:text-slate-300">
           Не найдено в DaData — возможно, у компании нет юр.лица (самозанятый/ИП без OГРН) или название/адрес не совпали.
         </div>
       </div>
@@ -800,12 +801,12 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   return (
     <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
+        <div className="text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
           Юр.данные (DaData)
         </div>
         {typeof legal.match_confidence === 'number' && (
           <div
-            className="text-[10px] text-blue-600 dark:text-blue-400"
+            className="text-xs text-blue-600 dark:text-blue-400"
             title={
               `Уверенность матча DaData ↔ компания: ${(legal.match_confidence * 100).toFixed(0)}%. ` +
               `Чем выше — тем надёжнее что это именно та компания. ` +
@@ -819,7 +820,7 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
           </div>
         )}
       </div>
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-[12px]">
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
         {items.map((it) => (
           <React.Fragment key={it.label}>
             <dt className="text-slate-500 dark:text-slate-400">{it.label}:</dt>
@@ -872,7 +873,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   if (!hasAny) {
     return (
       <div className="space-y-2">
-        <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-[12px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
+        <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
           Контактов от провайдера нет. 2GIS на нашем плане Catalog API не всегда
           отдаёт телефоны и не отдаёт мессенджеры — открой исходную карточку,
           там обычно всё есть.
@@ -882,7 +883,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Открыть в {sourceLabel(detail.source)}
@@ -894,10 +895,10 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
 
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-      <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Контакты
       </div>
-      <div className="flex flex-col gap-1.5 text-[13px]">
+      <div className="flex flex-col gap-1.5 text-small">
         {phones.map((p) => (
           <ContactRow key={`tel-${p}`} icon={<Phone className="h-3.5 w-3.5" />} href={`tel:${normalizePhone(p)}`}>
             {p}
@@ -1004,10 +1005,10 @@ function SourceMetricsBlock({ profiles }: { profiles: CompanyDetailOut['sources_
   if (arr.length < 2) return null;
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-      <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Метрики по источникам
       </div>
-      <div className="grid grid-cols-[auto,1fr,1fr,1fr] gap-x-3 gap-y-1 text-[12px]">
+      <div className="grid grid-cols-[auto,1fr,1fr,1fr] gap-x-3 gap-y-1 text-xs">
         <div className="text-slate-500 dark:text-slate-400">Источник</div>
         <div className="text-slate-500 dark:text-slate-400">Рейтинг</div>
         <div className="text-slate-500 dark:text-slate-400">Отзывы</div>
@@ -1068,7 +1069,7 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           По данным {sourceShortLabel(profile.source)}
         </div>
         {deepLink && (
@@ -1076,7 +1077,7 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
             href={deepLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-700 hover:underline dark:text-brand-400"
+            className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-400"
           >
             <ExternalLink className="h-3 w-3" />
             Открыть в {sourceShortLabel(profile.source)}
@@ -1084,13 +1085,13 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
         )}
       </div>
       {sorted.length > 0 ? (
-        <div className="flex flex-col gap-1.5 text-[13px]">
+        <div className="flex flex-col gap-1.5 text-small">
           {sorted.map((c, idx) => (
             <ContactValueRow key={`${c.type}-${c.value}-${idx}`} contact={c} />
           ))}
         </div>
       ) : (
-        <div className="text-[12px] text-slate-500 dark:text-slate-400">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           {profile.source === '2gis'
             ? 'Catalog API 2GIS не отдал контакты — открой исходную карточку.'
             : 'Контактов с карточки Я.Карт не получено.'}
@@ -1182,7 +1183,7 @@ function ContactRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-slate-400 dark:text-slate-500" aria-hidden>
+      <span className="text-slate-500 dark:text-slate-500" aria-hidden>
         {icon}
       </span>
       <a
@@ -1194,7 +1195,7 @@ function ContactRow({
         {children}
       </a>
       {label && (
-        <span className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">
           {label}
         </span>
       )}
@@ -1219,7 +1220,7 @@ function Metric({
 }) {
   return (
     <div className="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">
-      <div className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{label}</div>
       <div
         className={cn(
           'text-sm font-medium',
@@ -1257,13 +1258,13 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
         )}
         {sentiment && <SentimentBadge sentiment={sentiment} />}
         {review.has_owner_reply && (
-          <span className="rounded-v2-sm bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[color:var(--signal-good)]">
+          <span className="rounded-v2-sm bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-xs font-medium text-[color:var(--signal-good)]">
             ответ владельца
           </span>
         )}
       </div>
       {review.raw_text == null ? (
-        <div className="text-sm text-slate-400 dark:text-slate-500">
+        <div className="text-sm text-slate-500 dark:text-slate-500">
           Текст удалён по политике хранения.{' '}
           {review.source_url && (
             <a
@@ -1283,10 +1284,10 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
       )}
       {Array.isArray(review.pain_tags) && review.pain_tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {review.pain_tags.map((t) => (
+          {review.pain_tags.filter((t) => !isUnnamedPainLabel(t.label)).map((t) => (
             <span
               key={t.id}
-              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200"
             >
               {t.label}
             </span>
@@ -1321,7 +1322,7 @@ function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'n
     neutral: { label: 'нейтр.', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200' },
   }[sentiment];
   return (
-    <span className={cn('rounded px-1.5 py-0.5 text-[11px] font-medium', cfg.cls)}>
+    <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', cfg.cls)}>
       {cfg.label}
     </span>
   );
@@ -1415,7 +1416,7 @@ function SourcesCheckedStrip({
     const isTriggering = sourceKey != null && !!triggeringSources?.has(sourceKey);
     const clickable = !isTriggering && !!onSourceRetry && sourceKey != null;
     const baseCls =
-      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ';
+      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ';
     const stateCls = isTriggering
       ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
       : found
@@ -1464,7 +1465,7 @@ function SourcesCheckedStrip({
     );
   };
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="mr-0.5 uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Проверено:
       </span>
@@ -1474,7 +1475,7 @@ function SourcesCheckedStrip({
       {chip('ЕГРЮЛ', egrul, 'egrul')}
       <span
         className={
-          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ' +
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ' +
           (dadata
             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
             : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500')
@@ -1546,10 +1547,10 @@ function DecisionMakersBlock({
         ? 'text-amber-900 dark:text-amber-100'
         : 'text-slate-700 dark:text-slate-200';
     return (
-      <div className={`${box} text-[11px] ${textCls}`}>
+      <div className={`${box} text-xs ${textCls}`}>
         <div className="mb-0.5 font-medium">
           ✉ Общая почта компании
-          <span className="ml-1 rounded bg-slate-200/70 px-1 text-[9px] uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+          <span className="ml-1 rounded bg-slate-200/70 px-1 text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">
             общая
           </span>
         </div>
@@ -1577,10 +1578,10 @@ function DecisionMakersBlock({
     if (generic.length === 0) return null;
     return (
       <div className="rounded-v2-sm border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-        <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
           Кто за маркетинг
         </div>
-        <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
           Персонального ЛПР пока нет. Пиши на общую почту — попадёшь в
           общую переписку компании.
         </div>
@@ -1594,10 +1595,10 @@ function DecisionMakersBlock({
     if (searchExhausted) {
       return (
         <div className="rounded-v2-sm border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-          <div className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
             Кто за маркетинг
           </div>
-          <div className="mb-2 text-[12px] text-amber-900 dark:text-amber-100">
+          <div className="mb-2 text-xs text-amber-900 dark:text-amber-100">
             🔍 Не нашли ЛПР ни в одном источнике. У компании нет активных
             вакансий на hh.ru, привязанного VK-сообщества и данных в ЕГРЮЛ.
             Попробуй запустить снова позже — источники обновляются.
@@ -1612,7 +1613,7 @@ function DecisionMakersBlock({
             />
           </div>
           {legalDirectorName && (
-            <div className="mb-2 rounded border border-amber-200 bg-white/60 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <div className="mb-2 rounded border border-amber-200 bg-white/60 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
               👤 <span className="font-medium">Из DaData известен только руководитель:</span>{' '}
               {legalDirectorName}
               {legalDirectorPost && (
@@ -1632,7 +1633,7 @@ function DecisionMakersBlock({
             type="button"
             onClick={onFindDm}
             disabled={dmEnrichPending}
-            className="rounded-md border border-amber-400 bg-white px-3 py-1.5 text-[12px] font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-950 dark:text-amber-100 dark:hover:bg-amber-900"
+            className="rounded-md border border-amber-400 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-950 dark:text-amber-100 dark:hover:bg-amber-900"
           >
             {dmEnrichPending ? 'Ищем…' : '🔄 Попробовать снова'}
           </button>
@@ -1641,10 +1642,10 @@ function DecisionMakersBlock({
     }
     return (
       <div className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-        <div className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
           Кто за маркетинг
         </div>
-        <div className="mb-2 text-[12px] text-slate-500 dark:text-slate-400">
+        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
           ЛПР ещё не найден. Запустить поиск (сайт /team, hh.ru, ВК, ЕГРЮЛ).
         </div>
         {generic.length > 0 && <div className="mb-2">{renderGenericMails('neutral')}</div>}
@@ -1652,12 +1653,12 @@ function DecisionMakersBlock({
           type="button"
           onClick={onFindDm}
           disabled={dmEnrichPending}
-          className="rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {dmEnrichPending ? 'Ищем… (~1 мин)' : '🎯 Найти ЛПР'}
         </button>
         {dmEnrichResult && (
-          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             {dmEnrichResult}
           </div>
         )}
@@ -1746,7 +1747,7 @@ function DecisionMakersBlock({
         target="_blank"
         rel="noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="ml-2 inline-flex items-center gap-1 text-[11px] text-brand-600 hover:underline dark:text-brand-400"
+        className="ml-2 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline dark:text-brand-400"
         title={`Написать: ${d.contact_value}`}
       >
         <span>{icon}</span>
@@ -1784,21 +1785,21 @@ function DecisionMakersBlock({
           Это ловит legacy-компании (парсились до этой ветки). */}
       {!marketingDm && (
         <div className="flex items-center justify-between rounded-v2-sm border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
-          <span className="text-[12px] text-amber-800 dark:text-amber-200">
+          <span className="text-xs text-amber-800 dark:text-amber-200">
             Маркетинг-ЛПР ещё не выбран. Запустить поиск?
           </span>
           <button
             type="button"
             onClick={onFindDm}
             disabled={dmEnrichPending}
-            className="rounded-md bg-brand-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {dmEnrichPending ? 'Ищем…' : '🎯 Найти ЛПР'}
           </button>
         </div>
       )}
       {dmEnrichResult && !marketingDm && (
-        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           {dmEnrichResult}
         </div>
       )}
@@ -1806,16 +1807,16 @@ function DecisionMakersBlock({
           нет. Пусть юзер увидит имя+контакт+вероятность в одном месте. */}
       {!marketingDm && nearestCandidate && (
         <div className="rounded-v2-sm border border-sky-300 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/20">
-          <div className="mb-1 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
             <span>👤 Ближайший кандидат</span>
             <span
-              className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
+              className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
               title="Маркетолог не найден — предлагаем ЛПР со смежной ролью"
             >
               роль: {roleLabel[nearestCandidate.role_category ?? ''] ?? nearestCandidate.role_category}
             </span>
           </div>
-          <div className="text-[13px]">
+          <div className="text-small">
             <span className="font-medium text-slate-900 dark:text-slate-100">
               {nearestCandidate.name}
             </span>
@@ -1823,7 +1824,7 @@ function DecisionMakersBlock({
               <span className="text-slate-600 dark:text-slate-300">{` · ${nearestCandidate.post}`}</span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             {nearestCandidate.source_url ? (
               <a
                 href={nearestCandidate.source_url}
@@ -1861,7 +1862,7 @@ function DecisionMakersBlock({
           </div>
           <div className="mt-2">
             {renderContact(nearestCandidate) ?? (
-              <span className="text-[11px] italic text-slate-500 dark:text-slate-400">
+              <span className="text-xs italic text-slate-500 dark:text-slate-400">
                 публичного контакта нет — пишите по общей почте компании
               </span>
             )}
@@ -1881,18 +1882,18 @@ function DecisionMakersBlock({
       {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
       {marketingDm && (
         <div className="rounded-v2-sm border-2 border-brand-500/50 bg-brand-50/40 p-3 dark:bg-brand-950/20">
-          <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
             <span>🎯 Кто за маркетинг</span>
             {marketingDm.role_category && marketingDm.role_category !== 'marketing' && (
               <span
-                className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
                 title="Маркетолог не найден — контакт руководителя как фолбэк"
               >
                 фолбэк на {roleLabel[marketingDm.role_category] ?? 'руководителя'}
               </span>
             )}
           </div>
-          <div className="text-[13px]">
+          <div className="text-small">
             <span className="font-medium text-slate-900 dark:text-slate-100">
               {marketingDm.name}
             </span>
@@ -1902,7 +1903,7 @@ function DecisionMakersBlock({
               </span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <span
               className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
               title={`Источник: ${sourceLabel[marketingDm.source] ?? marketingDm.source}`}
@@ -1934,7 +1935,7 @@ function DecisionMakersBlock({
           </div>
           <div className="mt-2 space-y-1.5">
             {renderContact(marketingDm) ?? (
-              <span className="text-[11px] italic text-slate-500 dark:text-slate-400">
+              <span className="text-xs italic text-slate-500 dark:text-slate-400">
                 публичного контакта нет — напишите по общей почте компании
               </span>
             )}
@@ -1949,7 +1950,7 @@ function DecisionMakersBlock({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 inline-block text-[11px] text-slate-500 hover:text-brand-600 dark:text-slate-400"
+              className="mt-1 inline-block text-xs text-slate-500 hover:text-brand-600 dark:text-slate-400"
             >
               открыть источник ↗
             </a>
@@ -1962,12 +1963,12 @@ function DecisionMakersBlock({
           вот готовые адреса для outreach. */}
       {marketingDm && alternativesWithContact.length > 0 && (
         <div className="rounded-v2-sm border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
-          <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
             📞 Другие контакты для касания
           </div>
           <ul className="space-y-1.5">
             {alternativesWithContact.map((d, i) => (
-              <li key={`alt-${d.name}-${i}`} className="text-[12px]">
+              <li key={`alt-${d.name}-${i}`} className="text-xs">
                 <span className="font-medium text-slate-800 dark:text-slate-100">
                   {d.name}
                 </span>
@@ -1982,7 +1983,7 @@ function DecisionMakersBlock({
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="ml-2 inline-flex items-center gap-0.5 rounded bg-emerald-200 px-1.5 py-0.5 text-[10px] text-emerald-800 hover:bg-emerald-300 dark:bg-emerald-800 dark:text-emerald-100 dark:hover:bg-emerald-700"
+                    className="ml-2 inline-flex items-center gap-0.5 rounded bg-emerald-200 px-1.5 py-0.5 text-xs text-emerald-800 hover:bg-emerald-300 dark:bg-emerald-800 dark:text-emerald-100 dark:hover:bg-emerald-700"
                     title={`Открыть источник: ${sourceLabel[d.source] ?? d.source}`}
                   >
                     <span>{sourceLabel[d.source] ?? d.source}</span>
@@ -1990,7 +1991,7 @@ function DecisionMakersBlock({
                   </a>
                 ) : (
                   <span
-                    className="ml-2 rounded bg-emerald-200 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100"
+                    className="ml-2 rounded bg-emerald-200 px-1.5 py-0.5 text-xs text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100"
                     title={sourceLabel[d.source] ?? d.source}
                   >
                     {sourceLabel[d.source] ?? d.source}
@@ -1998,7 +1999,7 @@ function DecisionMakersBlock({
                 )}
                 {typeof d.confidence === 'number' && (
                   <span
-                    className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
+                    className="ml-1 text-xs text-slate-500 dark:text-slate-400"
                     title="Уверенность оркестратора"
                   >
                     {Math.round(d.confidence * 100)}%
@@ -2031,25 +2032,25 @@ function DecisionMakersBlock({
             : 'Прочие упоминающиеся люди (не ЛПР)';
         return (
           <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
-            <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
               {heading}
             </div>
             <ul className="space-y-1.5">
               {list.map((d, i) => (
-                <li key={`${d.name}-${i}`} className="text-[12px]">
+                <li key={`${d.name}-${i}`} className="text-xs">
                   <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
                   {d.post && (
                     <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
                   )}
                   <span
-                    className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                    className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                     title={sourceLabel[d.source] ?? d.source}
                   >
                     {sourceLabel[d.source] ?? d.source}
                   </span>
                   {typeof d.confidence === 'number' && (
                     <span
-                      className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
+                      className="ml-1 text-xs text-slate-500 dark:text-slate-400"
                       title="Уверенность оркестратора"
                     >
                       {Math.round(d.confidence * 100)}%
@@ -2062,7 +2063,7 @@ function DecisionMakersBlock({
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="ml-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
+                      className="ml-1 text-xs uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
                       title={sourceLabel[d.source] ?? d.source}
                     >
                       ↗
@@ -2072,7 +2073,7 @@ function DecisionMakersBlock({
               ))}
             </ul>
             {dms.length > 0 && others.length > 0 && (
-              <details className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 <summary className="cursor-pointer">
                   + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
                 </summary>
@@ -2097,20 +2098,20 @@ function DecisionMakersBlock({
           нельзя. */}
       {reviewsMentions.length > 0 && (
         <details className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-          <summary className="cursor-pointer text-[12px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
             💬 Упомянуты в отзывах ({reviewsMentions.length})
-            <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs normal-case tracking-normal text-slate-600 dark:bg-slate-700 dark:text-slate-300">
               не ЛПР — сотрудники по упоминанию клиентов
             </span>
           </summary>
-          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Имена, которые клиенты называют в отзывах («спасибо Марине»).
             Если это врач/мастер/администратор — это НЕ маркетинг-ЛПР,
             но имя можно использовать в приветствии письма.
           </div>
           <ul className="mt-2 space-y-1">
             {reviewsMentions.map((d, i) => (
-              <li key={`rev-${d.name}-${i}`} className="text-[12px]">
+              <li key={`rev-${d.name}-${i}`} className="text-xs">
                 <span className="font-medium text-slate-800 dark:text-slate-100">
                   {d.name}
                 </span>
@@ -2119,7 +2120,7 @@ function DecisionMakersBlock({
                 )}
                 {typeof d.confidence === 'number' && (
                   <span
-                    className="ml-1 text-[10px] text-slate-500 dark:text-slate-400"
+                    className="ml-1 text-xs text-slate-500 dark:text-slate-400"
                     title="Уверенность NER-парсера. Низкая ⇒ упомянут пару раз, высокая ⇒ упомянут в нескольких отзывах."
                   >
                     {Math.round(d.confidence * 100)}%
@@ -2217,20 +2218,20 @@ function PainTrendBlock({
   return (
     <div className="mt-3 rounded border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-2 flex flex-wrap items-baseline gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Динамика боли
         </span>
-        <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
+        <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
           {label}
         </span>
-        <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
           {fmt(trend.first_review_at)} — {fmt(trend.last_review_at)} · {trend.total_reviews} отз.
           {scope === 'niche' && typeof companiesAffected === 'number' && companiesAffected > 0 && (
             <> · {companiesAffected} комп.</>
           )}
         </span>
         {niche && (
-          <div className="ml-auto inline-flex overflow-hidden rounded border border-slate-300 text-[10.5px] dark:border-slate-600">
+          <div className="ml-auto inline-flex overflow-hidden rounded border border-slate-300 text-xs dark:border-slate-600">
             <button
               type="button"
               onClick={() => onScopeChange('company')}
@@ -2262,7 +2263,7 @@ function PainTrendBlock({
       </div>
 
       {months.length === 0 ? (
-        <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           Нет дат у отзывов этой боли (источник не отдаёт posted_at) — графика недоступна.
         </div>
       ) : (
@@ -2346,7 +2347,7 @@ function PainTrendBlock({
             })}
           </svg>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-600 dark:text-slate-300">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
             {allSources.map((src) => (
               <span key={src} className="inline-flex items-center gap-1">
                 <span

@@ -42,7 +42,7 @@ export function ProfileCard() {
   return (
     <CardV2 className="p-6 w-full max-w-2xl">
       <h2
-        className="flex items-center gap-2 mb-4 font-display font-semibold tracking-tight text-2xl"
+        className="flex items-center gap-2 mb-4 font-display font-semibold tracking-tight text-heading"
         style={{ color: 'hsl(var(--text))' }}
       >
         <UserIcon className="h-6 w-6 text-brand-600 dark:text-brand-400" />

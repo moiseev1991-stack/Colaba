@@ -40,10 +40,10 @@ function formatDateTime(iso: string): string {
 const KpiCard = memo(function KpiCard({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
   return (
     <div className="app-kpi-card">
-      <div className="text-[12px] font-medium" style={{ color: 'hsl(var(--muted))' }}>{label}</div>
+      <div className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>{label}</div>
       <div className="mt-2 app-kpi-value app-stat-number">
         {value}
-        {suffix && <span className="text-[14px] font-normal ml-1" style={{ color: 'hsl(var(--muted))' }}>{suffix}</span>}
+        {suffix && <span className="text-sm font-normal ml-1" style={{ color: 'hsl(var(--muted))' }}>{suffix}</span>}
       </div>
     </div>
   );
@@ -91,7 +91,7 @@ const ChartBar = memo(function ChartBar({ data, max, onHover, hovered }: { data:
           }}
         />
       </div>
-      <span className="text-[11px] font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
+      <span className="text-xs font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
     </div>
   );
 });
@@ -128,7 +128,7 @@ const StackedBar = memo(function StackedBar({ data, max, onHover, hovered }: { d
           {hRunning > 0 && <div className="w-full" style={{ height: hRunning, minHeight: 2, backgroundColor: 'hsl(var(--chart-running))' }} />}
         </div>
       </div>
-      <span className="text-[11px] font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
+      <span className="text-xs font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
     </div>
   );
 });
@@ -148,7 +148,7 @@ const DonutChart = memo(function DonutChart({ success, errors, running }: { succ
       }}>
         <div className="absolute inset-2 rounded-full bg-white dark:bg-gray-800" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-semibold" style={{ color: 'hsl(var(--text))' }}>{total}</span>
+          <span className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>{total}</span>
         </div>
       </div>
       <div className="flex flex-col gap-1 text-sm">
@@ -232,7 +232,7 @@ export default function MainDashboardPage() {
             <select
               value={module}
               onChange={(e) => setModule(e.target.value as DashboardModule)}
-              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-small bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="all">Все</option>
               <option value="seo">SEO</option>
@@ -245,7 +245,7 @@ export default function MainDashboardPage() {
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as DashboardPeriod)}
-              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-small bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="day">День</option>
               <option value="week">Неделя</option>
@@ -258,14 +258,14 @@ export default function MainDashboardPage() {
                   type="date"
                   value={customFrom}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-[14px] bg-white dark:bg-gray-800"
+                  className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm bg-white dark:bg-gray-800"
                 />
                 —
                 <input
                   type="date"
                   value={customTo}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-[14px] bg-white dark:bg-gray-800"
+                  className="rounded-[6px] border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm bg-white dark:bg-gray-800"
                 />
               </span>
             )}
@@ -539,16 +539,16 @@ export default function MainDashboardPage() {
             <div className="app-icon-gradient mb-4">
               <Search className="h-5 w-5" />
             </div>
-            <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>SEO</h3>
-            <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Аудит, проверки, история запросов</p>
+            <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>SEO</h3>
+            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>Аудит, проверки, история запросов</p>
             <div className="app-divider-gradient !my-4" />
             <div className="flex items-center justify-between">
-              <span className="text-[13px]" style={{ color: 'hsl(var(--text))' }}>
+              <span className="text-small" style={{ color: 'hsl(var(--text))' }}>
                 {data
                   ? `${data.kpi.total} запросов · ${data.kpi.success} OK`
                   : '—'}
               </span>
-              <span className="text-[14px] font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+              <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
                 Открыть →
               </span>
             </div>
@@ -563,14 +563,14 @@ export default function MainDashboardPage() {
               <Users className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>Поиск лидов</h3>
+              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>Поиск лидов</h3>
               <span className="app-badge app-badge-warning">Скоро</span>
             </div>
-            <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Поиск, контакты, экспорт</p>
+            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>Поиск, контакты, экспорт</p>
             <div className="app-divider-gradient !my-4" />
             <div className="flex items-center justify-between">
-              <span className="text-[13px]" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
-              <span className="text-[14px] font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+              <span className="text-small" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
+              <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
                 Открыть →
               </span>
             </div>
@@ -585,14 +585,14 @@ export default function MainDashboardPage() {
               <BarChart3 className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>Госзакупки</h3>
+              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>Госзакупки</h3>
               <span className="app-badge app-badge-warning">Скоро</span>
             </div>
-            <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>Мониторинг, история, фильтры</p>
+            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>Мониторинг, история, фильтры</p>
             <div className="app-divider-gradient !my-4" />
             <div className="flex items-center justify-between">
-              <span className="text-[13px]" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
-              <span className="text-[14px] font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+              <span className="text-small" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
+              <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
                 Открыть →
               </span>
             </div>

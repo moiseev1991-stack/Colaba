@@ -43,7 +43,7 @@ export function BlacklistManager() {
       <div className="px-6 py-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
         <div className="flex items-center gap-3">
           <FolderMinus className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-          <h2 className="text-2xl font-bold" style={{ color: 'hsl(var(--text))' }}>Блэклист</h2>
+          <h2 className="text-heading font-bold" style={{ color: 'hsl(var(--text))' }}>Блэклист</h2>
         </div>
       </div>
 

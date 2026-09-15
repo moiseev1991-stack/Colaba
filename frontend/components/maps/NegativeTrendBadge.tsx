@@ -62,7 +62,7 @@ export function NegativeTrendBadge({ companyId }: Props) {
   return (
     <span
       title={view.hint}
-      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11.5px] font-medium ${view.cls}`}
+      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium ${view.cls}`}
     >
       {view.icon}
       {view.label}

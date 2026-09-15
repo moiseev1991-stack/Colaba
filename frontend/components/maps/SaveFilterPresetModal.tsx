@@ -92,7 +92,7 @@ export function SaveFilterPresetModal({
           </div>
         ) : null}
         <div>
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
             Название
           </label>
           <Input
@@ -107,7 +107,7 @@ export function SaveFilterPresetModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
             Описание <span className="text-[hsl(var(--muted))] opacity-70">(необязательно)</span>
           </label>
           <textarea
@@ -123,7 +123,7 @@ export function SaveFilterPresetModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
             AI-промпт <span className="text-[hsl(var(--muted))] opacity-70">(необязательно — оценит каждую компанию)</span>
           </label>
           <textarea
@@ -139,7 +139,7 @@ export function SaveFilterPresetModal({
             className="w-full rounded-v2-sm border bg-[hsl(var(--surface))] px-3 py-2 text-sm text-[hsl(var(--text))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             style={{ borderColor: 'hsl(var(--border))' }}
           />
-          <p className="mt-1 text-[11px] text-[hsl(var(--muted))]">
+          <p className="mt-1 text-xs text-[hsl(var(--muted))]">
             Когда применишь этот пресет — для каждой компании выдачи LLM (gpt-4o-mini
             через ProxyAPI) посчитает score 0-10 + краткий комментарий. Лимит — 100
             анализов в сутки. Кэшируется по тексту промпта (повторно не платишь).
@@ -148,7 +148,7 @@ export function SaveFilterPresetModal({
 
         {summary.length > 0 && (
           <div>
-            <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+            <div className="mb-1 text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
               Будет сохранено:
             </div>
             <ul className="space-y-0.5 rounded-v2-sm bg-[hsl(var(--surface-2))] p-2.5 text-xs text-[hsl(var(--text))]">

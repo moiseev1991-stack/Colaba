@@ -53,7 +53,7 @@ export function VersionBadge() {
           {hasRealSha && (
             <div className="flex items-center gap-1">
               <span style={{ color: 'hsl(var(--muted))' }}>Commit:</span>
-              <code className="px-1 rounded text-[10px]" style={codeStyle}>
+              <code className="px-1 rounded text-xs" style={codeStyle}>
                 {versionInfo.gitSha.substring(0, 7)}
               </code>
             </div>
@@ -64,7 +64,7 @@ export function VersionBadge() {
           </div>
           <button
             onClick={() => setExpanded(false)}
-            className="text-brand-600 dark:text-brand-400 hover:underline text-[10px]"
+            className="text-brand-600 dark:text-brand-400 hover:underline text-xs"
           >
             Свернуть
           </button>
@@ -77,7 +77,7 @@ export function VersionBadge() {
         >
           <span>v{versionInfo.version}</span>
           {hasRealSha && (
-            <code className="px-1 rounded text-[10px]" style={codeStyle}>
+            <code className="px-1 rounded text-xs" style={codeStyle}>
               {versionInfo.gitSha.substring(0, 7)}
             </code>
           )}

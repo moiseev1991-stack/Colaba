@@ -19,7 +19,7 @@ export default function NewProposalPage() {
         <ChevronLeft className="h-3.5 w-3.5" /> к списку шаблонов
       </Link>
 
-      <h1 className="text-[28px] font-extrabold mb-6 tracking-[-0.5px]" style={{ color: 'hsl(var(--text))' }}>
+      <h1 className="text-heading font-extrabold mb-6 tracking-[-0.5px]" style={{ color: 'hsl(var(--text))' }}>
         Новый шаблон КП
       </h1>
 

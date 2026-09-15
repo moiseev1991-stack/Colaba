@@ -208,7 +208,7 @@ export default function OrganizationsPage() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <h2
-                      className="font-display font-semibold tracking-tight text-2xl mb-4"
+                      className="font-display font-semibold tracking-tight text-heading mb-4"
                       style={{ color: 'hsl(var(--text))' }}
                     >
                       {org.name}

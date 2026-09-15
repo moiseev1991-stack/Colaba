@@ -50,7 +50,7 @@ export function PageHeader({ breadcrumb, title, actions }: PageHeaderProps) {
             </nav>
           )}
           <h1
-            className="font-display font-semibold tracking-tight text-base sm:text-lg leading-tight"
+            className="font-display font-semibold tracking-tight text-base sm:text-base leading-tight"
             style={{ color: 'hsl(var(--text))' }}
           >
             {title}

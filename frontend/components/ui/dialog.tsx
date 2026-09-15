@@ -38,7 +38,7 @@ function DialogHeader({ title, onClose }: { title: string; onClose: () => void }
       style={{ borderBottom: '1px solid hsl(var(--border))' }}
     >
       <h2
-        className="font-display font-semibold tracking-tight text-lg"
+        className="font-display font-semibold tracking-tight text-base"
         style={{ color: 'hsl(var(--text))' }}
       >
         {title}

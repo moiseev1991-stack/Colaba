@@ -35,13 +35,14 @@ import type { LucideIcon } from 'lucide-react';
 import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
 import type { ModuleId } from '@/lib/ModuleContext';
 import { VersionBadge } from './VersionBadge';
+import { useIsSuperuser } from '@/lib/useIsSuperuser';
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
 export type NavSection = { title?: string; items: NavItem[] };
 
 // Email block is identical across modules for now. When per-module campaigns/templates
 // arrive, switch these to /app/{module}/email/* — same pages can stay, filtered by query.
-const EMAIL_SECTION: NavSection = {
+export const EMAIL_SECTION: NavSection = {
   title: 'Email-рассылка',
   items: [
     { href: '/app/email/campaigns', label: 'Кампании', icon: Mail },
@@ -241,7 +242,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
       >
         <ActiveIcon className="h-4 w-4" />
       </span>
-      <span className="flex-1 text-left text-[14px] font-semibold truncate">
+      <span className="flex-1 text-left text-sm font-semibold truncate">
         {MODULE_LABELS[module]}
       </span>
       <ChevronDown
@@ -282,7 +283,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
                   disabled={disabled}
                   onClick={() => handlePick(m)}
                   title={disabled ? 'Модуль скоро будет доступен' : undefined}
-                  className={`flex w-full items-center gap-2 h-10 px-3 text-left text-[14px] transition-colors ${focusClass} ${
+                  className={`flex w-full items-center gap-2 h-10 px-3 text-left text-sm transition-colors ${focusClass} ${
                     disabled
                       ? 'cursor-not-allowed opacity-50'
                       : 'hover:bg-[hsl(var(--nav-hover-bg))]'
@@ -307,7 +308,7 @@ function ModuleSwitcher({ collapsed }: { collapsed: boolean }) {
                   )}
                   {disabled && (
                     <span
-                      className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
+                      className="text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
                       style={{
                         background: 'hsl(var(--surface-2))',
                         color: 'hsl(var(--muted))',
@@ -345,10 +346,18 @@ export const ADMIN_SECTION: NavSection = {
   ],
 };
 
+/**
+ * Секции меню с учётом роли. «Админ» — только суперюзеру; «Email-рассылку»
+ * обычному пользователю не показываем (решение 15.09: для клиента не работает).
+ */
+export function navSectionsFor(sections: NavSection[], isSuperuser: boolean): NavSection[] {
+  return isSuperuser ? [...sections, ADMIN_SECTION] : sections.filter((s) => s !== EMAIL_SECTION);
+}
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isSuperuser, setIsSuperuser] = useState(false);
+  const isSuperuser = useIsSuperuser();
   const pathname = usePathname();
   const { module } = useModule();
   const config = MODULE_NAV[module];
@@ -364,46 +373,10 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Проверяем is_superuser при монтировании Sidebar. В sessionStorage
-  // кэшируем ТОЛЬКО положительный флаг — иначе после случайной 401
-  // (медленный логин, гонка) секция «Админ» исчезала навсегда до
-  // закрытия вкладки.
-  useEffect(() => {
-    const cached = typeof window !== 'undefined' ? sessionStorage.getItem('is_superuser') : null;
-    if (cached === 'true') {
-      setIsSuperuser(true);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        const flag = Boolean(data?.is_superuser);
-        if (!cancelled) {
-          setIsSuperuser(flag);
-          if (flag) {
-            try {
-              sessionStorage.setItem('is_superuser', 'true');
-            } catch {
-              /* no-op */
-            }
-          }
-        }
-      } catch {
-        /* offline / no auth — Sidebar просто не покажет admin-секцию */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const effectiveCollapsed = isMobile ? true : collapsed;
 
-  // Список секций для рендера: модульные + (опц.) админская.
-  const sections = isSuperuser ? [...config.sections, ADMIN_SECTION] : config.sections;
+  // Секции для рендера с учётом роли (см. navSectionsFor).
+  const sections = navSectionsFor(config.sections, isSuperuser);
 
   // Flat list of all items in the active module — for active-link resolution.
   const allItems = sections.flatMap((s) => s.items);
@@ -487,7 +460,7 @@ export function Sidebar() {
           <div key={sectionIdx} className={sectionIdx > 0 ? 'mt-5' : ''}>
             {!effectiveCollapsed && section.title && (
               <div
-                className="mb-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+                className="mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wider"
                 style={{ color: 'hsl(var(--accent))' }}
               >
                 {section.title}
@@ -510,7 +483,7 @@ export function Sidebar() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`relative flex items-center h-10 rounded-[8px] text-[14px] transition-all ${focusClass} ${
+                      className={`relative flex items-center h-10 rounded-[8px] text-sm transition-all ${focusClass} ${
                         effectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'
                       } ${
                         active ? 'font-semibold' : 'hover:bg-[hsl(var(--nav-hover-bg))] font-medium'

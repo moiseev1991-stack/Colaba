@@ -166,7 +166,7 @@ export function FilterBuilder({
           </span>
           {conditions.length >= 2 && (
             <div
-              className="inline-flex items-center text-[11px] overflow-hidden"
+              className="inline-flex items-center text-xs overflow-hidden"
               style={{ border: '1px solid hsl(var(--border))', borderRadius: 4 }}
             >
               {(['and', 'or'] as const).map((m) => {
@@ -195,7 +195,7 @@ export function FilterBuilder({
           type="button"
           disabled={disabled}
           onClick={addCondition}
-          className="inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold transition-colors hover:bg-[hsl(var(--accent-weak))] disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold transition-colors hover:bg-[hsl(var(--accent-weak))] disabled:opacity-50"
           style={{
             color: 'hsl(var(--accent))',
             border: '1px solid hsl(var(--accent) / 0.4)',
@@ -207,7 +207,7 @@ export function FilterBuilder({
       </div>
 
       {conditions.length === 0 ? (
-        <p className="text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+        <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
           {emptyHint}
         </p>
       ) : (
@@ -222,7 +222,7 @@ export function FilterBuilder({
               <div key={idx} className="grid gap-2">
                 {!isFirst && (
                   <div
-                    className="text-[10px] font-bold uppercase tracking-wider px-1"
+                    className="text-xs font-bold uppercase tracking-wider px-1"
                     style={{ color: 'hsl(var(--muted))' }}
                   >
                     {logic === 'and' ? 'И' : 'ИЛИ'}
@@ -239,7 +239,7 @@ export function FilterBuilder({
                       updateCondition(idx, { field: e.target.value as FilterField })
                     }
                     disabled={disabled}
-                    className="h-9 text-[13px]"
+                    className="h-9 text-small"
                     style={{ minWidth: 220, flex: '0 0 auto' }}
                   >
                     {fields.map((f) => (
@@ -255,7 +255,7 @@ export function FilterBuilder({
                       updateCondition(idx, { op: e.target.value as FilterOp })
                     }
                     disabled={disabled}
-                    className="h-9 text-[13px]"
+                    className="h-9 text-small"
                     style={{ minWidth: 160, flex: '0 0 auto' }}
                   >
                     {ops.map((o) => (
@@ -273,12 +273,12 @@ export function FilterBuilder({
                         value={cond.value}
                         onChange={(e) => updateCondition(idx, { value: e.target.value })}
                         disabled={disabled}
-                        className="w-full h-9 text-[13px]"
+                        className="w-full h-9 text-small"
                       />
                     )}
                     {kind === 'bool' && (
                       <div
-                        className="h-9 flex items-center text-[12px] px-3"
+                        className="h-9 flex items-center text-xs px-3"
                         style={{
                           color: 'hsl(var(--muted))',
                           background: 'hsl(var(--surface) / 0.6)',

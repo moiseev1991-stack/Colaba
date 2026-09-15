@@ -4,8 +4,8 @@
  * ButtonV2 — кнопка нового дизайн-языка (§3 ТЗ редизайна 2026-06-03).
  *
  * Варианты:
- *   primary  — бренд-градиент (главное действие на блок)
- *   accent   — фиолетовый акцент-градиент (МАКСИМУМ ОДНА на экран — обычно «Купить подписку»)
+ *   primary  — изумрудный бренд (главное действие на блок), белый текст ≥ 5.5:1
+ *   accent   — тот же изумруд (с PR 3.1 без фиолетового); МАКСИМУМ ОДНА на экран — обычно «Купить подписку»
  *   secondary — surface + border (вторичное действие)
  *   ghost    — без фона
  *   danger   — красный
@@ -41,9 +41,9 @@ const VARIANT_STYLES: Record<ButtonV2Variant, string> = {
 };
 
 const SIZE_STYLES: Record<ButtonV2Size, string> = {
-  sm: 'h-8 px-3 text-[12px] rounded-v2-sm gap-1',
-  md: 'min-h-11 sm:min-h-9 px-4 text-[13px] rounded-v2-sm gap-1.5',
-  lg: 'min-h-11 px-5 text-[14px] rounded-v2 gap-2',
+  sm: 'h-8 px-3 text-xs rounded-v2-sm gap-1',
+  md: 'min-h-11 sm:min-h-9 px-4 text-small rounded-v2-sm gap-1.5',
+  lg: 'min-h-11 px-5 text-sm rounded-v2 gap-2',
 };
 
 export const ButtonV2 = React.forwardRef<HTMLButtonElement, Props>(

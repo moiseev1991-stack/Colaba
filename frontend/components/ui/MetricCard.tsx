@@ -38,7 +38,7 @@ export function MetricCard({ label, value, delta, deltaLabel, goodDirection = 'u
   return (
     <CardV2 className={cn('flex flex-col gap-2 p-4 md:p-5', className)}>
       <div className="flex items-center justify-between">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+        <div className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
           {label}
         </div>
         {icon && (
@@ -51,7 +51,7 @@ export function MetricCard({ label, value, delta, deltaLabel, goodDirection = 'u
         {value}
       </div>
       {hasDelta && (
-        <div className={cn('flex items-center gap-1 text-[12px] font-medium', goodTone)}>
+        <div className={cn('flex items-center gap-1 text-xs font-medium', goodTone)}>
           {isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : isNegative ? <ArrowDownRight className="h-3.5 w-3.5" /> : null}
           <span>
             {isPositive ? '+' : ''}{delta}%

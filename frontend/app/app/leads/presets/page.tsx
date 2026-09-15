@@ -150,7 +150,7 @@ export default function MyPresetsPage() {
         <div>
           <h1
             className="flex items-center gap-2 font-display font-semibold tracking-tight"
-            style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+            style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
           >
             <Filter className="h-5 w-5 text-brand-600 dark:text-brand-400" />
             Мои пресеты фильтров
@@ -242,13 +242,13 @@ export default function MyPresetsPage() {
                     </div>
                     {s.description && (
                       <div
-                        className="mt-1 text-[12px] leading-relaxed"
+                        className="mt-1 text-xs leading-relaxed"
                         style={{ color: 'hsl(var(--muted))' }}
                       >
                         {s.description}
                       </div>
                     )}
-                    <div className="mt-1.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                    <div className="mt-1.5 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                       <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>
                         Фильтр:{' '}
                       </span>
@@ -333,17 +333,17 @@ export default function MyPresetsPage() {
                     )}
                   </div>
                   {p.description && (
-                    <div className="mt-0.5 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                    <div className="mt-0.5 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                       {p.description}
                     </div>
                   )}
-                  <div className="mt-1 text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
+                  <div className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                     <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Фильтр: </span>
                     {summarizeFilter(p.filter as MapSearchFilter)}
                   </div>
                   {p.ai_prompt && p.ai_prompt.trim() && (
                     <div
-                      className="mt-1 line-clamp-2 text-[12px]"
+                      className="mt-1 line-clamp-2 text-xs"
                       style={{ color: 'rgb(139 92 246)' }}
                     >
                       <span className="font-medium">AI-промпт: </span>
@@ -421,7 +421,7 @@ export default function MyPresetsPage() {
             Удалить пресет <strong>«{confirmDelete?.name}»</strong> навсегда?
           </div>
           <div
-            className="rounded-v2-sm border px-3 py-2 text-[12px]"
+            className="rounded-v2-sm border px-3 py-2 text-xs"
             style={{
               background: 'var(--signal-warm-bg)',
               borderColor: 'rgb(245 158 11 / 0.3)',
@@ -602,13 +602,13 @@ function EditPresetDialog({
             style={INPUT_STYLE}
             placeholder="Например: «Оцени готовность купить SMM 1-10 по отзывам клиентов»"
           />
-          <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+          <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
             Если задан — при применении пресета каждой компании выдачи будет
             автоматически посчитан score 0-10. Лимит 100 запросов в сутки на юзера.
           </p>
         </div>
         <div
-          className="rounded-v2-sm border px-3 py-2 text-[12px]"
+          className="rounded-v2-sm border px-3 py-2 text-xs"
           style={{
             background: 'hsl(var(--surface-2))',
             borderColor: 'hsl(var(--border))',
@@ -617,7 +617,7 @@ function EditPresetDialog({
         >
           <span className="font-medium">Фильтр пресета: </span>
           {summarizeFilter(preset.filter as MapSearchFilter)}
-          <div className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+          <div className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
             Чтобы поменять фильтр — открой пресет на странице поиска, отредактируй
             фильтры в боковой панели и сохрани под тем же именем (старый перезапишется).
           </div>

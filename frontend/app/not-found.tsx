@@ -22,7 +22,7 @@ export default function NotFound() {
           На главную
         </Link>
         <Link
-          href="/dashboard"
+          href="/app/leads"
           className="rounded-v2-md border border-[hsl(var(--border))] px-5 py-2.5 text-sm font-medium text-[hsl(var(--text))] hover:bg-[hsl(var(--surface-2))]"
         >
           В кабинет
