@@ -242,7 +242,7 @@ export function SeoLandingShell({
       } as React.CSSProperties}
     >
       {/* Единая шапка с главной (LandingHeader). variant="subpage" делает
-          якоря (Диагноз/Тарифы/Примеры/FAQ) ссылками на /#id, а CTA — на
+          якоря (Диагноз/Цены/Примеры/FAQ) ссылками на /#id, а CTA — на
           /auth/register. forceSolid для залогиненного юзера: у него светлый
           compact-hero, поэтому прозрачная шапка нечитаема. */}
       <LandingHeader variant="subpage" forceSolid={isAuthed} />
@@ -304,7 +304,7 @@ export function SeoLandingShell({
         {/* Фишка-блок (брендовая плашка) */}
         <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
 
-        {/* Карточка-форма «бесплатный тест + скидка первым 50» — только
+        {/* Карточка-форма «бесплатная бета» — только
             для неавторизованных и только на тех страницах, где явно
             включён showLeadCapture (топ-3 SEO-лендинги). */}
         {showLeadCapture && !isAuthed && <Reveal><LeadCaptureForm /></Reveal>}
@@ -745,8 +745,8 @@ function TrustStrip() {
         >
           <TrustCell value="5" label="источников данных" hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData" />
           <TrustCell value="~60 сек" label="до результата" hint="первый поиск" />
-          <TrustCell value="1 поиск" label="и 5 КП бесплатно" hint="без кредитной карты" />
-          <TrustCell value="0 ₽" label="за старт" hint="платный тариф — при росте" />
+          <TrustCell value="Бета" label="бесплатно" hint="без кредитной карты" />
+          <TrustCell value="0 ₽" label="во время беты" hint="цены объявим заранее" />
         </div>
       </div>
     </section>

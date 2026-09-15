@@ -1,22 +1,13 @@
 import Link from 'next/link';
+import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
 
 const SECTION_LINKS = [
   { href: '#diagnosis', label: 'Диагноз' },
   { href: '#features', label: 'Возможности' },
-  { href: '#pricing', label: 'Тарифы' },
+  { href: '#pricing', label: 'Цены' },
   { href: '#examples', label: 'Примеры' },
   { href: '#faq', label: 'FAQ' },
 ];
-
-const LEGAL_LINKS = [
-  { href: '/terms', label: 'Пользовательское соглашение' },
-  { href: '/policy', label: 'Политика конфиденциальности' },
-  { href: '/consent', label: 'Согласие на обработку ПДн' },
-  { href: '/offer', label: 'Публичная оферта' },
-  { href: '/data-sources', label: 'Открытые источники' },
-];
-
-export const SUPPORT_EMAIL = 'support@spinlid.ru';
 
 export function LandingFooter() {
   return (

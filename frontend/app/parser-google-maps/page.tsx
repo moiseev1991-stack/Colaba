@@ -5,7 +5,7 @@ import { GoogleMapsBlock } from '@/components/seo-landing/UniqueBlocks';
 export const metadata: Metadata = {
   title: 'Парсер Google Maps онлайн — компании, контакты, отзывы | SpinLid',
   description:
-    'Парсер Google Maps по нише и городу: названия, телефоны, сайты, рейтинги и отзывы. Третий источник к 2GIS и Яндекс.Картам со склейкой дублей и AI-анализом болей клиентов. Выгрузка в Excel/CSV. Тест бесплатно 14 дней.',
+    'Парсер Google Maps по нише и городу: названия, телефоны, сайты, рейтинги и отзывы. Третий источник к 2GIS и Яндекс.Картам со склейкой дублей и AI-анализом болей клиентов. Выгрузка в Excel/CSV. Бесплатно во время беты.',
   alternates: { canonical: 'https://spinlid.ru/parser-google-maps' },
   openGraph: {
     title: 'Парсер Google Maps: компании, контакты, отзывы + склейка дублей',

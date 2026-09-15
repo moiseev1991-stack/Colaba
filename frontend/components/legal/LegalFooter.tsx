@@ -1,14 +1,5 @@
 import Link from 'next/link';
-
-const LEGAL_LINKS = [
-  { href: '/terms', label: 'Пользовательское соглашение' },
-  { href: '/policy', label: 'Политика конфиденциальности' },
-  { href: '/consent', label: 'Согласие на обработку ПДн' },
-  { href: '/offer', label: 'Публичная оферта' },
-  { href: '/data-sources', label: 'Открытые источники' },
-];
-
-export const SUPPORT_EMAIL = 'support@spinlid.ru';
+import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
 
 export function LegalFooter() {
   return (

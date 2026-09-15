@@ -185,8 +185,7 @@ export function LeadCaptureForm({ embedInHero = false }: { embedInHero?: boolean
           Спасибо, заявка принята
         </h3>
         <p className="mt-3 text-base" style={{ color: '#475569' }}>
-          Свяжемся с вами в ближайшее время и пришлём доступ к бесплатному тестированию.
-          Купон со скидкой 50% — в первом же сообщении.
+          Свяжемся с вами в ближайшее время и поможем с первым поиском под вашу нишу.
         </p>
       </div>
     );
@@ -225,13 +224,13 @@ export function LeadCaptureForm({ embedInHero = false }: { embedInHero?: boolean
             marginBottom: '12px',
           }}
         >
-          Доступ ограничен: первые 50 заявок
+          Бета
         </div>
         <h3 className="text-xl md:text-2xl font-semibold" style={{ color: '#0b1220' }}>
-          Бесплатный тест 14 дней + скидка 50% первым 50
+          Бесплатная бета
         </h3>
         <p className="mt-2 text-base" style={{ color: '#475569' }}>
-          Оставьте контакт — пришлём доступ и купон. Без оплаты и подписок.
+          Оставьте контакт — поможем с первым поиском под вашу нишу. Без оплаты и подписок.
         </p>
       </div>
 

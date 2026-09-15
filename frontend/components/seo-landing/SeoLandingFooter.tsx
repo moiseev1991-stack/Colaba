@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 
 /**
@@ -12,20 +13,10 @@ import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 
 const PRODUCT_LINKS = [
   { href: '/#diagnosis', label: 'Диагноз' },
-  { href: '/#pricing', label: 'Тарифы' },
+  { href: '/#pricing', label: 'Цены' },
   { href: '/#examples', label: 'Примеры' },
   { href: '/#faq', label: 'FAQ' },
 ];
-
-const LEGAL_LINKS = [
-  { href: '/terms', label: 'Пользовательское соглашение' },
-  { href: '/policy', label: 'Политика конфиденциальности' },
-  { href: '/consent', label: 'Согласие на обработку ПДн' },
-  { href: '/offer', label: 'Публичная оферта' },
-  { href: '/data-sources', label: 'Открытые источники' },
-];
-
-export const SUPPORT_EMAIL = 'support@spinlid.ru';
 
 export function SeoLandingFooter({ currentHref }: { currentHref?: string }) {
   // Скрываем текущую страницу из «Решений» — нет смысла линковать на саму

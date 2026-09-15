@@ -5,7 +5,7 @@ import { TelegramParserBlock } from '@/components/seo-landing/UniqueBlocks';
 export const metadata: Metadata = {
   title: 'Парсер Telegram-контактов компаний — каналы и ЛПР по нише | SpinLid',
   description:
-    'Парсер публичных Telegram-контактов компаний: каналы, чаты и username представителей по нише и городу. Telegram как канал касания в связке с телефоном, email и болями клиентов. Только открытые данные. Тест бесплатно 14 дней.',
+    'Парсер публичных Telegram-контактов компаний: каналы, чаты и username представителей по нише и городу. Telegram как канал касания в связке с телефоном, email и болями клиентов. Только открытые данные. Бесплатно во время беты.',
   alternates: { canonical: 'https://spinlid.ru/parser-telegram' },
   openGraph: {
     title: 'Парсер Telegram-контактов компаний: каналы и ЛПР по нише',

@@ -8,7 +8,7 @@ import { BrandMark } from '@/components/BrandMark';
 
 const ANCHORS = [
   { id: 'diagnosis', label: 'Диагноз' },
-  { id: 'pricing', label: 'Тарифы' },
+  { id: 'pricing', label: 'Цены' },
   { id: 'examples', label: 'Примеры' },
   { id: 'faq', label: 'FAQ' },
 ] as const;

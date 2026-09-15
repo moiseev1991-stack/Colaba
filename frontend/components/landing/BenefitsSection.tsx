@@ -79,9 +79,9 @@ function MiniFunnel() {
 
 // Честные продуктовые факты вместо несуществующей клиентской статистики
 const FACTS = [
-  { value: '2GIS', label: 'основной источник' },
+  { value: 'Карты', label: 'Яндекс и 2GIS' },
   { value: 'AI', label: 'анализ отзывов' },
-  { value: '500 / мес', label: 'бесплатно' },
+  { value: 'Бета', label: 'бесплатно' },
 ];
 
 function StatsRow() {

@@ -50,7 +50,7 @@ export function isPublicPath(pathname: string | null | undefined): boolean {
 }
 
 // Подмножество — страницы, где есть смысл показывать форму захвата
-// лида (бесплатный тест + скидка). На правовых страницах не показываем.
+// лида (бесплатная бета). На правовых страницах не показываем.
 export const LEAD_CAPTURE_PATHS = new Set<string>([
   '/parsing-otzyvov',
   '/parser-2gis',

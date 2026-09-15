@@ -65,7 +65,7 @@ export default function LandingPage() {
           onCtaRegister={() => scrollTo('register', true)}
           onCtaExamples={() => scrollTo('diagnosis')}
         />
-        {/* Форма захвата лида (бесплатный тест + скидка 50% первым 50)
+        {/* Форма захвата лида (бесплатная бета)
             сразу под hero — посетитель из поиска видит конверсию,
             не пролистывая всю простыню лендинга. RegisterSection ниже
             остаётся как полноценный onboarding для тех, кто долистал. */}

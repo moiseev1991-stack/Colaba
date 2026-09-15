@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SUPPORT_EMAIL } from '@/lib/site';
 
 export function ContactsSection() {
   return (
@@ -14,7 +15,7 @@ export function ContactsSection() {
         </h2>
         <p className="l-contact__sub reveal">
           Регистрация за 30 секунд. Без кредитной карты.<br />
-          1 полный поиск ниши и 5 КП — бесплатно.
+          Во время беты — бесплатно.
         </p>
         <div className="l-contact__actions reveal">
           <a href="#register" className="l-btn l-btn--primary l-btn--large">
@@ -24,7 +25,7 @@ export function ContactsSection() {
             Создать аккаунт
           </a>
           <a
-            href="mailto:support@spinlid.ru"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="l-btn l-btn--ghost"
             style={{ color: 'rgba(255,255,255,0.7)' }}
           >
@@ -32,7 +33,7 @@ export function ContactsSection() {
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" />
               <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            support@spinlid.ru
+            {SUPPORT_EMAIL}
           </a>
         </div>
         <p

@@ -19,19 +19,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { useModule, MODULE_LABELS } from '@/lib/ModuleContext';
+import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
 import {
   MODULE_NAV,
   ADMIN_SECTION,
   MODULE_ICONS,
   getBestMatch,
 } from './Sidebar';
-
-const LEGAL_LINKS = [
-  { href: '/terms', label: 'Соглашение' },
-  { href: '/policy', label: 'Политика' },
-  { href: '/offer', label: 'Оферта' },
-];
-const SUPPORT_EMAIL = 'support@spinlid.ru';
 
 const focusClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
@@ -220,7 +214,7 @@ export function MobileNav() {
                       onClick={() => setOpen(false)}
                       className="hover:underline"
                     >
-                      {l.label}
+                      {l.short}
                     </Link>
                   ))}
                 </div>
