@@ -8,16 +8,16 @@
 
 ## 1. Сервисы
 
-| Сервис | URL | Статус |
-|--------|-----|--------|
-| PostgreSQL (pgvector/pg16) | localhost:5433 → 5432 в контейнере | ✅ Работает |
-| Redis 7 | localhost:6379 | ✅ Работает |
-| Backend API (FastAPI) | localhost:8001 | ✅ Работает |
-| Frontend (Next.js 14) | localhost:4000 | ✅ Работает |
-| Celery Worker (6+ очередей) | — | ✅ Работает |
-| SQLAdmin | localhost:8001/admin | ✅ Работает (auth добавлена) |
-| API Docs (Swagger) | localhost:8001/api/docs | ✅ Работает (только DEBUG) |
-| Прод (Coolify) | spinlid.ru | ✅ Работает |
+| Сервис                      | URL                                | Статус                       |
+| --------------------------- | ---------------------------------- | ---------------------------- |
+| PostgreSQL (pgvector/pg16)  | localhost:5433 → 5432 в контейнере | ✅ Работает                  |
+| Redis 7                     | localhost:6379                     | ✅ Работает                  |
+| Backend API (FastAPI)       | localhost:8001                     | ✅ Работает                  |
+| Frontend (Next.js 14)       | localhost:4000                     | ✅ Работает                  |
+| Celery Worker (6+ очередей) | —                                  | ✅ Работает                  |
+| SQLAdmin                    | localhost:8001/admin               | ✅ Работает (auth добавлена) |
+| API Docs (Swagger)          | localhost:8001/api/docs            | ✅ Работает (только DEBUG)   |
+| Прод (Coolify)              | spinlid.ru                         | ✅ Работает                  |
 
 ---
 
@@ -25,37 +25,37 @@
 
 ### 2.1. Краткосрочные цели ✅ — ВСЁ РЕАЛИЗОВАНО
 
-| Пункт плана | Статус | Где сделано |
-|-------------|--------|-------------|
-| Редизайн навигации (меню "Оплата" и "Конфигурация") | ✅ | Sidebar redesign + mobile tabs (v1.42–1.55) |
-| Визуальное улучшение модулей (SEO, Leads, Тендеры) | ✅ | Redesign v2 Phase A/B/C — полный переезд на новые токены |
-| Мобильная версия | ✅ | Responsive layout, slim sidebar, header tabs (v1.30–1.53) |
-| Посадочная страница (Landing) | ✅ | Hero + Benefits + FAQ + Demo + Pricing (v1.0+) |
-| Оптимизация дашборда | ⚠️ | Poll-based loading есть, но загрузка всё ещё медленная |
+| Пункт плана                                         | Статус | Где сделано                                               |
+| --------------------------------------------------- | ------ | --------------------------------------------------------- |
+| Редизайн навигации (меню "Оплата" и "Конфигурация") | ✅     | Sidebar redesign + mobile tabs (v1.42–1.55)               |
+| Визуальное улучшение модулей (SEO, Leads, Тендеры)  | ✅     | Redesign v2 Phase A/B/C — полный переезд на новые токены  |
+| Мобильная версия                                    | ✅     | Responsive layout, slim sidebar, header tabs (v1.30–1.53) |
+| Посадочная страница (Landing)                       | ✅     | Hero + Benefits + FAQ + Demo + Pricing (v1.0+)            |
+| Оптимизация дашборда                                | ⚠️     | Poll-based loading есть, но загрузка всё ещё медленная    |
 
 ### 2.2. Среднесрочные цели — ЧАСТИЧНО
 
-| Пункт плана | Статус | Комментарий |
-|-------------|--------|-------------|
-| Email-рассылки | ✅ | Полный цикл: кампании, шаблоны, домены, IMAP-ответы, Hyvor Relay |
-| Telegram-рассылки | ❌ | Сознательно убрано из приоритетов (B2B в РФ не канал) |
-| WhatsApp-рассылки | ❌ | Сознательно убрано (Meta-блок в РФ) |
-| Модуль тендеров (Госзакупки) | ❌ | Модуль заложен, **не достроен**, на паузе |
-| Rate limiting для API | ❌ | `slowapi` установлен, но не включён в prod |
-| SQLAdmin аутентификация | ✅ | Добавлена в v1.49.2 |
-| OAuth credentials (Google, Yandex, VK, TG) | ⚠️ | Код готов, провайдеры — частично настроены |
-| Мониторинг (Sentry) | ✅ | Интегрирован в v1.49.2 |
+| Пункт плана                                | Статус | Комментарий                                                      |
+| ------------------------------------------ | ------ | ---------------------------------------------------------------- |
+| Email-рассылки                             | ✅     | Полный цикл: кампании, шаблоны, домены, IMAP-ответы, Hyvor Relay |
+| Telegram-рассылки                          | ❌     | Сознательно убрано из приоритетов (B2B в РФ не канал)            |
+| WhatsApp-рассылки                          | ❌     | Сознательно убрано (Meta-блок в РФ)                              |
+| Модуль тендеров (Госзакупки)               | ❌     | Модуль заложен, **не достроен**, на паузе                        |
+| Rate limiting для API                      | ❌     | `slowapi` установлен, но не включён в prod                       |
+| SQLAdmin аутентификация                    | ✅     | Добавлена в v1.49.2                                              |
+| OAuth credentials (Google, Yandex, VK, TG) | ⚠️     | Код готов, провайдеры — частично настроены                       |
+| Мониторинг (Sentry)                        | ✅     | Интегрирован в v1.49.2                                           |
 
 ### 2.3. Долгосрочные цели — ЧАСТИЧНО
 
-| Пункт плана | Статус | Комментарий |
-|-------------|--------|-------------|
-| Тарифы, подписки, пакеты | ✅ | Новые pricing tiers (v1.63) |
-| Оплата (счета/чеки) | ❌ | Не интегрировано |
-| Google PageSpeed | ❌ | Не оптимизировалось |
-| Брендинг (лого, цвета, шрифты) | ✅ | BrandMark, mesh-blobs, новый логотип (v1.61–1.66) |
-| Права доступа между партнёрами | ❌ | Есть multi-tenancy, но обмен лидами не готов |
-| Юридическая часть (политика, оферта, согласия) | ✅ | Правовые страницы + cookie-баннер + privacy policy (v1.55) |
+| Пункт плана                                    | Статус | Комментарий                                                |
+| ---------------------------------------------- | ------ | ---------------------------------------------------------- |
+| Тарифы, подписки, пакеты                       | ✅     | Новые pricing tiers (v1.63)                                |
+| Оплата (счета/чеки)                            | ❌     | Не интегрировано                                           |
+| Google PageSpeed                               | ❌     | Не оптимизировалось                                        |
+| Брендинг (лого, цвета, шрифты)                 | ✅     | BrandMark, mesh-blobs, новый логотип (v1.61–1.66)          |
+| Права доступа между партнёрами                 | ❌     | Есть multi-tenancy, но обмен лидами не готов               |
+| Юридическая часть (политика, оферта, согласия) | ✅     | Правовые страницы + cookie-баннер + privacy policy (v1.55) |
 
 ---
 
@@ -65,78 +65,78 @@
 
 ### 🗺️ 3.1. Модуль Maps (карты) — ГЛАВНАЯ ФИЧА 2026
 
-| Фича | Версия | Описание |
-|------|--------|----------|
-| 2GIS Catalog API | v1.3 | Парсер 2ГИС (компании + отзывы) |
-| Yandex Maps (JSON-LD + AJAX + SmartCaptcha bypass) | v1.3 | Парсер Яндекс.Карт |
-| Multi-source architecture (2GIS + Яндекс) | v1.46–1.48 | Склейка companies, company_sources, company_contacts |
-| Playwright для Яндекс.Карт | v1.45 | Headless Chromium парсинг |
-| 2GIS HTML-парсер (бесплатный) | v1.25 | Fallback через headless Chromium |
-| SSE live-progress | v1.10 | Карточки появляются по мере парсинга (Redis pub/sub) |
-| Multi-city × Multi-niche поиск | v1.68 | Массовый прогон N городов × M ниш |
-| Поиск в радиусе от адреса | v1.12 | Конкурентный режим поиска |
-| URL-persistence фильтров | v1.48 | `?src=`, `?map_search_id=` |
-| Фильтр источника (2GIS / Яндекс) | v1.48 | Переключение с дедуп-склейкой |
-| Bulk CSV экспорт | v1.49 | С BOM + `;` разделителем для Excel |
+| Фича                                               | Версия     | Описание                                             |
+| -------------------------------------------------- | ---------- | ---------------------------------------------------- |
+| 2GIS Catalog API                                   | v1.3       | Парсер 2ГИС (компании + отзывы)                      |
+| Yandex Maps (JSON-LD + AJAX + SmartCaptcha bypass) | v1.3       | Парсер Яндекс.Карт                                   |
+| Multi-source architecture (2GIS + Яндекс)          | v1.46–1.48 | Склейка companies, company_sources, company_contacts |
+| Playwright для Яндекс.Карт                         | v1.45      | Headless Chromium парсинг                            |
+| 2GIS HTML-парсер (бесплатный)                      | v1.25      | Fallback через headless Chromium                     |
+| SSE live-progress                                  | v1.10      | Карточки появляются по мере парсинга (Redis pub/sub) |
+| Multi-city × Multi-niche поиск                     | v1.68      | Массовый прогон N городов × M ниш                    |
+| Поиск в радиусе от адреса                          | v1.12      | Конкурентный режим поиска                            |
+| URL-persistence фильтров                           | v1.48      | `?src=`, `?map_search_id=`                           |
+| Фильтр источника (2GIS / Яндекс)                   | v1.48      | Переключение с дедуп-склейкой                        |
+| Bulk CSV экспорт                                   | v1.49      | С BOM + `;` разделителем для Excel                   |
 
 ### 🤖 3.2. AI-анализ отзывов (Reviews AI)
 
-| Фича | Версия | Описание |
-|------|--------|----------|
-| Sentiment-анализ (gpt-4o-mini) | v1.4 | Батчинг по 20, байпас капчи |
-| Embeddings отзывов (text-embedding-3-small) | v1.4 | Векторный поиск pgvector |
-| Кластеризация болей (pain tags) | v1.4 | LLM-naming тегов |
-| Пресеты фильтров по ICP | v1.13–1.15 | «Нужен сайт», «Хаос в работе» |
-| AI-промпты в пресетах | v1.21 | Кастомная оценка через LLM |
-| Облако болей всей ниши | v1.67 | Агрегированный AI-диагноз по выдаче |
-| AI-описание компании | v1.32 | Для блока «Производство сайта» |
+| Фича                                        | Версия     | Описание                            |
+| ------------------------------------------- | ---------- | ----------------------------------- |
+| Sentiment-анализ (gpt-4o-mini)              | v1.4       | Батчинг по 20, байпас капчи         |
+| Embeddings отзывов (text-embedding-3-small) | v1.4       | Векторный поиск pgvector            |
+| Кластеризация болей (pain tags)             | v1.4       | LLM-naming тегов                    |
+| Пресеты фильтров по ICP                     | v1.13–1.15 | «Нужен сайт», «Хаос в работе»       |
+| AI-промпты в пресетах                       | v1.21      | Кастомная оценка через LLM          |
+| Облако болей всей ниши                      | v1.67      | Агрегированный AI-диагноз по выдаче |
+| AI-описание компании                        | v1.32      | Для блока «Производство сайта»      |
 
 ### 👤 3.3. ЛПР (Лица, принимающие решения)
 
-| Фича | Версия | Описание |
-|------|--------|----------|
-| DaData: ИНН/оборот/возраст | v1.33 | Юр.данные в drawer карточки |
-| DaData: ФИО директора | v1.50 | Подстановка в outreach |
-| LLM-извлечение ЛПР со страниц сайта | v1.51 | Парсинг /team /о-нас /контакты |
-| Bulk enrich team | v1.67 | POST /companies/enrich-team |
-| Website discovery | v1.35 | Угадывание сайта по telegram/email handle |
+| Фича                                | Версия | Описание                                  |
+| ----------------------------------- | ------ | ----------------------------------------- |
+| DaData: ИНН/оборот/возраст          | v1.33  | Юр.данные в drawer карточки               |
+| DaData: ФИО директора               | v1.50  | Подстановка в outreach                    |
+| LLM-извлечение ЛПР со страниц сайта | v1.51  | Парсинг /team /о-нас /контакты            |
+| Bulk enrich team                    | v1.67  | POST /companies/enrich-team               |
+| Website discovery                   | v1.35  | Угадывание сайта по telegram/email handle |
 
 ### 🌡️ 3.4. Скоринг и визуализация
 
-| Фича | Версия | Описание |
-|------|--------|----------|
-| Lead Temperature Scoring | v1.30 | Горячий/тёплый/холодный с бейджем |
-| Website-lead score | v1.31 | Оценка качества сайта |
-| Тепловые карты (heatmap, 5 слоёв) | v1.35–1.52 | Leaflet + self-hosted heat |
-| Легенда бейджей/теплокарты | v1.37 | Цитаты негативных отзывов в карточке |
+| Фича                              | Версия     | Описание                             |
+| --------------------------------- | ---------- | ------------------------------------ |
+| Lead Temperature Scoring          | v1.30      | Горячий/тёплый/холодный с бейджем    |
+| Website-lead score                | v1.31      | Оценка качества сайта                |
+| Тепловые карты (heatmap, 5 слоёв) | v1.35–1.52 | Leaflet + self-hosted heat           |
+| Легенда бейджей/теплокарты        | v1.37      | Цитаты негативных отзывов в карточке |
 
 ### 🎨 3.5. Редизайн и лендинги
 
-| Фича | Версия | Описание |
-|------|--------|----------|
-| Redesign v2 — токены, шрифты, компоненты | v1.38 | Базовый слой дизайн-системы |
-| Redesign v2 Phase B — дашборд, навбар, сайдбар | v1.39–1.42 | Новый язык визуала |
-| Redesign v2 Phase C — все страницы | v1.43 | 9 батчей полного переезда |
-| 6 SEO-лендингов (public pages) | v1.55 | sitemap/robots/cookie-баннер |
-| Правовые страницы | v1.55 | Политика, согласия |
-| Hero: mesh-blobs + SVG-граф + dot-matrix | v1.66 | Радикально новый фон |
-| Тематический декор hero для SEO | v1.65 | Свой набор стикеров на страницу |
-| BrandMark + анимации появления | v1.61–1.62 | Унификация бренда |
-| Светлая тема для SEO | v1.63 | Принудительная + lucide-иконки |
-| Тарифы / Pricing | v1.63 | Новые тарифные планы |
-| Demo cases (4 MVP пресета) | v1.60 | Excel-колонки + парсер-скрипт |
+| Фича                                           | Версия     | Описание                        |
+| ---------------------------------------------- | ---------- | ------------------------------- |
+| Redesign v2 — токены, шрифты, компоненты       | v1.38      | Базовый слой дизайн-системы     |
+| Redesign v2 Phase B — дашборд, навбар, сайдбар | v1.39–1.42 | Новый язык визуала              |
+| Redesign v2 Phase C — все страницы             | v1.43      | 9 батчей полного переезда       |
+| 6 SEO-лендингов (public pages)                 | v1.55      | sitemap/robots/cookie-баннер    |
+| Правовые страницы                              | v1.55      | Политика, согласия              |
+| Hero: mesh-blobs + SVG-граф + dot-matrix       | v1.66      | Радикально новый фон            |
+| Тематический декор hero для SEO                | v1.65      | Свой набор стикеров на страницу |
+| BrandMark + анимации появления                 | v1.61–1.62 | Унификация бренда               |
+| Светлая тема для SEO                           | v1.63      | Принудительная + lucide-иконки  |
+| Тарифы / Pricing                               | v1.63      | Новые тарифные планы            |
+| Demo cases (4 MVP пресета)                     | v1.60      | Excel-колонки + парсер-скрипт   |
 
 ### 🐛 3.6. Инфраструктура
 
-| Фича | Версия | Описание |
-|------|--------|----------|
-| Playwright + Chromium-headless-shell | v1.26 | Headless парсинг в Docker |
-| pgvector | v1.3 | Векторный поиск для embeddings |
-| Sentry | v1.49.2 | Мониторинг ошибок |
-| SQLAdmin auth | v1.49.2 | Аутентификация для админки |
-| Semantic-release | v1.0 | Conventional Commits + авто-changelog |
-| GHCR + Docker Compose prod | v1.0–1.3 | CI/CD pipeline |
-| Coolify deployment | v1.0 | Self-hosted runner |
+| Фича                                 | Версия   | Описание                              |
+| ------------------------------------ | -------- | ------------------------------------- |
+| Playwright + Chromium-headless-shell | v1.26    | Headless парсинг в Docker             |
+| pgvector                             | v1.3     | Векторный поиск для embeddings        |
+| Sentry                               | v1.49.2  | Мониторинг ошибок                     |
+| SQLAdmin auth                        | v1.49.2  | Аутентификация для админки            |
+| Semantic-release                     | v1.0     | Conventional Commits + авто-changelog |
+| GHCR + Docker Compose prod           | v1.0–1.3 | CI/CD pipeline                        |
+| Coolify deployment                   | v1.0     | Self-hosted runner                    |
 
 ---
 
@@ -146,20 +146,20 @@
 
 ### Модели (40+ классов)
 
-| Модуль | Модели |
-|--------|--------|
-| **Auth** | User, SocialAccount |
-| **Multi-tenancy** | Organization, OrganizationRole |
-| **Search** | Search, SearchResult, SearchResultPage |
-| **Providers** | SearchProviderConfig |
-| **Maps** | Company, CompanySource, CompanyContact, Review, MapSearch, MapSearchResult, MapSearchCache |
-| **AI** | AiAssistant, PainTag, ReviewPainTag, CompanyPainScore, CompanyAiAnalysis |
-| **Enrichment** | CompanyLegal, CompanyDecisionMaker |
-| **Email** | EmailConfig, EmailCampaign, EmailTemplate, EmailDomain, EmailLog, EmailReply |
-| **Leads** | LeadList, LeadListItem, CompanyOutreachDraft |
-| **Filters** | Filter, BlacklistDomain, UserFilterPreset |
-| **Admin** | Deployment |
-| **Other** | CaptchaBypassConfig |
+| Модуль            | Модели                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| **Auth**          | User, SocialAccount                                                                        |
+| **Multi-tenancy** | Organization, OrganizationRole                                                             |
+| **Search**        | Search, SearchResult, SearchResultPage                                                     |
+| **Providers**     | SearchProviderConfig                                                                       |
+| **Maps**          | Company, CompanySource, CompanyContact, Review, MapSearch, MapSearchResult, MapSearchCache |
+| **AI**            | AiAssistant, PainTag, ReviewPainTag, CompanyPainScore, CompanyAiAnalysis                   |
+| **Enrichment**    | CompanyLegal, CompanyDecisionMaker                                                         |
+| **Email**         | EmailConfig, EmailCampaign, EmailTemplate, EmailDomain, EmailLog, EmailReply               |
+| **Leads**         | LeadList, LeadListItem, CompanyOutreachDraft                                               |
+| **Filters**       | Filter, BlacklistDomain, UserFilterPreset                                                  |
+| **Admin**         | Deployment                                                                                 |
+| **Other**         | CaptchaBypassConfig                                                                        |
 
 ### Миграции: 001 → 032
 
@@ -203,12 +203,12 @@
 
 ### Существовали в апреле — статус
 
-| Проблема | Апрель | Сейчас | Комментарий |
-|----------|--------|--------|-------------|
-| Дашборд долго грузится | 🟡 | 🟡 | Добавлен poll-based рендеринг, но проблема остаётся |
-| SEO/Leads выглядят неинтересно | 🟡 | ✅ | Redesign v2 Phase C решил |
-| Мобильная версия требует доработки | 🟡 | ✅ | Адаптивная вёрстка сделана |
-| Rate limiting не активен | 🟡 | 🟡 | `slowapi` есть, в prod не включён |
+| Проблема                           | Апрель | Сейчас | Комментарий                                         |
+| ---------------------------------- | ------ | ------ | --------------------------------------------------- |
+| Дашборд долго грузится             | 🟡     | 🟡     | Добавлен poll-based рендеринг, но проблема остаётся |
+| SEO/Leads выглядят неинтересно     | 🟡     | ✅     | Redesign v2 Phase C решил                           |
+| Мобильная версия требует доработки | 🟡     | ✅     | Адаптивная вёрстка сделана                          |
+| Rate limiting не активен           | 🟡     | 🟡     | `slowapi` есть, в prod не включён                   |
 
 ### Текущие (июль 2026)
 
@@ -244,6 +244,12 @@
 - Telegram: webhook для приёма `/start`, таблица `telegram_subscribers` (chat_id ↔ phone/email), КП отправляется в чат тем лидам, кто в боте. См. `docs/guides/MULTICHANNEL_OUTREACH.md`.
 - Юридическое предупреждение о ФЗ-38 ст.18 (реклама, маркировка, штрафы) в UI.
 
+### Недавно закрыто (2026-09-15, ветки `fix/warmup-send-interval`, `fix/warmup-env-compose`)
+
+- ✅ **Прогрев доменов не доходил до 100%**: зашитый интервал 90с × 100+ КП = 2.5ч превышал time-limit задачи — кампании дней 10-11 умирали на ~76-м письме (SoftTimeLimitExceeded). Исправлено: интервал вынесен в `WARMUP_SEND_INTERVAL` (30с, пробрасывается в compose), time-limit поднят до 4ч. Хвосты кампаний 49/50 добиты до 100/100 и 110/110.
+- ✅ **Параллельная генерация КП** (семафор 3, отдельная AsyncSession на задачу) + `kp_sends`/`email_logs` дедуп по получателю.
+- ✅ **z.ai GLM (Coding Plan)** подключён как LLM-провайдер (endpoint `/api/coding/paas/v4`, thinking отключён), embeddings — через ProxyAPI с env-переключением `EMBEDDINGS_*`.
+
 ### Что сознательно отложено
 
 - Госзакупки (отдельный продукт)
@@ -257,6 +263,7 @@
 ## 6. Сводка: план vs реальность
 
 ### Реализовано по плану ✅
+
 - Редизайн навигации и мобильная вёрстка
 - Полный редизайн UI (v2 Phase A/B/C)
 - Email-рассылки (кампании, IMAP, шаблоны)
@@ -268,6 +275,7 @@
 - OAuth (фреймворк готов)
 
 ### Добавилось в процессе 🆕
+
 - **Модуль Maps** — главная фича 2026 (парсер 2GIS + Яндекс.Карт)
 - **AI-анализ болей** — sentiment + embeddings + кластеризация отзывов
 - **Multi-source склейка** — 2GIS + Яндекс компании
@@ -283,6 +291,7 @@
 - **Скоринг лидов** (temperature + website-lead)
 
 ### Не сделано ❌
+
 - Rate limiting (prod)
 - Self-service биллинг (ЮKassa/CloudPayments)
 - Модуль госзакупок (заложен, на паузе)
@@ -305,10 +314,10 @@
 
 ## 8. URL
 
-| Ресурс | URL |
-|--------|-----|
-| Frontend (local) | http://localhost:4000 |
-| Backend API (local) | http://localhost:8001 |
-| API Docs (Swagger) | http://localhost:8001/api/docs |
-| SQLAdmin | http://localhost:8001/admin |
-| Прод | https://spinlid.ru |
+| Ресурс              | URL                            |
+| ------------------- | ------------------------------ |
+| Frontend (local)    | http://localhost:4000          |
+| Backend API (local) | http://localhost:8001          |
+| API Docs (Swagger)  | http://localhost:8001/api/docs |
+| SQLAdmin            | http://localhost:8001/admin    |
+| Прод                | https://spinlid.ru             |
