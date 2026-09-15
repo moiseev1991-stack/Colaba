@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function ClientsForAgencyPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/klienty-dlya-marketing-agentstva"
       decorTheme="mixed"
       h1="Клиенты для агентства: бизнес с растущим негативом и оттоком"
       lead="Маркетинговое агентство продаёт не «настройку рекламы», а «верните поток клиентов». SpinLid находит компании, где этот поток прямо сейчас рушится: негатив растёт, владелец не отвечает, рейтинг падает — и пишет КП с расчётом потерь и предложением вернуть клиентов."

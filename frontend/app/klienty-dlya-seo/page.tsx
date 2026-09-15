@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function ClientsForSeoPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/klienty-dlya-seo"
       decorTheme="reviews"
       h1="Клиенты на SEO: компании, которых не находят в поиске и на картах"
       lead="Самый сложный отрезок для SEO-фрилансера — продать оффер компании, которая «и так как-то живёт». SpinLid находит тех, кто очевидно невидим: низкий рейтинг, мало отзывов, плохая позиция на картах — и пишет КП с конкретным расчётом «вот сколько вы теряете каждый месяц»."

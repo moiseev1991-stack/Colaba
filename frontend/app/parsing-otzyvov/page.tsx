@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 export default function ParsingOtzyvovPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/parsing-otzyvov"
       decorTheme="reviews"
       showBeforeAfter
       showDemoCompanyCard

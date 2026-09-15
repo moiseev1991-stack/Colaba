@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 export default function HolodnayaRassylkaPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/holodnaya-rassylka"
       decorTheme="mailing"
       showMockLetterDraft
       niche={FOOD_DELIVERY_NICHE}

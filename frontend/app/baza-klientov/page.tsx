@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 export default function BazaKlientovPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/baza-klientov"
       decorTheme="database"
       showSources
       niche={RENOVATION_NICHE}

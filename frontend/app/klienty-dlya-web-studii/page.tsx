@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function ClientsForWebStudioPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/klienty-dlya-web-studii"
       decorTheme="maps"
       h1="Клиенты для веб-студии: компании, которым уже нужен сайт"
       lead="Сарафан кончился, биржи демпингуют, холодная база молчит. SpinLid открывает 2GIS и Яндекс.Карты, находит компании без сайта или с жалобами клиентов на запись и дозвон — и пишет КП под каждую боль с цитатой из её же отзывов."

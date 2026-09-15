@@ -1,29 +1,32 @@
 import Link from 'next/link';
-import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
+import { BrandMark } from '@/components/BrandMark';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
+import { LEGAL_LINKS, SITE_NAME, SUPPORT_EMAIL } from '@/lib/site';
 
 /**
- * Footer SEO-лендинга — полноценный, в стиле LandingFooter, но с
- * абсолютными якорями ('/#diagnosis') чтобы клик с SEO-страницы вёл
- * на главную с правильной прокруткой.
+ * Единый подвал публичных страниц: главная, SEO-страницы, /demo, юрстраницы.
+ * Заменил три разных подвала (LandingFooter, SeoLandingFooter, LegalFooter).
  *
- * Состав: лого + © + email | продукт (на главной) | правовые |
- * перелинковка на другие SEO-страницы.
+ * Колонки: бренд и контакты | продукт (якоря главной) | решения (SEO-страницы) |
+ * правовые документы. Якоря всегда абсолютные ('/#faq') — работают и с главной,
+ * и с любой другой страницы.
  */
 
 const PRODUCT_LINKS = [
   { href: '/#diagnosis', label: 'Диагноз' },
+  { href: '/#features', label: 'Возможности' },
   { href: '/#pricing', label: 'Цены' },
   { href: '/#examples', label: 'Примеры' },
   { href: '/#faq', label: 'FAQ' },
 ];
 
-export function SeoLandingFooter({ currentHref }: { currentHref?: string }) {
-  // Скрываем текущую страницу из «Решений» — нет смысла линковать на саму
-  // себя. Берём только ?? 5 ссылок (всё кроме currentHref).
-  const otherSeo = currentHref
-    ? SEO_NAV_LINKS.filter((l) => l.href !== currentHref)
-    : SEO_NAV_LINKS;
+type FooterLink = { href: string; label: string };
+
+export function PublicFooter({ currentHref }: { currentHref?: string } = {}) {
+  // Текущую SEO-страницу в «Решениях» не показываем — нет смысла ссылаться на саму себя.
+  const solutions: FooterLink[] = SEO_NAV_LINKS.filter((l) => l.href !== currentHref).map(
+    ({ href, label }) => ({ href, label }),
+  );
 
   return (
     <footer
@@ -48,21 +51,20 @@ export function SeoLandingFooter({ currentHref }: { currentHref?: string }) {
           <Link
             href="/"
             style={{
-              display: 'inline-block',
-              fontFamily: 'var(--font-body), system-ui, sans-serif',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
               fontWeight: 700,
-              fontSize: '20px',
+              fontSize: '18px',
               color: '#fff',
               marginBottom: '12px',
               textDecoration: 'none',
             }}
           >
-            SpinLid
+            <BrandMark size={28} glow="none" />
+            {SITE_NAME}
           </Link>
-          <div
-            style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.5 }}
-            suppressHydrationWarning
-          >
+          <div style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.5 }} suppressHydrationWarning>
             © {new Date().getFullYear()} · Сбор лидов и письма под боль клиента
             <br />
             <a
@@ -75,23 +77,14 @@ export function SeoLandingFooter({ currentHref }: { currentHref?: string }) {
         </div>
 
         <FooterColumn title="Продукт" links={PRODUCT_LINKS} />
-        <FooterColumn
-          title="Решения"
-          links={otherSeo.map((s) => ({ href: s.href, label: s.label }))}
-        />
+        <FooterColumn title="Решения" links={solutions} />
         <FooterColumn title="Правовые документы" links={LEGAL_LINKS} />
       </div>
     </footer>
   );
 }
 
-function FooterColumn({
-  title,
-  links,
-}: {
-  title: string;
-  links: { href: string; label: string }[];
-}) {
+function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
   return (
     <div>
       <div
@@ -121,10 +114,8 @@ function FooterColumn({
           <li key={l.href}>
             <Link
               href={l.href}
-              style={{
-                color: 'rgba(255,255,255,0.78)',
-                textDecoration: 'none',
-              }}
+              className="transition-colors hover:text-white"
+              style={{ color: 'rgba(255,255,255,0.78)', textDecoration: 'none' }}
             >
               {l.label}
             </Link>

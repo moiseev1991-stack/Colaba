@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import '@/components/landing/landing.css';
-import { LandingHeader } from '@/components/landing/LandingHeader';
+import { PublicHeader } from '@/components/public/PublicHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { SignalsTableSection } from '@/components/landing/SignalsTableSection';
 import { DiagnosisSection } from '@/components/landing/DiagnosisSection';
@@ -18,7 +18,7 @@ import { ExamplesSection } from '@/components/landing/ExamplesSection';
 import { PricingSection } from '@/components/landing/PricingSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { ContactsSection } from '@/components/landing/ContactsSection';
-import { LandingFooter } from '@/components/landing/LandingFooter';
+import { PublicFooter } from '@/components/public/PublicFooter';
 import { Lightbox } from '@/components/landing/Lightbox';
 import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 import { initRevealOnScroll } from '@/lib/revealOnScroll';
@@ -59,7 +59,7 @@ export default function LandingPage() {
 
   return (
     <div ref={rootRef} className="landing-light min-h-screen">
-      <LandingHeader />
+      <PublicHeader />
       <main>
         <HeroSection
           onCtaRegister={() => scrollTo('register', true)}
@@ -87,7 +87,7 @@ export default function LandingPage() {
         <PricingSection onCta={() => scrollTo('register', true)} />
         <FAQSection />
         <ContactsSection />
-        <LandingFooter />
+        <PublicFooter currentHref="/" />
       </main>
       <Lightbox
         src={lightbox.src}

@@ -21,13 +21,13 @@ export default function TermsPage() {
         с условиями Соглашения и принимает их в полном объёме.
       </p>
 
-      <p className="text-sm italic" style={{ color: 'hsl(var(--muted))' }}>
+      <p className="text-sm italic" style={{ color: '#64748b' }}>
         Реквизиты оператора, ИНН/ОГРНИП и юридический адрес —{' '}
         <code>[___]</code> — будут указаны после регистрации юр. лица / ИП.
         Документ — каркас под проверку юристом.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">1. Термины</h2>
+      <h2 className="text-xl font-semibold pt-4">1. Термины</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>
           <strong>Сервис</strong> — веб-приложение SpinLid, доступное по адресу{' '}
@@ -49,7 +49,7 @@ export default function TermsPage() {
         </li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">2. Предмет Соглашения</h2>
+      <h2 className="text-xl font-semibold pt-4">2. Предмет Соглашения</h2>
       <p>
         Сервис предоставляет Пользователю инструменты для:
       </p>
@@ -65,7 +65,7 @@ export default function TermsPage() {
         законодательства о персональных данных и о рекламе, лежит на Пользователе.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">3. Регистрация и аккаунт</h2>
+      <h2 className="text-xl font-semibold pt-4">3. Регистрация и аккаунт</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>
           Регистрация осуществляется с указанием актуального email-адреса.
@@ -80,7 +80,7 @@ export default function TermsPage() {
         </li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         4. Ответственность Пользователя за рассылки и соблюдение 152-ФЗ
       </h2>
       <p>
@@ -108,7 +108,7 @@ export default function TermsPage() {
         Пользователем при их обработке.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         5. Допустимое использование
       </h2>
       <p>Пользователю запрещается:</p>
@@ -131,7 +131,7 @@ export default function TermsPage() {
         </li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         6. Интеллектуальная собственность
       </h2>
       <p>
@@ -142,7 +142,7 @@ export default function TermsPage() {
         приобретённого тарифа.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         7. Отказ от гарантий и ограничение ответственности
       </h2>
       <p>
@@ -159,7 +159,7 @@ export default function TermsPage() {
         в котором возникли соответствующие требования.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         8. Изменение условий и прекращение доступа
       </h2>
       <p>
@@ -176,7 +176,7 @@ export default function TermsPage() {
         путём удаления аккаунта.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         9. Применимое право и порядок споров
       </h2>
       <p>
@@ -186,7 +186,7 @@ export default function TermsPage() {
         нахождения владельца Сервиса.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">10. Реквизиты и контакты</h2>
+      <h2 className="text-xl font-semibold pt-4">10. Реквизиты и контакты</h2>
       <p>
         Оператор Сервиса: <code>[___]</code>
         <br />

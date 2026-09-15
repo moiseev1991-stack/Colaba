@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 export default function SborKontaktovPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/sbor-kontaktov"
       decorTheme="contacts"
       niche={CLINIC_NICHE}
       customBlock={<ContactsSourcesBlock />}

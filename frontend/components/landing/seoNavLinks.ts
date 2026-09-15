@@ -1,6 +1,6 @@
 /**
  * Список SEO-лендингов — общий источник для навигации:
- * - LandingHeader (dropdown «Возможности»)
+ * - PublicHeader (dropdown «Возможности»)
  * - SeoLandingShell (header → шапка)
  * - блок «Решения» на главной (после ModulesSection)
  *

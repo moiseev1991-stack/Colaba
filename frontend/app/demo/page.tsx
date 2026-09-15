@@ -14,6 +14,8 @@
 
 import { ArrowRight, Mail, MessageSquareQuote, Phone, Globe } from 'lucide-react';
 import Link from 'next/link';
+import { PublicHeader } from '@/components/public/PublicHeader';
+import { PublicFooter } from '@/components/public/PublicFooter';
 
 const COMPANIES = [
   {
@@ -84,21 +86,8 @@ const COMPANIES = [
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="mx-auto max-w-[1100px] flex items-center justify-between px-6 py-3">
-          <Link href="/" className="text-lg font-semibold text-slate-900">
-            SpinLid
-          </Link>
-          <Link
-            href="/auth/register"
-            className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            Попробовать на своих данных
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50" style={{ paddingTop: 66 }}>
+      <PublicHeader variant="subpage" forceSolid />
 
       <main className="mx-auto max-w-[1100px] px-6 py-8 space-y-6">
         <section>
@@ -211,6 +200,8 @@ export default function DemoPage() {
           </Link>
         </section>
       </main>
+
+      <PublicFooter currentHref="/demo" />
     </div>
   );
 }

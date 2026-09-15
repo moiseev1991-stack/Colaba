@@ -25,8 +25,8 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { SeoLandingFooter } from './SeoLandingFooter';
-import { LandingHeader } from '@/components/landing/LandingHeader';
+import { PublicHeader } from '@/components/public/PublicHeader';
+import { PublicFooter } from '@/components/public/PublicFooter';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { Reveal } from '@/components/Reveal';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
@@ -223,12 +223,16 @@ export function SeoLandingShell({
 }: SeoLandingShellProps) {
   const isAuthed = Boolean(cookies().get('access_token')?.value);
 
-  let currentHref: string | undefined;
-  try {
-    const path = headers().get('x-pathname') || headers().get('next-url') || '';
-    const match = SEO_NAV_LINKS.find((s) => path.endsWith(s.href));
-    currentHref = match?.href;
-  } catch {}
+  // Текущая страница — чтобы в подвале («Решения») не было ссылки на саму себя.
+  // Берём canonicalPath: заголовков x-pathname/next-url в серверном рендере нет,
+  // и раньше фильтр молча не срабатывал. Заголовки — запасной вариант.
+  let currentHref: string | undefined = canonicalPath;
+  if (!currentHref) {
+    try {
+      const path = headers().get('x-pathname') || headers().get('next-url') || '';
+      currentHref = SEO_NAV_LINKS.find((s) => path.endsWith(s.href))?.href;
+    } catch {}
+  }
 
   return (
     <div
@@ -241,11 +245,11 @@ export function SeoLandingShell({
         fontFamily: 'var(--font-body), system-ui, sans-serif',
       } as React.CSSProperties}
     >
-      {/* Единая шапка с главной (LandingHeader). variant="subpage" делает
+      {/* Единая шапка публичных страниц (PublicHeader). variant="subpage" делает
           якоря (Диагноз/Цены/Примеры/FAQ) ссылками на /#id, а CTA — на
           /auth/register. forceSolid для залогиненного юзера: у него светлый
           compact-hero, поэтому прозрачная шапка нечитаема. */}
-      <LandingHeader variant="subpage" forceSolid={isAuthed} />
+      <PublicHeader variant="subpage" forceSolid={isAuthed} />
 
       <main className="flex-1">
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
@@ -326,7 +330,7 @@ export function SeoLandingShell({
       {/* Schema.org BreadcrumbList — цепочка «Главная → страница». */}
       {canonicalPath && <BreadcrumbJsonLd path={canonicalPath} name={h1} />}
 
-      <SeoLandingFooter currentHref={currentHref} />
+      <PublicFooter currentHref={currentHref} />
     </div>
   );
 }

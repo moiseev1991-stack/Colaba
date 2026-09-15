@@ -20,13 +20,13 @@ export default function PolicyPage() {
         в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».
       </p>
 
-      <p className="text-sm italic" style={{ color: 'hsl(var(--muted))' }}>
+      <p className="text-sm italic" style={{ color: '#64748b' }}>
         Реквизиты оператора и контакт ответственного за обработку ПДн —{' '}
         <code>[___]</code> — будут указаны после регистрации юр. лица / ИП.
         Документ — каркас под проверку юристом.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">1. Оператор ПДн</h2>
+      <h2 className="text-xl font-semibold pt-4">1. Оператор ПДн</h2>
       <p>
         Оператор Сервиса: <code>[___]</code>
         <br />
@@ -42,7 +42,7 @@ export default function PolicyPage() {
         </a>
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">2. Категории ПДн</h2>
+      <h2 className="text-xl font-semibold pt-4">2. Категории ПДн</h2>
       <p>Оператор обрабатывает следующие категории ПДн пользователей Сервиса:</p>
       <ul className="list-disc pl-6 space-y-1">
         <li>email-адрес;</li>
@@ -53,7 +53,7 @@ export default function PolicyPage() {
         <li>данные веб-аналитики (агрегированно).</li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">3. Цели обработки</h2>
+      <h2 className="text-xl font-semibold pt-4">3. Цели обработки</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>предоставление доступа к функциям Сервиса;</li>
         <li>идентификация и аутентификация пользователя;</li>
@@ -64,14 +64,14 @@ export default function PolicyPage() {
         <li>исполнение обязанностей, предусмотренных законодательством РФ.</li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">4. Правовые основания</h2>
+      <h2 className="text-xl font-semibold pt-4">4. Правовые основания</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>согласие субъекта ПДн (ст. 6 ч. 1 п. 1 152-ФЗ) — при регистрации;</li>
         <li>исполнение договора (ст. 6 ч. 1 п. 5 152-ФЗ) — для предоставления услуг;</li>
         <li>законные интересы оператора (ст. 6 ч. 1 п. 7 152-ФЗ) — для аналитики и предотвращения злоупотреблений.</li>
       </ul>
 
-      <h2 className="text-xl font-display font-semibold pt-4">5. Срок хранения</h2>
+      <h2 className="text-xl font-semibold pt-4">5. Срок хранения</h2>
       <p>
         ПДн обрабатываются в течение срока действия аккаунта пользователя.
         После удаления аккаунта данные удаляются или обезличиваются в течение
@@ -79,7 +79,7 @@ export default function PolicyPage() {
         хранить по закону (бухгалтерские документы и т. п.).
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         6. Передача третьим лицам
       </h2>
       <p>
@@ -112,7 +112,7 @@ export default function PolicyPage() {
         рассылки от имени оператора партнёрам, не осуществляется.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         7. Права субъекта ПДн
       </h2>
       <p>Пользователь имеет право:</p>
@@ -130,7 +130,7 @@ export default function PolicyPage() {
         — оператор ответит в течение 30 календарных дней.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         8. Порядок отзыва согласия и удаления аккаунта
       </h2>
       <p>
@@ -142,21 +142,21 @@ export default function PolicyPage() {
         . Отзыв согласия влечёт прекращение оказания услуг Сервиса.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">9. Трансграничная передача</h2>
+      <h2 className="text-xl font-semibold pt-4">9. Трансграничная передача</h2>
       <p>
         Сервис размещён на территории Российской Федерации. Трансграничная
         передача ПДн пользователей Сервиса не осуществляется. При смене этого
         условия пользователи будут уведомлены отдельно.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">10. Меры защиты</h2>
+      <h2 className="text-xl font-semibold pt-4">10. Меры защиты</h2>
       <p>
         Оператор применяет организационные и технические меры защиты ПДн:
         TLS-шифрование канала, хеширование паролей, разграничение доступа к
         базам данных, регулярное резервное копирование, журналирование событий.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">
+      <h2 className="text-xl font-semibold pt-4">
         11. Cookies и аналогичные технологии
       </h2>
       <p>
@@ -165,7 +165,7 @@ export default function PolicyPage() {
         использовании cookies через баннер согласия.
       </p>
 
-      <h2 className="text-xl font-display font-semibold pt-4">12. Контакты для обращений</h2>
+      <h2 className="text-xl font-semibold pt-4">12. Контакты для обращений</h2>
       <p>
         Все обращения по вопросам обработки ПДн направляйте на{' '}
         <a href="mailto:support@spinlid.ru" className="underline">

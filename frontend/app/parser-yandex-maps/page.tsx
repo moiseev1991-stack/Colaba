@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 export default function ParserYandexMapsPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/parser-yandex-maps"
       decorTheme="maps-yandex"
       showLeadCapture
       niche={FITNESS_NICHE}

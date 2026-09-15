@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 export default function Parser2gisPage() {
   return (
     <SeoLandingShell
+      canonicalPath="/parser-2gis"
       decorTheme="maps"
       showCompareTable
       showLeadCapture

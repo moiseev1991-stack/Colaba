@@ -819,45 +819,6 @@ html { scroll-behavior: smooth; }
 }
 .landing-light .l-contact__actions { justify-content: center; display: flex; flex-wrap: wrap; gap: 12px; }
 
-/* ── Footer ─────────────────────────────────────────────────── */
-.landing-light .l-footer {
-  padding: 28px 0;
-  border-top: 1px solid var(--landing-border);
-  background: var(--landing-card);
-}
-.landing-light .l-footer__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 28px;
-}
-.landing-light .l-footer__logo {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--landing-text);
-  font-family: var(--font-body), system-ui, sans-serif;
-  text-decoration: none;
-}
-.landing-light .l-footer__note { font-size: 12px; color: var(--landing-dim); }
-.landing-light .l-footer__links {
-  display: flex;
-  gap: 20px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.landing-light .l-footer__links a {
-  font-size: 13px;
-  color: var(--landing-muted);
-  text-decoration: none;
-  transition: color var(--landing-transition);
-}
-.landing-light .l-footer__links a:hover { color: var(--landing-accent); }
-
 /* ── HowItWorks ─────────────────────────────────────────────── */
 .landing-light .l-how {
   background: var(--landing-bg-alt);
