@@ -413,10 +413,10 @@ export function MapsFiltersPanel({
         disabled={!hasAnyFilter}
         title={hasAnyFilter ? 'Сбросить все фильтры к дефолту' : 'Нечего сбрасывать — фильтры уже пустые'}
         className={cn(
-          'inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-medium transition-colors',
+          'inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
           hasAnyFilter
             ? 'border-rose-300 bg-rose-50 text-rose-700 hover:border-rose-500 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20'
-            : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500'
+            : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500'
         )}
       >
         <Eraser className="h-3.5 w-3.5" />
@@ -427,7 +427,7 @@ export function MapsFiltersPanel({
           выбрано >=2 пресета — для одного пресета и так понятно по подсветке. */}
       {appliedPresetIds.length >= 2 && (
         <div className="rounded-md border border-brand-200 bg-brand-50 px-2.5 py-2 dark:border-brand-500/30 dark:bg-brand-500/10">
-          <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
+          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
             Применено пресетов: {appliedPresetIds.length} · фильтры AND
           </div>
           <div className="flex flex-wrap gap-1">
@@ -436,7 +436,7 @@ export function MapsFiltersPanel({
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-brand-800 border border-brand-300 dark:bg-brand-500/10 dark:border-brand-400/40 dark:text-brand-200"
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-brand-800 border border-brand-300 dark:bg-brand-500/10 dark:border-brand-400/40 dark:text-brand-200"
                 >
                   {label}
                   <button
@@ -452,7 +452,7 @@ export function MapsFiltersPanel({
             })}
           </div>
           {presetConflicts.length > 0 && (
-            <div className="mt-1.5 text-[10px] leading-tight text-amber-700 dark:text-amber-300">
+            <div className="mt-1.5 text-xs leading-tight text-amber-700 dark:text-amber-300">
               Конфликт в пресетах:{' '}
               {presetConflicts
                 .map((c) => humanFieldLabel(c.field))
@@ -464,7 +464,7 @@ export function MapsFiltersPanel({
       )}
 
       <div>
-        <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Готовые пресеты
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -499,7 +499,7 @@ export function MapsFiltersPanel({
                 </span>
                 <span
                   className={cn(
-                    'text-[10px] leading-tight',
+                    'text-xs leading-tight',
                     active
                       ? 'text-emerald-700 dark:text-emerald-300'
                       : 'text-slate-500 dark:text-slate-400'
@@ -520,15 +520,15 @@ export function MapsFiltersPanel({
               type="button"
               onClick={() => setUserPresetsTab('active')}
               className={cn(
-                'text-[11px] font-medium uppercase tracking-wide transition-colors',
+                'text-xs font-medium uppercase tracking-wide transition-colors',
                 userPresetsTab === 'active'
                   ? 'text-slate-700 dark:text-slate-200'
-                  : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                  : 'text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
               )}
             >
               Мои пресеты
               {activeUserPresets.length > 0 && (
-                <span className="ml-1 text-slate-400 dark:text-slate-500">· {activeUserPresets.length}</span>
+                <span className="ml-1 text-slate-500 dark:text-slate-500">· {activeUserPresets.length}</span>
               )}
             </button>
             {hiddenUserPresets.length > 0 && (
@@ -538,13 +538,13 @@ export function MapsFiltersPanel({
                   type="button"
                   onClick={() => setUserPresetsTab('hidden')}
                   className={cn(
-                    'text-[11px] font-medium uppercase tracking-wide transition-colors',
+                    'text-xs font-medium uppercase tracking-wide transition-colors',
                     userPresetsTab === 'hidden'
                       ? 'text-slate-700 dark:text-slate-200'
-                      : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                      : 'text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
                   )}
                 >
-                  Скрытые <span className="text-slate-400 dark:text-slate-500">· {hiddenUserPresets.length}</span>
+                  Скрытые <span className="text-slate-500 dark:text-slate-500">· {hiddenUserPresets.length}</span>
                 </button>
               </>
             )}
@@ -553,7 +553,7 @@ export function MapsFiltersPanel({
             type="button"
             onClick={() => setSaveModalOpen(true)}
             title="Сохранить текущие фильтры как пресет"
-            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <BookmarkPlus className="h-3 w-3" /> сохранить
           </button>
@@ -561,13 +561,13 @@ export function MapsFiltersPanel({
         {presetError && (
           <div
             role="alert"
-            className="mb-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-[11px] text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+            className="mb-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
           >
             {presetError}
           </div>
         )}
         {visibleUserPresets.length === 0 ? (
-          <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
+          <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
             {userPresetsTab === 'active' ? (
               <>Настрой фильтры, нажми «сохранить» — пресет появится здесь и
               будет доступен в один клик при следующих поисках.</>
@@ -607,14 +607,14 @@ export function MapsFiltersPanel({
                     {p.ai_prompt && p.ai_prompt.trim() && (
                       <span
                         title="С AI-анализом: при применении посчитает score 0-10 для каждой компании"
-                        className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-[9px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
+                        className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
                       >
                         AI
                       </span>
                     )}
                   </span>
                   <span className={cn(
-                    'block text-[10px] leading-tight',
+                    'block text-xs leading-tight',
                     p.hidden ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-700/80 dark:text-emerald-400/80'
                   )}>
                     {p.hidden ? 'скрыт' : 'мой'}
@@ -630,7 +630,7 @@ export function MapsFiltersPanel({
                       }}
                       title="Вернуть в активные"
                       aria-label={`Вернуть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-600"
+                      className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-emerald-600"
                     >
                       <RotateCcw className="h-3 w-3" />
                     </button>
@@ -643,7 +643,7 @@ export function MapsFiltersPanel({
                       }}
                       title="Скрыть (можно вернуть из вкладки «Скрытые»)"
                       aria-label={`Скрыть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-400 hover:bg-brand-100 hover:text-slate-700"
+                      className="rounded p-0.5 text-slate-500 hover:bg-brand-100 hover:text-slate-700"
                     >
                       <EyeOff className="h-3 w-3" />
                     </button>
@@ -656,7 +656,7 @@ export function MapsFiltersPanel({
                     }}
                     title="Удалить навсегда"
                     aria-label={`Удалить пресет ${p.name}`}
-                    className="rounded p-0.5 text-slate-400 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
+                    className="rounded p-0.5 text-slate-500 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -684,7 +684,7 @@ export function MapsFiltersPanel({
           <div className="text-sm text-slate-700">
             Удалить пресет <strong>«{confirmDelete?.name}»</strong> навсегда?
           </div>
-          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-[12px] text-[color:var(--signal-warm)]">
+          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-xs text-[color:var(--signal-warm)]">
             Если хочешь временно убрать с глаз — лучше нажми «скрыть» (иконка глаза).
             Пресет уедет во вкладку «Скрытые», откуда его легко вернуть.
           </div>
@@ -722,7 +722,7 @@ export function MapsFiltersPanel({
             onChange={(e) => setLocalMinRating(e.target.value)}
             onBlur={commit}
           />
-          <span className="text-slate-400">—</span>
+          <span className="text-slate-500">—</span>
           <Input
             type="number"
             min={0}
@@ -904,11 +904,11 @@ export function MapsFiltersPanel({
         className="group rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-2 open:pb-3"
         open={Boolean(value.min_revenue || value.min_age_years)}
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
           <span className="inline-flex items-center gap-1.5">
             💼 Платёжеспособные (DaData)
             {Boolean(value.min_revenue || value.min_age_years) && (
-              <span className="rounded-full bg-blue-200/70 px-1.5 py-0.5 text-[9px] font-semibold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">
+              <span className="rounded-full bg-blue-200/70 px-1.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">
                 активно
               </span>
             )}
@@ -919,7 +919,7 @@ export function MapsFiltersPanel({
         </summary>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
-            <label className="mb-0.5 block text-[11px] text-slate-600 dark:text-slate-400">
+            <label className="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">
               Оборот от ₽
             </label>
             <Input
@@ -932,19 +932,19 @@ export function MapsFiltersPanel({
                 recordManualOverride('min_revenue', next);
                 onChange({ ...value, min_revenue: next });
               }}
-              className="text-[12px]"
+              className="text-xs"
             />
             {/* Подсказка по «реалистичному» минимуму. У ИП и ООО формально
                 оборот может быть 0 (нулёвка). Для B2B-лидгена живой
                 микро-точки (одна стоматология, кофейня) разумно отсекать
                 от 3-5 млн ₽/год — компании ниже либо мёртвые, либо в
                 stealth-mode и платить за сайт вряд ли захотят. */}
-            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               реалистичный минимум живой точки — от ~3-5 млн ₽/год
             </div>
           </div>
           <div>
-            <label className="mb-0.5 block text-[11px] text-slate-600 dark:text-slate-400">
+            <label className="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">
               Возраст, лет
             </label>
             <Input
@@ -957,11 +957,11 @@ export function MapsFiltersPanel({
                 recordManualOverride('min_age_years', next);
                 onChange({ ...value, min_age_years: next });
               }}
-              className="text-[12px]"
+              className="text-xs"
             />
           </div>
         </div>
-        <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Применит JOIN company_legal — покажет только компании с
           подтянутыми юр.данными.
         </div>
@@ -987,16 +987,16 @@ export function MapsFiltersPanel({
             className="group rounded-v2-sm border border-slate-200 bg-slate-50/40 p-2 open:pb-3 dark:border-slate-700 dark:bg-slate-800/40"
             open={active}
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
               <span className="inline-flex items-center gap-1.5">
                 🏛 Тип юр.лица
                 {active && (
-                  <span className="rounded-full bg-slate-300/60 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-600/60 dark:text-slate-200">
+                  <span className="rounded-full bg-slate-300/60 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-600/60 dark:text-slate-200">
                     {selected.size}
                   </span>
                 )}
               </span>
-              <span className="text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+              <span className="text-slate-500 group-open:rotate-180 transition-transform">▾</span>
             </summary>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {opfOptions.map((opt) => {
@@ -1016,7 +1016,7 @@ export function MapsFiltersPanel({
                     }}
                     title={opt.hint}
                     className={
-                      'rounded-full border px-2.5 py-0.5 text-[11.5px] font-medium transition-colors ' +
+                      'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ' +
                       (on
                         ? 'border-slate-700 bg-slate-700 text-white dark:border-slate-300 dark:bg-slate-200 dark:text-slate-900'
                         : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200')
@@ -1027,7 +1027,7 @@ export function MapsFiltersPanel({
                 );
               })}
             </div>
-            <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Тянется из DaData при обогащении (поле opf). «Нет данных» —
               для компаний без CompanyLegal или с пустым opf.
             </div>
@@ -1045,7 +1045,7 @@ export function MapsFiltersPanel({
             value.review_text_excludes,
         )}
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
           <span className="inline-flex items-center gap-1.5">
             💬 Слова в отзывах
             {Boolean(
@@ -1054,17 +1054,17 @@ export function MapsFiltersPanel({
                 value.review_text_contains ||
                 value.review_text_excludes,
             ) && (
-              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
                 активно
               </span>
             )}
           </span>
-          <span className="text-slate-400 group-open:rotate-180 transition-transform">
+          <span className="text-slate-500 group-open:rotate-180 transition-transform">
             ▾
           </span>
         </summary>
         <div className="mt-2 mb-2">
-          <label className="mb-0.5 block text-[11px] text-emerald-700 dark:text-emerald-400">
+          <label className="mb-0.5 block text-xs text-emerald-700 dark:text-emerald-400">
             содержит (через запятую) — компании с любым из слов
           </label>
           <Input
@@ -1079,11 +1079,11 @@ export function MapsFiltersPanel({
                 commitWords('contains', localContainsWords);
               }
             }}
-            className="text-[12px]"
+            className="text-xs"
           />
         </div>
         <div>
-          <label className="mb-0.5 block text-[11px] text-rose-700 dark:text-rose-400">
+          <label className="mb-0.5 block text-xs text-rose-700 dark:text-rose-400">
             не содержит (через запятую) — выкинуть компании с этими словами
           </label>
           <Input
@@ -1098,7 +1098,7 @@ export function MapsFiltersPanel({
                 commitWords('excludes', localExcludesWords);
               }
             }}
-            className="text-[12px]"
+            className="text-xs"
           />
         </div>
         {(value.review_text_contains_any?.length ||
@@ -1118,7 +1118,7 @@ export function MapsFiltersPanel({
                 review_text_excludes_any: null,
               });
             }}
-            className="mt-2 text-[11px] text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+            className="mt-2 text-xs text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
           >
             очистить слова
           </button>
@@ -1150,7 +1150,7 @@ export function MapsFiltersPanel({
           )}
         </Select>
         {aiActive && (
-          <p className="mt-1 text-[11px] text-violet-700/80 dark:text-violet-300/80">
+          <p className="mt-1 text-xs text-violet-700/80 dark:text-violet-300/80">
             Компании без AI-оценки — в конце списка.
           </p>
         )}
@@ -1167,11 +1167,11 @@ export function MapsFiltersPanel({
         open={Boolean(value.pain_tag_ids?.length)}
       >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-          <span className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-violet-800 dark:text-violet-200">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-small font-semibold text-violet-800 dark:text-violet-200">
             <span aria-hidden>🧠</span>
             <span className="truncate">Боли клиентов</span>
             {(value.pain_tag_ids?.length ?? 0) > 0 && (
-              <span className="rounded bg-violet-200 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-violet-800 dark:bg-violet-500/30 dark:text-violet-100">
+              <span className="rounded bg-violet-200 px-1.5 py-0.5 text-xs font-semibold leading-none text-violet-800 dark:bg-violet-500/30 dark:text-violet-100">
                 {value.pain_tag_ids?.length}
               </span>
             )}

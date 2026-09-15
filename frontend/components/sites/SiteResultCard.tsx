@@ -89,7 +89,7 @@ export function SiteResultCard({ result, entry, query, onKpForLead }: Props) {
     <li className="rounded-md border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             <Globe className="h-3.5 w-3.5" />
             <span className="truncate">{domain}</span>
           </div>
@@ -97,13 +97,13 @@ export function SiteResultCard({ result, entry, query, onKpForLead }: Props) {
             href={result.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-0.5 block truncate text-[15px] font-semibold text-slate-900 hover:underline dark:text-slate-100"
+            className="mt-0.5 block truncate text-base font-semibold text-slate-900 hover:underline dark:text-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
             {result.title || domain}
           </a>
           {result.snippet && (
-            <p className="mt-1 text-[13px] leading-snug text-slate-700 dark:text-slate-300">
+            <p className="mt-1 text-small leading-snug text-slate-700 dark:text-slate-300">
               {highlight(result.snippet, entry)}
             </p>
           )}
@@ -113,7 +113,7 @@ export function SiteResultCard({ result, entry, query, onKpForLead }: Props) {
             href={result.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5 text-[11.5px] font-medium text-slate-600 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             title="Открыть сайт"
           >
             <ExternalLink className="h-3 w-3" />
@@ -124,7 +124,7 @@ export function SiteResultCard({ result, entry, query, onKpForLead }: Props) {
             onClick={handleKp}
             disabled={loading}
             title="Сгенерировать КП по этому сайту"
-            className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-[13px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
+            className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-small font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -136,7 +136,7 @@ export function SiteResultCard({ result, entry, query, onKpForLead }: Props) {
         </div>
       </div>
       {error && (
-        <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11.5px] text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/20 dark:text-rose-200">
+        <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/20 dark:text-rose-200">
           {error}
         </div>
       )}

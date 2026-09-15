@@ -308,7 +308,7 @@ export default function EmailProvidersSettingsPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-semibold">{p.name}</h2>
+                        <h2 className="text-base font-semibold">{p.name}</h2>
                         <SignalPill
                           tone={status === 'ok' ? 'good' : status === 'warn' ? 'warm' : 'muted'}
                         >

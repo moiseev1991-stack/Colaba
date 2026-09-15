@@ -123,7 +123,7 @@ export default function PaymentPage() {
                     </div>
                     <div className="text-right">
                       <span
-                        className="font-display font-semibold tracking-tight text-lg"
+                        className="font-display font-semibold tracking-tight text-base"
                         style={{ color: 'hsl(var(--text))' }}
                       >
                         {plan.price_rub.toLocaleString('ru-RU')} ₽

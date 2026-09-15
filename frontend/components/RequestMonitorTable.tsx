@@ -68,8 +68,8 @@ export function RequestMonitorTable() {
     <div className="w-full max-w-4xl mx-auto rounded-[14px] overflow-hidden border border-gray-700 bg-[#0f172a] shadow-xl">
       <div className="px-4 py-3 border-b border-gray-700/80 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-100">Request Monitor</h2>
-          <p className="text-sm text-gray-400">
+          <h2 className="text-base font-semibold text-gray-100">Request Monitor</h2>
+          <p className="text-sm text-gray-500">
             Last updated: {data ? formatLastUpdated(data.updated_at) : '--:--:--'}
           </p>
         </div>
@@ -85,7 +85,7 @@ export function RequestMonitorTable() {
             Refresh
           </Button>
           <label className="flex items-center gap-2 cursor-pointer">
-            <span className="text-sm text-gray-400">Auto-refresh</span>
+            <span className="text-sm text-gray-500">Auto-refresh</span>
             <button
               type="button"
               role="switch"
@@ -110,12 +110,12 @@ export function RequestMonitorTable() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700/80">
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Provider</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Endpoint</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Method</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Time</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Cost ₽</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">OK</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Provider</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Endpoint</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Method</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Time</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Cost ₽</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">OK</th>
               </tr>
             </thead>
             <tbody>
@@ -156,19 +156,19 @@ export function RequestMonitorTable() {
         )}
 
         {data && data.requests.length === 0 && !loading && (
-          <div className="px-4 py-12 text-center text-gray-400">No requests yet</div>
+          <div className="px-4 py-12 text-center text-gray-500">No requests yet</div>
         )}
 
         {data && data.requests.length > 0 && (
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700/80">
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Provider</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Endpoint</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Method</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Time</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Cost ₽</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">OK</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Provider</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Endpoint</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Method</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Time</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Cost ₽</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">OK</th>
               </tr>
             </thead>
             <tbody>
@@ -185,7 +185,7 @@ export function RequestMonitorTable() {
                   <td className="px-4 py-3 text-sm text-gray-300 truncate max-w-[200px]" title={r.url}>
                     {r.url}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-400 font-mono">{r.method || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 font-mono">{r.method || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-300 tabular-nums text-right">
                     {r.response_time_ms}ms
                   </td>

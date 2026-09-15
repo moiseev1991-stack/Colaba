@@ -7,7 +7,7 @@ import type { LeadRow, SEOData } from '@/lib/types';
 // ─── EmptyValue: единый fallback для пустых полей ─────────────────────────
 function EmptyValue() {
   return (
-    <span className="text-slate-400 dark:text-slate-500 text-sm font-medium tabular-nums">
+    <span className="text-slate-500 dark:text-slate-500 text-sm font-medium tabular-nums">
       — нет данных
     </span>
   );
@@ -47,7 +47,7 @@ function UrlPill({ url }: { url: string }) {
       <span className="text-sm text-brand-600 dark:text-brand-400 truncate flex-1 min-w-0">
         {url.replace(/^https?:\/\//, '')}
       </span>
-      <ExternalLink className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100" />
+      <ExternalLink className="h-3 w-3 shrink-0 text-slate-500 dark:text-slate-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100" />
     </a>
   );
 }
@@ -80,7 +80,7 @@ function DetailHeader({
       {/* Hero content */}
       <div className={compact ? 'space-y-0.5' : 'space-y-1.5'}>
         <h3
-          className={`font-semibold text-slate-900 dark:text-slate-100 leading-snug line-clamp-2 ${compact ? 'text-[13px]' : 'text-base'}`}
+          className={`font-semibold text-slate-900 dark:text-slate-100 leading-snug line-clamp-2 ${compact ? 'text-small' : 'text-base'}`}
           title={title || undefined}
         >
           {title || <EmptyValue />}
@@ -131,7 +131,7 @@ function DataCard({
 
   return (
     <div className="group rounded-lg border border-slate-200/80 dark:border-slate-600/80 bg-white dark:bg-slate-800/50 px-2.5 py-2 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-all duration-150">
-      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
         {label}
       </span>
       <div
@@ -194,11 +194,11 @@ function ContactActionCard({
     >
       <Icon className={`h-4 w-4 shrink-0 ${iconColor} mt-0.5`} />
       <div className="min-w-0 flex-1">
-        <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+        <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
           {label}
         </span>
         <span
-          className={`block mt-0.5 text-base font-semibold truncate ${isEmpty ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}`}
+          className={`block mt-0.5 text-base font-semibold truncate ${isEmpty ? 'text-slate-500 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}`}
           title={!isEmpty ? value : undefined}
         >
           {isEmpty ? 'Нет данных' : value}

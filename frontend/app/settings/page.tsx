@@ -6,6 +6,7 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { PageHeader } from '@/components/PageHeader';
 import { Check } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 // §4.17 ТЗ редизайна 2026-06-03 (Phase C batch 5): конфигурация на v2.
 // 4 идентичных чекбокс-блока вынесены в SeoCheckbox helper. CardV2 для секций.
@@ -43,7 +44,7 @@ export default function SettingsPage() {
   const handleApplyChanges = () => {
     setSavedSeoSettings(seoSettings);
     setHasChanges(false);
-    alert('Изменения применены');
+    toast.success('Изменения применены');
   };
 
   const handleResetChanges = () => {
@@ -59,7 +60,7 @@ export default function SettingsPage() {
         {/* SEO Block */}
         <CardV2 className="p-6">
           <h2
-            className="font-display font-semibold tracking-tight text-2xl mb-6"
+            className="font-display font-semibold tracking-tight text-heading mb-6"
             style={{ color: 'hsl(var(--text))' }}
           >
             SEO
@@ -121,7 +122,7 @@ export default function SettingsPage() {
 
         <CardV2 className="p-6">
           <h2
-            className="font-display font-semibold tracking-tight text-2xl mb-2"
+            className="font-display font-semibold tracking-tight text-heading mb-2"
             style={{ color: 'hsl(var(--text))' }}
           >
             Контакты
@@ -131,7 +132,7 @@ export default function SettingsPage() {
 
         <CardV2 className="p-6">
           <h2
-            className="font-display font-semibold tracking-tight text-2xl mb-2"
+            className="font-display font-semibold tracking-tight text-heading mb-2"
             style={{ color: 'hsl(var(--text))' }}
           >
             Поиск цен
@@ -181,7 +182,7 @@ function SettingsLinkBlock({ title, desc, href, cta }: { title: string; desc: st
   return (
     <CardV2 className="p-6">
       <h2
-        className="font-display font-semibold tracking-tight text-2xl mb-2"
+        className="font-display font-semibold tracking-tight text-heading mb-2"
         style={{ color: 'hsl(var(--text))' }}
       >
         {title}

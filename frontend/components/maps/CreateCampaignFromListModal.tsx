@@ -84,7 +84,7 @@ export function CreateCampaignFromListModal({
           </h3>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="h-4 w-4" />
           </button>
@@ -121,7 +121,7 @@ export function CreateCampaignFromListModal({
                 </div>
               )}
               <div>
-                <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Название кампании (внутреннее)
                 </label>
                 <input
@@ -131,7 +131,7 @@ export function CreateCampaignFromListModal({
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Тема письма
                 </label>
                 <input
@@ -141,16 +141,16 @@ export function CreateCampaignFromListModal({
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Текст письма
                 </label>
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   rows={12}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 font-mono text-[13px] outline-none focus:border-slate-500"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 font-mono text-small outline-none focus:border-slate-500"
                 />
-                <div className="mt-1 text-[11px] text-slate-500">
+                <div className="mt-1 text-xs text-slate-500">
                   Плейсхолдеры: <code>{'{company_name}'}</code> <code>{'{city}'}</code>{' '}
                   <code>{'{niche}'}</code> <code>{'{top_pain}'}</code>{' '}
                   <code>{'{pain_quote}'}</code>

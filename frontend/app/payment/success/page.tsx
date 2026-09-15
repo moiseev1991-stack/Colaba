@@ -23,7 +23,7 @@ function SuccessContent() {
       .catch(() => setStatus('pending'));
   }, [paymentId]);
 
-  const h1Cls = 'font-display font-semibold tracking-tight text-2xl mb-2';
+  const h1Cls = 'font-display font-semibold tracking-tight text-heading mb-2';
   const pCls = 'mb-6';
 
   return (

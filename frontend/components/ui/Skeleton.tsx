@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * Skeleton — shimmer-плейсхолдер (§3 ТЗ редизайна 2026-06-03).
- * Использовать вместо спиннеров на загрузке карточек/таблиц/метрик —
- * пустоты ощущаются как «зависло», skeleton — как «грузится».
+ * Skeleton — мерцающий плейсхолдер загрузки. Пустота ощущается как «зависло»,
+ * скелетон — как «грузится». Скругления — ступени PR 3.1: control / card / panel.
  */
 
 import * as React from 'react';
@@ -13,11 +12,13 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
   rounded?: 'sm' | 'md' | 'lg' | 'full';
 }
 
+const RADIUS = {
+  sm: 'rounded-control',
+  md: 'rounded-card',
+  lg: 'rounded-panel',
+  full: 'rounded-full',
+} as const;
+
 export function Skeleton({ className, rounded = 'sm', ...rest }: Props) {
-  const radius =
-    rounded === 'full' ? 'rounded-full' :
-    rounded === 'lg' ? 'rounded-v2-lg' :
-    rounded === 'md' ? 'rounded-v2' :
-    'rounded-v2-sm';
-  return <div className={cn('skel-v2', radius, className)} {...rest} />;
+  return <div className={cn('skel-v2', RADIUS[rounded], className)} aria-hidden {...rest} />;
 }

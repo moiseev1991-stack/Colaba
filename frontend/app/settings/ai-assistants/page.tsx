@@ -11,6 +11,7 @@ import { ToastContainer, type Toast } from '@/components/Toast';
 import { Dialog } from '@/components/ui/dialog';
 import { tokenStorage } from '@/client';
 import { PageHeader } from '@/components/PageHeader';
+import { confirmDialog } from '@/components/ui/confirm';
 import {
   listAiAssistants,
   getAiAssistantsRegistry,
@@ -182,7 +183,7 @@ export default function AiAssistantsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить этого AI-ассистента?')) return;
+    if (!(await confirmDialog('Удалить этого AI-ассистента?'))) return;
     try {
       await deleteAiAssistant(id);
       addToast('success', 'Удалено');

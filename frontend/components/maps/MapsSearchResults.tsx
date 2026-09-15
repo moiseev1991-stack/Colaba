@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
@@ -53,6 +54,7 @@ import {
   type CompanyAnalysisOut,
 } from '@/src/services/api/reviews-ai';
 import type { UserPresetOut } from '@/src/services/api/user-presets';
+import { toast } from '@/components/ui/toast';
 
 // Leaflet трогает window — выключаем SSR. ssr: false внутри 'use client'
 // поддерживается в Next.js 14, см. https://nextjs.org/docs/app/building-your-application/optimizing/lazy-loading
@@ -550,7 +552,7 @@ export function MapsSearchResults({
     const AI_RUN_MAX = 500;
     let ids = visibleCompanyIds;
     if (ids.length > AI_RUN_MAX) {
-      window.alert(
+      toast.info(
         `Видимых компаний ${ids.length}, AI-анализ за один запуск обрабатывает максимум ${AI_RUN_MAX}. ` +
           `Запускаю на первых ${AI_RUN_MAX}. Сузь фильтры и нажми ещё раз для остальных.`,
       );
@@ -580,7 +582,7 @@ export function MapsSearchResults({
       } else if (Array.isArray(detail) && detail.length > 0) {
         msg = `Ошибка проверки запроса: ${JSON.stringify(detail[0])}`;
       }
-      window.alert(msg);
+      toast.error(msg);
     } finally {
       setAiTriggering(false);
     }
@@ -974,7 +976,7 @@ export function MapsSearchResults({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
-            <h2 className="font-display text-[20px] sm:text-[22px] font-semibold leading-tight tracking-tight text-[hsl(var(--text))]">
+            <h2 className="font-display text-xl sm:text-xl font-semibold leading-tight tracking-tight text-[hsl(var(--text))]">
               {search.niche}
               <span className="text-[hsl(var(--muted))]"> · </span>
               {search.mode === 'radius' && search.address
@@ -982,12 +984,12 @@ export function MapsSearchResults({
                 : search.city}
             </h2>
             {/* Чипы статуса вместо одной плотной строки текста. */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px]">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
               <span
                 className="inline-flex items-center gap-1 rounded-pill bg-[hsl(var(--surface-2))] px-2 py-0.5 font-medium text-[hsl(var(--text))]"
                 title="Сколько компаний показано в выдаче"
               >
-                <span className="text-[11px] text-[hsl(var(--muted))]">
+                <span className="text-xs text-[hsl(var(--muted))]">
                   {isTerminal
                     ? companiesEverLoaded &&
                       typeof search.companies_found === 'number' &&
@@ -1005,7 +1007,7 @@ export function MapsSearchResults({
                       : (search.companies_found ?? renderTotal)
                     : renderTotal}
                 </span>
-                <span className="text-[11px] text-[hsl(var(--muted))]">
+                <span className="text-xs text-[hsl(var(--muted))]">
                   {(() => {
                     const n = isTerminal ? renderTotal : renderTotal;
                     if (n === 1) return 'компания';
@@ -1018,7 +1020,7 @@ export function MapsSearchResults({
               {sourceListPretty(search.sources).map((src) => (
                 <span
                   key={src.id}
-                  className="inline-flex items-center gap-1 rounded-pill border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--text))]"
+                  className="inline-flex items-center gap-1 rounded-pill border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-xs font-medium text-[hsl(var(--text))]"
                   title={`Источник данных: ${src.label}`}
                 >
                   <span aria-hidden>{src.dot}</span> {src.label}
@@ -1027,7 +1029,7 @@ export function MapsSearchResults({
               {/* Статус только если он информативен (не completed) или показываем "из кэша" с иконкой. */}
               {search.status === 'from_cache' && (
                 <span
-                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-cool-bg)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-cool)] ring-1 ring-inset ring-[color:var(--signal-cool)]/30"
+                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-cool-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--signal-cool)] ring-1 ring-inset ring-[color:var(--signal-cool)]/30"
                   title="Результат не парсился заново — взят из ранее собранной выдачи"
                 >
                   ⚡ из кэша
@@ -1035,7 +1037,7 @@ export function MapsSearchResults({
               )}
               {!isTerminal && (
                 <span
-                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-warm-bg)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30"
+                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-warm-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30"
                   title="Парсер ещё собирает компании"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--signal-warm)] animate-pulse" />
@@ -1043,13 +1045,13 @@ export function MapsSearchResults({
                 </span>
               )}
               {search.status === 'failed' && (
-                <span className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-hot-bg)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--signal-hot)] ring-1 ring-inset ring-[color:var(--signal-hot)]/30">
+                <span className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-hot-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--signal-hot)] ring-1 ring-inset ring-[color:var(--signal-hot)]/30">
                   ⚠ ошибка
                 </span>
               )}
             </div>
             {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
-              <div className="mt-1 inline-block rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-0.5 text-[11px] text-[color:var(--signal-good)]">
+              <div className="mt-1 inline-block rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-0.5 text-xs text-[color:var(--signal-good)]">
                 Применён пресет с формы поиска — фильтры выставлены в панели слева
               </div>
             )}
@@ -1131,7 +1133,7 @@ export function MapsSearchResults({
                 блок ТОП-БОЛИ и «Сравнение с нишей» просто исчезают.
                 Показываем дружелюбное объяснение вместо пустоты. */}
             {painSentiment === 'positive' && regionPainTags.length === 0 && (
-              <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-[12.5px] text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+              <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-small text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
                 <div className="font-semibold">Анализ сильных сторон ниши скоро будет</div>
                 <div className="mt-1 text-emerald-800/90 dark:text-emerald-200/80">
                   AI кластеризует позитивные отзывы отдельно от негативных. Если кнопка ниже
@@ -1159,7 +1161,7 @@ export function MapsSearchResults({
                         );
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {positiveReclusterState === 'queueing'
                       ? 'Ставлю в очередь…'
@@ -1174,7 +1176,7 @@ export function MapsSearchResults({
                   {positiveReclusterMsg && (
                     <span
                       className={
-                        'text-[11px] ' +
+                        'text-xs ' +
                         (positiveReclusterState === 'error'
                           ? 'text-rose-700 dark:text-rose-300'
                           : 'text-emerald-800/80 dark:text-emerald-200/70')
@@ -1249,7 +1251,7 @@ export function MapsSearchResults({
               }}
             />
             {activeAiPreset && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-[12px] dark:border-violet-700/50 dark:bg-violet-900/30">
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-xs dark:border-violet-700/50 dark:bg-violet-900/30">
                 <span className="inline-flex items-center gap-1 font-medium text-violet-900 dark:text-violet-200">
                   <Sparkles className="h-3.5 w-3.5" />
                   AI-пресет «{activeAiPreset.name}»
@@ -1267,12 +1269,12 @@ export function MapsSearchResults({
                   type="button"
                   onClick={() => void handleTriggerAi()}
                   disabled={aiTriggering || visibleCompanyIds.length === 0}
-                  className="ml-auto rounded-md bg-violet-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                  className="ml-auto rounded-md bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
                 >
                   {aiTriggering ? 'Запускаю…' : `Запустить AI-анализ (${visibleCompanyIds.length})`}
                 </button>
                 {aiLastRun && (
-                  <div className="basis-full text-[11px] text-violet-700 dark:text-violet-300">
+                  <div className="basis-full text-xs text-violet-700 dark:text-violet-300">
                     Поставлено: {aiLastRun.queued}, из кэша: {aiLastRun.cached}
                     {aiLastRun.over_limit > 0 && (
                       <span className="ml-1 text-rose-700 dark:text-rose-400">
@@ -1307,7 +1309,7 @@ export function MapsSearchResults({
                     : null;
                 return (
                   <div className="mt-2 space-y-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 text-[12px]">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
                       <span className="font-medium text-slate-700 dark:text-slate-200">
                         Парсер собирает компании
                         {p?.source && (
@@ -1344,7 +1346,7 @@ export function MapsSearchResults({
                       )}
                     </div>
                     {stream.reconnectAttempt > 0 && !stream.error && (
-                      <div className="text-[11px] text-amber-700 dark:text-amber-400">
+                      <div className="text-xs text-amber-700 dark:text-amber-400">
                         Связь временно прервана, переподключаюсь… (попытка {stream.reconnectAttempt}
                         ). Парсер продолжает работу в фоне.
                       </div>
@@ -1369,7 +1371,7 @@ export function MapsSearchResults({
             <button
               type="button"
               onClick={() => setMobileFiltersOpen(true)}
-              className="lg:hidden inline-flex min-h-[44px] items-center gap-1.5 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-1.5 text-[13px] font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
+              className="lg:hidden inline-flex min-h-[44px] items-center gap-1.5 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-1.5 text-small font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
             >
               <Sliders className="h-4 w-4" />
               Фильтры
@@ -1401,7 +1403,7 @@ export function MapsSearchResults({
                         onClick={() => handleFilterChange({ ...filter, source_filter: opt.id })}
                         aria-pressed={active}
                         className={
-                          'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
+                          'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium ' +
                           (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
                           (active
                             ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
@@ -1425,7 +1427,7 @@ export function MapsSearchResults({
                   onClick={() => setViewMode('list')}
                   aria-pressed={viewMode === 'list'}
                   className={
-                    'inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium ' +
+                    'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium ' +
                     (viewMode === 'list'
                       ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                       : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
@@ -1438,7 +1440,7 @@ export function MapsSearchResults({
                   onClick={() => setViewMode('map')}
                   aria-pressed={viewMode === 'map'}
                   className={
-                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-[12px] font-medium dark:border-slate-600 ' +
+                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-xs font-medium dark:border-slate-600 ' +
                     (viewMode === 'map'
                       ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                       : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
@@ -1562,7 +1564,7 @@ export function MapsSearchResults({
         {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
           <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-sm text-[color:var(--signal-warm)]">
             <div className="font-medium">Live-обновление приостановлено</div>
-            <div className="mt-0.5 text-[12px] opacity-90">
+            <div className="mt-0.5 text-xs opacity-90">
               Сервер закрыл long-poll после 3 попыток переподключения. Парсер продолжает работу в
               фоне — нажми «Обновить страницу» когда статус станет «готово» в шапке, либо подожди ~2
               минуты и обнови сам.
@@ -1670,7 +1672,7 @@ export function MapsSearchResults({
                           ? 'компании'
                           : 'компаний';
                   return (
-                    <div className="mt-2 text-[12px] opacity-80">
+                    <div className="mt-2 text-xs opacity-80">
                       В БД уже собрано {n} {word} этой ниши от прошлых поисков — блоки «Динамика
                       отзывов» и «Сравнение с нишей» ниже считаются по ним.
                     </div>
@@ -1679,7 +1681,7 @@ export function MapsSearchResults({
               <button
                 type="button"
                 onClick={onNewSearch}
-                className="mt-3 inline-flex items-center rounded-md bg-[color:var(--signal-warm)] px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90"
+                className="mt-3 inline-flex items-center rounded-md bg-[color:var(--signal-warm)] px-3 py-1.5 text-small font-medium text-white hover:opacity-90"
               >
                 Новый поиск
               </button>
@@ -1817,7 +1819,7 @@ export function MapsSearchResults({
                     Очистить
                   </button>
                   {lprBulkMsg && (
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300" role="status">
+                    <span className="text-xs text-slate-600 dark:text-slate-300" role="status">
                       {lprBulkMsg}
                     </span>
                   )}
@@ -1931,7 +1933,7 @@ function RegionPainSummary({
   const seen = new Set<string>();
   const unique = tags.filter((t) => {
     const key = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    if (!key || seen.has(key)) return false;
+    if (!key || seen.has(key) || isUnnamedPainLabel(t.label)) return false;
     seen.add(key);
     return true;
   });
@@ -1947,16 +1949,16 @@ function RegionPainSummary({
     <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           <span>
             Топ-боли ниши — можно выбирать несколько плиток
             {activeCount > 0 && (
-              <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[9.5px] normal-case text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
+              <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-xs normal-case text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
                 выбрано {activeCount}
               </span>
             )}
           </span>
-          <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
             {niche}
             {city ? ` · ${city}` : ''}
           </span>
@@ -1964,7 +1966,7 @@ function RegionPainSummary({
             <button
               type="button"
               onClick={onClear}
-              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               × снять {activeCount > 1 ? `все ${activeCount}` : 'фильтр'}
             </button>
@@ -1984,7 +1986,7 @@ function RegionPainSummary({
                     : (t.description ?? 'Показать только компании с этой болью')
                 }
                 className={
-                  'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-[11.5px] font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-1 dark:focus:ring-rose-700 dark:focus:ring-offset-slate-900 ' +
+                  'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-1 dark:focus:ring-rose-700 dark:focus:ring-offset-slate-900 ' +
                   (active
                     ? 'border-rose-500 bg-rose-50 text-rose-900 ring-1 ring-rose-300 dark:border-rose-400 dark:bg-rose-900/30 dark:text-rose-100 dark:ring-rose-700'
                     : 'border-slate-300 bg-white text-slate-800 hover:border-rose-400 hover:bg-rose-50/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-rose-500 dark:hover:bg-rose-900/20')
@@ -1995,14 +1997,14 @@ function RegionPainSummary({
                     'h-3 w-3 shrink-0 transition-colors ' +
                     (active
                       ? 'text-rose-600 dark:text-rose-300'
-                      : 'text-slate-400 group-hover:text-rose-500 dark:text-slate-500 dark:group-hover:text-rose-400')
+                      : 'text-slate-500 group-hover:text-rose-500 dark:text-slate-500 dark:group-hover:text-rose-400')
                   }
                   aria-hidden
                 />
                 <span className="leading-tight">{t.label}</span>
                 <span
                   className={
-                    'rounded-sm px-1 text-[10px] tabular-nums ' +
+                    'rounded-sm px-1 text-xs tabular-nums ' +
                     (active
                       ? 'bg-rose-100 text-rose-800 dark:bg-rose-800/40 dark:text-rose-100'
                       : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300')
@@ -2017,7 +2019,7 @@ function RegionPainSummary({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center rounded border border-dashed border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              className="inline-flex items-center rounded border border-dashed border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
               title={
                 expanded ? 'Скрыть, оставить топ-8' : `Показать ещё ${unique.length - 8} плиток`
               }
@@ -2053,8 +2055,8 @@ function PainHeaderControlsBar({
   onSentimentChange: (next: 'negative' | 'positive') => void;
 }) {
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1.5 text-[11px] dark:border-slate-700 dark:bg-slate-900">
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900">
+      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Тип:
       </span>
       <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
@@ -2090,7 +2092,7 @@ function PainHeaderControlsBar({
           );
         })}
       </div>
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Источник:
       </span>
       <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
@@ -2119,7 +2121,7 @@ function PainHeaderControlsBar({
           );
         })}
       </div>
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Период:
       </span>
       <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
@@ -2208,12 +2210,12 @@ function RegionPainTrendInline({
     <div className="mt-1.5 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div aria-hidden className={cn('w-1 shrink-0', tag ? 'bg-rose-500' : 'bg-slate-400')} />
       <div className="flex min-w-0 flex-1 flex-col gap-1 px-2.5 py-1.5">
-        <div className="flex flex-wrap items-baseline gap-2 text-[10.5px]">
+        <div className="flex flex-wrap items-baseline gap-2 text-xs">
           <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {headline ?? 'Динамика по месяцам'}
           </span>
           {tag && (
-            <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
+            <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
               {tag.label}
             </span>
           )}
@@ -2226,18 +2228,18 @@ function RegionPainTrendInline({
             <button
               type="button"
               onClick={onClose}
-              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               × закрыть
             </button>
           )}
         </div>
         {loading && !trend ? (
-          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             Загружаем динамику…
           </div>
         ) : months.length === 0 ? (
-          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             Нет отзывов с датами в выбранном окне — попробуй расширить период.
           </div>
         ) : (
@@ -2322,7 +2324,7 @@ function RegionPainTrendInline({
                 );
               })}
             </svg>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-600 dark:text-slate-300">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
               {allSources.map((src) => (
                 <span key={src} className="inline-flex items-center gap-1">
                   <span
@@ -2454,7 +2456,7 @@ function AiPainProgressBar({
           : 'В работе';
 
   return (
-    <div className={`mt-2 flex overflow-hidden rounded border text-[12px] ${wrapCls}`}>
+    <div className={`mt-2 flex overflow-hidden rounded border text-xs ${wrapCls}`}>
       <div aria-hidden className={`w-1 shrink-0 ${stageBarColor}`} />
       <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -2463,12 +2465,12 @@ function AiPainProgressBar({
             AI-разбор отзывов
           </span>
           <span
-            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ${stagePillCls}`}
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${stagePillCls}`}
           >
             {stagePillText}
           </span>
           <span className="text-slate-600 dark:text-slate-300">{stageLabel}</span>
-          <span className="ml-auto tabular-nums text-[12px] font-semibold text-slate-700 dark:text-slate-200">
+          <span className="ml-auto tabular-nums text-xs font-semibold text-slate-700 dark:text-slate-200">
             {percent}%
           </span>
         </div>
@@ -2479,13 +2481,13 @@ function AiPainProgressBar({
           />
         </div>
         {progress && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-slate-600 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
             <span title="Сколько компаний поиска уже получили pain-теги">
               <span className="text-slate-500 dark:text-slate-500">Готовы:</span>{' '}
               <b className="tabular-nums text-slate-900 dark:text-slate-100">
                 {progress.companies_with_pains}
               </b>
-              <span className="mx-1 text-slate-400">/</span>
+              <span className="mx-1 text-slate-500">/</span>
               <b className="tabular-nums text-slate-700 dark:text-slate-300">
                 {progress.companies_total}
               </b>{' '}
@@ -2497,7 +2499,7 @@ function AiPainProgressBar({
                 <b className="tabular-nums text-slate-900 dark:text-slate-100">
                   {progress.reviews_with_embedding}
                 </b>
-                <span className="mx-1 text-slate-400">/</span>
+                <span className="mx-1 text-slate-500">/</span>
                 <b className="tabular-nums text-slate-700 dark:text-slate-300">
                   {progress.reviews_total}
                 </b>
@@ -2519,7 +2521,7 @@ function AiPainProgressBar({
                 <button
                   type="button"
                   onClick={onRestart}
-                  className="rounded bg-rose-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-rose-700"
+                  className="rounded bg-rose-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-rose-700"
                   title="Поставить AI-разбор в очередь повторно"
                 >
                   Запустить заново
@@ -2537,7 +2539,7 @@ function AiPainProgressBar({
           </div>
         )}
         {isStuck && (
-          <div className="space-y-1.5 border-t border-rose-200 pt-2 text-[11.5px] text-rose-800 dark:border-rose-800/60 dark:text-rose-200">
+          <div className="space-y-1.5 border-t border-rose-200 pt-2 text-xs text-rose-800 dark:border-rose-800/60 dark:text-rose-200">
             <div>
               Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты. Скорее
               всего celery-задача зависла или кластеризация даёт 0 кластеров.
@@ -2547,19 +2549,19 @@ function AiPainProgressBar({
                 type="button"
                 disabled={diagnosticRunning}
                 onClick={onRunDiagnostic}
-                className="inline-flex items-center gap-1 rounded border border-rose-300 bg-white px-2 py-1 text-[11.5px] font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-200 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-1 rounded border border-rose-300 bg-white px-2 py-1 text-xs font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-200 dark:hover:bg-slate-800"
                 title="Запустит синхронный recluster прямо сейчас и покажет точную причину (займёт до 1-2 минут)"
               >
                 {diagnosticRunning
                   ? 'Диагностика выполняется… (до 2 мин)'
                   : 'Запустить диагностику'}
               </button>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Синхронно прогонит кластеризацию и покажет точную причину
               </span>
             </div>
             {diagnostic && (
-              <div className="rounded border border-rose-200 bg-white px-2.5 py-1.5 text-[11.5px] dark:border-rose-700 dark:bg-slate-900">
+              <div className="rounded border border-rose-200 bg-white px-2.5 py-1.5 text-xs dark:border-rose-700 dark:bg-slate-900">
                 <div className="font-semibold text-rose-900 dark:text-rose-100">
                   Результат диагностики:
                 </div>
@@ -2606,7 +2608,7 @@ function AiPainProgressBar({
           </div>
         )}
         {stage === 'idle' && (
-          <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу или
             подожди, пока подтянутся отзывы.
           </div>

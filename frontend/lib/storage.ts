@@ -171,7 +171,13 @@ function normalizeDomain(domain: string): string {
 }
 
 // Theme
+// Тёмная тема выключена до MVP (решение 15.09): у части экранов нет dark-стилей.
+// Чтобы вернуть — DARK_THEME_ENABLED = true и вернуть переключатель в AppHeader.
+// Сохранённый выбор пользователя не трогаем, пока тема выключена.
+const DARK_THEME_ENABLED = false;
+
 export function getTheme(): Theme {
+  if (!DARK_THEME_ENABLED) return 'light';
   if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem(STORAGE_KEYS.THEME);
   return (stored === 'light' || stored === 'dark') ? stored : 'dark';
@@ -179,10 +185,11 @@ export function getTheme(): Theme {
 
 export function setTheme(theme: Theme): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.THEME, theme);
+  const applied: Theme = DARK_THEME_ENABLED ? theme : 'light';
+  if (DARK_THEME_ENABLED) localStorage.setItem(STORAGE_KEYS.THEME, theme);
   const root = document.documentElement;
-  root.classList.toggle('dark', theme === 'dark');
-  root.setAttribute('data-theme', theme);
+  root.classList.toggle('dark', applied === 'dark');
+  root.setAttribute('data-theme', applied);
 }
 
 // Results Page Size (default 100; affects only display, not fetched results)

@@ -12,7 +12,7 @@ const modules = [
 export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
-      <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+      <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
         Выберите раздел
       </h1>
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -26,9 +26,9 @@ export default function DashboardPage() {
               style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
             >
               <Icon className="mb-3 h-8 w-8" style={{ color: 'hsl(var(--accent))' }} />
-              <h2 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>{m.title}</h2>
-              <p className="mt-1 text-[14px]" style={{ color: 'hsl(var(--muted))' }}>{m.desc}</p>
-              <span className="mt-4 inline-block text-[14px] font-medium" style={{ color: 'hsl(var(--accent))' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>{m.title}</h2>
+              <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>{m.desc}</p>
+              <span className="mt-4 inline-block text-sm font-medium" style={{ color: 'hsl(var(--accent))' }}>
                 Открыть →
               </span>
             </Link>

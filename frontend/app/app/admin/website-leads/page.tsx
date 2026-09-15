@@ -10,6 +10,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
+import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 
 // origin — из какой таблицы пришла заявка. website: главная + SEO-лендинги
 // (модуль website_leads). inbound: форма /razbor (модуль inbound_leads, своё
@@ -178,14 +180,14 @@ export default function AdminWebsiteLeadsPage() {
       }
     } catch (e: any) {
       setItems(prev);
-      alert(`Не удалось обновить статус.\n${e?.message ?? 'unknown'}`);
+      toast.error(`Не удалось обновить статус.\n${e?.message ?? 'unknown'}`);
     }
   }
 
   async function softDelete(id: number) {
     // Удаление есть только у website_leads. Заявки с /razbor (inbound) не
     // удаляем кнопкой — у их API нет DELETE; помечать «Спам» можно статусом.
-    if (!confirm('Удалить заявку (soft-delete)?')) return;
+    if (!(await confirmDialog({ title: 'Удалить заявку?', description: 'Заявка скроется из списка (мягкое удаление).' }))) return;
     try {
       const res = await fetch(`/api/v1/website-leads/${id}`, { method: 'DELETE' });
       // Принимаем любой 2xx — бэк отдаёт 204 No Content, но прокси на
@@ -200,7 +202,7 @@ export default function AdminWebsiteLeadsPage() {
       setItems((curr) => curr.filter((i) => i.id !== id));
       setTotal((t) => Math.max(t - 1, 0));
     } catch (e: any) {
-      alert(`Не удалось удалить.\n${e?.message ?? 'unknown'}`);
+      toast.error(`Не удалось удалить.\n${e?.message ?? 'unknown'}`);
     }
   }
 
@@ -208,7 +210,7 @@ export default function AdminWebsiteLeadsPage() {
     <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 py-4 sm:py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[20px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+          <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
             Заявки с сайта
           </h1>
           <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>

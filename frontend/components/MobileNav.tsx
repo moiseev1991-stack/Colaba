@@ -4,7 +4,7 @@
  * MobileNav — бургер-кнопка в шапке + выдвижное полное меню для мобайла.
  *
  * Зачем: на <md сайдбар полностью скрыт (см. AppLayout), а нижний
- * MobileTabBar даёт лишь 4 пункта (Поиск/Дашборд/Кампании/Профиль). Из-за
+ * MobileTabBar даёт лишь 4 пункта (Поиск/Дашборд/История/Профиль). Из-за
  * этого с телефона были недостижимы История, Шаблоны КП, Пресеты, Списки,
  * Ответы, Статистика, Настройки, Админ. Этот drawer повторяет полную
  * навигацию активного модуля (MODULE_NAV из Sidebar) и закрывает дыру.
@@ -22,10 +22,11 @@ import { useModule, MODULE_LABELS } from '@/lib/ModuleContext';
 import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
 import {
   MODULE_NAV,
-  ADMIN_SECTION,
   MODULE_ICONS,
   getBestMatch,
+  navSectionsFor,
 } from './Sidebar';
+import { useIsSuperuser } from '@/lib/useIsSuperuser';
 
 const focusClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
@@ -33,7 +34,7 @@ const focusClass =
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [isSuperuser, setIsSuperuser] = useState(false);
+  const isSuperuser = useIsSuperuser();
   const pathname = usePathname();
   const { module } = useModule();
   const ModuleIcon = MODULE_ICONS[module];
@@ -41,41 +42,6 @@ export function MobileNav() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // is_superuser — тот же контракт, что и в Sidebar: кэшируем только
-  // положительный флаг в sessionStorage, чтобы случайная 401 не прятала
-  // «Админ» до перезагрузки вкладки.
-  useEffect(() => {
-    const cached =
-      typeof window !== 'undefined'
-        ? sessionStorage.getItem('is_superuser')
-        : null;
-    if (cached === 'true') {
-      setIsSuperuser(true);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/v1/auth/me', { cache: 'no-store' });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (!cancelled && Boolean(data?.is_superuser)) {
-          setIsSuperuser(true);
-          try {
-            sessionStorage.setItem('is_superuser', 'true');
-          } catch {
-            /* no-op */
-          }
-        }
-      } catch {
-        /* offline / no auth — просто не покажем admin-секцию */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   // Esc закрывает; пока открыт — блокируем скролл body, чтобы под drawer'ом
@@ -94,9 +60,8 @@ export function MobileNav() {
     };
   }, [open]);
 
-  const sections = isSuperuser
-    ? [...config.sections, ADMIN_SECTION]
-    : config.sections;
+  // Те же правила, что в Sidebar: «Админ» и «Email-рассылка» — только суперюзеру.
+  const sections = navSectionsFor(config.sections, isSuperuser);
   const allItems = sections.flatMap((s) => s.items);
   const bestMatch = getBestMatch(pathname, allItems);
 

@@ -22,6 +22,7 @@ import {
   type OutreachTemplate,
 } from '@/src/services/api/outreachTemplates';
 import { PAIN_KEY_LABELS, type PainKey } from '@/src/services/api/maps';
+import { confirmDialog } from '@/components/ui/confirm';
 
 const PAIN_KEYS: PainKey[] = [
   'call_no_answer',
@@ -125,7 +126,7 @@ export default function TemplatesPage() {
   };
 
   const del = async (id: number) => {
-    if (!confirm('Удалить шаблон?')) return;
+    if (!(await confirmDialog('Удалить шаблон?'))) return;
     try {
       await deleteOutreachTemplate(id);
       await reload();
@@ -225,7 +226,7 @@ export default function TemplatesPage() {
                 onClick={() => {
                   navigator.clipboard?.writeText(key).catch(() => {/* no-op */});
                 }}
-                className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-[10.5px] text-slate-700 hover:bg-slate-100"
+                className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-xs text-slate-700 hover:bg-slate-100"
                 title={desc}
               >
                 {key}
@@ -288,11 +289,11 @@ export default function TemplatesPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-medium text-slate-900">{t.name}</h3>
                 {t.pain_key ? (
-                  <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700">
+                  <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-700">
                     {PAIN_KEY_LABELS[t.pain_key as PainKey] ?? t.pain_key}
                   </span>
                 ) : (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                     универсальный
                   </span>
                 )}

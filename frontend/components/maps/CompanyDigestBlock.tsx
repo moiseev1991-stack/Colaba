@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import {
   ExternalLink,
   MessageSquareQuote,
@@ -115,12 +116,12 @@ export function CompanyDigestBlock({
   return (
     <div className="rounded-md border border-slate-200 bg-white p-3 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
           Сводка {windowLabel}
         </div>
         <div className="flex items-center gap-2">
           {data.total_reviews > 0 && (
-            <div className="text-[11px] text-slate-500">
+            <div className="text-xs text-slate-500">
               {data.total_reviews} отзыв(ов)
             </div>
           )}
@@ -169,23 +170,23 @@ export function CompanyDigestBlock({
             />
           </div>
 
-          {data.top_pains.length > 0 && (
+          {data.top_pains.some((p) => !isUnnamedPainLabel(p.label)) && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Топ-боли клиентов · клик = отзывы темы
                 </div>
                 {activePainTagId != null && onPainClick && (
                   <button
                     type="button"
                     onClick={() => onPainClick(-1, '')}
-                    className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50"
+                    className="rounded border border-slate-300 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                   >
                     × снять
                   </button>
                 )}
               </div>
-              {data.top_pains.slice(0, 3).map((p) => {
+              {data.top_pains.filter((p) => !isUnnamedPainLabel(p.label)).slice(0, 3).map((p) => {
                 const active = activePainTagId === p.pain_tag_id;
                 const clickable = !!onPainClick;
                 const baseCls =
@@ -198,7 +199,7 @@ export function CompanyDigestBlock({
                     <div className="flex items-center gap-2">
                       <span
                         className={
-                          'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11.5px] font-medium ' +
+                          'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ' +
                           (active
                             ? 'border-rose-500 bg-white text-rose-900 dark:bg-slate-900 dark:text-rose-100'
                             : 'border-amber-300 bg-white text-amber-900 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-100')
@@ -208,13 +209,13 @@ export function CompanyDigestBlock({
                         {p.label}
                       </span>
                       {p.mention_count > 0 && (
-                        <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                        <span className="text-xs text-slate-600 dark:text-slate-300">
                           × {p.mention_count}
                         </span>
                       )}
                     </div>
                     {p.top_quote && (
-                      <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
+                      <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-200">
                         <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
                         <span className="italic">«{p.top_quote}»</span>
                       </div>
@@ -268,7 +269,7 @@ function DaysRangeToggle({
   disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-[10.5px] font-medium">
+    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
       {DAYS_OPTIONS.map((opt) => {
         const active = opt.value === value;
         return (
@@ -337,13 +338,13 @@ function TopNegativeReviewsPreview({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
           {emphasize
             ? 'Самые яркие негативные отзывы (за всё время)'
             : 'Топ-негатив за всё время'}
         </div>
         {availableSources.length > 2 && (
-          <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-[10.5px] font-medium">
+          <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
             {availableSources.map((src) => {
               const active = src === sourceFilter;
               const label =
@@ -370,7 +371,7 @@ function TopNegativeReviewsPreview({
       </div>
       <div className="space-y-1.5">
         {filtered.length === 0 ? (
-          <div className="rounded border border-dashed border-slate-300 bg-slate-50 px-2 py-1.5 text-[11.5px] text-slate-500">
+          <div className="rounded border border-dashed border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-500">
             Нет негативных отзывов из этого источника.
           </div>
         ) : (
@@ -412,7 +413,7 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
           : '')
       }
     >
-      <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-slate-500">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
         {review.rating != null && (
           <span className="inline-flex items-center gap-0.5 font-medium text-rose-700 dark:text-rose-300">
             <Star className="h-3 w-3 fill-current" />
@@ -436,7 +437,7 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
           </span>
         )}
       </div>
-      <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-700 dark:text-slate-200">
+      <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-200">
         <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
         <span className="italic">«{truncated || '(текст отсутствует)'}»</span>
       </div>
@@ -476,7 +477,7 @@ function DigestMetric({
   }[tone];
   return (
     <div className={`rounded-md px-2 py-1.5 ring-1 ring-inset ${bg}`}>
-      <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+      <div className="flex items-center gap-1.5 text-xs text-slate-500">
         {icon}
         {label}
       </div>

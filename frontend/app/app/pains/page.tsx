@@ -607,7 +607,7 @@ function PainsPageInner() {
                       className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-rose-50"
                     >
                       <span className="truncate">{t.label}</span>
-                      <span className="shrink-0 text-xs text-slate-400">{t.occurrences_count}</span>
+                      <span className="shrink-0 text-xs text-slate-500">{t.occurrences_count}</span>
                     </button>
                   </li>
                 ))}
@@ -632,7 +632,7 @@ function PainsPageInner() {
                 <>
                   {' '}
                   · сматчилось {data.pain_labels.length} tag(ов):{' '}
-                  <span className="text-slate-400" title={data.pain_labels.join(', ')}>
+                  <span className="text-slate-500" title={data.pain_labels.join(', ')}>
                     {data.pain_labels.slice(0, 3).join(', ')}
                     {data.pain_labels.length > 3 && ` +${data.pain_labels.length - 3}`}
                   </span>
@@ -650,9 +650,9 @@ function PainsPageInner() {
       {niche && topTags.length > 0 && (
         <section className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
           <div className="flex items-center justify-between px-1 flex-wrap gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Топ-боли ниши{' '}
-              <span className="text-slate-400 normal-case">
+              <span className="text-slate-500 normal-case">
                 — клик = добавить в выборку (можно несколько)
               </span>
             </span>
@@ -661,13 +661,13 @@ function PainsPageInner() {
                 <button
                   type="button"
                   onClick={clearTagSelection}
-                  className="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-50"
+                  className="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-50"
                   title="Сбросить все выбранные боли"
                 >
                   × сбросить {selectedTagIds.size}
                 </button>
               )}
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                 {niche}
                 {city ? ` · ${city}` : ''}
               </span>
@@ -685,7 +685,7 @@ function PainsPageInner() {
                   key={t.id}
                   onClick={() => pickTag(t)}
                   className={
-                    'group inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-all hover:-translate-y-px hover:shadow-sm ' +
+                    'group inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all hover:-translate-y-px hover:shadow-sm ' +
                     (active
                       ? 'border-slate-900 bg-slate-900 text-white'
                       : 'border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-400')
@@ -696,7 +696,7 @@ function PainsPageInner() {
                   <span className="whitespace-nowrap">{t.label}</span>
                   <span
                     className={
-                      'rounded px-1 text-[10.5px] ' +
+                      'rounded px-1 text-xs ' +
                       (active ? 'bg-white/20 text-white' : 'bg-white/60 text-rose-700')
                     }
                   >
@@ -709,7 +709,7 @@ function PainsPageInner() {
         </section>
       )}
       {niche && topTagsLoading && (
-        <p className="text-xs text-slate-400 pl-1">Загружаем топ-боли ниши…</p>
+        <p className="text-xs text-slate-500 pl-1">Загружаем топ-боли ниши…</p>
       )}
 
       {data && data.items.length === 0 && !isLoading && (
@@ -790,10 +790,10 @@ function PainsPageInner() {
                       ? 'Ставлю в очередь…'
                       : `⚙ Пересобрать AI-теги для «${niche}»${city ? ` / ${city}` : ''}`}
                   </button>
-                  {rebuildMsg && <p className="text-[11px] text-slate-600">{rebuildMsg}</p>}
+                  {rebuildMsg && <p className="text-xs text-slate-600">{rebuildMsg}</p>}
                   {rebuildProgress && (
                     <div className="mt-2 rounded-md border border-amber-200 bg-white p-2 space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-800">AI-разметка отзывов</span>
                         <span className="tabular-nums text-slate-600">
                           {rebuildProgress.reviews_analyzed.toLocaleString('ru-RU')}
@@ -814,7 +814,7 @@ function PainsPageInner() {
                           }}
                         />
                       </div>
-                      <p className="text-[10.5px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         Активных тегов: {rebuildProgress.active_tags} · связей компания↔боль:{' '}
                         {rebuildProgress.pain_scores}
                         {rebuildProgress.ready
@@ -873,7 +873,7 @@ function PainsPageInner() {
                 <button
                   type="button"
                   onClick={() => setSelectedIds(new Set())}
-                  className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
                 >
                   × Сбросить
                 </button>
@@ -978,7 +978,7 @@ function PainsPageInner() {
                       {c.rating !== null && (
                         <span>
                           ★ {c.rating.toFixed(1)}{' '}
-                          <span className="text-slate-400">/ {c.reviews_count} отз.</span>
+                          <span className="text-slate-500">/ {c.reviews_count} отз.</span>
                         </span>
                       )}
                       {c.lead_temperature !== null && (
@@ -988,7 +988,7 @@ function PainsPageInner() {
                               ? 'font-medium text-rose-600'
                               : c.lead_temperature >= 40
                                 ? 'font-medium text-amber-600'
-                                : 'text-slate-400'
+                                : 'text-slate-500'
                           }
                         >
                           🔥 {c.lead_temperature}
@@ -1054,7 +1054,7 @@ function PainsPageInner() {
                           key={r.id}
                           className="rounded-md border border-slate-200 bg-white p-2 text-xs space-y-1"
                         >
-                          <div className="flex flex-wrap items-center gap-2 text-[10.5px]">
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
                             {r.rating != null && (
                               <span className="rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-800">
                                 ★ {r.rating}/5
@@ -1083,7 +1083,7 @@ function PainsPageInner() {
                               </span>
                             )}
                             {r.pain_tags && r.pain_tags.length > 0 && (
-                              <span className="text-slate-400 italic truncate">
+                              <span className="text-slate-500 italic truncate">
                                 {r.pain_tags
                                   .map((t) => `#${t.label}`)
                                   .slice(0, 2)
@@ -1125,7 +1125,7 @@ function PainsPageInner() {
                                           return next;
                                         });
                                       }}
-                                      className="mt-0.5 text-[11px] font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
+                                      className="mt-0.5 text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
                                     >
                                       {isExpanded
                                         ? '× Свернуть'
@@ -1145,7 +1145,7 @@ function PainsPageInner() {
                             void toggleExpand(c.id, false);
                           }}
                           disabled={expandedCompanies[c.id].loading}
-                          className="w-full rounded-md border border-slate-300 bg-white py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                          className="w-full rounded-md border border-slate-300 bg-white py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
                         >
                           {expandedCompanies[c.id].loading
                             ? 'Загружаем…'

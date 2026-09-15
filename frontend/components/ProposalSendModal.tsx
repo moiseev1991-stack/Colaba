@@ -102,7 +102,7 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
           style={{ borderBottom: '1px solid hsl(var(--border))' }}
         >
           <div>
-            <div className="text-[16px] font-bold" style={{ color: 'hsl(var(--text))' }}>
+            <div className="text-base font-bold" style={{ color: 'hsl(var(--text))' }}>
               Отправка КП по {leads.length} {leads.length === 1 ? 'лиду' : 'лидам'}
             </div>
             <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
@@ -134,10 +134,10 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
               >
                 <FileText className="h-6 w-6" style={{ color: 'hsl(var(--accent))' }} />
               </div>
-              <h3 className="text-[16px] font-bold mb-2" style={{ color: 'hsl(var(--text))' }}>
+              <h3 className="text-base font-bold mb-2" style={{ color: 'hsl(var(--text))' }}>
                 Шаблонов пока нет
               </h3>
-              <p className="text-[13px] mb-5" style={{ color: 'hsl(var(--muted))' }}>
+              <p className="text-small mb-5" style={{ color: 'hsl(var(--muted))' }}>
                 Создайте первый шаблон — потом сможете отправлять его по выбранным лидам с
                 автоматической подстановкой имени компании и контакта.
               </p>
@@ -184,14 +184,14 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
                             color: 'hsl(var(--accent))',
                             border: '1px solid hsl(var(--accent) / 0.3)',
                             borderRadius: 3,
-                            fontSize: 10,
+                            fontSize: 12,
                           }}
                         >
                           {CHANNEL_ICON[t.channel]} {CHANNEL_LABEL[t.channel]}
                         </span>
                       </div>
                       <div
-                        className="text-[13px] font-semibold truncate"
+                        className="text-small font-semibold truncate"
                         style={{ color: 'hsl(var(--text))' }}
                       >
                         {t.name || '(без имени)'}
@@ -204,7 +204,7 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
               <Link
                 href="/app/leads/proposals/new"
                 onClick={onClose}
-                className="mt-3 inline-flex items-center justify-center gap-1 w-full h-9 text-[12px] font-semibold transition-colors hover:bg-[hsl(var(--accent-weak))]"
+                className="mt-3 inline-flex items-center justify-center gap-1 w-full h-9 text-xs font-semibold transition-colors hover:bg-[hsl(var(--accent-weak))]"
                 style={{
                   color: 'hsl(var(--accent))',
                   border: '1px dashed hsl(var(--accent) / 0.4)',
@@ -223,7 +223,7 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
                     превью на лиде
                   </div>
                   {previewLead && (
-                    <div className="text-[14px] font-semibold mt-1" style={{ color: 'hsl(var(--text))' }}>
+                    <div className="text-sm font-semibold mt-1" style={{ color: 'hsl(var(--text))' }}>
                       {previewLead.company || previewLead.domain || '—'}
                     </div>
                   )}
@@ -258,7 +258,7 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
               </div>
 
               <div
-                className="p-5 leading-relaxed text-[14px]"
+                className="p-5 leading-relaxed text-sm"
                 style={{
                   background: 'hsl(var(--surface-2) / 0.4)',
                   border: '1px solid hsl(var(--border))',
@@ -280,13 +280,13 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
                         <div className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
                           тема
                         </div>
-                        <div className="text-[15px] font-semibold mt-1">{rendered.subject || '—'}</div>
+                        <div className="text-base font-semibold mt-1">{rendered.subject || '—'}</div>
                       </div>
                     )}
                     <div>{rendered.body || <span style={{ color: 'hsl(var(--muted))' }}>—</span>}</div>
                     {rendered.signature && (
                       <div
-                        className="mt-5 pt-3 text-[13px]"
+                        className="mt-5 pt-3 text-small"
                         style={{
                           color: 'hsl(var(--muted))',
                           borderTop: '1px dashed hsl(var(--border))',
@@ -316,7 +316,7 @@ export function ProposalSendModal({ open, onClose, leads, onConfirm }: ProposalS
             <button
               type="button"
               onClick={onClose}
-              className="h-10 px-4 text-[13px] font-semibold transition-colors hover:bg-[hsl(var(--surface-2))]"
+              className="h-10 px-4 text-small font-semibold transition-colors hover:bg-[hsl(var(--surface-2))]"
               style={{
                 color: 'hsl(var(--muted))',
                 border: '1px solid hsl(var(--border))',

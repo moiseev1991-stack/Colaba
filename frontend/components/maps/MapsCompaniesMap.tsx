@@ -291,7 +291,7 @@ export default function MapsCompaniesMap({
   return (
     <div className="space-y-2">
       {/* Переключатель слоёв тепловой карты */}
-      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="text-slate-500 dark:text-slate-400">Тепло:</span>
         <div className="inline-flex flex-wrap overflow-hidden rounded-md border border-slate-300 dark:border-slate-600">
           {layerOptions.map((opt, idx) => {
@@ -303,7 +303,7 @@ export default function MapsCompaniesMap({
                 onClick={() => setLayer(opt)}
                 title={LAYER_HINTS[opt]}
                 className={
-                  'px-2.5 py-1 text-[12px] font-medium ' +
+                  'px-2.5 py-1 text-xs font-medium ' +
                   (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
                   (active
                     ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
@@ -316,15 +316,15 @@ export default function MapsCompaniesMap({
           })}
         </div>
         {heatLoading && (
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             Загружаю…
           </span>
         )}
         {heatError && (
-          <span className="text-[11px] text-rose-700 dark:text-rose-400">{heatError}</span>
+          <span className="text-xs text-rose-700 dark:text-rose-400">{heatError}</span>
         )}
         {heatData && layer !== 'off' && (
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             {heatData.contributing} из {heatData.total_companies} компаний дали вклад
           </span>
         )}
@@ -332,17 +332,17 @@ export default function MapsCompaniesMap({
 
       {/* §2 ТЗ 2026-06-10: селектор конкретной боли для слоя pain_type */}
       {layer === 'pain_type' && (
-        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-slate-500 dark:text-slate-400">Боль:</span>
           {painTags.length === 0 ? (
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               AI ещё не разобрал боли в этой нише — слой пуст.
             </span>
           ) : (
             <select
               value={selectedPainTagId ?? ''}
               onChange={(e) => setSelectedPainTagId(Number(e.target.value) || null)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-[12px] text-slate-800 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               {painTags.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -383,16 +383,16 @@ export default function MapsCompaniesMap({
               <Marker key={c.id} position={[c.lat, c.lng]} icon={buildIcon(color, label)}>
                 <Popup>
                   <div className="space-y-1" style={{ minWidth: 200 }}>
-                    <div className="text-[13px] font-semibold text-slate-900">{c.name}</div>
+                    <div className="text-small font-semibold text-slate-900">{c.name}</div>
                     {c.address && (
-                      <div className="text-[11px] text-slate-500">{c.address}</div>
+                      <div className="text-xs text-slate-500">{c.address}</div>
                     )}
-                    <div className="text-[11px] text-slate-600">
+                    <div className="text-xs text-slate-600">
                       {typeof c.rating === 'number' && <>★ {c.rating.toFixed(1)} · </>}
                       {c.reviews_count} отз. ({c.reviews_negative_count} нег.)
                     </div>
                     {a?.status === 'done' && typeof a.score === 'number' && (
-                      <div className="text-[11px] text-violet-700">
+                      <div className="text-xs text-violet-700">
                         AI score: <strong>{a.score}</strong>
                         {a.comment && <> — {a.comment}</>}
                       </div>
@@ -400,7 +400,7 @@ export default function MapsCompaniesMap({
                     <button
                       type="button"
                       onClick={() => onOpenCompany(c.id)}
-                      className="mt-1 inline-flex items-center rounded-md bg-slate-900 px-2 py-1 text-[11px] font-medium text-white hover:bg-slate-800"
+                      className="mt-1 inline-flex items-center rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-800"
                     >
                       Открыть карточку
                     </button>

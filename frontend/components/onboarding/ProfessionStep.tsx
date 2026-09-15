@@ -68,7 +68,7 @@ interface Props {
 export function ProfessionStep({ selected, onSelect }: Props) {
   return (
     <div>
-      <h2 className="text-[22px] font-semibold text-slate-900 dark:text-slate-100">
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
         Кто вы?
       </h2>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -101,10 +101,10 @@ export function ProfessionStep({ selected, onSelect }: Props) {
                 {card.icon}
               </div>
               <div className="min-w-0">
-                <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-100">
+                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
                   {card.title}
                 </div>
-                <div className="mt-0.5 text-[13px] text-slate-600 dark:text-slate-400">
+                <div className="mt-0.5 text-small text-slate-600 dark:text-slate-400">
                   {card.description}
                 </div>
               </div>

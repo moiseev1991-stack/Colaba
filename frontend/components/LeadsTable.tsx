@@ -731,7 +731,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               <tr>
                 {viewMode === 'compact' ? (
                   <>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-10 shrink-0">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-10 shrink-0">
                       <input
                         type="checkbox"
                         checked={paginatedResults.length > 0 && paginatedResults.every((r) => selectedIds.has(r.id))}
@@ -742,7 +742,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         aria-label="Выбрать все на странице"
                       />
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-[180px] max-w-[220px]">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-[180px] max-w-[220px]">
                       <div className="flex items-center gap-1 cursor-pointer hover:bg-[hsl(var(--surface-2))] select-none min-w-0" onClick={() => handleSort('domain')}>
                         Domain
                         {sortField === 'domain' ? (
@@ -756,7 +756,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         )}
                       </div>
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-12">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-12">
                       <div className="flex items-center gap-1 cursor-pointer hover:bg-[hsl(var(--surface-2))] select-none" onClick={() => handleSort('score')}>
                         Score
                         {sortField === 'score' ? (
@@ -770,22 +770,22 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         )}
                       </div>
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted" style={{ width: '10%' }}>
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted" style={{ width: '10%' }}>
                       Tech
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-16">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-16">
                       Контакты
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted" style={{ width: '28%', maxWidth: 480 }}>
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted" style={{ width: '28%', maxWidth: 480 }}>
                       Meta
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-14">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-14">
                       Pages
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-[110px] shrink-0">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-[110px] shrink-0">
                       Status
                     </th>
-                    <th className="text-left px-2 py-2 text-[11px] font-semibold uppercase tracking-wider th-muted w-[140px] shrink-0">
+                    <th className="text-left px-2 py-2 text-xs font-semibold uppercase tracking-wider th-muted w-[140px] shrink-0">
                       Actions
                     </th>
                   </>
@@ -958,7 +958,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                             </td>
                             <td className="px-2 py-2 align-middle w-[110px] shrink-0 overflow-hidden">
                               <span
-                                className={`inline-flex items-center justify-center min-w-0 max-w-full rounded-full h-6 px-2 text-[12px] font-medium whitespace-nowrap overflow-hidden text-ellipsis ${
+                                className={`inline-flex items-center justify-center min-w-0 max-w-full rounded-full h-6 px-2 text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis ${
                                   row.status === 'error'
                                     ? 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'
                                     : row.status === 'processing'
@@ -1247,12 +1247,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   ) : (
                     <ChevronDown className="h-4 w-4 shrink-0 td-muted" />
                   )}
-                  <span className="text-[13px] font-semibold td-default truncate">
+                  <span className="text-small font-semibold td-default truncate">
                     {row.domain}
                   </span>
                 </div>
                 <span
-                  className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                  className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${
                     row.status === 'error'
                       ? 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'
                       : 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]'
@@ -1282,19 +1282,19 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
 
               {/* Строка 2: Score, Pages, R/S badges, meta preview */}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-[11px] td-muted">
+                <span className="text-xs td-muted">
                   Score <span className="font-semibold td-default">{row.score}</span>
                   <span className="mx-1">·</span>
                   Pages <span className="font-semibold td-default">{seo?.pagesCrawled ?? '—'}</span>
                 </span>
-                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.robots === 'OK' ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' : 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'}`}>
+                <span className={`text-xs px-1 py-0.5 rounded ${seo?.robots === 'OK' ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' : 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'}`}>
                   R
                 </span>
-                <span className={`text-[10px] px-1 py-0.5 rounded ${seo?.sitemap === 'OK' ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' : 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'}`}>
+                <span className={`text-xs px-1 py-0.5 rounded ${seo?.sitemap === 'OK' ? 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' : 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]'}`}>
                   S
                 </span>
                 {metaSummary && metaSummary !== '-' && (
-                  <span className="text-[11px] td-muted truncate max-w-[140px]">
+                  <span className="text-xs td-muted truncate max-w-[140px]">
                     {metaSummary}
                   </span>
                 )}
@@ -1303,7 +1303,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               {/* Actions — компактные иконки */}
               <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
                 {actionRowState[row.id]?.state === 'loading' ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] td-muted">
+                  <span className="inline-flex items-center gap-1 text-xs td-muted">
                     <Loader2 className="h-3 w-3 animate-spin text-brand-600 dark:text-brand-400" />
                     В работе
                   </span>
@@ -1353,7 +1353,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                     <button
                       type="button"
                       onClick={() => toggleRowDetails(row.id)}
-                      className="ml-auto p-1.5 rounded-v2-sm border text-[11px] font-medium td-muted hover:bg-[hsl(var(--surface-2))]"
+                      className="ml-auto p-1.5 rounded-v2-sm border text-xs font-medium td-muted hover:bg-[hsl(var(--surface-2))]"
                     >
                       {isExpanded ? 'Скрыть' : 'Подробнее'}
                     </button>
@@ -1521,7 +1521,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
-              <h3 className="text-[16px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
                 Отправить КП выбранным
               </h3>
               <button

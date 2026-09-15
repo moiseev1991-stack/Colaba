@@ -16,6 +16,8 @@ import {
 } from '@/src/services/api/organizations';
 import { apiClient } from '@/client';
 import { useRouter } from 'next/navigation';
+import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<OrganizationWithUsersResponse[]>([]);
@@ -74,7 +76,7 @@ export default function OrganizationsPage() {
 
   const handleCreateOrg = async () => {
     if (!orgName.trim()) {
-      alert('Введите название организации');
+      toast.error('Введите название организации');
       return;
     }
 
@@ -85,7 +87,7 @@ export default function OrganizationsPage() {
       setOrgName('');
       await loadOrganizations();
     } catch (err: any) {
-      alert(`Ошибка при создании организации: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Ошибка при создании организации: ${err.response?.data?.detail || err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -93,7 +95,7 @@ export default function OrganizationsPage() {
 
   const handleEditOrg = async () => {
     if (!orgName.trim() || !editingOrg) {
-      alert('Введите название организации');
+      toast.error('Введите название организации');
       return;
     }
 
@@ -105,7 +107,7 @@ export default function OrganizationsPage() {
       setOrgName('');
       await loadOrganizations();
     } catch (err: any) {
-      alert(`Ошибка при обновлении организации: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Ошибка при обновлении организации: ${err.response?.data?.detail || err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -125,7 +127,7 @@ export default function OrganizationsPage() {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Вы уверены, что хотите удалить организацию "${name}"? Это действие нельзя отменить.`)) {
+    if (!(await confirmDialog({ title: `Удалить организацию «${name}»?`, description: 'Это действие нельзя отменить.' }))) {
       return;
     }
 
@@ -133,7 +135,7 @@ export default function OrganizationsPage() {
       await deleteOrganization(id);
       await loadOrganizations();
     } catch (err: any) {
-      alert(`Ошибка при удалении организации: ${err.response?.data?.detail || err.message}`);
+      toast.error(`Ошибка при удалении организации: ${err.response?.data?.detail || err.message}`);
     }
   };
 
@@ -208,7 +210,7 @@ export default function OrganizationsPage() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <h2
-                      className="font-display font-semibold tracking-tight text-2xl mb-4"
+                      className="font-display font-semibold tracking-tight text-heading mb-4"
                       style={{ color: 'hsl(var(--text))' }}
                     >
                       {org.name}

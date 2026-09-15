@@ -36,7 +36,7 @@ export function Chip({ className, active, icon, children, ...rest }: ChipProps) 
       type="button"
       data-active={active || undefined}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-small font-medium whitespace-nowrap',
         'border transition-colors',
         active
           ? 'bg-brand-gradient text-white border-transparent shadow-v2-sm'

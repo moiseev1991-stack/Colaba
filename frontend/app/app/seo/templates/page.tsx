@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { ToastContainer, type Toast } from '@/components/Toast';
+import { confirmDialog } from '@/components/ui/confirm';
 import {
   getOutreachTemplates,
   getOutreachTemplatesSync,
@@ -48,7 +49,7 @@ export default function SeoTemplatesPage() {
   }, [load]);
 
   const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Удалить шаблон «${name}»?`)) return;
+    if (!(await confirmDialog(`Удалить шаблон «${name}»?`))) return;
     try {
       await deleteOutreachTemplate(id);
       addToast('success', 'Шаблон удалён');
@@ -63,7 +64,7 @@ export default function SeoTemplatesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1
           className="flex items-center gap-2 font-display font-semibold tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
         >
           <FileText className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           Шаблоны коммерческих предложений
@@ -75,7 +76,7 @@ export default function SeoTemplatesPage() {
         </Link>
       </div>
 
-      <p className="text-[13px] mb-2" style={{ color: 'hsl(var(--muted))' }}>
+      <p className="text-small mb-2" style={{ color: 'hsl(var(--muted))' }}>
         Шаблоны используются при запуске SEO-поиска. В тексте можно использовать плейсхолдеры:{' '}
         <code className={CODE_CLS} style={CODE_STYLE}>&#123;&#123;domain&#125;&#125;</code>,{' '}
         <code className={CODE_CLS} style={CODE_STYLE}>&#123;&#123;issues&#125;&#125;</code>,{' '}
@@ -97,12 +98,12 @@ export default function SeoTemplatesPage() {
             <FileText className="h-8 w-8 text-brand-600 dark:text-brand-400" />
           </div>
           <p
-            className="font-display font-semibold tracking-tight text-[15px] mb-1"
+            className="font-display font-semibold tracking-tight text-base mb-1"
             style={{ color: 'hsl(var(--text))' }}
           >
             Шаблонов пока нет
           </p>
-          <p className="text-[13px] mb-6" style={{ color: 'hsl(var(--muted))' }}>
+          <p className="text-small mb-6" style={{ color: 'hsl(var(--muted))' }}>
             Создайте первый шаблон — он будет подставляться при генерации outreach для SEO-результатов.
           </p>
           <Link href="/app/seo/templates/new" className="contents">
@@ -122,12 +123,12 @@ export default function SeoTemplatesPage() {
               >
                 <div className="min-w-0 flex-1">
                   <h3
-                    className="font-display font-semibold tracking-tight text-[15px] truncate"
+                    className="font-display font-semibold tracking-tight text-base truncate"
                     style={{ color: 'hsl(var(--text))' }}
                   >
                     {t.name}
                   </h3>
-                  <p className="text-[12px] mt-1 truncate" style={{ color: 'hsl(var(--muted))' }}>
+                  <p className="text-xs mt-1 truncate" style={{ color: 'hsl(var(--muted))' }}>
                     Тема: {t.subject || '—'}
                   </p>
                 </div>

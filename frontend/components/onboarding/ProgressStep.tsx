@@ -31,7 +31,7 @@ export function ProgressStep({ niche, city, error, onRetry }: Props) {
   if (error) {
     return (
       <div>
-        <h2 className="flex items-center gap-2 text-[22px] font-semibold text-rose-700 dark:text-rose-300">
+        <h2 className="flex items-center gap-2 text-xl font-semibold text-rose-700 dark:text-rose-300">
           <AlertCircle className="h-6 w-6" />
           Не получилось запустить поиск
         </h2>
@@ -51,7 +51,7 @@ export function ProgressStep({ niche, city, error, onRetry }: Props) {
 
   return (
     <div>
-      <h2 className="text-[22px] font-semibold text-slate-900 dark:text-slate-100">
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
         Ищем «{niche}» в городе {city}
       </h2>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -68,7 +68,7 @@ export function ProgressStep({ niche, city, error, onRetry }: Props) {
             <div className="rounded-md bg-violet-100 p-1.5 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
               {s.icon}
             </div>
-            <div className="flex-1 text-[13.5px] text-slate-800 dark:text-slate-200">
+            <div className="flex-1 text-small text-slate-800 dark:text-slate-200">
               {s.text}
             </div>
             <Loader2 className="mt-1 h-4 w-4 animate-spin text-violet-500" />

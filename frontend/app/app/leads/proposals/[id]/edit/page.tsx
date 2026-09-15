@@ -42,10 +42,10 @@ export default function EditProposalPage() {
         >
           <AlertCircle className="h-6 w-6" style={{ color: 'hsl(var(--danger))' }} />
         </div>
-        <h2 className="text-[18px] font-bold mb-2" style={{ color: 'hsl(var(--text))' }}>
+        <h2 className="text-xl font-bold mb-2" style={{ color: 'hsl(var(--text))' }}>
           Шаблон не найден
         </h2>
-        <p className="text-[13px] mb-5" style={{ color: 'hsl(var(--muted))' }}>
+        <p className="text-small mb-5" style={{ color: 'hsl(var(--muted))' }}>
           Возможно, он был удалён или ссылка устарела.
         </p>
         <Link
@@ -69,7 +69,7 @@ export default function EditProposalPage() {
         <ChevronLeft className="h-3.5 w-3.5" /> к списку шаблонов
       </Link>
 
-      <h1 className="text-[28px] font-extrabold mb-6 tracking-[-0.5px]" style={{ color: 'hsl(var(--text))' }}>
+      <h1 className="text-heading font-extrabold mb-6 tracking-[-0.5px]" style={{ color: 'hsl(var(--text))' }}>
         Редактирование шаблона
       </h1>
 

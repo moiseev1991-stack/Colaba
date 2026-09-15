@@ -108,7 +108,7 @@ export default function GosPage() {
 
   return (
     <div className="mx-auto max-w-[1100px] px-6 py-8">
-      <h1 className="text-[20px] font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
+      <h1 className="text-xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
         Госзакупки
       </h1>
 
@@ -186,7 +186,7 @@ export default function GosPage() {
                     <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(item.publishDate)}</span>
                     <span className="flex items-center gap-1"><Package className="h-3.5 w-3.5" />{formatPrice(item.price, item.currency)}</span>
                     <span className={cn(
-                      'px-1.5 py-0.5 rounded text-[11px] font-medium',
+                      'px-1.5 py-0.5 rounded text-xs font-medium',
                       item.status === 'Подача заявок' && 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
                       item.status === 'Завершена' && 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
                       item.status === 'Отмена' && 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
@@ -248,7 +248,7 @@ export default function GosPage() {
       )}
 
       {!searched && (
-        <div className="py-16 text-center text-gray-400 dark:text-gray-500">
+        <div className="py-16 text-center text-gray-500 dark:text-gray-500">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Введите ключевое слово для поиска тендеров на zakupki.gov.ru</p>
         </div>

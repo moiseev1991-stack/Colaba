@@ -18,6 +18,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { confirmDialog } from '@/components/ui/confirm';
 
 interface InventoryItem {
   niche: string;
@@ -158,9 +159,12 @@ export default function DataInventoryPage() {
   // с задержкой 7с (rate-limit 10/min). Yandex_maps only — 2GIS-ключ заблокирован.
   const runMassParse = async () => {
     if (parseBusy) return;
-    if (!confirm(
-      `Запустить парсинг матрицы: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.\n\nПродолжить?`,
-    )) return;
+    if (!(await confirmDialog({
+      title: 'Запустить массовый парсинг?',
+      description: `Матрица: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.`,
+      confirmLabel: 'Запустить',
+      danger: false,
+    }))) return;
     setParseBusy(true);
     setParseResults([]);
     const pairs: Array<[string, string]> = [];
@@ -255,7 +259,7 @@ export default function DataInventoryPage() {
                   {r.status === 'failed' && '✗'}
                 </span>
                 <span className="text-slate-700">{r.city} / {r.niche}</span>
-                <span className="ml-auto text-slate-400">
+                <span className="ml-auto text-slate-500">
                   {r.status}{r.id ? ` #${r.id}` : ''}
                 </span>
               </div>
@@ -445,12 +449,12 @@ export default function DataInventoryPage() {
                       <td className="px-3 py-2 text-right">{row.reviews_count}</td>
                       <td className="px-3 py-2 text-right">
                         {row.reviews_analyzed}
-                        <span className="ml-1 text-xs text-slate-400">({analyzedPct}%)</span>
+                        <span className="ml-1 text-xs text-slate-500">({analyzedPct}%)</span>
                       </td>
                       <td className="px-3 py-2 text-right">{row.pain_tags_count}</td>
                       <td className="px-3 py-2 text-right">
                         {row.companies_with_pain_scores}
-                        <span className="ml-1 text-xs text-slate-400">({scoredPct}%)</span>
+                        <span className="ml-1 text-xs text-slate-500">({scoredPct}%)</span>
                       </td>
                       <td className="px-3 py-2 text-right">
                         {(() => {
@@ -462,7 +466,7 @@ export default function DataInventoryPage() {
                           return (
                             <>
                               <span className={cls}>{mdm}</span>
-                              <span className="ml-1 text-xs text-slate-400">({mdmPct}%)</span>
+                              <span className="ml-1 text-xs text-slate-500">({mdmPct}%)</span>
                             </>
                           );
                         })()}
@@ -516,7 +520,7 @@ export default function DataInventoryPage() {
                           )}
                         </div>
                         {rb?.msg && (
-                          <p className="text-[10.5px] leading-tight text-slate-500 max-w-[220px] ml-auto">
+                          <p className="text-xs leading-tight text-slate-500 max-w-[220px] ml-auto">
                             {rb.msg}
                           </p>
                         )}
@@ -584,10 +588,10 @@ function StatCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-2xl font-semibold text-slate-900">
+      <div className="text-heading font-semibold text-slate-900">
         {value.toLocaleString('ru-RU')}
       </div>
-      {hint && <div className="text-[11px] text-slate-400 mt-0.5">{hint}</div>}
+      {hint && <div className="text-xs text-slate-500 mt-0.5">{hint}</div>}
     </div>
   );
 }
