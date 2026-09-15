@@ -63,6 +63,7 @@ services:
       # https://api.proxyapi.ru/openai/v1
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       WARMUP_START_DATE: ${WARMUP_START_DATE:-}
+      WARMUP_SEND_INTERVAL: ${WARMUP_SEND_INTERVAL:-30}
       REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
       REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
       # Блок 2 ТЗ 2026-06-02: юр.данные через DaData (free tier 10k/день).
@@ -152,6 +153,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       WARMUP_START_DATE: ${WARMUP_START_DATE:-}
+      WARMUP_SEND_INTERVAL: ${WARMUP_SEND_INTERVAL:-30}
       REVIEWS_AI_SENTIMENT_ASSISTANT_NAME: ${REVIEWS_AI_SENTIMENT_ASSISTANT_NAME:-reviews_ai_sentiment}
       REVIEWS_AI_NAMING_ASSISTANT_NAME: ${REVIEWS_AI_NAMING_ASSISTANT_NAME:-reviews_ai_naming}
       # Блок 2 ТЗ 2026-06-02: юр.данные через DaData (free tier 10k/день).
@@ -206,6 +208,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       WARMUP_START_DATE: ${WARMUP_START_DATE:-}
+      WARMUP_SEND_INTERVAL: ${WARMUP_SEND_INTERVAL:-30}
       # Прокси для HTML-парсеров (Yandex Maps search_companies + fetch_reviews).
       # ВАЖНО: без этих переменных celery-worker-search работает с USE_PROXY=False
       # (дефолт config.py) → Яндекс банит server-IP → 0 компаний и 0 отзывов.
@@ -265,6 +268,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       WARMUP_START_DATE: ${WARMUP_START_DATE:-}
+      WARMUP_SEND_INTERVAL: ${WARMUP_SEND_INTERVAL:-30}
       USE_PROXY: ${USE_PROXY:-False}
       PROXY_URL: ${PROXY_URL:-}
       PROXY_LIST: ${PROXY_LIST:-}
