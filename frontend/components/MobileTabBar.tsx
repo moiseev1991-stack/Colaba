@@ -3,8 +3,9 @@
 /**
  * MobileTabBar — нижняя навигация для мобайла (§2.3 ТЗ редизайна 2026-06-03).
  *
- * 4 главных пункта: Поиск / Дашборд / Кампании / Профиль. Активный — бренд-цвет
+ * 4 главных пункта: Поиск / Дашборд / История / Профиль. Активный — бренд-цвет
  * с лёгкой подсветкой. Прячется при открытом drawer/bottom-sheet (через z-index).
+ * «Кампании» заменены на «Историю» 15.09: Email-рассылка скрыта от клиентов.
  *
  * safe-area iOS — паддинг снизу через max(8px, env(safe-area-inset-bottom)).
  * Только на мобайле (md:hidden); десктоп использует Sidebar.
@@ -12,7 +13,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Mail, Search, User } from 'lucide-react';
+import { History, LayoutDashboard, Search, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,17 +28,25 @@ interface Tab {
 const TABS: Tab[] = [
   { href: '/app/leads',           label: 'Поиск',     icon: Search,          matches: ['/app/leads'] },
   { href: '/leads/dashboard',     label: 'Дашборд',   icon: LayoutDashboard, matches: ['/leads/dashboard', '/dashboard'] },
-  { href: '/app/email/campaigns', label: 'Кампании',  icon: Mail,            matches: ['/app/email'] },
+  { href: '/app/leads/history',   label: 'История',   icon: History,         matches: ['/app/leads/history'] },
   { href: '/profile',             label: 'Профиль',   icon: User,            matches: ['/profile', '/settings'] },
 ];
 
-function isActive(pathname: string | null, tab: Tab): boolean {
-  if (!pathname) return false;
-  return tab.matches.some((m) => pathname.startsWith(m));
+/** Активный таб — с самым длинным совпавшим префиксом («История» внутри «Поиска»). */
+function activeTabHref(pathname: string | null): string | null {
+  if (!pathname) return null;
+  let best: { href: string; len: number } | null = null;
+  for (const tab of TABS) {
+    for (const m of tab.matches) {
+      if (pathname.startsWith(m) && (!best || m.length > best.len)) best = { href: tab.href, len: m.length };
+    }
+  }
+  return best?.href ?? null;
 }
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const activeHref = activeTabHref(pathname);
   return (
     <nav
       role="navigation"
@@ -51,7 +60,7 @@ export function MobileTabBar() {
       <div className="flex">
         {TABS.map((tab) => {
           const Icon = tab.icon;
-          const active = isActive(pathname, tab);
+          const active = tab.href === activeHref;
           return (
             <Link
               key={tab.href}

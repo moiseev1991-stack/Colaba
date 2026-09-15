@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import {
   ExternalLink,
   MessageSquareQuote,
@@ -169,7 +170,7 @@ export function CompanyDigestBlock({
             />
           </div>
 
-          {data.top_pains.length > 0 && (
+          {data.top_pains.some((p) => !isUnnamedPainLabel(p.label)) && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
@@ -185,7 +186,7 @@ export function CompanyDigestBlock({
                   </button>
                 )}
               </div>
-              {data.top_pains.slice(0, 3).map((p) => {
+              {data.top_pains.filter((p) => !isUnnamedPainLabel(p.label)).slice(0, 3).map((p) => {
                 const active = activePainTagId === p.pain_tag_id;
                 const clickable = !!onPainClick;
                 const baseCls =

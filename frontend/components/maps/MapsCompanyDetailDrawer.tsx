@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import {
   ExternalLink,
   Globe,
@@ -462,7 +463,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                   const seen = new Set<string>();
                   return detail.pain_tags.filter((t) => {
                     const k = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
-                    if (!k || seen.has(k)) return false;
+                    if (!k || seen.has(k) || isUnnamedPainLabel(t.label)) return false;
                     seen.add(k);
                     return true;
                   });
@@ -1283,7 +1284,7 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
       )}
       {Array.isArray(review.pain_tags) && review.pain_tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {review.pain_tags.map((t) => (
+          {review.pain_tags.filter((t) => !isUnnamedPainLabel(t.label)).map((t) => (
             <span
               key={t.id}
               className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 dark:bg-slate-700 dark:text-slate-200"

@@ -3,49 +3,19 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import {
-  User as UserIcon,
-  LogOut,
-  CreditCard,
-  Settings,
-  Activity,
-  Sparkles,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { User as UserIcon, LogOut, CreditCard, Activity, Sparkles } from 'lucide-react';
 import { tokenStorage } from '@/client';
 import { apiClient } from '@/client';
-import { getTheme, setTheme } from '@/lib/storage';
-import type { Theme } from '@/lib/types';
 import { BrandMark } from '@/components/BrandMark';
 import { MobileNav } from '@/components/MobileNav';
 
+// Переключатель темы убран: тёмная тема выключена до MVP (см. lib/storage.ts).
 export function AppHeader() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setThemeState] = useState<Theme>('dark');
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setThemeState(getTheme());
-    }
-  }, []);
-
-  useEffect(() => {
-    const onThemeChange = () => setThemeState(getTheme());
-    window.addEventListener('themechange', onThemeChange);
-    return () => window.removeEventListener('themechange', onThemeChange);
-  }, []);
-
-  const toggleTheme = () => {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    setThemeState(next);
-    window.dispatchEvent(new Event('themechange'));
-  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -106,7 +76,7 @@ export function AppHeader() {
       {/* Left: бургер (моб.) + Logo — единая BrandMark (emerald→cyan, белая спираль) */}
       <div className="flex items-center gap-2 shrink-0">
         <MobileNav />
-        <Link href="/dashboard" className="flex items-center gap-2 group" aria-label="SpinLid">
+        <Link href="/app/leads" className="flex items-center gap-2 group" aria-label="SpinLid">
           <span className="inline-flex items-center justify-center transition-all group-hover:scale-105 shrink-0">
             <BrandMark
               size={32}
@@ -139,23 +109,6 @@ export function AppHeader() {
           <Sparkles className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline">Купить подписку</span>
         </Link>
-
-        {/* Theme toggle — sun/moon, icon only */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={`inline-flex h-8 w-8 min-w-0 items-center justify-center rounded-[8px] transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-          aria-label={
-            theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'
-          }
-          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-        >
-          {theme === 'dark' ? (
-            <Sun className="h-4 w-4" style={{ color: 'hsl(var(--accent))' }} aria-hidden />
-          ) : (
-            <Moon className="h-4 w-4" style={{ color: 'hsl(var(--accent))' }} aria-hidden />
-          )}
-        </button>
 
         {/* Request Monitor — desktop only */}
         <Link
@@ -212,14 +165,6 @@ export function AppHeader() {
                 style={{ color: 'hsl(var(--text))' }}
               >
                 <CreditCard className="h-4 w-4" /> Оплата
-              </Link>
-              <Link
-                href="/settings"
-                onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-2 h-9 px-4 text-[14px] w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-                style={{ color: 'hsl(var(--text))' }}
-              >
-                <Settings className="h-4 w-4" /> Конфигурация
               </Link>
               <button
                 type="button"

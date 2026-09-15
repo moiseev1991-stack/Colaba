@@ -29,6 +29,7 @@ import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
+import { formatMapSources } from '@/lib/mapSources';
 import { deleteSearch, listSearches, type SearchResponse } from '@/src/services/api/search';
 import {
   listKpDrafts,
@@ -235,8 +236,8 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
               >
                 {m.niche} · {m.city}
               </div>
-              <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
-                {formatDateTime(m.created_at)} · {m.sources} · {m.companies_found ?? 0}{' '}
+              <div className="mt-0.5 text-[12px] text-[hsl(var(--muted))]">
+                {formatDateTime(m.created_at)} · {formatMapSources(m.sources)} · {m.companies_found ?? 0}{' '}
                 {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
               </div>
             </div>
@@ -364,7 +365,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 >
                   {r.query}
                 </div>
-                <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                <div className="mt-0.5 text-[12px] text-[hsl(var(--muted))]">
                   {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0}{' '}
                   {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
                 </div>
@@ -524,7 +525,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   >
                     {d.subject}
                   </div>
-                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                  <div className="mt-0.5 text-[12px] text-[hsl(var(--muted))]">
                     {formatDateTime(d.created_at)} · {templateLabel(d.template_key)}
                     {d.company_name ? ` · ${d.company_name}` : ''}
                     {d.company_city ? ` · ${d.company_city}` : ''}
@@ -680,7 +681,7 @@ function KpJobsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) 
                       {templateLabel(j.template_key)}
                     </span>
                   </div>
-                  <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                  <div className="mt-0.5 text-[12px] text-[hsl(var(--muted))]">
                     {formatDateTime(j.created_at)} · {j.generated + j.failed}/{total}
                     {j.failed > 0 && (
                       <span className="ml-1 text-rose-600">· ошибок {j.failed}</span>
@@ -806,7 +807,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
                         {st.label}
                       </SignalPill>
                     </div>
-                    <div className="mt-0.5 text-[11px] uppercase tracking-wider text-[hsl(var(--muted))]">
+                    <div className="mt-0.5 text-[12px] text-[hsl(var(--muted))]">
                       {formatDateTime(s.created_at)} · {ch.label}
                       {s.recipient ? ` → ${s.recipient}` : ''}
                       {s.company_name ? ` · ${s.company_name}` : ''}

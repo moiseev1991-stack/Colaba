@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 
 import { getDemandIndex, type DemandIndexOut } from '@/src/services/api/maps';
 
@@ -64,7 +65,7 @@ export function NicheBenchmarkOverviewBlock({
   ) return null;
 
   const cityLabel = data.city ? ` · ${data.city}` : '';
-  const top = data.items.slice(0, 6);
+  const top = data.items.filter((it) => !isUnnamedPainLabel(it.label)).slice(0, 6);
   const active = new Set(activePainTagIds ?? []);
   const companiesTotal = data.companies_total ?? 0;
 

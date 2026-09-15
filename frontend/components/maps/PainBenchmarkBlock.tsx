@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import { TrendingDown, TrendingUp, Minus } from 'lucide-react';
 
 import { getCompanyPainBenchmark, type PainBenchmarkOut } from '@/src/services/api/maps';
@@ -60,7 +61,7 @@ export function PainBenchmarkBlock({ companyId }: Props) {
       </div>
 
       <ul className="space-y-1.5">
-        {data.items.slice(0, 8).map((it) => {
+        {data.items.filter((it) => !isUnnamedPainLabel(it.label)).slice(0, 8).map((it) => {
           const tone =
             it.verdict === 'worse'
               ? {

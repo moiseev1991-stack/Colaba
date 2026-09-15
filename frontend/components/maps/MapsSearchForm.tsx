@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useIsSuperuser } from '@/lib/useIsSuperuser';
 import {
   BookmarkPlus,
   Loader2,
@@ -142,6 +143,8 @@ interface Props {
 type SearchModeTab = 'city' | 'radius';
 
 export function MapsSearchForm({ onStarted }: Props) {
+  // Технические пометки источников («нужен прокси», «платно») — только суперюзеру.
+  const isSuperuser = useIsSuperuser();
   const [mode, setMode] = useState<SearchModeTab>('city');
   const [niche, setNiche] = useState('');
   const [city, setCity] = useState('Москва');
@@ -498,7 +501,6 @@ export function MapsSearchForm({ onStarted }: Props) {
             style={{ borderColor: 'hsl(var(--border))' }}
           >
             <div className="flex min-w-0 items-center gap-3">
-              <span className="app-step-num app-step-num-active shrink-0">02</span>
               <div className="min-w-0">
                 <h2
                   className="text-[18px] font-bold leading-tight"
@@ -932,9 +934,11 @@ export function MapsSearchForm({ onStarted }: Props) {
                       style={{ accentColor: 'hsl(var(--accent))' }}
                     />
                     <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{s.name}</span>
-                    <span className="app-bracket-tag" style={{ color: 'hsl(var(--muted))' }}>
-                      {s.hint}
-                    </span>
+                    {isSuperuser && (
+                      <span className="app-bracket-tag" style={{ color: 'hsl(var(--muted))' }}>
+                        {s.hint}
+                      </span>
+                    )}
                   </label>
                 );
               })}

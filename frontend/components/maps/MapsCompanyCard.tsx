@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import type { CompanyOut, CompanyPainOut, PainTagShort } from '@/src/services/api/maps';
 import type { CompanyAnalysisOut } from '@/src/services/api/reviews-ai';
 
@@ -94,12 +95,16 @@ export function MapsCompanyCard({
   const phone = focusedPhone ?? company.phone ?? null;
   const website = focusedWebsite ?? company.website ?? null;
   const emails = focusedEmails ?? (Array.isArray(company.emails) ? company.emails : []);
-  const topPains = Array.isArray(company.top_pains) ? company.top_pains : [];
+  const topPains = Array.isArray(company.top_pains)
+    ? company.top_pains.filter((p) => !isUnnamedPainLabel(p.label))
+    : [];
   const negativeSnippets = Array.isArray(company.negative_snippets) ? company.negative_snippets : [];
   const fullAddress = formatAddressWithCity(company.address, company.city);
   const hasWebsite = typeof website === 'string' && website.trim().length > 0;
   const fallbackTags =
-    topPains.length === 0 && Array.isArray(company.pain_tags) ? company.pain_tags : [];
+    topPains.length === 0 && Array.isArray(company.pain_tags)
+      ? company.pain_tags.filter((t) => !isUnnamedPainLabel(t.label))
+      : [];
 
   const singleSource = focusedProfile?.source ?? company.source;
   const singleExternalId = focusedProfile?.external_id ?? company.external_id;

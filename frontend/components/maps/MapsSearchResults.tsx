@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isUnnamedPainLabel } from '@/lib/painLabels';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
@@ -1931,7 +1932,7 @@ function RegionPainSummary({
   const seen = new Set<string>();
   const unique = tags.filter((t) => {
     const key = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    if (!key || seen.has(key)) return false;
+    if (!key || seen.has(key) || isUnnamedPainLabel(t.label)) return false;
     seen.add(key);
     return true;
   });
