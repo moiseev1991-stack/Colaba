@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import '@/components/landing/landing.css';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { HeroSection } from '@/components/landing/HeroSection';
@@ -21,6 +21,7 @@ import { ContactsSection } from '@/components/landing/ContactsSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { Lightbox } from '@/components/landing/Lightbox';
 import { LeadCaptureForm } from '@/components/LeadCaptureForm';
+import { initRevealOnScroll } from '@/lib/revealOnScroll';
 
 export default function LandingPage() {
   const [lightbox, setLightbox] = useState({ isOpen: false, src: '', alt: '' });
@@ -33,28 +34,9 @@ export default function LandingPage() {
     setLightbox((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Reveal on scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const siblings = [
-            ...(entry.target.parentElement?.querySelectorAll('.reveal:not(.visible)') ?? []),
-          ] as Element[];
-          const idx = siblings.indexOf(entry.target);
-          setTimeout(
-            () => entry.target.classList.add('visible'),
-            Math.min(idx, 5) * 90
-          );
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -50px 0px' }
-    );
-    document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
+  // Появление блоков при прокрутке; без JS контент виден (см. lib/revealOnScroll.ts).
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => initRevealOnScroll(rootRef.current, { staggerMs: 90 }), []);
 
   // Screenshot click handler for lightbox
   useEffect(() => {
@@ -76,7 +58,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="landing-light min-h-screen">
+    <div ref={rootRef} className="landing-light min-h-screen">
       <LandingHeader />
       <main>
         <HeroSection

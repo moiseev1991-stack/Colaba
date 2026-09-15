@@ -1,7 +1,6 @@
 'use client';
 
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
-import { CountdownTimer } from '@/components/landing/CountdownTimer';
 
 // ТЗ лендинг-рефакта 2026-06-03 §2+§6: переориентация с «парсер контактов» на
 // «компании с диагнозом». Бейдж описывает фишку (диагноз из отзывов), заголовок
@@ -27,18 +26,18 @@ export function HeroSection({
       <div className="l-hero__inner">
         <div>
           {/* Badge — фишка, а не перечисление модулей */}
-          <div className="l-hero__badge reveal">
+          <div className="l-hero__badge">
             <span className="l-hero__badge-dot" />
             Компании с диагнозом из отзывов на картах
           </div>
 
           {/* Заголовок */}
-          <h1 className="l-hero__title reveal">
+          <h1 className="l-hero__title">
             Не база контактов.<br />
             <span className="grad-text">Компании с диагнозом.</span>
           </h1>
 
-          <p className="l-hero__sub reveal">
+          <p className="l-hero__sub">
             Укажите нишу и город — SpinLid найдёт компании на картах,
             вытащит боли клиентов из отзывов и подготовит письмо под каждую боль.
             Не «вот 1000 компаний», а «вот 23 компании, где клиенты жалуются на X —
@@ -46,7 +45,7 @@ export function HeroSection({
           </p>
 
           {/* CTA */}
-          <div className="l-hero__actions reveal">
+          <div className="l-hero__actions">
             <button className="l-btn l-btn--primary" onClick={onCtaRegister}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -61,17 +60,11 @@ export function HeroSection({
               Посмотреть демо
             </button>
           </div>
-
-          {/* 2026-06-12: блок статистики «2мин / 500 лидов / AI» заменён
-              на квадратный таймер обратного отсчёта до запуска. ТЗ юзера —
-              45 дней до запуска SpinLid, стилистика парная с floating-cards
-              «Боли / Цитаты / Письмо» справа. */}
-          <CountdownTimer />
         </div>
 
         {/* Floating cards — продуктовые «фишки», не клиентские цифры */}
         <div className="l-hero__float-cards">
-          <div className="l-hero__float-card l-hero__float-card--1 reveal">
+          <div className="l-hero__float-card l-hero__float-card--1">
             <div className="l-hfc__icon l-hfc__icon--green">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2v6m0 0l-3-3m3 3l3-3M3 12h6m0 0l-3-3m3 3l-3 3M21 12h-6m0 0l3 3m-3-3l3-3M12 22v-6m0 0l3 3m-3-3l-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -83,7 +76,7 @@ export function HeroSection({
             </div>
           </div>
 
-          <div className="l-hero__float-card l-hero__float-card--2 reveal">
+          <div className="l-hero__float-card l-hero__float-card--2">
             <div className="l-hfc__icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -95,7 +88,7 @@ export function HeroSection({
             </div>
           </div>
 
-          <div className="l-hero__float-card l-hero__float-card--3 reveal">
+          <div className="l-hero__float-card l-hero__float-card--3">
             <div className="l-hfc__icon l-hfc__icon--purple">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" />

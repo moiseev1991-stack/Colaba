@@ -111,6 +111,7 @@
 | 1   | Google Maps провайдер         | —   | feat/google-maps-provider | maps                         | 🟡 В работе |
 | 2   | ✨ Почистить 22 мёртвые ветки | —   | main                      | git housekeeping             | ⏳ Завтра   |
 | 3   | ✨ Починить deploy workflow   | —   | main                      | .github/workflows/deploy.yml | ⏳ Завтра   |
+| 4   | Фронтенд PR 1.1: первый экран лендингов, таймер, внутренние заметки, Colaba→SpinLid (план `docs/планы/2026-09-15-план-фронтенд.md`) | claude (Дима) | fix/landing-hero-cleanup | frontend: components/landing, components/razbor, components/Reveal.tsx, components/seo-landing/UniqueBlocks.tsx, app/klienty-dlya-*, app/demo, app/app/leads/proposals, app/app/email/{settings,campaigns}, ProposalEditor, lib/proposalTemplates.ts, lib/revealOnScroll.ts, app/runs | ✅ Готово в ветке, ждёт push/PR |
 
 ---
 

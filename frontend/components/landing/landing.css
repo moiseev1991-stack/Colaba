@@ -113,15 +113,23 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Анимации появления (reveal) ────────────────────────────── */
-.landing-light .reveal {
+/* Прячем только когда JS готов: класс .js-reveal ставит app/page.tsx.
+   Без JS и до гидрации контент виден; первый экран reveal не использует. */
+.landing-light.js-reveal .reveal {
   opacity: 0;
   transform: translateY(28px);
   transition: opacity 0.6s cubic-bezier(.22,1,.36,1),
               transform 0.6s cubic-bezier(.22,1,.36,1);
 }
-.landing-light .reveal.visible {
+.landing-light.js-reveal .reveal.visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-light.js-reveal .reveal { opacity: 1; transform: none; transition: none; }
+  .landing-light .l-hero__float-card,
+  .landing-light .l-hero__scroll-hint { animation: none; }
 }
 
 /* ── Кнопки ─────────────────────────────────────────────────── */

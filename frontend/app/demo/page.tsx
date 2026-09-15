@@ -88,7 +88,7 @@ export default function DemoPage() {
       <header className="bg-white border-b border-slate-200">
         <div className="mx-auto max-w-[1100px] flex items-center justify-between px-6 py-3">
           <Link href="/" className="text-lg font-semibold text-slate-900">
-            Colaba
+            SpinLid
           </Link>
           <Link
             href="/auth/register"

@@ -157,8 +157,8 @@ export function TwoGisFieldsBlock() {
         className="mt-6 text-center text-[12px]"
         style={{ color: 'hsl(var(--muted))' }}
       >
-        Краулер сайта работает через Playwright — берём страницы /contacts,
-        /about, /team. Если у компании нет сайта — телефон с 2GIS остаётся
+        Смотрим страницы «Контакты», «О компании» и «Команда» на сайте.
+        Если у компании нет сайта — телефон с 2GIS остаётся
         главным контактом.
       </p>
     </SeoSection>
@@ -448,8 +448,8 @@ const HYGIENE_ITEMS: { Icon: LucideIcon; title: string; body: string }[] = [
   },
   {
     Icon: ShieldCheck,
-    title: 'Catch-all для ответов',
-    body: 'Все ответы (включая автоматические «Out of office») собираются в один ящик через catch-all. Не нужно следить за рассылочным адресом.',
+    title: 'Все ответы в одном ящике',
+    body: 'Все ответы (включая автоматические «Out of office») собираются в один ящик. Не нужно следить за рассылочным адресом.',
   },
   {
     Icon: FileText,

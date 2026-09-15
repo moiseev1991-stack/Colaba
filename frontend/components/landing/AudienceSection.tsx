@@ -17,14 +17,13 @@ const SECONDARY_AUDIENCE = [
 ];
 
 const SOURCES = [
-  { dot: 'green',  label: '2GIS — основной (отзывы → боли)' },
-  { dot: 'blue',   label: 'Яндекс.Карты — компании, рейтинги' },
+  { dot: 'green',  label: 'Яндекс.Карты — компании и отзывы' },
+  { dot: 'blue',   label: '2GIS — компании и отзывы' },
   { dot: 'orange', label: 'DaData — оборот, возраст, ИНН' },
-  { dot: 'purple', label: 'AI (OpenAI / Anthropic) — диагноз и письма' },
+  { dot: 'purple', label: 'AI — диагноз по отзывам и письма' },
   { dot: 'cyan',   label: 'Email-кампании с отслеживанием' },
   { dot: 'red',    label: 'Blacklist доменов и компаний' },
   { dot: 'green',  label: 'История запусков и пресеты' },
-  { dot: 'yellow', label: 'Webhook / API (скоро)' },
 ];
 
 export function AudienceSection() {

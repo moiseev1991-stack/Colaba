@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { HeroBackgroundDecor } from '@/components/HeroBackgroundDecor';
+import { initRevealOnScroll } from '@/lib/revealOnScroll';
 import type { RazborConfig } from './config';
 
 // Единый шаблон лендинга «разбора». Все группы болей рендерятся этим
@@ -138,8 +139,8 @@ const STYLES = `
 .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 
 /* REVEAL ON SCROLL */
-.razbor .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
-.razbor .reveal.visible{opacity:1;transform:none}
+.razbor.js-reveal .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.razbor.js-reveal .reveal.visible{opacity:1;transform:none}
 
 /* HEADER */
 .rz-head{position:sticky;top:0;z-index:40;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(7,11,20,.72);border-bottom:1px solid var(--line)}
@@ -312,7 +313,7 @@ const STYLES = `
   .rz-form{padding:22px 18px}
 }
 @media (prefers-reduced-motion: reduce){
-  .razbor .reveal{opacity:1;transform:none;transition:none}
+  .razbor.js-reveal .reveal{opacity:1;transform:none;transition:none}
   .rz-fcard--pulse,.rz-scroll{animation:none}
 }
 `;
@@ -343,21 +344,11 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
     }
   }, []);
 
-  // Reveal-on-scroll (классы .reveal стартуют opacity:0).
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return;
-          e.target.classList.add('visible');
-          obs.unobserve(e.target);
-        });
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
-    );
-    document.querySelectorAll('.razbor .reveal').forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
-  }, []);
+  // Появление блоков при прокрутке; без JS контент виден (см. lib/revealOnScroll.ts).
+  useEffect(
+    () => initRevealOnScroll(document.querySelector('.razbor'), { rootMargin: '0px 0px -40px 0px' }),
+    []
+  );
 
   // Группа для deep-link и source_tag формы. Пустой slug (общий /razbor) → 'landing'.
   const group = config.slug || 'landing';
@@ -492,20 +483,20 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
         <HeroBackgroundDecor />
         <div className="rz-hero__in">
           <div>
-            <div className="rz-badge reveal">
+            <div className="rz-badge">
               <span className="rz-badge__dot" />
               Бесплатно · 10 минут · без обязательств
             </div>
 
-            <h1 className="rz-h1 reveal">
+            <h1 className="rz-h1">
               {config.hero.titleTop}
               <br />
               <span className="grad-text">{config.hero.titleAccent}</span>
             </h1>
 
-            <p className="rz-sub reveal">{config.hero.sub}</p>
+            <p className="rz-sub">{config.hero.sub}</p>
 
-            <div className="rz-actions reveal">
+            <div className="rz-actions">
               <a className="rz-btn rz-btn--primary" href="#form">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -518,7 +509,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </a>
             </div>
 
-            <ul className="rz-trust reveal">
+            <ul className="rz-trust">
               {['По вашим реальным отзывам', 'Разбираю лично, не вебинар', 'Ничего не продаю на разборе'].map((t) => (
                 <li className="rz-pill" key={t}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -531,7 +522,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
           </div>
 
           <div className="rz-cards">
-            <div className="rz-fcard rz-fcard--pulse reveal">
+            <div className="rz-fcard rz-fcard--pulse">
               <div className="rz-fcard__ic">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -543,7 +534,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </div>
             </div>
 
-            <div className="rz-fcard reveal">
+            <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--cyan">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -555,7 +546,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </div>
             </div>
 
-            <div className="rz-fcard reveal">
+            <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--violet">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -567,7 +558,7 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               </div>
             </div>
 
-            <div className="rz-fcard reveal">
+            <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--amber">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2l2.9 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 7.1-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

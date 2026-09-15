@@ -53,7 +53,6 @@ const PLANS = [
       'Командный доступ, роли',
       'Свои шаблоны КП и приоритет очереди',
       'История 365 дней',
-      'CRM-выгрузка (когда будет)',
       'Персональный менеджер',
     ],
     ctaLabel: 'Обсудить условия',
@@ -133,24 +132,6 @@ export function PricingSection({ onCta }: { onCta: () => void }) {
             </div>
           ))}
         </div>
-        <p
-          className="reveal"
-          style={{
-            textAlign: 'center',
-            fontSize: '12px',
-            color: 'var(--landing-muted)',
-            marginTop: '24px',
-            maxWidth: '720px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            opacity: 0.85,
-            lineHeight: 1.55,
-          }}
-        >
-          Цены — ориентир под рынок РФ: соло-SaaS обычно 1 500–3 500 ₽, командные/агентские
-          5 000–12 000 ₽. Pro в 1 990 ₽ — психологический якорь под чек одного клиента,
-          которого окупает первая же закрытая сделка.
-        </p>
       </div>
     </section>
   );
