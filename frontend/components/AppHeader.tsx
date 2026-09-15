@@ -73,15 +73,14 @@ export function AppHeader() {
         backdropFilter: 'blur(12px)',
       }}
     >
-      {/* Left: бургер (моб.) + Logo — единая BrandMark (emerald→cyan, белая спираль) */}
+      {/* Left: бургер (моб.) + Logo — единая BrandMark (изумруд, тёмная спираль — как на лендинге) */}
       <div className="flex items-center gap-2 shrink-0">
         <MobileNav />
         <Link href="/app/leads" className="flex items-center gap-2 group" aria-label="SpinLid">
           <span className="inline-flex items-center justify-center transition-all group-hover:scale-105 shrink-0">
             <BrandMark
               size={32}
-              gradient="linear-gradient(135deg, #10b981 0%, #06b6d4 100%)"
-              spiralColor="white"
+              gradient="linear-gradient(135deg, #34d399 0%, #059669 100%)"
               glow="var(--shadow-v2-sm)"
             />
           </span>

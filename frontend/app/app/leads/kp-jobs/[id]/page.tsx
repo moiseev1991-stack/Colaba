@@ -425,7 +425,7 @@ export default function KpJobPage({ params }: PageProps) {
                               className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                               title={it.recipient_email!}
                             >
-                              <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
+                              <AtSign className="h-3 w-3 shrink-0 text-slate-500" />
                               <span className="truncate">{it.recipient_email}</span>
                             </span>
                           ) : (
@@ -582,7 +582,7 @@ export default function KpJobPage({ params }: PageProps) {
                         className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                         title={it.recipient_email!}
                       >
-                        <AtSign className="h-3 w-3 shrink-0 text-slate-400" />
+                        <AtSign className="h-3 w-3 shrink-0 text-slate-500" />
                         <span className="truncate">{it.recipient_email}</span>
                       </span>
                     ) : (
@@ -1188,7 +1188,7 @@ function SendBar({
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors',
                   !working
-                    ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
+                    ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
                     : 'disabled:cursor-not-allowed disabled:opacity-60',
                   working && active
                     ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
@@ -1823,7 +1823,7 @@ function DraftDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
               aria-label="Закрыть"
             >
               <X className="h-4 w-4" />
@@ -1953,7 +1953,7 @@ function DraftDrawer({
                 title={item.draft_id !== null ? 'Клик — отредактировать тему' : undefined}
                 className="w-full rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[14px] font-medium text-slate-800 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
               >
-                {subject || <span className="italic text-slate-400">Тема пустая.</span>}
+                {subject || <span className="italic text-slate-500">Тема пустая.</span>}
               </button>
             )}
           </div>
@@ -1988,7 +1988,7 @@ function DraftDrawer({
                 title={item.draft_id !== null ? 'Клик — отредактировать тело письма' : undefined}
                 className="w-full whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-left text-[13px] leading-relaxed text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
               >
-                {body || <span className="italic text-slate-400">Тело письма пустое.</span>}
+                {body || <span className="italic text-slate-500">Тело письма пустое.</span>}
               </button>
             )}
           </div>
@@ -2209,7 +2209,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
           </div>
         )}
         <pre className="whitespace-pre-wrap font-sans text-[hsl(var(--text))]">
-          {rendered || <span className="italic text-slate-400">Тело пустое</span>}
+          {rendered || <span className="italic text-slate-500">Тело пустое</span>}
         </pre>
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">

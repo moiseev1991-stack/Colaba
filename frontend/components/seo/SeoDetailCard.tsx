@@ -7,7 +7,7 @@ import type { LeadRow, SEOData } from '@/lib/types';
 // ─── EmptyValue: единый fallback для пустых полей ─────────────────────────
 function EmptyValue() {
   return (
-    <span className="text-slate-400 dark:text-slate-500 text-sm font-medium tabular-nums">
+    <span className="text-slate-500 dark:text-slate-500 text-sm font-medium tabular-nums">
       — нет данных
     </span>
   );
@@ -47,7 +47,7 @@ function UrlPill({ url }: { url: string }) {
       <span className="text-sm text-brand-600 dark:text-brand-400 truncate flex-1 min-w-0">
         {url.replace(/^https?:\/\//, '')}
       </span>
-      <ExternalLink className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100" />
+      <ExternalLink className="h-3 w-3 shrink-0 text-slate-500 dark:text-slate-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors opacity-0 group-hover:opacity-100" />
     </a>
   );
 }
@@ -198,7 +198,7 @@ function ContactActionCard({
           {label}
         </span>
         <span
-          className={`block mt-0.5 text-base font-semibold truncate ${isEmpty ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}`}
+          className={`block mt-0.5 text-base font-semibold truncate ${isEmpty ? 'text-slate-500 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}`}
           title={!isEmpty ? value : undefined}
         >
           {isEmpty ? 'Нет данных' : value}

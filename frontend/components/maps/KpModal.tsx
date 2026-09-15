@@ -365,7 +365,7 @@ export function KpModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             aria-label="Закрыть"
           >
             <X className="h-4 w-4" />
@@ -468,7 +468,7 @@ export function KpModal({
             <div className="mt-4">
               <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Боли для КП{' '}
-                <span className="normal-case text-[10px] text-slate-400">
+                <span className="normal-case text-[10px] text-slate-500">
                   · выбрано {selectedPainIds.length} из 3 макс
                   {availablePains.length > 6 && ` · всего у компании ${availablePains.length}`}
                 </span>

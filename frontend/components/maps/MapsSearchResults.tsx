@@ -1996,7 +1996,7 @@ function RegionPainSummary({
                     'h-3 w-3 shrink-0 transition-colors ' +
                     (active
                       ? 'text-rose-600 dark:text-rose-300'
-                      : 'text-slate-400 group-hover:text-rose-500 dark:text-slate-500 dark:group-hover:text-rose-400')
+                      : 'text-slate-500 group-hover:text-rose-500 dark:text-slate-500 dark:group-hover:text-rose-400')
                   }
                   aria-hidden
                 />
@@ -2486,7 +2486,7 @@ function AiPainProgressBar({
               <b className="tabular-nums text-slate-900 dark:text-slate-100">
                 {progress.companies_with_pains}
               </b>
-              <span className="mx-1 text-slate-400">/</span>
+              <span className="mx-1 text-slate-500">/</span>
               <b className="tabular-nums text-slate-700 dark:text-slate-300">
                 {progress.companies_total}
               </b>{' '}
@@ -2498,7 +2498,7 @@ function AiPainProgressBar({
                 <b className="tabular-nums text-slate-900 dark:text-slate-100">
                   {progress.reviews_with_embedding}
                 </b>
-                <span className="mx-1 text-slate-400">/</span>
+                <span className="mx-1 text-slate-500">/</span>
                 <b className="tabular-nums text-slate-700 dark:text-slate-300">
                   {progress.reviews_total}
                 </b>

@@ -382,7 +382,7 @@ export function MapsCompanyCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
           {phone && (
             <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
-              <Phone className="h-3 w-3 text-slate-400" />
+              <Phone className="h-3 w-3 text-slate-500" />
               <a
                 href={`tel:${phone}`}
                 onClick={(e) => e.stopPropagation()}
@@ -394,7 +394,7 @@ export function MapsCompanyCard({
           )}
           {hasWebsite && website && (
             <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
-              <Globe className="h-3 w-3 text-slate-400" />
+              <Globe className="h-3 w-3 text-slate-500" />
               <a
                 href={normalizeUrl(website.trim())}
                 target="_blank"

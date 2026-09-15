@@ -350,7 +350,7 @@ function KpJobNewInner() {
             <div>
               <label className="mb-1 block text-[12px] font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
                 Общая боль партии{' '}
-                <span className="normal-case text-[10.5px] text-slate-400">
+                <span className="normal-case text-[10.5px] text-slate-500">
                   · {commonPains.length} найдено, {companyIds.length} компаний
                 </span>
               </label>

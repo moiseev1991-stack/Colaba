@@ -607,7 +607,7 @@ function PainsPageInner() {
                       className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-rose-50"
                     >
                       <span className="truncate">{t.label}</span>
-                      <span className="shrink-0 text-xs text-slate-400">{t.occurrences_count}</span>
+                      <span className="shrink-0 text-xs text-slate-500">{t.occurrences_count}</span>
                     </button>
                   </li>
                 ))}
@@ -632,7 +632,7 @@ function PainsPageInner() {
                 <>
                   {' '}
                   · сматчилось {data.pain_labels.length} tag(ов):{' '}
-                  <span className="text-slate-400" title={data.pain_labels.join(', ')}>
+                  <span className="text-slate-500" title={data.pain_labels.join(', ')}>
                     {data.pain_labels.slice(0, 3).join(', ')}
                     {data.pain_labels.length > 3 && ` +${data.pain_labels.length - 3}`}
                   </span>
@@ -652,7 +652,7 @@ function PainsPageInner() {
           <div className="flex items-center justify-between px-1 flex-wrap gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Топ-боли ниши{' '}
-              <span className="text-slate-400 normal-case">
+              <span className="text-slate-500 normal-case">
                 — клик = добавить в выборку (можно несколько)
               </span>
             </span>
@@ -709,7 +709,7 @@ function PainsPageInner() {
         </section>
       )}
       {niche && topTagsLoading && (
-        <p className="text-xs text-slate-400 pl-1">Загружаем топ-боли ниши…</p>
+        <p className="text-xs text-slate-500 pl-1">Загружаем топ-боли ниши…</p>
       )}
 
       {data && data.items.length === 0 && !isLoading && (
@@ -978,7 +978,7 @@ function PainsPageInner() {
                       {c.rating !== null && (
                         <span>
                           ★ {c.rating.toFixed(1)}{' '}
-                          <span className="text-slate-400">/ {c.reviews_count} отз.</span>
+                          <span className="text-slate-500">/ {c.reviews_count} отз.</span>
                         </span>
                       )}
                       {c.lead_temperature !== null && (
@@ -988,7 +988,7 @@ function PainsPageInner() {
                               ? 'font-medium text-rose-600'
                               : c.lead_temperature >= 40
                                 ? 'font-medium text-amber-600'
-                                : 'text-slate-400'
+                                : 'text-slate-500'
                           }
                         >
                           🔥 {c.lead_temperature}
@@ -1083,7 +1083,7 @@ function PainsPageInner() {
                               </span>
                             )}
                             {r.pain_tags && r.pain_tags.length > 0 && (
-                              <span className="text-slate-400 italic truncate">
+                              <span className="text-slate-500 italic truncate">
                                 {r.pain_tags
                                   .map((t) => `#${t.label}`)
                                   .slice(0, 2)

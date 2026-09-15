@@ -141,7 +141,7 @@ export function SiteLeadsPanel() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             value={entry}

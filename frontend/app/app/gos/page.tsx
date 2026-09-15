@@ -248,7 +248,7 @@ export default function GosPage() {
       )}
 
       {!searched && (
-        <div className="py-16 text-center text-gray-400 dark:text-gray-500">
+        <div className="py-16 text-center text-gray-500 dark:text-gray-500">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Введите ключевое слово для поиска тендеров на zakupki.gov.ru</p>
         </div>

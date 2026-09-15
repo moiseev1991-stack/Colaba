@@ -176,7 +176,7 @@ export default function LeadListDetailPage() {
               />
               <button
                 onClick={() => remove(c)}
-                className="absolute right-3 top-3 rounded-v2-sm p-1 text-slate-400 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
+                className="absolute right-3 top-3 rounded-v2-sm p-1 text-slate-500 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
                 title="Убрать из списка"
               >
                 <Trash2 className="h-4 w-4" />

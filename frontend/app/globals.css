@@ -1,9 +1,9 @@
 /* ============================================================
-   SpinLid Design Tokens v2 — редизайн 2026-06-03 (ТЗ §1)
-   Эти токены — единый источник правды. Старые токены ниже
-   оставлены для обратной совместимости со старыми экранами,
-   которые ещё не переехали на новый язык. Не удалять —
-   удаление сломает legacy-экраны (модули, dashboard).
+   SpinLid Design Tokens
+   Источник правды — «Семантические токены» (--color-*, --radius-*,
+   --shadow-*) ниже. Токены v2 (--brand/--signal), legacy HSL (--accent,
+   --text…) и shadcn/«SaaS» сохранены как псевдонимы этого слоя — старые
+   экраны работают без правок. Тёмная тема выключена до MVP.
    ============================================================ */
 :root {
   /* === Шрифты (с 2026-08-15 — @fontsource вместо next/font/google; layout.tsx) ===
@@ -69,86 +69,135 @@
 }
 
 /* ============================================================
-   Legacy tokens (используются старыми экранами — НЕ УДАЛЯТЬ)
+   Семантические токены (PR 3.1, 15.09.2026) — один слой для кабинета.
+   Цвета — HSL-триплеты: hsl(var(--color-text)), hsl(var(--color-accent) / 0.12).
+   Все текстовые цвета дают контраст ≥ 4.5:1 на белом (WCAG AA).
+   Новый код использует только этот слой: переменные ниже или классы
+   bg-ui-* / text-ui-* / rounded-control|card|panel / shadow-raised|floating|overlay.
    ============================================================ */
 :root {
-  /* === Core radius tokens — sharper, more architectural feel === */
-  --radius-xs: 3px;
-  --radius-sm: 4px;
-  --radius-control: 4px;
-  --radius-card: 6px;
-  --radius-md: 5px;
-  --radius-lg: 8px;
+  --color-bg: 216 20% 97%; /* фон страницы */
+  --color-surface: 0 0% 100%; /* карточки, панели */
+  --color-surface-2: 214 32% 95%; /* вторичный фон, hover строк */
+  --color-border: 214 32% 89%; /* границы */
+  --color-text: 222 47% 8%; /* основной текст */
+  --color-text-muted: 215 16% 40%; /* вторичный текст */
+  --color-accent: 163 94% 24%; /* изумруд brand-700: кнопки, ссылки, активные пункты */
+  --color-accent-hover: 163 88% 20%; /* brand-800 */
+  --color-accent-contrast: 0 0% 100%; /* текст на акценте */
+  --color-danger: 0 72% 51%; /* ошибки, удаление */
+  --color-warning: 26 90% 37%; /* предупреждения (текст) */
+  --color-success: 142 72% 29%; /* успех */
+  --color-info: 221 83% 53%; /* информация */
 
-  /* === Color tokens === */
-  --bg: 216 20% 97%;
-  --surface: 0 0% 100%;
-  --surface-2: 214 32% 95%;
-  --border: 214 32% 89%;
-  --text: 222 47% 8%;
-  --muted: 215 16% 40%;
+  /* Скругления — 3 ступени */
+  --radius-control: 6px; /* поля, кнопки, чипы */
+  --radius-card: 10px; /* карточки, выпадающие меню */
+  --radius-panel: 16px; /* панели, модалки, drawer */
 
-  /* === Accent colors (green-teal from landing) === */
-  --accent: 160 85% 35%;
-  --accent-strong: 160 85% 28%;
-  --accent-hover: 160 85% 30%;
-  --accent-weak: 160 85% 35% / 0.12;
-  --accent-light: 157 100% 95%;
-  --accent-mid: 160 85% 35% / 0.15;
+  /* Тени — 3 ступени */
+  --shadow-raised: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-floating: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-overlay: 0 16px 40px rgba(15, 23, 42, 0.14);
 
-  /* === Indigo/Purple accents === */
-  --indigo: 243 75% 59%;
-  --indigo-light: 226 100% 97%;
-  --purple: 262 83% 58%;
+  /* Токены v2 (блок выше) перенаправлены на слой. Переопределяем здесь, а не правим
+     блок v2, чтобы не конфликтовать с веткой лендинга. */
+  --brand-300: #6ee7b7;
+  --brand-800: #065f46;
+  --brand-gradient: linear-gradient(135deg, #047857 0%, #065f46 100%); /* белый текст ≥ 5.5:1 */
+  --accent-gradient: var(--brand-gradient); /* был индиго→фиолетовый; решение Р3 — один акцент */
+  --signal-hot: #dc2626;
+  --signal-warm: #b45309;
+  --signal-cool: #2563eb;
+  --signal-good: #047857;
+  --signal-muted: #64748b;
+  --radius-sm-v2: var(--radius-card);
+  --radius-v2: var(--radius-panel);
+  --radius-lg-v2: var(--radius-panel);
+  --shadow-v2-sm: var(--shadow-raised);
+  --shadow-v2: var(--shadow-floating);
+  --shadow-v2-hover: var(--shadow-floating);
+}
+
+/* ============================================================
+   Legacy tokens — псевдонимы семантического слоя. Старые экраны работают
+   без правок; в новом коде не использовать.
+   ============================================================ */
+:root {
+  /* === Скругления → 3 ступени === */
+  --radius-xs: var(--radius-control);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-card);
+
+  /* === Цвета === */
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-2);
+  --border: var(--color-border);
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+
+  /* === Акцент === */
+  --accent: var(--color-accent);
+  --accent-strong: var(--color-accent-hover);
+  --accent-hover: var(--color-accent-hover);
+  --accent-weak: var(--color-accent) / 0.12;
+  --accent-light: 152 81% 96%;
+  --accent-mid: var(--color-accent) / 0.15;
+
+  /* === Индиго сведён к акценту (решение Р3: один изумрудный акцент) === */
+  --indigo: var(--color-accent);
+  --indigo-light: 152 81% 96%;
 
   /* === Focus & interaction === */
-  --focus: 160 85% 35%;
-  --danger: 0 84% 60%;
-  --danger-hover: 0 84% 50%;
-  --success: 142 76% 36%;
-  --warning: 38 92% 50%;
+  --focus: var(--color-accent);
+  --danger: var(--color-danger);
+  --danger-hover: 0 74% 42%;
+  --success: var(--color-success);
+  --warning: var(--color-warning);
 
   /* === Navigation tokens === */
-  --nav-bg: 0 0% 100%;
-  --nav-border: 214 32% 89%;
+  --nav-bg: var(--color-surface);
+  --nav-border: var(--color-border);
   --nav-text: 222 47% 11%;
-  --nav-text-muted: 215 16% 45%;
+  --nav-text-muted: var(--color-text-muted);
   --nav-text-hover: 222 47% 5%;
-  --nav-hover-bg: 160 85% 35% / 0.1;
-  --nav-active-bg: 160 85% 35% / 0.14;
-  --nav-active-text: 160 85% 28%;
-  --nav-focus-ring: 160 85% 35% / 0.25;
+  --nav-hover-bg: var(--color-accent) / 0.08;
+  --nav-active-bg: var(--color-accent) / 0.12;
+  --nav-active-text: var(--color-accent);
+  --nav-focus-ring: var(--color-accent) / 0.25;
 
   /* === Control tokens === */
   --control-border: 214 32% 88%;
   --control-border-hover: 214 32% 80%;
-  --control-border-focus: 160 85% 35% / 0.6;
-  --focus-ring: 160 85% 35% / 0.2;
-  --control-border-error: 0 84% 60% / 0.6;
-  --focus-ring-error: 0 84% 60% / 0.16;
+  --control-border-focus: var(--color-accent) / 0.6;
+  --focus-ring: var(--color-accent) / 0.2;
+  --control-border-error: var(--color-danger) / 0.6;
+  --focus-ring-error: var(--color-danger) / 0.16;
 
   /* === Chart tokens === */
   --chart-bar: 160 85% 40%;
   --chart-grid: 214 32% 88%;
   --chart-axis: 222 20% 40%;
-  --chart-tooltip-bg: 0 0% 100%;
+  --chart-tooltip-bg: var(--color-surface);
   --chart-tooltip-text: 222 47% 11%;
-  --chart-tooltip-border: 214 32% 89%;
-  --chart-success: 142 76% 36%;
-  --chart-error: 0 84% 50%;
-  --chart-running: 160 85% 35%;
+  --chart-tooltip-border: var(--color-border);
+  --chart-success: var(--color-success);
+  --chart-error: var(--color-danger);
+  --chart-running: var(--color-accent);
 
-  /* === Shadows (from design system) === */
-  --shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 6px 24px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.05);
-  --shadow-lg: 0 12px 48px rgba(15, 23, 42, 0.13), 0 4px 12px rgba(15, 23, 42, 0.06);
-  --shadow-xl: 0 24px 64px rgba(15, 23, 42, 0.16), 0 8px 20px rgba(15, 23, 42, 0.08);
-  --shadow-accent: 0 4px 20px rgba(14, 169, 122, 0.3);
+  /* === Тени → 3 ступени === */
+  --shadow-xs: var(--shadow-raised);
+  --shadow-sm: var(--shadow-raised);
+  --shadow-md: var(--shadow-floating);
+  --shadow-lg: var(--shadow-overlay);
+  --shadow-xl: var(--shadow-overlay);
+  --shadow-accent: var(--shadow-floating);
 
-  /* === Gradients === */
-  --grad-accent: linear-gradient(135deg, #0ea97a, #4f46e5);
-  --grad-accent-rev: linear-gradient(135deg, #4f46e5, #0ea97a);
+  /* === Gradients (были изумруд→индиго) === */
+  --grad-accent: var(--brand-gradient);
+  --grad-accent-rev: var(--brand-gradient);
 
   /* === Transitions === */
   --transition: 0.22s ease;
@@ -224,31 +273,32 @@
 
   /* shadcn/UI vars only; --text, --muted, --accent, --border, --surface from design tokens above */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: var(--radius-md);
-    /* SaaS tokens: primary = blue, danger = red (alias theme) */
-    --color-primary: 217 91% 60%;
-    --color-primary-hover: 217 91% 50%;
-    --color-primary-weak: 214 100% 97%;
-    --color-primary-weak-dark: 217 91% 60% / 0.15;
-    --color-danger: 0 84% 60%;
-    --color-danger-hover: 0 84% 50%;
-    --color-danger-weak: 0 93% 94%;
+    /* shadcn-токены — псевдонимы семантического слоя (PR 3.1) */
+    --background: var(--color-surface);
+    --foreground: var(--color-text);
+    --card: var(--color-surface);
+    --card-foreground: var(--color-text);
+    --popover: var(--color-surface);
+    --popover-foreground: var(--color-text);
+    --primary: var(--color-accent);
+    --primary-foreground: var(--color-accent-contrast);
+    --secondary: var(--color-surface-2);
+    --secondary-foreground: var(--color-text);
+    --muted-foreground: var(--color-text-muted);
+    --accent-foreground: var(--color-accent-contrast);
+    --destructive: var(--color-danger);
+    --destructive-foreground: var(--color-accent-contrast);
+    --input: var(--color-border);
+    --ring: var(--color-accent);
+    --radius: var(--radius-control);
+    /* «SaaS»-токены (ui/button, RequestMonitorTable): синий заменён акцентом.
+       --color-danger здесь не объявляем — он в семантическом слое. */
+    --color-primary: var(--color-accent);
+    --color-primary-hover: var(--color-accent-hover);
+    --color-primary-weak: var(--color-accent) / 0.08;
+    --color-primary-weak-dark: var(--color-accent) / 0.15;
+    --color-danger-hover: 0 74% 42%;
+    --color-danger-weak: var(--color-danger) / 0.1;
     --color-danger-weak-dark: 0 62% 30% / 0.2;
   }
 
@@ -273,7 +323,6 @@
     --color-primary-hover: 217 91% 55%;
     --color-primary-weak: 217 91% 60% / 0.15;
     --color-primary-weak-dark: 217 91% 60% / 0.2;
-    --color-danger: 0 84% 60%;
     --color-danger-hover: 0 84% 55%;
     --color-danger-weak: 0 62% 30% / 0.3;
     --color-danger-weak-dark: 0 62% 30% / 0.25;

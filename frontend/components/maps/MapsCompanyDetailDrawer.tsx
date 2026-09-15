@@ -510,7 +510,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                         ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
                         : available
                           ? 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700'
-                          : 'bg-slate-100 text-slate-400 ring-1 ring-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:ring-slate-700',
+                          : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:ring-slate-700',
                     )}
                     title={
                       available
@@ -605,7 +605,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             {/* === Drawer filter row: text search + has_owner_reply === */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-500" />
                 <Input
                   type="text"
                   placeholder="Поиск в тексте отзыва…"
@@ -618,7 +618,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                     type="button"
                     onClick={() => setTextQuery('')}
                     aria-label="Очистить поиск"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -659,7 +659,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             ) : (
               <>
                 {hasActiveFilters && !isLoading && (
-                  <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className="mb-2 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-500">
                     показано {reviews.length}
                     {textQuery ? ` · по запросу «${debouncedText}»` : ''}
                   </div>
@@ -718,7 +718,7 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   // «не загружено» vs «нет в реестре». А когда матч есть, но конкретное
   // поле пусто — пишем «нет данных» серым, а не молча скрываем.
 
-  const missing = <span className="text-slate-400 italic">нет данных</span>;
+  const missing = <span className="text-slate-500 italic">нет данных</span>;
 
   if (!legal) {
     return (
@@ -1183,7 +1183,7 @@ function ContactRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-slate-400 dark:text-slate-500" aria-hidden>
+      <span className="text-slate-500 dark:text-slate-500" aria-hidden>
         {icon}
       </span>
       <a
@@ -1195,7 +1195,7 @@ function ContactRow({
         {children}
       </a>
       {label && (
-        <span className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
           {label}
         </span>
       )}
@@ -1220,7 +1220,7 @@ function Metric({
 }) {
   return (
     <div className="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">
-      <div className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-500">{label}</div>
       <div
         className={cn(
           'text-sm font-medium',
@@ -1264,7 +1264,7 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
         )}
       </div>
       {review.raw_text == null ? (
-        <div className="text-sm text-slate-400 dark:text-slate-500">
+        <div className="text-sm text-slate-500 dark:text-slate-500">
           Текст удалён по политике хранения.{' '}
           {review.source_url && (
             <a

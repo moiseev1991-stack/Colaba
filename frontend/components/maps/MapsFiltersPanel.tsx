@@ -416,7 +416,7 @@ export function MapsFiltersPanel({
           'inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-medium transition-colors',
           hasAnyFilter
             ? 'border-rose-300 bg-rose-50 text-rose-700 hover:border-rose-500 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20'
-            : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500'
+            : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500'
         )}
       >
         <Eraser className="h-3.5 w-3.5" />
@@ -523,12 +523,12 @@ export function MapsFiltersPanel({
                 'text-[11px] font-medium uppercase tracking-wide transition-colors',
                 userPresetsTab === 'active'
                   ? 'text-slate-700 dark:text-slate-200'
-                  : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                  : 'text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
               )}
             >
               Мои пресеты
               {activeUserPresets.length > 0 && (
-                <span className="ml-1 text-slate-400 dark:text-slate-500">· {activeUserPresets.length}</span>
+                <span className="ml-1 text-slate-500 dark:text-slate-500">· {activeUserPresets.length}</span>
               )}
             </button>
             {hiddenUserPresets.length > 0 && (
@@ -541,10 +541,10 @@ export function MapsFiltersPanel({
                     'text-[11px] font-medium uppercase tracking-wide transition-colors',
                     userPresetsTab === 'hidden'
                       ? 'text-slate-700 dark:text-slate-200'
-                      : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                      : 'text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
                   )}
                 >
-                  Скрытые <span className="text-slate-400 dark:text-slate-500">· {hiddenUserPresets.length}</span>
+                  Скрытые <span className="text-slate-500 dark:text-slate-500">· {hiddenUserPresets.length}</span>
                 </button>
               </>
             )}
@@ -630,7 +630,7 @@ export function MapsFiltersPanel({
                       }}
                       title="Вернуть в активные"
                       aria-label={`Вернуть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-600"
+                      className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-emerald-600"
                     >
                       <RotateCcw className="h-3 w-3" />
                     </button>
@@ -643,7 +643,7 @@ export function MapsFiltersPanel({
                       }}
                       title="Скрыть (можно вернуть из вкладки «Скрытые»)"
                       aria-label={`Скрыть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-400 hover:bg-brand-100 hover:text-slate-700"
+                      className="rounded p-0.5 text-slate-500 hover:bg-brand-100 hover:text-slate-700"
                     >
                       <EyeOff className="h-3 w-3" />
                     </button>
@@ -656,7 +656,7 @@ export function MapsFiltersPanel({
                     }}
                     title="Удалить навсегда"
                     aria-label={`Удалить пресет ${p.name}`}
-                    className="rounded p-0.5 text-slate-400 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
+                    className="rounded p-0.5 text-slate-500 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -722,7 +722,7 @@ export function MapsFiltersPanel({
             onChange={(e) => setLocalMinRating(e.target.value)}
             onBlur={commit}
           />
-          <span className="text-slate-400">—</span>
+          <span className="text-slate-500">—</span>
           <Input
             type="number"
             min={0}
@@ -996,7 +996,7 @@ export function MapsFiltersPanel({
                   </span>
                 )}
               </span>
-              <span className="text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+              <span className="text-slate-500 group-open:rotate-180 transition-transform">▾</span>
             </summary>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {opfOptions.map((opt) => {
@@ -1059,7 +1059,7 @@ export function MapsFiltersPanel({
               </span>
             )}
           </span>
-          <span className="text-slate-400 group-open:rotate-180 transition-transform">
+          <span className="text-slate-500 group-open:rotate-180 transition-transform">
             ▾
           </span>
         </summary>
