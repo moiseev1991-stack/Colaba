@@ -42,6 +42,7 @@ import { CardV2 } from '@/components/ui/CardV2';
 import { CompanyAvatar } from '@/components/CompanyAvatar';
 import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PageContainer } from '@/components/ui/page';
 import {
   buildTelLink,
   buildWhatsappLink,
@@ -220,7 +221,7 @@ export default function KpJobPage({ params }: PageProps) {
 
   // --- Render
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageContainer>
       {/* Header */}
       <div className="mb-4">
         <h1 className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
@@ -673,7 +674,7 @@ export default function KpJobPage({ params }: PageProps) {
           }
         />
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -1287,10 +1288,10 @@ function SendBar({
               !OUTREACH_SENDING_ENABLED
                 ? SENDING_SOON_HINT
                 : isActive
-                ? 'Сейчас идёт рассылка — дождись окончания.'
-                : oneCount === 0
-                  ? 'Ни одной компании не достать выбранными каналами. Включи каналы или добавь контакты.'
-                  : 'Каждой компании уйдёт ОДНА КП в первый доступный канал (email → WhatsApp). Без дублей.'
+                  ? 'Сейчас идёт рассылка — дождись окончания.'
+                  : oneCount === 0
+                    ? 'Ни одной компании не достать выбранными каналами. Включи каналы или добавь контакты.'
+                    : 'Каждой компании уйдёт ОДНА КП в первый доступный канал (email → WhatsApp). Без дублей.'
             }
           >
             {isActive
@@ -1308,10 +1309,10 @@ function SendBar({
               !OUTREACH_SENDING_ENABLED
                 ? SENDING_SOON_HINT
                 : isActive
-                ? 'Сейчас идёт рассылка — дождись окончания.'
-                : allSendsCount === 0
-                  ? 'Ни одной компании не достать выбранными каналами.'
-                  : 'Каждой компании уйдёт КП по ВСЕМ доступным каналам сразу (email + WhatsApp если есть оба). Больше шансов, что увидят, но риск дубль-сообщения.'
+                  ? 'Сейчас идёт рассылка — дождись окончания.'
+                  : allSendsCount === 0
+                    ? 'Ни одной компании не достать выбранными каналами.'
+                    : 'Каждой компании уйдёт КП по ВСЕМ доступным каналам сразу (email + WhatsApp если есть оба). Больше шансов, что увидят, но риск дубль-сообщения.'
             }
           >
             {`Во все каналы (${allSendsCount} ${pluralize(
@@ -2073,14 +2074,18 @@ function DraftDrawer({
                       <Send />
                     )
                   }
-                  disabled={singleSendState === 'sending' || singleSendState === 'sent' || !OUTREACH_SENDING_ENABLED}
+                  disabled={
+                    singleSendState === 'sending' ||
+                    singleSendState === 'sent' ||
+                    !OUTREACH_SENDING_ENABLED
+                  }
                   onClick={onSendOne}
                   title={
                     !OUTREACH_SENDING_ENABLED
                       ? SENDING_SOON_HINT
                       : singleSendState === 'sent'
-                      ? 'Отправлено. Обнови страницу, чтобы переслать.'
-                      : 'Отправить эту одну КП на email компании.'
+                        ? 'Отправлено. Обнови страницу, чтобы переслать.'
+                        : 'Отправить эту одну КП на email компании.'
                   }
                 >
                   {singleSendState === 'sent'
@@ -2096,9 +2101,7 @@ function DraftDrawer({
             singleSendState &&
             typeof singleSendState === 'object' &&
             'error' in singleSendState && (
-              <div className="w-full text-right text-xs text-rose-700">
-                {singleSendState.error}
-              </div>
+              <div className="w-full text-right text-xs text-rose-700">{singleSendState.error}</div>
             )}
           {editing && (
             <>

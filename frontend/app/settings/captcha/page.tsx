@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageColumn, PageHeader } from '@/components/ui/page';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { Input } from '@/components/ui/input';
 import { tokenStorage } from '@/client';
-import { getCaptchaConfig, updateCaptchaConfig, test2Captcha, testAi } from '@/src/services/api/captcha_config';
+import {
+  getCaptchaConfig,
+  updateCaptchaConfig,
+  test2Captcha,
+  testAi,
+} from '@/src/services/api/captcha_config';
 import { listAiAssistants, type AiAssistantItem } from '@/src/services/api/ai_assistants';
 import { toast } from '@/components/ui/toast';
 
@@ -38,7 +43,6 @@ export default function CaptchaPage() {
   const [saving, setSaving] = useState(false);
   const [testing2, setTesting2] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
-
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,16 +83,21 @@ export default function CaptchaPage() {
   const buildExternalServices = () => {
     const es: Record<string, { enabled: boolean; api_key?: string }> = {};
     es['2captcha'] = { enabled: form['2captcha'].enabled };
-    if (form['2captcha'].api_key && form['2captcha'].api_key !== '***') es['2captcha'].api_key = form['2captcha'].api_key;
+    if (form['2captcha'].api_key && form['2captcha'].api_key !== '***')
+      es['2captcha'].api_key = form['2captcha'].api_key;
     es.anticaptcha = { enabled: form.anticaptcha.enabled };
-    if (form.anticaptcha.api_key && form.anticaptcha.api_key !== '***') es.anticaptcha.api_key = form.anticaptcha.api_key;
+    if (form.anticaptcha.api_key && form.anticaptcha.api_key !== '***')
+      es.anticaptcha.api_key = form.anticaptcha.api_key;
     return es;
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateCaptchaConfig({ ai_assistant_id: form.ai_assistant_id, external_services: buildExternalServices() });
+      await updateCaptchaConfig({
+        ai_assistant_id: form.ai_assistant_id,
+        external_services: buildExternalServices(),
+      });
       toast.success('Сохранено');
       load();
     } catch (e: unknown) {
@@ -101,7 +110,10 @@ export default function CaptchaPage() {
   const handleTest2 = async () => {
     setTesting2(true);
     try {
-      const key = form['2captcha'].api_key && form['2captcha'].api_key !== '***' ? form['2captcha'].api_key : undefined;
+      const key =
+        form['2captcha'].api_key && form['2captcha'].api_key !== '***'
+          ? form['2captcha'].api_key
+          : undefined;
       const r = await test2Captcha(key);
       if (r.ok) toast.success(`2captcha: баланс ${r.balance ?? '—'}`);
       else toast.error(r.error || 'Ошибка проверки 2captcha');
@@ -126,83 +138,149 @@ export default function CaptchaPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
-        breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'Обход капчи' }]}
-        title="Обход капчи"
-      />
-      {needsAuth ? (
-        <CardV2 className="p-6">
-          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>Войдите для доступа к настройкам.</p>
-          <Link href="/auth/login" className="text-brand-600 dark:text-brand-400 hover:underline">Войти</Link>
-        </CardV2>
-      ) : loading ? (
-        <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
-      ) : (
-        <CardV2 className="p-6 space-y-6">
-          <div>
-            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>AI-ассистент для картинок (Vision)</label>
-            <select
-              value={form.ai_assistant_id ?? ''}
-              onChange={(e) => setForm((p) => ({ ...p, ai_assistant_id: e.target.value ? Number(e.target.value) : null }))}
-              className="mt-1 w-full rounded-v2-sm border px-3 py-2"
-              style={{
-                background: 'hsl(var(--surface))',
-                borderColor: 'hsl(var(--border))',
-                color: 'hsl(var(--text))',
-              }}
+    <PageContainer className="overflow-x-hidden">
+      <PageColumn>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Главная', href: '/' },
+            { label: 'Конфигурация', href: '/settings' },
+            { label: 'Обход капчи' },
+          ]}
+          title="Обход капчи"
+        />
+        {needsAuth ? (
+          <CardV2 className="p-6">
+            <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
+              Войдите для доступа к настройкам.
+            </p>
+            <Link href="/auth/login" className="text-brand-600 dark:text-brand-400 hover:underline">
+              Войти
+            </Link>
+          </CardV2>
+        ) : loading ? (
+          <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
+        ) : (
+          <CardV2 className="p-6 space-y-6">
+            <div>
+              <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+                AI-ассистент для картинок (Vision)
+              </label>
+              <select
+                value={form.ai_assistant_id ?? ''}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    ai_assistant_id: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                className="mt-1 w-full rounded-v2-sm border px-3 py-2"
+                style={{
+                  background: 'hsl(var(--surface))',
+                  borderColor: 'hsl(var(--border))',
+                  color: 'hsl(var(--text))',
+                }}
+              >
+                <option value="">— не использовать —</option>
+                {aiList.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.model})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <h3
+                className="font-display font-semibold tracking-tight text-base mb-2"
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                2captcha
+              </h3>
+              <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form['2captcha'].enabled}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      '2captcha': { ...p['2captcha'], enabled: e.target.checked },
+                    }))
+                  }
+                  className="rounded border"
+                  style={{ borderColor: 'hsl(var(--border))' }}
+                />
+                <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
+                  Включить
+                </span>
+              </label>
+              <Input
+                type="password"
+                value={form['2captcha'].api_key === '***' ? '' : form['2captcha'].api_key}
+                placeholder={
+                  form['2captcha'].api_key === '***' ? '••• (не менять)' : 'API ключ 2captcha'
+                }
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    '2captcha': { ...p['2captcha'], api_key: e.target.value },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <h3
+                className="font-display font-semibold tracking-tight text-base mb-2"
+                style={{ color: 'hsl(var(--text))' }}
+              >
+                Anti-captcha
+              </h3>
+              <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.anticaptcha.enabled}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      anticaptcha: { ...p.anticaptcha, enabled: e.target.checked },
+                    }))
+                  }
+                  className="rounded border"
+                  style={{ borderColor: 'hsl(var(--border))' }}
+                />
+                <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
+                  Включить
+                </span>
+              </label>
+              <Input
+                type="password"
+                value={form.anticaptcha.api_key === '***' ? '' : form.anticaptcha.api_key}
+                placeholder={
+                  form.anticaptcha.api_key === '***' ? '••• (не менять)' : 'API ключ Anti-captcha'
+                }
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    anticaptcha: { ...p.anticaptcha, api_key: e.target.value },
+                  }))
+                }
+              />
+            </div>
+            <div
+              className="flex flex-wrap gap-3 pt-4 border-t"
+              style={{ borderColor: 'hsl(var(--border))' }}
             >
-              <option value="">— не использовать —</option>
-              {aiList.map((a) => (
-                <option key={a.id} value={a.id}>{a.name} ({a.model})</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <h3 className="font-display font-semibold tracking-tight text-base mb-2" style={{ color: 'hsl(var(--text))' }}>2captcha</h3>
-            <label className="flex items-center gap-2 mb-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form['2captcha'].enabled}
-                onChange={(e) => setForm((p) => ({ ...p, '2captcha': { ...p['2captcha'], enabled: e.target.checked } }))}
-                className="rounded border"
-                style={{ borderColor: 'hsl(var(--border))' }}
-              />
-              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Включить</span>
-            </label>
-            <Input
-              type="password"
-              value={form['2captcha'].api_key === '***' ? '' : form['2captcha'].api_key}
-              placeholder={form['2captcha'].api_key === '***' ? '••• (не менять)' : 'API ключ 2captcha'}
-              onChange={(e) => setForm((p) => ({ ...p, '2captcha': { ...p['2captcha'], api_key: e.target.value } }))}
-            />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold tracking-tight text-base mb-2" style={{ color: 'hsl(var(--text))' }}>Anti-captcha</h3>
-            <label className="flex items-center gap-2 mb-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.anticaptcha.enabled}
-                onChange={(e) => setForm((p) => ({ ...p, anticaptcha: { ...p.anticaptcha, enabled: e.target.checked } }))}
-                className="rounded border"
-                style={{ borderColor: 'hsl(var(--border))' }}
-              />
-              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Включить</span>
-            </label>
-            <Input
-              type="password"
-              value={form.anticaptcha.api_key === '***' ? '' : form.anticaptcha.api_key}
-              placeholder={form.anticaptcha.api_key === '***' ? '••• (не менять)' : 'API ключ Anti-captcha'}
-              onChange={(e) => setForm((p) => ({ ...p, anticaptcha: { ...p.anticaptcha, api_key: e.target.value } }))}
-            />
-          </div>
-          <div className="flex flex-wrap gap-3 pt-4 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
-            <ButtonV2 variant="primary" size="md" onClick={handleSave} loading={saving}>Сохранить</ButtonV2>
-            <ButtonV2 variant="secondary" size="sm" onClick={handleTest2} loading={testing2}>Проверить 2captcha</ButtonV2>
-            <ButtonV2 variant="secondary" size="sm" onClick={handleTestAi} loading={testingAi}>Проверить AI</ButtonV2>
-          </div>
-        </CardV2>
-      )}
-    </div>
+              <ButtonV2 variant="primary" size="md" onClick={handleSave} loading={saving}>
+                Сохранить
+              </ButtonV2>
+              <ButtonV2 variant="secondary" size="sm" onClick={handleTest2} loading={testing2}>
+                Проверить 2captcha
+              </ButtonV2>
+              <ButtonV2 variant="secondary" size="sm" onClick={handleTestAi} loading={testingAi}>
+                Проверить AI
+              </ButtonV2>
+            </div>
+          </CardV2>
+        )}
+      </PageColumn>
+    </PageContainer>
   );
 }
-

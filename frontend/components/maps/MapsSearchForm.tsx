@@ -91,13 +91,27 @@ const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
 // враньём — реальность отдавала 24, и доверие к продукту падало с первого
 // клика. Лучше честно про тематику, чем точно про количество.
 const QUICK_PRESETS: Array<{ niche: string; city: string; title: string; hint: string }> = [
-  { niche: 'стоматология', city: 'Москва', title: 'Стоматологии', hint: 'клиники с отзывами клиентов' },
-  { niche: 'автосервис', city: 'Санкт-Петербург', title: 'Автосервисы', hint: 'жалобы на сроки и цены' },
+  {
+    niche: 'стоматология',
+    city: 'Москва',
+    title: 'Стоматологии',
+    hint: 'клиники с отзывами клиентов',
+  },
+  {
+    niche: 'автосервис',
+    city: 'Санкт-Петербург',
+    title: 'Автосервисы',
+    hint: 'жалобы на сроки и цены',
+  },
   { niche: 'фитнес клуб', city: 'Москва', title: 'Фитнес-клубы', hint: 'отзывы про инструкторов' },
   { niche: 'рестораны', city: 'Казань', title: 'Рестораны', hint: 'жалобы на обслуживание' },
 ];
 
-const SOURCE_NAMES: Record<MapSource, string> = { '2gis': '2GIS', yandex_maps: 'Яндекс.Карты', google_maps: 'Google Maps' };
+const SOURCE_NAMES: Record<MapSource, string> = {
+  '2gis': '2GIS',
+  yandex_maps: 'Яндекс.Карты',
+  google_maps: 'Google Maps',
+};
 
 // Технические пометки источников («нужен ключ», «платно») видит только суперюзер.
 const SOURCE_OPTIONS: Array<{ id: MapSource; name: string; hint: string }> = [
@@ -115,7 +129,8 @@ const HOW_IT_WORKS = [
 const HINT_NICHES = ['стоматология', 'автосервис', 'фитнес клуб'];
 
 const LABEL = 'mb-1.5 block text-xs font-semibold text-ui-text-muted';
-const HINT_CHIP = 'rounded-full bg-ui-surface-2 px-3 py-1 text-xs text-ui-text-muted transition-colors hover:bg-ui-border hover:text-ui-text';
+const HINT_CHIP =
+  'rounded-full bg-ui-surface-2 px-3 py-1 text-xs text-ui-text-muted transition-colors hover:bg-ui-border hover:text-ui-text';
 const PRESET_CHIP =
   'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-ui-border bg-ui-surface px-4 py-2 text-small font-semibold text-ui-text-muted shadow-raised transition-all hover:-translate-y-px hover:text-ui-text';
 const PRESET_CHIP_ON = 'border-ui-text bg-ui-text text-ui-surface hover:text-ui-surface';
@@ -444,8 +459,11 @@ export function MapsSearchForm({ onStarted }: Props) {
 
   const isReady = niche.trim().length >= 2 && sources.length > 0;
   // Под полем — три коротких примера, остальные по «ещё».
-  const hintNiches = showAllPresets ? NICHE_PRESETS : NICHE_PRESETS.filter((p) => HINT_NICHES.includes(p.label));
-  const extraCount = [extraNiches, extraCities].filter((v) => v.trim()).length + filterSpec.conditions.length;
+  const hintNiches = showAllPresets
+    ? NICHE_PRESETS
+    : NICHE_PRESETS.filter((p) => HINT_NICHES.includes(p.label));
+  const extraCount =
+    [extraNiches, extraCities].filter((v) => v.trim()).length + filterSpec.conditions.length;
 
   function switchMode(next: SearchModeTab) {
     setMode(next);
@@ -473,21 +491,27 @@ export function MapsSearchForm({ onStarted }: Props) {
   );
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-[1232px] px-4 sm:px-6">
       {/* === Первый экран: заголовок и форма === */}
-      <div className="mx-auto w-full max-w-[1072px] px-4 pt-10 text-center sm:px-6 sm:pt-16">
+      <div className="mx-auto w-full max-w-[1072px] pt-10 text-center sm:pt-16">
         <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 pl-1 pr-4 text-small font-semibold text-ui-text-muted">
-          <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">NEW</span>
+          <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">
+            NEW
+          </span>
           <span className="sm:hidden">Отзывы с 2GIS, Яндекс и Google</span>
           <span className="hidden sm:inline">Отзывы с трёх карт — 2GIS, Яндекс и Google</span>
         </p>
         <h1 className="mx-auto max-w-[760px] text-hero font-extrabold text-ui-text">
           Кому писать первым.
-          <span className="block font-bold text-ui-text-muted/75">Подскажут отзывы их клиентов.</span>
+          <span className="block font-bold text-ui-text-muted/75">
+            Подскажут отзывы их клиентов.
+          </span>
         </h1>
         <p className="mx-auto mt-5 max-w-[56ch] text-base leading-relaxed text-ui-text-muted">
-          Укажите нишу и город. SpinLid соберёт компании с 2GIS, Яндекс.Карт и Google Карт, прочитает отзывы и покажет,{' '}
-          <b className="font-semibold text-ui-text">на что жалуются клиенты каждой компании</b> — с цитатой и контактом.
+          Укажите нишу и город. SpinLid соберёт компании с 2GIS, Яндекс.Карт и Google Карт,
+          прочитает отзывы и покажет,{' '}
+          <b className="font-semibold text-ui-text">на что жалуются клиенты каждой компании</b> — с
+          цитатой и контактом.
         </p>
 
         <SearchModeSwitch active="maps" className="mt-10" />
@@ -518,12 +542,20 @@ export function MapsSearchForm({ onStarted }: Props) {
                     key={p.label}
                     type="button"
                     onClick={() => handlePreset(p.label)}
-                    className={cn(HINT_CHIP, niche === p.label && 'bg-ui-text text-ui-surface hover:bg-ui-text hover:text-ui-surface')}
+                    className={cn(
+                      HINT_CHIP,
+                      niche === p.label &&
+                        'bg-ui-text text-ui-surface hover:bg-ui-text hover:text-ui-surface',
+                    )}
                   >
                     {p.label}
                   </button>
                 ))}
-                <button type="button" onClick={() => setShowAllPresets(!showAllPresets)} className={cn(HINT_CHIP, 'font-semibold text-ui-accent')}>
+                <button
+                  type="button"
+                  onClick={() => setShowAllPresets(!showAllPresets)}
+                  className={cn(HINT_CHIP, 'font-semibold text-ui-accent')}
+                >
                   {showAllPresets ? 'свернуть' : `+${NICHE_PRESETS.length - HINT_NICHES.length}`}
                 </button>
               </div>
@@ -542,7 +574,9 @@ export function MapsSearchForm({ onStarted }: Props) {
                   triggerClassName="h-12"
                   placeholder="Выберите город"
                 />
-                <p className="mt-2 text-xs text-ui-text-muted">Несколько городов сразу — в «Тонкой настройке»</p>
+                <p className="mt-2 text-xs text-ui-text-muted">
+                  Несколько городов сразу — в «Тонкой настройке»
+                </p>
               </div>
             ) : (
               <div className="min-w-0">
@@ -570,13 +604,19 @@ export function MapsSearchForm({ onStarted }: Props) {
                     aria-label="Радиус поиска, км"
                     className="min-w-0 flex-1 accent-[hsl(var(--color-accent))]"
                   />
-                  <span className="w-14 text-right text-small font-semibold tabular-nums text-ui-accent">{radiusKm.toFixed(1)} км</span>
+                  <span className="w-14 text-right text-small font-semibold tabular-nums text-ui-accent">
+                    {radiusKm.toFixed(1)} км
+                  </span>
                 </div>
               </div>
             )}
           </div>
 
-          <div role="group" aria-label="Источники отзывов" className="mt-5 flex flex-wrap gap-2 border-t border-black/[.06] pt-5">
+          <div
+            role="group"
+            aria-label="Источники отзывов"
+            className="mt-5 flex flex-wrap gap-2 border-t border-black/[.06] pt-5"
+          >
             {SOURCE_OPTIONS.map((s) => {
               const checked = sources.includes(s.id);
               const lockedByRadius = mode === 'radius' && s.id !== '2gis';
@@ -587,24 +627,32 @@ export function MapsSearchForm({ onStarted }: Props) {
                   aria-pressed={checked}
                   onClick={() => toggleSource(s.id)}
                   disabled={isLoading || lockedByRadius}
-                  title={lockedByRadius ? 'Поиск в радиусе пока работает только через 2GIS' : undefined}
+                  title={
+                    lockedByRadius ? 'Поиск в радиусе пока работает только через 2GIS' : undefined
+                  }
                   className={cn(
                     'inline-flex min-h-10 items-center gap-2 rounded-full border py-2 pl-2.5 pr-4 text-small font-semibold transition-colors',
                     'disabled:cursor-not-allowed disabled:opacity-50',
-                    checked ? 'border-ui-accent bg-ui-accent/[.06] text-ui-text' : 'border-ui-border text-ui-text-muted hover:border-ui-text-muted/50',
+                    checked
+                      ? 'border-ui-accent bg-ui-accent/[.06] text-ui-text'
+                      : 'border-ui-border text-ui-text-muted hover:border-ui-text-muted/50',
                   )}
                 >
                   <span
                     className={cn(
                       'grid h-[18px] w-[18px] place-items-center rounded-full border-[1.5px] transition-colors',
-                      checked ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast' : 'border-ui-text-muted/40 text-transparent',
+                      checked
+                        ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast'
+                        : 'border-ui-text-muted/40 text-transparent',
                     )}
                     aria-hidden
                   >
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                   {s.name}
-                  {isSuperuser && <span className="text-xs font-medium text-ui-text-muted">{s.hint}</span>}
+                  {isSuperuser && (
+                    <span className="text-xs font-medium text-ui-text-muted">{s.hint}</span>
+                  )}
                 </button>
               );
             })}
@@ -612,7 +660,10 @@ export function MapsSearchForm({ onStarted }: Props) {
 
           <div className="mt-5 border-t border-black/[.06] pt-5">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <label htmlFor="search-review-words" className="mr-1 text-xs font-semibold text-ui-text-muted">
+              <label
+                htmlFor="search-review-words"
+                className="mr-1 text-xs font-semibold text-ui-text-muted"
+              >
                 Слова в отзывах — необязательно
               </label>
               {reviewToggle('contains', 'Содержит')}
@@ -620,7 +671,11 @@ export function MapsSearchForm({ onStarted }: Props) {
             </div>
             <Input
               id="search-review-words"
-              placeholder={reviewMode === 'contains' ? 'не дозвонился, не перезвонили, грязно' : 'реклама, спам'}
+              placeholder={
+                reviewMode === 'contains'
+                  ? 'не дозвонился, не перезвонили, грязно'
+                  : 'реклама, спам'
+              }
               value={reviewWord}
               onChange={(e) => setReviewWord(e.target.value)}
               disabled={isLoading}
@@ -635,7 +690,10 @@ export function MapsSearchForm({ onStarted }: Props) {
           </div>
 
           {error && (
-            <div role="alert" className="mt-4 rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger">
+            <div
+              role="alert"
+              className="mt-4 rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger"
+            >
               {error}
             </div>
           )}
@@ -648,22 +706,28 @@ export function MapsSearchForm({ onStarted }: Props) {
               iconRight={!isLoading ? <ArrowRight /> : undefined}
               className="h-12 w-full px-7 text-base sm:w-auto"
             >
-              {isLoading ? multiSearchProgress ?? 'Запускаю…' : 'Найти компании'}
+              {isLoading ? (multiSearchProgress ?? 'Запускаю…') : 'Найти компании'}
             </Button>
             <p className="min-w-0 flex-1 text-small text-ui-text-muted">
               {presetLabel ? (
                 <>
                   Пресет <b className="font-semibold text-ui-text">«{presetLabel}»</b>
                   {aiPreset ? ' и AI-анализ' : ''} —{' '}
-                  <button type="button" onClick={clearPreset} className="font-semibold text-ui-accent hover:underline">
+                  <button
+                    type="button"
+                    onClick={clearPreset}
+                    className="font-semibold text-ui-accent hover:underline"
+                  >
                     убрать
                   </button>
                 </>
               ) : isReady ? (
                 <>
                   <b className="font-semibold text-ui-text">{niche.trim()}</b>
-                  {mode === 'radius' ? ` · ${radiusKm.toFixed(1)} км от адреса` : ` · ${city || 'Москва'}`} ·{' '}
-                  {sources.map((s) => SOURCE_NAMES[s]).join(' + ')} · ~1–2 мин
+                  {mode === 'radius'
+                    ? ` · ${radiusKm.toFixed(1)} км от адреса`
+                    : ` · ${city || 'Москва'}`}{' '}
+                  · {sources.map((s) => SOURCE_NAMES[s]).join(' + ')} · ~1–2 мин
                 </>
               ) : mode === 'radius' ? (
                 'Введите нишу и адрес центра'
@@ -675,10 +739,15 @@ export function MapsSearchForm({ onStarted }: Props) {
         </form>
 
         {/* === Как это работает === */}
-        <div className="mt-16 grid gap-6 text-left sm:mt-20 sm:grid-cols-3 sm:gap-10" aria-label="Как это работает">
+        <div
+          className="mt-16 grid gap-6 text-left sm:mt-20 sm:grid-cols-3 sm:gap-10"
+          aria-label="Как это работает"
+        >
           {HOW_IT_WORKS.map((step, i) => (
             <div key={step.title}>
-              <span className="text-xs font-bold tabular-nums tracking-widest text-ui-accent">0{i + 1}</span>
+              <span className="text-xs font-bold tabular-nums tracking-widest text-ui-accent">
+                0{i + 1}
+              </span>
               <b className="mb-1 mt-2 block text-base font-bold text-ui-text">{step.title}</b>
               <p className="text-small leading-relaxed text-ui-text-muted">{step.text}</p>
             </div>
@@ -687,13 +756,21 @@ export function MapsSearchForm({ onStarted }: Props) {
       </div>
 
       {/* === Быстрый старт и пресеты — серая полоса на всю ширину === */}
-      <section aria-labelledby="quick-start-title" className="mt-16 bg-ui-surface-2 py-12 sm:mt-20 sm:py-14">
-        <div className="mx-auto w-full max-w-[1072px] px-4 sm:px-6">
+      <section
+        aria-labelledby="quick-start-title"
+        className="mt-16 bg-ui-surface-2 py-12 sm:mt-20 sm:py-14"
+      >
+        <div className="mx-auto w-full max-w-[1072px]">
           <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-            <h2 id="quick-start-title" className="text-heading font-extrabold tracking-tight text-ui-text">
+            <h2
+              id="quick-start-title"
+              className="text-heading font-extrabold tracking-tight text-ui-text"
+            >
               Быстрый старт.
             </h2>
-            <span className="text-small text-ui-text-muted">не знаете, что ввести — запустите готовый пример</span>
+            <span className="text-small text-ui-text-muted">
+              не знаете, что ввести — запустите готовый пример
+            </span>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-3.5">
             {QUICK_PRESETS.map((p) => (
@@ -704,7 +781,9 @@ export function MapsSearchForm({ onStarted }: Props) {
                 disabled={isLoading}
                 className="flex flex-col items-start justify-start rounded-card bg-ui-surface p-4 text-left shadow-raised transition-all hover:-translate-y-0.5 hover:shadow-floating disabled:opacity-50 sm:p-5"
               >
-                <span className="block text-xs font-bold uppercase tracking-widest text-ui-accent">{p.city}</span>
+                <span className="block text-xs font-bold uppercase tracking-widest text-ui-accent">
+                  {p.city}
+                </span>
                 <b className="mb-0.5 mt-1 block text-base font-bold text-ui-text">{p.title}</b>
                 <span className="text-small text-ui-text-muted">{p.hint}</span>
               </button>
@@ -741,28 +820,40 @@ export function MapsSearchForm({ onStarted }: Props) {
                   className={cn(PRESET_CHIP, presetLabel === p.name && PRESET_CHIP_ON)}
                 >
                   {p.name}
-                  {hasAi && <span className="rounded-full bg-ui-accent px-1.5 text-xs font-bold text-ui-accent-contrast">AI</span>}
+                  {hasAi && (
+                    <span className="rounded-full bg-ui-accent px-1.5 text-xs font-bold text-ui-accent-contrast">
+                      AI
+                    </span>
+                  )}
                 </button>
               );
             })}
             <button
               type="button"
               onClick={() => setSaveModalOpen(true)}
-              className={cn(PRESET_CHIP, 'border-dashed bg-transparent text-ui-text-muted shadow-none')}
+              className={cn(
+                PRESET_CHIP,
+                'border-dashed bg-transparent text-ui-text-muted shadow-none',
+              )}
             >
               <Plus className="h-3.5 w-3.5" aria-hidden /> Сохранить текущие
             </button>
           </div>
           {presetLabel && (
             <p className="mt-3 text-small text-ui-text-muted">
-              Пресет <b className="font-semibold text-ui-text">«{presetLabel}»</b> включится в выдаче сразу после поиска
+              Пресет <b className="font-semibold text-ui-text">«{presetLabel}»</b> включится в
+              выдаче сразу после поиска
               {aiPreset ? ', AI-анализ запустится автоматически' : ''}.
             </p>
           )}
           {builtinAiPrompt && (
             <p className="mt-2 text-small text-ui-text-muted">
               У этого пресета есть готовый AI-промпт —{' '}
-              <button type="button" onClick={() => setCopyBuiltinModalOpen(true)} className="font-semibold text-ui-accent hover:underline">
+              <button
+                type="button"
+                onClick={() => setCopyBuiltinModalOpen(true)}
+                className="font-semibold text-ui-accent hover:underline"
+              >
                 сохраните как свой пресет
               </button>
               , чтобы запустить анализ.
@@ -772,15 +863,20 @@ export function MapsSearchForm({ onStarted }: Props) {
       </section>
 
       {/* === Тонкая настройка === */}
-      <div className="mx-auto w-full max-w-[1072px] px-4 pb-16 pt-14 sm:px-6 sm:pb-24 sm:pt-16">
+      <div className="mx-auto w-full max-w-[1072px] pb-16 pt-14 sm:pb-24 sm:pt-16">
         <details className="group">
           <summary className="flex cursor-pointer list-none items-center gap-3 rounded-control text-base font-bold text-ui-text [&::-webkit-details-marker]:hidden">
             Тонкая настройка.
             <span className="ml-auto flex items-center gap-1.5 text-small font-medium text-ui-text-muted">
               <span className={cn(extraCount === 0 && 'hidden sm:inline')}>
-                {extraCount > 0 ? `задано: ${extraCount}` : 'радиус, несколько ниш и городов, условия'}
+                {extraCount > 0
+                  ? `задано: ${extraCount}`
+                  : 'радиус, несколько ниш и городов, условия'}
               </span>
-              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden />
+              <ChevronDown
+                className="h-4 w-4 transition-transform group-open:rotate-180"
+                aria-hidden
+              />
             </span>
           </summary>
           <div className="mt-5 flex flex-col gap-7 border-t border-black/[.08] pt-6">
@@ -797,7 +893,8 @@ export function MapsSearchForm({ onStarted }: Props) {
                       value: 'radius',
                       label: (
                         <>
-                          В радиусе от адреса <span className="text-xs font-bold text-ui-accent">NEW</span>
+                          В радиусе от адреса{' '}
+                          <span className="text-xs font-bold text-ui-accent">NEW</span>
                         </>
                       ),
                       title: 'Компании в радиусе X км от адреса — «что у соседей по району»',
@@ -832,27 +929,35 @@ export function MapsSearchForm({ onStarted }: Props) {
                         className="h-11"
                       />
                       <p className="mt-1.5 text-xs text-ui-text-muted">
-                        Создастся отдельный поиск на каждую пару «ниша × город» — все будут в «Истории».
+                        Создастся отдельный поиск на каждую пару «ниша × город» — все будут в
+                        «Истории».
                       </p>
                     </div>
                   </div>
                 ) : (
                   <p className="mt-4 text-small text-ui-text-muted">
-                    Адрес и радиус — в форме наверху. Поиск в радиусе пока работает только через 2GIS.
+                    Адрес и радиус — в форме наверху. Поиск в радиусе пока работает только через
+                    2GIS.
                   </p>
                 )}
               </div>
 
               <div>
                 <span className={LABEL}>Несколько условий по отзывам</span>
-                <p className="text-xs text-ui-text-muted">Когда одного списка слов мало — например, «содержит «запись» и не содержит «рекомендую»».</p>
+                <p className="text-xs text-ui-text-muted">
+                  Когда одного списка слов мало — например, «содержит «запись» и не содержит
+                  «рекомендую»».
+                </p>
                 <button
                   type="button"
                   onClick={() => setAdvancedOpen(!advancedOpen)}
                   aria-expanded={advancedOpen}
                   className="mt-3 inline-flex items-center gap-1 text-small font-semibold text-ui-accent hover:underline"
                 >
-                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', advancedOpen && 'rotate-180')} aria-hidden />
+                  <ChevronDown
+                    className={cn('h-3.5 w-3.5 transition-transform', advancedOpen && 'rotate-180')}
+                    aria-hidden
+                  />
                   {advancedOpen ? 'Скрыть условия' : 'Задать условия'}
                 </button>
                 {advancedOpen && (
@@ -873,8 +978,11 @@ export function MapsSearchForm({ onStarted }: Props) {
             <p className="flex items-start gap-3 rounded-card bg-ui-surface-2 px-4 py-3.5 text-small text-ui-text-muted">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-ui-accent" aria-hidden />
               <span>
-                <b className="font-semibold text-ui-text">Фильтры по рейтингу, сайту, ЛПР и болям</b> — на странице результатов:
-                применяются к найденным компаниям сразу, без нового поиска.
+                <b className="font-semibold text-ui-text">
+                  Фильтры по рейтингу, сайту, ЛПР и болям
+                </b>{' '}
+                — на странице результатов: применяются к найденным компаниям сразу, без нового
+                поиска.
               </span>
             </p>
           </div>

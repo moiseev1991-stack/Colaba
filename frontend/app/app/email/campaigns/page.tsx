@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/EmptyState';
 import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { PageContainer } from '@/components/ui/page';
 
 function formatDateTime(iso: string | undefined): string {
   if (!iso) return '-';
@@ -186,7 +187,7 @@ export default function CampaignsHistoryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <PageContainer>
       {/* §4.5 ТЗ редизайна 2026-06-03: display-шрифт, max-w-7xl */}
       <div className="mb-6 flex items-center justify-between">
         <h1
@@ -284,7 +285,7 @@ export default function CampaignsHistoryPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

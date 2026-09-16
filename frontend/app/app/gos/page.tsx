@@ -1,10 +1,20 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, ExternalLink, Loader2, ChevronDown, ChevronRight, FileText, Calendar, Package } from 'lucide-react';
+import {
+  Search,
+  ExternalLink,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Calendar,
+  Package,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { PageContainer } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
 
 interface Tender {
@@ -37,7 +47,11 @@ const SORT_OPTIONS = [
 
 function formatPrice(price: number | null, currency: string): string {
   if (!price) return '—';
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(price) + ' ' + (currency || 'руб.');
+  return (
+    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(price) +
+    ' ' +
+    (currency || 'руб.')
+  );
 }
 
 function formatDate(iso: string | null): string {
@@ -47,7 +61,12 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-async function searchTenders(keyword: string, type: string, sortBy: string, page: number): Promise<{ items: Tender[]; total: number }> {
+async function searchTenders(
+  keyword: string,
+  type: string,
+  sortBy: string,
+  page: number,
+): Promise<{ items: Tender[]; total: number }> {
   // Use the backend proxy to call the search API
   const params = new URLSearchParams({
     searchString: keyword,
@@ -85,29 +104,32 @@ export default function GosPage() {
   const [searched, setSearched] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const doSearch = useCallback(async (p: number = 1) => {
-    if (!keyword.trim()) return;
-    setLoading(true);
-    setError('');
-    setPage(p);
-    try {
-      const result = await searchTenders(keyword.trim(), type, sortBy, p);
-      setItems(result.items);
-      setTotal(result.total);
-      setSearched(true);
-    } catch (e: unknown) {
-      setError((e as Error).message || 'Ошибка загрузки');
-      setItems([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [keyword, type, sortBy]);
+  const doSearch = useCallback(
+    async (p: number = 1) => {
+      if (!keyword.trim()) return;
+      setLoading(true);
+      setError('');
+      setPage(p);
+      try {
+        const result = await searchTenders(keyword.trim(), type, sortBy, p);
+        setItems(result.items);
+        setTotal(result.total);
+        setSearched(true);
+      } catch (e: unknown) {
+        setError((e as Error).message || 'Ошибка загрузки');
+        setItems([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [keyword, type, sortBy],
+  );
 
   const totalPages = Math.ceil(total / 10);
 
   return (
-    <div className="mx-auto max-w-[1100px] px-6 py-8">
+    <PageContainer>
       <h1 className="text-xl font-semibold mb-6" style={{ color: 'hsl(var(--text))' }}>
         Госзакупки
       </h1>
@@ -116,31 +138,59 @@ export default function GosPage() {
       <div className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 mb-6 shadow-sm">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ключевое слово</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Ключевое слово
+            </label>
             <Input
               type="text"
               placeholder="Например: ремонт дорог, IT-оборудование"
               value={keyword}
-              onChange={e => setKeyword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && doSearch(1)}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && doSearch(1)}
               disabled={loading}
               className="w-full"
             />
           </div>
           <div className="w-[180px]">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Закон</label>
-            <Select value={type} onChange={e => setType(e.target.value)} className="w-full" disabled={loading}>
-              {PROCUREMENT_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Закон
+            </label>
+            <Select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full"
+              disabled={loading}
+            >
+              {PROCUREMENT_TYPES.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           </div>
           <div className="w-[180px]">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Сортировка</label>
-            <Select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-full" disabled={loading}>
-              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Сортировка
+            </label>
+            <Select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full"
+              disabled={loading}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </Select>
           </div>
           <Button onClick={() => doSearch(1)} disabled={!keyword.trim() || loading} className="h-9">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
             <span className="ml-1.5">Найти</span>
           </Button>
         </div>
@@ -156,7 +206,11 @@ export default function GosPage() {
       {/* Результаты */}
       {searched && !loading && (
         <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-          Найдено: <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>{total.toLocaleString('ru-RU')}</span> тендеров
+          Найдено:{' '}
+          <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>
+            {total.toLocaleString('ru-RU')}
+          </span>{' '}
+          тендеров
         </div>
       )}
 
@@ -168,7 +222,7 @@ export default function GosPage() {
         <div className="py-12 text-center text-gray-500 dark:text-gray-400">Тендеры не найдены</div>
       ) : (
         <div className="space-y-3">
-          {items.map(item => (
+          {items.map((item) => (
             <div
               key={item.id}
               className="rounded-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden"
@@ -180,30 +234,69 @@ export default function GosPage() {
               >
                 <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-snug truncate" style={{ color: 'hsl(var(--text))' }}>{item.name}</p>
+                  <p
+                    className="text-sm font-medium leading-snug truncate"
+                    style={{ color: 'hsl(var(--text))' }}
+                  >
+                    {item.name}
+                  </p>
                   <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                     <span>{item.customerName}</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(item.publishDate)}</span>
-                    <span className="flex items-center gap-1"><Package className="h-3.5 w-3.5" />{formatPrice(item.price, item.currency)}</span>
-                    <span className={cn(
-                      'px-1.5 py-0.5 rounded text-xs font-medium',
-                      item.status === 'Подача заявок' && 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-                      item.status === 'Завершена' && 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
-                      item.status === 'Отмена' && 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-                    )}>{item.status || 'Неизвестно'}</span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {formatDate(item.publishDate)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Package className="h-3.5 w-3.5" />
+                      {formatPrice(item.price, item.currency)}
+                    </span>
+                    <span
+                      className={cn(
+                        'px-1.5 py-0.5 rounded text-xs font-medium',
+                        item.status === 'Подача заявок' &&
+                          'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                        item.status === 'Завершена' &&
+                          'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+                        item.status === 'Отмена' &&
+                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+                      )}
+                    >
+                      {item.status || 'Неизвестно'}
+                    </span>
                   </div>
                 </div>
-                {expandedId === item.id ? <ChevronDown className="h-4 w-4 flex-shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 flex-shrink-0 mt-1" />}
+                {expandedId === item.id ? (
+                  <ChevronDown className="h-4 w-4 flex-shrink-0 mt-1" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 flex-shrink-0 mt-1" />
+                )}
               </button>
 
               {expandedId === item.id && (
                 <div className="px-4 pb-4 pt-0 border-t border-gray-100 dark:border-gray-700">
                   <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mt-3">
-                    <div><dt className="text-gray-500 dark:text-gray-400">Номер</dt><dd style={{ color: 'hsl(var(--text))' }}>{item.number}</dd></div>
-                    <div><dt className="text-gray-500 dark:text-gray-400">Тип</dt><dd style={{ color: 'hsl(var(--text))' }}>{item.type}</dd></div>
-                    <div><dt className="text-gray-500 dark:text-gray-400">Регион</dt><dd style={{ color: 'hsl(var(--text))' }}>{item.region || '—'}</dd></div>
-                    <div><dt className="text-gray-500 dark:text-gray-400">Окончание приёма заявок</dt><dd style={{ color: 'hsl(var(--text))' }}>{formatDate(item.endDate)}</dd></div>
-                    <div><dt className="text-gray-500 dark:text-gray-400">НМЦ</dt><dd className="font-medium" style={{ color: 'hsl(var(--text))' }}>{formatPrice(item.price, item.currency)}</dd></div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">Номер</dt>
+                      <dd style={{ color: 'hsl(var(--text))' }}>{item.number}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">Тип</dt>
+                      <dd style={{ color: 'hsl(var(--text))' }}>{item.type}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">Регион</dt>
+                      <dd style={{ color: 'hsl(var(--text))' }}>{item.region || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">Окончание приёма заявок</dt>
+                      <dd style={{ color: 'hsl(var(--text))' }}>{formatDate(item.endDate)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">НМЦ</dt>
+                      <dd className="font-medium" style={{ color: 'hsl(var(--text))' }}>
+                        {formatPrice(item.price, item.currency)}
+                      </dd>
+                    </div>
                   </dl>
                   <div className="mt-3">
                     <a
@@ -225,7 +318,9 @@ export default function GosPage() {
       {/* Пагинация */}
       {totalPages > 1 && !loading && (
         <div className="mt-6 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <span>Страница {page} из {totalPages}</span>
+          <span>
+            Страница {page} из {totalPages}
+          </span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -253,6 +348,6 @@ export default function GosPage() {
           <p className="text-sm">Введите ключевое слово для поиска тендеров на zakupki.gov.ru</p>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

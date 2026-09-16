@@ -22,6 +22,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { CardV2 } from '@/components/ui/CardV2';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { SignalPill } from '@/components/ui/SignalPill';
+import { PageContainer } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
 import type { MapSearchFilter } from '@/src/services/api/maps';
 import {
@@ -145,7 +146,7 @@ export default function MyPresetsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+    <PageContainer className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1
@@ -156,9 +157,8 @@ export default function MyPresetsPage() {
             Мои пресеты фильтров
           </h1>
           <p className="mt-2 text-sm max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
-            Сохранённые наборы фильтров для поиска по картам. Создаются на форме
-            поиска кнопкой «сохранить» — здесь редактируешь название, описание,
-            AI-промпт, скрываешь или удаляешь.
+            Сохранённые наборы фильтров для поиска по картам. Создаются на форме поиска кнопкой
+            «сохранить» — здесь редактируешь название, описание, AI-промпт, скрываешь или удаляешь.
           </p>
         </div>
         <div className="flex gap-2">
@@ -210,9 +210,8 @@ export default function MyPresetsPage() {
             Стандартные пресеты
           </h2>
           <p className="text-xs mb-3" style={{ color: 'hsl(var(--muted))' }}>
-            Готовые наборы фильтров под типовые сценарии. Нажми «Скопировать
-            к себе» — пресет появится в активных, его можно будет править
-            и применять на форме поиска.
+            Готовые наборы фильтров под типовые сценарии. Нажми «Скопировать к себе» — пресет
+            появится в активных, его можно будет править и применять на форме поиска.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {starters.map((s) => (
@@ -233,7 +232,9 @@ export default function MyPresetsPage() {
                       >
                         {s.name}
                       </span>
-                      <SignalPill tone="muted" size="sm">стандартный</SignalPill>
+                      <SignalPill tone="muted" size="sm">
+                        стандартный
+                      </SignalPill>
                       {s.ai_prompt && (
                         <SignalPill tone="accent" size="sm" icon={<Sparkles />}>
                           AI
@@ -329,7 +330,9 @@ export default function MyPresetsPage() {
                       </SignalPill>
                     )}
                     {p.hidden && (
-                      <SignalPill tone="muted" size="sm">скрыт</SignalPill>
+                      <SignalPill tone="muted" size="sm">
+                        скрыт
+                      </SignalPill>
                     )}
                   </div>
                   {p.description && (
@@ -338,14 +341,13 @@ export default function MyPresetsPage() {
                     </div>
                   )}
                   <div className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                    <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>Фильтр: </span>
+                    <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>
+                      Фильтр:{' '}
+                    </span>
                     {summarizeFilter(p.filter as MapSearchFilter)}
                   </div>
                   {p.ai_prompt && p.ai_prompt.trim() && (
-                    <div
-                      className="mt-1 line-clamp-2 text-xs"
-                      style={{ color: 'rgb(139 92 246)' }}
-                    >
+                    <div className="mt-1 line-clamp-2 text-xs" style={{ color: 'rgb(139 92 246)' }}>
                       <span className="font-medium">AI-промпт: </span>
                       {p.ai_prompt}
                     </div>
@@ -453,7 +455,7 @@ export default function MyPresetsPage() {
           </div>
         </div>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -483,8 +485,7 @@ function TabButton({
       )}
       style={isActive ? undefined : { color: 'hsl(var(--muted))' }}
     >
-      {children}{' '}
-      <span style={{ color: 'hsl(var(--muted))' }}>· {count}</span>
+      {children} <span style={{ color: 'hsl(var(--muted))' }}>· {count}</span>
     </button>
   );
 }
@@ -559,10 +560,7 @@ function EditPresetDialog({
     <Dialog open onClose={() => !saving && onClose()} title="Редактировать пресет">
       <div className="space-y-4 p-6">
         <div>
-          <label
-            className="mb-1 block text-xs font-medium"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
+          <label className="mb-1 block text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
             Название
           </label>
           <input
@@ -573,10 +571,7 @@ function EditPresetDialog({
           />
         </div>
         <div>
-          <label
-            className="mb-1 block text-xs font-medium"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
+          <label className="mb-1 block text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
             Описание (опционально)
           </label>
           <input
@@ -588,10 +583,7 @@ function EditPresetDialog({
           />
         </div>
         <div>
-          <label
-            className="mb-1 block text-xs font-medium"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
+          <label className="mb-1 block text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
             AI-промпт (опционально)
           </label>
           <textarea
@@ -603,8 +595,8 @@ function EditPresetDialog({
             placeholder="Например: «Оцени готовность купить SMM 1-10 по отзывам клиентов»"
           />
           <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-            Если задан — при применении пресета каждой компании выдачи будет
-            автоматически посчитан score 0-10. Лимит 100 запросов в сутки на юзера.
+            Если задан — при применении пресета каждой компании выдачи будет автоматически посчитан
+            score 0-10. Лимит 100 запросов в сутки на юзера.
           </p>
         </div>
         <div
@@ -618,8 +610,8 @@ function EditPresetDialog({
           <span className="font-medium">Фильтр пресета: </span>
           {summarizeFilter(preset.filter as MapSearchFilter)}
           <div className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-            Чтобы поменять фильтр — открой пресет на странице поиска, отредактируй
-            фильтры в боковой панели и сохрани под тем же именем (старый перезапишется).
+            Чтобы поменять фильтр — открой пресет на странице поиска, отредактируй фильтры в боковой
+            панели и сохрани под тем же именем (старый перезапишется).
           </div>
         </div>
         <div

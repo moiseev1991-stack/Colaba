@@ -23,6 +23,7 @@ import {
 } from '@/src/services/api/outreachTemplates';
 import { PAIN_KEY_LABELS, type PainKey } from '@/src/services/api/maps';
 import { confirmDialog } from '@/components/ui/confirm';
+import { PageContainer } from '@/components/ui/page';
 
 const PAIN_KEYS: PainKey[] = [
   'call_no_answer',
@@ -78,7 +79,9 @@ export default function TemplatesPage() {
     }
   };
 
-  useEffect(() => { void reload(); }, []);
+  useEffect(() => {
+    void reload();
+  }, []);
 
   const startEdit = (t: OutreachTemplate) => {
     setForm({
@@ -140,12 +143,12 @@ export default function TemplatesPage() {
     : items;
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6 space-y-4">
+    <PageContainer className="space-y-4">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-slate-900">Шаблоны писем</h1>
         <p className="text-sm text-slate-500">
-          Заготовки для outreach. Опциональная привязка к боли — на «Поиск по боли»
-          для выбранной боли будут предлагаться только подходящие шаблоны + универсальные.
+          Заготовки для outreach. Опциональная привязка к боли — на «Поиск по боли» для выбранной
+          боли будут предлагаться только подходящие шаблоны + универсальные.
         </p>
       </header>
 
@@ -173,7 +176,7 @@ export default function TemplatesPage() {
               type="text"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder='например: «Стома — не могут дозвониться»'
+              placeholder="например: «Стома — не могут дозвониться»"
               className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             />
           </label>
@@ -224,7 +227,9 @@ export default function TemplatesPage() {
                 type="button"
                 key={key}
                 onClick={() => {
-                  navigator.clipboard?.writeText(key).catch(() => {/* no-op */});
+                  navigator.clipboard?.writeText(key).catch(() => {
+                    /* no-op */
+                  });
                 }}
                 className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-xs text-slate-700 hover:bg-slate-100"
                 title={desc}
@@ -246,9 +251,7 @@ export default function TemplatesPage() {
           >
             {saving ? 'Сохраняем…' : form.id ? 'Сохранить' : 'Создать'}
           </button>
-          <span className="text-xs text-slate-500">
-            Всего шаблонов: {items.length}
-          </span>
+          <span className="text-xs text-slate-500">Всего шаблонов: {items.length}</span>
         </div>
       </section>
 
@@ -324,6 +327,6 @@ export default function TemplatesPage() {
           ))}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

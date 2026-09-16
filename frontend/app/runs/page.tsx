@@ -4,10 +4,21 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Eye, Trash2, Search, Plus, CheckCircle, XCircle, Loader2, MoreVertical, Copy } from 'lucide-react';
+import {
+  Download,
+  Eye,
+  Trash2,
+  Search,
+  Plus,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  MoreVertical,
+  Copy,
+} from 'lucide-react';
 import { listSearches, deleteSearch, getSearchResults } from '@/src/services/api/search';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 import type { Run } from '@/lib/types';
 import type { SearchResponse } from '@/src/services/api/search';
 import { confirmDialog } from '@/components/ui/confirm';
@@ -23,8 +34,16 @@ const PERIOD_LABELS: Record<PeriodFilter, string> = {
 };
 
 function mapSearchToRun(s: SearchResponse): Run {
-  const status = s.status === 'completed' ? 'done' : s.status === 'failed' ? 'error' : s.status === 'processing' ? 'processing' : 'pending';
-  const geoCity = (s.config && typeof s.config === 'object' && s.config.city) ? String(s.config.city) : '';
+  const status =
+    s.status === 'completed'
+      ? 'done'
+      : s.status === 'failed'
+        ? 'error'
+        : s.status === 'processing'
+          ? 'processing'
+          : 'pending';
+  const geoCity =
+    s.config && typeof s.config === 'object' && s.config.city ? String(s.config.city) : '';
   return {
     id: String(s.id),
     keyword: s.query,
@@ -73,22 +92,26 @@ export default function RunsHistoryPage() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(run => run.keyword.toLowerCase().includes(q));
+      filtered = filtered.filter((run) => run.keyword.toLowerCase().includes(q));
     }
     if (statusFilter !== 'all') {
       if (statusFilter === 'pending') {
-        filtered = filtered.filter(run => run.status === 'pending' || run.status === 'processing');
+        filtered = filtered.filter(
+          (run) => run.status === 'pending' || run.status === 'processing',
+        );
       } else {
-        filtered = filtered.filter(run => run.status === statusFilter);
+        filtered = filtered.filter((run) => run.status === statusFilter);
       }
     }
     return filtered;
   }, [runs, searchQuery, statusFilter]);
 
   const stats = useMemo(() => {
-    const done = runs.filter(r => r.status === 'done').length;
-    const error = runs.filter(r => r.status === 'error').length;
-    const inProgress = runs.filter(r => r.status === 'pending' || r.status === 'processing').length;
+    const done = runs.filter((r) => r.status === 'done').length;
+    const error = runs.filter((r) => r.status === 'error').length;
+    const inProgress = runs.filter(
+      (r) => r.status === 'pending' || r.status === 'processing',
+    ).length;
     return { total: runs.length, done, error, inProgress };
   }, [runs]);
 
@@ -106,7 +129,14 @@ export default function RunsHistoryPage() {
   };
 
   const handleClearAll = async () => {
-    if (!(await confirmDialog({ title: 'Очистить всю историю?', description: 'Это действие нельзя отменить.', confirmLabel: 'Очистить' }))) return;
+    if (
+      !(await confirmDialog({
+        title: 'Очистить всю историю?',
+        description: 'Это действие нельзя отменить.',
+        confirmLabel: 'Очистить',
+      }))
+    )
+      return;
     try {
       for (const r of runs) await deleteSearch(parseInt(r.id));
       await loadRuns(periodFilter);
@@ -127,7 +157,7 @@ export default function RunsHistoryPage() {
         email: r.email ?? null,
         score: r.seo_score ?? 0,
         issues: { robots: true, sitemap: true, titleDuplicates: true, descriptionDuplicates: true },
-        status: (r.contact_status === 'found' || r.contact_status === 'no_contacts') ? 'ok' : 'error',
+        status: r.contact_status === 'found' || r.contact_status === 'no_contacts' ? 'ok' : 'error',
       }));
       if (rows.length === 0) {
         toast.error('Нет данных для CSV');
@@ -145,7 +175,9 @@ export default function RunsHistoryPage() {
     setOpenMenuId(null);
     try {
       const resultsData = await getSearchResults(parseInt(runId));
-      const text = resultsData.map((r: any) => [r.domain, r.phone, r.email].filter(Boolean).join('\t')).join('\n');
+      const text = resultsData
+        .map((r: any) => [r.domain, r.phone, r.email].filter(Boolean).join('\t'))
+        .join('\n');
       await navigator.clipboard.writeText(text || '');
       toast.success('Скопировано');
     } catch {
@@ -162,8 +194,6 @@ export default function RunsHistoryPage() {
     setStatusFilter('all');
     setPeriodFilter('all');
   };
-
-
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
@@ -195,8 +225,7 @@ export default function RunsHistoryPage() {
       case 'processing':
         return (
           <span className="app-badge app-badge-warning" title="В процессе">
-            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-            В работе
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />В работе
           </span>
         );
       default:
@@ -216,53 +245,50 @@ export default function RunsHistoryPage() {
 
   return (
     <>
-      <div className="max-w-[1250px] mx-auto px-4 sm:px-6 overflow-x-hidden relative z-10">
+      <PageContainer className="overflow-x-hidden relative z-10">
         <div className="space-y-4">
           {/* Header */}
           <div className="app-reveal">
             <PageHeader
-              breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'История' }]}
+              breadcrumbs={[{ label: 'Главная', href: '/' }, { label: 'История' }]}
               title="История запусков"
-            actions={
-              <div className="flex items-center gap-2">
-                <Button variant="default" size="sm" onClick={() => router.push('/app/seo')} className="flex items-center gap-1.5 h-9">
-                  <Plus className="h-4 w-4" />
-                  Новый запуск
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearAll}
-                  className="flex items-center gap-1.5 h-9"
-                  style={{
-                    borderColor: 'hsl(var(--danger) / 0.5)',
-                    color: 'hsl(var(--danger))',
-                  }}
-                  disabled={runs.length === 0}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Очистить историю
-                </Button>
-              </div>
-            }
-          />
+              actions={
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => router.push('/app/seo')}
+                    className="flex items-center gap-1.5 h-9"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Новый запуск
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearAll}
+                    className="flex items-center gap-1.5 h-9"
+                    style={{
+                      borderColor: 'hsl(var(--danger) / 0.5)',
+                      color: 'hsl(var(--danger))',
+                    }}
+                    disabled={runs.length === 0}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Очистить историю
+                  </Button>
+                </div>
+              }
+            />
           </div>
 
           {/* Summary chips */}
           {!loading && runs.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm app-reveal app-reveal-delay-1">
-              <span className="app-badge app-badge-accent">
-                Всего: {stats.total}
-              </span>
-              <span className="app-badge app-badge-success">
-                OK: {stats.done}
-              </span>
-              <span className="app-badge app-badge-danger">
-                Ошибки: {stats.error}
-              </span>
-              <span className="app-badge app-badge-warning">
-                В работе: {stats.inProgress}
-              </span>
+              <span className="app-badge app-badge-accent">Всего: {stats.total}</span>
+              <span className="app-badge app-badge-success">OK: {stats.done}</span>
+              <span className="app-badge app-badge-danger">Ошибки: {stats.error}</span>
+              <span className="app-badge app-badge-warning">В работе: {stats.inProgress}</span>
               <span style={{ color: 'hsl(var(--muted))' }}>•</span>
               <span style={{ color: 'hsl(var(--muted))' }}>За период:</span>
               {(['week', 'month', 'all'] as PeriodFilter[]).map((p) => (
@@ -279,7 +305,10 @@ export default function RunsHistoryPage() {
           )}
 
           {/* Filter panel (sticky) */}
-          <div className="sticky top-14 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
+          <div
+            className="sticky top-14 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2"
+            style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}
+          >
             <div className="app-card-enhanced p-4">
               {loadError && !loading && (
                 <div
@@ -289,13 +318,20 @@ export default function RunsHistoryPage() {
                     borderColor: 'hsl(var(--danger) / 0.3)',
                   }}
                 >
-                  <p className="text-sm" style={{ color: 'hsl(var(--danger))' }}>{loadError}</p>
-                  <Button variant="outline" size="sm" onClick={() => loadRuns(periodFilter)}>Повторить</Button>
+                  <p className="text-sm" style={{ color: 'hsl(var(--danger))' }}>
+                    {loadError}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => loadRuns(periodFilter)}>
+                    Повторить
+                  </Button>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-4">
                 <div className="relative flex-1 min-w-[180px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'hsl(var(--muted))' }} />
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  />
                   <Input
                     type="text"
                     placeholder="Поиск по запросу..."
@@ -306,23 +342,31 @@ export default function RunsHistoryPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   {(['all', 'done', 'error', 'pending'] as const).map((s) => {
-                    const isActive = s === 'pending'
-                      ? (statusFilter === 'pending' || statusFilter === 'processing')
-                      : statusFilter === s;
+                    const isActive =
+                      s === 'pending'
+                        ? statusFilter === 'pending' || statusFilter === 'processing'
+                        : statusFilter === s;
                     return (
-                    <button
-                      key={s}
-                      onClick={() => setStatusFilter(s)}
-                      className="px-3 py-1.5 rounded-[10px] text-xs font-medium transition-colors"
-                      style={
-                        isActive
-                          ? { background: 'hsl(var(--accent))', color: 'white' }
-                          : { background: 'hsl(var(--surface-2))', color: 'hsl(var(--muted))' }
-                      }
-                    >
-                      {s === 'all' ? 'Все' : s === 'done' ? 'OK' : s === 'error' ? 'Ошибки' : 'В работе'}
-                    </button>
-                  );})}
+                      <button
+                        key={s}
+                        onClick={() => setStatusFilter(s)}
+                        className="px-3 py-1.5 rounded-[10px] text-xs font-medium transition-colors"
+                        style={
+                          isActive
+                            ? { background: 'hsl(var(--accent))', color: 'white' }
+                            : { background: 'hsl(var(--surface-2))', color: 'hsl(var(--muted))' }
+                        }
+                      >
+                        {s === 'all'
+                          ? 'Все'
+                          : s === 'done'
+                            ? 'OK'
+                            : s === 'error'
+                              ? 'Ошибки'
+                              : 'В работе'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -331,20 +375,31 @@ export default function RunsHistoryPage() {
           {/* Content */}
           {loading ? (
             <div className="app-card-enhanced p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 mb-2" style={{ borderColor: 'hsl(var(--accent))' }} />
+              <div
+                className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 mb-2"
+                style={{ borderColor: 'hsl(var(--accent))' }}
+              />
               <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
             </div>
           ) : runs.length === 0 ? (
             <div className="app-card-enhanced p-12 text-center">
-              <p className="text-base mb-4" style={{ color: 'hsl(var(--text))' }}>Запусков пока нет</p>
-              <Button variant="default" onClick={() => router.push('/app/seo')} className="flex items-center gap-2 mx-auto ui-btn-primary app-btn-shine">
+              <p className="text-base mb-4" style={{ color: 'hsl(var(--text))' }}>
+                Запусков пока нет
+              </p>
+              <Button
+                variant="default"
+                onClick={() => router.push('/app/seo')}
+                className="flex items-center gap-2 mx-auto ui-btn-primary app-btn-shine"
+              >
                 <Plus className="h-4 w-4" />
                 Сделать первый запуск
               </Button>
             </div>
           ) : filteredRuns.length === 0 ? (
             <div className="app-card-enhanced p-12 text-center">
-              <p className="text-base mb-4" style={{ color: 'hsl(var(--text))' }}>Ничего не найдено</p>
+              <p className="text-base mb-4" style={{ color: 'hsl(var(--text))' }}>
+                Ничего не найдено
+              </p>
               <Button variant="outline" onClick={resetFilters} className="gap-2">
                 Сбросить фильтры
               </Button>
@@ -361,26 +416,46 @@ export default function RunsHistoryPage() {
                       role="button"
                       tabIndex={0}
                       onClick={() => handleOpen(run.id)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleOpen(run.id); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleOpen(run.id);
+                      }}
                     >
-                      <span className="app-mono-label shrink-0 w-10 text-center" style={{ color: 'hsl(var(--muted))' }}>
+                      <span
+                        className="app-mono-label shrink-0 w-10 text-center"
+                        style={{ color: 'hsl(var(--muted))' }}
+                      >
                         #{String(idx + 1).padStart(2, '0')}
                       </span>
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={run.keyword}>
+                        <div
+                          className="text-sm font-semibold truncate"
+                          style={{ color: 'hsl(var(--text))' }}
+                          title={run.keyword}
+                        >
                           {run.keyword}
                         </div>
-                        <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                        <div
+                          className="app-mono-label mt-0.5"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
                           {formatDate(run.createdAt)}
-                          {(run.geoCity || run.engine) && ` · ${[run.geoCity, run.engine].filter(Boolean).join(' · ')}`}
-                          {' · '}{run.resultCount ?? 0} {(run.resultCount ?? 0) === 1 ? 'лид' : 'лидов'}
+                          {(run.geoCity || run.engine) &&
+                            ` · ${[run.geoCity, run.engine].filter(Boolean).join(' · ')}`}
+                          {' · '}
+                          {run.resultCount ?? 0} {(run.resultCount ?? 0) === 1 ? 'лид' : 'лидов'}
                         </div>
                       </div>
                       {getStatusBadge(run.status)}
-                      <div className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="inline-flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleOpen(run.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpen(run.id);
+                          }}
                           className="inline-flex items-center gap-1 text-small font-semibold transition-opacity hover:opacity-80"
                           style={{ color: 'hsl(var(--accent))' }}
                         >
@@ -390,10 +465,15 @@ export default function RunsHistoryPage() {
                         <div className="relative" ref={openMenuId === run.id ? menuRef : undefined}>
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === run.id ? null : run.id); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === run.id ? null : run.id);
+                            }}
                             className="inline-flex items-center justify-center w-7 h-7 rounded-[8px] transition-colors"
                             style={{ color: 'hsl(var(--muted))' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = 'hsl(var(--accent-weak))')
+                            }
                             onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                           >
                             <MoreVertical className="h-4 w-4" />
@@ -401,12 +481,17 @@ export default function RunsHistoryPage() {
                           {openMenuId === run.id && (
                             <div
                               className="absolute right-0 top-full mt-1 py-1 rounded-[10px] border shadow-lg z-20 min-w-[160px]"
-                              style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+                              style={{
+                                background: 'hsl(var(--surface))',
+                                borderColor: 'hsl(var(--border))',
+                              }}
                             >
                               <button
                                 className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
                                 style={{ color: 'hsl(var(--text))' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background = 'hsl(var(--accent-weak))')
+                                }
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                                 onClick={(e) => handleExportCSV(run.id, e)}
                               >
@@ -416,7 +501,9 @@ export default function RunsHistoryPage() {
                               <button
                                 className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
                                 style={{ color: 'hsl(var(--text))' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background = 'hsl(var(--accent-weak))')
+                                }
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                                 onClick={(e) => handleCopyAll(run.id, e)}
                               >
@@ -426,7 +513,9 @@ export default function RunsHistoryPage() {
                               <button
                                 className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
                                 style={{ color: 'hsl(var(--danger))' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')
+                                }
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                                 onClick={(e) => handleDelete(run.id, e)}
                               >
@@ -445,22 +534,32 @@ export default function RunsHistoryPage() {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-3">
                 {filteredRuns.map((run) => (
-                  <div
-                    key={run.id}
-                    className="app-card-enhanced p-4"
-                  >
+                  <div key={run.id} className="app-card-enhanced p-4">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--text))' }}>{run.keyword}</h3>
+                        <h3
+                          className="text-sm font-semibold truncate"
+                          style={{ color: 'hsl(var(--text))' }}
+                        >
+                          {run.keyword}
+                        </h3>
                         <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
-                          {(run.geoCity || run.engine) ? [run.geoCity, run.engine].filter(Boolean).join(' • ') : formatDate(run.createdAt)}
+                          {run.geoCity || run.engine
+                            ? [run.geoCity, run.engine].filter(Boolean).join(' • ')
+                            : formatDate(run.createdAt)}
                         </div>
                       </div>
                       {getStatusBadge(run.status)}
                     </div>
-                    <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+                    <div
+                      className="flex items-center justify-between pt-3 border-t"
+                      style={{ borderColor: 'hsl(var(--border))' }}
+                    >
                       <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
-                        Результатов: <strong style={{ color: 'hsl(var(--text))' }}>{run.resultCount ?? 0}</strong>
+                        Результатов:{' '}
+                        <strong style={{ color: 'hsl(var(--text))' }}>
+                          {run.resultCount ?? 0}
+                        </strong>
                       </span>
                       <div className="flex items-center gap-2">
                         <button
@@ -473,15 +572,31 @@ export default function RunsHistoryPage() {
                           Открыть
                         </button>
                         <div className="relative" ref={openMenuId === run.id ? menuRef : undefined}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-[10px]" onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === run.id ? null : run.id); }}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-[10px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === run.id ? null : run.id);
+                            }}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                           {openMenuId === run.id && (
-                            <div className="absolute right-0 top-full mt-1 py-1 rounded-[10px] shadow-lg z-20 min-w-[160px]" style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}>
+                            <div
+                              className="absolute right-0 top-full mt-1 py-1 rounded-[10px] shadow-lg z-20 min-w-[160px]"
+                              style={{
+                                background: 'hsl(var(--surface))',
+                                border: '1px solid hsl(var(--border))',
+                              }}
+                            >
                               <button
                                 className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
                                 style={{ color: 'hsl(var(--text))' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background = 'hsl(var(--accent-weak))')
+                                }
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                                 onClick={(e) => handleExportCSV(run.id, e)}
                               >
@@ -490,7 +605,9 @@ export default function RunsHistoryPage() {
                               <button
                                 className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
                                 style={{ color: 'hsl(var(--text))' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--accent-weak))')}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background = 'hsl(var(--accent-weak))')
+                                }
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                                 onClick={(e) => handleCopyAll(run.id, e)}
                               >
@@ -499,7 +616,9 @@ export default function RunsHistoryPage() {
                               <button
                                 className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 rounded-[8px] mx-1 transition-colors"
                                 style={{ color: 'hsl(var(--danger))' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background = 'hsl(var(--danger) / 0.1)')
+                                }
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                                 onClick={(e) => handleDelete(run.id, e)}
                               >
@@ -516,6 +635,7 @@ export default function RunsHistoryPage() {
             </>
           )}
         </div>
-      </div>    </>
+      </PageContainer>
+    </>
   );
 }

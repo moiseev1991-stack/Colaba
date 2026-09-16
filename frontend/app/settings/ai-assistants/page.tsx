@@ -9,7 +9,7 @@ import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { tokenStorage } from '@/client';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageColumn, PageHeader } from '@/components/ui/page';
 import { confirmDialog } from '@/components/ui/confirm';
 import { toast } from '@/components/ui/toast';
 import {
@@ -58,7 +58,6 @@ export default function AiAssistantsPage() {
     is_default: false,
   });
   const [submitting, setSubmitting] = useState(false);
-
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -221,182 +220,210 @@ export default function AiAssistantsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
-        breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'AI-ассистенты' }]}
-        title="AI-ассистенты"
-        actions={!needsAuth && !loading ? (
-          <ButtonV2 variant="primary" size="sm" onClick={openCreate} iconLeft={<Plus />}>
-            Добавить
-          </ButtonV2>
-        ) : undefined}
-      />
+    <PageContainer className="overflow-x-hidden">
+      <PageColumn>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Главная', href: '/' },
+            { label: 'Конфигурация', href: '/settings' },
+            { label: 'AI-ассистенты' },
+          ]}
+          title="AI-ассистенты"
+          actions={
+            !needsAuth && !loading ? (
+              <ButtonV2 variant="primary" size="sm" onClick={openCreate} iconLeft={<Plus />}>
+                Добавить
+              </ButtonV2>
+            ) : undefined
+          }
+        />
 
-      {needsAuth ? (
-        <CardV2 className="p-6">
-          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
-            Войдите для доступа к настройкам AI-ассистентов.
-          </p>
-          <Link
-            href="/auth/login"
-            className="text-brand-600 dark:text-brand-400 hover:underline"
-          >
-            Войти
-          </Link>
-        </CardV2>
-      ) : loading ? (
-        <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
-      ) : (
-        <div className="space-y-4">
-          {list.map((a) => (
-            <CardV2 key={a.id} className="p-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2
-                    className="font-display font-semibold tracking-tight text-xl"
-                    style={{ color: 'hsl(var(--text))' }}
-                  >
-                    {a.name}
-                  </h2>
-                  <SignalPill tone="muted" size="sm">{a.provider_type}</SignalPill>
-                  <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>{a.model}</span>
-                  {a.supports_vision && <SignalPill tone="accent" size="sm">Vision</SignalPill>}
-                  {a.is_default && <SignalPill tone="warm" size="sm">По умолчанию</SignalPill>}
-                  {a.config?.api_key ? <SignalPill tone="good" size="sm">Настроен</SignalPill> : null}
-                </div>
-                <div className="flex gap-2">
-                  {!a.is_default && (
+        {needsAuth ? (
+          <CardV2 className="p-6">
+            <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
+              Войдите для доступа к настройкам AI-ассистентов.
+            </p>
+            <Link href="/auth/login" className="text-brand-600 dark:text-brand-400 hover:underline">
+              Войти
+            </Link>
+          </CardV2>
+        ) : loading ? (
+          <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
+        ) : (
+          <div className="space-y-4">
+            {list.map((a) => (
+              <CardV2 key={a.id} className="p-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2
+                      className="font-display font-semibold tracking-tight text-xl"
+                      style={{ color: 'hsl(var(--text))' }}
+                    >
+                      {a.name}
+                    </h2>
+                    <SignalPill tone="muted" size="sm">
+                      {a.provider_type}
+                    </SignalPill>
+                    <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                      {a.model}
+                    </span>
+                    {a.supports_vision && (
+                      <SignalPill tone="accent" size="sm">
+                        Vision
+                      </SignalPill>
+                    )}
+                    {a.is_default && (
+                      <SignalPill tone="warm" size="sm">
+                        По умолчанию
+                      </SignalPill>
+                    )}
+                    {a.config?.api_key ? (
+                      <SignalPill tone="good" size="sm">
+                        Настроен
+                      </SignalPill>
+                    ) : null}
+                  </div>
+                  <div className="flex gap-2">
+                    {!a.is_default && (
+                      <ButtonV2
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleSetDefault(a.id)}
+                        title="Сделать по умолчанию"
+                        iconLeft={<Star />}
+                      >
+                        <span className="sr-only">По умолчанию</span>
+                      </ButtonV2>
+                    )}
                     <ButtonV2
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleSetDefault(a.id)}
-                      title="Сделать по умолчанию"
-                      iconLeft={<Star />}
+                      onClick={() => openEdit(a)}
+                      iconLeft={<Pencil />}
                     >
-                      <span className="sr-only">По умолчанию</span>
+                      <span className="sr-only">Редактировать</span>
                     </ButtonV2>
-                  )}
-                  <ButtonV2
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => openEdit(a)}
-                    iconLeft={<Pencil />}
-                  >
-                    <span className="sr-only">Редактировать</span>
-                  </ButtonV2>
-                  <ButtonV2
-                    variant="danger"
-                    size="sm"
-                    onClick={() => handleDelete(a.id)}
-                    iconLeft={<Trash2 />}
-                  >
-                    <span className="sr-only">Удалить</span>
-                  </ButtonV2>
+                    <ButtonV2
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(a.id)}
+                      iconLeft={<Trash2 />}
+                    >
+                      <span className="sr-only">Удалить</span>
+                    </ButtonV2>
+                  </div>
                 </div>
-              </div>
-            </CardV2>
-          ))}
-        </div>
-      )}
+              </CardV2>
+            ))}
+          </div>
+        )}
 
-      {/* Modal Create / Edit — теперь использует общий Dialog primitive */}
-      <Dialog
-        open={!!modal}
-        onClose={() => !submitting && setModal(null)}
-        title={modal === 'create' ? 'Добавить AI-ассистент' : 'Изменить'}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
-              Тип провайдера <span style={{ color: 'var(--signal-hot)' }}>*</span>
+        {/* Modal Create / Edit — теперь использует общий Dialog primitive */}
+        <Dialog
+          open={!!modal}
+          onClose={() => !submitting && setModal(null)}
+          title={modal === 'create' ? 'Добавить AI-ассистент' : 'Изменить'}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+                Тип провайдера <span style={{ color: 'var(--signal-hot)' }}>*</span>
+              </label>
+              <select
+                value={form.provider_type}
+                onChange={(e) => {
+                  const pt = e.target.value;
+                  const ent = registry.find((r) => r.provider_type === pt);
+                  setForm((p) => ({
+                    ...p,
+                    provider_type: pt,
+                    model: ent?.model_examples?.[0] || p.model,
+                    config: {},
+                  }));
+                }}
+                className="mt-1 w-full rounded-v2-sm border px-3 py-2"
+                style={{
+                  background: 'hsl(var(--surface))',
+                  borderColor: 'hsl(var(--border))',
+                  color: 'hsl(var(--text))',
+                }}
+              >
+                {registry.map((r) => (
+                  <option key={r.provider_type} value={r.provider_type}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+                Название <span style={{ color: 'var(--signal-hot)' }}>*</span>
+              </label>
+              <Input
+                value={form.name}
+                onChange={(e) => setFormField('name', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
+                Модель <span style={{ color: 'var(--signal-hot)' }}>*</span>
+              </label>
+              <Input
+                value={form.model}
+                onChange={(e) => setFormField('model', e.target.value)}
+                placeholder={
+                  registry.find((r) => r.provider_type === form.provider_type)?.model_examples?.[0]
+                }
+                className="mt-1"
+              />
+            </div>
+            {renderConfigFields()}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.supports_vision}
+                onChange={(e) => setFormField('supports_vision', e.target.checked)}
+                className="rounded border"
+                style={{ borderColor: 'hsl(var(--border))' }}
+              />
+              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
+                Поддержка Vision
+              </span>
             </label>
-            <select
-              value={form.provider_type}
-              onChange={(e) => {
-                const pt = e.target.value;
-                const ent = registry.find((r) => r.provider_type === pt);
-                setForm((p) => ({
-                  ...p,
-                  provider_type: pt,
-                  model: ent?.model_examples?.[0] || p.model,
-                  config: {},
-                }));
-              }}
-              className="mt-1 w-full rounded-v2-sm border px-3 py-2"
-              style={{
-                background: 'hsl(var(--surface))',
-                borderColor: 'hsl(var(--border))',
-                color: 'hsl(var(--text))',
-              }}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_default}
+                onChange={(e) => setFormField('is_default', e.target.checked)}
+                className="rounded border"
+                style={{ borderColor: 'hsl(var(--border))' }}
+              />
+              <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
+                По умолчанию
+              </span>
+            </label>
+          </div>
+          <div className="mt-6 flex gap-3">
+            <ButtonV2
+              variant="primary"
+              size="md"
+              onClick={modal === 'create' ? handleCreate : handleUpdate}
+              loading={submitting}
             >
-              {registry.map((r) => (
-                <option key={r.provider_type} value={r.provider_type}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+              Сохранить
+            </ButtonV2>
+            <ButtonV2
+              variant="secondary"
+              size="md"
+              onClick={() => setModal(null)}
+              disabled={submitting}
+            >
+              Отмена
+            </ButtonV2>
           </div>
-          <div>
-            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
-              Название <span style={{ color: 'var(--signal-hot)' }}>*</span>
-            </label>
-            <Input
-              value={form.name}
-              onChange={(e) => setFormField('name', e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" style={{ color: 'hsl(var(--text))' }}>
-              Модель <span style={{ color: 'var(--signal-hot)' }}>*</span>
-            </label>
-            <Input
-              value={form.model}
-              onChange={(e) => setFormField('model', e.target.value)}
-              placeholder={registry.find((r) => r.provider_type === form.provider_type)?.model_examples?.[0]}
-              className="mt-1"
-            />
-          </div>
-          {renderConfigFields()}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.supports_vision}
-              onChange={(e) => setFormField('supports_vision', e.target.checked)}
-              className="rounded border"
-              style={{ borderColor: 'hsl(var(--border))' }}
-            />
-            <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>Поддержка Vision</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.is_default}
-              onChange={(e) => setFormField('is_default', e.target.checked)}
-              className="rounded border"
-              style={{ borderColor: 'hsl(var(--border))' }}
-            />
-            <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>По умолчанию</span>
-          </label>
-        </div>
-        <div className="mt-6 flex gap-3">
-          <ButtonV2
-            variant="primary"
-            size="md"
-            onClick={modal === 'create' ? handleCreate : handleUpdate}
-            loading={submitting}
-          >
-            Сохранить
-          </ButtonV2>
-          <ButtonV2
-            variant="secondary"
-            size="md"
-            onClick={() => setModal(null)}
-            disabled={submitting}
-          >
-            Отмена
-          </ButtonV2>
-        </div>
-      </Dialog>
-    </div>
+        </Dialog>
+      </PageColumn>
+    </PageContainer>
   );
 }

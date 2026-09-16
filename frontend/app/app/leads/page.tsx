@@ -12,15 +12,18 @@ import { useSearchParams } from 'next/navigation';
 
 import { MapsSearchPanel } from '@/components/maps/MapsSearchPanel';
 import { SiteLeadsPanel } from '@/components/sites/SiteLeadsPanel';
+import { PageContainer } from '@/components/ui/page';
 
 function LeadsPageInner() {
   const searchParams = useSearchParams();
 
   if (searchParams?.get('tab') === 'sites') {
     return (
-      <div className="mx-auto w-full max-w-[1072px] px-4 pb-16 pt-10 sm:px-6 sm:pt-16">
-        <SiteLeadsPanel />
-      </div>
+      <PageContainer className="pb-16 pt-10 sm:pt-16">
+        <div className="mx-auto w-full max-w-[1072px]">
+          <SiteLeadsPanel />
+        </div>
+      </PageContainer>
     );
   }
 

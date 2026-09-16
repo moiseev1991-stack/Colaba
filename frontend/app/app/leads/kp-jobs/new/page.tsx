@@ -23,11 +23,9 @@ import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { ColdEmailCalculator } from '@/components/ColdEmailCalculator';
+import { PageColumn, PageContainer } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
-import {
-  clearBulkKpPending,
-  readBulkKpPending,
-} from '@/lib/kp-bulk-pending';
+import { clearBulkKpPending, readBulkKpPending } from '@/lib/kp-bulk-pending';
 import {
   findCommonPains,
   listKpTemplates,
@@ -119,14 +117,11 @@ function KpJobNewInner() {
         setTemplates(list);
         const fromOnboarding = getStoredKpTemplateKey();
         const def =
-          (fromOnboarding && list.find((t) => t.key === fromOnboarding)) ||
-          list[0] ||
-          null;
+          (fromOnboarding && list.find((t) => t.key === fromOnboarding)) || list[0] || null;
         setSelectedKey(def?.key ?? null);
       })
       .catch((e: any) => {
-        if (!cancelled)
-          setTemplatesError(e?.message || 'Не удалось загрузить шаблоны КП.');
+        if (!cancelled) setTemplatesError(e?.message || 'Не удалось загрузить шаблоны КП.');
       })
       .finally(() => {
         if (!cancelled) setTemplatesLoading(false);
@@ -175,9 +170,7 @@ function KpJobNewInner() {
     if (!companyIds || companyIds.length === 0) return;
     if (!selectedKey || starting) return;
     if (isCustom && !customSenderProfile.trim()) {
-      setStartError(
-        'Для шаблона «Свой вариант» опиши, кто ты — 1-2 предложения.',
-      );
+      setStartError('Для шаблона «Свой вариант» опиши, кто ты — 1-2 предложения.');
       return;
     }
     setStarting(true);
@@ -191,7 +184,7 @@ function KpJobNewInner() {
         pain_tag_ids: selectedCommonPainId != null ? [selectedCommonPainId] : null,
         use_4hods: bulkUse4hods,
         channel: bulkUse4hods ? bulkChannel : undefined,
-        my_offer_step: bulkUse4hods ? (bulkOfferStep.trim() || null) : null,
+        my_offer_step: bulkUse4hods ? bulkOfferStep.trim() || null : null,
       });
       // Очищаем pending в localStorage — больше не нужен.
       const ref = searchParams.get('ref');
@@ -215,296 +208,296 @@ function KpJobNewInner() {
 
   // --- Render
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
-      <div className="mb-5">
-        <button
-          type="button"
-          onClick={() => window.close()}
-          className="inline-flex items-center gap-1 text-small text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Закрыть вкладку
-        </button>
-      </div>
+    <PageContainer>
+      <PageColumn>
+        <div className="mb-5">
+          <button
+            type="button"
+            onClick={() => window.close()}
+            className="inline-flex items-center gap-1 text-small text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Закрыть вкладку
+          </button>
+        </div>
 
-      <h1 className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
-        <Sparkles className="mr-1.5 inline h-5 w-5 -translate-y-0.5 text-violet-600" />
-        Новая партия КП
-      </h1>
-      <p className="mt-1 text-small text-[hsl(var(--muted))]">
-        {companyIds
-          ? `${companyIds.length} ${companyIds.length === 1 ? 'компания' : 'компаний'} — выбери шаблон отправителя и тон, начнём генерацию.`
-          : 'Загружаю список компаний…'}
-      </p>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
+          <Sparkles className="mr-1.5 inline h-5 w-5 -translate-y-0.5 text-violet-600" />
+          Новая партия КП
+        </h1>
+        <p className="mt-1 text-small text-[hsl(var(--muted))]">
+          {companyIds
+            ? `${companyIds.length} ${companyIds.length === 1 ? 'компания' : 'компаний'} — выбери шаблон отправителя и тон, начнём генерацию.`
+            : 'Загружаю список компаний…'}
+        </p>
 
-      {resolveError && (
-        <CardV2 className="mt-5 border-rose-200 bg-rose-50 px-4 py-3 text-small text-rose-700">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="flex-1">{resolveError}</div>
-          </div>
-          <div className="mt-3">
-            <ButtonV2
-              variant="secondary"
-              size="sm"
-              onClick={() => window.close()}
-            >
-              Закрыть вкладку
-            </ButtonV2>
-          </div>
-        </CardV2>
-      )}
+        {resolveError && (
+          <CardV2 className="mt-5 border-rose-200 bg-rose-50 px-4 py-3 text-small text-rose-700">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1">{resolveError}</div>
+            </div>
+            <div className="mt-3">
+              <ButtonV2 variant="secondary" size="sm" onClick={() => window.close()}>
+                Закрыть вкладку
+              </ButtonV2>
+            </div>
+          </CardV2>
+        )}
 
-      {!resolveError && companyIds && (
-        <div className="mt-6 space-y-5">
-          {/* Шаблон */}
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-              Шаблон отправителя
-            </label>
-            {templatesLoading ? (
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                Загружаю шаблоны…
+        {!resolveError && companyIds && (
+          <div className="mt-6 space-y-5">
+            {/* Шаблон */}
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                Шаблон отправителя
+              </label>
+              {templatesLoading ? (
+                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  Загружаю шаблоны…
+                </div>
+              ) : templatesError ? (
+                <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {templatesError}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {templates.map((t) => {
+                    const active = t.key === selectedKey;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setSelectedKey(t.key)}
+                        className={cn(
+                          'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
+                          active
+                            ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
+                            : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+                        )}
+                        title={t.sender_profile || undefined}
+                      >
+                        {t.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedTemplate && !isCustom && selectedTemplate.sender_profile && (
+                <p className="mt-1 text-xs italic text-[hsl(var(--muted))]">
+                  Пишешь от лица: {selectedTemplate.sender_profile}
+                </p>
+              )}
+            </div>
+
+            {isCustom && (
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                  Кто ты — 1-2 предложения
+                </label>
+                <textarea
+                  value={customSenderProfile}
+                  onChange={(e) => setCustomSenderProfile(e.target.value)}
+                  rows={3}
+                  maxLength={600}
+                  placeholder="Например: маркетолог-фрилансер, делаю настройку Яндекс.Директа и веду рекламные кампании."
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
               </div>
-            ) : templatesError ? (
-              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {templatesError}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {templates.map((t) => {
-                  const active = t.key === selectedKey;
+            )}
+
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                Тон письма
+              </label>
+              <div className="flex gap-1.5">
+                {TONE_OPTIONS.map((opt) => {
+                  const active = tone === opt.value;
                   return (
                     <button
-                      key={t.key}
+                      key={opt.value}
                       type="button"
-                      onClick={() => setSelectedKey(t.key)}
+                      onClick={() => setTone(opt.value)}
                       className={cn(
                         'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
                         active
-                          ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
+                          ? 'border-violet-600 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
                           : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
                       )}
-                      title={t.sender_profile || undefined}
                     >
-                      {t.title}
+                      {opt.label}
                     </button>
                   );
                 })}
               </div>
-            )}
-            {selectedTemplate && !isCustom && selectedTemplate.sender_profile && (
-              <p className="mt-1 text-xs italic text-[hsl(var(--muted))]">
-                Пишешь от лица: {selectedTemplate.sender_profile}
-              </p>
-            )}
-          </div>
-
-          {isCustom && (
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-                Кто ты — 1-2 предложения
-              </label>
-              <textarea
-                value={customSenderProfile}
-                onChange={(e) => setCustomSenderProfile(e.target.value)}
-                rows={3}
-                maxLength={600}
-                placeholder="Например: маркетолог-фрилансер, делаю настройку Яндекс.Директа и веду рекламные кампании."
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-              />
             </div>
-          )}
 
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-              Тон письма
-            </label>
-            <div className="flex gap-1.5">
-              {TONE_OPTIONS.map((opt) => {
-                const active = tone === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setTone(opt.value)}
-                    className={cn(
-                      'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
-                      active
-                        ? 'border-violet-600 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2026-07-12: Общая боль партии — если у ≥2 компаний есть
+            {/* 2026-07-12: Общая боль партии — если у ≥2 компаний есть
               общий pain, юзер может выбрать его и получить КП по этой
               боли ВСЕЙ партии (унифицированный оффер). Иначе — каждой
               компании берётся её топ-1 автоматически. */}
-          {!commonPainsLoading && commonPains.length > 0 && (
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
-                Общая боль партии{' '}
-                <span className="normal-case text-xs text-slate-500">
-                  · {commonPains.length} найдено, {companyIds.length} компаний
-                </span>
-              </label>
-              <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30">
-                <label className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small hover:bg-slate-100 dark:hover:bg-slate-800/40">
-                  <input
-                    type="radio"
-                    name="common-pain"
-                    checked={selectedCommonPainId === null}
-                    onChange={() => setSelectedCommonPainId(null)}
-                    className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
-                  />
-                  <span className="flex-1">
-                    <span className="font-medium">Автоматически</span>
-                    <span className="ml-1.5 text-slate-500 dark:text-slate-400">
-                      · каждой компании — её топ-1 боль
-                    </span>
+            {!commonPainsLoading && commonPains.length > 0 && (
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                  Общая боль партии{' '}
+                  <span className="normal-case text-xs text-slate-500">
+                    · {commonPains.length} найдено, {companyIds.length} компаний
                   </span>
                 </label>
-                {commonPains.slice(0, 8).map((p) => (
-                  <label
-                    key={p.pain_tag_id}
-                    className={cn(
-                      'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small transition-colors',
-                      selectedCommonPainId === p.pain_tag_id
-                        ? 'bg-violet-100 dark:bg-violet-900/30'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/40',
-                    )}
-                  >
+                <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30">
+                  <label className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small hover:bg-slate-100 dark:hover:bg-slate-800/40">
                     <input
                       type="radio"
                       name="common-pain"
-                      checked={selectedCommonPainId === p.pain_tag_id}
-                      onChange={() => setSelectedCommonPainId(p.pain_tag_id)}
+                      checked={selectedCommonPainId === null}
+                      onChange={() => setSelectedCommonPainId(null)}
                       className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
                     />
                     <span className="flex-1">
-                      <span className="font-medium text-slate-800 dark:text-slate-100">
-                        {p.label}
-                      </span>
+                      <span className="font-medium">Автоматически</span>
                       <span className="ml-1.5 text-slate-500 dark:text-slate-400">
-                        · {p.companies_hit} из {companyIds.length} компаний · {p.total_mentions} упоминаний
+                        · каждой компании — её топ-1 боль
                       </span>
-                      {p.example_quote && (
-                        <span className="block truncate text-xs italic text-slate-500 dark:text-slate-400">
-                          «{p.example_quote.slice(0, 100)}
-                          {p.example_quote.length > 100 ? '…' : ''}»
-                        </span>
-                      )}
                     </span>
                   </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 2026-07-12: включить «4 хода» для всей партии. */}
-          <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-            <label className="flex cursor-pointer items-start gap-2">
-              <input
-                type="checkbox"
-                checked={bulkUse4hods}
-                onChange={(e) => setBulkUse4hods(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-violet-600"
-              />
-              <span className="flex-1 text-small">
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  Промпт «4 хода» для всей партии
-                </span>
-                <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
-                  beta
-                </span>
-                <span className="block text-xs text-slate-500 dark:text-slate-400">
-                  Каркас: наблюдение → что стоит клиенту → решение результатом → микрошаг. Справочник — «автоматизация связи».
-                </span>
-              </span>
-            </label>
-            {bulkUse4hods && (
-              <div className="mt-3 space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Канал
-                  </label>
-                  <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
-                    {(['messenger', 'email'] as const).map((c) => {
-                      const active = bulkChannel === c;
-                      return (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setBulkChannel(c)}
-                          className={cn(
-                            'rounded px-2.5 py-1 text-xs font-medium transition-colors',
-                            active
-                              ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100'
-                              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400',
-                          )}
-                        >
-                          {c === 'messenger' ? 'Мессенджер' : 'Email'}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Микрошаг (ХОД 4)
-                  </label>
-                  <input
-                    type="text"
-                    value={bulkOfferStep}
-                    onChange={(e) => setBulkOfferStep(e.target.value)}
-                    placeholder="созвон 10 минут / показ на примере / мини-аудит"
-                    maxLength={200}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                  />
+                  {commonPains.slice(0, 8).map((p) => (
+                    <label
+                      key={p.pain_tag_id}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small transition-colors',
+                        selectedCommonPainId === p.pain_tag_id
+                          ? 'bg-violet-100 dark:bg-violet-900/30'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/40',
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="common-pain"
+                        checked={selectedCommonPainId === p.pain_tag_id}
+                        onChange={() => setSelectedCommonPainId(p.pain_tag_id)}
+                        className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
+                      />
+                      <span className="flex-1">
+                        <span className="font-medium text-slate-800 dark:text-slate-100">
+                          {p.label}
+                        </span>
+                        <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                          · {p.companies_hit} из {companyIds.length} компаний · {p.total_mentions}{' '}
+                          упоминаний
+                        </span>
+                        {p.example_quote && (
+                          <span className="block truncate text-xs italic text-slate-500 dark:text-slate-400">
+                            «{p.example_quote.slice(0, 100)}
+                            {p.example_quote.length > 100 ? '…' : ''}»
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Калькулятор «что выжмем» — независимый блок, не влияет на старт.
+            {/* 2026-07-12: включить «4 хода» для всей партии. */}
+            <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={bulkUse4hods}
+                  onChange={(e) => setBulkUse4hods(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-violet-600"
+                />
+                <span className="flex-1 text-small">
+                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                    Промпт «4 хода» для всей партии
+                  </span>
+                  <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+                    beta
+                  </span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    Каркас: наблюдение → что стоит клиенту → решение результатом → микрошаг.
+                    Справочник — «автоматизация связи».
+                  </span>
+                </span>
+              </label>
+              {bulkUse4hods && (
+                <div className="mt-3 space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Канал
+                    </label>
+                    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
+                      {(['messenger', 'email'] as const).map((c) => {
+                        const active = bulkChannel === c;
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setBulkChannel(c)}
+                            className={cn(
+                              'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+                              active
+                                ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100'
+                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400',
+                            )}
+                          >
+                            {c === 'messenger' ? 'Мессенджер' : 'Email'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Микрошаг (ХОД 4)
+                    </label>
+                    <input
+                      type="text"
+                      value={bulkOfferStep}
+                      onChange={(e) => setBulkOfferStep(e.target.value)}
+                      placeholder="созвон 10 минут / показ на примере / мини-аудит"
+                      maxLength={200}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Калькулятор «что выжмем» — независимый блок, не влияет на старт.
               Юзеру нужен сразу до отправки, чтобы понять, имеет ли смысл
               катать партию из N компаний или поднять/опустить лимит. */}
-          <ColdEmailCalculator letterCount={companyIds.length} />
+            <ColdEmailCalculator letterCount={companyIds.length} />
 
-          {startError && (
-            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {startError}
+            {startError && (
+              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {startError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <ButtonV2
+                variant="ghost"
+                size="md"
+                onClick={() => window.close()}
+                disabled={starting}
+              >
+                Отмена
+              </ButtonV2>
+              <ButtonV2
+                variant="primary"
+                size="md"
+                loading={starting}
+                disabled={starting || !selectedKey || templatesLoading}
+                onClick={handleStart}
+                iconLeft={!starting ? <Sparkles /> : undefined}
+              >
+                Сгенерировать ({companyIds.length})
+              </ButtonV2>
             </div>
-          )}
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <ButtonV2
-              variant="ghost"
-              size="md"
-              onClick={() => window.close()}
-              disabled={starting}
-            >
-              Отмена
-            </ButtonV2>
-            <ButtonV2
-              variant="primary"
-              size="md"
-              loading={starting}
-              disabled={starting || !selectedKey || templatesLoading}
-              onClick={handleStart}
-              iconLeft={!starting ? <Sparkles /> : undefined}
-            >
-              Сгенерировать ({companyIds.length})
-            </ButtonV2>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </PageColumn>
+    </PageContainer>
   );
 }

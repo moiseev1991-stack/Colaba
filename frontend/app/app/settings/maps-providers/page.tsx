@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageColumn, PageHeader } from '@/components/ui/page';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
@@ -69,7 +69,6 @@ export default function MapsProvidersSettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,7 +168,8 @@ export default function MapsProvidersSettingsPage() {
     try {
       const res = await testMapsProvider(id);
       if (res.ok) {
-        toast.success(`${p.name}: проверка пройдена${
+        toast.success(
+          `${p.name}: проверка пройдена${
             res.result_count != null ? `, результатов: ${res.result_count}` : ''
           }`,
         );
@@ -201,11 +201,7 @@ export default function MapsProvidersSettingsPage() {
         <Input
           type={isSecret ? 'password' : 'text'}
           value={isMasked ? '' : localVal}
-          placeholder={
-            isMasked
-              ? '••• (не менять)'
-              : f.description || 'вставьте ключ'
-          }
+          placeholder={isMasked ? '••• (не менять)' : f.description || 'вставьте ключ'}
           onChange={(e) => setField(id, f.key, e.target.value)}
         />
         {f.description && !isMasked && (
@@ -224,173 +220,164 @@ export default function MapsProvidersSettingsPage() {
     .join(', ');
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
-        breadcrumb={[
-          { label: 'Главная', href: '/' },
-          { label: 'Конфигурация', href: '/settings' },
-          { label: 'Провайдеры карт' },
-        ]}
-        title="Провайдеры карт и отзывов"
-      />
+    <PageContainer className="overflow-x-hidden">
+      <PageColumn>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Главная', href: '/' },
+            { label: 'Конфигурация', href: '/settings' },
+            { label: 'Провайдеры карт' },
+          ]}
+          title="Провайдеры карт и отзывов"
+        />
 
-      {needsAuth ? (
-        <CardV2 className="p-6">
-          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
-            Войдите для доступа к настройкам провайдеров карт.
-          </p>
-          <Link
-            href="/auth/login"
-            className="text-brand-600 dark:text-brand-400 hover:underline"
-          >
-            Войти
-          </Link>
-        </CardV2>
-      ) : loading ? (
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <Loader2
-            className="h-8 w-8 animate-spin"
-            style={{ color: 'hsl(var(--muted))' }}
-          />
-        </div>
-      ) : (
-        <>
-          {/* Статус-баннер сверху */}
-          <div
-            className="mb-6 rounded-v2-sm border px-4 py-3 flex items-start gap-3"
-            style={{
-              background:
-                activeCount > 0 ? 'var(--signal-good-bg)' : 'var(--signal-warm-bg)',
-              borderColor:
-                activeCount > 0 ? 'rgb(16 185 129 / 0.3)' : 'rgb(245 158 11 / 0.3)',
-            }}
-          >
-            <MapPin
-              className="h-5 w-5 shrink-0 mt-0.5"
-              style={{
-                color: activeCount > 0 ? 'var(--signal-good)' : 'var(--signal-warm)',
-              }}
-            />
-            <div>
-              <div className="font-medium" style={{ color: 'hsl(var(--text))' }}>
-                {activeCount > 0
-                  ? `Активны: ${activeNames}`
-                  : 'Нет активных провайдеров'}
-              </div>
-              <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
-                {activeCount > 0
-                  ? 'Эти источники используются по умолчанию при создании нового поиска.'
-                  : 'Включите хотя бы один провайдер (чекбоксом ниже) или оставьте как есть — будет использоваться 2GIS из env.'}
-              </p>
-            </div>
+        {needsAuth ? (
+          <CardV2 className="p-6">
+            <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
+              Войдите для доступа к настройкам провайдеров карт.
+            </p>
+            <Link href="/auth/login" className="text-brand-600 dark:text-brand-400 hover:underline">
+              Войти
+            </Link>
+          </CardV2>
+        ) : loading ? (
+          <div className="flex items-center justify-center min-h-[40vh]">
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'hsl(var(--muted))' }} />
           </div>
+        ) : (
+          <>
+            {/* Статус-баннер сверху */}
+            <div
+              className="mb-6 rounded-v2-sm border px-4 py-3 flex items-start gap-3"
+              style={{
+                background: activeCount > 0 ? 'var(--signal-good-bg)' : 'var(--signal-warm-bg)',
+                borderColor: activeCount > 0 ? 'rgb(16 185 129 / 0.3)' : 'rgb(245 158 11 / 0.3)',
+              }}
+            >
+              <MapPin
+                className="h-5 w-5 shrink-0 mt-0.5"
+                style={{
+                  color: activeCount > 0 ? 'var(--signal-good)' : 'var(--signal-warm)',
+                }}
+              />
+              <div>
+                <div className="font-medium" style={{ color: 'hsl(var(--text))' }}>
+                  {activeCount > 0 ? `Активны: ${activeNames}` : 'Нет активных провайдеров'}
+                </div>
+                <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
+                  {activeCount > 0
+                    ? 'Эти источники используются по умолчанию при создании нового поиска.'
+                    : 'Включите хотя бы один провайдер (чекбоксом ниже) или оставьте как есть — будет использоваться 2GIS из env.'}
+                </p>
+              </div>
+            </div>
 
-          <div className="space-y-6">
-            {list.map((p) => {
-              const id = p.provider_id;
-              return (
-                <CardV2 key={id} className="p-6">
-                  <div className="flex items-center justify-between gap-4 mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2
-                          className="font-display font-semibold tracking-tight text-xl"
-                          style={{ color: 'hsl(var(--text))' }}
-                        >
-                          {p.name}
-                        </h2>
-                        {p.is_configured ? (
-                          <SignalPill tone="good" size="sm">
-                            Настроен
-                          </SignalPill>
-                        ) : (
-                          <SignalPill tone="warm" size="sm">
-                            Не настроен
-                          </SignalPill>
-                        )}
-                        {p.last_test_result === 'ok' && (
-                          <SignalPill tone="good" size="sm">
-                            Проверен OK
-                          </SignalPill>
-                        )}
-                        {p.last_test_result === 'error' && (
-                          <SignalPill tone="hot" size="sm">
-                            Проверка не удалась
-                          </SignalPill>
+            <div className="space-y-6">
+              {list.map((p) => {
+                const id = p.provider_id;
+                return (
+                  <CardV2 key={id} className="p-6">
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2
+                            className="font-display font-semibold tracking-tight text-xl"
+                            style={{ color: 'hsl(var(--text))' }}
+                          >
+                            {p.name}
+                          </h2>
+                          {p.is_configured ? (
+                            <SignalPill tone="good" size="sm">
+                              Настроен
+                            </SignalPill>
+                          ) : (
+                            <SignalPill tone="warm" size="sm">
+                              Не настроен
+                            </SignalPill>
+                          )}
+                          {p.last_test_result === 'ok' && (
+                            <SignalPill tone="good" size="sm">
+                              Проверен OK
+                            </SignalPill>
+                          )}
+                          {p.last_test_result === 'error' && (
+                            <SignalPill tone="hot" size="sm">
+                              Проверка не удалась
+                            </SignalPill>
+                          )}
+                        </div>
+                        {p.description && (
+                          <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
+                            {p.description}
+                          </p>
                         )}
                       </div>
-                      {p.description && (
-                        <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
-                          {p.description}
-                        </p>
-                      )}
+                      {/* Switch is_enabled */}
+                      <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={state[id]?.is_enabled ?? false}
+                          onChange={(e) => setEnabled(id, e.target.checked)}
+                          className="rounded border"
+                          style={{ borderColor: 'hsl(var(--border))' }}
+                        />
+                        <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
+                          Включён
+                        </span>
+                      </label>
                     </div>
-                    {/* Switch is_enabled */}
-                    <label className="flex items-center gap-2 cursor-pointer shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={state[id]?.is_enabled ?? false}
-                        onChange={(e) => setEnabled(id, e.target.checked)}
-                        className="rounded border"
-                        style={{ borderColor: 'hsl(var(--border))' }}
-                      />
-                      <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
-                        Включён
-                      </span>
-                    </label>
-                  </div>
 
-                  <div className="space-y-4">
-                    {p.fields.map((f) => renderField(p, f))}
-                  </div>
+                    <div className="space-y-4">{p.fields.map((f) => renderField(p, f))}</div>
 
-                  {p.last_test_at && (
-                    <p className="mt-3 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                      Проверен {formatDate(p.last_test_at)}
-                      {p.last_test_result === 'ok'
-                        ? ' — OK'
-                        : p.last_test_error
-                          ? ` — ошибка: ${p.last_test_error}`
-                          : ''}
-                    </p>
-                  )}
+                    {p.last_test_at && (
+                      <p className="mt-3 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                        Проверен {formatDate(p.last_test_at)}
+                        {p.last_test_result === 'ok'
+                          ? ' — OK'
+                          : p.last_test_error
+                            ? ` — ошибка: ${p.last_test_error}`
+                            : ''}
+                      </p>
+                    )}
 
-                  <div
-                    className="mt-4 pt-4 border-t flex gap-3"
-                    style={{ borderColor: 'hsl(var(--border))' }}
-                  >
-                    <ButtonV2
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleTest(p)}
-                      loading={!!state[id]?.testing}
-                      iconLeft={<Zap className="h-4 w-4" />}
+                    <div
+                      className="mt-4 pt-4 border-t flex gap-3"
+                      style={{ borderColor: 'hsl(var(--border))' }}
                     >
-                      Проверить
-                    </ButtonV2>
-                    <ButtonV2
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleSave(p)}
-                      loading={!!state[id]?.saving}
-                      iconLeft={<Save className="h-4 w-4" />}
-                    >
-                      Сохранить
-                    </ButtonV2>
-                  </div>
-                </CardV2>
-              );
-            })}
-          </div>
+                      <ButtonV2
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleTest(p)}
+                        loading={!!state[id]?.testing}
+                        iconLeft={<Zap className="h-4 w-4" />}
+                      >
+                        Проверить
+                      </ButtonV2>
+                      <ButtonV2
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSave(p)}
+                        loading={!!state[id]?.saving}
+                        iconLeft={<Save className="h-4 w-4" />}
+                      >
+                        Сохранить
+                      </ButtonV2>
+                    </div>
+                  </CardV2>
+                );
+              })}
+            </div>
 
-          <p className="mt-6 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-            Ключи сохраняются в БД и приоритетнее env-переменных ({' '}
-            <code className="font-mono">TWOGIS_API_KEY</code>,{' '}
-            <code className="font-mono">SERPAPI_KEY</code>
-            ). Если провайдер выключен, но ключ есть в env — он продолжит работать
-            как раньше (обратная совместимость).
-          </p>
-        </>
-      )}
-    </div>
+            <p className="mt-6 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+              Ключи сохраняются в БД и приоритетнее env-переменных ({' '}
+              <code className="font-mono">TWOGIS_API_KEY</code>,{' '}
+              <code className="font-mono">SERPAPI_KEY</code>
+              ). Если провайдер выключен, но ключ есть в env — он продолжит работать как раньше
+              (обратная совместимость).
+            </p>
+          </>
+        )}
+      </PageColumn>
+    </PageContainer>
   );
 }

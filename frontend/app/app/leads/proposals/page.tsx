@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { confirmDialog } from '@/components/ui/confirm';
 import { toast } from '@/components/ui/toast';
+import { PageContainer } from '@/components/ui/page';
 
 const CHANNEL_ICON: Record<ProposalChannel, React.ReactNode> = {
   email: <Mail />,
@@ -67,7 +68,7 @@ export default function ProposalsListPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+    <PageContainer>
       <h1
         className="mb-3 font-display font-semibold leading-[1.05] tracking-tight"
         style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
@@ -75,13 +76,14 @@ export default function ProposalsListPage() {
         Шаблоны <span className="text-gradient-brand">коммерческих предложений</span>
       </h1>
       <p className="mb-8 max-w-[640px] text-base leading-relaxed text-[hsl(var(--muted))]">
-        Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт
-        в каждое отправление. Можно несколько шаблонов под разные ситуации.
+        Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт в
+        каждое отправление. Можно несколько шаблонов под разные ситуации.
       </p>
-
       <div className="mb-4 flex items-center justify-between">
         <div className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
-          {hydrated ? `${items.length} шаблон${items.length === 1 ? '' : items.length < 5 ? 'а' : 'ов'}` : '…'}
+          {hydrated
+            ? `${items.length} шаблон${items.length === 1 ? '' : items.length < 5 ? 'а' : 'ов'}`
+            : '…'}
         </div>
         <Link href="/app/leads/proposals/new">
           <ButtonV2 variant="primary" size="md" iconLeft={<Plus />}>
@@ -89,10 +91,11 @@ export default function ProposalsListPage() {
           </ButtonV2>
         </Link>
       </div>
-
       {!hydrated ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[80px]" rounded="lg" />)}
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[80px]" rounded="lg" />
+          ))}
         </div>
       ) : items.length === 0 ? (
         <CardV2 className="bg-mesh-brand px-6 py-12 text-center">
@@ -103,8 +106,8 @@ export default function ProposalsListPage() {
             Пока нет ни одного шаблона
           </h3>
           <p className="mx-auto mb-5 max-w-[480px] text-small leading-relaxed text-[hsl(var(--muted))]">
-            Создайте первый шаблон — потом сможете отправлять его по выбранным лидам с автоматической
-            подстановкой имени компании и контакта.
+            Создайте первый шаблон — потом сможете отправлять его по выбранным лидам с
+            автоматической подстановкой имени компании и контакта.
           </p>
           <Link href="/app/leads/proposals/new">
             <ButtonV2 variant="primary" size="md" iconLeft={<Plus />}>
@@ -133,7 +136,9 @@ export default function ProposalsListPage() {
                     className="mt-0.5 truncate text-xs text-[hsl(var(--muted))]"
                     title={tpl.subject || tpl.body}
                   >
-                    {tpl.channel === 'email' && tpl.subject ? `Тема: ${tpl.subject}` : tpl.body.slice(0, 90)}
+                    {tpl.channel === 'email' && tpl.subject
+                      ? `Тема: ${tpl.subject}`
+                      : tpl.body.slice(0, 90)}
                   </div>
                 </div>
 
@@ -164,6 +169,7 @@ export default function ProposalsListPage() {
             </li>
           ))}
         </ul>
-      )}    </div>
+      )}{' '}
+    </PageContainer>
   );
 }

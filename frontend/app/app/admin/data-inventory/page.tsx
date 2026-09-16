@@ -19,6 +19,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { confirmDialog } from '@/components/ui/confirm';
+import { PageContainer } from '@/components/ui/page';
 
 interface InventoryItem {
   niche: string;
@@ -85,12 +86,14 @@ export default function DataInventoryPage() {
   const [rebuild, setRebuild] = useState<Record<string, { state: RebuildState; msg?: string }>>({});
   // Состояние массового парсинга
   const [parseBusy, setParseBusy] = useState(false);
-  const [parseResults, setParseResults] = useState<Array<{
-    niche: string;
-    city: string;
-    status: 'pending' | 'from_cache' | 'failed';
-    id?: number;
-  }>>([]);
+  const [parseResults, setParseResults] = useState<
+    Array<{
+      niche: string;
+      city: string;
+      status: 'pending' | 'from_cache' | 'failed';
+      id?: number;
+    }>
+  >([]);
 
   const reload = async () => {
     setLoading(true);
@@ -120,9 +123,7 @@ export default function DataInventoryPage() {
     const query = q.trim().toLowerCase();
     if (!query) return data.items;
     return data.items.filter(
-      (i) =>
-        i.niche.toLowerCase().includes(query) ||
-        i.city.toLowerCase().includes(query),
+      (i) => i.niche.toLowerCase().includes(query) || i.city.toLowerCase().includes(query),
     );
   }, [data, q]);
 
@@ -159,12 +160,15 @@ export default function DataInventoryPage() {
   // с задержкой 7с (rate-limit 10/min). Yandex_maps only — 2GIS-ключ заблокирован.
   const runMassParse = async () => {
     if (parseBusy) return;
-    if (!(await confirmDialog({
-      title: 'Запустить массовый парсинг?',
-      description: `Матрица: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.`,
-      confirmLabel: 'Запустить',
-      danger: false,
-    }))) return;
+    if (
+      !(await confirmDialog({
+        title: 'Запустить массовый парсинг?',
+        description: `Матрица: ${PARSE_NICHES.length} ниш × ${PARSE_CITIES.length} городов = ${PARSE_NICHES.length * PARSE_CITIES.length} запросов. Yandex.Карты, ~10 минут в очереди celery.`,
+        confirmLabel: 'Запустить',
+        danger: false,
+      }))
+    )
+      return;
     setParseBusy(true);
     setParseResults([]);
     const pairs: Array<[string, string]> = [];
@@ -180,18 +184,23 @@ export default function DataInventoryPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            niche, city,
+            niche,
+            city,
             sources: ['yandex_maps'],
             mode: 'city',
           }),
         });
         const body = await res.json().catch(() => ({}));
         if (res.status === 201 && body.id) {
-          setParseResults((prev) => [...prev, {
-            niche, city,
-            status: body.status === 'from_cache' ? 'from_cache' : 'pending',
-            id: body.id,
-          }]);
+          setParseResults((prev) => [
+            ...prev,
+            {
+              niche,
+              city,
+              status: body.status === 'from_cache' ? 'from_cache' : 'pending',
+              id: body.id,
+            },
+          ]);
         } else {
           setParseResults((prev) => [...prev, { niche, city, status: 'failed' }]);
         }
@@ -209,12 +218,13 @@ export default function DataInventoryPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6 space-y-4">
+    <PageContainer className="space-y-4">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-slate-900">Data inventory (admin)</h1>
         <p className="text-sm text-slate-500">
-          Что реально есть в БД: сколько компаний, отзывов и AI-тегов по каждой (ниша, город).
-          Клик по нише/городу — фильтр. «Дособрать» — доразметить AI-теги. «→ Открыть» — переход в поиск по болям.
+          Что реально есть в БД: сколько компаний, отзывов и AI-тегов по каждой (ниша, город). Клик
+          по нише/городу — фильтр. «Дособрать» — доразметить AI-теги. «→ Открыть» — переход в поиск
+          по болям.
         </p>
       </header>
 
@@ -223,11 +233,12 @@ export default function DataInventoryPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-col">
             <span className="font-medium text-slate-800">
-              🚀 Массовый парсинг: {PARSE_NICHES.length} ниш × {PARSE_CITIES.length} городов
-              {' '}= {PARSE_NICHES.length * PARSE_CITIES.length} запросов
+              🚀 Массовый парсинг: {PARSE_NICHES.length} ниш × {PARSE_CITIES.length} городов ={' '}
+              {PARSE_NICHES.length * PARSE_CITIES.length} запросов
             </span>
             <span className="text-xs text-slate-500">
-              Ниши: {PARSE_NICHES.join(', ')} · Города: {PARSE_CITIES.slice(0, 4).join(', ')} + ещё {PARSE_CITIES.length - 4} · Источник: Yandex.Карты
+              Ниши: {PARSE_NICHES.join(', ')} · Города: {PARSE_CITIES.slice(0, 4).join(', ')} + ещё{' '}
+              {PARSE_CITIES.length - 4} · Источник: Yandex.Карты
             </span>
           </div>
           <button
@@ -244,23 +255,31 @@ export default function DataInventoryPage() {
         {parseResults.length > 0 && (
           <div className="rounded-md border border-slate-100 bg-slate-50 p-2 text-xs space-y-0.5 max-h-40 overflow-auto">
             <div className="font-medium text-slate-600 mb-1">
-              Результаты: {parseResults.filter((r) => r.status === 'pending').length} pending,
-              {' '}{parseResults.filter((r) => r.status === 'from_cache').length} из кеша,
-              {' '}{parseResults.filter((r) => r.status === 'failed').length} ошибок
+              Результаты: {parseResults.filter((r) => r.status === 'pending').length} pending,{' '}
+              {parseResults.filter((r) => r.status === 'from_cache').length} из кеша,{' '}
+              {parseResults.filter((r) => r.status === 'failed').length} ошибок
             </div>
             {parseResults.slice(-8).map((r, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className={
-                  r.status === 'pending' ? 'text-emerald-700' :
-                  r.status === 'from_cache' ? 'text-slate-600' : 'text-rose-700'
-                }>
+                <span
+                  className={
+                    r.status === 'pending'
+                      ? 'text-emerald-700'
+                      : r.status === 'from_cache'
+                        ? 'text-slate-600'
+                        : 'text-rose-700'
+                  }
+                >
                   {r.status === 'pending' && '✓'}
                   {r.status === 'from_cache' && '⚡'}
                   {r.status === 'failed' && '✗'}
                 </span>
-                <span className="text-slate-700">{r.city} / {r.niche}</span>
+                <span className="text-slate-700">
+                  {r.city} / {r.niche}
+                </span>
                 <span className="ml-auto text-slate-500">
-                  {r.status}{r.id ? ` #${r.id}` : ''}
+                  {r.status}
+                  {r.id ? ` #${r.id}` : ''}
                 </span>
               </div>
             ))}
@@ -288,9 +307,7 @@ export default function DataInventoryPage() {
               hint={
                 data.total_companies > 0
                   ? `${Math.round(
-                      ((data.total_companies_with_marketing_dm ?? 0) /
-                        data.total_companies) *
-                        100,
+                      ((data.total_companies_with_marketing_dm ?? 0) / data.total_companies) * 100,
                     )}% всех компаний`
                   : undefined
               }
@@ -331,9 +348,7 @@ export default function DataInventoryPage() {
                             {s.source}
                           </td>
                           <td className="px-3 py-1.5 text-right">{s.total}</td>
-                          <td className="px-3 py-1.5 text-right">
-                            {s.with_contact}
-                          </td>
+                          <td className="px-3 py-1.5 text-right">{s.with_contact}</td>
                           <td className="px-3 py-1.5 text-right">
                             <span
                               className={
@@ -348,9 +363,7 @@ export default function DataInventoryPage() {
                               {rate}%
                             </span>
                           </td>
-                          <td className="px-3 py-1.5 text-right">
-                            {s.marketing_dms}
-                          </td>
+                          <td className="px-3 py-1.5 text-right">{s.marketing_dms}</td>
                         </tr>
                       );
                     })}
@@ -407,19 +420,20 @@ export default function DataInventoryPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((row) => {
-                  const analyzedPct = row.reviews_count > 0
-                    ? Math.round((row.reviews_analyzed / row.reviews_count) * 100)
-                    : 0;
-                  const scoredPct = row.companies_count > 0
-                    ? Math.round((row.companies_with_pain_scores / row.companies_count) * 100)
-                    : 0;
-                  const ready =
-                    row.pain_tags_count > 0 &&
-                    scoredPct >= 50;
-                  const status: 'ready' | 'partial' | 'raw' =
-                    ready ? 'ready'
-                    : row.reviews_analyzed === 0 ? 'raw'
-                    : 'partial';
+                  const analyzedPct =
+                    row.reviews_count > 0
+                      ? Math.round((row.reviews_analyzed / row.reviews_count) * 100)
+                      : 0;
+                  const scoredPct =
+                    row.companies_count > 0
+                      ? Math.round((row.companies_with_pain_scores / row.companies_count) * 100)
+                      : 0;
+                  const ready = row.pain_tags_count > 0 && scoredPct >= 50;
+                  const status: 'ready' | 'partial' | 'raw' = ready
+                    ? 'ready'
+                    : row.reviews_analyzed === 0
+                      ? 'raw'
+                      : 'partial';
                   const key = `${row.niche}::${row.city}`;
                   const rb = rebuild[key];
                   const painsHref = `/app/pains?niche=${encodeURIComponent(row.niche)}&city=${encodeURIComponent(row.city)}`;
@@ -459,10 +473,16 @@ export default function DataInventoryPage() {
                       <td className="px-3 py-2 text-right">
                         {(() => {
                           const mdm = row.companies_with_marketing_dm ?? 0;
-                          const mdmPct = row.companies_count > 0
-                            ? Math.round((mdm / row.companies_count) * 100)
-                            : 0;
-                          const cls = mdmPct >= 50 ? 'text-emerald-700' : mdmPct >= 20 ? 'text-amber-700' : 'text-rose-700';
+                          const mdmPct =
+                            row.companies_count > 0
+                              ? Math.round((mdm / row.companies_count) * 100)
+                              : 0;
+                          const cls =
+                            mdmPct >= 50
+                              ? 'text-emerald-700'
+                              : mdmPct >= 20
+                                ? 'text-amber-700'
+                                : 'text-rose-700';
                           return (
                             <>
                               <span className={cls}>{mdm}</span>
@@ -534,22 +554,25 @@ export default function DataInventoryPage() {
 
           {/* Кнопка бэтч-пересборки всех «частично/только парс» */}
           {filtered.some((r) => {
-            const scoredPct = r.companies_count > 0
-              ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
-              : 0;
+            const scoredPct =
+              r.companies_count > 0
+                ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
+                : 0;
             return !(r.pain_tags_count > 0 && scoredPct >= 50);
           }) && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-2">
               <span>
-                Можно поставить в очередь пересборку для всех «частично / только парс» пар в текущем фильтре.
+                Можно поставить в очередь пересборку для всех «частично / только парс» пар в текущем
+                фильтре.
               </span>
               <button
                 type="button"
                 onClick={async () => {
                   for (const r of filtered) {
-                    const scoredPct = r.companies_count > 0
-                      ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
-                      : 0;
+                    const scoredPct =
+                      r.companies_count > 0
+                        ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
+                        : 0;
                     const ready = r.pain_tags_count > 0 && scoredPct >= 50;
                     if (ready) continue;
                     if (r.companies_count === 0) continue;
@@ -561,30 +584,27 @@ export default function DataInventoryPage() {
                 }}
                 className="rounded-md border border-amber-400 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
               >
-                ⚙ Дособрать все ({filtered.filter((r) => {
-                  const scoredPct = r.companies_count > 0
-                    ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
-                    : 0;
-                  return !(r.pain_tags_count > 0 && scoredPct >= 50) && r.companies_count > 0;
-                }).length})
+                ⚙ Дособрать все (
+                {
+                  filtered.filter((r) => {
+                    const scoredPct =
+                      r.companies_count > 0
+                        ? Math.round((r.companies_with_pain_scores / r.companies_count) * 100)
+                        : 0;
+                    return !(r.pain_tags_count > 0 && scoredPct >= 50) && r.companies_count > 0;
+                  }).length
+                }
+                )
               </button>
             </div>
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: number;
-  hint?: string;
-}) {
+function StatCard({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="text-xs text-slate-500">{label}</div>
