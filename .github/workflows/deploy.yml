@@ -74,6 +74,7 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.event.workflow_run.head_sha || github.sha }}
             BUILD_TIME=${{ github.event.workflow_run.updated_at || github.event.head_commit.timestamp }}
+            NEXT_PUBLIC_OUTREACH_SENDING_ENABLED=${{ vars.NEXT_PUBLIC_OUTREACH_SENDING_ENABLED || 'true' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
