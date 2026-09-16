@@ -17,7 +17,11 @@ interface CityComboboxProps {
   onCityChange: (city: string, yandexId: number) => void;
   disabled?: boolean;
   className?: string;
+  /** Классы кнопки-поля (например, высота h-12 на форме поиска). */
+  triggerClassName?: string;
   placeholder?: string;
+  /** id кнопки — для <label htmlFor>. */
+  id?: string;
 }
 
 const DROPDOWN_MAX_H = 340;
@@ -36,7 +40,9 @@ export function CityCombobox({
   onCityChange,
   disabled = false,
   className,
+  triggerClassName,
   placeholder = 'Выберите город',
+  id,
 }: CityComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -186,6 +192,7 @@ export function CityCombobox({
       {/* Trigger */}
       <button
         ref={triggerRef}
+        id={id}
         type="button"
         disabled={disabled}
         onClick={() => {
@@ -193,16 +200,14 @@ export function CityCombobox({
           setOpen((o) => !o);
         }}
         className={cn(
-          'flex items-center justify-between gap-2 h-11 w-full px-3 transition-all',
+          'flex h-11 w-full items-center justify-between gap-2 rounded-control border px-3 text-ui-text transition-all',
+          'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ui-accent/15',
           'disabled:cursor-not-allowed disabled:opacity-50',
+          open
+            ? 'border-ui-accent bg-ui-surface ring-4 ring-ui-accent/15'
+            : 'border-transparent bg-ui-surface-2 hover:border-control-border-hover',
+          triggerClassName,
         )}
-        style={{
-          background: 'hsl(var(--surface))',
-          border: `1px solid ${open ? 'hsl(var(--accent))' : 'hsl(var(--border))'}`,
-          borderRadius: 4,
-          color: 'hsl(var(--text))',
-          boxShadow: open ? '0 0 0 3px hsl(var(--accent) / 0.18)' : undefined,
-        }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -249,10 +254,9 @@ export function CityCombobox({
             bottom: openUpward ? 'calc(100% + 4px)' : undefined,
             maxHeight: DROPDOWN_MAX_H,
             background: 'hsl(var(--surface))',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: 6,
-            boxShadow:
-              '0 14px 40px -10px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.12)',
+            border: '1px solid rgba(0,0,0,0.06)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-overlay)',
             overflow: 'hidden',
           }}
         >

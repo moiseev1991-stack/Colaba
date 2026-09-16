@@ -7,9 +7,9 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { Loader2, Save, Zap, MapPin } from 'lucide-react';
 import { tokenStorage } from '@/client';
+import { toast } from '@/components/ui/toast';
 import {
   getMapsProvidersSettings,
   updateMapsProvider,
@@ -69,14 +69,7 @@ export default function MapsProvidersSettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [
-      ...prev,
-      { id: Date.now().toString(), type, message },
-    ]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,7 +90,7 @@ export default function MapsProvidersSettingsPage() {
       }
       setState(next);
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'load'));
+      toast.error(getErrorMessage(e, 'load'));
     } finally {
       setLoading(false);
     }
@@ -162,9 +155,9 @@ export default function MapsProvidersSettingsPage() {
           is_enabled: updated.is_enabled,
         },
       }));
-      addToast('success', `${p.name}: настройки сохранены`);
+      toast.success(`${p.name}: настройки сохранены`);
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'save'));
+      toast.error(getErrorMessage(e, 'save'));
     } finally {
       setState((s) => ({ ...s, [id]: { ...s[id], saving: false } }));
     }
@@ -176,20 +169,18 @@ export default function MapsProvidersSettingsPage() {
     try {
       const res = await testMapsProvider(id);
       if (res.ok) {
-        addToast(
-          'success',
-          `${p.name}: проверка пройдена${
+        toast.success(`${p.name}: проверка пройдена${
             res.result_count != null ? `, результатов: ${res.result_count}` : ''
           }`,
         );
       } else {
-        addToast('error', `${p.name}: ${res.error || 'ошибка проверки'}`);
+        toast.error(`${p.name}: ${res.error || 'ошибка проверки'}`);
       }
       // Перечитываем — бэк записал last_test_*.
       const data = await getMapsProvidersSettings();
       setList(data);
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'test'));
+      toast.error(getErrorMessage(e, 'test'));
     } finally {
       setState((s) => ({ ...s, [id]: { ...s[id], testing: false } }));
     }
@@ -233,13 +224,7 @@ export default function MapsProvidersSettingsPage() {
     .join(', ');
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <ToastContainer
-        toasts={toasts}
-        onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))}
-      />
-
-      <PageHeader
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
         breadcrumb={[
           { label: 'Главная', href: '/' },
           { label: 'Конфигурация', href: '/settings' },

@@ -11,8 +11,8 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { Loader2, Save, Zap, Mail, ArrowUp, ArrowDown } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 import {
   getEmailProvidersSettings,
   updateEmailProvider,
@@ -77,11 +77,7 @@ export default function EmailProvidersSettingsPage() {
   const [state, setState] = useState<Record<string, PerProviderState>>({});
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,7 +115,7 @@ export default function EmailProvidersSettingsPage() {
       if ((e as { response?: { status?: number } })?.response?.status === 401) {
         setNeedsAuth(true);
       } else {
-        addToast('error', getErrorMessage(e, 'load'));
+        toast.error(getErrorMessage(e, 'load'));
       }
     } finally {
       setLoading(false);
@@ -173,9 +169,9 @@ export default function EmailProvidersSettingsPage() {
       payload.daily_limit = dl === '' ? null : parseInt(dl, 10);
       const updated = await updateEmailProvider(id as EmailProviderId, payload);
       setList((prev) => prev.map((p) => (p.provider_id === id ? updated : p)));
-      addToast('success', `Настройки «${updated.name}» сохранены`);
+      toast.success(`Настройки «${updated.name}» сохранены`);
     } catch (e) {
-      addToast('error', getErrorMessage(e, 'save'));
+      toast.error(getErrorMessage(e, 'save'));
     } finally {
       setState((prev) => ({ ...prev, [id]: { ...prev[id], saving: false } }));
     }
@@ -186,14 +182,14 @@ export default function EmailProvidersSettingsPage() {
     try {
       const result = await testEmailProvider(id as EmailProviderId);
       if (result.ok) {
-        addToast('success', 'Подключение работает ✓');
+        toast.success('Подключение работает ✓');
       } else {
-        addToast('error', `Не получилось: ${result.error ?? 'неизвестная ошибка'}`);
+        toast.error(`Не получилось: ${result.error ?? 'неизвестная ошибка'}`);
       }
       // Перезагружаем чтобы обновить last_test_*
       await load();
     } catch (e) {
-      addToast('error', getErrorMessage(e, 'test'));
+      toast.error(getErrorMessage(e, 'test'));
     } finally {
       setState((prev) => ({ ...prev, [id]: { ...prev[id], testing: false } }));
     }
@@ -214,7 +210,7 @@ export default function EmailProvidersSettingsPage() {
       await load();
       void updated;
     } catch (e) {
-      addToast('error', getErrorMessage(e, 'save'));
+      toast.error(getErrorMessage(e, 'save'));
     }
   };
 
@@ -500,11 +496,6 @@ export default function EmailProvidersSettingsPage() {
             );
           })}
         </div>
-      </div>
-      <ToastContainer
-        toasts={toasts}
-        onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
-      />
-    </div>
+      </div>    </div>
   );
 }

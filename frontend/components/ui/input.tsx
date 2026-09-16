@@ -4,10 +4,11 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /** Общие классы полей ввода (Input, Select, Textarea) — на семантических токенах (PR 3.3). */
+// Вид Premium (16.09): серая заливка без рамки, в фокусе — белое поле с изумрудной рамкой и мягким кольцом.
 export const fieldClass =
-  'flex w-full rounded-control border border-control-border bg-ui-surface px-3 py-2 text-sm text-ui-text ' +
+  'flex w-full rounded-control border border-transparent bg-ui-surface-2 px-3 py-2 text-sm text-ui-text ' +
   'placeholder:text-ui-text-muted/80 hover:border-control-border-hover ' +
-  'focus-visible:outline-none focus-visible:border-control-border-focus focus-visible:ring-[3px] focus-visible:ring-focus-ring ' +
+  'focus-visible:outline-none focus-visible:border-ui-accent focus-visible:bg-ui-surface focus-visible:ring-4 focus-visible:ring-ui-accent/15 ' +
   'disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-ui-danger';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {

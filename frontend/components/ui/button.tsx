@@ -38,22 +38,24 @@ const SIZE_ALIAS: Record<ButtonSize | LegacySize, ButtonSize> = {
   lg: 'md',
 };
 
+// Вид Premium (16.09): кнопки — пилюли, вторичная — серая заливка без рамки.
 const BASE =
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-control font-medium transition-colors ' +
+  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-semibold transition-colors ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent/40 focus-visible:ring-offset-2 ' +
   'disabled:pointer-events-none disabled:opacity-50';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-ui-accent text-ui-accent-contrast hover:bg-ui-accent-hover',
-  secondary: 'border border-ui-border bg-ui-surface text-ui-text hover:bg-ui-surface-2',
+  primary:
+    'bg-ui-accent text-ui-accent-contrast shadow-[0_8px_20px_-8px_hsl(var(--color-accent)/0.55)] hover:bg-ui-accent-hover',
+  secondary: 'bg-ui-surface-2 text-ui-text hover:bg-ui-border',
   ghost: 'bg-transparent text-ui-text hover:bg-ui-surface-2',
   danger: 'bg-ui-danger text-white hover:bg-ui-danger/90',
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-small',
-  // На телефоне 44px — удобная зона нажатия, с sm-брейкпоинта 36px.
-  md: 'min-h-11 px-4 text-sm sm:min-h-9',
+  sm: 'h-8 px-3.5 text-small',
+  // На телефоне 44px — удобная зона нажатия, с sm-брейкпоинта 40px.
+  md: 'min-h-11 px-5 text-sm sm:min-h-10',
   icon: 'h-9 w-9 p-0',
 };
 

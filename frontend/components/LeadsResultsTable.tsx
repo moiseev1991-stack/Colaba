@@ -21,10 +21,11 @@ import {
 import type { LeadRow, SiteType } from '@/lib/types';
 import { addDomainToBlacklist as addDomainToBlacklistApi } from '@/src/services/api/blacklist';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
-import { ToastContainer, type Toast } from './Toast';
 import { cn } from '@/lib/utils';
 import { ProposalSendModal } from './ProposalSendModal';
 import type { LeadValues } from '@/lib/proposalTemplates';
+import { toast } from '@/components/ui/toast';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 
 interface LeadsResultsTableProps {
   results: LeadRow[];
@@ -131,15 +132,11 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>('idx');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [proposalModal, setProposalModal] = useState<{ open: boolean; leads: LeadValues[] }>({
     open: false,
     leads: [],
   });
 
-  const addToast = useCallback((type: Toast['type'], message: string) => {
-    setToasts((p) => [...p, { id: Date.now().toString() + Math.random(), type, message }]);
-  }, []);
 
   // Decorate each row with derived fields used both in the UI and for sorting.
   const decorated = useMemo(() => {
@@ -255,18 +252,18 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
   const copyValue = async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      addToast('success', `${label} скопирован`);
+      toast.success(`${label} скопирован`);
     } catch {
-      addToast('error', 'Не удалось скопировать');
+      toast.error('Не удалось скопировать');
     }
   };
 
   const blacklistDomain = async (domain: string) => {
     try {
       await addDomainToBlacklistApi(domain);
-      addToast('success', `${domain} → блеклист`);
+      toast.success(`${domain} → блеклист`);
     } catch {
-      addToast('error', 'Не удалось добавить в блеклист');
+      toast.error('Не удалось добавить в блеклист');
     }
   };
 
@@ -296,7 +293,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
         ? results.filter((r) => selectedIds.has(r.id))
         : sorted.map((d) => d.row);
     if (rows.length === 0) {
-      addToast('error', 'Выберите хотя бы один лид');
+      toast.error('Выберите хотя бы один лид');
       return;
     }
     setProposalModal({ open: true, leads: buildLeadValues(rows) });
@@ -305,7 +302,7 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
   const exportSelected = () => {
     const rows = selectedIds.size > 0 ? results.filter((r) => selectedIds.has(r.id)) : sorted.map((d) => d.row);
     if (rows.length === 0) {
-      addToast('error', 'Нет данных для экспорта');
+      toast.error('Нет данных для экспорта');
       return;
     }
     const csv = exportToCSV(
@@ -437,7 +434,9 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
             <button
               type="button"
               onClick={openSendModalForSelected}
-              className="app-cta-mega"
+              disabled={!OUTREACH_SENDING_ENABLED}
+              title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
+              className="app-cta-mega disabled:cursor-not-allowed disabled:opacity-50"
               style={{ height: 36, padding: '0 16px', fontSize: 13 }}
             >
               <Send className="h-4 w-4" /> Отправить КП
@@ -661,15 +660,10 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
         onConfirm={() => {
           // Frontend stub — real campaign API hook lands later. We give the
           // user clear feedback that the action was understood.
-          addToast(
-            'success',
-            `Кампания подготовлена: ${proposalModal.leads.length} ${proposalModal.leads.length === 1 ? 'отправление' : 'отправлений'} (отправка появится после подключения бэка)`,
+          toast.success(`Кампания подготовлена: ${proposalModal.leads.length} ${proposalModal.leads.length === 1 ? 'отправление' : 'отправлений'} (отправка появится после подключения бэка)`,
           );
         }}
-      />
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-    </div>
+      />    </div>
   );
 }
 

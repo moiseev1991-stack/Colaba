@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { createSearch, listSearches, getSearch, getSearchResults } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
 import { getOutreachTemplates } from '@/src/services/api/outreachTemplates';
@@ -18,6 +17,7 @@ import { LeadsTable } from '@/components/LeadsTable';
 import { CityCombobox } from '@/components/CityCombobox';
 import type { LeadRow } from '@/lib/types';
 import { mapExtraDataToSeo, mapExtraDataToIssues } from '@/lib/searchResultMapping';
+import { toast } from '@/components/ui/toast';
 
 
 const PROVIDERS: Record<string, string> = {
@@ -77,7 +77,6 @@ export default function SeoPage() {
   const [advanced, setAdvanced] = useState<SeoAdvancedSettings>(() => getSeoAdvancedSettings());
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [recentRuns, setRecentRuns] = useState<SearchResponse[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
   const [showMorePresets, setShowMorePresets] = useState(false);
@@ -277,7 +276,7 @@ export default function SeoPage() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       auditUntilRef.current = 0;
       setActiveRunId(search.id);
-      setToasts((prev) => [...prev, { id: Date.now().toString(), type: 'success', message: 'Запуск создан' }]);
+      toast.success('Запуск создан');
       // Scroll to results
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -285,7 +284,7 @@ export default function SeoPage() {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail
         || (err as { message?: string })?.message || 'Ошибка при создании поиска';
-      setToasts((prev) => [...prev, { id: Date.now().toString(), type: 'error', message: msg }]);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -824,9 +823,6 @@ export default function SeoPage() {
             </>
           )}
         </div>
-      </div>
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-    </div>
+      </div>    </div>
   );
 }

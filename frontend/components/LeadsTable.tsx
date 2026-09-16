@@ -9,10 +9,11 @@ import { Select } from './ui/select';
 import type { LeadRow } from '@/lib/types';
 import { isBlacklisted, addToBlacklist, setResultsPageSize } from '@/lib/storage';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
-import { ToastContainer, type Toast } from './Toast';
 import { SeoDetailCard } from './seo/SeoDetailCard';
 import { runResultAudit } from '@/src/services/api/search';
 import { addDomainToBlacklist as addDomainToBlacklistApi } from '@/src/services/api/blacklist';
+import { toast } from '@/components/ui/toast';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 
 const AUDIT_DATA_TIMEOUT_MS = 5 * 60 * 1000; // 5 минут
 
@@ -44,7 +45,6 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [showMobileActions, setShowMobileActions] = useState(false);
   const mobileActionsRef = useRef<HTMLDivElement>(null);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [actionRowState, setActionRowState] = useState<Record<string, { state: 'loading' | 'error'; startedAt: number; firstDataAt?: number; errorMessage?: string }>>({});
   const [blacklistVersion, setBlacklistVersion] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -294,11 +294,11 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
     try {
       await addDomainToBlacklistApi(domain);
       addToBlacklist(domain);
-      showToast('success', 'Домен добавлен в блэклист');
+      toast.success('Домен добавлен в блэклист');
       setBlacklistVersion((v) => v + 1);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } };
-      showToast('error', err?.response?.data?.detail || 'Не удалось добавить в блэклист');
+      toast.error(err?.response?.data?.detail || 'Не удалось добавить в блэклист');
     }
   };
 
@@ -315,7 +315,7 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } }; message?: string };
       const msg = err?.response?.data?.detail || err?.message || 'Ошибка SEO-аудита';
-      showToast('error', msg);
+      toast.error(msg);
       setActionRowState((s) => ({
         ...s,
         [rowId]: { state: 'error', startedAt: s[rowId]?.startedAt ?? Date.now(), errorMessage: msg },
@@ -423,27 +423,20 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   };
 
   // Show toast notification
-  const showToast = (type: Toast['type'], message: string) => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, type, message }]);
-  };
 
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
 
   // Handle phone copy
   const handleCopyPhone = async (e: React.MouseEvent, phone: string | null) => {
     e.stopPropagation();
     if (!hasPhone(phone)) {
-      showToast('error', 'Телефон не найден');
+      toast.error('Телефон не найден');
       return;
     }
     const success = await copyToClipboard(phone!);
     if (success) {
-      showToast('success', 'Телефон скопирован');
+      toast.success('Телефон скопирован');
     } else {
-      showToast('error', 'Не удалось скопировать телефон');
+      toast.error('Не удалось скопировать телефон');
     }
   };
 
@@ -451,14 +444,14 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
   const handleCopyEmail = async (e: React.MouseEvent, email: string | null) => {
     e.stopPropagation();
     if (!hasEmail(email)) {
-      showToast('error', 'Email не найден');
+      toast.error('Email не найден');
       return;
     }
     const success = await copyToClipboard(email!);
     if (success) {
-      showToast('success', 'Email скопирован');
+      toast.success('Email скопирован');
     } else {
-      showToast('error', 'Не удалось скопировать email');
+      toast.error('Не удалось скопировать email');
     }
   };
 
@@ -471,10 +464,10 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         subject: row.outreachSubject || 'Коммерческое предложение',
         body: row.outreachText,
       });
-      showToast('success', `Outreach отправлен на ${row.email}`);
+      toast.success(`Outreach отправлен на ${row.email}`);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Ошибка отправки';
-      showToast('error', msg);
+      toast.error(msg);
     }
   };
 
@@ -495,12 +488,12 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         search_result_ids: ids,
         channel: 'email',
       });
-      showToast('success', `Отправлено: ${res.data.sent}, пропущено: ${res.data.skipped}, ошибок: ${res.data.errors}`);
+      toast.success(`Отправлено: ${res.data.sent}, пропущено: ${res.data.skipped}, ошибок: ${res.data.errors}`);
       setBulkSendModalOpen(false);
       clearSelection();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Ошибка отправки';
-      showToast('error', msg);
+      toast.error(msg);
     } finally {
       setBulkSendLoading(false);
     }
@@ -574,7 +567,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               <Button
                 size="sm"
                 onClick={() => setBulkSendModalOpen(true)}
-                disabled={selectedIds.size === 0 || bulkSendLoading}
+                disabled={selectedIds.size === 0 || bulkSendLoading || !OUTREACH_SENDING_ENABLED}
+                title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
                 className="flex items-center gap-1.5"
                 aria-label={selectedIds.size > 0 ? `Отправить КП выбранным (${selectedIds.size})` : 'Выберите строки для отправки КП'}
               >
@@ -687,7 +681,9 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         setBulkSendModalOpen(true);
                         setShowMobileActions(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
+                      disabled={!OUTREACH_SENDING_ENABLED}
+                      title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
+                      className="disabled:cursor-not-allowed disabled:opacity-50 w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
                     >
                       <Send className="h-4 w-4" />
                       Отправить КП ({selectedIds.size})
@@ -936,9 +932,10 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                 {hasEmail(row.email) && row.outreachText && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleSendOutreach(row); }}
-                                    title="Отправить outreach на email"
+                                    disabled={!OUTREACH_SENDING_ENABLED}
+                                    title={OUTREACH_SENDING_ENABLED ? 'Отправить outreach на email' : SENDING_SOON_HINT}
                                     aria-label="Отправить outreach"
-                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Send className="h-4 w-4 text-brand-600 dark:text-brand-400" />
                                   </button>
@@ -1406,7 +1403,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   <Button
                     size="sm"
                     onClick={() => setBulkSendModalOpen(true)}
-                    disabled={bulkSendLoading}
+                    disabled={bulkSendLoading || !OUTREACH_SENDING_ENABLED}
+                    title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
                     className="flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] shrink-0"
                     aria-label={
                       bulkSendLoading
@@ -1589,8 +1587,6 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
         </div>
       )}
 
-      {/* Toast Container */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-    </div>
+      {/* Toast Container */}    </div>
   );
 }

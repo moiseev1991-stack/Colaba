@@ -7,8 +7,8 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { tokenStorage } from '@/client';
+import { toast } from '@/components/ui/toast';
 import {
   listProviders,
   updateProvider,
@@ -35,11 +35,7 @@ export default function ProvidersPage() {
   const [list, setList] = useState<ProviderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
   const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<Record<string, boolean>>({});
@@ -55,7 +51,7 @@ export default function ProvidersPage() {
       });
       setFormValues(next);
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'load'));
+      toast.error(getErrorMessage(e, 'load'));
     } finally {
       setLoading(false);
     }
@@ -95,10 +91,10 @@ export default function ProvidersPage() {
         }
       }
       await updateProvider(id, config);
-      addToast('success', 'Настройки сохранены');
+      toast.success('Настройки сохранены');
       load();
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'save'));
+      toast.error(getErrorMessage(e, 'save'));
     } finally {
       setSaving((s) => ({ ...s, [id]: false }));
     }
@@ -110,12 +106,12 @@ export default function ProvidersPage() {
       const formCfg = formValues[id];
       const res = await testProvider(id, 'кофе москва', formCfg);
       if (res.ok) {
-        addToast('success', `Проверка: получено результатов: ${res.result_count ?? 0}`);
+        toast.success(`Проверка: получено результатов: ${res.result_count ?? 0}`);
       } else {
-        addToast('error', res.error || 'Ошибка проверки');
+        toast.error(res.error || 'Ошибка проверки');
       }
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'test'));
+      toast.error(getErrorMessage(e, 'test'));
     } finally {
       setTesting((s) => ({ ...s, [id]: false }));
     }
@@ -163,10 +159,7 @@ export default function ProvidersPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-
-      <PageHeader
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
         breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'Провайдеры' }]}
         title="Провайдеры поиска"
       />

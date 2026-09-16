@@ -1620,4 +1620,24 @@
    есть кабинет (.app-main из AppLayout). :root, а не обёртка — чтобы попали и порталы. */
 :root:has(.app-main) {
   --font-display: var(--font-body);
+
+  /* Вид Premium (16.09, прототип spinlid-ui-proto/premium): белый фон, нейтральные серые,
+     мягкие рассеянные тени, крупные скругления. Акцент — прежний изумруд (Р3).
+     Только в кабинете — лендинг не меняется. */
+  --color-bg: 0 0% 100%;
+  --color-surface: 0 0% 100%;
+  --color-surface-2: 240 11% 96%; /* #F5F5F7 — фон полей, серые секции */
+  --color-border: 240 8% 91%; /* #E8E8ED */
+  --color-text: 240 3% 12%; /* #1D1D1F */
+  --color-text-muted: 240 2% 42%; /* #6B6B70, контраст на #F5F5F7 ≥ 4.5:1 */
+  --control-border: 240 8% 91%;
+  --control-border-hover: 240 5% 80%;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 18px;
+
+  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.09);
+  --shadow-overlay: 0 20px 50px -12px rgba(0, 0, 0, 0.25);
 }

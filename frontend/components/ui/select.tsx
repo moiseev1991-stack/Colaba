@@ -7,10 +7,12 @@ import { fieldClass } from './input';
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   invalid?: boolean;
+  /** Классы обёртки: например, block — чтобы поле заняло всю ширину. */
+  wrapperClassName?: string;
 }
 
-const Select = React.forwardRef<HTMLSelectElement, SelectProps>(({ className, children, invalid, ...props }, ref) => (
-  <div className="relative inline-block">
+const Select = React.forwardRef<HTMLSelectElement, SelectProps>(({ className, wrapperClassName, children, invalid, ...props }, ref) => (
+  <div className={cn('relative inline-block', wrapperClassName)}>
     <select
       ref={ref}
       aria-invalid={invalid || undefined}

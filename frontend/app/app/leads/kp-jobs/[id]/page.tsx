@@ -51,6 +51,7 @@ import {
 } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/client';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 import {
   downloadKpJobCallList,
   getKpJobItems,
@@ -1280,10 +1281,12 @@ function SendBar({
             variant="primary"
             size="md"
             onClick={handleSendOnePerCompany}
-            disabled={oneDisabled}
+            disabled={oneDisabled || !OUTREACH_SENDING_ENABLED}
             iconLeft={submitting || isActive ? <Loader2 className="animate-spin" /> : <Send />}
             title={
-              isActive
+              !OUTREACH_SENDING_ENABLED
+                ? SENDING_SOON_HINT
+                : isActive
                 ? 'Сейчас идёт рассылка — дождись окончания.'
                 : oneCount === 0
                   ? 'Ни одной компании не достать выбранными каналами. Включи каналы или добавь контакты.'
@@ -1299,10 +1302,12 @@ function SendBar({
             variant="secondary"
             size="md"
             onClick={handleSendAllChannels}
-            disabled={allDisabled}
+            disabled={allDisabled || !OUTREACH_SENDING_ENABLED}
             iconLeft={submitting && !isActive ? <Loader2 className="animate-spin" /> : <Send />}
             title={
-              isActive
+              !OUTREACH_SENDING_ENABLED
+                ? SENDING_SOON_HINT
+                : isActive
                 ? 'Сейчас идёт рассылка — дождись окончания.'
                 : allSendsCount === 0
                   ? 'Ни одной компании не достать выбранными каналами.'
@@ -1658,6 +1663,19 @@ function RowSendButton({
   state: RowSendState;
   onClick: (e: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  if (!OUTREACH_SENDING_ENABLED) {
+    return (
+      <button
+        type="button"
+        disabled
+        title={SENDING_SOON_HINT}
+        aria-label={SENDING_SOON_HINT}
+        className="inline-flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500 opacity-50"
+      >
+        <Send className="h-3.5 w-3.5" />
+      </button>
+    );
+  }
   const isSending = state === 'sending';
   const isSent = state === 'sent';
   const error = state && typeof state === 'object' && 'error' in state ? state.error : null;
@@ -2055,10 +2073,12 @@ function DraftDrawer({
                       <Send />
                     )
                   }
-                  disabled={singleSendState === 'sending' || singleSendState === 'sent'}
+                  disabled={singleSendState === 'sending' || singleSendState === 'sent' || !OUTREACH_SENDING_ENABLED}
                   onClick={onSendOne}
                   title={
-                    singleSendState === 'sent'
+                    !OUTREACH_SENDING_ENABLED
+                      ? SENDING_SOON_HINT
+                      : singleSendState === 'sent'
                       ? 'Отправлено. Обнови страницу, чтобы переслать.'
                       : 'Отправить эту одну КП на email компании.'
                   }

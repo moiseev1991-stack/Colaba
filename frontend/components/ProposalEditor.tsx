@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Mail, Send, MessageCircle, Plus, Zap, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { confirmDialog } from '@/components/ui/confirm';
 import {
   PLACEHOLDERS,
   emptyTemplate,
@@ -134,9 +135,9 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
   // Loads the showcase template so a first-time user can see what a working
   // proposal actually looks like instead of staring at a half-empty editor.
   // Confirms before overwriting non-empty fields so we don't nuke their work.
-  const handleLoadSample = () => {
+  const handleLoadSample = async () => {
     const hasContent = name.trim() || body.trim().length > 10 || subject.trim();
-    if (hasContent && !confirm('Загрузить пример? Текущий текст шаблона будет заменён.')) {
+    if (hasContent && !(await confirmDialog({ title: 'Загрузить пример?', description: 'Текущий текст шаблона будет заменён.', confirmLabel: 'Загрузить', danger: false }))) {
       return;
     }
     const sample = sampleTemplate(channel === 'email' ? 'email' : 'email');
@@ -184,7 +185,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
         <button
           type="button"
           onClick={handleLoadSample}
-          className="inline-flex items-center justify-center gap-2 h-10 px-4 text-[13px] font-semibold transition-all hover:bg-[hsl(var(--accent-weak))]"
+          className="inline-flex items-center justify-center gap-2 h-10 px-4 text-small font-semibold transition-all hover:bg-[hsl(var(--accent-weak))]"
           style={{
             background: 'hsl(var(--surface-2) / 0.5)',
             color: 'hsl(var(--accent))',
@@ -206,7 +207,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
             placeholder="Например: Холодное КП — веб-разработка"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full h-10 text-[14px]"
+            className="w-full h-10 text-sm"
           />
         </div>
 
@@ -254,10 +255,10 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
                       скоро
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold">
+                  <span className="inline-flex items-center gap-1.5 text-small font-semibold">
                     {meta.icon} {meta.label}
                   </span>
-                  <span className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                  <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
                     {meta.hint}
                   </span>
                 </button>
@@ -278,7 +279,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               onFocus={() => setFocusTarget('subject')}
-              className="w-full h-10 text-[14px]"
+              className="w-full h-10 text-sm"
             />
           </div>
         )}
@@ -299,7 +300,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
             onFocus={() => setFocusTarget('body')}
             rows={10}
             placeholder="Здравствуйте, {company}! ..."
-            className="w-full p-3 text-[14px] outline-none resize-y leading-relaxed"
+            className="w-full p-3 text-sm outline-none resize-y leading-relaxed"
             style={{
               background: 'hsl(var(--surface))',
               border: '1px solid hsl(var(--border))',
@@ -321,7 +322,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
             onFocus={() => setFocusTarget('signature')}
             rows={3}
             placeholder="—&#10;{my_name}, {my_company}&#10;{my_phone} · {my_link}"
-            className="w-full p-3 text-[13px] outline-none resize-y leading-relaxed"
+            className="w-full p-3 text-small outline-none resize-y leading-relaxed"
             style={{
               background: 'hsl(var(--surface))',
               border: '1px solid hsl(var(--border))',
@@ -368,7 +369,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
                   <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
                     {groupTitle}
                   </span>
-                  <span className="text-[11px]">— {groupHint}</span>
+                  <span className="text-xs">— {groupHint}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {items.map((p) => (
@@ -387,7 +388,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
                       }}
                     >
                       <span
-                        className="inline-flex items-center gap-1 text-[12px] font-semibold"
+                        className="inline-flex items-center gap-1 text-xs font-semibold"
                         style={{ color: 'hsl(var(--text))' }}
                       >
                         <Plus className="h-3 w-3" style={{ color: 'hsl(var(--accent))' }} />
@@ -448,7 +449,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
                   placeholder={f.example}
                   value={sender[f.key]}
                   onChange={(e) => handleSenderChange({ [f.key]: e.target.value })}
-                  className="h-9 text-[13px]"
+                  className="h-9 text-small"
                 />
               </div>
             ))}
@@ -458,7 +459,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
 
       {/* === RIGHT: live preview === */}
       <div>
-        <div className="flex items-center gap-3 mb-3 sticky top-0 z-10" style={{ paddingTop: 0 }}>
+        <div className="flex items-center gap-3 mb-3 sticky top-14 z-10" style={{ paddingTop: 0 }}>
           <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
             превью на тестовом лиде
           </span>
@@ -477,7 +478,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
         </div>
 
         <div
-          className="p-5 leading-relaxed text-[14px]"
+          className="p-5 leading-relaxed text-sm"
           style={{
             background: 'hsl(var(--surface))',
             border: '1px solid hsl(var(--border))',
@@ -495,7 +496,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
               <div className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
                 тема
               </div>
-              <div className="text-[15px] font-semibold mt-1" style={{ color: 'hsl(var(--text))' }}>
+              <div className="text-base font-semibold mt-1" style={{ color: 'hsl(var(--text))' }}>
                 {preview.subject || <span style={{ color: 'hsl(var(--muted))' }}>—</span>}
               </div>
             </div>
@@ -503,7 +504,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
           <div>{preview.body || <span style={{ color: 'hsl(var(--muted))' }}>—</span>}</div>
           {preview.signature && (
             <div
-              className="mt-5 pt-3 text-[13px]"
+              className="mt-5 pt-3 text-small"
               style={{
                 color: 'hsl(var(--muted))',
                 borderTop: '1px dashed hsl(var(--border))',
@@ -518,7 +519,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
           <button
             type="button"
             onClick={onCancel}
-            className="h-10 px-4 text-[13px] font-semibold transition-colors hover:bg-[hsl(var(--surface-2))]"
+            className="h-10 px-4 text-small font-semibold transition-colors hover:bg-[hsl(var(--surface-2))]"
             style={{
               background: 'transparent',
               color: 'hsl(var(--muted))',

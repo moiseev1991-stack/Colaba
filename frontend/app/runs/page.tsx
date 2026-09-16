@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Download, Eye, Trash2, Search, Plus, CheckCircle, XCircle, Loader2, MoreVertical, Copy } from 'lucide-react';
 import { listSearches, deleteSearch, getSearchResults } from '@/src/services/api/search';
 import { exportToCSV, downloadCSV } from '@/lib/csv';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { PageHeader } from '@/components/PageHeader';
 import type { Run } from '@/lib/types';
 import type { SearchResponse } from '@/src/services/api/search';
+import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 
 type StatusFilter = 'all' | 'done' | 'error' | 'pending' | 'processing';
 type PeriodFilter = 'week' | 'month' | 'all';
@@ -41,7 +42,6 @@ export default function RunsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('week');
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function RunsHistoryPage() {
     } catch (err: any) {
       const msg = err.response?.data?.detail || err.message || 'Ошибка загрузки';
       setLoadError(msg);
-      showToast('error', msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -95,24 +95,24 @@ export default function RunsHistoryPage() {
   const handleDelete = async (runId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenMenuId(null);
-    if (!confirm('Удалить этот запуск?')) return;
+    if (!(await confirmDialog('Удалить этот запуск?'))) return;
     try {
       await deleteSearch(parseInt(runId));
       await loadRuns(periodFilter);
-      showToast('success', 'Запуск удалён');
+      toast.success('Запуск удалён');
     } catch (err: any) {
-      showToast('error', err.response?.data?.detail || err.message || 'Ошибка удаления');
+      toast.error(err.response?.data?.detail || err.message || 'Ошибка удаления');
     }
   };
 
   const handleClearAll = async () => {
-    if (!confirm('Очистить всю историю? Это действие нельзя отменить.')) return;
+    if (!(await confirmDialog({ title: 'Очистить всю историю?', description: 'Это действие нельзя отменить.', confirmLabel: 'Очистить' }))) return;
     try {
       for (const r of runs) await deleteSearch(parseInt(r.id));
       await loadRuns(periodFilter);
-      showToast('success', 'История очищена');
+      toast.success('История очищена');
     } catch (err: any) {
-      showToast('error', err.response?.data?.detail || err.message || 'Ошибка очистки');
+      toast.error(err.response?.data?.detail || err.message || 'Ошибка очистки');
     }
   };
 
@@ -130,13 +130,13 @@ export default function RunsHistoryPage() {
         status: (r.contact_status === 'found' || r.contact_status === 'no_contacts') ? 'ok' : 'error',
       }));
       if (rows.length === 0) {
-        showToast('error', 'Нет данных для CSV');
+        toast.error('Нет данных для CSV');
         return;
       }
       downloadCSV(exportToCSV(rows), `spinlid-run-${runId}.csv`);
-      showToast('success', 'CSV скачан');
+      toast.success('CSV скачан');
     } catch (err: any) {
-      showToast('error', err.response?.data?.detail || err.message || 'Ошибка экспорта');
+      toast.error(err.response?.data?.detail || err.message || 'Ошибка экспорта');
     }
   };
 
@@ -147,9 +147,9 @@ export default function RunsHistoryPage() {
       const resultsData = await getSearchResults(parseInt(runId));
       const text = resultsData.map((r: any) => [r.domain, r.phone, r.email].filter(Boolean).join('\t')).join('\n');
       await navigator.clipboard.writeText(text || '');
-      showToast('success', 'Скопировано');
+      toast.success('Скопировано');
     } catch {
-      showToast('error', 'Не удалось скопировать');
+      toast.error('Не удалось скопировать');
     }
   };
 
@@ -163,14 +163,7 @@ export default function RunsHistoryPage() {
     setPeriodFilter('all');
   };
 
-  const showToast = (type: Toast['type'], message: string) => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, type, message }]);
-  };
 
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
@@ -286,7 +279,7 @@ export default function RunsHistoryPage() {
           )}
 
           {/* Filter panel (sticky) */}
-          <div className="sticky top-0 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
+          <div className="sticky top-14 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
             <div className="app-card-enhanced p-4">
               {loadError && !loading && (
                 <div
@@ -343,7 +336,7 @@ export default function RunsHistoryPage() {
             </div>
           ) : runs.length === 0 ? (
             <div className="app-card-enhanced p-12 text-center">
-              <p className="text-lg mb-4" style={{ color: 'hsl(var(--text))' }}>Запусков пока нет</p>
+              <p className="text-base mb-4" style={{ color: 'hsl(var(--text))' }}>Запусков пока нет</p>
               <Button variant="default" onClick={() => router.push('/app/seo')} className="flex items-center gap-2 mx-auto ui-btn-primary app-btn-shine">
                 <Plus className="h-4 w-4" />
                 Сделать первый запуск
@@ -351,7 +344,7 @@ export default function RunsHistoryPage() {
             </div>
           ) : filteredRuns.length === 0 ? (
             <div className="app-card-enhanced p-12 text-center">
-              <p className="text-lg mb-4" style={{ color: 'hsl(var(--text))' }}>Ничего не найдено</p>
+              <p className="text-base mb-4" style={{ color: 'hsl(var(--text))' }}>Ничего не найдено</p>
               <Button variant="outline" onClick={resetFilters} className="gap-2">
                 Сбросить фильтры
               </Button>
@@ -374,7 +367,7 @@ export default function RunsHistoryPage() {
                         #{String(idx + 1).padStart(2, '0')}
                       </span>
                       <div className="min-w-0">
-                        <div className="text-[14px] font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={run.keyword}>
+                        <div className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--text))' }} title={run.keyword}>
                           {run.keyword}
                         </div>
                         <div className="app-mono-label mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
@@ -388,7 +381,7 @@ export default function RunsHistoryPage() {
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleOpen(run.id); }}
-                          className="inline-flex items-center gap-1 text-[13px] font-semibold transition-opacity hover:opacity-80"
+                          className="inline-flex items-center gap-1 text-small font-semibold transition-opacity hover:opacity-80"
                           style={{ color: 'hsl(var(--accent))' }}
                         >
                           <Eye className="h-4 w-4" />
@@ -473,7 +466,7 @@ export default function RunsHistoryPage() {
                         <button
                           type="button"
                           onClick={() => handleOpen(run.id)}
-                          className="inline-flex items-center gap-1.5 h-8 px-2 rounded-[10px] text-[13px] font-semibold transition-opacity hover:opacity-80"
+                          className="inline-flex items-center gap-1.5 h-8 px-2 rounded-[10px] text-small font-semibold transition-opacity hover:opacity-80"
                           style={{ color: 'hsl(var(--accent))' }}
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -523,8 +516,6 @@ export default function RunsHistoryPage() {
             </>
           )}
         </div>
-      </div>
-      <ToastContainer toasts={toasts} onClose={removeToast} />
-    </>
+      </div>    </>
   );
 }

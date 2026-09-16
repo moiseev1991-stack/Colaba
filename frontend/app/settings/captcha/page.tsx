@@ -6,10 +6,10 @@ import { PageHeader } from '@/components/PageHeader';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { tokenStorage } from '@/client';
 import { getCaptchaConfig, updateCaptchaConfig, test2Captcha, testAi } from '@/src/services/api/captcha_config';
 import { listAiAssistants, type AiAssistantItem } from '@/src/services/api/ai_assistants';
+import { toast } from '@/components/ui/toast';
 
 function getErrorMessage(e: unknown): string {
   const err = e as { response?: { status?: number; data?: { detail?: string } } };
@@ -26,7 +26,6 @@ export default function CaptchaPage() {
   const [aiList, setAiList] = useState<AiAssistantItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [form, setForm] = useState<{
     ai_assistant_id: number | null;
     '2captcha': { enabled: boolean; api_key: string };
@@ -40,9 +39,6 @@ export default function CaptchaPage() {
   const [testing2, setTesting2] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,7 +60,7 @@ export default function CaptchaPage() {
         },
       });
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -93,10 +89,10 @@ export default function CaptchaPage() {
     setSaving(true);
     try {
       await updateCaptchaConfig({ ai_assistant_id: form.ai_assistant_id, external_services: buildExternalServices() });
-      addToast('success', 'Сохранено');
+      toast.success('Сохранено');
       load();
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -107,10 +103,10 @@ export default function CaptchaPage() {
     try {
       const key = form['2captcha'].api_key && form['2captcha'].api_key !== '***' ? form['2captcha'].api_key : undefined;
       const r = await test2Captcha(key);
-      if (r.ok) addToast('success', `2captcha: баланс ${r.balance ?? '—'}`);
-      else addToast('error', r.error || 'Ошибка проверки 2captcha');
+      if (r.ok) toast.success(`2captcha: баланс ${r.balance ?? '—'}`);
+      else toast.error(r.error || 'Ошибка проверки 2captcha');
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     } finally {
       setTesting2(false);
     }
@@ -120,19 +116,17 @@ export default function CaptchaPage() {
     setTestingAi(true);
     try {
       const r = await testAi(form.ai_assistant_id ?? undefined);
-      if (r.ok) addToast('success', `AI: ${r.reply ?? '—'}`);
-      else addToast('error', r.error || 'Ошибка проверки AI');
+      if (r.ok) toast.success(`AI: ${r.reply ?? '—'}`);
+      else toast.error(r.error || 'Ошибка проверки AI');
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     } finally {
       setTestingAi(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-      <PageHeader
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
         breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'Обход капчи' }]}
         title="Обход капчи"
       />

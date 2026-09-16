@@ -14,16 +14,9 @@
  */
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useIsSuperuser } from '@/lib/useIsSuperuser';
-import {
-  BookmarkPlus,
-  Loader2,
-  Sparkles,
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  X,
-} from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Info, Plus } from 'lucide-react';
 
 import { BUILTIN_PRESETS } from '@/components/maps/builtinPresets';
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
@@ -34,7 +27,9 @@ import {
   type FieldDef,
   type FilterSpec,
 } from '@/components/FilterBuilder';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Segmented } from '@/components/ui/segmented';
 import { cn } from '@/lib/utils';
 import {
   createMapSearch,
@@ -96,31 +91,34 @@ const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
 // враньём — реальность отдавала 24, и доверие к продукту падало с первого
 // клика. Лучше честно про тематику, чем точно про количество.
 const QUICK_PRESETS: Array<{ niche: string; city: string; title: string; hint: string }> = [
-  {
-    niche: 'стоматология',
-    city: 'Москва',
-    title: 'Стоматологии Москвы',
-    hint: 'клиники с реальными отзывами клиентов',
-  },
-  {
-    niche: 'автосервис',
-    city: 'Санкт-Петербург',
-    title: 'Автосервисы СПб',
-    hint: 'жалобы на сроки и цены',
-  },
-  {
-    niche: 'фитнес клуб',
-    city: 'Москва',
-    title: 'Фитнес-клубы Москвы',
-    hint: 'отзывы про инструкторов',
-  },
-  {
-    niche: 'рестораны',
-    city: 'Казань',
-    title: 'Рестораны Казани',
-    hint: 'жалобы на обслуживание',
-  },
+  { niche: 'стоматология', city: 'Москва', title: 'Стоматологии', hint: 'клиники с отзывами клиентов' },
+  { niche: 'автосервис', city: 'Санкт-Петербург', title: 'Автосервисы', hint: 'жалобы на сроки и цены' },
+  { niche: 'фитнес клуб', city: 'Москва', title: 'Фитнес-клубы', hint: 'отзывы про инструкторов' },
+  { niche: 'рестораны', city: 'Казань', title: 'Рестораны', hint: 'жалобы на обслуживание' },
 ];
+
+const SOURCE_NAMES: Record<MapSource, string> = { '2gis': '2GIS', yandex_maps: 'Яндекс.Карты', google_maps: 'Google Maps' };
+
+// Технические пометки источников («нужен ключ», «платно») видит только суперюзер.
+const SOURCE_OPTIONS: Array<{ id: MapSource; name: string; hint: string }> = [
+  { id: '2gis', name: '2GIS', hint: 'нужен ключ' },
+  { id: 'yandex_maps', name: 'Яндекс.Карты', hint: 'бесплатно, нужен прокси' },
+  { id: 'google_maps', name: 'Google Maps', hint: 'SerpAPI · платно' },
+];
+
+const HOW_IT_WORKS = [
+  { title: 'Собираем карточки', text: 'Компании с карт: название, адрес, рейтинг, телефон, сайт.' },
+  { title: 'Читаем отзывы', text: 'AI группирует жалобы в боли с числом упоминаний и цитатой.' },
+  { title: 'Готовим письмо', text: 'Черновик КП под конкретную боль — в один клик.' },
+];
+
+const HINT_NICHES = ['стоматология', 'автосервис', 'фитнес клуб'];
+
+const LABEL = 'mb-1.5 block text-xs font-semibold text-ui-text-muted';
+const HINT_CHIP = 'rounded-full bg-ui-surface-2 px-3 py-1 text-xs text-ui-text-muted transition-colors hover:bg-ui-border hover:text-ui-text';
+const PRESET_CHIP =
+  'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-ui-border bg-ui-surface px-4 py-2 text-small font-semibold text-ui-text-muted shadow-raised transition-all hover:-translate-y-px hover:text-ui-text';
+const PRESET_CHIP_ON = 'border-ui-text bg-ui-text text-ui-surface hover:text-ui-surface';
 
 // Поля FilterBuilder для отзывов. Backend поддерживает только text/contains+not_contains.
 // Остальные операторы (equals/starts_with) бессмысленны для отзывов и не передаются.
@@ -304,16 +302,17 @@ export function MapsSearchForm({ onStarted }: Props) {
     e?.preventDefault();
     setError(null);
     if (niche.trim().length < 2) {
-      setError('Ниша слишком короткая (минимум 2 символа)');
+      setError('Укажите нишу — хотя бы 2 символа');
+      document.getElementById('search-niche')?.focus();
       return;
     }
     if (sources.length === 0) {
-      setError('Выбери хотя бы один источник');
+      setError('Выберите хотя бы один источник');
       return;
     }
     if (mode === 'radius') {
       if (address.trim().length < 3) {
-        setError('Введи адрес для радиуса (минимум 3 символа)');
+        setError('Введите адрес центра — хотя бы 3 символа');
         return;
       }
       if (sources[0] !== '2gis' || sources.length > 1) {
@@ -444,228 +443,120 @@ export function MapsSearchForm({ onStarted }: Props) {
   }
 
   const isReady = niche.trim().length >= 2 && sources.length > 0;
-  const displayedPresets = showAllPresets ? NICHE_PRESETS : NICHE_PRESETS.slice(0, 6);
+  // Под полем — три коротких примера, остальные по «ещё».
+  const hintNiches = showAllPresets ? NICHE_PRESETS : NICHE_PRESETS.filter((p) => HINT_NICHES.includes(p.label));
+  const extraCount = [extraNiches, extraCities, reviewWord].filter((v) => v.trim()).length + filterSpec.conditions.length;
+
+  function switchMode(next: SearchModeTab) {
+    setMode(next);
+    // Поиск в радиусе пока работает только через 2GIS — выбираем его сразу, а не ругаемся при запуске.
+    if (next === 'radius') setSources(['2gis']);
+  }
+
+  const reviewToggle = (value: 'contains' | 'excludes', label: string) => (
+    <button
+      type="button"
+      aria-pressed={reviewMode === value}
+      onClick={() => setReviewMode(value)}
+      disabled={isLoading}
+      className={cn(
+        'rounded-full border px-4 py-1.5 text-small font-semibold transition-colors',
+        reviewMode === value
+          ? value === 'contains'
+            ? 'border-ui-accent bg-ui-accent/[.06] text-ui-accent'
+            : 'border-ui-danger bg-ui-danger/[.06] text-ui-danger'
+          : 'border-ui-border text-ui-text-muted hover:text-ui-text',
+      )}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    // На мобиле было px-6 → горизонтальные 48px + внутренние padding'и
-    // карточки p-6 = ещё 48px съедали ширину 390px, поля и заголовки
-    // обрезались. На <sm даём px-3, на sm+ возвращаем px-6.
-    <div className="mx-auto max-w-[1200px] w-full px-3 sm:px-6 py-6 sm:py-10 relative z-10">
-      {/* === QUICK START PRESETS === */}
-      <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-            быстрый старт — один клик
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          {QUICK_PRESETS.map((p) => (
-            <button
-              key={`${p.niche}-${p.city}`}
-              type="button"
-              onClick={() => runQuickPreset(p)}
-              disabled={isLoading}
-              className="group flex flex-col items-start gap-1 rounded-md border border-slate-200 bg-white p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <span className="text-sm font-semibold text-slate-900">{p.title}</span>
-              <span className="text-xs text-slate-500">{p.hint}</span>
-              <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-slate-700 group-hover:text-slate-900">
-                Запустить <ArrowRight className="h-3 w-3" />
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Компактный заголовок (без лендингового hero — юзер в кабинете). */}
-      <section className="mb-6 app-reveal">
-        <h1
-          className="font-display font-semibold tracking-tight"
-          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
-        >
-          Поиск лидов
-        </h1>
-        <p className="mt-1 text-sm max-w-[640px]" style={{ color: 'hsl(var(--muted))' }}>
-          Введите нишу и город — модуль найдёт компании в 2GIS / Яндекс.Картах, подтянет отзывы и
-          выделит «боли» клиентов.
+    <div>
+      {/* === Первый экран: заголовок и форма === */}
+      <div className="mx-auto w-full max-w-[1072px] px-4 pt-10 text-center sm:px-6 sm:pt-16">
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 pl-1 pr-4 text-small font-semibold text-ui-text-muted">
+          <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">NEW</span>
+          <span className="sm:hidden">Отзывы с 2GIS, Яндекс и Google</span>
+          <span className="hidden sm:inline">Отзывы с трёх карт — 2GIS, Яндекс и Google</span>
         </p>
-      </section>
+        <h1 className="mx-auto max-w-[760px] text-hero font-extrabold text-ui-text">
+          Кому писать первым.
+          <span className="block font-bold text-ui-text-muted/75">Подскажут отзывы их клиентов.</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-[56ch] text-base leading-relaxed text-ui-text-muted">
+          Укажите нишу и город. SpinLid соберёт компании с 2GIS, Яндекс.Карт и Google Карт, прочитает отзывы и покажет,{' '}
+          <b className="font-semibold text-ui-text">на что жалуются клиенты каждой компании</b> — с цитатой и контактом.
+        </p>
 
-      {/* === LAUNCH PANEL === */}
-      <section className="app-hero-card app-reveal app-reveal-delay-1">
-        {/* Меньший padding на мобиле — иначе суммарно 24+24 px по бокам
-            съедало уже узкие 390px и текст обрезался. */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8">
-          <div
-            className="flex flex-wrap items-center justify-between gap-2 mb-6 pb-5 border-b"
-            style={{ borderColor: 'hsl(var(--border))' }}
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="min-w-0">
-                <h2
-                  className="text-xl font-bold leading-tight"
-                  style={{ color: 'hsl(var(--text))' }}
-                >
-                  Параметры поиска
-                </h2>
-                <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
-                  Ниша и город — обязательны. Остальное — по желанию.
-                </p>
-              </div>
-            </div>
-            <span
-              className="app-mono-label hidden md:inline"
-              style={{ color: 'hsl(var(--muted))' }}
-            >
-              ~ 1-2 мин до выдачи
-            </span>
-          </div>
-
-          {/* Mode switcher — flex-wrap для случая когда кнопки не влезают */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setMode('city')}
-              disabled={isLoading}
-              className={cn(
-                'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                mode === 'city'
-                  ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-              )}
-            >
-              По городу
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('radius')}
-              disabled={isLoading}
-              className={cn(
-                'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                mode === 'radius'
-                  ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-              )}
-              title="Конкурентный режим: компании в радиусе X км от заданного адреса"
-            >
-              По радиусу{' '}
-              <span className="ml-1 rounded-sm bg-[var(--signal-warm)]/40 px-1.5 text-xs text-[color:var(--signal-warm)]">
-                new
-              </span>
-            </button>
-          </div>
-
-          {/* Form row */}
-          <div className="grid gap-4 md:grid-cols-12 mb-5">
-            <div className="md:col-span-6">
-              <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
-                ниша / запрос
+        <form
+          onSubmit={handleSubmit}
+          aria-label="Параметры поиска"
+          className="mx-auto mt-10 max-w-[720px] rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
+        >
+          <div className="grid gap-4 sm:grid-cols-[1.25fr_1fr]">
+            <div className="min-w-0">
+              <label htmlFor="search-niche" className={LABEL}>
+                Ниша или вид бизнеса
               </label>
               <Input
+                id="search-niche"
                 type="text"
                 placeholder="Например: стоматология"
                 value={niche}
                 onChange={(e) => setNiche(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-11 text-base"
+                className="h-12 text-base font-medium"
                 autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
               />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {hintNiches.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => handlePreset(p.label)}
+                    className={cn(HINT_CHIP, niche === p.label && 'bg-ui-text text-ui-surface hover:bg-ui-text hover:text-ui-surface')}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setShowAllPresets(!showAllPresets)} className={cn(HINT_CHIP, 'font-semibold text-ui-accent')}>
+                  {showAllPresets ? 'свернуть' : `+${NICHE_PRESETS.length - HINT_NICHES.length}`}
+                </button>
+              </div>
             </div>
+
             {mode === 'city' ? (
-              <>
-                <div className="md:col-span-6">
-                  <label
-                    className="block app-mono-label mb-2"
-                    style={{ color: 'hsl(var(--muted))' }}
-                  >
-                    город
-                  </label>
-                  <CityCombobox
-                    city={city}
-                    onCityChange={(c) => setCity(c)}
-                    disabled={isLoading}
-                    className="w-full"
-                    placeholder="Выберите город"
-                  />
-                </div>
-                <div className="md:col-span-12">
-                  <details className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/60">
-                    <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]">
-                      + Расширенный поиск: ещё ниши/города (массовый прогон)
-                    </summary>
-                    <div className="grid grid-cols-1 gap-3 px-3 pb-3 pt-1 md:grid-cols-2">
-                      <div>
-                        <label
-                          className="block app-mono-label mb-1.5"
-                          style={{ color: 'hsl(var(--muted))' }}
-                        >
-                          доп. ниши (через запятую)
-                        </label>
-                        <Input
-                          type="text"
-                          placeholder="например: ортодонт, детская стоматология"
-                          value={extraNiches}
-                          onChange={(e) => setExtraNiches(e.target.value)}
-                          disabled={isLoading}
-                          className="w-full h-10 text-small"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          className="block app-mono-label mb-1.5"
-                          style={{ color: 'hsl(var(--muted))' }}
-                        >
-                          доп. города (через запятую)
-                        </label>
-                        <Input
-                          type="text"
-                          placeholder="например: Чехов, Видное, Климовск"
-                          value={extraCities}
-                          onChange={(e) => setExtraCities(e.target.value)}
-                          disabled={isLoading}
-                          className="w-full h-10 text-small"
-                        />
-                      </div>
-                      <p className="md:col-span-2 text-xs text-[hsl(var(--muted))]">
-                        При заполнении создастся N×M отдельных поисков (по одному на каждую пару).
-                        Открыть их можно в «Истории поисков».
-                      </p>
-                    </div>
-                  </details>
-                </div>
-              </>
+              <div className="min-w-0">
+                <label htmlFor="search-city" className={LABEL}>
+                  Город
+                </label>
+                <CityCombobox
+                  id="search-city"
+                  city={city}
+                  onCityChange={(c) => setCity(c)}
+                  disabled={isLoading}
+                  triggerClassName="h-12"
+                  placeholder="Выберите город"
+                />
+                <p className="mt-2 text-xs text-ui-text-muted">Несколько городов сразу — в «Тонкой настройке»</p>
+              </div>
             ) : (
-              <>
-                <div className="md:col-span-6">
-                  <label
-                    className="block app-mono-label mb-2"
-                    style={{ color: 'hsl(var(--muted))' }}
-                  >
-                    адрес центра поиска
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Например: Москва, ул. Тверская, 1"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    disabled={isLoading}
-                    className="w-full h-11 text-base"
-                  />
-                </div>
-                <div className="md:col-span-12">
-                  <label
-                    className="block app-mono-label mb-2 flex items-center justify-between"
-                    style={{ color: 'hsl(var(--muted))' }}
-                  >
-                    <span>радиус поиска</span>
-                    <span style={{ color: 'hsl(var(--text))' }}>{radiusKm.toFixed(1)} км</span>
-                  </label>
+              <div className="min-w-0">
+                <label htmlFor="search-address" className={LABEL}>
+                  Адрес центра
+                </label>
+                <Input
+                  id="search-address"
+                  type="text"
+                  placeholder="Москва, ул. Тверская, 1"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  disabled={isLoading}
+                  className="h-12 text-base font-medium"
+                />
+                <div className="mt-2 flex items-center gap-3">
                   <input
                     type="range"
                     min={0.5}
@@ -674,398 +565,320 @@ export function MapsSearchForm({ onStarted }: Props) {
                     value={radiusKm}
                     onChange={(e) => setRadiusKm(parseFloat(e.target.value))}
                     disabled={isLoading}
-                    className="w-full"
+                    aria-label="Радиус поиска, км"
+                    className="min-w-0 flex-1 accent-[hsl(var(--color-accent))]"
                   />
-                  <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                    Найдём компании в радиусе {radiusKm.toFixed(1)} км от точки. Удобно для
-                    конкурентной разведки — «что у моих соседей по району».
-                  </p>
+                  <span className="w-14 text-right text-small font-semibold tabular-nums text-ui-accent">{radiusKm.toFixed(1)} км</span>
                 </div>
-              </>
-            )}
-            <div className="md:col-span-12">
-              <label className="block app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
-                слова в отзывах — необязательно
-              </label>
-              <div className="mb-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewMode('contains')}
-                  disabled={isLoading}
-                  className={cn(
-                    'rounded-md border px-3 py-1 text-xs font-medium transition-colors',
-                    reviewMode === 'contains'
-                      ? 'border-slate-900 bg-slate-900 text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-                  )}
-                >
-                  Содержит
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReviewMode('excludes')}
-                  disabled={isLoading}
-                  className={cn(
-                    'rounded-md border px-3 py-1 text-xs font-medium transition-colors',
-                    reviewMode === 'excludes'
-                      ? 'border-slate-900 bg-slate-900 text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-                  )}
-                >
-                  Не содержит
-                </button>
               </div>
-              <Input
-                type="text"
-                placeholder={
-                  reviewMode === 'contains'
-                    ? 'Например: долго ждал, грязно, не дозвонился'
-                    : 'Например: отлично, рекомендую, превосходно'
-                }
-                value={reviewWord}
-                onChange={(e) => setReviewWord(e.target.value)}
-                disabled={isLoading}
-                className="w-full h-11 text-base"
-              />
-              <p className="mt-1.5 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                Несколько слов через запятую — между ними <strong>ИЛИ</strong>.
-                {reviewMode === 'contains' ? (
-                  <>
-                    {' '}
-                    В выдаче останутся компании, у которых есть отзыв с любым из этих слов. Пример:
-                    «ДТП» в нише «юр.услуги» → автоюристы.
-                  </>
-                ) : (
-                  <>
-                    {' '}
-                    В выдаче пропадут компании, у которых хоть один отзыв содержит любое из этих
-                    слов. Пример: исключить «реклама», «спам».
-                  </>
-                )}
-              </p>
-            </div>
+            )}
           </div>
 
-          {/* Filter presets — встроенные + мои */}
-          <div className="mb-6">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-                пресет фильтров (необязательно)
-              </p>
-              <div className="flex items-center gap-2">
-                {presetLabel && (
-                  <button
-                    type="button"
-                    onClick={clearPreset}
-                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800"
-                  >
-                    <X className="h-3 w-3" /> убрать
-                  </button>
-                )}
+          <div role="group" aria-label="Источники отзывов" className="mt-5 flex flex-wrap gap-2 border-t border-black/[.06] pt-5">
+            {SOURCE_OPTIONS.map((s) => {
+              const checked = sources.includes(s.id);
+              const lockedByRadius = mode === 'radius' && s.id !== '2gis';
+              return (
                 <button
+                  key={s.id}
                   type="button"
-                  onClick={() => setSaveModalOpen(true)}
-                  title="Сохранить текущие фильтры как пресет"
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50"
+                  aria-pressed={checked}
+                  onClick={() => toggleSource(s.id)}
+                  disabled={isLoading || lockedByRadius}
+                  title={lockedByRadius ? 'Поиск в радиусе пока работает только через 2GIS' : undefined}
+                  className={cn(
+                    'inline-flex min-h-10 items-center gap-2 rounded-full border py-2 pl-2.5 pr-4 text-small font-semibold transition-colors',
+                    'disabled:cursor-not-allowed disabled:opacity-50',
+                    checked ? 'border-ui-accent bg-ui-accent/[.06] text-ui-text' : 'border-ui-border text-ui-text-muted hover:border-ui-text-muted/50',
+                  )}
                 >
-                  <BookmarkPlus className="h-3 w-3" /> сохранить
-                </button>
-              </div>
-            </div>
-            {presetLabel && (
-              <div className="mb-2 rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-1 text-xs text-[color:var(--signal-good)]">
-                Применён: <strong>{presetLabel}</strong> — применится к выдаче сразу после поиска.
-                {aiPreset && (
-                  <span className="ml-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
-                    <Sparkles className="h-3 w-3" /> AI-анализ запустится автоматически
+                  <span
+                    className={cn(
+                      'grid h-[18px] w-[18px] place-items-center rounded-full border-[1.5px] transition-colors',
+                      checked ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast' : 'border-ui-text-muted/40 text-transparent',
+                    )}
+                    aria-hidden
+                  >
+                    <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
-                )}
-              </div>
-            )}
-            {builtinAiPrompt && (
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50/50 px-2 py-1.5 text-xs text-violet-900 dark:border-violet-700/50 dark:bg-violet-900/30 dark:text-violet-200">
-                <span className="inline-flex items-center gap-1">
-                  <Sparkles className="h-3.5 w-3.5" />У этого пресета есть готовый AI-промпт —
-                  сохрани как свой, чтобы запустить анализ
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCopyBuiltinModalOpen(true)}
-                  className="rounded-md bg-violet-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-violet-700"
-                >
-                  Сохранить как мой пресет с AI
+                  {s.name}
+                  {isSuperuser && <span className="text-xs font-medium text-ui-text-muted">{s.hint}</span>}
                 </button>
-              </div>
-            )}
-            {/* На mobile (<sm) — горизонтальный скролл одним рядом, чипы не
-                переносятся (иначе занимают пол-экрана). На sm+ — обычный wrap. */}
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0">
-              {BUILTIN_PRESETS.map((p) => {
-                const active = presetLabel === p.label;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => applyBuiltinPreset(p)}
-                    title={p.description}
-                    className={cn(
-                      'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
-                      active
-                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                        : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700',
-                    )}
-                  >
-                    <span className="text-xs font-medium text-slate-800">{p.label}</span>
-                    <span className="text-xs leading-tight text-slate-500">{p.shortHint}</span>
-                  </button>
-                );
-              })}
-              {userPresets.map((p) => {
-                const active = presetLabel === p.name;
-                const hasAi = !!(p.ai_prompt && p.ai_prompt.trim());
-                return (
-                  <button
-                    key={`u-${p.id}`}
-                    type="button"
-                    onClick={() => applyUserPreset(p)}
-                    title={p.description ?? (hasAi ? 'мой пресет с AI-анализом' : 'мой пресет')}
-                    className={cn(
-                      'flex shrink-0 flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition-colors sm:shrink',
-                      active
-                        ? 'border-brand-500 bg-brand-50'
-                        : 'border-brand-200 bg-brand-50/40 hover:border-brand-400',
-                    )}
-                  >
-                    <span className="text-xs font-medium text-slate-800">
-                      {p.name}
-                      {hasAi && (
-                        <span className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-xs font-semibold text-violet-800">
-                          AI
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-xs leading-tight text-emerald-700/80">мой</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Niche presets */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-                популярные ниши
-              </p>
-              <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-                {showAllPresets ? NICHE_PRESETS.length : Math.min(6, NICHE_PRESETS.length)} /{' '}
-                {NICHE_PRESETS.length}
-              </span>
-            </div>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0 sm:pb-0">
-              {displayedPresets.map((p) => {
-                const active = niche === p.label;
-                return (
-                  <button
-                    key={p.label}
-                    type="button"
-                    onClick={() => handlePreset(p.label)}
-                    className={cn('app-chip group shrink-0 sm:shrink', active && 'app-chip-active')}
-                  >
-                    <span>{p.label}</span>
-                    <span
-                      className={cn('app-bracket-tag', active && 'opacity-90')}
-                      style={{ color: active ? 'rgba(255,255,255,0.85)' : undefined }}
-                    >
-                      {p.cat}
-                    </span>
-                  </button>
-                );
-              })}
-              {NICHE_PRESETS.length > 6 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllPresets(!showAllPresets)}
-                  className="app-chip"
-                  style={{ color: 'hsl(var(--accent))', fontWeight: 600 }}
-                >
-                  {showAllPresets ? '— Свернуть' : `+ ${NICHE_PRESETS.length - 6} ещё`}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Sources */}
-          <div className="mb-6">
-            <p className="app-mono-label mb-2" style={{ color: 'hsl(var(--muted))' }}>
-              источники
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {[
-                { id: '2gis' as MapSource, name: '2GIS', hint: 'нужен валидный ключ' },
-                {
-                  id: 'yandex_maps' as MapSource,
-                  name: 'Яндекс.Карты',
-                  hint: 'бесплатно, нужен прокси',
-                },
-                {
-                  id: 'google_maps' as MapSource,
-                  name: 'Google Maps',
-                  hint: 'через SerpAPI (платно)',
-                },
-              ].map((s) => {
-                const checked = sources.includes(s.id);
-                return (
-                  <label
-                    key={s.id}
-                    className={cn(
-                      'flex cursor-pointer items-center gap-2.5 rounded-md border px-3.5 py-2.5 text-small transition-colors',
-                      checked
-                        ? 'border-brand-500 bg-brand-500/10'
-                        : 'border-[hsl(var(--border))] hover:border-brand-400',
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleSource(s.id)}
-                      disabled={isLoading}
-                      className="w-4 h-4"
-                      style={{ accentColor: 'hsl(var(--accent))' }}
-                    />
-                    <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{s.name}</span>
-                    {isSuperuser && (
-                      <span className="app-bracket-tag" style={{ color: 'hsl(var(--muted))' }}>
-                        {s.hint}
-                      </span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Advanced settings */}
-          <div className="mb-6">
-            <button
-              type="button"
-              onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="inline-flex items-center gap-1.5 app-mono-label hover:text-[hsl(var(--accent))] transition-colors"
-              style={{ color: 'hsl(var(--muted))' }}
-            >
-              {advancedOpen ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5" />
-              )}
-              расширенные настройки
-            </button>
-            {advancedOpen && (
-              <div
-                className="mt-3 grid gap-4 p-4"
-                style={{
-                  background: 'hsl(var(--surface-2) / 0.5)',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 4,
-                }}
-              >
-                <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                  Фильтры применяются к выдаче — компания пройдёт, только если у неё есть отзывы,
-                  удовлетворяющие условиям.
-                </p>
-                <FilterBuilder
-                  value={filterSpec}
-                  onChange={setFilterSpec}
-                  disabled={isLoading}
-                  fields={REVIEW_FILTER_FIELDS}
-                  emptyHint="Добавьте условие — например, «В тексте отзыва есть содержит грубость»."
-                  defaultTextPlaceholder="Например: не перезвонили, грубость, обман"
-                />
-              </div>
-            )}
+              );
+            })}
           </div>
 
           {error && (
-            <div
-              className="mb-5 rounded-md px-3 py-2 text-small"
-              style={{
-                color: 'hsl(var(--danger))',
-                background: 'hsl(var(--danger) / 0.1)',
-                border: '1px solid hsl(var(--danger) / 0.3)',
-              }}
-            >
+            <div role="alert" className="mt-4 rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger">
               {error}
             </div>
           )}
 
-          {/* CTA */}
-          <div
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-5 border-t"
-            style={{ borderColor: 'hsl(var(--border))' }}
-          >
-            <button
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Button
               type="submit"
-              disabled={!isReady || isLoading}
-              className="app-cta-mega w-full sm:w-auto"
+              disabled={isLoading}
+              loading={isLoading}
+              iconRight={!isLoading ? <ArrowRight /> : undefined}
+              className="h-12 w-full px-7 text-base sm:w-auto"
             >
-              {isLoading ? (
+              {isLoading ? multiSearchProgress ?? 'Запускаю…' : 'Найти компании'}
+            </Button>
+            <p className="min-w-0 flex-1 text-small text-ui-text-muted">
+              {presetLabel ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  {multiSearchProgress ? multiSearchProgress : 'Запуск…'}
+                  Пресет <b className="font-semibold text-ui-text">«{presetLabel}»</b>
+                  {aiPreset ? ' и AI-анализ' : ''} —{' '}
+                  <button type="button" onClick={clearPreset} className="font-semibold text-ui-accent hover:underline">
+                    убрать
+                  </button>
                 </>
+              ) : isReady ? (
+                <>
+                  <b className="font-semibold text-ui-text">{niche.trim()}</b>
+                  {mode === 'radius' ? ` · ${radiusKm.toFixed(1)} км от адреса` : ` · ${city || 'Москва'}`} ·{' '}
+                  {sources.map((s) => SOURCE_NAMES[s]).join(' + ')} · ~1–2 мин
+                </>
+              ) : mode === 'radius' ? (
+                'Введите нишу и адрес центра'
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" /> Найти компании <ArrowRight className="h-4 w-4" />
-                </>
+                '~1–2 мин до выдачи · сразу с отзывами и болями'
               )}
-            </button>
-            <div className="text-small flex-1 leading-snug" style={{ color: 'hsl(var(--muted))' }}>
-              {isReady ? (
-                <>
-                  <span className="app-mono-label" style={{ color: 'hsl(var(--accent))' }}>
-                    →
-                  </span>{' '}
-                  Спарсим{' '}
-                  <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>{niche.trim()}</span>
-                  {mode === 'radius' ? (
-                    <>
-                      {' '}
-                      в радиусе{' '}
-                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>
-                        {radiusKm.toFixed(1)} км
-                      </span>
-                      {address.trim() && (
-                        <>
-                          {' '}
-                          от{' '}
-                          <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>
-                            {address.trim()}
-                          </span>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {' '}
-                      в{' '}
-                      <span style={{ color: 'hsl(var(--text))', fontWeight: 600 }}>
-                        {city || 'Москве'}
-                      </span>
-                    </>
-                  )}{' '}
-                  через {sources.map((s) => (s === '2gis' ? '2GIS' : 'Яндекс.Карты')).join(' + ')}
-                </>
-              ) : (
-                <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-                  {mode === 'radius'
-                    ? 'введите нишу и адрес центра'
-                    : 'введите нишу — минимум 2 символа'}
-                </span>
-              )}
-            </div>
+            </p>
           </div>
         </form>
+
+        {/* === Как это работает === */}
+        <div className="mt-16 grid gap-6 text-left sm:mt-20 sm:grid-cols-3 sm:gap-10" aria-label="Как это работает">
+          {HOW_IT_WORKS.map((step, i) => (
+            <div key={step.title}>
+              <span className="text-xs font-bold tabular-nums tracking-widest text-ui-accent">0{i + 1}</span>
+              <b className="mb-1 mt-2 block text-base font-bold text-ui-text">{step.title}</b>
+              <p className="text-small leading-relaxed text-ui-text-muted">{step.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* === Быстрый старт и пресеты — серая полоса на всю ширину === */}
+      <section aria-labelledby="quick-start-title" className="mt-16 bg-ui-surface-2 py-12 sm:mt-20 sm:py-14">
+        <div className="mx-auto w-full max-w-[1072px] px-4 sm:px-6">
+          <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+            <h2 id="quick-start-title" className="text-heading font-extrabold tracking-tight text-ui-text">
+              Быстрый старт.
+            </h2>
+            <span className="text-small text-ui-text-muted">не знаете, что ввести — запустите готовый пример</span>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-3.5">
+            {QUICK_PRESETS.map((p) => (
+              <button
+                key={`${p.niche}-${p.city}`}
+                type="button"
+                onClick={() => runQuickPreset(p)}
+                disabled={isLoading}
+                className="flex flex-col items-start justify-start rounded-card bg-ui-surface p-4 text-left shadow-raised transition-all hover:-translate-y-0.5 hover:shadow-floating disabled:opacity-50 sm:p-5"
+              >
+                <span className="block text-xs font-bold uppercase tracking-widest text-ui-accent">{p.city}</span>
+                <b className="mb-0.5 mt-1 block text-base font-bold text-ui-text">{p.title}</b>
+                <span className="text-small text-ui-text-muted">{p.hint}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* На телефоне — одна строка с прокруткой, иначе чипы занимают пол-экрана. */}
+          <div
+            className="-mx-4 mt-6 flex gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+            role="group"
+            aria-label="Пресеты фильтров"
+          >
+            {BUILTIN_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={presetLabel === p.label}
+                onClick={() => (presetLabel === p.label ? clearPreset() : applyBuiltinPreset(p))}
+                title={p.description}
+                className={cn(PRESET_CHIP, presetLabel === p.label && PRESET_CHIP_ON)}
+              >
+                {p.label}
+              </button>
+            ))}
+            {userPresets.map((p) => {
+              const hasAi = !!(p.ai_prompt && p.ai_prompt.trim());
+              return (
+                <button
+                  key={`u-${p.id}`}
+                  type="button"
+                  aria-pressed={presetLabel === p.name}
+                  onClick={() => (presetLabel === p.name ? clearPreset() : applyUserPreset(p))}
+                  title={p.description ?? (hasAi ? 'Мой пресет с AI-анализом' : 'Мой пресет')}
+                  className={cn(PRESET_CHIP, presetLabel === p.name && PRESET_CHIP_ON)}
+                >
+                  {p.name}
+                  {hasAi && <span className="rounded-full bg-ui-accent px-1.5 text-xs font-bold text-ui-accent-contrast">AI</span>}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(true)}
+              className={cn(PRESET_CHIP, 'border-dashed bg-transparent text-ui-text-muted shadow-none')}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden /> Сохранить текущие
+            </button>
+          </div>
+          {presetLabel && (
+            <p className="mt-3 text-small text-ui-text-muted">
+              Пресет <b className="font-semibold text-ui-text">«{presetLabel}»</b> включится в выдаче сразу после поиска
+              {aiPreset ? ', AI-анализ запустится автоматически' : ''}.
+            </p>
+          )}
+          {builtinAiPrompt && (
+            <p className="mt-2 text-small text-ui-text-muted">
+              У этого пресета есть готовый AI-промпт —{' '}
+              <button type="button" onClick={() => setCopyBuiltinModalOpen(true)} className="font-semibold text-ui-accent hover:underline">
+                сохраните как свой пресет
+              </button>
+              , чтобы запустить анализ.
+            </p>
+          )}
+        </div>
       </section>
+
+      {/* === Тонкая настройка === */}
+      <div className="mx-auto w-full max-w-[1072px] px-4 pb-16 pt-14 sm:px-6 sm:pb-24 sm:pt-16">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-3 rounded-control text-base font-bold text-ui-text [&::-webkit-details-marker]:hidden">
+            Тонкая настройка.
+            <span className="ml-auto flex items-center gap-1.5 text-small font-medium text-ui-text-muted">
+              <span className={cn(extraCount === 0 && 'hidden sm:inline')}>
+                {extraCount > 0 ? `задано: ${extraCount}` : 'режим, слова в отзывах, несколько городов'}
+              </span>
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden />
+            </span>
+          </summary>
+          <div className="mt-5 flex flex-col gap-7 border-t border-black/[.08] pt-6">
+            <div className="grid gap-8 md:grid-cols-2">
+              <div>
+                <Segmented
+                  aria-label="Режим поиска"
+                  value={mode}
+                  onChange={switchMode}
+                  disabled={isLoading}
+                  options={[
+                    { value: 'city', label: 'По городу' },
+                    {
+                      value: 'radius',
+                      label: (
+                        <>
+                          В радиусе от адреса <span className="text-xs font-bold text-ui-accent">NEW</span>
+                        </>
+                      ),
+                      title: 'Компании в радиусе X км от адреса — «что у соседей по району»',
+                    },
+                  ]}
+                />
+                {mode === 'city' ? (
+                  <div className="mt-4 flex flex-col gap-4">
+                    <div>
+                      <label htmlFor="search-extra-niches" className={LABEL}>
+                        Ещё ниши — через запятую
+                      </label>
+                      <Input
+                        id="search-extra-niches"
+                        placeholder="ортодонт, детская стоматология"
+                        value={extraNiches}
+                        onChange={(e) => setExtraNiches(e.target.value)}
+                        disabled={isLoading}
+                        className="h-11"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="search-extra-cities" className={LABEL}>
+                        Ещё города
+                      </label>
+                      <Input
+                        id="search-extra-cities"
+                        placeholder="Балашиха, Мытищи, Видное"
+                        value={extraCities}
+                        onChange={(e) => setExtraCities(e.target.value)}
+                        disabled={isLoading}
+                        className="h-11"
+                      />
+                      <p className="mt-1.5 text-xs text-ui-text-muted">
+                        Создастся отдельный поиск на каждую пару «ниша × город» — все будут в «Истории».
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-small text-ui-text-muted">
+                    Адрес и радиус — в форме наверху. Поиск в радиусе пока работает только через 2GIS.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="search-review-words" className={LABEL}>
+                  Слова в отзывах
+                </label>
+                <div className="mb-2.5 flex gap-2">
+                  {reviewToggle('contains', 'Содержит')}
+                  {reviewToggle('excludes', 'Не содержит')}
+                </div>
+                <Input
+                  id="search-review-words"
+                  placeholder={reviewMode === 'contains' ? 'не дозвонился, не перезвонили' : 'реклама, спам'}
+                  value={reviewWord}
+                  onChange={(e) => setReviewWord(e.target.value)}
+                  disabled={isLoading}
+                  className="h-11"
+                />
+                <p className="mt-1.5 text-xs text-ui-text-muted">
+                  Несколько слов через запятую — подходит любое.{' '}
+                  {reviewMode === 'contains'
+                    ? 'Останутся компании, у которых есть отзыв с одним из слов.'
+                    : 'Пропадут компании, у которых хоть один отзыв содержит одно из слов.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  aria-expanded={advancedOpen}
+                  className="mt-3 inline-flex items-center gap-1 text-small font-semibold text-ui-accent hover:underline"
+                >
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', advancedOpen && 'rotate-180')} aria-hidden />
+                  Несколько условий
+                </button>
+                {advancedOpen && (
+                  <div className="mt-3 rounded-card bg-ui-surface-2 p-4">
+                    <FilterBuilder
+                      value={filterSpec}
+                      onChange={setFilterSpec}
+                      disabled={isLoading}
+                      fields={REVIEW_FILTER_FIELDS}
+                      emptyHint="Добавьте условие — например, «В тексте отзыва есть» содержит «грубость»."
+                      defaultTextPlaceholder="Например: не перезвонили, грубость, обман"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <p className="flex items-start gap-3 rounded-card bg-ui-surface-2 px-4 py-3.5 text-small text-ui-text-muted">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-ui-accent" aria-hidden />
+              <span>
+                <b className="font-semibold text-ui-text">Фильтры по рейтингу, сайту, ЛПР и болям</b> — на странице результатов:
+                применяются к найденным компаниям сразу, без нового поиска.
+              </span>
+            </p>
+            <p className="text-small text-ui-text-muted">
+              Нужны компании по вхождению слов на сайтах, а не по картам?{' '}
+              <Link href="/app/leads?tab=sites" className="font-semibold text-ui-accent hover:underline">
+                Поиск по сайтам →
+              </Link>
+            </p>
+          </div>
+        </details>
+      </div>
 
       <SaveFilterPresetModal
         open={saveModalOpen}

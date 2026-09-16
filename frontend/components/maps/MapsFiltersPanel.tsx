@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookmarkPlus, Eraser, EyeOff, RotateCcw, X } from 'lucide-react';
+import { BookmarkPlus, Check, ChevronDown, EyeOff, RotateCcw, X } from 'lucide-react';
 
 import { BUILTIN_PRESETS, type BuiltinPreset } from '@/components/maps/builtinPresets';
 import {
@@ -18,11 +18,12 @@ import {
 } from '@/components/maps/multiPresetMerge';
 import { PainTagsCloud } from '@/components/maps/PainTagsCloud';
 import { SaveFilterPresetModal } from '@/components/maps/SaveFilterPresetModal';
+import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { MapSearchFilter, SortBy } from '@/src/services/api/maps';
+import type { MapSearchFilter, SourceCountsOut } from '@/src/services/api/maps';
 import {
   deleteUserPreset,
   listUserPresets,
@@ -60,13 +61,20 @@ interface Props {
   /** Колбэк при выборе user-пресета с непустым ai_prompt — родитель может
    *  предложить юзеру запустить AI-анализ. */
   onUserPresetWithAiSelected?: (preset: UserPresetOut) => void;
-  /** Активен ли AI-анализ (пресет с ai_prompt выбран). Если да — в Select
-   *  сортировки показываем дополнительные опции «AI: score ↓/↑». */
-  aiActive?: boolean;
+  /** Сколько компаний в каждом источнике — счётчики на чипах «Источник». */
+  sourceCounts?: SourceCountsOut | null;
+  /** Меняется, когда страница сбросила все фильтры сама («Сбросить всё» у токенов). */
+  resetKey?: number;
 }
 
+/**
+ * Боковая панель фильтров выдачи (вид Premium, 16.09): сворачиваемые разделы
+ * «Готовые сценарии», «Рейтинг и отзывы», «Сайт и контакты», «Юр. данные», «Слова в отзывах»,
+ * «Боли клиентов», «Источник». Сортировка — в строке над списком.
+ * Фильтр «Оборот / возраст» убран: бэкенд его не принимает (выдача не менялась).
+ */
 export function MapsFiltersPanel({
-  niche, city, searchId, value, onChange, onUserPresetWithAiSelected, aiActive,
+  niche, city, searchId, value, onChange, onUserPresetWithAiSelected, sourceCounts, resetKey = 0,
 }: Props) {
   // локальный state для текстовых полей — чтобы при наборе цифр не дёргать debounce каждый ключевой удар
   const [localMinRating, setLocalMinRating] = useState<string>(value.min_rating?.toString() ?? '');
@@ -402,797 +410,514 @@ export function MapsFiltersPanel({
     return appliedPresetIds.includes(`builtin:${p.id}`);
   }
 
-  return (
-    <aside className="space-y-4 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
-      {/* Глобальный «Сбросить фильтры» наверху панели. Показываем всегда —
-          серая (disabled) когда сбрасывать нечего, активная и яркая когда
-          юзер накрутил фильтров и хочет вернуться к чистой выдаче. */}
-      <button
-        type="button"
-        onClick={resetAllFilters}
-        disabled={!hasAnyFilter}
-        title={hasAnyFilter ? 'Сбросить все фильтры к дефолту' : 'Нечего сбрасывать — фильтры уже пустые'}
-        className={cn(
-          'inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
-          hasAnyFilter
-            ? 'border-rose-300 bg-rose-50 text-rose-700 hover:border-rose-500 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20'
-            : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-500'
-        )}
-      >
-        <Eraser className="h-3.5 w-3.5" />
-        Сбросить фильтры
-      </button>
+  // Токены сверху страницы убирают поля по одному — забываем и ручную правку этого поля,
+  // иначе следующий клик по пресету вернул бы снятый фильтр.
+  useEffect(() => {
+    setManualOverrides((prev) => {
+      const keys = Object.keys(prev) as (keyof MapSearchFilter)[];
+      const stale = keys.filter((k) => value[k] == null || (k === 'source_filter' && value[k] === 'all'));
+      if (stale.length === 0) return prev;
+      const next = { ...prev };
+      for (const k of stale) delete next[k];
+      return next;
+    });
+  }, [value]);
 
-      {/* Applied presets chips (Multi-preset AND). Показываем только если
-          выбрано >=2 пресета — для одного пресета и так понятно по подсветке. */}
+  // «Сбросить всё» на странице результатов — забываем применённые пресеты.
+  const lastResetKey = useRef(resetKey);
+  useEffect(() => {
+    if (resetKey === lastResetKey.current) return;
+    lastResetKey.current = resetKey;
+    setAppliedPresetIds([]);
+    setManualOverrides({});
+  }, [resetKey]);
+
+  const triSelect = (
+    field: 'has_owner_replies' | 'has_website' | 'has_lpr' | 'hiring_marketing',
+    labels: [string, string, string],
+    id: string,
+  ) => (
+    <Select
+      id={id}
+      wrapperClassName="block"
+      className="w-full"
+      value={value[field] === true ? 'yes' : value[field] === false ? 'no' : 'any'}
+      onChange={(e) => {
+        const v = e.target.value;
+        const next = v === 'yes' ? true : v === 'no' ? false : null;
+        recordManualOverride(field, next);
+        onChange({ ...value, [field]: next });
+      }}
+    >
+      <option value="any">{labels[0]}</option>
+      <option value="yes">{labels[1]}</option>
+      <option value="no">{labels[2]}</option>
+    </Select>
+  );
+
+  const wordsActive = Boolean(
+    value.review_text_contains_any?.length ||
+      value.review_text_excludes_any?.length ||
+      value.review_text_contains ||
+      value.review_text_excludes,
+  );
+  const opfSelected = new Set(value.opf_in ?? []);
+  const sourceValue = value.source_filter ?? 'all';
+  const sourceOptions: { value: 'all' | '2gis' | 'yandex_maps' | 'google_maps'; label: string; count?: number }[] = [
+    { value: 'all', label: 'Все', count: sourceCounts?.total },
+    { value: '2gis', label: '2GIS', count: sourceCounts?.twogis },
+    { value: 'yandex_maps', label: 'Я.Карты', count: sourceCounts?.yandex_maps },
+    { value: 'google_maps', label: 'Google' },
+  ];
+  const ratingCount = [value.min_rating, value.max_rating, value.min_reviews, value.min_negative, value.has_owner_replies].filter(
+    (v) => v != null,
+  ).length;
+  const contactsCount = [value.has_website, value.has_lpr, value.hiring_marketing].filter((v) => v != null).length;
+
+  return (
+    <aside aria-label="Фильтры" className="flex flex-col">
+      <div className="flex items-baseline justify-between gap-2 px-1 pb-1">
+        <h2 className="text-xl font-extrabold tracking-tight text-ui-text">Фильтры</h2>
+        <button
+          type="button"
+          onClick={resetAllFilters}
+          disabled={!hasAnyFilter}
+          className="text-small font-semibold text-ui-danger hover:underline disabled:cursor-default disabled:text-ui-text-muted/60 disabled:no-underline"
+        >
+          Сбросить
+        </button>
+      </div>
+      <p className="px-1 pb-4 text-xs text-ui-text-muted">Применяются к найденным компаниям сразу, без нового поиска</p>
+
       {appliedPresetIds.length >= 2 && (
-        <div className="rounded-md border border-brand-200 bg-brand-50 px-2.5 py-2 dark:border-brand-500/30 dark:bg-brand-500/10">
-          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
-            Применено пресетов: {appliedPresetIds.length} · фильтры AND
-          </div>
+        <div className="mb-3 rounded-card bg-ui-accent/[.06] px-3 py-2.5">
+          <div className="mb-1.5 text-xs font-semibold text-ui-accent">Пресетов: {appliedPresetIds.length} — действуют все сразу</div>
           <div className="flex flex-wrap gap-1">
             {appliedPresetIds.map((id) => {
               const label = labelOfPresetId(id, PRESETS, allUserPresets);
               return (
-                <span
-                  key={id}
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-brand-800 border border-brand-300 dark:bg-brand-500/10 dark:border-brand-400/40 dark:text-brand-200"
-                >
+                <span key={id} className="inline-flex items-center gap-1 rounded-full bg-ui-surface px-2.5 py-0.5 text-xs font-semibold text-ui-text">
                   {label}
                   <button
                     type="button"
                     onClick={() => toggleAppliedId(id)}
                     aria-label={`Снять пресет ${label}`}
-                    className="ml-0.5 -mr-0.5 rounded p-0.5 hover:bg-brand-100 dark:hover:bg-brand-500/20"
+                    className="-mr-1 rounded-full p-0.5 text-ui-text-muted hover:text-ui-danger"
                   >
-                    <X className="h-2.5 w-2.5" />
+                    <X className="h-3 w-3" />
                   </button>
                 </span>
               );
             })}
           </div>
           {presetConflicts.length > 0 && (
-            <div className="mt-1.5 text-xs leading-tight text-amber-700 dark:text-amber-300">
-              Конфликт в пресетах:{' '}
-              {presetConflicts
-                .map((c) => humanFieldLabel(c.field))
-                .join(', ')}{' '}
-              — учитываем значение первого применённого.
+            <div className="mt-1.5 text-xs text-ui-warning">
+              Пресеты расходятся в полях: {presetConflicts.map((c) => humanFieldLabel(c.field)).join(', ')} — берём значение
+              первого.
             </div>
           )}
         </div>
       )}
 
-      <div>
-        <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Готовые пресеты
+      <FilterSection title="Готовые сценарии" defaultOpen count={appliedPresetIds.length}>
+        <div className="flex flex-col gap-0.5">
+          {PRESETS.map((p) => (
+            <ScenarioRow key={p.id} active={isPresetActive(p)} onClick={() => togglePreset(p)} title={p.description} label={p.label} hint={p.shortHint} />
+          ))}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {PRESETS.map((p) => {
-            const active = isPresetActive(p);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => togglePreset(p)}
-                title={
-                  active
-                    ? `Активен — клик ещё раз, чтобы снять фильтры. ${p.description ?? ''}`
-                    : p.description
-                }
-                className={cn(
-                  'flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors',
-                  active
-                    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-400/40 dark:border-brand-400 dark:bg-brand-500/10 dark:ring-brand-500/40'
-                    : 'border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-400 dark:hover:bg-slate-700'
-                )}
-              >
-                <span
-                  className={cn(
-                    'text-xs font-medium',
-                    active
-                      ? 'text-emerald-900 dark:text-emerald-100'
-                      : 'text-slate-800 dark:text-slate-200'
-                  )}
-                >
-                  {p.label}
-                </span>
-                <span
-                  className={cn(
-                    'text-xs leading-tight',
-                    active
-                      ? 'text-emerald-700 dark:text-emerald-300'
-                      : 'text-slate-500 dark:text-slate-400'
-                  )}
-                >
-                  {p.shortHint}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
-      <div>
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+        <div className="mt-3 flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2 text-xs font-semibold">
             <button
               type="button"
               onClick={() => setUserPresetsTab('active')}
-              className={cn(
-                'text-xs font-medium uppercase tracking-wide transition-colors',
-                userPresetsTab === 'active'
-                  ? 'text-slate-700 dark:text-slate-200'
-                  : 'text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
-              )}
+              className={userPresetsTab === 'active' ? 'text-ui-text' : 'text-ui-text-muted hover:text-ui-text'}
             >
-              Мои пресеты
-              {activeUserPresets.length > 0 && (
-                <span className="ml-1 text-slate-500 dark:text-slate-500">· {activeUserPresets.length}</span>
-              )}
+              Мои пресеты{activeUserPresets.length > 0 && ` · ${activeUserPresets.length}`}
             </button>
             {hiddenUserPresets.length > 0 && (
-              <>
-                <span className="text-slate-300 dark:text-slate-600">/</span>
-                <button
-                  type="button"
-                  onClick={() => setUserPresetsTab('hidden')}
-                  className={cn(
-                    'text-xs font-medium uppercase tracking-wide transition-colors',
-                    userPresetsTab === 'hidden'
-                      ? 'text-slate-700 dark:text-slate-200'
-                      : 'text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
-                  )}
-                >
-                  Скрытые <span className="text-slate-500 dark:text-slate-500">· {hiddenUserPresets.length}</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setUserPresetsTab('hidden')}
+                className={userPresetsTab === 'hidden' ? 'text-ui-text' : 'text-ui-text-muted hover:text-ui-text'}
+              >
+                Скрытые · {hiddenUserPresets.length}
+              </button>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setSaveModalOpen(true)}
-            title="Сохранить текущие фильтры как пресет"
-            className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <BookmarkPlus className="h-3 w-3" /> сохранить
-          </button>
         </div>
         {presetError && (
-          <div
-            role="alert"
-            className="mb-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
-          >
+          <div role="alert" className="mx-1 mt-2 rounded-control bg-ui-danger/10 px-2.5 py-1.5 text-xs text-ui-danger">
             {presetError}
           </div>
         )}
         {visibleUserPresets.length === 0 ? (
-          <div className="rounded-md border border-dashed border-slate-300 px-2 py-2 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
-            {userPresetsTab === 'active' ? (
-              <>Настрой фильтры, нажми «сохранить» — пресет появится здесь и
-              будет доступен в один клик при следующих поисках.</>
-            ) : (
-              <>Скрытых пресетов нет. Скрыть пресет можно из вкладки «Мои пресеты»
-              — он не удалится, просто уберётся из вида.</>
-            )}
-          </div>
+          <p className="px-1 pt-1.5 text-xs text-ui-text-muted">
+            {userPresetsTab === 'active'
+              ? 'Настройте фильтры и сохраните — пресет появится здесь.'
+              : 'Скрытых пресетов нет.'}
+          </p>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {visibleUserPresets.map((p) => {
-              const active = !p.hidden && isUserPresetActive(p);
-              return (
-              <div
-                key={p.id}
-                className={cn(
-                  'group relative flex flex-col items-start gap-0.5 rounded-md border px-3 py-2 pr-7 text-left transition-colors',
-                  active
-                    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-400/40 dark:border-brand-400 dark:bg-brand-500/10 dark:ring-brand-500/40'
-                    : p.hidden
-                    ? 'border-slate-200 bg-slate-50/60 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-500'
-                    : 'border-brand-200 bg-brand-50/40 hover:border-brand-400 dark:border-brand-500/30 dark:bg-brand-500/5 dark:hover:border-brand-400/60'
-                )}
-              >
-                <button
-                  type="button"
+          <div className="mt-1 flex flex-col gap-0.5">
+            {visibleUserPresets.map((p) => (
+              <div key={p.id} className="group relative">
+                <ScenarioRow
+                  active={!p.hidden && isUserPresetActive(p)}
                   onClick={() => toggleUserPreset(p)}
-                  title={
-                    active
-                      ? `Активен — клик ещё раз, чтобы снять фильтры. ${p.description ?? ''}`
-                      : p.description ?? 'мой пресет'
-                  }
-                  className="block w-full text-left"
-                >
-                  <span className="block text-xs font-medium text-slate-800 dark:text-slate-200">
-                    {p.name}
-                    {p.ai_prompt && p.ai_prompt.trim() && (
-                      <span
-                        title="С AI-анализом: при применении посчитает score 0-10 для каждой компании"
-                        className="ml-1 inline-flex items-center rounded bg-violet-100 px-1 py-0 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
-                      >
-                        AI
-                      </span>
-                    )}
-                  </span>
-                  <span className={cn(
-                    'block text-xs leading-tight',
-                    p.hidden ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-700/80 dark:text-emerald-400/80'
-                  )}>
-                    {p.hidden ? 'скрыт' : 'мой'}
-                  </span>
-                </button>
-                <div className="absolute right-1 top-1 flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  {p.hidden ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleToggleHidden(p, false);
-                      }}
-                      title="Вернуть в активные"
-                      aria-label={`Вернуть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-emerald-600"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleToggleHidden(p, true);
-                      }}
-                      title="Скрыть (можно вернуть из вкладки «Скрытые»)"
-                      aria-label={`Скрыть пресет ${p.name}`}
-                      className="rounded p-0.5 text-slate-500 hover:bg-brand-100 hover:text-slate-700"
-                    >
-                      <EyeOff className="h-3 w-3" />
-                    </button>
-                  )}
+                  title={p.description ?? 'Мой пресет'}
+                  label={p.name}
+                  ai={!!(p.ai_prompt && p.ai_prompt.trim())}
+                  muted={p.hidden}
+                  className="pr-14"
+                />
+                <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void handleDeleteUserPreset(p);
-                    }}
+                    onClick={() => void handleToggleHidden(p, !p.hidden)}
+                    title={p.hidden ? 'Вернуть в мои пресеты' : 'Скрыть (вернуть можно из «Скрытых»)'}
+                    aria-label={p.hidden ? `Вернуть пресет ${p.name}` : `Скрыть пресет ${p.name}`}
+                    className="rounded-full bg-ui-surface p-1 text-ui-text-muted shadow-raised hover:text-ui-text"
+                  >
+                    {p.hidden ? <RotateCcw className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteUserPreset(p)}
                     title="Удалить навсегда"
                     aria-label={`Удалить пресет ${p.name}`}
-                    className="rounded p-0.5 text-slate-500 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
+                    className="rounded-full bg-ui-surface p-1 text-ui-text-muted shadow-raised hover:text-ui-danger"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
         )}
+      </FilterSection>
+
+      <FilterSection title="Рейтинг и отзывы" defaultOpen count={ratingCount}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <span className={FIELD_LABEL}>Рейтинг 0–5</span>
+            <div className="grid grid-cols-[1fr_14px_1fr] items-center gap-1.5">
+              <Input
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                placeholder="от"
+                aria-label="Рейтинг от"
+                value={localMinRating}
+                onChange={(e) => setLocalMinRating(e.target.value)}
+                onBlur={commit}
+              />
+              <span className="text-center text-ui-text-muted" aria-hidden>
+                —
+              </span>
+              <Input
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                placeholder="до"
+                aria-label="Рейтинг до"
+                value={localMaxRating}
+                onChange={(e) => setLocalMaxRating(e.target.value)}
+                onBlur={commit}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="flt-min-reviews" className={FIELD_LABEL}>
+                Отзывов от
+              </label>
+              <Input
+                id="flt-min-reviews"
+                type="number"
+                min={0}
+                step={1}
+                placeholder="0"
+                value={localMinReviews}
+                onChange={(e) => setLocalMinReviews(e.target.value)}
+                onBlur={commit}
+              />
+            </div>
+            <div>
+              <label htmlFor="flt-min-negative" className={FIELD_LABEL}>
+                Негативных от
+              </label>
+              <Input
+                id="flt-min-negative"
+                type="number"
+                min={0}
+                step={1}
+                placeholder="0"
+                value={localMinNegative}
+                onChange={(e) => setLocalMinNegative(e.target.value)}
+                onBlur={commit}
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="flt-owner-replies" className={FIELD_LABEL}>
+              Ответы владельца
+            </label>
+            {triSelect('has_owner_replies', ['Не важно', 'Только с ответами', 'Только без ответов'], 'flt-owner-replies')}
+          </div>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Сайт и контакты" count={contactsCount}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label htmlFor="flt-website" className={FIELD_LABEL}>
+              Свой сайт
+            </label>
+            {triSelect('has_website', ['Не важно', 'Только с сайтом', 'Только без сайта'], 'flt-website')}
+          </div>
+          <div>
+            <label htmlFor="flt-lpr" className={FIELD_LABEL}>
+              ЛПР (руководитель)
+            </label>
+            {triSelect('has_lpr', ['Не важно', 'Только с ЛПР', 'Только без ЛПР'], 'flt-lpr')}
+          </div>
+          <div>
+            <label htmlFor="flt-hiring" className={FIELD_LABEL}>
+              Ищут маркетолога на hh.ru
+            </label>
+            {triSelect('hiring_marketing', ['Не важно', 'Только те, кто ищет', 'Только те, кто не ищет'], 'flt-hiring')}
+          </div>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Юр. данные" count={opfSelected.size}>
+        <span className={FIELD_LABEL}>Тип юр. лица</span>
+        <div className="flex flex-wrap gap-1.5">
+          {OPF_OPTIONS.map((opt) => {
+            const on = opfSelected.has(opt.value);
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={on}
+                title={opt.hint}
+                onClick={() => {
+                  const next = new Set(opfSelected);
+                  if (on) next.delete(opt.value);
+                  else next.add(opt.value);
+                  const nextVal = next.size > 0 ? Array.from(next) : null;
+                  recordManualOverride('opf_in', nextVal);
+                  onChange({ ...value, opf_in: nextVal });
+                }}
+                className={cn(CHIP, on && CHIP_ON)}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-ui-text-muted">Из DaData. «Нет данных» — компании без юр. сведений.</p>
+      </FilterSection>
+
+      <FilterSection title="Слова в отзывах" count={wordsActive ? 1 : 0}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label htmlFor="flt-words-contains" className={FIELD_LABEL}>
+              Содержит — любое из слов
+            </label>
+            <Input
+              id="flt-words-contains"
+              type="text"
+              placeholder="не дозвонился, грязно"
+              value={localContainsWords}
+              onChange={(e) => setLocalContainsWords(e.target.value)}
+              onBlur={() => commitWords('contains', localContainsWords)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitWords('contains', localContainsWords);
+                }
+              }}
+            />
+          </div>
+          <div>
+            <label htmlFor="flt-words-excludes" className={FIELD_LABEL}>
+              Не содержит
+            </label>
+            <Input
+              id="flt-words-excludes"
+              type="text"
+              placeholder="рекомендую, отлично"
+              value={localExcludesWords}
+              onChange={(e) => setLocalExcludesWords(e.target.value)}
+              onBlur={() => commitWords('excludes', localExcludesWords)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitWords('excludes', localExcludesWords);
+                }
+              }}
+            />
+          </div>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Боли клиентов" count={value.pain_tag_ids?.length ?? 0}>
+        <PainTagsCloud
+          niche={niche}
+          city={city}
+          searchId={searchId}
+          value={value.pain_tag_ids ?? []}
+          onChange={(ids) => onChange({ ...value, pain_tag_ids: ids.length ? ids : null })}
+        />
+      </FilterSection>
+
+      <FilterSection title="Источник" count={sourceValue !== 'all' ? 1 : 0}>
+        <div className="flex flex-wrap gap-1.5">
+          {sourceOptions.map((opt) => {
+            const on = sourceValue === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  recordManualOverride('source_filter', opt.value);
+                  onChange({ ...value, source_filter: opt.value });
+                }}
+                className={cn(CHIP, on && CHIP_ON)}
+              >
+                {opt.label}
+                {typeof opt.count === 'number' && <span className="ml-1 tabular-nums opacity-70">· {opt.count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </FilterSection>
+
+      <div className="border-y border-black/[.08] px-1 py-4">
+        <button type="button" onClick={() => setSaveModalOpen(true)} className={cn(CHIP, 'border-dashed text-ui-text-muted')}>
+          <BookmarkPlus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+          Сохранить как пресет
+        </button>
       </div>
 
-      <SaveFilterPresetModal
-        open={saveModalOpen}
-        filter={value}
-        onClose={() => setSaveModalOpen(false)}
-        onSaved={handlePresetSaved}
-      />
+      <SaveFilterPresetModal open={saveModalOpen} filter={value} onClose={() => setSaveModalOpen(false)} onSaved={handlePresetSaved} />
 
-      <Dialog
-        open={confirmDelete !== null}
-        onClose={() => !deleteInProgress && setConfirmDelete(null)}
-        title="Удалить пресет?"
-      >
-        <div className="space-y-4 p-6">
-          <div className="text-sm text-slate-700">
+      <Dialog open={confirmDelete !== null} onClose={() => !deleteInProgress && setConfirmDelete(null)} title="Удалить пресет?">
+        <div className="space-y-4">
+          <p className="text-sm text-ui-text">
             Удалить пресет <strong>«{confirmDelete?.name}»</strong> навсегда?
-          </div>
-          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-xs text-[color:var(--signal-warm)]">
-            Если хочешь временно убрать с глаз — лучше нажми «скрыть» (иконка глаза).
-            Пресет уедет во вкладку «Скрытые», откуда его легко вернуть.
-          </div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(null)}
-              disabled={deleteInProgress}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
-            >
+          </p>
+          <p className="rounded-control bg-ui-warning/10 px-3 py-2 text-xs text-ui-warning">
+            Если нужно лишь убрать с глаз — нажмите «скрыть» (глаз): пресет уйдёт в «Скрытые», оттуда его легко вернуть.
+          </p>
+          <div className="flex justify-end gap-2 border-t border-ui-border pt-3">
+            <Button variant="secondary" onClick={() => setConfirmDelete(null)} disabled={deleteInProgress}>
               Отмена
-            </button>
-            <button
-              type="button"
-              onClick={() => void confirmDeleteNow()}
-              disabled={deleteInProgress}
-              className="rounded-v2-sm bg-[color:var(--signal-hot)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {deleteInProgress ? 'Удаляю…' : 'Удалить'}
-            </button>
+            </Button>
+            <Button variant="danger" onClick={() => void confirmDeleteNow()} loading={deleteInProgress}>
+              Удалить
+            </Button>
           </div>
         </div>
       </Dialog>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Рейтинг</label>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            min={0}
-            max={5}
-            step={0.1}
-            placeholder="от"
-            value={localMinRating}
-            onChange={(e) => setLocalMinRating(e.target.value)}
-            onBlur={commit}
-          />
-          <span className="text-slate-500">—</span>
-          <Input
-            type="number"
-            min={0}
-            max={5}
-            step={0.1}
-            placeholder="до"
-            value={localMaxRating}
-            onChange={(e) => setLocalMaxRating(e.target.value)}
-            onBlur={commit}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-            Минимум отзывов
-          </label>
-          <Input
-            type="number"
-            min={0}
-            step={1}
-            placeholder="0"
-            value={localMinReviews}
-            onChange={(e) => setLocalMinReviews(e.target.value)}
-            onBlur={commit}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-            Негативных от
-          </label>
-          <Input
-            type="number"
-            min={0}
-            step={1}
-            placeholder="0"
-            value={localMinNegative}
-            onChange={(e) => setLocalMinNegative(e.target.value)}
-            onBlur={commit}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-          Ответы владельца
-        </label>
-        <Select
-          value={
-            value.has_owner_replies === true
-              ? 'yes'
-              : value.has_owner_replies === false
-                ? 'no'
-                : 'any'
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            const next = v === 'yes' ? true : v === 'no' ? false : null;
-            recordManualOverride('has_owner_replies', next);
-            onChange({ ...value, has_owner_replies: next });
-          }}
-        >
-          <option value="any">Не важно</option>
-          <option value="yes">Только с ответами</option>
-          <option value="no">Только без ответов</option>
-        </Select>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-          Сайт
-        </label>
-        <Select
-          value={
-            value.has_website === true
-              ? 'yes'
-              : value.has_website === false
-                ? 'no'
-                : 'any'
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            const next = v === 'yes' ? true : v === 'no' ? false : null;
-            recordManualOverride('has_website', next);
-            onChange({ ...value, has_website: next });
-          }}
-        >
-          <option value="any">Не важно</option>
-          <option value="yes">Только с сайтом</option>
-          <option value="no">Только без сайта</option>
-        </Select>
-      </div>
-
-      {/* 2026-06-12: ЛПР. Источники — DaData (CompanyLegal.director_name)
-          и парсер /team на сайте (CompanyDecisionMaker). Есть хотя бы один
-          из двух → has_lpr=true. */}
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-          ЛПР
-        </label>
-        <Select
-          value={
-            value.has_lpr === true
-              ? 'yes'
-              : value.has_lpr === false
-                ? 'no'
-                : 'any'
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            const next = v === 'yes' ? true : v === 'no' ? false : null;
-            recordManualOverride('has_lpr', next);
-            onChange({ ...value, has_lpr: next });
-          }}
-        >
-          <option value="any">Не важно</option>
-          <option value="yes">Только с ЛПР</option>
-          <option value="no">Только без ЛПР</option>
-        </Select>
-      </div>
-
-      {/* ТЗ Marketing-DM 2026-06-20 §4.2: пресет для маркетинговых агентств —
-          «ищут маркетолога». Заполняется enrich_company_hh (hh.ru). Это
-          сильнейший лид-сигнал: компания сама размещает вакансию, значит
-          нужны подрядчики/консультанты по маркетингу. */}
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-          🔥 Ищет маркетолога (hh.ru)
-        </label>
-        <Select
-          value={
-            value.hiring_marketing === true
-              ? 'yes'
-              : value.hiring_marketing === false
-                ? 'no'
-                : 'any'
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            const next = v === 'yes' ? true : v === 'no' ? false : null;
-            recordManualOverride('hiring_marketing', next);
-            onChange({ ...value, hiring_marketing: next });
-          }}
-        >
-          <option value="any">Не важно</option>
-          <option value="yes">Только те, кто ищет</option>
-          <option value="no">Только те, кто НЕ ищет</option>
-        </Select>
-      </div>
-
-      {/* Multi-source (ТЗ 2026-06-04 §3.1): фильтр по источнику и в боковой
-          панели тоже — дублирует сегмент в шапке выдачи. Полезно когда юзер
-          сохраняет пресет с фильтром источника или открывает выдачу с узкого
-          экрана где шапка прокручена. */}
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-          Источник
-        </label>
-        <Select
-          value={value.source_filter ?? 'all'}
-          onChange={(e) => {
-            const v = e.target.value as 'all' | '2gis' | 'yandex_maps' | 'google_maps';
-            recordManualOverride('source_filter', v);
-            onChange({ ...value, source_filter: v });
-          }}
-        >
-          <option value="all">Все источники</option>
-          <option value="2gis">Только 2GIS</option>
-          <option value="yandex_maps">Только Я.Карты</option>
-          <option value="google_maps">Только Google</option>
-        </Select>
-      </div>
-
-      {/* Блок 2 ТЗ 2026-06-02: фильтр «Платёжеспособные» через company_legal.
-          Свёрнут по умолчанию — нужен редко, экономит ~150px скролла.
-          Открывается с автоматически если в фильтре есть min_revenue/min_age_years. */}
-      <details
-        className="group rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-2 open:pb-3"
-        open={Boolean(value.min_revenue || value.min_age_years)}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
-          <span className="inline-flex items-center gap-1.5">
-            💼 Платёжеспособные (DaData)
-            {Boolean(value.min_revenue || value.min_age_years) && (
-              <span className="rounded-full bg-blue-200/70 px-1.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">
-                активно
-              </span>
-            )}
-          </span>
-          <span className="text-blue-500 group-open:rotate-180 transition-transform">
-            ▾
-          </span>
-        </summary>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">
-              Оборот от ₽
-            </label>
-            <Input
-              type="number"
-              placeholder="напр.: 5000000"
-              value={value.min_revenue ?? ''}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                const next = v === '' ? null : Number(v);
-                recordManualOverride('min_revenue', next);
-                onChange({ ...value, min_revenue: next });
-              }}
-              className="text-xs"
-            />
-            {/* Подсказка по «реалистичному» минимуму. У ИП и ООО формально
-                оборот может быть 0 (нулёвка). Для B2B-лидгена живой
-                микро-точки (одна стоматология, кофейня) разумно отсекать
-                от 3-5 млн ₽/год — компании ниже либо мёртвые, либо в
-                stealth-mode и платить за сайт вряд ли захотят. */}
-            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              реалистичный минимум живой точки — от ~3-5 млн ₽/год
-            </div>
-          </div>
-          <div>
-            <label className="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">
-              Возраст, лет
-            </label>
-            <Input
-              type="number"
-              placeholder="напр.: 2"
-              value={value.min_age_years ?? ''}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                const next = v === '' ? null : Number(v);
-                recordManualOverride('min_age_years', next);
-                onChange({ ...value, min_age_years: next });
-              }}
-              className="text-xs"
-            />
-          </div>
-        </div>
-        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Применит JOIN company_legal — покажет только компании с
-          подтянутыми юр.данными.
-        </div>
-      </details>
-
-      {/* 2026-06-19: фильтр «Тип юр.лица» (ООО/ИП/АО/прочие/нет данных).
-          Источник — CompanyLegal.opf, заполняется DaData при обогащении
-          и backfill'ится регулярным выражением из legal_short_name.
-          Свёрнут по умолчанию — отдельная семантика от «Платёжеспособных»
-          (там фильтр по обороту/возрасту, здесь — по форме собственности). */}
-      {(() => {
-        const opfOptions: { value: string; label: string; hint?: string }[] = [
-          { value: 'ООО', label: 'ООО', hint: 'Общество с ограниченной ответственностью' },
-          { value: 'ИП', label: 'ИП', hint: 'Индивидуальный предприниматель' },
-          { value: 'АО', label: 'АО', hint: 'Акционерное общество' },
-          { value: 'ПАО', label: 'ПАО', hint: 'Публичное акционерное общество' },
-          { value: '__unknown__', label: 'Нет данных', hint: 'DaData не нашла или не отдала тип' },
-        ];
-        const selected = new Set(value.opf_in ?? []);
-        const active = selected.size > 0;
-        return (
-          <details
-            className="group rounded-v2-sm border border-slate-200 bg-slate-50/40 p-2 open:pb-3 dark:border-slate-700 dark:bg-slate-800/40"
-            open={active}
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
-              <span className="inline-flex items-center gap-1.5">
-                🏛 Тип юр.лица
-                {active && (
-                  <span className="rounded-full bg-slate-300/60 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-600/60 dark:text-slate-200">
-                    {selected.size}
-                  </span>
-                )}
-              </span>
-              <span className="text-slate-500 group-open:rotate-180 transition-transform">▾</span>
-            </summary>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {opfOptions.map((opt) => {
-                const on = selected.has(opt.value);
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                      const next = new Set(selected);
-                      if (on) next.delete(opt.value);
-                      else next.add(opt.value);
-                      const arr = Array.from(next);
-                      const nextVal = arr.length > 0 ? arr : null;
-                      recordManualOverride('opf_in', nextVal);
-                      onChange({ ...value, opf_in: nextVal });
-                    }}
-                    title={opt.hint}
-                    className={
-                      'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ' +
-                      (on
-                        ? 'border-slate-700 bg-slate-700 text-white dark:border-slate-300 dark:bg-slate-200 dark:text-slate-900'
-                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200')
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Тянется из DaData при обогащении (поле opf). «Нет данных» —
-              для компаний без CompanyLegal или с пустым opf.
-            </div>
-          </details>
-        );
-      })()}
-
-      {/* Слова в отзывах — тоже свёрнут по умолчанию, экономит ~200px. */}
-      <details
-        className="group rounded-md border border-slate-200 bg-slate-50/40 p-2 open:pb-3 dark:border-slate-700 dark:bg-slate-800/40"
-        open={Boolean(
-          value.review_text_contains_any?.length ||
-            value.review_text_excludes_any?.length ||
-            value.review_text_contains ||
-            value.review_text_excludes,
-        )}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
-          <span className="inline-flex items-center gap-1.5">
-            💬 Слова в отзывах
-            {Boolean(
-              value.review_text_contains_any?.length ||
-                value.review_text_excludes_any?.length ||
-                value.review_text_contains ||
-                value.review_text_excludes,
-            ) && (
-              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
-                активно
-              </span>
-            )}
-          </span>
-          <span className="text-slate-500 group-open:rotate-180 transition-transform">
-            ▾
-          </span>
-        </summary>
-        <div className="mt-2 mb-2">
-          <label className="mb-0.5 block text-xs text-emerald-700 dark:text-emerald-400">
-            содержит (через запятую) — компании с любым из слов
-          </label>
-          <Input
-            type="text"
-            placeholder="напр.: долго ждал, грязно, не дозвонился"
-            value={localContainsWords}
-            onChange={(e) => setLocalContainsWords(e.target.value)}
-            onBlur={() => commitWords('contains', localContainsWords)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commitWords('contains', localContainsWords);
-              }
-            }}
-            className="text-xs"
-          />
-        </div>
-        <div>
-          <label className="mb-0.5 block text-xs text-rose-700 dark:text-rose-400">
-            не содержит (через запятую) — выкинуть компании с этими словами
-          </label>
-          <Input
-            type="text"
-            placeholder="напр.: отлично, рекомендую"
-            value={localExcludesWords}
-            onChange={(e) => setLocalExcludesWords(e.target.value)}
-            onBlur={() => commitWords('excludes', localExcludesWords)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commitWords('excludes', localExcludesWords);
-              }
-            }}
-            className="text-xs"
-          />
-        </div>
-        {(value.review_text_contains_any?.length ||
-          value.review_text_excludes_any?.length ||
-          value.review_text_contains ||
-          value.review_text_excludes) && (
-          <button
-            type="button"
-            onClick={() => {
-              setLocalContainsWords('');
-              setLocalExcludesWords('');
-              onChange({
-                ...value,
-                review_text_contains: null,
-                review_text_excludes: null,
-                review_text_contains_any: null,
-                review_text_excludes_any: null,
-              });
-            }}
-            className="mt-2 text-xs text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-          >
-            очистить слова
-          </button>
-        )}
-      </details>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Сортировка</label>
-        <Select
-          value={value.sort_by ?? 'rating_desc'}
-          onChange={(e) => {
-            const next = e.target.value as SortBy;
-            recordManualOverride('sort_by', next);
-            onChange({ ...value, sort_by: next });
-          }}
-        >
-          <option value="rating_desc">Рейтинг ↓</option>
-          <option value="rating_asc">Рейтинг ↑</option>
-          <option value="reviews_desc">Больше отзывов</option>
-          <option value="negative_desc">Больше негатива</option>
-          <option value="pain_desc">По упоминаниям болей</option>
-          <option value="temperature_desc">🔥 Температура лида ↓</option>
-          <option value="website_score_desc">💼 Нужен сайт (score) ↓</option>
-          {aiActive && (
-            <>
-              <option value="ai_score_desc">AI score ↓ (готовые сверху)</option>
-              <option value="ai_score_asc">AI score ↑ (низкие сверху)</option>
-            </>
-          )}
-        </Select>
-        {aiActive && (
-          <p className="mt-1 text-xs text-violet-700/80 dark:text-violet-300/80">
-            Компании без AI-оценки — в конце списка.
-          </p>
-        )}
-      </div>
-
-      {/* Pain-cloud. 2026-06-12 переработана вёрстка по жалобе юзера:
-          раньше заголовок «🧠 БОЛИ КЛИЕНТОВ (AI-ТЕГИ)» был UPPERCASE +
-          tracking-wide и переносился на 2 строки в узкой панели, а
-          круглый бейдж «1 ВЫБРАНО» был огромным. Теперь: заголовок в
-          одну строку («Боли клиентов» без скобочного хвоста), счётчик —
-          компактный pill, плитки тегов — обычной плотности (см. PainTagsCloud). */}
-      <details
-        className="group rounded-md border border-violet-200 bg-violet-50/40 p-2 open:pb-3 dark:border-violet-700/40 dark:bg-violet-900/20"
-        open={Boolean(value.pain_tag_ids?.length)}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-          <span className="inline-flex min-w-0 items-center gap-1.5 text-small font-semibold text-violet-800 dark:text-violet-200">
-            <span aria-hidden>🧠</span>
-            <span className="truncate">Боли клиентов</span>
-            {(value.pain_tag_ids?.length ?? 0) > 0 && (
-              <span className="rounded bg-violet-200 px-1.5 py-0.5 text-xs font-semibold leading-none text-violet-800 dark:bg-violet-500/30 dark:text-violet-100">
-                {value.pain_tag_ids?.length}
-              </span>
-            )}
-          </span>
-          <span className="text-violet-500 group-open:rotate-180 transition-transform">
-            ▾
-          </span>
-        </summary>
-        <div className="mt-2">
-          <PainTagsCloud
-            niche={niche}
-            city={city}
-            searchId={searchId}
-            value={value.pain_tag_ids ?? []}
-            onChange={(ids) =>
-              onChange({ ...value, pain_tag_ids: ids.length ? ids : null })
-            }
-          />
-        </div>
-      </details>
     </aside>
+  );
+}
+
+const FIELD_LABEL = 'mb-1.5 block text-xs font-medium text-ui-text-muted';
+const CHIP =
+  'min-h-8 rounded-full border border-ui-border bg-ui-surface px-3.5 py-1 text-xs font-semibold text-ui-text-muted transition-colors hover:border-ui-text-muted/50 hover:text-ui-text';
+const CHIP_ON = 'border-ui-text bg-ui-text text-ui-surface hover:border-ui-text hover:text-ui-surface';
+
+const OPF_OPTIONS: { value: string; label: string; hint: string }[] = [
+  { value: 'ООО', label: 'ООО', hint: 'Общество с ограниченной ответственностью' },
+  { value: 'ИП', label: 'ИП', hint: 'Индивидуальный предприниматель' },
+  { value: 'АО', label: 'АО', hint: 'Акционерное общество' },
+  { value: 'ПАО', label: 'ПАО', hint: 'Публичное акционерное общество' },
+  { value: '__unknown__', label: 'нет данных', hint: 'DaData не нашла или не отдала тип' },
+];
+
+/** Раздел фильтров: заголовок капсом со счётчиком заданных полей, сворачивается. */
+function FilterSection({
+  title,
+  defaultOpen = false,
+  count = 0,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen || count > 0);
+  return (
+    <details open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)} className="group border-t border-black/[.08] px-1 py-3.5">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-control text-xs font-bold uppercase tracking-[.08em] text-ui-text-muted hover:text-ui-text [&::-webkit-details-marker]:hidden">
+        {title}
+        {count > 0 && (
+          <span className="rounded-full bg-ui-accent px-1.5 text-xs font-bold normal-case tracking-normal text-ui-accent-contrast">{count}</span>
+        )}
+        <ChevronDown className="ml-auto h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="pt-3">{children}</div>
+    </details>
+  );
+}
+
+/** Строка сценария / пресета: кружок-отметка, название, подсказка. */
+function ScenarioRow({
+  active,
+  onClick,
+  title,
+  label,
+  hint,
+  ai,
+  muted,
+  className,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title?: string;
+  label: string;
+  hint?: string;
+  ai?: boolean;
+  muted?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      title={active ? `Включён — нажмите ещё раз, чтобы снять. ${title ?? ''}` : title}
+      className={cn(
+        'flex min-h-10 w-full items-center gap-2.5 rounded-card px-2.5 py-2 text-left text-small transition-colors',
+        active ? 'bg-ui-accent/[.08] font-semibold text-ui-text' : 'text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text',
+        muted && 'opacity-60',
+        className,
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'grid h-[17px] w-[17px] shrink-0 place-items-center rounded-full border-[1.5px] transition-colors',
+          active ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast' : 'border-ui-border text-transparent',
+        )}
+      >
+        <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">
+          {label}
+          {ai && <span className="ml-1.5 rounded-full bg-ui-accent px-1.5 text-xs font-bold text-ui-accent-contrast">AI</span>}
+        </span>
+        {hint && <span className="block truncate text-xs font-normal text-ui-text-muted">{hint}</span>}
+      </span>
+    </button>
   );
 }
 

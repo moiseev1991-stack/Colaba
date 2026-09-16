@@ -21,6 +21,8 @@ module.exports = {
       fontSize: {
         small:   ['13px', { lineHeight: '18px' }],
         heading: ['28px', { lineHeight: '36px' }],
+        // Вид Premium (16.09): крупный заголовок первого экрана раздела («Кому писать первым.»).
+        hero:    ['clamp(2.25rem, 5vw, 3.5rem)', { lineHeight: '1.06', letterSpacing: '-0.035em' }],
       },
       colors: {
         // === §1.1 редизайн 2026-06-03 — единая бренд-шкала ===
