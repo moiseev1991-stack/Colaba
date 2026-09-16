@@ -27,6 +27,8 @@ import {
   navSectionsFor,
 } from './Sidebar';
 import { useIsSuperuser } from '@/lib/useIsSuperuser';
+import { Badge } from '@/components/ui/badge';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 
 const focusClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
@@ -125,6 +127,22 @@ export function MobileNav() {
                       {section.items.map((item) => {
                         const Icon = item.icon;
                         const active = item.href === bestMatch;
+                        if (item.requiresSending && !OUTREACH_SENDING_ENABLED) {
+                          return (
+                            <li key={item.href}>
+                              <span
+                                aria-disabled="true"
+                                title={SENDING_SOON_HINT}
+                                className="relative flex items-center gap-3 h-11 rounded-[8px] px-3 text-base font-medium cursor-not-allowed opacity-50"
+                                style={{ color: 'hsl(var(--nav-text))' }}
+                              >
+                                <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+                                <span className="flex-1">{item.label}</span>
+                                <Badge size="sm">скоро</Badge>
+                              </span>
+                            </li>
+                          );
+                        }
                         return (
                           <li key={item.href}>
                             <Link

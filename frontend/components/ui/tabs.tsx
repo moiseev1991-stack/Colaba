@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 export interface TabItem<T extends string> {
   value: T;
   label: React.ReactNode;
+  /** Неактивная вкладка: видна серой, не выбирается ни мышью, ни с клавиатуры. */
+  disabled?: boolean;
 }
 
 interface TabsProps<T extends string> {
@@ -25,15 +27,19 @@ export function Tabs<T extends string>({ items, value, onChange, className, 'ari
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const last = items.length - 1;
-    const next =
-      e.key === 'ArrowRight' ? (index === last ? 0 : index + 1)
-      : e.key === 'ArrowLeft' ? (index === 0 ? last : index - 1)
+    // Стрелки ходят только по активным вкладкам.
+    const enabled = items.flatMap((item, i) => (item.disabled ? [] : [i]));
+    const pos = enabled.indexOf(index);
+    const last = enabled.length - 1;
+    const nextPos =
+      e.key === 'ArrowRight' ? (pos === last ? 0 : pos + 1)
+      : e.key === 'ArrowLeft' ? (pos <= 0 ? last : pos - 1)
       : e.key === 'Home' ? 0
       : e.key === 'End' ? last
       : -1;
-    if (next < 0) return;
+    if (nextPos < 0 || enabled.length === 0) return;
     e.preventDefault();
+    const next = enabled[nextPos];
     onChange(items[next].value);
     refs.current[next]?.focus();
   };
@@ -51,12 +57,15 @@ export function Tabs<T extends string>({ items, value, onChange, className, 'ari
             type="button"
             role="tab"
             aria-selected={selected}
+            aria-disabled={item.disabled || undefined}
+            disabled={item.disabled}
             tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(item.value)}
+            onClick={() => !item.disabled && onChange(item.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
               '-mb-px rounded-t-control border-b-2 px-3 py-2 text-small font-medium transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent/40',
+              'disabled:cursor-not-allowed disabled:opacity-50',
               selected ? 'border-ui-accent text-ui-accent' : 'border-transparent text-ui-text-muted hover:text-ui-text',
             )}
           >

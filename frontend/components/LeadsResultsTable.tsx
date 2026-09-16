@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { ProposalSendModal } from './ProposalSendModal';
 import type { LeadValues } from '@/lib/proposalTemplates';
 import { toast } from '@/components/ui/toast';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 
 interface LeadsResultsTableProps {
   results: LeadRow[];
@@ -433,7 +434,9 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
             <button
               type="button"
               onClick={openSendModalForSelected}
-              className="app-cta-mega"
+              disabled={!OUTREACH_SENDING_ENABLED}
+              title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
+              className="app-cta-mega disabled:cursor-not-allowed disabled:opacity-50"
               style={{ height: 36, padding: '0 16px', fontSize: 13 }}
             >
               <Send className="h-4 w-4" /> Отправить КП

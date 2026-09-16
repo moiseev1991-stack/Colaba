@@ -45,15 +45,16 @@ import {
 } from '@/src/services/api/outreach-kp';
 import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/confirm';
+import { OUTREACH_SENDING_ENABLED } from '@/lib/outreach';
 
 type Tab = 'maps' | 'sites' | 'kp' | 'kp-jobs' | 'sends';
 
-const TABS: { value: Tab; label: string }[] = [
+const TABS: { value: Tab; label: string; disabled?: boolean }[] = [
   { value: 'maps', label: 'По картам' },
   { value: 'sites', label: 'По сайтам' },
   { value: 'kp', label: 'КП' },
   { value: 'kp-jobs', label: 'Партии КП' },
-  { value: 'sends', label: 'Отправки' },
+  { value: 'sends', label: OUTREACH_SENDING_ENABLED ? 'Отправки' : 'Отправки · скоро', disabled: !OUTREACH_SENDING_ENABLED },
 ];
 
 function formatDateTime(iso: string): string {
@@ -107,7 +108,7 @@ function LeadsHistoryInner() {
   const searchParams = useSearchParams();
   const initialTab = useMemo<Tab>(() => {
     const raw = searchParams?.get('tab');
-    if (raw === 'sites' || raw === 'kp' || raw === 'kp-jobs' || raw === 'sends' || raw === 'maps')
+    if (raw === 'sites' || raw === 'kp' || raw === 'kp-jobs' || (raw === 'sends' && OUTREACH_SENDING_ENABLED) || raw === 'maps')
       return raw;
     return 'maps';
   }, [searchParams]);

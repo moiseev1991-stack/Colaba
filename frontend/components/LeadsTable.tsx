@@ -13,6 +13,7 @@ import { SeoDetailCard } from './seo/SeoDetailCard';
 import { runResultAudit } from '@/src/services/api/search';
 import { addDomainToBlacklist as addDomainToBlacklistApi } from '@/src/services/api/blacklist';
 import { toast } from '@/components/ui/toast';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 
 const AUDIT_DATA_TIMEOUT_MS = 5 * 60 * 1000; // 5 минут
 
@@ -566,7 +567,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
               <Button
                 size="sm"
                 onClick={() => setBulkSendModalOpen(true)}
-                disabled={selectedIds.size === 0 || bulkSendLoading}
+                disabled={selectedIds.size === 0 || bulkSendLoading || !OUTREACH_SENDING_ENABLED}
+                title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
                 className="flex items-center gap-1.5"
                 aria-label={selectedIds.size > 0 ? `Отправить КП выбранным (${selectedIds.size})` : 'Выберите строки для отправки КП'}
               >
@@ -679,7 +681,9 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                         setBulkSendModalOpen(true);
                         setShowMobileActions(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
+                      disabled={!OUTREACH_SENDING_ENABLED}
+                      title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
+                      className="disabled:cursor-not-allowed disabled:opacity-50 w-full px-3 py-2 text-left text-sm hover:bg-[hsl(var(--surface-2))] td-default flex items-center gap-2"
                     >
                       <Send className="h-4 w-4" />
                       Отправить КП ({selectedIds.size})
@@ -928,9 +932,10 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                                 {hasEmail(row.email) && row.outreachText && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleSendOutreach(row); }}
-                                    title="Отправить outreach на email"
+                                    disabled={!OUTREACH_SENDING_ENABLED}
+                                    title={OUTREACH_SENDING_ENABLED ? 'Отправить outreach на email' : SENDING_SOON_HINT}
                                     aria-label="Отправить outreach"
-                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Send className="h-4 w-4 text-brand-600 dark:text-brand-400" />
                                   </button>
@@ -1398,7 +1403,8 @@ export function LeadsTable({ results, runId, onAuditComplete }: LeadsTableProps)
                   <Button
                     size="sm"
                     onClick={() => setBulkSendModalOpen(true)}
-                    disabled={bulkSendLoading}
+                    disabled={bulkSendLoading || !OUTREACH_SENDING_ENABLED}
+                    title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
                     className="flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] shrink-0"
                     aria-label={
                       bulkSendLoading

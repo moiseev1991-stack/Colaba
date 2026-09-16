@@ -36,8 +36,16 @@ import { useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/
 import type { ModuleId } from '@/lib/ModuleContext';
 import { VersionBadge } from './VersionBadge';
 import { useIsSuperuser } from '@/lib/useIsSuperuser';
+import { Badge } from '@/components/ui/badge';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 
-export type NavItem = { href: string; label: string; icon: LucideIcon };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Пункт про отправку писем из SpinLid — пока она выключена, пункт серый с пометкой «скоро» (lib/outreach.ts). */
+  requiresSending?: boolean;
+};
 export type NavSection = { title?: string; items: NavItem[] };
 
 // Email block is identical across modules for now. When per-module campaigns/templates
@@ -45,10 +53,10 @@ export type NavSection = { title?: string; items: NavItem[] };
 export const EMAIL_SECTION: NavSection = {
   title: 'Email-рассылка',
   items: [
-    { href: '/app/email/campaigns', label: 'Кампании', icon: Mail },
-    { href: '/app/email/messages', label: 'Сообщения', icon: Inbox },
-    { href: '/app/email/stats', label: 'Статистика', icon: BarChart3 },
-    { href: '/app/email/settings', label: 'Настройка', icon: Settings2 },
+    { href: '/app/email/campaigns', label: 'Кампании', icon: Mail, requiresSending: true },
+    { href: '/app/email/messages', label: 'Сообщения', icon: Inbox, requiresSending: true },
+    { href: '/app/email/stats', label: 'Статистика', icon: BarChart3, requiresSending: true },
+    { href: '/app/email/settings', label: 'Настройка', icon: Settings2, requiresSending: true },
   ],
 };
 
@@ -84,8 +92,8 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
           { href: '/app/leads/settings', label: 'Параметры поиска', icon: Settings },
           { href: '/app/leads/blacklist', label: 'Блеклист', icon: Ban },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
-          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
-          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send },
+          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail, requiresSending: true },
+          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send, requiresSending: true },
         ],
       },
     ],
@@ -106,8 +114,8 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
         items: [
           { href: '/app/gos/settings', label: 'Параметры', icon: Settings },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
-          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
-          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send },
+          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail, requiresSending: true },
+          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send, requiresSending: true },
         ],
       },
     ],
@@ -129,8 +137,8 @@ export const MODULE_NAV: Record<ModuleId, { sections: NavSection[] }> = {
         items: [
           { href: '/settings/providers', label: 'Поисковые провайдеры', icon: Settings },
           { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
-          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail },
-          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send },
+          { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail, requiresSending: true },
+          { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send, requiresSending: true },
           { href: '/settings/blacklist', label: 'Блеклист', icon: Ban },
         ],
       },
@@ -479,6 +487,28 @@ export function Sidebar() {
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const active = item.href === bestMatch;
+                if (item.requiresSending && !OUTREACH_SENDING_ENABLED) {
+                  return (
+                    <li key={item.href}>
+                      <span
+                        aria-disabled="true"
+                        title={effectiveCollapsed ? `${item.label} — скоро` : SENDING_SOON_HINT}
+                        className={`relative flex items-center h-10 rounded-[8px] text-sm font-medium cursor-not-allowed opacity-50 ${
+                          effectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'
+                        }`}
+                        style={{ color: 'hsl(var(--nav-text))' }}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                        {!effectiveCollapsed && (
+                          <>
+                            <span className="flex-1">{item.label}</span>
+                            <Badge size="sm">скоро</Badge>
+                          </>
+                        )}
+                      </span>
+                    </li>
+                  );
+                }
                 return (
                   <li key={item.href}>
                     <Link

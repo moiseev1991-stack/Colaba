@@ -17,6 +17,7 @@ import { CreateCampaignFromListModal } from '@/components/maps/CreateCampaignFro
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { confirmDialog } from '@/components/ui/confirm';
+import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 import {
   getLeadList,
   removeLeadListItem,
@@ -149,8 +150,9 @@ export default function LeadListDetailPage() {
           </button>
           <button
             onClick={() => setCampaignOpen(true)}
-            disabled={data.items_count === 0}
-            className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            disabled={data.items_count === 0 || !OUTREACH_SENDING_ENABLED}
+            title={OUTREACH_SENDING_ENABLED ? undefined : SENDING_SOON_HINT}
+            className="disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
             <Mail className="h-4 w-4" />
             Создать кампанию
