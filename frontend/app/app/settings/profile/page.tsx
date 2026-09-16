@@ -10,8 +10,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { apiClient } from '@/client';
+import { toast } from '@/components/ui/toast';
 
 interface MeResponse {
   email: string;
@@ -33,11 +33,7 @@ export default function ProfileSettingsPage() {
   const [replyTo, setReplyTo] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,7 +42,7 @@ export default function ProfileSettingsPage() {
       setLoginEmail(res.data.email);
       setReplyTo(res.data.reply_to_email ?? '');
     } catch (e) {
-      addToast('error', getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -63,9 +59,9 @@ export default function ProfileSettingsPage() {
       await apiClient.patch<MeResponse>('/auth/me', {
         reply_to_email: trimmed || null,
       });
-      addToast('success', 'Email для ответов сохранён');
+      toast.success('Email для ответов сохранён');
     } catch (e) {
-      addToast('error', getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -75,14 +71,7 @@ export default function ProfileSettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
-      <PageHeader title="Профиль" />
-
-      <ToastContainer
-        toasts={toasts}
-        onClose={(id) => setToasts((p) => p.filter((t) => t.id !== id))}
-      />
-
-      {loading ? (
+      <PageHeader title="Профиль" />      {loading ? (
         <CardV2 className="flex items-center gap-2 px-4 py-6 text-sm text-[hsl(var(--muted))]">
           <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
         </CardV2>

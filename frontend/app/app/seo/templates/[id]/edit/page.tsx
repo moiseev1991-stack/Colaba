@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2, FileText, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
-import { ToastContainer, type Toast } from '@/components/Toast';
+import { toast } from '@/components/ui/toast';
 import {
   getOutreachTemplates,
   updateOutreachTemplate,
@@ -28,11 +28,7 @@ export default function EditTemplatePage() {
   const [form, setForm] = useState<OutreachTemplateCreate>({ name: '', subject: '', body: '', module: 'seo' });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -59,17 +55,17 @@ export default function EditTemplatePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.subject.trim() || !form.body.trim()) {
-      addToast('error', 'Заполните все поля');
+      toast.error('Заполните все поля');
       return;
     }
     if (isNaN(id)) return;
     setSubmitting(true);
     try {
       await updateOutreachTemplate(id, form);
-      addToast('success', 'Шаблон сохранён');
+      toast.success('Шаблон сохранён');
       router.push('/app/seo/templates');
     } catch {
-      addToast('error', 'API шаблонов ещё не готово. Бэкенд в разработке.');
+      toast.error('API шаблонов ещё не готово. Бэкенд в разработке.');
     } finally {
       setSubmitting(false);
     }
@@ -198,9 +194,6 @@ export default function EditTemplatePage() {
             </ButtonV2>
           </Link>
         </div>
-      </form>
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((x) => x.filter((t) => t.id !== id))} />
-    </div>
+      </form>    </div>
   );
 }

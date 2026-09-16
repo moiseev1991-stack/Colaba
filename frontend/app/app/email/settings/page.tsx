@@ -146,7 +146,7 @@ export default function EmailSettingsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1
           className="flex items-center gap-2 font-display font-semibold tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
         >
           <Server className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           Настройка email
@@ -240,7 +240,7 @@ export default function EmailSettingsPage() {
 
           <CardV2 as="section" className="mb-6 p-5">
             <h2
-              className="font-display font-semibold tracking-tight text-[15px] mb-4"
+              className="font-display font-semibold tracking-tight text-base mb-4"
               style={{ color: 'hsl(var(--text))' }}
             >
               Приём ответов (IMAP)
@@ -248,7 +248,7 @@ export default function EmailSettingsPage() {
             <p className="text-xs mb-4" style={{ color: 'hsl(var(--muted))' }}>
               Настройте catch-all на домене, чтобы письма на{' '}
               <code
-                className="px-1.5 py-0.5 rounded-v2-sm text-[11px] font-mono"
+                className="px-1.5 py-0.5 rounded-v2-sm text-xs font-mono"
                 style={{ background: 'hsl(var(--surface-2))', color: 'hsl(var(--text))' }}
               >reply-{'{id}'}@domain</code> попадали в один
               ящик.
@@ -336,7 +336,7 @@ export default function EmailSettingsPage() {
 
           <CardV2 as="section" className="mb-6 p-5">
             <h2
-              className="font-display font-semibold tracking-tight text-[15px] mb-1 flex items-center gap-2"
+              className="font-display font-semibold tracking-tight text-base mb-1 flex items-center gap-2"
               style={{ color: 'hsl(var(--text))' }}
             >
               <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-400" />
@@ -418,7 +418,7 @@ export default function EmailSettingsPage() {
                 </label>
                 <textarea
                   rows={5}
-                  className={`${INPUT_CLS} font-mono text-[12.5px]`}
+                  className={`${INPUT_CLS} font-mono text-small`}
                   style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--text))' }}
                   value={form.sender_signature_html || ''}
                   onChange={(e) =>
@@ -429,7 +429,7 @@ export default function EmailSettingsPage() {
                     '[example.ru](https://example.ru) · +7 999 000-00-00'
                   }
                 />
-                <p className="mt-1 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
                   Markdown: **жирный**, [ссылка](url), переносы строк
                   сохраняются. HTML-теги допустимы, но не используйте
                   &lt;script&gt;.
@@ -440,7 +440,7 @@ export default function EmailSettingsPage() {
 
           <CardV2 as="section" className="mb-6 p-5">
             <h2
-              className="font-display font-semibold tracking-tight text-[15px] mb-4"
+              className="font-display font-semibold tracking-tight text-base mb-4"
               style={{ color: 'hsl(var(--text))' }}
             >
               Справка: DNS записи
@@ -450,15 +450,15 @@ export default function EmailSettingsPage() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                     <th
-                      className="text-left py-2 pr-2 text-[11px] font-semibold uppercase tracking-wider"
+                      className="text-left py-2 pr-2 text-xs font-semibold uppercase tracking-wider"
                       style={{ color: 'hsl(var(--muted))' }}
                     >Тип</th>
                     <th
-                      className="text-left py-2 pr-2 text-[11px] font-semibold uppercase tracking-wider"
+                      className="text-left py-2 pr-2 text-xs font-semibold uppercase tracking-wider"
                       style={{ color: 'hsl(var(--muted))' }}
                     >Имя</th>
                     <th
-                      className="text-left py-2 pr-2 text-[11px] font-semibold uppercase tracking-wider"
+                      className="text-left py-2 pr-2 text-xs font-semibold uppercase tracking-wider"
                       style={{ color: 'hsl(var(--muted))' }}
                     >Пример значения</th>
                     <th className="w-10" />

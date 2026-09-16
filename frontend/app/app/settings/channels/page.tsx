@@ -10,8 +10,8 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { Loader2, Save, Zap, Send, MessageCircle, Mail, AlertCircle } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 import {
   getChannelsSettings,
   updateChannel,
@@ -59,11 +59,7 @@ export default function ChannelsSettingsPage() {
   const [state, setState] = useState<Record<string, PerChannelState>>({});
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,7 +80,7 @@ export default function ChannelsSettingsPage() {
       if ((e as { response?: { status?: number } })?.response?.status === 401) {
         setNeedsAuth(true);
       } else {
-        addToast('error', getErrorMessage(e, 'load'));
+        toast.error(getErrorMessage(e, 'load'));
       }
     } finally {
       setLoading(false);
@@ -118,9 +114,9 @@ export default function ChannelsSettingsPage() {
       }
       const updated = await updateChannel(id as ChannelId, { config, enabled: s.enabled });
       setList((prev) => prev.map((c) => (c.channel_id === id ? updated : c)));
-      addToast('success', `Настройки «${updated.name}» сохранены`);
+      toast.success(`Настройки «${updated.name}» сохранены`);
     } catch (e) {
-      addToast('error', getErrorMessage(e, 'save'));
+      toast.error(getErrorMessage(e, 'save'));
     } finally {
       setState((prev) => ({ ...prev, [id]: { ...prev[id], saving: false } }));
     }
@@ -131,13 +127,13 @@ export default function ChannelsSettingsPage() {
     try {
       const result = await testChannel(id as ChannelId);
       if (result.ok) {
-        addToast('success', 'Подключение работает ✓');
+        toast.success('Подключение работает ✓');
       } else {
-        addToast('error', `Не получилось: ${result.error ?? 'неизвестная ошибка'}`);
+        toast.error(`Не получилось: ${result.error ?? 'неизвестная ошибка'}`);
       }
       await load();
     } catch (e) {
-      addToast('error', getErrorMessage(e, 'test'));
+      toast.error(getErrorMessage(e, 'test'));
     } finally {
       setState((prev) => ({ ...prev, [id]: { ...prev[id], testing: false } }));
     }
@@ -340,8 +336,6 @@ export default function ChannelsSettingsPage() {
             );
           })}
         </div>
-      </div>
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
-    </div>
+      </div>    </div>
   );
 }

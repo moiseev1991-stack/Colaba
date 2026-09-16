@@ -89,7 +89,7 @@ export function MobileNav() {
                 className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4"
                 style={{ borderColor: 'hsl(var(--border))' }}
               >
-                <span className="inline-flex items-center gap-2 text-[14px] font-semibold" style={{ color: 'hsl(var(--text))' }}>
+                <span className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: 'hsl(var(--text))' }}>
                   <span
                     className="flex h-7 w-7 items-center justify-center rounded-[8px]"
                     style={{ background: 'var(--brand-gradient)', color: 'white' }}
@@ -115,7 +115,7 @@ export function MobileNav() {
                   <div key={sectionIdx} className={sectionIdx > 0 ? 'mt-5' : ''}>
                     {section.title && (
                       <div
-                        className="mb-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+                        className="mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wider"
                         style={{ color: 'hsl(var(--accent))' }}
                       >
                         {section.title}
@@ -130,7 +130,7 @@ export function MobileNav() {
                             <Link
                               href={item.href}
                               onClick={() => setOpen(false)}
-                              className={`relative flex items-center gap-3 h-11 rounded-[8px] px-3 text-[15px] transition-all ${focusClass} ${
+                              className={`relative flex items-center gap-3 h-11 rounded-[8px] px-3 text-base transition-all ${focusClass} ${
                                 active
                                   ? 'font-semibold'
                                   : 'hover:bg-[hsl(var(--nav-hover-bg))] font-medium'
@@ -167,7 +167,7 @@ export function MobileNav() {
               </nav>
 
               <div
-                className="shrink-0 border-t px-4 py-3 text-[12px]"
+                className="shrink-0 border-t px-4 py-3 text-xs"
                 style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted))' }}
               >
                 <div className="flex flex-wrap gap-x-3 gap-y-1">

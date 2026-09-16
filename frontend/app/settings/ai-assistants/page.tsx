@@ -7,11 +7,11 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
 import { Input } from '@/components/ui/input';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { Dialog } from '@/components/ui/dialog';
 import { tokenStorage } from '@/client';
 import { PageHeader } from '@/components/PageHeader';
 import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 import {
   listAiAssistants,
   getAiAssistantsRegistry,
@@ -40,7 +40,6 @@ export default function AiAssistantsPage() {
   const [registry, setRegistry] = useState<RegistryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<{
@@ -60,9 +59,6 @@ export default function AiAssistantsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,7 +67,7 @@ export default function AiAssistantsPage() {
       setList(data);
       setRegistry(reg);
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'загрузки'));
+      toast.error(getErrorMessage(e, 'загрузки'));
     } finally {
       setLoading(false);
     }
@@ -131,7 +127,7 @@ export default function AiAssistantsPage() {
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.provider_type || !form.model.trim()) {
-      addToast('error', 'Заполните название, тип провайдера и модель');
+      toast.error('Заполните название, тип провайдера и модель');
       return;
     }
     setSubmitting(true);
@@ -144,11 +140,11 @@ export default function AiAssistantsPage() {
         supports_vision: form.supports_vision,
         is_default: form.is_default,
       });
-      addToast('success', 'AI-ассистент создан');
+      toast.success('AI-ассистент создан');
       setModal(null);
       load();
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'создания'));
+      toast.error(getErrorMessage(e, 'создания'));
     } finally {
       setSubmitting(false);
     }
@@ -172,11 +168,11 @@ export default function AiAssistantsPage() {
         supports_vision: form.supports_vision,
         is_default: form.is_default,
       });
-      addToast('success', 'Изменения сохранены');
+      toast.success('Изменения сохранены');
       setModal(null);
       load();
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'сохранения'));
+      toast.error(getErrorMessage(e, 'сохранения'));
     } finally {
       setSubmitting(false);
     }
@@ -186,20 +182,20 @@ export default function AiAssistantsPage() {
     if (!(await confirmDialog('Удалить этого AI-ассистента?'))) return;
     try {
       await deleteAiAssistant(id);
-      addToast('success', 'Удалено');
+      toast.success('Удалено');
       load();
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'удаления'));
+      toast.error(getErrorMessage(e, 'удаления'));
     }
   };
 
   const handleSetDefault = async (id: number) => {
     try {
       await updateAiAssistant(id, { is_default: true });
-      addToast('success', 'Установлено по умолчанию');
+      toast.success('Установлено по умолчанию');
       load();
     } catch (e: unknown) {
-      addToast('error', getErrorMessage(e, 'установки по умолчанию'));
+      toast.error(getErrorMessage(e, 'установки по умолчанию'));
     }
   };
 
@@ -225,10 +221,7 @@ export default function AiAssistantsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-
-      <PageHeader
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
         breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'AI-ассистенты' }]}
         title="AI-ассистенты"
         actions={!needsAuth && !loading ? (

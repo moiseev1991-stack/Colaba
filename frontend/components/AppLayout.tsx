@@ -32,7 +32,7 @@ function MobileModuleTabs() {
             disabled={disabled}
             onClick={() => { if (!active) setModule(id); }}
             title={disabled ? 'Модуль скоро будет доступен' : undefined}
-            className={`relative flex flex-1 items-center justify-center h-10 text-[13px] font-medium transition-colors ${
+            className={`relative flex flex-1 items-center justify-center h-10 text-small font-medium transition-colors ${
               disabled ? 'cursor-not-allowed opacity-50' : ''
             }`}
             style={{
@@ -79,7 +79,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <footer
-          className="app-footer hidden md:block shrink-0 py-2.5 px-4 text-[12px] relative z-10 backdrop-blur-sm"
+          className="app-footer hidden md:block shrink-0 py-2.5 px-4 text-xs relative z-10 backdrop-blur-sm"
           style={{
             color: 'hsl(var(--muted))',
             borderTop: '1px solid hsl(var(--border))',

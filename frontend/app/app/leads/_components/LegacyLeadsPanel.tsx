@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { createSearch, listSearches } from '@/src/services/api/search';
 import type { SearchResponse } from '@/src/services/api/search';
 import {
@@ -26,6 +25,7 @@ import { CityCombobox } from '@/components/CityCombobox';
 import { FilterBuilder, emptyFilterSpec } from '@/components/FilterBuilder';
 import type { FilterSpec } from '@/components/FilterBuilder';
 import { EmptyState } from '@/components/EmptyState';
+import { toast } from '@/components/ui/toast';
 
 const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
   { label: 'строительные компании', cat: 'B2B' },
@@ -78,7 +78,6 @@ export default function LegacyLeadsPanel() {
   const [filterSpec, setFilterSpec] = useState<FilterSpec>(emptyFilterSpec);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [recentRuns, setRecentRuns] = useState<SearchResponse[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
   const [showAllPresets, setShowAllPresets] = useState(false);
@@ -131,10 +130,7 @@ export default function LegacyLeadsPanel() {
       });
       await loadRecent();
       setIsLoading(false);
-      setToasts((p) => [
-        ...p,
-        { id: Date.now().toString(), type: 'success', message: 'Поиск запущен — следите за результатом ниже' },
-      ]);
+      toast.success('Поиск запущен — следите за результатом ниже');
       // Scroll the recent-runs list into view so the user immediately sees
       // their freshly-launched search appear at the top.
       requestAnimationFrame(() => {
@@ -146,7 +142,7 @@ export default function LegacyLeadsPanel() {
         (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail ||
         (err as { message?: string })?.message ||
         'Ошибка при создании поиска';
-      setToasts((p) => [...p, { id: Date.now().toString(), type: 'error', message: msg }]);
+      toast.error(msg);
     }
   };
 
@@ -484,10 +480,7 @@ export default function LegacyLeadsPanel() {
             ))}
           </div>
         )}
-      </section>
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-    </div>
+      </section>    </div>
   );
 }
 

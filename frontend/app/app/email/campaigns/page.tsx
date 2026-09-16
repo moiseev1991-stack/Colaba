@@ -191,7 +191,7 @@ export default function CampaignsHistoryPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1
           className="flex items-center gap-2 font-display font-semibold tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'hsl(var(--text))' }}
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
         >
           <Mail className="h-5 w-5 text-brand-600 dark:text-brand-400" />
           История рассылок
@@ -480,7 +480,7 @@ function Th({
     <th
       title={title}
       className={cn(
-        'py-3 px-4 text-[11px] font-semibold uppercase tracking-wider',
+        'py-3 px-4 text-xs font-semibold uppercase tracking-wider',
         align === 'left' && 'text-left',
         align === 'center' && 'text-center',
         align === 'right' && 'text-right',
@@ -578,7 +578,7 @@ function CampaignDrilldown({
           кампания
         </div>
         <div
-          className="text-[14px] font-medium truncate"
+          className="text-sm font-medium truncate"
           style={{ color: 'hsl(var(--text))' }}
           title={campaign.subject}
         >
@@ -626,7 +626,7 @@ function CampaignDrilldown({
           className="overflow-x-auto rounded-v2-sm"
           style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}
         >
-          <table className="w-full text-[13px]">
+          <table className="w-full text-small">
             <thead>
               <tr
                 style={{
@@ -693,7 +693,7 @@ function CampaignDrilldown({
                         </div>
                         {log.to_name && (
                           <div
-                            className="text-[11px] truncate max-w-[220px]"
+                            className="text-xs truncate max-w-[220px]"
                             style={{ color: 'hsl(var(--muted))' }}
                             title={log.to_email}
                           >
@@ -711,7 +711,7 @@ function CampaignDrilldown({
                         </div>
                         {log.body_preview && (
                           <div
-                            className="text-[11px] truncate max-w-[320px]"
+                            className="text-xs truncate max-w-[320px]"
                             style={{ color: 'hsl(var(--muted))' }}
                           >
                             {isExpanded ? 'скрыть текст ▲' : 'показать текст ▼'}
@@ -757,7 +757,7 @@ function CampaignDrilldown({
                             текст письма
                           </div>
                           <div
-                            className="text-[13px] whitespace-pre-wrap overflow-y-auto"
+                            className="text-small whitespace-pre-wrap overflow-y-auto"
                             style={{
                               color: 'hsl(var(--text))',
                               lineHeight: 1.5,
@@ -768,7 +768,7 @@ function CampaignDrilldown({
                             {log.body_preview}
                           </div>
                           <div
-                            className="mt-3 flex gap-4 text-[11px]"
+                            className="mt-3 flex gap-4 text-xs"
                             style={{ color: 'hsl(var(--muted))' }}
                           >
                             <span>кому: {log.to_email}</span>

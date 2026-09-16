@@ -15,12 +15,13 @@ import {
   type ProposalChannel,
   type ProposalTemplate,
 } from '@/lib/proposalTemplates';
-import { ToastContainer, type Toast } from '@/components/Toast';
 
 import { CardV2 } from '@/components/ui/CardV2';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SignalPill } from '@/components/ui/SignalPill';
+import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 
 const CHANNEL_ICON: Record<ProposalChannel, React.ReactNode> = {
   email: <Mail />,
@@ -48,7 +49,6 @@ function formatRelative(ms: number): string {
 
 export default function ProposalsListPage() {
   const [items, setItems] = useState<ProposalTemplate[]>([]);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   // localStorage недоступен на сервере — читаем после mount.
   const [hydrated, setHydrated] = useState(false);
 
@@ -59,28 +59,28 @@ export default function ProposalsListPage() {
 
   const refresh = () => setItems(listTemplates());
 
-  const handleDelete = (id: string, name: string) => {
-    if (!confirm(`Удалить шаблон «${name}»?`)) return;
+  const handleDelete = async (id: string, name: string) => {
+    if (!(await confirmDialog(`Удалить шаблон «${name}»?`))) return;
     deleteTemplate(id);
     refresh();
-    setToasts((p) => [...p, { id: Date.now().toString(), type: 'success', message: 'Шаблон удалён' }]);
+    toast.success('Шаблон удалён');
   };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
       <h1
         className="mb-3 font-display font-semibold leading-[1.05] tracking-tight"
-        style={{ fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', color: 'hsl(var(--text))' }}
+        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
       >
         Шаблоны <span className="text-gradient-brand">коммерческих предложений</span>
       </h1>
-      <p className="mb-8 max-w-[640px] text-[15px] leading-relaxed text-[hsl(var(--muted))]">
+      <p className="mb-8 max-w-[640px] text-base leading-relaxed text-[hsl(var(--muted))]">
         Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт
         в каждое отправление. Можно несколько шаблонов под разные ситуации.
       </p>
 
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-[12px] font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+        <div className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
           {hydrated ? `${items.length} шаблон${items.length === 1 ? '' : items.length < 5 ? 'а' : 'ов'}` : '…'}
         </div>
         <Link href="/app/leads/proposals/new">
@@ -99,10 +99,10 @@ export default function ProposalsListPage() {
           <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-v2-lg bg-brand-gradient text-white shadow-v2-sm">
             <FileText className="h-7 w-7" />
           </div>
-          <h3 className="mb-2 font-display text-[18px] font-semibold text-[hsl(var(--text))]">
+          <h3 className="mb-2 font-display text-xl font-semibold text-[hsl(var(--text))]">
             Пока нет ни одного шаблона
           </h3>
-          <p className="mx-auto mb-5 max-w-[480px] text-[13px] leading-relaxed text-[hsl(var(--muted))]">
+          <p className="mx-auto mb-5 max-w-[480px] text-small leading-relaxed text-[hsl(var(--muted))]">
             Создайте первый шаблон — потом сможете отправлять его по выбранным лидам с автоматической
             подстановкой имени компании и контакта.
           </p>
@@ -126,18 +126,18 @@ export default function ProposalsListPage() {
                 </SignalPill>
 
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-display text-[14px] font-semibold text-[hsl(var(--text))]">
+                  <div className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]">
                     {tpl.name || <span className="text-[hsl(var(--muted))]">(без имени)</span>}
                   </div>
                   <div
-                    className="mt-0.5 truncate text-[12px] text-[hsl(var(--muted))]"
+                    className="mt-0.5 truncate text-xs text-[hsl(var(--muted))]"
                     title={tpl.subject || tpl.body}
                   >
                     {tpl.channel === 'email' && tpl.subject ? `Тема: ${tpl.subject}` : tpl.body.slice(0, 90)}
                   </div>
                 </div>
 
-                <span className="hidden shrink-0 text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+                <span className="hidden shrink-0 text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
                   {formatRelative(tpl.updatedAt)}
                 </span>
 
@@ -164,9 +164,6 @@ export default function ProposalsListPage() {
             </li>
           ))}
         </ul>
-      )}
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
-    </div>
+      )}    </div>
   );
 }

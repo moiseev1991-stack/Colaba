@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
-import { ToastContainer, type Toast } from '@/components/Toast';
 import { confirmDialog } from '@/components/ui/confirm';
+import { toast } from '@/components/ui/toast';
 import {
   getOutreachTemplates,
   getOutreachTemplatesSync,
@@ -21,11 +21,7 @@ const CODE_STYLE = { background: 'hsl(var(--surface-2))', color: 'hsl(var(--text
 export default function SeoTemplatesPage() {
   const [templates, setTemplates] = useState<OutreachTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
-    setToasts((prev) => [...prev, { id: Date.now().toString(), type, message }]);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,10 +48,10 @@ export default function SeoTemplatesPage() {
     if (!(await confirmDialog(`Удалить шаблон «${name}»?`))) return;
     try {
       await deleteOutreachTemplate(id);
-      addToast('success', 'Шаблон удалён');
+      toast.success('Шаблон удалён');
       load();
     } catch {
-      addToast('error', 'Не удалось удалить шаблон');
+      toast.error('Не удалось удалить шаблон');
     }
   };
 
@@ -151,9 +147,6 @@ export default function SeoTemplatesPage() {
             </li>
           ))}
         </ul>
-      )}
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts((x) => x.filter((t) => t.id !== id))} />
-    </div>
+      )}    </div>
   );
 }
