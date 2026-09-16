@@ -2,6 +2,9 @@
 ARG APP_VERSION=0.0.0-dev
 ARG GIT_SHA=unknown
 ARG BUILD_TIME=unknown
+# Флаг отправки писем из UI (lib/outreach.ts): NEXT_PUBLIC_* инлайнятся в бандл
+# при `next build`, поэтому значение нужно именно на сборке, а не в runtime.
+ARG NEXT_PUBLIC_OUTREACH_SENDING_ENABLED=false
 
 FROM node:20-slim AS builder
 
@@ -9,6 +12,7 @@ FROM node:20-slim AS builder
 ARG APP_VERSION
 ARG GIT_SHA
 ARG BUILD_TIME
+ARG NEXT_PUBLIC_OUTREACH_SENDING_ENABLED
 
 WORKDIR /frontend
 
@@ -26,6 +30,7 @@ ENV NODE_ENV=production
 ENV APP_VERSION=$APP_VERSION
 ENV GIT_SHA=$GIT_SHA
 ENV BUILD_TIME=$BUILD_TIME
+ENV NEXT_PUBLIC_OUTREACH_SENDING_ENABLED=$NEXT_PUBLIC_OUTREACH_SENDING_ENABLED
 
 RUN npx next build
 
