@@ -86,21 +86,19 @@ export function MapsSearchPanel() {
   }
 
   if (loadingExisting) {
-    return (
-      <div className="py-12 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
-        Загружаю поиск…
-      </div>
-    );
+    return <div className="py-16 text-center text-sm text-ui-text-muted">Загружаю поиск…</div>;
   }
 
   if (mode !== 'idle' && search) {
     return (
-      <MapsSearchResults
-        search={search}
-        initialMode={mode === 'searching' ? 'searching' : 'results'}
-        initialAiPreset={pendingAiPreset}
-        onNewSearch={handleNewSearch}
-      />
+      <div className="mx-auto w-full max-w-[1232px] px-3 pb-10 pt-4 sm:px-6 sm:pt-6">
+        <MapsSearchResults
+          search={search}
+          initialMode={mode === 'searching' ? 'searching' : 'results'}
+          initialAiPreset={pendingAiPreset}
+          onNewSearch={handleNewSearch}
+        />
+      </div>
     );
   }
 

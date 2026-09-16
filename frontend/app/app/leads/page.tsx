@@ -1,93 +1,45 @@
 'use client';
 
 /**
- * /app/leads — раздел «Лиды». Содержит две вкладки:
- *  - «По сайтам»  — существующий flow, вынесен как есть в _components/LegacyLeadsPanel.tsx
- *  - «По картам»  — новый flow модуля maps (шаги 13-16 ТЗ maps_parser_tz_full.md)
- *
- * Tabs без shadcn — простые кнопки на Tailwind (shadcn в проекте не установлен).
+ * /app/leads — «Поиск» (вид Premium, 16.09): поиск компаний по картам и выдача.
+ * Поиск по вхождению на сайтах открывается по ?tab=sites — ссылкой из «Тонкой настройки».
+ * Кнопки «Мои пресеты / Мои списки» над формой убраны: списки — в верхнем меню, пресеты —
+ * чипами на странице и в меню профиля.
  */
 
-import { Bookmark, ListPlus } from 'lucide-react';
 import Link from 'next/link';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
-// LegacyLeadsPanel оставлен в _components/ как fallback на случай отката
-// Эпика F. Здесь не используется — текущий «По сайтам» отдаёт SiteLeadsPanel.
 import { MapsSearchPanel } from '@/components/maps/MapsSearchPanel';
 import { SiteLeadsPanel } from '@/components/sites/SiteLeadsPanel';
-import { cn } from '@/lib/utils';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 
-type Tab = 'sites' | 'maps';
+function LeadsPageInner() {
+  const searchParams = useSearchParams();
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'maps', label: 'По картам' },
-  { id: 'sites', label: 'По сайтам' },
-];
+  if (searchParams?.get('tab') === 'sites') {
+    return (
+      <PageContainer className="max-w-[1048px]">
+        <Link href="/app/leads" className="mb-4 inline-flex items-center gap-1.5 text-small font-semibold text-ui-text-muted hover:text-ui-text">
+          <ArrowLeft className="h-4 w-4" aria-hidden /> Поиск по картам
+        </Link>
+        <PageHeader title="Поиск по сайтам." description="Компании, на сайтах которых встречаются нужные слова, — с кнопкой «КП» на карточке." />
+        <SiteLeadsPanel />
+      </PageContainer>
+    );
+  }
+
+  return <MapsSearchPanel />;
+}
 
 export default function LeadsPage() {
-  const [tab, setTab] = useState<Tab>('maps');
-
+  // Suspense нужен, потому что страница и MapsSearchPanel читают useSearchParams
+  // (?tab, ?map_search_id); без него Next.js падает на prerender.
   return (
-    <div className="space-y-4">
-      {/* px-3 на мобиле — было px-6 (48px по бокам) и шапка вкладок
-          с двумя кнопками справа не влезала на 390px (ТЗ B.0 #4). */}
-      <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pt-4 sm:pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200">
-          <nav className="-mb-px flex gap-2 sm:gap-4">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
-                  tab === t.id
-                    ? 'border-slate-900 text-slate-900'
-                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-          <div className="mb-1 flex flex-wrap gap-2">
-            <Link
-              href="/app/leads/presets"
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <Bookmark className="h-4 w-4" />
-              Мои пресеты
-            </Link>
-            <Link
-              href="/app/leads/lists"
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <ListPlus className="h-4 w-4" />
-              Мои списки
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {tab === 'sites' && (
-        <div className="mx-auto w-full max-w-[1000px] px-3 sm:px-6 pb-10">
-          {/* 2026-06-12 Эпик F КП-конвейера: вкладка «По сайтам» переключена
-              на SiteLeadsPanel — поиск по вхождению + кнопка «КП» на
-              карточках. Старый LegacyLeadsPanel оставлен в репо в
-              _components/ как fallback. */}
-          <SiteLeadsPanel />
-        </div>
-      )}
-      {tab === 'maps' && (
-        <div className="mx-auto w-full max-w-[1200px] px-3 sm:px-6 pb-10">
-          {/* Suspense нужен потому что MapsSearchPanel читает useSearchParams
-              (?map_search_id=N); без него Next.js падает на prerender. */}
-          <Suspense fallback={null}>
-            <MapsSearchPanel />
-          </Suspense>
-        </div>
-      )}
-    </div>
+    <Suspense fallback={null}>
+      <LeadsPageInner />
+    </Suspense>
   );
 }
