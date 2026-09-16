@@ -25,7 +25,10 @@ function LeadsPageInner() {
         <Link href="/app/leads" className="mb-4 inline-flex items-center gap-1.5 text-small font-semibold text-ui-text-muted hover:text-ui-text">
           <ArrowLeft className="h-4 w-4" aria-hidden /> Поиск по картам
         </Link>
-        <PageHeader title="Поиск по сайтам." description="Компании, на сайтах которых встречаются нужные слова, — с кнопкой «КП» на карточке." />
+        <PageHeader
+          title="Поиск по сайтам."
+          description="Сайты компаний из Яндекса и Google по нише и городу — или по слову на сайте («© 2021» — заброшенные сайты). На карточке — кнопка «КП»."
+        />
         <SiteLeadsPanel />
       </PageContainer>
     );

@@ -43,6 +43,8 @@ export interface WebSearchCreate {
   query: string;
   search_provider?: WebSearchProvider;
   num_results?: number;
+  /** config.filters — условия по сайту (FilterBuilder); сервер применяет их при выдаче результатов. */
+  config?: Record<string, unknown>;
 }
 
 export async function createWebSearch(payload: WebSearchCreate): Promise<WebSearchOut> {
@@ -50,6 +52,7 @@ export async function createWebSearch(payload: WebSearchCreate): Promise<WebSear
     query: payload.query,
     search_provider: payload.search_provider ?? 'yandex_xml',
     num_results: payload.num_results ?? 30,
+    ...(payload.config ? { config: payload.config } : {}),
   });
   return r.data;
 }
