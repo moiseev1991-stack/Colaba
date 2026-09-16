@@ -21,6 +21,7 @@ import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { DraftEmailPopover, type CompanyForDraft } from '@/components/pains/DraftEmailPopover';
 import { CityCombobox } from '@/components/CityCombobox';
+import { SearchModeSwitch } from '@/components/search/SearchModeSwitch';
 import { Button, buttonClass } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -362,6 +363,8 @@ function PainsPageInner() {
         Выберите частую жалобу — покажем компании, где она встречается в реальных отзывах, с{' '}
         <b className="font-semibold text-ui-text">цитатой и контактом</b>. Самый сильный повод для первого письма.
       </p>
+
+      <SearchModeSwitch active="pains" className="mx-0 mt-8" />
 
       <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
         {/* === На что жалуются === */}

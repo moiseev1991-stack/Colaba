@@ -15,6 +15,7 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export type FilterField = string;
 
@@ -54,13 +55,12 @@ export interface FieldDef {
 // `disabled: true` — опция отображается в выпадашке, но браузер не даст её
 // выбрать.
 export const DEFAULT_SITE_FIELDS: FieldDef[] = [
-  { id: 'text', label: 'На сайте есть слово', kind: 'text' },
-  { id: 'title', label: 'В заголовке (title)', kind: 'text' },
-  { id: 'meta', label: 'В описании (meta)', kind: 'text' },
+  { id: 'text', label: 'Текст страниц сайта', kind: 'text' },
+  { id: 'title', label: 'Заголовок (title)', kind: 'text' },
+  { id: 'meta', label: 'Описание (meta)', kind: 'text' },
+  { id: 'domain', label: 'Домен', kind: 'text', placeholder: 'Например: example.ru' },
   { id: 'has_phone', label: 'Есть телефон', kind: 'bool' },
   { id: 'has_email', label: 'Есть email', kind: 'bool' },
-  { id: 'has_telegram', label: 'Есть Telegram (скоро)', kind: 'bool', disabled: true },
-  { id: 'domain', label: 'Домен', kind: 'text', placeholder: 'Например: example.ru' },
 ];
 
 const OPS_BY_KIND: Record<FieldKind, Array<{ id: FilterOp; label: string }>> = {
@@ -150,169 +150,99 @@ export function FilterBuilder({
     });
 
   return (
-    <div
-      className="grid gap-3 p-4"
-      style={{
-        background: 'hsl(var(--surface-2) / 0.5)',
-        border: '1px solid hsl(var(--border))',
-        borderRadius: 6,
-      }}
-    >
-      {/* Header: title + top-level AND/OR + add button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
-            условия фильтра
-          </span>
-          {conditions.length >= 2 && (
-            <div
-              className="inline-flex items-center text-xs overflow-hidden"
-              style={{ border: '1px solid hsl(var(--border))', borderRadius: 4 }}
-            >
-              {(['and', 'or'] as const).map((m) => {
-                const active = logic === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => updateLogic(m)}
-                    className="px-2.5 h-7 transition-colors"
-                    style={{
-                      background: active ? 'hsl(var(--accent-weak))' : 'transparent',
-                      color: active ? 'hsl(var(--accent))' : 'hsl(var(--muted))',
-                      fontWeight: active ? 600 : 500,
-                    }}
-                  >
-                    {m === 'and' ? 'И' : 'ИЛИ'}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={addCondition}
-          className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold transition-colors hover:bg-[hsl(var(--accent-weak))] disabled:opacity-50"
-          style={{
-            color: 'hsl(var(--accent))',
-            border: '1px solid hsl(var(--accent) / 0.4)',
-            borderRadius: 4,
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" /> добавить условие
-        </button>
-      </div>
-
-      {conditions.length === 0 ? (
-        <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
-          {emptyHint}
-        </p>
-      ) : (
-        <div className="grid gap-2">
-          {conditions.map((cond, idx) => {
-            const kind = fieldKind(fields, cond.field);
-            const ops = OPS_BY_KIND[kind];
-            const isFirst = idx === 0;
-            const fieldDef = fields.find((f) => f.id === cond.field);
-
-            return (
-              <div key={idx} className="grid gap-2">
-                {!isFirst && (
-                  <div
-                    className="text-xs font-bold uppercase tracking-wider px-1"
-                    style={{ color: 'hsl(var(--muted))' }}
-                  >
-                    {logic === 'and' ? 'И' : 'ИЛИ'}
-                  </div>
+    <div className="flex flex-col gap-2.5">
+      {conditions.length >= 2 && (
+        <div className="flex items-center gap-2 text-xs text-ui-text-muted">
+          Условия выполняются
+          <div role="group" aria-label="Как объединять условия" className="inline-flex gap-0.5 rounded-full bg-ui-surface-2 p-0.5">
+            {(['and', 'or'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={logic === m}
+                disabled={disabled}
+                onClick={() => updateLogic(m)}
+                className={cn(
+                  'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
+                  logic === m ? 'bg-ui-surface text-ui-text shadow-[0_1px_4px_rgba(0,0,0,0.12)]' : 'text-ui-text-muted hover:text-ui-text',
                 )}
-                {/* Flex over grid: select widths shrink only down to a min so
-                    "На сайте есть слово" / "содержит" never get truncated to
-                    "На с..." like in the previous grid-12 layout. The value
-                    field takes the rest. */}
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Select
-                    value={cond.field}
-                    onChange={(e) =>
-                      updateCondition(idx, { field: e.target.value as FilterField })
-                    }
-                    disabled={disabled}
-                    className="h-9 text-small"
-                    style={{ minWidth: 220, flex: '0 0 auto' }}
-                  >
-                    {fields.map((f) => (
-                      <option key={f.id} value={f.id} disabled={f.disabled}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </Select>
-
-                  <Select
-                    value={cond.op}
-                    onChange={(e) =>
-                      updateCondition(idx, { op: e.target.value as FilterOp })
-                    }
-                    disabled={disabled}
-                    className="h-9 text-small"
-                    style={{ minWidth: 160, flex: '0 0 auto' }}
-                  >
-                    {ops.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-
-                  <div style={{ flex: '1 1 200px', minWidth: 200 }}>
-                    {kind === 'text' && (
-                      <Input
-                        type="text"
-                        placeholder={fieldDef?.placeholder ?? defaultTextPlaceholder}
-                        value={cond.value}
-                        onChange={(e) => updateCondition(idx, { value: e.target.value })}
-                        disabled={disabled}
-                        className="w-full h-9 text-small"
-                      />
-                    )}
-                    {kind === 'bool' && (
-                      <div
-                        className="h-9 flex items-center text-xs px-3"
-                        style={{
-                          color: 'hsl(var(--muted))',
-                          background: 'hsl(var(--surface) / 0.6)',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: 4,
-                        }}
-                      >
-                        {/* Bool operators don't need a value field — the op itself
-                            ("да" / "нет") is the value. */}
-                        —
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeCondition(idx)}
-                    disabled={disabled}
-                    aria-label="Удалить условие"
-                    className="h-9 w-9 inline-flex items-center justify-center transition-colors hover:bg-[hsl(var(--danger) / 0.15)] disabled:opacity-50 shrink-0"
-                    style={{
-                      color: 'hsl(var(--muted))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: 4,
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+              >
+                {m === 'and' ? 'все сразу (И)' : 'любое (ИЛИ)'}
+              </button>
+            ))}
+          </div>
         </div>
       )}
+
+      {conditions.length === 0 && <p className="text-xs text-ui-text-muted">{emptyHint}</p>}
+
+      {conditions.map((cond, idx) => {
+        const kind = fieldKind(fields, cond.field);
+        const ops = OPS_BY_KIND[kind];
+        const fieldDef = fields.find((f) => f.id === cond.field);
+        return (
+          <div key={idx} className="flex flex-wrap items-center gap-2">
+            <Select
+              aria-label="Где искать"
+              value={cond.field}
+              onChange={(e) => updateCondition(idx, { field: e.target.value as FilterField })}
+              disabled={disabled}
+              wrapperClassName="min-w-[200px] flex-none"
+              className="h-10 w-full bg-ui-surface text-small"
+            >
+              {fields.map((f) => (
+                <option key={f.id} value={f.id} disabled={f.disabled}>
+                  {f.label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Условие"
+              value={cond.op}
+              onChange={(e) => updateCondition(idx, { op: e.target.value as FilterOp })}
+              disabled={disabled}
+              wrapperClassName="min-w-[150px] flex-none"
+              className="h-10 w-full bg-ui-surface text-small"
+            >
+              {ops.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+            {kind === 'text' && (
+              <Input
+                aria-label="Слово"
+                type="text"
+                placeholder={fieldDef?.placeholder ?? defaultTextPlaceholder}
+                value={cond.value}
+                onChange={(e) => updateCondition(idx, { value: e.target.value })}
+                disabled={disabled}
+                className="h-10 min-w-[180px] flex-1 bg-ui-surface text-small"
+              />
+            )}
+            {kind === 'bool' && <span className="min-w-[180px] flex-1" />}
+            <button
+              type="button"
+              onClick={() => removeCondition(idx)}
+              disabled={disabled}
+              aria-label="Удалить условие"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-ui-text-muted transition-colors hover:bg-ui-danger/10 hover:text-ui-danger disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={addCondition}
+        className="inline-flex w-fit items-center gap-1.5 rounded-full px-1 py-1 text-small font-semibold text-ui-accent hover:underline disabled:opacity-50"
+      >
+        <Plus className="h-4 w-4" aria-hidden /> {conditions.length === 0 ? 'Добавить условие' : 'Ещё условие'}
+      </button>
     </div>
   );
 }
