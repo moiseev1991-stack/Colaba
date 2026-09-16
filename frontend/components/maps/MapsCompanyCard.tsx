@@ -1,40 +1,17 @@
 'use client';
 
 /**
- * MapsCompanyCard v5 — Pipedrive/Salesforce-inspired corporate deal-card.
+ * MapsCompanyCard — карточка компании в выдаче (вид Premium, 16.09, прототип «Результаты»).
  *
- * Что изменилось от v4 (2026-06-10):
- *   - Левый цветной status-bar (4px) по приоритету лида: hot/warm/cool —
- *     как deal stage в Pipedrive.
- *   - Плоские status pills без полупрозрачности, ring и gradient. Solid
- *     цвет + чёткий border = "корпоративный B2B" вместо glassmorphism.
- *   - Pain-tags: серый фон с тонким border, без orange. Точка-индикатор
- *     по типу боли (cosmetic).
- *   - Quote-block: толстый left border + тёмный italic, как blockquote
- *     в Salesforce Lightning.
- *   - Actions: solid primary fill (без бренд-градиента), secondary outline.
- *   - Шапка: numeric rating слева от звезды (Pipedrive deal-value-style),
- *     без цветного chip-bg.
+ * Раскладка: цветная полоса приоритета · чекбокс · суть (название, адрес, рейтинг, боли с числом
+ * упоминаний, цитата, признаки в одну строку) · справа контакты и действия «КП под боль» / «В список».
+ * Цвет только там, где он что-то значит: полоса (много негатива), рейтинг, признаки.
  *
- * Сохранена бизнес-логика: focusedProfile, multiSourceList, bulk-чекбокс,
- * AI analysis row, контакты, deeplinks.
+ * Бизнес-логика прежняя: профиль выбранного источника (focusedProfile), несколько источников,
+ * выбор чекбоксом, строка AI-анализа, ссылки на карточку в 2GIS / Я.Картах / Google.
  */
 
-import {
-  ExternalLink,
-  ListPlus,
-  Mail,
-  MessageSquareQuote,
-  Sparkles,
-  Phone,
-  Globe,
-  Star,
-  Calendar,
-  MessageCircle,
-  UserCheck,
-  UserX,
-  Flame,
-} from 'lucide-react';
+import { ExternalLink, Send, Sparkles } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { isUnnamedPainLabel } from '@/lib/painLabels';
@@ -61,7 +38,18 @@ interface Props {
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
   activeSource?: 'all' | '2gis' | 'yandex_maps' | 'google_maps' | null;
+  /** Дополнительная кнопка рядом с действиями (например, «Убрать из списка» на странице списка). */
+  extraAction?: React.ReactNode;
 }
+
+type FlagTone = 'danger' | 'warning' | 'success' | 'muted';
+
+const FLAG_TONE: Record<FlagTone, string> = {
+  danger: 'text-ui-danger',
+  warning: 'text-ui-warning',
+  success: 'text-ui-success',
+  muted: 'text-ui-text-muted font-medium',
+};
 
 export function MapsCompanyCard({
   company,
@@ -74,12 +62,13 @@ export function MapsCompanyCard({
   selected,
   onToggleSelect,
   activeSource,
+  extraAction,
 }: Props) {
   const id = company.id ?? company.company_id;
   const sourcesProfiles = Array.isArray(company.sources_profiles) ? company.sources_profiles : [];
   const focusedProfile =
     activeSource && activeSource !== 'all' && sourcesProfiles.length > 1
-      ? sourcesProfiles.find((sp) => sp.source === activeSource) ?? null
+      ? (sourcesProfiles.find((sp) => sp.source === activeSource) ?? null)
       : null;
 
   const focusedPhone = focusedProfile?.contacts.find((c) => c.type === 'phone')?.value ?? null;
@@ -95,387 +84,240 @@ export function MapsCompanyCard({
   const phone = focusedPhone ?? company.phone ?? null;
   const website = focusedWebsite ?? company.website ?? null;
   const emails = focusedEmails ?? (Array.isArray(company.emails) ? company.emails : []);
-  const topPains = Array.isArray(company.top_pains)
-    ? company.top_pains.filter((p) => !isUnnamedPainLabel(p.label))
-    : [];
+  const topPains = dedupePains(
+    Array.isArray(company.top_pains) ? company.top_pains.filter((p) => !isUnnamedPainLabel(p.label)) : [],
+  );
   const negativeSnippets = Array.isArray(company.negative_snippets) ? company.negative_snippets : [];
-  const fullAddress = formatAddressWithCity(company.address, company.city);
-  const hasWebsite = typeof website === 'string' && website.trim().length > 0;
   const fallbackTags =
     topPains.length === 0 && Array.isArray(company.pain_tags)
       ? company.pain_tags.filter((t) => !isUnnamedPainLabel(t.label))
       : [];
+  const quote = topPains.find((p) => p.top_quote)?.top_quote ?? negativeSnippets[0] ?? null;
+  const fullAddress = formatAddressWithCity(company.address, company.city);
+  const hasWebsite = typeof website === 'string' && website.trim().length > 0;
 
   const singleSource = focusedProfile?.source ?? company.source;
   const singleExternalId = focusedProfile?.external_id ?? company.external_id;
-  const sourceUrl =
-    focusedProfile?.source_url ?? buildSourceUrl(singleSource, singleExternalId);
-  const sourceTitle = sourceLabel(singleSource);
-
-  const multiSourceList: {
-    source: string;
-    label: string;
-    url: string | null;
-    active: boolean;
-  }[] =
+  const sourceLinks: { source: string; label: string; url: string | null }[] =
     sourcesProfiles.length > 1
-      ? sourcesProfiles.map((sp) => ({
-          source: sp.source,
-          label: sourceLabel(sp.source),
-          url: sp.source_url ?? buildSourceUrl(sp.source, sp.external_id),
-          active: !!activeSource && activeSource !== 'all' && sp.source === activeSource,
-        }))
-      : [];
+      ? sourcesProfiles
+          .filter((sp) => !activeSource || activeSource === 'all' || sp.source === activeSource)
+          .map((sp) => ({
+            source: sp.source,
+            label: sourceLabel(sp.source),
+            url: sp.source_url ?? buildSourceUrl(sp.source, sp.external_id),
+          }))
+      : singleSource
+        ? [
+            {
+              source: singleSource,
+              label: sourceLabel(singleSource),
+              url: focusedProfile?.source_url ?? buildSourceUrl(singleSource, singleExternalId),
+            },
+          ]
+        : [];
 
-  // Pipedrive deal-stage цвет: главный сигнал приоритета лида.
-  // hot — горящий лид (много негатива и/или высокая температура).
-  // warm — средний интерес.
-  // cool — холодный/нейтральный.
-  const stageTone: 'hot' | 'warm' | 'cool' = (() => {
+  // Полоса приоритета: красная — много негатива или высокая «температура», жёлтая — есть негатив.
+  const stage: 'hot' | 'warm' | 'cool' = (() => {
     const temp = typeof company.lead_temperature === 'number' ? company.lead_temperature : 0;
     if (reviewsNeg >= 5 || temp >= 70) return 'hot';
     if (reviewsNeg >= 1 || temp >= 40) return 'warm';
     return 'cool';
   })();
-  const stageBarCls =
-    stageTone === 'hot'
-      ? 'bg-rose-500'
-      : stageTone === 'warm'
-        ? 'bg-amber-500'
-        : 'bg-slate-300 dark:bg-slate-600';
+
+  const legalType = company.legal?.opf ?? company.legal?.legal_short_name?.match(/^([А-ЯЁ]{2,})\s/)?.[1] ?? null;
+  const legalParts = [
+    legalType,
+    typeof company.legal?.age_years === 'number' ? formatYears(company.legal.age_years) : null,
+    typeof company.legal?.revenue === 'number' && company.legal.revenue > 0 ? formatRevenue(company.legal.revenue) : null,
+  ].filter(Boolean);
+
+  const flags: { tone: FlagTone; text: string; title?: string }[] = [];
+  if (reviewsNeg > 0) flags.push({ tone: 'danger', text: `${reviewsNeg} ${plural(reviewsNeg, 'негативный отзыв', 'негативных отзыва', 'негативных отзывов')}` });
+  if (company.hiring_marketing)
+    flags.push({ tone: 'danger', text: 'ищет маркетолога', title: company.hiring_url ? `Вакансия на hh.ru: ${company.hiring_url}` : 'Вакансия маркетолога на hh.ru' });
+  if (company.has_lpr === true) flags.push({ tone: 'success', text: 'ЛПР известен', title: 'Руководитель известен: DaData или страница «О нас» на сайте' });
+  if (company.has_lpr === false) flags.push({ tone: 'muted', text: 'ЛПР не найден' });
+  if (ownerReplies === true) flags.push({ tone: 'muted', text: 'владелец отвечает на отзывы' });
+  if (legalParts.length > 0)
+    flags.push({
+      tone: 'muted',
+      text: legalParts.join(' · '),
+      title: company.legal?.legal_short_name
+        ? `${company.legal.legal_short_name}${company.legal.inn ? ` · ИНН ${company.legal.inn}` : ''}`
+        : undefined,
+    });
+
+  const selectable = onToggleSelect && id != null;
 
   return (
     <li
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' && e.target === e.currentTarget) onClick();
+            }
+          : undefined
+      }
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `${company.name ?? 'Компания'} — открыть отзывы и контакты` : undefined}
       className={cn(
-        'group relative flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition-colors',
-        'dark:border-slate-700 dark:bg-slate-900',
-        onClick && 'cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-600 dark:hover:bg-slate-800/60',
-        selected && 'ring-2 ring-blue-500/60 ring-offset-1 dark:ring-offset-slate-900'
+        'group grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-panel border bg-ui-surface p-4 shadow-raised transition-all sm:p-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-x-5',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent/40',
+        selected ? 'border-ui-accent/30 bg-ui-accent/[.02]' : 'border-black/[.05]',
+        onClick && 'cursor-pointer hover:-translate-y-0.5 hover:shadow-floating',
       )}
     >
-      {/* Left status bar — главный сигнал «горящий лид» в Pipedrive-стиле */}
-      <div
-        aria-hidden
-        className={cn('w-1 shrink-0', stageBarCls)}
-        title={
-          stageTone === 'hot'
-            ? 'Горящий лид: много негатива или высокая температура'
-            : stageTone === 'warm'
-              ? 'Средний приоритет'
-              : 'Холодный/нейтральный лид'
-        }
-      />
-
-      <div className={cn('flex min-w-0 flex-1 flex-col gap-2.5 p-4', onToggleSelect && id != null && 'pl-9')}>
-        {onToggleSelect && id != null && (
+      {/* Полоса приоритета и чекбокс — одна колонка слева */}
+      <div className="row-span-2 flex gap-3 lg:row-span-1">
+        <span
+          aria-hidden
+          title={stage === 'hot' ? 'Много негатива — горячий лид' : stage === 'warm' ? 'Есть негатив' : 'Негатива нет'}
+          className={cn(
+            'w-[5px] shrink-0 rounded-full',
+            selected ? 'bg-ui-accent' : stage === 'hot' ? 'bg-red-300' : stage === 'warm' ? 'bg-amber-300' : 'bg-ui-border',
+          )}
+        />
+        {selectable && (
           <input
             type="checkbox"
             checked={!!selected}
             onChange={() => onToggleSelect(id)}
             onClick={(e) => e.stopPropagation()}
-            aria-label="Выбрать компанию"
-            className="absolute left-4 top-4 h-4 w-4 cursor-pointer accent-blue-600"
+            aria-label={`Выбрать: ${company.name ?? 'компания'}`}
+            className="mt-1 h-[18px] w-[18px] cursor-pointer accent-[hsl(var(--color-accent))]"
           />
         )}
+      </div>
 
-        {/* Шапка: название + рейтинг (numeric, Pipedrive deal-value style) */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-semibold leading-tight text-slate-900 dark:text-slate-100">
-              {company.name || '—'}
-            </h3>
-            {fullAddress && (
-              <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                {fullAddress}
-              </div>
-            )}
+      {/* Суть */}
+      <div className="min-w-0">
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h3 className="text-base font-bold leading-snug tracking-tight text-ui-text">{company.name || '—'}</h3>
+            {fullAddress && <span className="min-w-0 text-small text-ui-text-muted">{fullAddress}</span>}
           </div>
           {rating != null && (
-            <div
-              className="flex shrink-0 flex-col items-end leading-tight"
-              title={`Рейтинг ${Number(rating).toFixed(1)} · ${reviewsTotal} отзывов`}
-            >
-              <div className="flex items-center gap-1 text-slate-900 dark:text-slate-100">
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                <span className="text-base font-bold tabular-nums">{Number(rating).toFixed(1)}</span>
-              </div>
-              {reviewsTotal > 0 && (
-                <div className="mt-0.5 text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                  {reviewsTotal} {reviewsTotal === 1 ? 'отзыв' : reviewsTotal < 5 ? 'отзыва' : 'отзывов'}
-                </div>
+            <span
+              className={cn(
+                'shrink-0 whitespace-nowrap rounded-full px-3 py-0.5 text-small font-semibold tabular-nums',
+                rating < 4 ? 'bg-red-50 text-red-700' : rating < 4.3 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700',
               )}
-            </div>
+              title={`Рейтинг ${Number(rating).toFixed(1)} · ${reviewsTotal} ${plural(reviewsTotal, 'отзыв', 'отзыва', 'отзывов')}`}
+            >
+              {Number(rating).toFixed(1)} ★{' '}
+              {reviewsTotal > 0 && <span className="font-medium opacity-75">{reviewsTotal} отз.</span>}
+            </span>
           )}
         </div>
 
         {aiAnalysis && <AiAnalysisRow analysis={aiAnalysis} />}
 
-        {/* Meta-строка: flat status pills, Pipedrive-стиль */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {reviewsNeg > 0 && (
-            <StatusPill
-              tone={reviewsNeg >= 5 ? 'hot' : 'warm'}
-              icon={<MessageCircle />}
-              title="Негативных отзывов (1-3★ или sentiment=negative)"
-            >
-              {reviewsNeg} негатив
-            </StatusPill>
-          )}
-          {ownerReplies === true && (
-            <StatusPill tone="good" icon={<MessageSquareQuote />} title="Владелец отвечает на отзывы">
-              отвечает
-            </StatusPill>
-          )}
-          {!hasWebsite && (
-            <StatusPill
-              tone="accent"
-              icon={<Globe />}
-              title="Нет сайта — горячий сигнал для продажи сайта"
-            >
-              нет сайта
-            </StatusPill>
-          )}
-          {/* 2026-06-19: тип юр.лица из DaData (data.opf.short).
-              Помогает быстро отделить ИП от ООО на глаз без открытия
-              drawer'а — полезно для сегментации (ИП = чаще принимает
-              решения сам, ООО = нужен ЛПР).
-              Fallback: если миграция 037 ещё не накатилась или backfill
-              regex не сработал, opf=null — тогда вытаскиваем тип из
-              legal_short_name прямо в браузере. Формы: ООО, ИП, АО,
-              ПАО, ОАО, ЗАО, НП, НКО, ГК, КФХ, ТСЖ, АНО, ФГБУ, МУП, ГУП. */}
-          {(() => {
-            const opfFromShort = (() => {
-              if (company.legal?.opf) return company.legal.opf;
-              const sn = company.legal?.legal_short_name || '';
-              const m = sn.match(/^([А-ЯЁ]{2,})\s/);
-              return m ? m[1] : null;
-            })();
-            if (!opfFromShort) return null;
-            return (
-              <StatusPill
-                tone="neutral"
-                title={
-                  company.legal?.legal_short_name
-                    ? `${company.legal.legal_short_name}${company.legal.inn ? ` · ИНН ${company.legal.inn}` : ''}`
-                    : `Тип юр.лица: ${opfFromShort}`
-                }
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {topPains.length > 0 ? (
+            topPains.slice(0, 4).map((p) => (
+              <span
+                key={p.pain_tag_id}
+                title={p.description ?? p.label}
+                className="inline-flex items-center gap-1.5 rounded-full bg-ui-accent/[.08] px-3 py-0.5 text-xs font-semibold text-ui-accent"
               >
-                {opfFromShort}
-              </StatusPill>
-            );
-          })()}
-          {/* 2026-06-12: pill «ЛПР». has_lpr приходит с бэка — true если есть
-              director_name из DaData или хотя бы один decision_maker со страниц
-              сайта. Зелёный значок «есть», серый «нет данных» — чтобы юзер
-              видел разницу «не нашлось» от «не загружено». */}
-          {company.has_lpr === true && (
-            <StatusPill
-              tone="good"
-              icon={<UserCheck />}
-              title="ЛПР известен (DaData или со страницы /team)"
-            >
-              ЛПР есть
-            </StatusPill>
-          )}
-          {company.has_lpr === false && (
-            <StatusPill
-              tone="neutral"
-              icon={<UserX />}
-              title="ЛПР не найден ни в DaData, ни на сайте"
-            >
-              ЛПР: нет данных
-            </StatusPill>
-          )}
-          {/* ТЗ Marketing-DM 2026-06-20 §4.2: hot-бейдж «ищет маркетолога».
-              Заполняется enrich_company_hh (hh.ru). Сильнейший лид-сигнал
-              для маркетинговых подрядчиков — показываем крупно (tone=bad
-              = красный акцент, привлекает внимание). */}
-          {company.hiring_marketing && (
-            <StatusPill
-              tone="hot"
-              icon={<Flame />}
-              title={
-                company.hiring_url
-                  ? `Активная вакансия маркетолога на hh.ru: ${company.hiring_url}`
-                  : 'Активная вакансия маркетолога на hh.ru'
-              }
-            >
-              ищет маркетолога
-            </StatusPill>
-          )}
-          {/* 2026-06-12: убраны pill'ы lead_temperature и website_lead_score.
-              Юзер: «не понимаю смысла этих 65/66, зачем они нам». Сами
-              скоры остаются в БД и применяются в сортировках/фильтрах —
-              просто не дублируют визуал карточки. */}
-          {company.legal && typeof company.legal.age_years === 'number' && (
-            <StatusPill
-              tone="neutral"
-              icon={<Calendar />}
-              title={`ИНН ${company.legal.inn ?? '—'}${
-                typeof company.legal.revenue === 'number' && company.legal.revenue > 0
-                  ? ` · оборот ₽${(company.legal.revenue / 1_000_000).toFixed(1)}М`
-                  : ''
-              }`}
-            >
-              {company.legal.age_years}л
-              {typeof company.legal.revenue === 'number' && company.legal.revenue > 0 && (
-                <span className="ml-1 text-slate-500 dark:text-slate-400">
-                  · ₽{(company.legal.revenue / 1_000_000).toFixed(1)}М
-                </span>
-              )}
-            </StatusPill>
-          )}
-          {multiSourceList.length > 0 ? (
-            <span
-              className="ml-auto text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400"
-              title={
-                activeSource && activeSource !== 'all'
-                  ? `Фильтр: только ${sourceLabel(activeSource)}.`
-                  : 'Найдена в нескольких источниках'
-              }
-            >
-              {multiSourceList.map((s, idx) => (
-                <span key={s.source}>
-                  {idx > 0 && <span aria-hidden className="mx-1">·</span>}
-                  <span
-                    className={cn(
-                      s.active && 'font-semibold text-blue-700 dark:text-blue-300'
-                    )}
-                  >
-                    {s.label}
-                  </span>
-                </span>
-              ))}
-            </span>
-          ) : (
-            company.source && (
-              <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-                {sourceTitle}
+                {p.label}
+                {p.mention_count > 1 && <span className="font-medium tabular-nums text-ui-text-muted">×{p.mention_count}</span>}
               </span>
-            )
-          )}
-        </div>
-
-        {/* Зона диагноза: pain-tags или fallback */}
-        {topPains.length > 0 ? (
-          <PainBlock pains={topPains} />
-        ) : negativeSnippets.length > 0 ? (
-          <NegativeSnippetsBlock snippets={negativeSnippets} />
-        ) : (
-          fallbackTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {fallbackTags.slice(0, 5).map((t: PainTagShort) => (
-                <span
-                  key={t.id}
-                  className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  {t.label}
-                </span>
-              ))}
-            </div>
-          )
-        )}
-
-        {/* Контакты */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          {phone && (
-            <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
-              <Phone className="h-3 w-3 text-slate-500" />
-              <a
-                href={`tel:${phone}`}
-                onClick={(e) => e.stopPropagation()}
-                className="tabular-nums hover:text-blue-600 hover:underline dark:hover:text-blue-400"
-              >
-                {phone}
-              </a>
-            </span>
-          )}
-          {hasWebsite && website && (
-            <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
-              <Globe className="h-3 w-3 text-slate-500" />
-              <a
-                href={normalizeUrl(website.trim())}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="max-w-[180px] truncate hover:text-blue-600 hover:underline dark:hover:text-blue-400"
-              >
-                {stripScheme(website.trim())}
-              </a>
-            </span>
-          )}
-          {emails.length > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <Mail className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-              <a
-                href={`mailto:${emails[0]}`}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-              >
-                {emails[0]}
-              </a>
-              {emails.length > 1 && (
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  +{emails.length - 1}
-                </span>
-              )}
-            </span>
-          )}
-          {multiSourceList.length > 0 ? (
-            <span className="ml-auto inline-flex items-center gap-1.5">
-              {multiSourceList
-                .filter((s) => !activeSource || activeSource === 'all' || s.active)
-                .map((s) =>
-                  s.url ? (
-                    <a
-                      key={s.source}
-                      href={s.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-300"
-                      title={`Открыть карточку в ${s.label}`}
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {s.label}
-                    </a>
-                  ) : null,
-                )}
-            </span>
+            ))
+          ) : fallbackTags.length > 0 ? (
+            fallbackTags.slice(0, 4).map((t) => (
+              <span key={t.id} className="rounded-full bg-ui-surface-2 px-3 py-0.5 text-xs font-semibold text-ui-text-muted">
+                {t.label}
+              </span>
+            ))
           ) : (
-            sourceUrl && (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="ml-auto inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                title={`Открыть карточку в ${sourceTitle}`}
-              >
-                <ExternalLink className="h-3 w-3" />
-                {sourceTitle}
-              </a>
-            )
+            <span className="text-xs font-semibold text-ui-text-muted">
+              {reviewsNeg > 0 ? 'боли ещё не разобраны' : 'боли не найдены'}
+            </span>
           )}
         </div>
 
-        {/* Actions: solid primary + outline secondary, Pipedrive flat */}
-        {!hideActions && (onAddToList || onDraftEmail) && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {onAddToList && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddToList(company);
-                }}
-                className="inline-flex h-9 items-center gap-1.5 rounded border border-slate-300 bg-white px-3 text-small font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <ListPlus className="h-4 w-4" />В список
-              </button>
+        {quote && <p className="mt-2.5 max-w-[62ch] text-small leading-relaxed text-ui-text-muted">«{quote}»</p>}
+
+        {flags.length > 0 && (
+          <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-semibold">
+            {flags.map((f, i) => (
+              <span key={f.text} className="inline-flex items-center gap-2.5">
+                {i > 0 && (
+                  <span aria-hidden className="text-ui-border">
+                    ·
+                  </span>
+                )}
+                <span className={FLAG_TONE[f.tone]} title={f.title}>
+                  {f.text}
+                </span>
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+
+      {/* Контакты и действия: на широком экране — колонка справа, на узком — под сутью */}
+      <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 lg:col-start-3 lg:w-[240px] lg:flex-col lg:items-end lg:justify-center lg:gap-1.5 lg:text-right">
+        {phone && (
+          <a
+            href={`tel:${phone}`}
+            onClick={(e) => e.stopPropagation()}
+            className="whitespace-nowrap text-small font-semibold tabular-nums text-ui-text hover:text-ui-accent"
+          >
+            {phone}
+          </a>
+        )}
+        {hasWebsite && website ? (
+          <a
+            href={normalizeUrl(website.trim())}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-[240px] truncate text-small font-semibold text-ui-accent hover:underline"
+          >
+            {stripScheme(website.trim())}
+          </a>
+        ) : (
+          <span className="text-small font-semibold text-ui-warning">сайта нет</span>
+        )}
+        {emails.length > 0 && (
+          <a
+            href={`mailto:${emails[0]}`}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-[240px] truncate text-small text-ui-text-muted hover:text-ui-accent"
+            title={emails.join(', ')}
+          >
+            {emails[0]}
+            {emails.length > 1 && ` +${emails.length - 1}`}
+          </a>
+        )}
+        {sourceLinks.length > 0 && (
+          <span className="inline-flex flex-wrap items-center gap-x-2 text-xs text-ui-text-muted lg:justify-end">
+            {sourceLinks.map((s) =>
+              s.url ? (
+                <a
+                  key={s.source}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-0.5 hover:text-ui-accent"
+                  title={`Открыть карточку в ${s.label}`}
+                >
+                  {s.label}
+                  <ExternalLink className="h-3 w-3" aria-hidden />
+                </a>
+              ) : (
+                <span key={s.source}>{s.label}</span>
+              ),
             )}
+          </span>
+        )}
+        {!hideActions && (onAddToList || onDraftEmail || extraAction) && (
+          <div className="flex flex-wrap gap-1.5 lg:mt-1.5 lg:justify-end">
             {onDraftEmail && (
               <button
                 type="button"
@@ -486,15 +328,28 @@ export function MapsCompanyCard({
                 }}
                 title={
                   topPains.length === 0
-                    ? 'Сгенерировать общее КП по шаблону (у компании ещё нет проанализированных болей в отзывах)'
+                    ? 'Сгенерировать КП по шаблону — боли в отзывах ещё не разобраны'
                     : 'Сгенерировать КП под боль клиентов из отзывов'
                 }
-                className="inline-flex h-9 items-center gap-1.5 rounded bg-violet-600 px-3 text-small font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-wait disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-ui-text px-3.5 text-small font-semibold text-ui-surface transition-colors hover:bg-black disabled:cursor-wait disabled:opacity-60"
               >
-                <Sparkles className="h-4 w-4" />
-                {draftEmailLoading ? 'Готовлю…' : 'КП'}
+                <Send className="h-3.5 w-3.5" aria-hidden />
+                {draftEmailLoading ? 'Готовлю…' : topPains.length > 0 ? 'КП под боль' : 'КП'}
               </button>
             )}
+            {onAddToList && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToList(company);
+                }}
+                className="inline-flex min-h-9 items-center rounded-full bg-ui-surface-2 px-3.5 text-small font-semibold text-ui-text-muted transition-colors hover:bg-ui-border hover:text-ui-text"
+              >
+                В список
+              </button>
+            )}
+            {extraAction}
           </div>
         )}
       </div>
@@ -502,146 +357,63 @@ export function MapsCompanyCard({
   );
 }
 
-/* ===== Sub-components ===== */
+/* ===== Части ===== */
 
-/** Plain status pill — Pipedrive-style: solid bg, contrast text, no ring/blur. */
-function StatusPill({
-  tone,
-  icon,
-  children,
-  title,
-}: {
-  tone: 'good' | 'warm' | 'hot' | 'neutral' | 'cool' | 'accent';
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-  title?: string;
-}) {
-  const cls = (() => {
-    switch (tone) {
-      case 'good':
-        return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-200';
-      case 'warm':
-        return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/30 dark:text-amber-200';
-      case 'hot':
-        return 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200';
-      case 'cool':
-        return 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-800/60 dark:bg-sky-900/30 dark:text-sky-200';
-      case 'accent':
-        return 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-200';
-      default:
-        return 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200';
-    }
-  })();
+function AiAnalysisRow({ analysis }: { analysis: CompanyAnalysisOut }) {
+  const score = analysis.score ?? 0;
+  const tone =
+    analysis.status === 'failed'
+      ? 'text-ui-danger'
+      : analysis.status === 'pending'
+        ? 'text-ui-text-muted'
+        : score >= 7
+          ? 'text-ui-success'
+          : score >= 4
+            ? 'text-ui-warning'
+            : 'text-ui-text-muted';
   return (
-    <span
-      title={title}
-      className={cn(
-        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium leading-tight',
-        cls,
-      )}
-    >
-      {icon && (
-        <span className="inline-flex h-3 w-3 items-center justify-center [&_svg]:h-3 [&_svg]:w-3">
-          {icon}
-        </span>
-      )}
-      {children}
-    </span>
+    <p className={cn('mt-1.5 flex items-center gap-1.5 text-xs font-semibold', tone)} title={analysis.comment ?? analysis.error ?? ''}>
+      <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="truncate">
+        {analysis.status === 'pending'
+          ? 'AI: считаю…'
+          : analysis.status === 'failed'
+            ? 'AI: ошибка'
+            : `AI: ${analysis.score ?? '—'}/10${analysis.comment ? ` · ${analysis.comment.slice(0, 80)}` : ''}`}
+      </span>
+    </p>
   );
 }
 
-function PainBlock({ pains }: { pains: CompanyPainOut[] }) {
-  // Дедупликация по нормализованному label. На прод-данных бывают почти-дубли
-  // («Качество услуг», «Качество услуг и цены», «Качество оказанных услуг») —
-  // их три раза подряд показывать визуально бессмысленно.
+/* ===== Утилиты ===== */
+
+// Почти-дубли («Качество услуг» дважды) в чипах не повторяем.
+function dedupePains(pains: CompanyPainOut[]): CompanyPainOut[] {
   const seen = new Set<string>();
-  const unique = pains.filter((p) => {
+  return pains.filter((p) => {
     const key = (p.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-  return (
-    <div className="space-y-2 rounded border border-slate-200 bg-slate-50/60 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        Боли клиентов из отзывов
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {unique.slice(0, 5).map((p) => (
-          <span
-            key={p.pain_tag_id}
-            title={p.description ?? p.label}
-            className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
-            <span className="leading-tight">{p.label}</span>
-            {p.mention_count > 1 && (
-              <span className="rounded-sm bg-slate-100 px-1 text-xs tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                {p.mention_count}
-              </span>
-            )}
-          </span>
-        ))}
-      </div>
-      {pains[0]?.top_quote && (
-        <div className="border-l-2 border-rose-400 bg-white pl-2.5 py-1 text-small italic leading-snug text-slate-700 dark:border-rose-500 dark:bg-slate-900 dark:text-slate-200">
-          «{pains[0].top_quote}»
-        </div>
-      )}
-    </div>
-  );
 }
 
-function NegativeSnippetsBlock({ snippets }: { snippets: string[] }) {
-  return (
-    <div className="space-y-1.5 rounded border border-amber-200 bg-amber-50/60 px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-900/20">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-        <span>Фрагменты негативных отзывов</span>
-        <span className="rounded-sm border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-xs font-normal normal-case tracking-normal text-amber-900 dark:border-amber-700 dark:bg-amber-800/50 dark:text-amber-100">
-          AI считает
-        </span>
-      </div>
-      {snippets.slice(0, 2).map((quote, idx) => (
-        <div
-          key={idx}
-          className="border-l-2 border-amber-500 bg-white pl-2.5 py-1 text-small italic leading-snug text-slate-800 dark:bg-slate-900 dark:text-slate-200"
-        >
-          «{quote}»
-        </div>
-      ))}
-    </div>
-  );
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }
 
-function AiAnalysisRow({ analysis }: { analysis: CompanyAnalysisOut }) {
-  const tone: 'good' | 'warm' | 'neutral' | 'hot' =
-    analysis.status === 'pending'
-      ? 'neutral'
-      : analysis.status === 'failed'
-        ? 'hot'
-        : (analysis.score ?? 0) >= 7
-          ? 'good'
-          : (analysis.score ?? 0) >= 4
-            ? 'warm'
-            : 'neutral';
-
-  return (
-    <StatusPill tone={tone} icon={<Sparkles />} title={analysis.comment ?? analysis.error ?? ''}>
-      {analysis.status === 'pending' ? (
-        'AI: считаю…'
-      ) : analysis.status === 'failed' ? (
-        'AI: ошибка'
-      ) : (
-        <>
-          AI: {analysis.score ?? '—'}/10
-          {analysis.comment ? ` · ${analysis.comment.slice(0, 60)}` : ''}
-        </>
-      )}
-    </StatusPill>
-  );
+function formatYears(n: number): string {
+  return `${n} ${plural(n, 'год', 'года', 'лет')}`;
 }
 
-/* ===== Utils ===== */
+function formatRevenue(rub: number): string {
+  const mln = rub / 1_000_000;
+  return `${mln.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн ₽`;
+}
 
 function sourceLabel(source: string | null | undefined): string {
   if (source === '2gis') return '2GIS';
@@ -650,15 +422,11 @@ function sourceLabel(source: string | null | undefined): string {
   return source ?? '';
 }
 
-function buildSourceUrl(
-  source: string | null | undefined,
-  externalId: string | null | undefined,
-): string | null {
+function buildSourceUrl(source: string | null | undefined, externalId: string | null | undefined): string | null {
   if (!externalId || !source) return null;
   if (source === '2gis') return `https://2gis.ru/firm/${externalId}`;
   if (source === 'yandex_maps') return `https://yandex.ru/maps/org/${externalId}`;
-  if (source === 'google_maps')
-    return `https://www.google.com/maps/place/?q=place_id:${externalId}`;
+  if (source === 'google_maps') return `https://www.google.com/maps/place/?q=place_id:${externalId}`;
   return null;
 }
 
@@ -671,10 +439,7 @@ function stripScheme(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
-function formatAddressWithCity(
-  address: string | null | undefined,
-  city: string | null | undefined,
-): string | null {
+function formatAddressWithCity(address: string | null | undefined, city: string | null | undefined): string | null {
   const a = (address ?? '').trim();
   const c = (city ?? '').trim();
   if (!a && !c) return null;

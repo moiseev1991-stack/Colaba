@@ -15,12 +15,27 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isUnnamedPainLabel } from '@/lib/painLabels';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Brain, Filter, List, Map as MapIcon, Sliders, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  Brain,
+  ChevronDown,
+  Filter,
+  Download,
+  List,
+  Map as MapIcon,
+  Send,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+  Zap,
+} from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { Button } from '@/components/ui/button';
+import { Segmented } from '@/components/ui/segmented';
+import { Select } from '@/components/ui/select';
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { storeBulkKpPending } from '@/lib/kp-bulk-pending';
 import { KpModal } from '@/components/maps/KpModal';
@@ -47,6 +62,7 @@ import {
   type MapSearchOut,
   type NichePainTrendOut,
   type PainTagOut,
+  type SortBy,
 } from '@/src/services/api/maps';
 import {
   getCompanyAnalyses,
@@ -117,44 +133,6 @@ function initialFilter(
   return base;
 }
 
-function statusLabel(status: string): string {
-  switch (status) {
-    case 'pending':
-      return 'в очереди';
-    case 'running':
-      return 'парсим…';
-    case 'completed':
-      return 'готово';
-    case 'failed':
-      return 'ошибка';
-    case 'from_cache':
-      return 'из кэша';
-    default:
-      return status;
-  }
-}
-
-const SOURCE_PRETTY: Record<string, { label: string; dot: string }> = {
-  '2gis': { label: '2GIS', dot: '🟢' },
-  yandex_maps: { label: 'Я.Карты', dot: '🔴' },
-  google_maps: { label: 'Google Maps', dot: '🔵' },
-};
-
-function sourceListPretty(
-  raw: string | null | undefined,
-): Array<{ id: string; label: string; dot: string }> {
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((id) => ({
-      id,
-      label: SOURCE_PRETTY[id]?.label ?? id,
-      dot: SOURCE_PRETTY[id]?.dot ?? '·',
-    }));
-}
-
 // Шаблоны сообщений из backend, которые означают «2GIS просто ничего не нашёл»
 // (не баг, не сетевой сбой) — показываем как мягкий EmptyResult, не как failed.
 // Нужно для backwards-compat: ранее backend бросал RuntimeError с этими текстами,
@@ -203,7 +181,17 @@ export function MapsSearchResults({
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   // ЛПР bulk-enrich UI-state: одно из 'idle' | 'loading' | сообщение результата.
   const [lprBulkBusy, setLprBulkBusy] = useState(false);
-  const [lprBulkMsg, setLprBulkMsg] = useState<string | null>(null);
+  // Постраничная выдача (вид Premium): по PAGE_SIZE компаний, total — с сервера.
+  const [page, setPage] = useState(0);
+  const pageRef = useRef(0);
+  pageRef.current = page;
+  const [listTotal, setListTotal] = useState<number | null>(null);
+  // Меняется при «Сбросить всё» у токенов — панель фильтров забывает применённые пресеты.
+  const [resetKey, setResetKey] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const listTopRef = useRef<HTMLElement>(null);
+  // После смены фильтров оставляем выбранными только компании, попавшие в новую выдачу.
+  const pruneSelectionRef = useRef(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   // 2026-06-12 КП-конвейер: вместо preload-генерации и старой DraftEmailModal
   // открываем KpModal с company_id, и модалка сама грузит шаблоны и зовёт
@@ -310,10 +298,6 @@ export function MapsSearchResults({
   // BottomSheet по кнопке, а не стэкается над списком (было: уезжала
   // и съедала экран ещё до того как юзер увидел компании).
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  // Был ли filter тронут юзером в боковой панели после загрузки страницы.
-  // Используется чтобы скрыть зелёный баннер «Применён пресет с формы поиска»
-  // как только юзер начал крутить фильтры (иначе баннер «застрял» и врал).
-  const [filterDirty, setFilterDirty] = useState(false);
 
   // 2026-06-16: смена источника в шапке Top-pains теперь меняет ОБА state'а —
   // painSourceFilter (срез pain-tags) и filter.source_filter (фильтр выдачи
@@ -325,12 +309,10 @@ export function MapsSearchResults({
       ...prev,
       source_filter: painSourceToCompanyFilter(next),
     }));
-    setFilterDirty(true);
   }, []);
 
   const handleFilterChange = useCallback((next: MapSearchFilter) => {
     setFilter(next);
-    setFilterDirty(true);
   }, []);
 
   // Multi-source persistence (§3.1 ТЗ 2026-06-04): синхронизируем
@@ -359,7 +341,6 @@ export function MapsSearchResults({
     if (fromUrl !== inState) {
       lastUrlSrcRef.current = fromUrl === 'all' ? null : fromUrl;
       setFilter((prev) => ({ ...prev, source_filter: fromUrl }));
-      setFilterDirty(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -428,10 +409,11 @@ export function MapsSearchResults({
         // чтобы UI наполнялся карточками в реальном времени, а не ждал
         // terminal-статус. Без этого юзер видит пустоту и думает что
         // «ничего не происходит».
-        const data = await listMapCompanies(search.id, DEFAULT_FILTER, 100, 0);
+        const data = await listMapCompanies(search.id, DEFAULT_FILTER, PAGE_SIZE, 0);
         if (data.items.length > companies.length) {
           setCompanies(data.items);
         }
+        setListTotal(data.total);
         if (data.source_counts) setSourceCounts(data.source_counts);
       } catch {
         /* keep current */
@@ -442,13 +424,22 @@ export function MapsSearchResults({
 
   // Перезагрузка списка с фильтрами: только после terminal-статуса, с debounce 300мс
   const refreshCompanies = useCallback(
-    async (f: MapSearchFilter) => {
+    async (f: MapSearchFilter, p: number = pageRef.current) => {
       setIsLoading(true);
       try {
-        const data = await listMapCompanies(search.id, f, 100, 0);
+        const data = await listMapCompanies(search.id, f, PAGE_SIZE, p * PAGE_SIZE);
         setCompanies(data.items);
+        setListTotal(data.total);
         setCompaniesEverLoaded(true);
         if (data.source_counts) setSourceCounts(data.source_counts);
+        if (pruneSelectionRef.current) {
+          pruneSelectionRef.current = false;
+          const visible = new Set(data.items.map((c) => c.id));
+          setSelectedIds((prev) => {
+            const next = new Set(Array.from(prev).filter((cid) => visible.has(cid)));
+            return next.size === prev.size ? prev : next;
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -456,13 +447,29 @@ export function MapsSearchResults({
     [search.id],
   );
 
+  // Смена фильтров — на первую страницу. Выбор сверяем с новой выдачей после загрузки
+  // (раньше «Выбрано: 1» оставалось, хотя компания из выдачи пропала).
+  const filterKey = JSON.stringify(filter);
+  const lastFilterKey = useRef(filterKey);
+  useEffect(() => {
+    if (filterKey === lastFilterKey.current) return;
+    lastFilterKey.current = filterKey;
+    setPage(0);
+    pruneSelectionRef.current = true;
+  }, [filterKey]);
+
   useEffect(() => {
     if (!isTerminal) return;
     const timer = setTimeout(() => {
-      void refreshCompanies(filter);
+      void refreshCompanies(filter, page);
     }, 300);
     return () => clearTimeout(timer);
-  }, [filter, isTerminal, refreshCompanies]);
+  }, [filter, page, isTerminal, refreshCompanies]);
+
+  const goToPage = useCallback((next: number) => {
+    setPage(Math.max(0, next));
+    listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   // Список для отображения: после того, как companies хотя бы раз были
   // загружены через listMapCompanies, ВСЕГДА используем их (даже если 0).
@@ -480,29 +487,8 @@ export function MapsSearchResults({
   // используется только пока бэк ещё не отработал — после listMapCompanies
   // мы переключаемся на серверную выдачу.
   const liveCompanies = stream.companies;
-  const baseList: any[] = companiesEverLoaded ? companies : liveCompanies;
+  const baseList: any[] = companiesEverLoaded || companies.length > liveCompanies.length ? companies : liveCompanies;
   const renderTotal = baseList.length;
-
-  // 2026-06-12: выбранные id (Set<number>) дрейфовали относительно реально
-  // видимых карточек — юзер снимал pain-фильтр, компания вылетала из
-  // выдачи, а «Выбрано: 1» в шапке оставалось (плюс рамка-обводка на
-  // подтянувшейся карточке с другим id). Чистим selectedIds, оставляя
-  // только те, что реально присутствуют в baseList.
-  useEffect(() => {
-    if (selectedIds.size === 0) return;
-    const visibleIds = new Set<number>();
-    for (const c of baseList) {
-      const id = (c as any).id ?? (c as any).company_id;
-      if (typeof id === 'number') visibleIds.add(id);
-    }
-    let changed = false;
-    const next = new Set<number>();
-    for (const id of selectedIds) {
-      if (visibleIds.has(id)) next.add(id);
-      else changed = true;
-    }
-    if (changed) setSelectedIds(next);
-  }, [baseList, selectedIds]);
 
   // ----------- AI-анализ под кастомный промпт пресета -----------
   const visibleCompanyIds = baseList
@@ -891,235 +877,396 @@ export function MapsSearchResults({
     return out;
   })();
 
-  function handleExport() {
-    const url = exportSearchCsvUrl(search.id, filter);
-    // Простой способ для same-origin прокси: используем тег <a download>
+  function downloadUrl(url: string, filename: string) {
+    // Простой способ для same-origin прокси: тег <a download>
     const a = document.createElement('a');
     a.href = url;
-    a.download = `maps_search_${search.id}.csv`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  function handleExport() {
+    downloadUrl(exportSearchCsvUrl(search.id, filter), `maps_search_${search.id}.csv`);
   }
 
   function handleExportSelected() {
     if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds);
-    const url = exportSearchCsvUrl(search.id, filter, ids);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `maps_search_${search.id}_selected.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    downloadUrl(exportSearchCsvUrl(search.id, filter, Array.from(selectedIds)), `maps_search_${search.id}_selected.csv`);
   }
 
   function handleExportWebsiteLeadsXlsx() {
-    // Блок 4 ТЗ 2026-06-02: .xlsx с двумя вкладками для пакетной продажи
-    // сайтов. Бэкенд: GET /maps/website-leads/export.
-    const a = document.createElement('a');
-    a.href = `/api/v1/maps/website-leads/export?search_id=${search.id}&only_website_leads=true`;
-    a.download = `website-leads_${search.id}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    // Блок 4 ТЗ 2026-06-02: .xlsx с двумя вкладками для пакетной продажи сайтов.
+    downloadUrl(`/api/v1/maps/website-leads/export?search_id=${search.id}&only_website_leads=true`, `website-leads_${search.id}.xlsx`);
   }
 
+  const pageIds = renderList
+    .map((c: any) => (c.id ?? c.company_id) as number | undefined)
+    .filter((x): x is number => typeof x === 'number');
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((cid) => selectedIds.has(cid));
+
+  function toggleAllOnPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) pageIds.forEach((cid) => next.delete(cid));
+      else pageIds.forEach((cid) => next.add(cid));
+      return next;
+    });
+  }
+
+  // КП по выбранным, а если ничего не выбрано — по всем компаниям на странице.
+  // Снимок id — в localStorage под одноразовым ключом: у новой вкладки свой sessionStorage,
+  // а в URL 500 id не влезают. Партия попадёт в «История → Партии КП».
+  function handleBulkKp() {
+    const ids = selectedIds.size > 0 ? Array.from(selectedIds) : pageIds;
+    if (ids.length === 0) return;
+    const ref = storeBulkKpPending(ids);
+    window.open(`/app/leads/kp-jobs/new?ref=${ref}`, '_blank', 'noopener');
+  }
+
+  async function handleBulkLpr() {
+    const ids = Array.from(selectedIds);
+    setLprBulkBusy(true);
+    try {
+      const r = await enrichCompaniesTeam(search.id, ids);
+      const parts: string[] = [];
+      if (r.queued > 0) parts.push(`Ищу руководителя на ${r.queued} сайт${r.queued === 1 ? 'е' : 'ах'} — карточки обновятся через ~2 мин`);
+      if (r.skipped_already_has_lpr > 0) parts.push(`${r.skipped_already_has_lpr} уже с ЛПР`);
+      if (r.skipped_no_website > 0) parts.push(`${r.skipped_no_website} без сайта — искать негде`);
+      toast.info(parts.join(' · ') || 'У всех выбранных компаний ЛПР уже найден.');
+      // Через ~2 минуты ЛПР должны появиться в БД — перезагружаем список.
+      setTimeout(() => void refreshCompanies(filter), 90_000);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Не удалось запустить поиск ЛПР');
+    } finally {
+      setLprBulkBusy(false);
+    }
+  }
+
+  const tokens = filterTokens(filter, regionPainTags);
+
+  function resetAllFilters() {
+    handleFilterChange({ ...EMPTY_FILTER, sort_by: filter.sort_by ?? 'rating_desc' });
+    setResetKey((k) => k + 1);
+  }
+
+  const foundCount = search.companies_found ?? listTotal ?? renderTotal;
+  const shownTotal = listTotal ?? renderTotal;
+  const rangeFrom = shownTotal === 0 ? 0 : page * PAGE_SIZE + 1;
+  const rangeTo = page * PAGE_SIZE + renderList.length;
+  const titlePlace =
+    search.mode === 'radius' && search.address
+      ? `${search.address}, ${((search.radius_meters ?? 0) / 1000).toFixed(1)} км`
+      : search.city;
+  const unparsedCount = isTerminal ? companies.filter((c) => !c.top_pains || c.top_pains.length === 0).length : 0;
+
+  const filtersPanel = (mobile: boolean) => (
+    <MapsFiltersPanel
+      niche={search.niche}
+      city={search.city}
+      searchId={search.id}
+      value={filter}
+      onChange={handleFilterChange}
+      onUserPresetWithAiSelected={(p) => {
+        onUserPresetWithAi(p);
+        if (mobile) setMobileFiltersOpen(false);
+      }}
+      sourceCounts={sourceCounts}
+      resetKey={resetKey}
+    />
+  );
+
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      {/* Десктоп: фильтр-панель слева. Мобайл — открывается из BottomSheet ниже. */}
-      <div className="hidden lg:block">
-        <MapsFiltersPanel
-          niche={search.niche}
-          city={search.city}
-          searchId={search.id}
-          value={filter}
-          onChange={handleFilterChange}
-          onUserPresetWithAiSelected={onUserPresetWithAi}
-          aiActive={activeAiPreset != null}
-        />
-      </div>
-
-      {/* Мобайл: BottomSheet с той же панелью внутри. */}
-      <BottomSheet
-        open={mobileFiltersOpen}
-        onClose={() => setMobileFiltersOpen(false)}
-        title="Фильтры и пресеты"
-        maxHeight="92vh"
+    <div className={cn(selectedIds.size > 0 && 'pb-24')}>
+      {/* === Шапка: запрос, счётчики, главные действия === */}
+      <button
+        type="button"
+        onClick={onNewSearch}
+        className="mb-3 inline-flex items-center gap-1.5 rounded-control text-small font-semibold text-ui-text-muted hover:text-ui-text"
       >
-        <MapsFiltersPanel
-          niche={search.niche}
-          city={search.city}
-          searchId={search.id}
-          value={filter}
-          onChange={(next) => {
-            handleFilterChange(next);
-          }}
-          onUserPresetWithAiSelected={(p) => {
-            onUserPresetWithAi(p);
-            setMobileFiltersOpen(false);
-          }}
-          aiActive={activeAiPreset != null}
-        />
-        <div className="sticky bottom-0 mt-3 -mx-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3">
-          <ButtonV2
-            variant="primary"
-            size="lg"
-            onClick={() => setMobileFiltersOpen(false)}
-            className="w-full"
-          >
-            Применить
-          </ButtonV2>
-        </div>
-      </BottomSheet>
-
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0">
-            <h2 className="font-display text-xl sm:text-xl font-semibold leading-tight tracking-tight text-[hsl(var(--text))]">
-              {search.niche}
-              <span className="text-[hsl(var(--muted))]"> · </span>
-              {search.mode === 'radius' && search.address
-                ? `${search.address} · радиус ${((search.radius_meters ?? 0) / 1000).toFixed(1)} км`
-                : search.city}
-            </h2>
-            {/* Чипы статуса вместо одной плотной строки текста. */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
-              <span
-                className="inline-flex items-center gap-1 rounded-pill bg-[hsl(var(--surface-2))] px-2 py-0.5 font-medium text-[hsl(var(--text))]"
-                title="Сколько компаний показано в выдаче"
-              >
-                <span className="text-xs text-[hsl(var(--muted))]">
-                  {isTerminal
-                    ? companiesEverLoaded &&
-                      typeof search.companies_found === 'number' &&
-                      renderTotal !== search.companies_found
-                      ? 'Под фильтр'
-                      : 'Найдено'
-                    : 'Уже найдено'}
-                </span>
-                <span className="font-semibold tabular-nums">
-                  {isTerminal
-                    ? companiesEverLoaded &&
-                      typeof search.companies_found === 'number' &&
-                      renderTotal !== search.companies_found
-                      ? `${renderTotal} из ${search.companies_found}`
-                      : (search.companies_found ?? renderTotal)
-                    : renderTotal}
-                </span>
-                <span className="text-xs text-[hsl(var(--muted))]">
-                  {(() => {
-                    const n = isTerminal ? renderTotal : renderTotal;
-                    if (n === 1) return 'компания';
-                    if (n >= 2 && n <= 4) return 'компании';
-                    return 'компаний';
-                  })()}
-                </span>
+        <ArrowLeft className="h-4 w-4" aria-hidden /> Новый поиск
+      </button>
+      <div className="flex flex-wrap items-end gap-x-5 gap-y-4">
+        <div className="min-w-0">
+          <h1 className="text-heading font-extrabold tracking-tight text-ui-text">
+            {capitalize(search.niche)} · {titlePlace}.
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-small text-ui-text-muted">
+            <span>
+              {isTerminal ? 'Найдено' : 'Уже найдено'} <b className="font-semibold tabular-nums text-ui-text">{foundCount}</b>
+            </span>
+            {isTerminal && tokens.length > 0 && (
+              <span>
+                под фильтры <b className="font-semibold tabular-nums text-ui-text">{shownTotal}</b>
               </span>
-              {/* Источники как мини-бейджи. */}
-              {sourceListPretty(search.sources).map((src) => (
-                <span
-                  key={src.id}
-                  className="inline-flex items-center gap-1 rounded-pill border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2 py-0.5 text-xs font-medium text-[hsl(var(--text))]"
-                  title={`Источник данных: ${src.label}`}
-                >
-                  <span aria-hidden>{src.dot}</span> {src.label}
-                </span>
-              ))}
-              {/* Статус только если он информативен (не completed) или показываем "из кэша" с иконкой. */}
-              {search.status === 'from_cache' && (
-                <span
-                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-cool-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--signal-cool)] ring-1 ring-inset ring-[color:var(--signal-cool)]/30"
-                  title="Результат не парсился заново — взят из ранее собранной выдачи"
-                >
-                  ⚡ из кэша
-                </span>
-              )}
-              {!isTerminal && (
-                <span
-                  className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-warm-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--signal-warm)] ring-1 ring-inset ring-[color:var(--signal-warm)]/30"
-                  title="Парсер ещё собирает компании"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--signal-warm)] animate-pulse" />
-                  {statusLabel(search.status)}
-                </span>
-              )}
-              {search.status === 'failed' && (
-                <span className="inline-flex items-center gap-1 rounded-pill bg-[var(--signal-hot-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--signal-hot)] ring-1 ring-inset ring-[color:var(--signal-hot)]/30">
-                  ⚠ ошибка
-                </span>
+            )}
+            {sourceNames(search.sources) && <span>{sourceNames(search.sources)}</span>}
+            {search.status === 'from_cache' && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-ui-accent/[.08] px-2.5 py-0.5 text-xs font-semibold text-ui-accent"
+                title="Не парсили заново — взяли ранее собранную выдачу"
+              >
+                <Zap className="h-3 w-3" aria-hidden /> из кэша
+              </span>
+            )}
+            {search.status === 'failed' && (
+              <span className="rounded-full bg-ui-danger/10 px-2.5 py-0.5 text-xs font-semibold text-ui-danger">ошибка</span>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5 sm:ml-auto">
+          {isTerminal && foundCount > 0 && (
+            <div className="relative">
+              <Button
+                variant="secondary"
+                onClick={() => setExportMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={exportMenuOpen}
+                iconLeft={<Download />}
+                className="h-11"
+              >
+                Экспорт
+              </Button>
+              {exportMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setExportMenuOpen(false)} aria-hidden />
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-40 mt-2 w-72 rounded-card border border-black/[.06] bg-ui-surface p-1.5 shadow-overlay"
+                  >
+                    <ExportItem
+                      title="CSV — все компании"
+                      hint="с учётом текущих фильтров"
+                      onClick={() => {
+                        setExportMenuOpen(false);
+                        handleExport();
+                      }}
+                    />
+                    <ExportItem
+                      title={`CSV — выбранные${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
+                      hint={selectedIds.size === 0 ? 'отметьте карточки галочками' : 'только отмеченные карточки'}
+                      disabled={selectedIds.size === 0}
+                      onClick={() => {
+                        setExportMenuOpen(false);
+                        handleExportSelected();
+                      }}
+                    />
+                    <ExportItem
+                      title="Excel — лиды на сайт"
+                      hint="Две вкладки: «Лиды» и «Производство сайта». Только компании без своего сайта."
+                      onClick={() => {
+                        setExportMenuOpen(false);
+                        handleExportWebsiteLeadsXlsx();
+                      }}
+                    />
+                  </div>
+                </>
               )}
             </div>
-            {search.filters && Object.keys(search.filters).length > 0 && !filterDirty && (
-              <div className="mt-1 inline-block rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-2 py-0.5 text-xs text-[color:var(--signal-good)]">
-                Применён пресет с формы поиска — фильтры выставлены в панели слева
+          )}
+          <Button
+            onClick={handleBulkKp}
+            disabled={pageIds.length === 0}
+            iconLeft={<Send />}
+            className="h-11 px-6"
+            title={
+              selectedIds.size > 0
+                ? 'Откроется новая вкладка: шаблон и тон → старт. Партия попадёт в «История → Партии КП».'
+                : 'КП для всех компаний на странице. Чтобы выбрать отдельные — отметьте карточки галочками.'
+            }
+          >
+            Сформировать КП{selectedIds.size > 0 ? ` · ${selectedIds.size}` : ''}
+          </Button>
+        </div>
+      </div>
+
+      {/* === Идёт сбор === */}
+      {!isTerminal &&
+        (() => {
+          const p = stream.progress;
+          const saved = p?.saved ?? p?.companies_processed ?? p?.processed;
+          const expected = p?.expected ?? p?.companies_total ?? p?.total;
+          // Пока бэк не прислал прогресса — считаем по пришедшим компаниям.
+          const done = typeof saved === 'number' && saved > 0 ? saved : Math.max(stream.companies.length, companies.length);
+          const pct = typeof expected === 'number' && expected > 0 ? Math.min(100, Math.round((done / expected) * 100)) : null;
+          return (
+            <div className="mt-4">
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-small text-ui-text-muted">
+                <span>
+                  <b className="font-semibold text-ui-text">Идёт сбор:</b> {p?.source ? `${sourceNames(p.source)} · ` : ''}
+                  {pct != null ? (
+                    <>
+                      компания <b className="font-semibold tabular-nums text-ui-text">{done}</b> из{' '}
+                      <b className="font-semibold tabular-nums text-ui-text">{expected}</b>
+                    </>
+                  ) : done > 0 ? (
+                    <>
+                      уже найдено <b className="font-semibold tabular-nums text-ui-text">{done}</b>
+                    </>
+                  ) : (
+                    'запускаю парсер, жду первых ответов источника…'
+                  )}
+                </span>
+                <span
+                  role="progressbar"
+                  aria-label="Прогресс сбора"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={pct ?? undefined}
+                  className="relative h-1.5 min-w-[140px] flex-1 overflow-hidden rounded-full bg-ui-border"
+                >
+                  {pct != null ? (
+                    <span className="absolute inset-y-0 left-0 rounded-full bg-ui-accent transition-all duration-500" style={{ width: `${Math.max(2, pct)}%` }} />
+                  ) : (
+                    <span className="absolute inset-y-0 left-0 w-1/3 animate-pulse rounded-full bg-ui-accent" />
+                  )}
+                </span>
+                {pct != null && <span className="text-small font-semibold tabular-nums text-ui-accent">{pct}%</span>}
               </div>
-            )}
-            {/* Live прогресс-плашка AI-разбора. Появляется после клика
-                «Разобрать боли AI» и тикает каждые 5 сек. Раньше юзер видел
-                только кнопку «AI работает — ~4 мин» и не знал, идёт ли вообще
-                что-то — теперь видны три фазы и реальные числа отзывов. */}
-            {reclusterState === 'queued' && (
-              <AiPainProgressBar
-                progress={aiProgress}
-                startedAt={reclusterStartedAt}
-                diagnostic={diagnostic}
-                diagnosticRunning={diagnosticRunning}
-                onDismiss={() => {
-                  setReclusterState('idle');
-                  setAiProgress(null);
-                  setReclusterStartedAt(null);
-                  setDiagnostic(null);
-                  stopAiProgressPolling();
-                }}
-                onRestart={() => {
-                  setReclusterState('idle');
-                  setAiProgress(null);
-                  setReclusterStartedAt(null);
-                  setDiagnostic(null);
-                  stopAiProgressPolling();
-                  void handleReclusterNiche();
-                }}
-                onRunDiagnostic={async () => {
-                  setDiagnosticRunning(true);
-                  setDiagnostic(null);
-                  try {
-                    const r = await adminReclusterNicheDiagnostic(search.id);
-                    setDiagnostic(r);
-                    // Если diagnostic создал теги — сразу подтянем выдачу
-                    if (r.companies_with_pains_after > 0) {
-                      void refreshCompanies(filter);
-                    }
-                  } catch (e) {
-                    const err = e as { response?: { data?: { detail?: unknown } } };
-                    const detail = err?.response?.data?.detail;
-                    setDiagnostic({
-                      search_id: search.id,
-                      niche: search.niche,
-                      city: search.city,
-                      companies_total: 0,
-                      reviews_with_embedding: 0,
-                      clusters_found: 0,
-                      pain_tags_upserted: 0,
-                      companies_with_pains_after: 0,
-                      error:
-                        typeof detail === 'string'
-                          ? detail
-                          : 'Не удалось выполнить diagnostic (timeout/500)',
-                    });
-                  } finally {
-                    setDiagnosticRunning(false);
-                  }
-                }}
-              />
-            )}
-            {/* 2026-06-16: переключатели Источник/Период вынесены отдельной
-                компактной полосой над блоком ТОП-БОЛИ. Сам блок плиток рендерится
-                ниже только при наличии тегов — без пустого empty-state'а, чтобы
-                не создавать визуальный пробел. Клик по источнику меняет и
-                pain-tags, и фильтр выдачи компаний (см. handlePainSourceChange).
-                Toggle «Боли / Сильные стороны» — рядом, меняет sentiment в
-                запросах /maps/pain-tags и /maps/insights/demand-index. */}
+              {stream.reconnectAttempt > 0 && !stream.error && (
+                <p className="mt-1.5 text-xs text-ui-warning">
+                  Связь прервалась, переподключаюсь (попытка {stream.reconnectAttempt}). Парсер продолжает работу.
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+      {/* === Активные фильтры токенами === */}
+      {tokens.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-ui-text-muted">Фильтры:</span>
+          {tokens.map((t) => (
+            <span
+              key={t.id}
+              className="inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-ui-surface py-1 pl-3.5 pr-1.5 text-small font-semibold text-ui-text shadow-raised"
+            >
+              {t.label}
+              <button
+                type="button"
+                onClick={() => handleFilterChange({ ...filter, ...t.patch })}
+                aria-label={`Убрать фильтр: ${t.label}`}
+                className="grid h-[18px] w-[18px] place-items-center rounded-full bg-ui-surface-2 text-ui-text-muted hover:bg-ui-danger/10 hover:text-ui-danger"
+              >
+                <X className="h-3 w-3" aria-hidden />
+              </button>
+            </span>
+          ))}
+          <button type="button" onClick={resetAllFilters} className="px-2 py-1 text-small font-semibold text-ui-danger hover:underline">
+            Сбросить всё
+          </button>
+        </div>
+      )}
+
+      {/* === AI-пресет === */}
+      {activeAiPreset && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card bg-ui-accent/[.06] px-4 py-2.5 text-small">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-ui-text">
+            <Sparkles className="h-4 w-4 text-ui-accent" aria-hidden />
+            AI-пресет «{activeAiPreset.name}»
+          </span>
+          <span className="text-ui-text-muted">
+            {aiDoneCount > 0 || aiPendingCount > 0
+              ? `готово ${aiDoneCount} · в работе ${aiPendingCount}`
+              : !isTerminal
+                ? 'анализ запустится сам, когда сбор закончится'
+                : aiTriggering
+                  ? 'запускаю анализ компаний на странице…'
+                  : 'анализ запустится автоматически'}
+          </span>
+          <Button
+            size="sm"
+            onClick={() => void handleTriggerAi()}
+            disabled={aiTriggering || visibleCompanyIds.length === 0}
+            className="ml-auto"
+          >
+            {aiTriggering ? 'Запускаю…' : `Запустить AI-анализ · ${visibleCompanyIds.length}`}
+          </Button>
+          {aiLastRun && (
+            <p className="basis-full text-xs text-ui-text-muted">
+              Поставлено: {aiLastRun.queued}, из кэша: {aiLastRun.cached}
+              {aiLastRun.over_limit > 0 && <span className="text-ui-danger"> · {aiLastRun.over_limit} не ушло — дневной лимит исчерпан</span>}
+              {' · '}остаток лимита на сутки: {aiLastRun.limit_remaining}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* === Прогресс AI-разбора болей === */}
+      {reclusterState === 'queued' && (
+        <div className="mt-4">
+          <AiPainProgressBar
+            progress={aiProgress}
+            startedAt={reclusterStartedAt}
+            diagnostic={diagnostic}
+            diagnosticRunning={diagnosticRunning}
+            onDismiss={() => {
+              setReclusterState('idle');
+              setAiProgress(null);
+              setReclusterStartedAt(null);
+              setDiagnostic(null);
+              stopAiProgressPolling();
+            }}
+            onRestart={() => {
+              setReclusterState('idle');
+              setAiProgress(null);
+              setReclusterStartedAt(null);
+              setDiagnostic(null);
+              stopAiProgressPolling();
+              void handleReclusterNiche();
+            }}
+            onRunDiagnostic={async () => {
+              setDiagnosticRunning(true);
+              setDiagnostic(null);
+              try {
+                const r = await adminReclusterNicheDiagnostic(search.id);
+                setDiagnostic(r);
+                // Если diagnostic создал теги — сразу подтянем выдачу
+                if (r.companies_with_pains_after > 0) void refreshCompanies(filter);
+              } catch (e) {
+                const err = e as { response?: { data?: { detail?: unknown } } };
+                const detail = err?.response?.data?.detail;
+                setDiagnostic({
+                  search_id: search.id,
+                  niche: search.niche,
+                  city: search.city,
+                  companies_total: 0,
+                  reviews_with_embedding: 0,
+                  clusters_found: 0,
+                  pain_tags_upserted: 0,
+                  companies_with_pains_after: 0,
+                  error: typeof detail === 'string' ? detail : 'Не удалось выполнить diagnostic (timeout/500)',
+                });
+              } finally {
+                setDiagnosticRunning(false);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* === Сводка по нише — свёрнута: частые жалобы, динамика, сравнение === */}
+      <details
+        open={summaryOpen}
+        onToggle={(e) => setSummaryOpen((e.currentTarget as HTMLDetailsElement).open)}
+        className="group mt-5 rounded-panel border border-black/[.06] bg-ui-surface shadow-raised"
+      >
+        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-panel px-5 py-3.5 [&::-webkit-details-marker]:hidden">
+          <span className="shrink-0 text-base font-bold text-ui-text">Сводка по нише</span>
+          <span className="hidden min-w-0 truncate text-small text-ui-text-muted sm:block">
+            {regionPainTags.length > 0
+              ? `чаще всего жалуются: ${regionPainTags
+                  .filter((t) => !isUnnamedPainLabel(t.label))
+                  .slice(0, 3)
+                  .map((t) => t.label.toLowerCase())
+                  .join(', ')}`
+              : 'частые жалобы, динамика отзывов, сравнение компаний'}
+          </span>
+          <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-ui-text-muted transition-transform group-open:rotate-180" aria-hidden />
+        </summary>
+        {summaryOpen && (
+          <div className="border-t border-black/[.06] px-5 pb-5 pt-4">
             <PainHeaderControlsBar
               sourceFilter={painSourceFilter}
               onSourceFilterChange={handlePainSourceChange}
@@ -1128,24 +1275,17 @@ export function MapsSearchResults({
               sentiment={painSentiment}
               onSentimentChange={setPainSentiment}
             />
-            {/* 2026-06-17: empty-state для positive-sentiment. До запуска
-                позитивного recluster (отдельная задача) тегов в БД нет —
-                блок ТОП-БОЛИ и «Сравнение с нишей» просто исчезают.
-                Показываем дружелюбное объяснение вместо пустоты. */}
             {painSentiment === 'positive' && regionPainTags.length === 0 && (
-              <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-small text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-                <div className="font-semibold">Анализ сильных сторон ниши скоро будет</div>
-                <div className="mt-1 text-emerald-800/90 dark:text-emerald-200/80">
-                  AI кластеризует позитивные отзывы отдельно от негативных. Если кнопка ниже
-                  неактивна — кластер ещё не запущен; нажми «Запустить», и через 2-4 минуты появятся
-                  «сильные стороны» ниши: за что клиенты хвалят компании в этом городе.
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={
-                      positiveReclusterState === 'queueing' || positiveReclusterState === 'queued'
-                    }
+              <div className="mt-3 rounded-card bg-ui-surface-2 p-4 text-small text-ui-text-muted">
+                <p className="font-semibold text-ui-text">Сильные стороны ниши ещё не посчитаны</p>
+                <p className="mt-1">
+                  AI разбирает позитивные отзывы отдельно от негативных. Нажмите «Запустить» — через 2–4 минуты появятся плитки: за что
+                  клиенты хвалят компании в этом городе.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    disabled={positiveReclusterState === 'queueing' || positiveReclusterState === 'queued'}
                     onClick={async () => {
                       setPositiveReclusterState('queueing');
                       setPositiveReclusterMsg('');
@@ -1156,32 +1296,22 @@ export function MapsSearchResults({
                         setPositiveReclusterMsg(r.hint || 'Поставлено в очередь.');
                       } catch (e: any) {
                         setPositiveReclusterState('error');
-                        setPositiveReclusterMsg(
-                          e?.response?.data?.detail || e?.message || 'Не удалось поставить задачу.',
-                        );
+                        setPositiveReclusterMsg(e?.response?.data?.detail || e?.message || 'Не удалось поставить задачу.');
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {positiveReclusterState === 'queueing'
                       ? 'Ставлю в очередь…'
                       : positiveReclusterState === 'queued'
                         ? `Жду плитки · попытка ${positivePollAttempt + 1}/12`
                         : positiveReclusterState === 'done'
-                          ? 'Готово ✓'
+                          ? 'Готово'
                           : positiveReclusterState === 'timeout'
                             ? 'Запустить ещё раз'
-                            : 'Запустить кластеризацию сильных сторон'}
-                  </button>
+                            : 'Запустить'}
+                  </Button>
                   {positiveReclusterMsg && (
-                    <span
-                      className={
-                        'text-xs ' +
-                        (positiveReclusterState === 'error'
-                          ? 'text-rose-700 dark:text-rose-300'
-                          : 'text-emerald-800/80 dark:text-emerald-200/70')
-                      }
-                    >
+                    <span className={cn('text-xs', positiveReclusterState === 'error' ? 'text-ui-danger' : 'text-ui-text-muted')}>
                       {positiveReclusterMsg}
                     </span>
                   )}
@@ -1194,34 +1324,20 @@ export function MapsSearchResults({
                 niche={search.niche}
                 city={search.city}
                 activeIds={filter.pain_tag_ids ?? []}
-                onToggle={(id) => {
+                onToggle={(tagId) => {
                   const current = filter.pain_tag_ids ?? [];
-                  const next = current.includes(id)
-                    ? current.filter((x) => x !== id)
-                    : [...current, id];
-                  setFilter((prev) => ({
-                    ...prev,
-                    pain_tag_ids: next.length > 0 ? next : null,
-                  }));
-                  setFilterDirty(true);
-                  // Открываем/закрываем inline chart на том же кликe.
-                  const tag = regionPainTags.find((t) => t.id === id) ?? null;
-                  setPainTagForChart((prev) => (prev?.id === id ? null : tag));
+                  const next = current.includes(tagId) ? current.filter((x) => x !== tagId) : [...current, tagId];
+                  handleFilterChange({ ...filter, pain_tag_ids: next.length > 0 ? next : null });
+                  // Открываем/закрываем график на том же клике.
+                  const tag = regionPainTags.find((t) => t.id === tagId) ?? null;
+                  setPainTagForChart((prev) => (prev?.id === tagId ? null : tag));
                 }}
                 onClear={() => {
-                  setFilter((prev) => ({ ...prev, pain_tag_ids: null }));
-                  setFilterDirty(true);
+                  handleFilterChange({ ...filter, pain_tag_ids: null });
                   setPainTagForChart(null);
                 }}
               />
             )}
-            {/* 2026-06-21: один график вместо двух — переключается между
-                общей динамикой ниши и динамикой по выбранной боли. До
-                этого «Динамика отзывов в нише» и «Динамика по месяцам»
-                висели одна под другой и дублировали друг друга по форме.
-                Сейчас: пока боль не выбрана — общая; кликнул на pain-
-                плитку выше — тот же график переключается на её серию,
-                рядом с заголовком появляется pain-пилл и «× закрыть». */}
             <RegionPainTrendInline
               tag={painTagForChart}
               trend={painTagForChart ? painTrend : reviewsTrend}
@@ -1229,644 +1345,319 @@ export function MapsSearchResults({
               headline="Динамика отзывов в нише"
               onClose={painTagForChart ? () => setPainTagForChart(null) : undefined}
             />
-
-            {/* Сравнение с нишей — как в drawer, но без привязки к компании.
-                Показывает топ болей с долей компаний и средним на компанию.
-                Кликабельные строки — фильтрует список по pain_tag_id. */}
             <NicheBenchmarkOverviewBlock
               niche={search.niche}
               city={search.city}
               activePainTagIds={filter.pain_tag_ids ?? []}
               sentiment={painSentiment}
-              onPainClick={(id) => {
+              onPainClick={(tagId) => {
                 const current = filter.pain_tag_ids ?? [];
-                const next = current.includes(id)
-                  ? current.filter((x) => x !== id)
-                  : [...current, id];
-                setFilter((prev) => ({
-                  ...prev,
-                  pain_tag_ids: next.length > 0 ? next : null,
-                }));
-                setFilterDirty(true);
+                const next = current.includes(tagId) ? current.filter((x) => x !== tagId) : [...current, tagId];
+                handleFilterChange({ ...filter, pain_tag_ids: next.length > 0 ? next : null });
               }}
             />
-            {activeAiPreset && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50/70 px-3 py-2 text-xs dark:border-violet-700/50 dark:bg-violet-900/30">
-                <span className="inline-flex items-center gap-1 font-medium text-violet-900 dark:text-violet-200">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI-пресет «{activeAiPreset.name}»
-                </span>
-                <span className="text-violet-800/80 dark:text-violet-300">
-                  {aiDoneCount > 0 || aiPendingCount > 0
-                    ? `Готово ${aiDoneCount} · в работе ${aiPendingCount}`
-                    : !isTerminal
-                      ? 'AI-анализ запустится автоматически, как только парсер завершит сбор компаний'
-                      : aiTriggering
-                        ? 'Запускаю AI-анализ для всех видимых компаний…'
-                        : 'AI-анализ запустится автоматически. Можешь нажать кнопку справа чтобы запустить вручную.'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void handleTriggerAi()}
-                  disabled={aiTriggering || visibleCompanyIds.length === 0}
-                  className="ml-auto rounded-md bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-                >
-                  {aiTriggering ? 'Запускаю…' : `Запустить AI-анализ (${visibleCompanyIds.length})`}
-                </button>
-                {aiLastRun && (
-                  <div className="basis-full text-xs text-violet-700 dark:text-violet-300">
-                    Поставлено: {aiLastRun.queued}, из кэша: {aiLastRun.cached}
-                    {aiLastRun.over_limit > 0 && (
-                      <span className="ml-1 text-rose-700 dark:text-rose-400">
-                        · {aiLastRun.over_limit} не уехало (дневной лимит исчерпан)
-                      </span>
-                    )}
-                    {' · '}остаток лимита на сутки: {aiLastRun.limit_remaining}
-                  </div>
-                )}
-              </div>
-            )}
-            {!isTerminal &&
-              (() => {
-                // 2026-06-18: крупный прогресс-индикатор парсинга. Раньше
-                // была декоративная 1.5px полоска с animate-pulse — юзер
-                // не понимал, парсер начал или 80% уже. Теперь:
-                //   - реальный процент из stream.progress (saved/expected
-                //     либо processed/total, оба варианта прилетают с бэка)
-                //   - крупная (h-2.5) полоса на всю ширину блока
-                //   - текст «Парсинг: 192 из ~250 · 2GIS» (источник из event)
-                const p = stream.progress;
-                const saved = p?.saved ?? p?.companies_processed ?? p?.processed;
-                const expected = p?.expected ?? p?.companies_total ?? p?.total;
-                // Fallback: пока бэк не прислал прогресса — берём кол-во
-                // компаний из стрима (companies.length растёт по мере
-                // прихода event=company).
-                const fallbackSaved =
-                  typeof saved === 'number' && saved > 0 ? saved : stream.companies.length;
-                const pct =
-                  typeof expected === 'number' && expected > 0
-                    ? Math.min(100, Math.round((fallbackSaved / expected) * 100))
-                    : null;
-                return (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
-                      <span className="font-medium text-slate-700 dark:text-slate-200">
-                        Парсер собирает компании
-                        {p?.source && (
-                          <span className="ml-1 text-slate-500 dark:text-slate-400">
-                            · {p.source}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-slate-600 dark:text-slate-300">
-                        {pct != null ? (
-                          <>
-                            {fallbackSaved} из ~{expected} ·{' '}
-                            <span className="font-semibold">{pct}%</span>
-                          </>
-                        ) : fallbackSaved > 0 ? (
-                          <>Уже найдено {fallbackSaved}</>
-                        ) : (
-                          // 2026-06-18: первые секунды парсинга — companies=0
-                          // и progress ещё не пришёл. Раньше юзер видел «Уже
-                          // найдено 0» и считал что парсер сломан. Теперь
-                          // явная подсказка что идёт инициализация.
-                          <>Запускаю парсер, ждём первых ответов источника…</>
-                        )}
-                      </span>
-                    </div>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                      {pct != null ? (
-                        <div
-                          className="h-full bg-brand-gradient transition-all duration-500"
-                          style={{ width: `${Math.max(2, pct)}%` }}
-                        />
-                      ) : (
-                        <div className="h-full w-1/3 animate-pulse bg-brand-gradient" />
-                      )}
-                    </div>
-                    {stream.reconnectAttempt > 0 && !stream.error && (
-                      <div className="text-xs text-amber-700 dark:text-amber-400">
-                        Связь временно прервана, переподключаюсь… (попытка {stream.reconnectAttempt}
-                        ). Парсер продолжает работу в фоне.
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
           </div>
-          {/* Toolbar шапки. При пустой выдаче (нет multi-source segment,
-              view-toggle, export-меню, recluster-кнопки) внутри остаётся
-              только «Новый поиск» — без ml-auto она липнет к заголовку,
-              без огромного gap'а до правого края. При наличии выдачи
-              lg:ml-auto работает как старый justify-between. */}
-          <div
-            className={cn(
-              'flex flex-wrap items-center gap-2',
-              !(isTerminal && renderTotal === 0) && 'lg:ml-auto',
-            )}
-          >
-            {/* §4.1 редизайн: мобильная кнопка «Фильтры» открывает BottomSheet.
-                На lg+ панель уже видна слева, поэтому кнопка скрыта. */}
-            <button
-              type="button"
-              onClick={() => setMobileFiltersOpen(true)}
-              className="lg:hidden inline-flex min-h-[44px] items-center gap-1.5 rounded-v2-sm border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-1.5 text-small font-medium text-[hsl(var(--text))] hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400"
-            >
-              <Sliders className="h-4 w-4" />
-              Фильтры
-            </button>
-            {/* Multi-source сегмент-переключатель «Все · 2GIS · Я.Карты»
-                (ТЗ 2026-06-04). Прячем когда оба источника пустые (ни одной
-                yandex_maps компании в выдаче — переключатель не нужен).
-                Счётчики берём из source_counts (полная выборка поиска). */}
-            {renderTotal > 0 &&
-              sourceCounts &&
-              sourceCounts.yandex_maps > 0 &&
-              sourceCounts.twogis > 0 && (
-                <div
-                  className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600"
-                  title={`Найдено: всего ${sourceCounts.total} · 2GIS ${sourceCounts.twogis} · Я.Карты ${sourceCounts.yandex_maps} · в обоих ${sourceCounts.both}`}
-                >
-                  {(
-                    [
-                      { id: 'all', label: 'Все', count: sourceCounts.total },
-                      { id: '2gis', label: '2GIS', count: sourceCounts.twogis },
-                      { id: 'yandex_maps', label: 'Я.Карты', count: sourceCounts.yandex_maps },
-                    ] as const
-                  ).map((opt, idx) => {
-                    const active = (filter.source_filter ?? 'all') === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleFilterChange({ ...filter, source_filter: opt.id })}
-                        aria-pressed={active}
-                        className={
-                          'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium ' +
-                          (idx > 0 ? 'border-l border-slate-300 dark:border-slate-600 ' : '') +
-                          (active
-                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                            : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
-                        }
-                      >
-                        {opt.label}
-                        <span className={active ? 'opacity-80' : 'opacity-60'}>{opt.count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+        )}
+      </details>
 
-            {/* View toggle: список vs карта. Прячем пока не подгружены
-                компании — нечего показывать на карте. */}
-            {renderTotal > 0 && (
-              <div className="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  aria-pressed={viewMode === 'list'}
-                  className={
-                    'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium ' +
-                    (viewMode === 'list'
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
-                  }
-                >
-                  <List className="h-3.5 w-3.5" /> Список
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('map')}
-                  aria-pressed={viewMode === 'map'}
-                  className={
-                    'inline-flex items-center gap-1 border-l border-slate-300 px-2.5 py-1.5 text-xs font-medium dark:border-slate-600 ' +
-                    (viewMode === 'map'
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700')
-                  }
-                >
-                  <MapIcon className="h-3.5 w-3.5" /> Карта
-                </button>
-              </div>
-            )}
-            {isTerminal && companies.length > 0 && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setExportMenuOpen((v) => !v)}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                  aria-haspopup="menu"
-                  aria-expanded={exportMenuOpen}
-                >
-                  📥 Экспорт ▾
-                </button>
-                {exportMenuOpen && (
-                  <>
-                    {/* Невидимый overlay для закрытия по клику вне меню. */}
-                    <div
-                      className="fixed inset-0 z-30"
-                      onClick={() => setExportMenuOpen(false)}
-                      aria-hidden
-                    />
-                    <div
-                      role="menu"
-                      className="absolute right-0 z-40 mt-1 w-72 rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setExportMenuOpen(false);
-                          handleExport();
-                        }}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200"
-                      >
-                        <div className="font-medium">CSV — все компании</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          с учётом текущих фильтров слева
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={selectedIds.size === 0}
-                        onClick={() => {
-                          setExportMenuOpen(false);
-                          handleExportSelected();
-                        }}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-700 dark:text-slate-200"
-                      >
-                        <div className="font-medium">
-                          CSV — выбранные{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          {selectedIds.size === 0
-                            ? 'отметь карточки чекбоксами слева'
-                            : 'только отмеченные карточки'}
-                        </div>
-                      </button>
-                      <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setExportMenuOpen(false);
-                          handleExportWebsiteLeadsXlsx();
-                        }}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200"
-                      >
-                        <div className="font-medium">💼 Excel — лиды на сайт</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          XLSX с двумя вкладками: «Лиды» + «Производство сайта». Только компании без
-                          собственного сайта.
-                        </div>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            {/* Recluster — показываем когда выдача завершена, есть компании,
-                и хотя бы у одной нет top_pains. Если у всех уже разобрано,
-                кнопка не нужна. В состоянии queued вместо неинформативной
-                кнопки рисуем мини-плашку с прогресс-баром — она ниже. */}
-            {isTerminal &&
-              companies.length > 0 &&
-              companies.some((c) => !c.top_pains || c.top_pains.length === 0) &&
-              reclusterState !== 'queued' && (
-                <button
-                  type="button"
-                  onClick={() => void handleReclusterNiche()}
-                  disabled={reclusterState === 'queueing'}
-                  title={
-                    reclusterMsg || 'AI разберёт отзывы и присвоит pain-теги. Занимает 3-5 минут.'
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-violet-600 dark:bg-violet-900/40 dark:text-violet-100 dark:hover:bg-violet-900/70"
-                >
-                  <Brain className="h-4 w-4" />
-                  {reclusterState === 'queueing'
-                    ? 'Ставлю в очередь…'
-                    : reclusterState === 'error'
-                      ? '⚠ Не удалось — повторить'
-                      : 'Разобрать боли AI'}
-                </button>
-              )}
-            <button
-              onClick={onNewSearch}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              Новый поиск
-            </button>
+      {/* === Фильтры слева, компании справа === */}
+      <div className="mt-6 grid grid-cols-1 gap-7 lg:grid-cols-[272px_minmax(0,1fr)]">
+        <div className="hidden lg:block">
+          <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pb-4 pr-1 [scrollbar-width:thin]">
+            {filtersPanel(false)}
           </div>
         </div>
 
-        {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
-          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-3 py-2 text-sm text-[color:var(--signal-warm)]">
-            <div className="font-medium">Live-обновление приостановлено</div>
-            <div className="mt-0.5 text-xs opacity-90">
-              Сервер закрыл long-poll после 3 попыток переподключения. Парсер продолжает работу в
-              фоне — нажми «Обновить страницу» когда статус станет «готово» в шапке, либо подожди ~2
-              минуты и обнови сам.
-            </div>
+        <BottomSheet open={mobileFiltersOpen} onClose={() => setMobileFiltersOpen(false)} title="Фильтры" maxHeight="92vh">
+          {filtersPanel(true)}
+          <div className="sticky bottom-0 -mx-4 mt-3 border-t border-ui-border bg-ui-surface px-4 py-3">
+            <Button onClick={() => setMobileFiltersOpen(false)} className="w-full">
+              Показать компании
+            </Button>
           </div>
-        )}
+        </BottomSheet>
 
-        {search.status === 'failed' && isSoftEmptyError(search.error) && (
-          <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
-            <div className="font-medium">Ничего не нашлось</div>
-            <div className="mt-1 opacity-90">
-              По этому запросу 2GIS ничего не вернул. Попробуй переформулировать нишу или сменить
-              город.
-            </div>
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={onNewSearch}
-                className="inline-flex items-center gap-1 rounded-md bg-[color:var(--signal-warm)] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+        <section ref={listTopRef} aria-label="Компании" className="min-w-0 scroll-mt-20">
+          <div className="mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-2.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMobileFiltersOpen(true)}
+              iconLeft={<SlidersHorizontal />}
+              className="lg:hidden"
+            >
+              Фильтры{tokens.length > 0 ? ` · ${tokens.length}` : ''}
+            </Button>
+            {renderTotal > 0 && (
+              <Segmented
+                size="sm"
+                aria-label="Вид выдачи"
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  {
+                    value: 'list',
+                    label: (
+                      <>
+                        <List className="h-3.5 w-3.5" aria-hidden /> Список
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'map',
+                    label: (
+                      <>
+                        <MapIcon className="h-3.5 w-3.5" aria-hidden /> Карта
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            )}
+            {renderTotal > 0 && (
+              <span className="text-small text-ui-text-muted">
+                <b className="font-semibold tabular-nums text-ui-text">
+                  {rangeFrom}–{rangeTo}
+                </b>{' '}
+                из <b className="font-semibold tabular-nums text-ui-text">{shownTotal}</b>
+              </span>
+            )}
+            {renderList.length > 0 && viewMode === 'list' && (
+              <label className="inline-flex cursor-pointer items-center gap-2 text-small text-ui-text-muted hover:text-ui-text">
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={toggleAllOnPage}
+                  className="h-4 w-4 cursor-pointer accent-[hsl(var(--color-accent))]"
+                />
+                все на странице
+              </label>
+            )}
+            <div className="flex items-center gap-2 text-small text-ui-text-muted sm:ml-auto">
+              <label htmlFor="results-sort">Сорт.</label>
+              <Select
+                id="results-sort"
+                value={filter.sort_by ?? 'rating_desc'}
+                onChange={(e) => handleFilterChange({ ...filter, sort_by: e.target.value as SortBy })}
+                className="min-w-[210px]"
               >
-                Новый поиск
-              </button>
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+                {activeAiPreset != null && (
+                  <>
+                    <option value="ai_score_desc">AI-оценка: высокие сверху</option>
+                    <option value="ai_score_asc">AI-оценка: низкие сверху</option>
+                  </>
+                )}
+              </Select>
             </div>
           </div>
-        )}
 
-        {search.status === 'failed' && !isSoftEmptyError(search.error) && (
-          <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-4 py-3 text-sm text-[color:var(--signal-hot)]">
-            <div className="font-medium">Поиск завершился ошибкой</div>
-            <div className="mt-1 opacity-90">
+          {unparsedCount > 0 && reclusterState !== 'queued' && (
+            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card bg-ui-surface-2 px-4 py-2.5 text-small text-ui-text-muted">
+              <Brain className="h-4 w-4 shrink-0 text-ui-accent" aria-hidden />
+              <span className="min-w-0 flex-1">
+                {reclusterState === 'error' ? (
+                  <span className="text-ui-danger">{reclusterMsg || 'Не удалось поставить разбор в очередь.'}</span>
+                ) : (
+                  <>
+                    У {unparsedCount} {plural(unparsedCount, 'компании', 'компаний', 'компаний')} на странице боли ещё не разобраны — AI
+                    прочитает отзывы за 3–5 минут.
+                  </>
+                )}
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void handleReclusterNiche()}
+                disabled={reclusterState === 'queueing'}
+                className="bg-ui-surface shadow-raised hover:bg-ui-surface"
+              >
+                {reclusterState === 'queueing' ? 'Ставлю в очередь…' : reclusterState === 'error' ? 'Повторить' : 'Разобрать боли AI'}
+              </Button>
+            </div>
+          )}
+
+          {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
+            <Notice tone="warning" title="Живое обновление приостановлено">
+              Сервер закрыл соединение после 3 попыток. Парсер продолжает работу в фоне — обновите страницу через пару минут.
+            </Notice>
+          )}
+
+          {search.status === 'failed' && isSoftEmptyError(search.error) && (
+            <Notice tone="warning" title="Ничего не нашлось" action={<Button size="sm" variant="secondary" onClick={onNewSearch}>Новый поиск</Button>}>
+              По этому запросу 2GIS ничего не вернул. Переформулируйте нишу или смените город.
+            </Notice>
+          )}
+
+          {search.status === 'failed' && !isSoftEmptyError(search.error) && (
+            <Notice tone="danger" title="Поиск завершился ошибкой">
               {search.error_type === 'ConnectTimeout' ? (
-                <>
-                  2GIS API не отвечает с этой машины (TLS-таймаут). Чаще всего это сеть провайдера
-                  или SNI-фильтрация 2GIS — после деплоя на сервер с РФ-IP должно заработать.
-                </>
+                '2GIS API не отвечает (TLS-таймаут). Чаще всего это сеть провайдера — попробуйте позже.'
               ) : search.error_type === 'MissingAPIKeyError' ? (
                 <>
-                  Ключ провайдера карт не настроен или невалиден. Проверьте и обновите ключи в{' '}
-                  <a href="/app/settings/maps-providers" className="underline">
-                    Настройках провайдеров карт
+                  Ключ провайдера карт не настроен или неверный. Проверьте ключи в{' '}
+                  <a href="/app/settings/maps-providers" className="font-semibold underline">
+                    настройках провайдеров карт
                   </a>
                   .
                 </>
               ) : search.error_type === 'ProviderUnavailable' ? (
-                <>
-                  {search.error ||
-                    'Источник временно недоступен (капча или лимит запросов). Попробуйте позже или смените источник.'}
-                </>
+                search.error || 'Источник временно недоступен (капча или лимит запросов). Попробуйте позже или смените источник.'
               ) : (
-                <>
-                  {search.error ||
-                    `${search.error_type ?? 'Неизвестная ошибка'}. Подробности в логах celery-worker.`}
-                </>
+                search.error || `${search.error_type ?? 'Неизвестная ошибка'}.`
               )}
-            </div>
-          </div>
-        )}
+            </Notice>
+          )}
 
-        {search.status === 'completed' &&
-          (search.error_type === 'MissingAPIKeyError' ||
-            search.error_type === 'ProviderUnavailable') &&
-          renderTotal === 0 && (
-            <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-4 py-3 text-sm text-[color:var(--signal-hot)]">
-              <div className="font-medium">
-                {search.error_type === 'MissingAPIKeyError'
-                  ? 'Ключ провайдера карт не настроен'
-                  : 'Источник временно недоступен'}
-              </div>
-              <div className="mt-1 opacity-90">
+          {search.status === 'completed' &&
+            (search.error_type === 'MissingAPIKeyError' || search.error_type === 'ProviderUnavailable') &&
+            renderTotal === 0 && (
+              <Notice
+                tone="danger"
+                title={search.error_type === 'MissingAPIKeyError' ? 'Ключ провайдера карт не настроен' : 'Источник временно недоступен'}
+              >
                 {search.error_type === 'MissingAPIKeyError' ? (
                   <>
-                    Ключ провайдера карт отсутствует или невалиден — поэтому парсинг не выполнен.
-                    Обновите ключи в{' '}
-                    <a href="/app/settings/maps-providers" className="underline">
-                      Настройках провайдеров карт
+                    Поэтому сбор не выполнен. Обновите ключи в{' '}
+                    <a href="/app/settings/maps-providers" className="font-semibold underline">
+                      настройках провайдеров карт
                     </a>
                     .
                   </>
                 ) : (
-                  search.error ||
-                  'Провайдер встал в капчу или превысил лимит запросов. Попробуйте позже или смените источник.'
+                  search.error || 'Провайдер встал в капчу или превысил лимит запросов. Попробуйте позже или смените источник.'
                 )}
-              </div>
-            </div>
-          )}
+              </Notice>
+            )}
 
-        {search.status === 'completed' &&
-          search.error_type === 'EmptyResult' &&
-          renderTotal === 0 && (
-            <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
-              <div className="font-medium">Ничего не нашлось</div>
-              <div className="mt-1 opacity-90">{search.error}</div>
-              {reviewsTrend &&
-                reviewsTrend.companies_affected > 0 &&
-                (() => {
-                  const n = reviewsTrend.companies_affected;
-                  const mod10 = n % 10;
-                  const mod100 = n % 100;
-                  const word =
-                    mod100 >= 11 && mod100 <= 14
-                      ? 'компаний'
-                      : mod10 === 1
-                        ? 'компания'
-                        : mod10 >= 2 && mod10 <= 4
-                          ? 'компании'
-                          : 'компаний';
-                  return (
-                    <div className="mt-2 text-xs opacity-80">
-                      В БД уже собрано {n} {word} этой ниши от прошлых поисков — блоки «Динамика
-                      отзывов» и «Сравнение с нишей» ниже считаются по ним.
-                    </div>
-                  );
-                })()}
-              <button
-                type="button"
-                onClick={onNewSearch}
-                className="mt-3 inline-flex items-center rounded-md bg-[color:var(--signal-warm)] px-3 py-1.5 text-small font-medium text-white hover:opacity-90"
-              >
-                Новый поиск
-              </button>
-            </div>
-          )}
-
-        {isLoading && renderList.length === 0 && search.status !== 'failed' && (
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
-            {isTerminal
-              ? 'Загружаем компании по выбранным фильтрам…'
-              : 'Парсер ищет компании. Карточки появятся по мере готовности.'}
-          </div>
-        )}
-
-        {!isLoading &&
-          companiesEverLoaded &&
-          renderList.length === 0 &&
-          search.status !== 'failed' &&
-          search.error_type !== 'EmptyResult' && (
-            <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-3 text-sm text-[color:var(--signal-warm)]">
-              <div className="font-medium">Под выбранные фильтры — 0 компаний.</div>
-              <div className="mt-1 opacity-90">
-                Ослабь критерии в панели слева (например, убери минимум рейтинга или отключи «Только
-                с сайтом») или сбрось пресет.
-              </div>
-            </div>
-          )}
-
-        {renderList.length > 0 && viewMode === 'list' && (
-          <>
-            {/* Bulk-toolbar — появляется когда выбрана хотя бы одна компания.
-                «Выбрать все на странице» работает всегда (отметить весь
-                renderList разом, удобно для пакетной отгрузки). */}
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  const visibleIds = renderList
-                    .map((c: any) => (c.id ?? c.company_id) as number | undefined)
-                    .filter((x): x is number => typeof x === 'number');
-                  const allSelected = visibleIds.every((id) => selectedIds.has(id));
-                  setSelectedIds((prev) => {
-                    const next = new Set(prev);
-                    if (allSelected) {
-                      visibleIds.forEach((id) => next.delete(id));
-                    } else {
-                      visibleIds.forEach((id) => next.add(id));
-                    }
-                    return next;
-                  });
-                }}
-                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                {(() => {
-                  const visibleIds = renderList
-                    .map((c: any) => (c.id ?? c.company_id) as number | undefined)
-                    .filter((x): x is number => typeof x === 'number');
-                  const allSelected =
-                    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
-                  return allSelected ? 'Снять выбор со всех' : 'Выбрать все на странице';
-                })()}
-              </button>
-              {selectedIds.size > 0 && (
-                <>
-                  <span className="font-medium text-slate-700 dark:text-slate-200">
-                    Выбрано: {selectedIds.size}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setBulkAddOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-gradient px-2.5 py-1 font-medium text-white shadow-v2-sm hover:shadow-v2-hover"
-                  >
-                    Добавить выбранные в список
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Snapshot id'ов кладём в localStorage под одноразовым
-                      // ref-ключом — sessionStorage у новой вкладки свой,
-                      // а URL-параметр может не вместить 500 id'ов.
-                      const ref = storeBulkKpPending(Array.from(selectedIds));
-                      window.open(`/app/leads/kp-jobs/new?ref=${ref}`, '_blank', 'noopener');
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 font-medium text-violet-700 hover:border-violet-400 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/40"
-                    title="Откроется новая вкладка: выбор шаблона/тона → старт. Партия попадёт в Историю → КП → Партии."
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Сформировать КП
-                  </button>
-                  <button
-                    type="button"
-                    disabled={lprBulkBusy}
-                    onClick={async () => {
-                      const ids = Array.from(selectedIds);
-                      setLprBulkBusy(true);
-                      setLprBulkMsg(null);
-                      try {
-                        const r = await enrichCompaniesTeam(search.id, ids);
-                        // 2026-06-12: формулировки переписаны под живой
-                        // язык юзера — «N карточек получат ЛПР через ~2 мин»,
-                        // вместо технического «N в очереди».
-                        const parts: string[] = [];
-                        if (r.queued > 0) {
-                          parts.push(
-                            `Ищу директора на ${r.queued} сайт${r.queued === 1 ? 'е' : 'ах'} — пиллы «ЛПР есть» обновятся через ~2 мин`,
-                          );
-                        }
-                        if (r.skipped_already_has_lpr > 0) {
-                          parts.push(`${r.skipped_already_has_lpr} уже с ЛПР`);
-                        }
-                        if (r.skipped_no_website > 0) {
-                          parts.push(`${r.skipped_no_website} без сайта (искать негде)`);
-                        }
-                        setLprBulkMsg(
-                          parts.join(' · ') || 'У всех выбранных компаний ЛПР уже найден.',
-                        );
-                        // Через ~2 минуты ЛПР должны появиться в БД — перезагружаем список.
-                        setTimeout(() => void refreshCompanies(filter), 90_000);
-                      } catch (e: any) {
-                        setLprBulkMsg(e?.message ?? 'Ошибка при запуске обогащения ЛПР');
-                      } finally {
-                        setLprBulkBusy(false);
-                      }
-                    }}
-                    title="Запустить фоновый парсер сайтов выбранных компаний — ищем страницы /team /о-нас /контакты и тянем оттуда ФИО директора. Через ~2 минуты карточки получают зелёный пилл «ЛПР есть»."
-                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                  >
-                    {lprBulkBusy ? 'Ставлю в очередь…' : 'Найти ЛПР на сайтах'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearSelection}
-                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    Очистить
-                  </button>
-                  {lprBulkMsg && (
-                    <span className="text-xs text-slate-600 dark:text-slate-300" role="status">
-                      {lprBulkMsg}
-                    </span>
-                  )}
-                </>
+          {search.status === 'completed' && search.error_type === 'EmptyResult' && renderTotal === 0 && (
+            <Notice tone="warning" title="Ничего не нашлось" action={<Button size="sm" variant="secondary" onClick={onNewSearch}>Новый поиск</Button>}>
+              {search.error}
+              {reviewsTrend && reviewsTrend.companies_affected > 0 && (
+                <span className="mt-1 block">
+                  В базе уже есть {reviewsTrend.companies_affected}{' '}
+                  {plural(reviewsTrend.companies_affected, 'компания', 'компании', 'компаний')} этой ниши из прошлых поисков — по ним
+                  считается «Сводка по нише».
+                </span>
               )}
-            </div>
-            <ul className="reveal-stack space-y-2.5">
+            </Notice>
+          )}
+
+          {isLoading && renderList.length === 0 && search.status !== 'failed' && (
+            <p className="rounded-card bg-ui-surface-2 px-4 py-6 text-center text-small text-ui-text-muted">
+              {isTerminal ? 'Загружаю компании по фильтрам…' : 'Парсер ищет компании — карточки появятся по мере готовности.'}
+            </p>
+          )}
+
+          {!isLoading && companiesEverLoaded && renderList.length === 0 && search.status !== 'failed' && search.error_type !== 'EmptyResult' && (
+            <Notice
+              tone="warning"
+              title="Под фильтры не попала ни одна компания"
+              action={
+                tokens.length > 0 ? (
+                  <Button size="sm" variant="secondary" onClick={resetAllFilters}>
+                    Сбросить фильтры
+                  </Button>
+                ) : undefined
+              }
+            >
+              Ослабьте условия — например, уберите минимум рейтинга или «Только с сайтом».
+            </Notice>
+          )}
+
+          {renderList.length > 0 && viewMode === 'list' && (
+            <ul className="flex flex-col gap-3.5">
               {renderList.map((c: any, idx: number) => {
-                const id = c.id ?? c.company_id;
-                const aiAnalysis = id != null ? (aiAnalyses.get(id) ?? null) : null;
-                // fallback-key чтобы React не столкнулся с undefined у нескольких
-                // карточек (SSE-компания без сохранённого id) — редко, но возможно
+                const cid = c.id ?? c.company_id;
                 return (
                   <MapsCompanyCard
-                    key={id ?? `pos-${idx}-${c.name ?? ''}`}
+                    // fallback-ключ: у SSE-компании без сохранённого id его может не быть
+                    key={cid ?? `pos-${idx}-${c.name ?? ''}`}
                     company={c}
-                    onClick={id != null ? () => setDrawerCompanyId(id) : undefined}
-                    onAddToList={id != null ? onAddToList : undefined}
-                    onDraftEmail={id != null ? onDraftEmail : undefined}
+                    onClick={cid != null ? () => setDrawerCompanyId(cid) : undefined}
+                    onAddToList={cid != null ? onAddToList : undefined}
+                    onDraftEmail={cid != null ? onDraftEmail : undefined}
                     draftEmailLoading={false}
-                    aiAnalysis={aiAnalysis}
-                    selected={typeof id === 'number' && selectedIds.has(id)}
-                    onToggleSelect={typeof id === 'number' ? toggleSelect : undefined}
+                    aiAnalysis={cid != null ? (aiAnalyses.get(cid) ?? null) : null}
+                    selected={typeof cid === 'number' && selectedIds.has(cid)}
+                    onToggleSelect={typeof cid === 'number' ? toggleSelect : undefined}
                     activeSource={filter.source_filter ?? null}
                   />
                 );
               })}
             </ul>
-          </>
-        )}
+          )}
 
-        {renderList.length > 0 && viewMode === 'map' && (
-          <MapsCompaniesMap
-            companies={renderList as CompanyOut[]}
-            aiAnalyses={aiAnalyses}
-            onOpenCompany={(id) => setDrawerCompanyId(id)}
-            searchId={search.id}
-            activeSource={filter.source_filter ?? 'all'}
-          />
-        )}
+          {renderList.length > 0 && viewMode === 'map' && (
+            <MapsCompaniesMap
+              companies={renderList as CompanyOut[]}
+              aiAnalyses={aiAnalyses}
+              onOpenCompany={(cid) => setDrawerCompanyId(cid)}
+              searchId={search.id}
+              activeSource={filter.source_filter ?? 'all'}
+            />
+          )}
+
+          {renderList.length > 0 && isTerminal && tokens.length > 0 && typeof search.companies_found === 'number' && shownTotal < search.companies_found && (
+            <p className="pt-5 text-center text-small text-ui-text-muted">
+              Под фильтры попали {shownTotal} из {search.companies_found} компаний ·{' '}
+              <button type="button" onClick={resetAllFilters} className="font-semibold text-ui-accent hover:underline">
+                показать всех
+              </button>
+            </p>
+          )}
+
+          {shownTotal > PAGE_SIZE && renderList.length > 0 && (
+            <nav aria-label="Страницы выдачи" className="flex items-center justify-center gap-4 pt-5 text-small text-ui-text-muted">
+              <Button variant="secondary" onClick={() => goToPage(page - 1)} disabled={page === 0 || isLoading}>
+                ← Назад
+              </Button>
+              <span>
+                <b className="font-semibold tabular-nums text-ui-text">
+                  {rangeFrom}–{rangeTo}
+                </b>{' '}
+                из <b className="font-semibold tabular-nums text-ui-text">{shownTotal}</b>
+              </span>
+              <Button variant="secondary" onClick={() => goToPage(page + 1)} disabled={rangeTo >= shownTotal || isLoading}>
+                Дальше →
+              </Button>
+            </nav>
+          )}
+        </section>
       </div>
 
-      <MapsCompanyDetailDrawer
-        companyId={drawerCompanyId}
-        searchId={search.id}
-        onClose={() => setDrawerCompanyId(null)}
-      />
+      {/* === Плавающая панель действий с выбранными === */}
+      {selectedIds.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Действия с выбранными компаниями"
+          className="fixed bottom-20 left-1/2 z-40 flex max-w-[calc(100vw-24px)] -translate-x-1/2 flex-wrap items-center gap-0.5 rounded-full bg-ui-text/95 py-1.5 pl-5 pr-1.5 text-ui-surface-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.4)] backdrop-blur-md md:bottom-6"
+        >
+          <span className="mr-1.5 whitespace-nowrap border-r border-white/15 pr-3.5 text-small font-semibold">
+            Выбрано <span className="tabular-nums text-brand-300">{selectedIds.size}</span>
+          </span>
+          <BulkButton onClick={() => setBulkAddOpen(true)}>В список</BulkButton>
+          <BulkButton onClick={handleBulkKp}>КП</BulkButton>
+          <BulkButton onClick={() => void handleBulkLpr()} disabled={lprBulkBusy} title="Ищем руководителя на страницах сайтов выбранных компаний — ~2 минуты">
+            {lprBulkBusy ? 'Ставлю…' : 'Найти ЛПР'}
+          </BulkButton>
+          <BulkButton onClick={handleExportSelected}>Экспорт</BulkButton>
+          <button
+            type="button"
+            onClick={clearSelection}
+            aria-label="Снять выбор"
+            className="grid h-8 w-8 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      )}
+
+      <MapsCompanyDetailDrawer companyId={drawerCompanyId} searchId={search.id} onClose={() => setDrawerCompanyId(null)} />
 
       <AddToListModal
         open={addToListCompanyId != null}
@@ -1875,15 +1666,14 @@ export function MapsSearchResults({
         onClose={() => setAddToListCompanyId(null)}
       />
 
-      {/* Bulk-добавление: тот же AddToListModal, но c массивом из чекбоксов. */}
+      {/* Массовое добавление: тот же AddToListModal, но с отмеченными компаниями. */}
       <AddToListModal
         open={bulkAddOpen}
         companyIds={Array.from(selectedIds)}
         defaultListName={`${search.niche} — ${search.city}`}
         onClose={() => setBulkAddOpen(false)}
         onDone={() => {
-          // После добавления — закрываем модал и снимаем выбор, чтобы
-          // юзер не отгрузил тех же лидов случайно второй раз.
+          // Снимаем выбор, чтобы тех же лидов случайно не отгрузили второй раз.
           setBulkAddOpen(false);
           clearSelection();
         }}
@@ -1899,6 +1689,152 @@ export function MapsSearchResults({
         }}
       />
     </div>
+  );
+}
+
+/* ===== Части страницы результатов ===== */
+
+const PAGE_SIZE = 50;
+
+const EMPTY_FILTER: MapSearchFilter = {
+  min_rating: null,
+  max_rating: null,
+  min_reviews: null,
+  min_negative: null,
+  has_owner_replies: null,
+  has_website: null,
+  has_lpr: null,
+  pain_tag_ids: null,
+  review_text_contains: null,
+  review_text_excludes: null,
+  review_text_contains_any: null,
+  review_text_excludes_any: null,
+  min_revenue: null,
+  min_age_years: null,
+  opf_in: null,
+  source_filter: 'all',
+  hiring_marketing: null,
+};
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: 'rating_desc', label: 'Рейтинг: лучшие сверху' },
+  { value: 'rating_asc', label: 'Рейтинг: худшие сверху' },
+  { value: 'negative_desc', label: 'Больше негатива' },
+  { value: 'pain_desc', label: 'Больше упоминаний болей' },
+  { value: 'reviews_desc', label: 'Больше отзывов' },
+  { value: 'temperature_desc', label: 'Горячие лиды сверху' },
+  { value: 'website_score_desc', label: 'Нужен сайт — сверху' },
+];
+
+const SOURCE_NAME: Record<string, string> = { '2gis': '2GIS', yandex_maps: 'Яндекс.Карты', google_maps: 'Google Maps', google: 'Google Maps' };
+
+function sourceNames(raw: string | null | undefined): string {
+  if (!raw) return '';
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => SOURCE_NAME[s] ?? s)
+    .join(' + ');
+}
+
+function capitalize(s: string): string {
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
+/** Активные фильтры — токенами над выдачей; patch снимает фильтр. */
+function filterTokens(f: MapSearchFilter, painTags: PainTagOut[]): { id: string; label: string; patch: Partial<MapSearchFilter> }[] {
+  const out: { id: string; label: string; patch: Partial<MapSearchFilter> }[] = [];
+  const yesNo = (v: boolean | null | undefined, yes: string, no: string) => (v === true ? yes : v === false ? no : null);
+  if (f.min_rating != null && f.max_rating != null)
+    out.push({ id: 'rating', label: `Рейтинг ${f.min_rating}–${f.max_rating}`, patch: { min_rating: null, max_rating: null } });
+  else if (f.min_rating != null) out.push({ id: 'rating', label: `Рейтинг от ${f.min_rating}`, patch: { min_rating: null } });
+  else if (f.max_rating != null) out.push({ id: 'rating', label: `Рейтинг до ${f.max_rating}`, patch: { max_rating: null } });
+  if (f.min_reviews != null) out.push({ id: 'reviews', label: `Отзывов от ${f.min_reviews}`, patch: { min_reviews: null } });
+  if (f.min_negative != null) out.push({ id: 'negative', label: `Негативных от ${f.min_negative}`, patch: { min_negative: null } });
+  const replies = yesNo(f.has_owner_replies, 'Владелец отвечает', 'Владелец не отвечает');
+  if (replies) out.push({ id: 'replies', label: replies, patch: { has_owner_replies: null } });
+  const site = yesNo(f.has_website, 'Только с сайтом', 'Только без сайта');
+  if (site) out.push({ id: 'site', label: site, patch: { has_website: null } });
+  const lpr = yesNo(f.has_lpr, 'Есть ЛПР', 'Без ЛПР');
+  if (lpr) out.push({ id: 'lpr', label: lpr, patch: { has_lpr: null } });
+  const hiring = yesNo(f.hiring_marketing, 'Ищут маркетолога', 'Не ищут маркетолога');
+  if (hiring) out.push({ id: 'hiring', label: hiring, patch: { hiring_marketing: null } });
+  if (f.opf_in?.length)
+    out.push({ id: 'opf', label: `Юр. лицо: ${f.opf_in.map((v) => (v === '__unknown__' ? 'нет данных' : v)).join(', ')}`, patch: { opf_in: null } });
+  const contains = [f.review_text_contains, ...(f.review_text_contains_any ?? [])].filter(Boolean);
+  if (contains.length)
+    out.push({ id: 'contains', label: `В отзывах: «${contains.join('», «')}»`, patch: { review_text_contains: null, review_text_contains_any: null } });
+  const excludes = [f.review_text_excludes, ...(f.review_text_excludes_any ?? [])].filter(Boolean);
+  if (excludes.length)
+    out.push({ id: 'excludes', label: `Без слов: «${excludes.join('», «')}»`, patch: { review_text_excludes: null, review_text_excludes_any: null } });
+  for (const tagId of f.pain_tag_ids ?? []) {
+    const tag = painTags.find((t) => t.id === tagId);
+    const rest = (f.pain_tag_ids ?? []).filter((x) => x !== tagId);
+    out.push({ id: `pain-${tagId}`, label: `Боль: «${tag?.label ?? `#${tagId}`}»`, patch: { pain_tag_ids: rest.length ? rest : null } });
+  }
+  if (f.source_filter && f.source_filter !== 'all')
+    out.push({ id: 'source', label: `Только ${SOURCE_NAME[f.source_filter] ?? f.source_filter}`, patch: { source_filter: 'all' } });
+  return out;
+}
+
+function Notice({
+  tone,
+  title,
+  children,
+  action,
+}: {
+  tone: 'warning' | 'danger';
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div
+      role={tone === 'danger' ? 'alert' : 'status'}
+      className={cn('mb-4 flex flex-wrap items-start gap-3 rounded-card px-4 py-3 text-small', tone === 'danger' ? 'bg-ui-danger/[.07]' : 'bg-ui-warning/[.08]')}
+    >
+      <div className="min-w-0 flex-1">
+        <p className={cn('font-semibold', tone === 'danger' ? 'text-ui-danger' : 'text-ui-warning')}>{title}</p>
+        <div className="mt-0.5 text-ui-text-muted">{children}</div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function ExportItem({ title, hint, onClick, disabled }: { title: string; hint: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      disabled={disabled}
+      className="block w-full rounded-control px-3 py-2 text-left hover:bg-ui-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <span className="block text-sm font-semibold text-ui-text">{title}</span>
+      <span className="block text-xs text-ui-text-muted">{hint}</span>
+    </button>
+  );
+}
+
+function BulkButton({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      {...rest}
+      className="whitespace-nowrap rounded-full px-3 py-2 text-small font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-wait disabled:opacity-60"
+    >
+      {children}
+    </button>
   );
 }
 

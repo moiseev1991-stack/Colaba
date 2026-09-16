@@ -169,22 +169,25 @@ export default function LeadListDetailPage() {
           и добавь компании.
         </div>
       ) : (
-        <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+        <ul className="flex flex-col gap-3.5">
           {data.items.map((c) => (
-            <li key={c.id} className="relative">
-              <MapsCompanyCard
-                company={c}
-                onDraftEmail={onDraftEmail}
-                draftEmailLoading={draftLoadingCompanyId === c.id}
-              />
-              <button
-                onClick={() => remove(c)}
-                className="absolute right-3 top-3 rounded-v2-sm p-1 text-slate-500 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
-                title="Убрать из списка"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </li>
+            <MapsCompanyCard
+              key={c.id}
+              company={c}
+              onDraftEmail={onDraftEmail}
+              draftEmailLoading={draftLoadingCompanyId === c.id}
+              extraAction={
+                <button
+                  type="button"
+                  onClick={() => remove(c)}
+                  title="Убрать из списка"
+                  aria-label={`Убрать из списка: ${c.name}`}
+                  className="grid h-9 w-9 place-items-center rounded-full bg-ui-surface-2 text-ui-text-muted transition-colors hover:bg-ui-danger/10 hover:text-ui-danger"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              }
+            />
           ))}
         </ul>
       )}
