@@ -155,14 +155,16 @@ export function middleware(request: NextRequest) {
 
   if (isAuthed && pathname.startsWith('/auth/')) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    // 16.09 UX-аудит P0: залогиненного ведём в кабинет поиска, а не на
+    // устаревший /dashboard («Поиск лидов — Скоро» на работающем ядре).
+    url.pathname = '/app/leads';
     url.search = '';
     return applySecurityHeaders(NextResponse.redirect(url));
   }
 
   if (isAuthed && pathname === '/app') {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = '/app/leads';
     return applySecurityHeaders(NextResponse.redirect(url));
   }
 

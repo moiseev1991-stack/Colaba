@@ -3,13 +3,18 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { Search, Users, BarChart3, Calendar, ExternalLink, Loader2, Clock } from 'lucide-react';
-import { getDashboard, type DashboardResponse, type DashboardPeriod, type DashboardModule } from '@/src/services/api/dashboard';
+import {
+  getDashboard,
+  type DashboardResponse,
+  type DashboardPeriod,
+  type DashboardModule,
+} from '@/src/services/api/dashboard';
 
 const CHART_HEIGHT = 180;
 
 const MODULE_ROUTES: Record<string, string> = {
   seo: '/runs',
-  leads: '/app/leads/history',
+  leads: '/app/leads',
   tenders: '/app/gos/history',
 };
 
@@ -37,13 +42,27 @@ function formatDateTime(iso: string): string {
   });
 }
 
-const KpiCard = memo(function KpiCard({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
+const KpiCard = memo(function KpiCard({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: string | number;
+  suffix?: string;
+}) {
   return (
     <div className="app-kpi-card">
-      <div className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>{label}</div>
+      <div className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
+        {label}
+      </div>
       <div className="mt-2 app-kpi-value app-stat-number">
         {value}
-        {suffix && <span className="text-sm font-normal ml-1" style={{ color: 'hsl(var(--muted))' }}>{suffix}</span>}
+        {suffix && (
+          <span className="text-sm font-normal ml-1" style={{ color: 'hsl(var(--muted))' }}>
+            {suffix}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -58,9 +77,26 @@ function SkeletonCard() {
   );
 }
 
-type DayPoint = { date: string; dateShort: string; total: number; success: number; error: number; running: number };
+type DayPoint = {
+  date: string;
+  dateShort: string;
+  total: number;
+  success: number;
+  error: number;
+  running: number;
+};
 
-const ChartBar = memo(function ChartBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
+const ChartBar = memo(function ChartBar({
+  data,
+  max,
+  onHover,
+  hovered,
+}: {
+  data: DayPoint;
+  max: number;
+  onHover: (v: DayPoint | null) => void;
+  hovered: boolean;
+}) {
   const h = max > 0 ? (data.total / max) * (CHART_HEIGHT - 32) : 0;
   return (
     <div
@@ -78,7 +114,8 @@ const ChartBar = memo(function ChartBar({ data, max, onHover, hovered }: { data:
               borderColor: 'hsl(var(--chart-tooltip-border))',
             }}
           >
-            {data.date}<br />
+            {data.date}
+            <br />
             Всего: {data.total} · Успешных: {data.success} · Ошибок: {data.error}
           </div>
         )}
@@ -91,12 +128,27 @@ const ChartBar = memo(function ChartBar({ data, max, onHover, hovered }: { data:
           }}
         />
       </div>
-      <span className="text-xs font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
+      <span
+        className="text-xs font-medium truncate max-w-full"
+        style={{ color: 'hsl(var(--chart-axis))' }}
+      >
+        {data.dateShort}
+      </span>
     </div>
   );
 });
 
-const StackedBar = memo(function StackedBar({ data, max, onHover, hovered }: { data: DayPoint; max: number; onHover: (v: DayPoint | null) => void; hovered: boolean }) {
+const StackedBar = memo(function StackedBar({
+  data,
+  max,
+  onHover,
+  hovered,
+}: {
+  data: DayPoint;
+  max: number;
+  onHover: (v: DayPoint | null) => void;
+  hovered: boolean;
+}) {
   const scale = max > 0 ? (CHART_HEIGHT - 32) / max : 0;
   const hSuccess = Math.max(data.success * scale, 0);
   const hError = Math.max(data.error * scale, 0);
@@ -118,48 +170,106 @@ const StackedBar = memo(function StackedBar({ data, max, onHover, hovered }: { d
               borderColor: 'hsl(var(--chart-tooltip-border))',
             }}
           >
-            {data.date}<br />
-            Успешных: {data.success} · Ошибок: {data.error}{data.running > 0 ? ` · В работе: ${data.running}` : ''}
+            {data.date}
+            <br />
+            Успешных: {data.success} · Ошибок: {data.error}
+            {data.running > 0 ? ` · В работе: ${data.running}` : ''}
           </div>
         )}
-        <div className="w-full flex flex-col-reverse rounded-t-[4px] overflow-hidden" style={{ minHeight: hasAny ? 4 : 0 }}>
-          {hSuccess > 0 && <div className="w-full" style={{ height: hSuccess, minHeight: 2, backgroundColor: 'hsl(var(--chart-success))' }} />}
-          {hError > 0 && <div className="w-full" style={{ height: hError, minHeight: 2, backgroundColor: 'hsl(var(--chart-error))' }} />}
-          {hRunning > 0 && <div className="w-full" style={{ height: hRunning, minHeight: 2, backgroundColor: 'hsl(var(--chart-running))' }} />}
+        <div
+          className="w-full flex flex-col-reverse rounded-t-[4px] overflow-hidden"
+          style={{ minHeight: hasAny ? 4 : 0 }}
+        >
+          {hSuccess > 0 && (
+            <div
+              className="w-full"
+              style={{
+                height: hSuccess,
+                minHeight: 2,
+                backgroundColor: 'hsl(var(--chart-success))',
+              }}
+            />
+          )}
+          {hError > 0 && (
+            <div
+              className="w-full"
+              style={{ height: hError, minHeight: 2, backgroundColor: 'hsl(var(--chart-error))' }}
+            />
+          )}
+          {hRunning > 0 && (
+            <div
+              className="w-full"
+              style={{
+                height: hRunning,
+                minHeight: 2,
+                backgroundColor: 'hsl(var(--chart-running))',
+              }}
+            />
+          )}
         </div>
       </div>
-      <span className="text-xs font-medium truncate max-w-full" style={{ color: 'hsl(var(--chart-axis))' }}>{data.dateShort}</span>
+      <span
+        className="text-xs font-medium truncate max-w-full"
+        style={{ color: 'hsl(var(--chart-axis))' }}
+      >
+        {data.dateShort}
+      </span>
     </div>
   );
 });
 
-const DonutChart = memo(function DonutChart({ success, errors, running }: { success: number; errors: number; running: number }) {
+const DonutChart = memo(function DonutChart({
+  success,
+  errors,
+  running,
+}: {
+  success: number;
+  errors: number;
+  running: number;
+}) {
   const total = success + errors + running;
   if (total === 0) return null;
   const deg = 360 / total;
   return (
     <div className="flex items-center gap-6">
-      <div className="relative w-24 h-24 rounded-full" style={{
-        background: `conic-gradient(
+      <div
+        className="relative w-24 h-24 rounded-full"
+        style={{
+          background: `conic-gradient(
           hsl(var(--chart-success)) 0deg ${success * deg}deg,
           hsl(var(--chart-error)) ${success * deg}deg ${(success + errors) * deg}deg,
           hsl(var(--chart-running)) ${(success + errors) * deg}deg 360deg
         )`,
-      }}>
+        }}
+      >
         <div className="absolute inset-2 rounded-full bg-white dark:bg-gray-800" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>{total}</span>
+          <span className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
+            {total}
+          </span>
         </div>
       </div>
       <div className="flex flex-col gap-1 text-sm">
         <span className="flex items-center gap-2" style={{ color: 'hsl(var(--chart-axis))' }}>
-          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-success))' }} /> Успешных: {success}
+          <span
+            className="w-3 h-3 rounded-sm"
+            style={{ backgroundColor: 'hsl(var(--chart-success))' }}
+          />{' '}
+          Успешных: {success}
         </span>
         <span className="flex items-center gap-2" style={{ color: 'hsl(var(--chart-axis))' }}>
-          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-error))' }} /> Ошибок: {errors}
+          <span
+            className="w-3 h-3 rounded-sm"
+            style={{ backgroundColor: 'hsl(var(--chart-error))' }}
+          />{' '}
+          Ошибок: {errors}
         </span>
         <span className="flex items-center gap-2" style={{ color: 'hsl(var(--chart-axis))' }}>
-          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-running))' }} /> В работе: {running}
+          <span
+            className="w-3 h-3 rounded-sm"
+            style={{ backgroundColor: 'hsl(var(--chart-running))' }}
+          />{' '}
+          В работе: {running}
         </span>
       </div>
     </div>
@@ -204,23 +314,36 @@ export default function MainDashboardPage() {
     load();
   }, [load]);
 
+  const chartData = useMemo<DayPoint[]>(
+    () =>
+      data
+        ? data.runs_by_day.map((d) => ({
+            date: d.date,
+            dateShort: d.date.slice(5),
+            total: d.total,
+            success: d.success,
+            error: d.errors,
+            running: d.running,
+          }))
+        : [],
+    [data],
+  );
 
-  const chartData = useMemo<DayPoint[]>(() => data
-    ? data.runs_by_day.map((d) => ({
-        date: d.date,
-        dateShort: d.date.slice(5),
-        total: d.total,
-        success: d.success,
-        error: d.errors,
-        running: d.running,
-      }))
-    : [], [data]);
-
-  const resultsLabel = module === 'seo' ? 'Домены' : module === 'leads' ? 'Контакты' : module === 'tenders' ? 'Тендеры' : 'Результаты';
+  const resultsLabel =
+    module === 'seo'
+      ? 'Домены'
+      : module === 'leads'
+        ? 'Контакты'
+        : module === 'tenders'
+          ? 'Тендеры'
+          : 'Результаты';
 
   // Pre-compute chart maxima to avoid repeated Math.max(...map) in JSX
   const chartMaxTotal = useMemo(() => Math.max(...chartData.map((x) => x.total), 1), [chartData]);
-  const chartMaxStacked = useMemo(() => Math.max(...chartData.map((x) => x.success + x.error + x.running), 1), [chartData]);
+  const chartMaxStacked = useMemo(
+    () => Math.max(...chartData.map((x) => x.success + x.error + x.running), 1),
+    [chartData],
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 relative z-10">
@@ -228,7 +351,9 @@ export default function MainDashboardPage() {
         <h1 className="app-page-title">Дашборд</h1>
         <div className="flex flex-nowrap items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Модуль:</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Модуль:
+            </span>
             <select
               value={module}
               onChange={(e) => setModule(e.target.value as DashboardModule)}
@@ -276,7 +401,11 @@ export default function MainDashboardPage() {
       {loadError && (
         <div className="mb-6 rounded-[8px] border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-4">
           <p className="text-red-700 dark:text-red-300">{loadError}</p>
-          <button type="button" onClick={load} className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:underline">
+          <button
+            type="button"
+            onClick={load}
+            className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+          >
             Повторить
           </button>
         </div>
@@ -289,15 +418,27 @@ export default function MainDashboardPage() {
         </div>
         {loading ? (
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} />)}
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : data ? (
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             <KpiCard label="Всего запросов" value={data.kpi.total} />
             <KpiCard label="Успешные" value={data.kpi.success} />
             <KpiCard label="Ошибки" value={data.kpi.errors} />
-            <KpiCard label="Ср. время" value={data.kpi.avg_time_sec != null ? `${Math.round(data.kpi.avg_time_sec)} с` : 'нет данных'} />
-            <KpiCard label="Стоимость" value={data.kpi.has_cost_tarification ? `${data.kpi.cost_rub.toFixed(2)} ₽` : '—'} />
+            <KpiCard
+              label="Ср. время"
+              value={
+                data.kpi.avg_time_sec != null
+                  ? `${Math.round(data.kpi.avg_time_sec)} с`
+                  : 'нет данных'
+              }
+            />
+            <KpiCard
+              label="Стоимость"
+              value={data.kpi.has_cost_tarification ? `${data.kpi.cost_rub.toFixed(2)} ₽` : '—'}
+            />
             <KpiCard label={resultsLabel} value={data.kpi.results} />
           </div>
         ) : null}
@@ -334,10 +475,19 @@ export default function MainDashboardPage() {
                           {r.module === 'seo' ? 'SEO' : r.module}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-gray-900 dark:text-white truncate max-w-[200px]" title={r.query}>{r.query}</td>
+                      <td
+                        className="py-2 px-2 text-gray-900 dark:text-white truncate max-w-[200px]"
+                        title={r.query}
+                      >
+                        {r.query}
+                      </td>
                       <td className="py-2 px-2">
                         <span className="px-2 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
-                          {r.status === 'running' ? 'В работе' : r.status === 'queued' ? 'В очереди' : r.status}
+                          {r.status === 'running'
+                            ? 'В работе'
+                            : r.status === 'queued'
+                              ? 'В очереди'
+                              : r.status}
                         </span>
                       </td>
                       <td className="py-2 px-2">
@@ -394,29 +544,49 @@ export default function MainDashboardPage() {
                   <tbody>
                     {data.recent_runs.map((r) => (
                       <tr key={r.id} className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-2 px-2 text-gray-600 dark:text-gray-400">{formatDateTime(r.created_at)}</td>
+                        <td className="py-2 px-2 text-gray-600 dark:text-gray-400">
+                          {formatDateTime(r.created_at)}
+                        </td>
                         <td className="py-2 px-2">
                           <span className="px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                             {r.module === 'seo' ? 'SEO' : r.module}
                           </span>
                         </td>
-                        <td className="py-2 px-2 text-gray-900 dark:text-white truncate max-w-[200px]" title={r.query}>{r.query}</td>
+                        <td
+                          className="py-2 px-2 text-gray-900 dark:text-white truncate max-w-[200px]"
+                          title={r.query}
+                        >
+                          {r.query}
+                        </td>
                         <td className="py-2 px-2">
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            r.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
-                            r.status === 'failed' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
-                            'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
-                          }`}>
-                            {r.status === 'completed' ? 'OK' : r.status === 'failed' ? 'Ошибка' : r.status}
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs ${
+                              r.status === 'completed'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                                : r.status === 'failed'
+                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
+                            }`}
+                          >
+                            {r.status === 'completed'
+                              ? 'OK'
+                              : r.status === 'failed'
+                                ? 'Ошибка'
+                                : r.status}
                           </span>
                         </td>
                         <td className="py-2 px-2">{r.results}</td>
-                        <td className="py-2 px-2">{r.cost_rub != null ? `${r.cost_rub.toFixed(2)} ₽` : '—'}</td>
+                        <td className="py-2 px-2">
+                          {r.cost_rub != null ? `${r.cost_rub.toFixed(2)} ₽` : '—'}
+                        </td>
                         <td className="py-2 px-2 text-right">
                           <Link
                             href={getRunUrl(r.module, r.id)}
                             className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-                            onClick={(e) => { e.preventDefault(); window.location.href = getRunUrl(r.module, r.id); }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              window.location.href = getRunUrl(r.module, r.id);
+                            }}
                           >
                             Открыть <ExternalLink className="h-3.5 w-3.5" />
                           </Link>
@@ -427,7 +597,10 @@ export default function MainDashboardPage() {
                 </table>
               </div>
               <div className="mt-4">
-                <Link href="/runs" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                <Link
+                  href="/runs"
+                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
                   Смотреть всё →
                 </Link>
               </div>
@@ -455,16 +628,28 @@ export default function MainDashboardPage() {
           />
           {loading ? (
             <div className="absolute inset-6 flex items-center justify-center">
-              <div className="w-full h-full animate-pulse rounded" style={{ backgroundColor: 'hsl(var(--chart-grid) / 0.3)' }} />
+              <div
+                className="w-full h-full animate-pulse rounded"
+                style={{ backgroundColor: 'hsl(var(--chart-grid) / 0.3)' }}
+              />
             </div>
           ) : chartData.length === 0 ? (
-            <div className="absolute inset-6 flex items-center justify-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
+            <div
+              className="absolute inset-6 flex items-center justify-center text-sm"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
               Нет данных за период
             </div>
           ) : (
             <div className="absolute inset-6 bottom-10 flex items-end gap-1">
               {chartData.map((d) => (
-                <ChartBar key={d.date} data={d} max={chartMaxTotal} onHover={handleHoverBar} hovered={hoveredBar?.date === d.date} />
+                <ChartBar
+                  key={d.date}
+                  data={d}
+                  max={chartMaxTotal}
+                  onHover={handleHoverBar}
+                  hovered={hoveredBar?.date === d.date}
+                />
               ))}
             </div>
           )}
@@ -477,14 +662,35 @@ export default function MainDashboardPage() {
           <h2 className="app-section-title">Ошибки / Успешные по дням</h2>
         </div>
         <div className="flex items-center gap-4 mb-2">
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(var(--chart-axis))' }}>
-            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-success))' }} /> Успешные
+          <span
+            className="flex items-center gap-1.5 text-xs"
+            style={{ color: 'hsl(var(--chart-axis))' }}
+          >
+            <span
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: 'hsl(var(--chart-success))' }}
+            />{' '}
+            Успешные
           </span>
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(var(--chart-axis))' }}>
-            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-error))' }} /> Ошибки
+          <span
+            className="flex items-center gap-1.5 text-xs"
+            style={{ color: 'hsl(var(--chart-axis))' }}
+          >
+            <span
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: 'hsl(var(--chart-error))' }}
+            />{' '}
+            Ошибки
           </span>
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(var(--chart-axis))' }}>
-            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--chart-running))' }} /> В работе
+          <span
+            className="flex items-center gap-1.5 text-xs"
+            style={{ color: 'hsl(var(--chart-axis))' }}
+          >
+            <span
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: 'hsl(var(--chart-running))' }}
+            />{' '}
+            В работе
           </span>
         </div>
         <div
@@ -502,12 +708,19 @@ export default function MainDashboardPage() {
               <div className="w-full h-full app-skeleton rounded" />
             </div>
           ) : chartData.length === 0 ? (
-            <div className="absolute inset-6 flex items-center justify-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
+            <div
+              className="absolute inset-6 flex items-center justify-center text-sm"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
               Нет данных за период
             </div>
           ) : data && data.kpi.total < 3 ? (
             <div className="absolute inset-6 flex items-center justify-center">
-              <DonutChart success={data.kpi.success} errors={data.kpi.errors} running={data.kpi.total - data.kpi.success - data.kpi.errors} />
+              <DonutChart
+                success={data.kpi.success}
+                errors={data.kpi.errors}
+                running={data.kpi.total - data.kpi.success - data.kpi.errors}
+              />
             </div>
           ) : (
             <div className="absolute inset-6 bottom-10 flex items-end gap-1">
@@ -532,67 +745,80 @@ export default function MainDashboardPage() {
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* SEO — реальные данные */}
-          <Link
-            href={MODULE_ROUTES.seo}
-            className="app-module-card block group"
-          >
+          <Link href={MODULE_ROUTES.seo} className="app-module-card block group">
             <div className="app-icon-gradient mb-4">
               <Search className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>SEO</h3>
-            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>Аудит, проверки, история запросов</p>
+            <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
+              SEO
+            </h3>
+            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+              Аудит, проверки, история запросов
+            </p>
             <div className="app-divider-gradient !my-4" />
             <div className="flex items-center justify-between">
               <span className="text-small" style={{ color: 'hsl(var(--text))' }}>
-                {data
-                  ? `${data.kpi.total} запросов · ${data.kpi.success} OK`
-                  : '—'}
+                {data ? `${data.kpi.total} запросов · ${data.kpi.success} OK` : '—'}
               </span>
-              <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+              <span
+                className="text-sm font-semibold group-hover:translate-x-1 transition-transform"
+                style={{ color: 'hsl(var(--accent))' }}
+              >
                 Открыть →
               </span>
             </div>
           </Link>
 
           {/* Поиск лидов */}
-          <Link
-            href={MODULE_ROUTES.leads}
-            className="app-module-card block group"
-          >
+          <Link href={MODULE_ROUTES.leads} className="app-module-card block group">
             <div className="app-icon-soft mb-4">
               <Users className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>Поиск лидов</h3>
-              <span className="app-badge app-badge-warning">Скоро</span>
+              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
+                Поиск лидов
+              </h3>
             </div>
-            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>Поиск, контакты, экспорт</p>
+            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+              Поиск, контакты, экспорт
+            </p>
             <div className="app-divider-gradient !my-4" />
             <div className="flex items-center justify-between">
-              <span className="text-small" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
-              <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+              <span className="text-small" style={{ color: 'hsl(var(--muted))' }}>
+                Работает
+              </span>
+              <span
+                className="text-sm font-semibold group-hover:translate-x-1 transition-transform"
+                style={{ color: 'hsl(var(--accent))' }}
+              >
                 Открыть →
               </span>
             </div>
           </Link>
 
           {/* Госзакупки */}
-          <Link
-            href={MODULE_ROUTES.tenders}
-            className="app-module-card block group"
-          >
+          <Link href={MODULE_ROUTES.tenders} className="app-module-card block group">
             <div className="app-icon-soft mb-4">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>Госзакупки</h3>
+              <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
+                Госзакупки
+              </h3>
               <span className="app-badge app-badge-warning">Скоро</span>
             </div>
-            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>Мониторинг, история, фильтры</p>
+            <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+              Мониторинг, история, фильтры
+            </p>
             <div className="app-divider-gradient !my-4" />
             <div className="flex items-center justify-between">
-              <span className="text-small" style={{ color: 'hsl(var(--muted))' }}>Модуль в разработке</span>
-              <span className="text-sm font-semibold group-hover:translate-x-1 transition-transform" style={{ color: 'hsl(var(--accent))' }}>
+              <span className="text-small" style={{ color: 'hsl(var(--muted))' }}>
+                Модуль в разработке
+              </span>
+              <span
+                className="text-sm font-semibold group-hover:translate-x-1 transition-transform"
+                style={{ color: 'hsl(var(--accent))' }}
+              >
                 Открыть →
               </span>
             </div>
