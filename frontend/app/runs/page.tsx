@@ -279,7 +279,7 @@ export default function RunsHistoryPage() {
           )}
 
           {/* Filter panel (sticky) */}
-          <div className="sticky top-0 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
+          <div className="sticky top-14 z-10 py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 app-reveal app-reveal-delay-2" style={{ background: 'hsl(var(--bg) / 0.95)', backdropFilter: 'blur(12px)' }}>
             <div className="app-card-enhanced p-4">
               {loadError && !loading && (
                 <div

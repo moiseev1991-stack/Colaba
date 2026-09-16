@@ -2,109 +2,49 @@
 
 import Link from 'next/link';
 import { LEGAL_LINKS, SUPPORT_EMAIL } from '@/lib/site';
-import { ModuleProvider, useModule, MODULE_ORDER, MODULE_LABELS, DISABLED_MODULES } from '@/lib/ModuleContext';
-import { Sidebar } from './Sidebar';
+import { ModuleProvider } from '@/lib/ModuleContext';
 import { AppHeader } from './AppHeader';
 import { MobileTabBar } from './MobileTabBar';
+import { VersionBadge } from './VersionBadge';
+import { useAccount } from './nav/useAccount';
 
-function MobileModuleTabs() {
-  const { module, setModule } = useModule();
-
-  return (
-    <div
-      className="md:hidden flex shrink-0 border-b"
-      style={{
-        backgroundColor: 'hsl(var(--nav-bg) / 0.95)',
-        borderColor: 'hsl(var(--border))',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      {MODULE_ORDER.map((id) => {
-        const active = module === id;
-        const disabled = DISABLED_MODULES.has(id);
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            aria-disabled={disabled || undefined}
-            disabled={disabled}
-            onClick={() => { if (!active) setModule(id); }}
-            title={disabled ? 'Модуль скоро будет доступен' : undefined}
-            className={`relative flex flex-1 items-center justify-center h-10 text-small font-medium transition-colors ${
-              disabled ? 'cursor-not-allowed opacity-50' : ''
-            }`}
-            style={{
-              color: active ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
-              background: active ? 'hsl(var(--nav-active-bg))' : undefined,
-            }}
-          >
-            {MODULE_LABELS[id]}
-            {active && (
-              <span
-                className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full"
-                style={{ background: 'var(--brand-gradient)' }}
-                aria-hidden="true"
-              />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
+/**
+ * Каркас кабинета (вид Premium, 16.09): липкая верхняя шапка с разделами, белый фон,
+ * контент на всю ширину. На телефоне — нижние вкладки. Боковое меню убрано.
+ */
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { email, logout } = useAccount();
+
   return (
     <ModuleProvider>
-      <div className="flex min-h-screen flex-col app-bg-gradient app-grid-pattern">
-        <div className="app-orb app-orb-1" aria-hidden="true" />
-        <div className="app-orb app-orb-2" aria-hidden="true" />
+      <div className="flex min-h-screen flex-col bg-ui-bg">
+        <AppHeader email={email} onLogout={logout} />
 
-        <AppHeader />
-        <MobileModuleTabs />
+        {/* pb-20 на мобайле — чтобы содержимое не уезжало под нижние вкладки (56px + safe-area). */}
+        <main className="app-main min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
 
-        <div className="flex flex-1 min-w-0 overflow-hidden relative z-10">
-          {/* Sidebar только на md+. На мобиле навигация полностью через
-              MobileModuleTabs (сверху) + MobileTabBar (снизу) — иначе
-              icon-rail 72px наезжал на контент карточек на 360-414px. */}
-          <div className="hidden md:flex">
-            <Sidebar />
-          </div>
-          {/* pb-20 на мобайле — чтоб содержимое не уезжало под MobileTabBar (56px + safe-area). */}
-          <main className="app-main flex-1 min-w-0 overflow-auto pb-20 md:pb-0">
-            {children}
-          </main>
-        </div>
-
-        <footer
-          className="app-footer hidden md:block shrink-0 py-2.5 px-4 text-xs relative z-10 backdrop-blur-sm"
-          style={{
-            color: 'hsl(var(--muted))',
-            borderTop: '1px solid hsl(var(--border))',
-            background: 'hsl(var(--surface) / 0.8)',
-          }}
-        >
-          <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-x-5 gap-y-1.5">
+        <footer className="app-footer hidden shrink-0 border-t border-black/[.06] text-xs text-ui-text-muted md:block">
+          <div className="mx-auto flex w-full max-w-[1232px] flex-wrap items-center gap-x-5 gap-y-1.5 px-6 py-4">
             <span suppressHydrationWarning>© {new Date().getFullYear()} SpinLid</span>
             <ul className="flex flex-wrap gap-x-4 gap-y-1">
               {LEGAL_LINKS.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="hover:underline" target="_blank">
+                  <Link href={l.href} className="hover:text-ui-text hover:underline" target="_blank">
                     {l.short}
                   </Link>
                 </li>
               ))}
             </ul>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:underline">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-ui-text hover:underline">
               {SUPPORT_EMAIL}
             </a>
+            <span className="ml-auto">
+              <VersionBadge />
+            </span>
           </div>
         </footer>
 
-        {/* §2.3 — мобильная нижняя навигация. Только md-, на десктопе — sidebar. */}
-        <MobileTabBar />
+        <MobileTabBar email={email} onLogout={logout} />
       </div>
     </ModuleProvider>
   );

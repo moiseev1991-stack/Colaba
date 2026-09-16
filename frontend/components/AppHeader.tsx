@@ -1,181 +1,127 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
-import { User as UserIcon, LogOut, CreditCard, Activity, Sparkles } from 'lucide-react';
-import { tokenStorage } from '@/client';
-import { apiClient } from '@/client';
+import { usePathname } from 'next/navigation';
+import { Sparkles } from 'lucide-react';
 import { BrandMark } from '@/components/BrandMark';
 import { buttonClass } from '@/components/ui/button';
-import { MobileNav } from '@/components/MobileNav';
+import { NavMenuList } from '@/components/nav/NavMenuList';
+import { PRIMARY_NAV, allNavItems, getBestMatch, menuSectionsFor } from '@/components/nav/appNav';
+import { useIsSuperuser } from '@/lib/useIsSuperuser';
+import { cn } from '@/lib/utils';
 
-// Переключатель темы убран: тёмная тема выключена до MVP (см. lib/storage.ts).
-export function AppHeader() {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+/**
+ * Шапка кабинета (вид Premium, 16.09): логотип, основные разделы, «Купить подписку»
+ * и меню профиля со всем остальным. Липкая, полупрозрачная. На телефоне разделы —
+ * в нижних вкладках (MobileTabBar), здесь остаются логотип и меню профиля.
+ */
+export function AppHeader({ email, onLogout }: { email: string | null; onLogout: () => void }) {
   const pathname = usePathname();
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      checkAuth();
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, []);
-
-  const checkAuth = async () => {
-    const token = tokenStorage.getAccessToken();
-    if (token) {
-      try {
-        const res = await apiClient.get('/auth/me');
-        setUserEmail(res.data.email ?? null);
-      } catch {
-        setUserEmail(null);
-        // Do NOT clear tokens here. The /auth/me endpoint bypasses the refresh
-        // interceptor, so clearing tokens prematurely would break navigation —
-        // the interceptor will handle refresh/logout on subsequent API calls.
-      }
-    } else setUserEmail(null);
-  };
-
-  const handleLogout = async () => {
-    await tokenStorage.clearTokens();
-    setUserEmail(null);
-    setMenuOpen(false);
-    router.push('/auth/login');
-  };
-
-  const focusClass =
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--nav-focus-ring))] focus-visible:ring-offset-2 rounded-[8px]';
+  const isSuperuser = useIsSuperuser();
+  const activeHref = getBestMatch(pathname, allNavItems(isSuperuser));
 
   return (
-    <header
-      className="flex h-14 shrink-0 items-center justify-between px-3 md:px-6 border-b-0 md:border-b overflow-visible relative z-20"
-      style={{
-        backgroundColor: 'hsl(var(--nav-bg) / 0.95)',
-        borderColor: 'hsl(var(--border))',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      {/* Left: бургер (моб.) + Logo — единая BrandMark (изумруд, тёмная спираль — как на лендинге) */}
-      <div className="flex items-center gap-2 shrink-0">
-        <MobileNav />
-        <Link href="/app/leads" className="flex items-center gap-2 group" aria-label="SpinLid">
-          <span className="inline-flex items-center justify-center transition-all group-hover:scale-105 shrink-0">
-            <BrandMark
-              size={32}
-              gradient="linear-gradient(135deg, #34d399 0%, #059669 100%)"
-              glow="var(--shadow-v2-sm)"
-            />
-          </span>
-          <span
-            className="font-display font-semibold text-base tracking-tight"
-            style={{ color: 'hsl(var(--text))' }}
-          >
-            SpinLid
-          </span>
-        </Link>
-      </div>
-
-      {/* Center: empty — module switcher lives in the sidebar now */}
-      <div className="flex-1" />
-
-      {/* Right: actions */}
-      <div className="flex items-center gap-1 md:gap-2 shrink-0">
-        {/* «Купить подписку» — главная кнопка шапки; стиль общий с Button (PR 3.3). */}
-        <Link
-          href="/#pricing"
-          className={buttonClass({ size: 'sm', className: 'min-h-9 gap-2 md:px-4 md:text-sm' })}
-        >
-          <Sparkles className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline">Купить подписку</span>
+    <header className="sticky top-0 z-40 border-b border-black/[.06] bg-white/80 backdrop-blur-xl backdrop-saturate-150">
+      <div className="mx-auto flex h-14 w-full max-w-[1232px] items-center gap-8 px-4 sm:px-6">
+        <Link href="/app/leads" aria-label="SpinLid — к поиску" className="flex shrink-0 items-center gap-2 rounded-control">
+          <BrandMark size={28} gradient="linear-gradient(135deg, #34d399 0%, #059669 100%)" glow="none" />
+          <span className="text-base font-bold tracking-tight text-ui-text">SpinLid</span>
         </Link>
 
-        {/* Request Monitor — desktop only */}
-        <Link
-          href="/monitor"
-          className={`hidden md:flex items-center gap-2 h-9 px-3 rounded-[8px] text-sm font-medium transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass} ${pathname === '/monitor' ? 'bg-[hsl(var(--nav-active-bg))] font-semibold' : ''}`}
-          style={{
-            color: pathname === '/monitor' ? 'hsl(var(--nav-active-text))' : 'hsl(var(--nav-text))',
-          }}
-        >
-          <Activity className="h-4 w-4" /> Request Monitor
-        </Link>
-
-        {/* User profile dropdown */}
-        <div className="relative overflow-visible" ref={menuRef}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen((v) => !v);
-            }}
-            className={`inline-flex h-8 w-8 min-w-0 items-center justify-center rounded-[8px] hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-            aria-label="Профиль"
-            aria-expanded={menuOpen}
-            aria-haspopup="true"
-          >
-            <UserIcon className="h-4 w-4" style={{ color: 'hsl(var(--nav-text))' }} />
-          </button>
-
-          {menuOpen && (
-            <div
-              className="absolute right-0 top-full mt-1.5 min-w-[200px] rounded-[8px] border py-2 shadow-xl z-[10000]"
-              style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
-            >
-              {userEmail && (
-                <div
-                  className="px-4 py-2 text-xs truncate border-b"
-                  style={{ color: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))' }}
-                >
-                  {userEmail}
-                </div>
-              )}
+        <nav aria-label="Разделы" className="hidden items-center gap-6 md:flex">
+          {PRIMARY_NAV.map((item) => {
+            const active = item.href === activeHref;
+            return (
               <Link
-                href="/app/settings/profile"
-                onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-2 h-9 px-4 text-sm w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-                style={{ color: 'hsl(var(--text))' }}
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'rounded-control py-1 text-small transition-colors',
+                  active ? 'font-semibold text-ui-text' : 'text-ui-text-muted hover:text-ui-text',
+                )}
               >
-                <UserIcon className="h-4 w-4" /> Профиль
+                {item.label}
               </Link>
-              <Link
-                href="/payment"
-                onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-2 h-9 px-4 text-sm w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-                style={{ color: 'hsl(var(--text))' }}
-              >
-                <CreditCard className="h-4 w-4" /> Оплата
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className={`flex items-center gap-2 h-9 px-4 text-sm w-full text-left transition-colors hover:bg-[hsl(var(--nav-hover-bg))] ${focusClass}`}
-                style={{ color: 'hsl(var(--text))' }}
-              >
-                <LogOut className="h-4 w-4" /> Выйти
-              </button>
-            </div>
-          )}
+            );
+          })}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-2">
+          <Link href="/#pricing" className={buttonClass({ variant: 'secondary', size: 'sm', className: 'gap-1.5' })}>
+            <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Купить подписку</span>
+            <span className="sr-only sm:hidden">Купить подписку</span>
+          </Link>
+          <ProfileMenu email={email} isSuperuser={isSuperuser} activeHref={activeHref} onLogout={onLogout} />
         </div>
       </div>
     </header>
+  );
+}
+
+function ProfileMenu({
+  email,
+  isSuperuser,
+  activeHref,
+  onLogout,
+}: {
+  email: string | null;
+  isSuperuser: boolean;
+  activeHref: string | null;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const initial = (email?.trim()[0] ?? '').toUpperCase();
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Меню профиля"
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={cn(
+          'grid h-9 w-9 place-items-center rounded-full bg-ui-surface-2 text-sm font-semibold text-ui-text transition-colors hover:bg-ui-border',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent/40',
+        )}
+      >
+        {initial || <span className="h-2 w-2 rounded-full bg-ui-text-muted" aria-hidden />}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-card border border-black/[.06] bg-ui-surface p-1.5 shadow-overlay">
+          <NavMenuList
+            sections={menuSectionsFor(isSuperuser)}
+            activeHref={activeHref}
+            email={email}
+            onNavigate={() => setOpen(false)}
+            onLogout={() => {
+              setOpen(false);
+              onLogout();
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }

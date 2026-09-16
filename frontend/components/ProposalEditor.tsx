@@ -459,7 +459,7 @@ export function ProposalEditor({ initial, onSave, onCancel }: ProposalEditorProp
 
       {/* === RIGHT: live preview === */}
       <div>
-        <div className="flex items-center gap-3 mb-3 sticky top-0 z-10" style={{ paddingTop: 0 }}>
+        <div className="flex items-center gap-3 mb-3 sticky top-14 z-10" style={{ paddingTop: 0 }}>
           <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
             превью на тестовом лиде
           </span>
