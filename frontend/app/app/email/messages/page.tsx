@@ -150,7 +150,7 @@ export default function EmailMessagesPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col h-[calc(100dvh-3.5rem)]">
       {/* Header */}
       <div className="border-b px-6 py-4" style={{ borderColor: 'hsl(var(--border))' }}>
         <h1 className="text-xl font-bold" style={textPrimary}>

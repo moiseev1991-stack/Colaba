@@ -1431,7 +1431,7 @@ export function MapsSearchResults({
       {/* === Фильтры слева, компании справа === */}
       <div className="mt-6 grid grid-cols-1 gap-7 lg:grid-cols-[272px_minmax(0,1fr)]">
         <div className="hidden lg:block">
-          <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pb-4 pr-1 [scrollbar-width:thin]">
+          <div className="sticky top-[72px] max-h-[calc(100dvh-88px)] overflow-y-auto pb-4 pr-1 [scrollbar-width:thin]">
             {filtersPanel(false)}
           </div>
         </div>
