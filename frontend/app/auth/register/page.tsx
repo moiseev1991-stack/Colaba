@@ -22,8 +22,9 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
 
   const getNextPath = (): string => {
-    const next = searchParams?.get('next') || '/';
-    return next.startsWith('/') ? next : '/';
+    // После регистрации — в кабинет поиска (middleware дальше ведёт /app → /app/leads)
+    const next = searchParams?.get('next') || '/app';
+    return next.startsWith('/') ? next : '/app';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +43,7 @@ function RegisterForm() {
 
     if (!consent) {
       setError(
-        'Для регистрации необходимо принять Пользовательское соглашение и согласиться на обработку персональных данных'
+        'Для регистрации необходимо принять Пользовательское соглашение и согласиться на обработку персональных данных',
       );
       return;
     }
@@ -55,9 +56,12 @@ function RegisterForm() {
       tokenStorage.setTokens('', '');
       window.location.href = getNextPath();
     } catch (err: any) {
-      const msg = err.response?.data?.detail
-        || (err.code === 'ERR_NETWORK' ? 'Сервер недоступен. Запустите backend (Docker).' : err.message)
-        || 'Ошибка при регистрации. Попробуйте еще раз.';
+      const msg =
+        err.response?.data?.detail ||
+        (err.code === 'ERR_NETWORK'
+          ? 'Сервер недоступен. Запустите backend (Docker).'
+          : err.message) ||
+        'Ошибка при регистрации. Попробуйте еще раз.';
       setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
     } finally {
       setLoading(false);
@@ -111,7 +115,9 @@ function RegisterForm() {
           )}
           <div className="space-y-3">
             <div>
-              <label htmlFor="email" className="sr-only">Email</label>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
               <input
                 id="email"
                 name="email"
@@ -126,7 +132,9 @@ function RegisterForm() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">Пароль</label>
+              <label htmlFor="password" className="sr-only">
+                Пароль
+              </label>
               <input
                 id="password"
                 name="password"
@@ -142,7 +150,9 @@ function RegisterForm() {
               />
             </div>
             <div>
-              <label htmlFor="confirmPassword" className="sr-only">Подтвердите пароль</label>
+              <label htmlFor="confirmPassword" className="sr-only">
+                Подтвердите пароль
+              </label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -158,10 +168,7 @@ function RegisterForm() {
             </div>
           </div>
 
-          <label
-            className="flex items-start gap-3 text-xs"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
+          <label className="flex items-start gap-3 text-xs" style={{ color: 'hsl(var(--muted))' }}>
             <input
               type="checkbox"
               checked={consent}

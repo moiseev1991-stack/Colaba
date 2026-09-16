@@ -43,7 +43,7 @@ import {
   type KpSendListItem,
   type KpSendStatus,
 } from '@/src/services/api/outreach-kp';
-import { cn } from '@/lib/utils';
+import { cn, pluralRu } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/confirm';
 import { OUTREACH_SENDING_ENABLED } from '@/lib/outreach';
 
@@ -54,7 +54,11 @@ const TABS: { value: Tab; label: string; disabled?: boolean }[] = [
   { value: 'sites', label: 'По сайтам' },
   { value: 'kp', label: 'КП' },
   { value: 'kp-jobs', label: 'Партии КП' },
-  { value: 'sends', label: OUTREACH_SENDING_ENABLED ? 'Отправки' : 'Отправки · скоро', disabled: !OUTREACH_SENDING_ENABLED },
+  {
+    value: 'sends',
+    label: OUTREACH_SENDING_ENABLED ? 'Отправки' : 'Отправки · скоро',
+    disabled: !OUTREACH_SENDING_ENABLED,
+  },
 ];
 
 function formatDateTime(iso: string): string {
@@ -108,7 +112,13 @@ function LeadsHistoryInner() {
   const searchParams = useSearchParams();
   const initialTab = useMemo<Tab>(() => {
     const raw = searchParams?.get('tab');
-    if (raw === 'sites' || raw === 'kp' || raw === 'kp-jobs' || (raw === 'sends' && OUTREACH_SENDING_ENABLED) || raw === 'maps')
+    if (
+      raw === 'sites' ||
+      raw === 'kp' ||
+      raw === 'kp-jobs' ||
+      (raw === 'sends' && OUTREACH_SENDING_ENABLED) ||
+      raw === 'maps'
+    )
       return raw;
     return 'maps';
   }, [searchParams]);
@@ -118,7 +128,13 @@ function LeadsHistoryInner() {
     <PageContainer>
       <PageHeader title="История поисков лидов" />
 
-      <Tabs className="mb-4" aria-label="Разделы истории" items={TABS} value={tab} onChange={setTab} />
+      <Tabs
+        className="mb-4"
+        aria-label="Разделы истории"
+        items={TABS}
+        value={tab}
+        onChange={setTab}
+      />
 
       {tab === 'maps' && <MapsHistoryTab router={router} />}
       {tab === 'sites' && <SitesHistoryTab router={router} />}
@@ -215,8 +231,9 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 {m.niche} · {m.city}
               </div>
               <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
-                {formatDateTime(m.created_at)} · {formatMapSources(m.sources)} · {m.companies_found ?? 0}{' '}
-                {(m.companies_found ?? 0) === 1 ? 'компания' : 'компаний'}
+                {formatDateTime(m.created_at)} · {formatMapSources(m.sources)} ·{' '}
+                {m.companies_found ?? 0}{' '}
+                {pluralRu(m.companies_found ?? 0, ['компания', 'компании', 'компаний'])}
               </div>
             </div>
             <SignalPill tone={statusTone(m.status)} size="sm">
@@ -290,7 +307,13 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!(await confirmDialog({ title: 'Удалить этот запуск?', description: 'Вместе с ним удалятся все его результаты.' }))) return;
+    if (
+      !(await confirmDialog({
+        title: 'Удалить этот запуск?',
+        description: 'Вместе с ним удалятся все его результаты.',
+      }))
+    )
+      return;
     setDeletingId(id);
     try {
       await deleteSearch(id);
@@ -650,9 +673,7 @@ function KpJobsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) 
                     <span className="font-display text-sm font-semibold text-[hsl(var(--text))]">
                       Партия #{j.id}
                     </span>
-                    <span
-                      className={cn('rounded-full px-2 py-0.5 text-xs font-medium', badge.cls)}
-                    >
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', badge.cls)}>
                       {badge.label}
                     </span>
                     <span className="text-xs text-[hsl(var(--muted))]">
@@ -792,10 +813,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
                       {s.company_city ? ` · ${s.company_city}` : ''}
                     </div>
                     {s.error_message && (
-                      <div
-                        className="mt-1 truncate text-xs text-rose-700"
-                        title={s.error_message}
-                      >
+                      <div className="mt-1 truncate text-xs text-rose-700" title={s.error_message}>
                         {s.error_message}
                       </div>
                     )}

@@ -17,6 +17,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 
 import { MapsSearchForm } from '@/components/maps/MapsSearchForm';
 import { MapsSearchResults } from '@/components/maps/MapsSearchResults';
+import { OnboardingBanner } from '@/components/onboarding/OnboardingBanner';
 import { getMapSearch, type MapSearchOut } from '@/src/services/api/maps';
 import type { UserPresetOut } from '@/src/services/api/user-presets';
 
@@ -29,9 +30,7 @@ export function MapsSearchPanel() {
 
   const [mode, setMode] = useState<Mode>('idle');
   const [search, setSearch] = useState<MapSearchOut | null>(null);
-  const [loadingExisting, setLoadingExisting] = useState<boolean>(
-    Boolean(initialId),
-  );
+  const [loadingExisting, setLoadingExisting] = useState<boolean>(Boolean(initialId));
   // Если на форме выбрали user-пресет с ai_prompt — пробрасываем сюда, чтобы
   // Results-страница активировала AI-плашку и автозапустила анализ как только
   // выдача загрузится.
@@ -52,11 +51,7 @@ export function MapsSearchPanel() {
         const s = await getMapSearch(id);
         if (cancelled) return;
         setSearch(s);
-        setMode(
-          s.status === 'completed' || s.status === 'from_cache'
-            ? 'results'
-            : 'searching',
-        );
+        setMode(s.status === 'completed' || s.status === 'from_cache' ? 'results' : 'searching');
       } catch {
         // Поиск не найден или нет доступа — просто остаёмся в idle.
       } finally {
@@ -102,5 +97,13 @@ export function MapsSearchPanel() {
     );
   }
 
-  return <MapsSearchForm onStarted={handleStarted} />;
+  return (
+    <>
+      {/* Подсказка для новых пользователей — над формой поиска */}
+      <div className="mx-auto w-full max-w-[1072px] px-4 pt-4 sm:px-6 sm:pt-6">
+        <OnboardingBanner />
+      </div>
+      <MapsSearchForm onStarted={handleStarted} />
+    </>
+  );
 }

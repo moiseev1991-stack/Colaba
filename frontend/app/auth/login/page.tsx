@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { apiClient, tokenStorage } from '@/client';
 import { Input } from '@/components/ui/input';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
@@ -11,10 +11,15 @@ import { YandexIcon } from '@/components/OAuthIcons';
 import { VKIcon } from '@/components/OAuthIcons';
 import { TelegramIcon } from '@/components/OAuthIcons';
 
+// OAuth на бэкенде не настроен (кнопки вели на сырой JSON «провайдер не
+// настроен»). Показываем только когда включат: NEXT_PUBLIC_OAUTH_ENABLED=true.
+const OAUTH_ENABLED = process.env.NEXT_PUBLIC_OAUTH_ENABLED === 'true';
+
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOAuthLoading] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -35,17 +40,21 @@ export default function LoginPage() {
       // Tokens are now set as httpOnly cookies by server-side proxy.
       // setTokens() sets the auth_present sentinel cookie so JS can detect auth state.
       tokenStorage.setTokens('', '');
-      const next = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') : null;
+      const next =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('next')
+          : null;
       window.location.href = next && next.startsWith('/') ? next : '/app';
     } catch (err: any) {
       let msg = 'Ошибка при входе. Проверьте email и пароль.';
       if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
-        msg = 'Сервер недоступен. Запустите backend: docker compose up -d';
+        // 16.09 UX-аудит: без внутренних заметок для пользователя
+        msg = 'Сервис временно недоступен. Попробуйте через минуту.';
       } else if (err.response?.data?.detail) {
         const d = err.response.data.detail;
         msg = Array.isArray(d) ? d.join(', ') : String(d);
       } else if (err.response?.status === 500) {
-        msg = 'Ошибка сервера. Проверьте, что backend запущен (docker compose up -d).';
+        msg = 'Сервис временно недоступен. Попробуйте через минуту.';
       } else if (err.message) {
         msg = err.message;
       }
@@ -62,7 +71,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand" style={{ backgroundColor: 'hsl(var(--bg))' }}>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand"
+      style={{ backgroundColor: 'hsl(var(--bg))' }}
+    >
       <div className="w-full max-w-[440px]">
         <div
           className="rounded-v2-lg border p-8 shadow-v2"
@@ -92,52 +104,62 @@ export default function LoginPage() {
             Войдите или создайте аккаунт
           </p>
 
-          {/* OAuth Buttons */}
-          <div className="mt-6 space-y-3">
-            <OAuthButton
-              provider="google"
-              label="Войти через Google"
-              icon={<GoogleIcon />}
-              onClick={() => handleOAuthLogin('google')}
-              disabled={oauthLoading !== null}
-              loading={oauthLoading === 'google'}
-            />
-            <OAuthButton
-              provider="yandex"
-              label="Войти через Яндекс"
-              icon={<YandexIcon />}
-              onClick={() => handleOAuthLogin('yandex')}
-              disabled={oauthLoading !== null}
-              loading={oauthLoading === 'yandex'}
-            />
-            <OAuthButton
-              provider="vk"
-              label="Войти через VK"
-              icon={<VKIcon />}
-              onClick={() => handleOAuthLogin('vk')}
-              disabled={oauthLoading !== null}
-              loading={oauthLoading === 'vk'}
-            />
-            <OAuthButton
-              provider="telegram"
-              label="Войти через Telegram"
-              icon={<TelegramIcon />}
-              onClick={() => handleOAuthLogin('telegram')}
-              disabled={oauthLoading !== null}
-              loading={oauthLoading === 'telegram'}
-            />
-          </div>
+          {/* OAuth Buttons: скрыты до настройки провайдеров на бэкенде */}
+          {OAUTH_ENABLED && (
+            <>
+              <div className="mt-6 space-y-3">
+                <OAuthButton
+                  provider="google"
+                  label="Войти через Google"
+                  icon={<GoogleIcon />}
+                  onClick={() => handleOAuthLogin('google')}
+                  disabled={oauthLoading !== null}
+                  loading={oauthLoading === 'google'}
+                />
+                <OAuthButton
+                  provider="yandex"
+                  label="Войти через Яндекс"
+                  icon={<YandexIcon />}
+                  onClick={() => handleOAuthLogin('yandex')}
+                  disabled={oauthLoading !== null}
+                  loading={oauthLoading === 'yandex'}
+                />
+                <OAuthButton
+                  provider="vk"
+                  label="Войти через VK"
+                  icon={<VKIcon />}
+                  onClick={() => handleOAuthLogin('vk')}
+                  disabled={oauthLoading !== null}
+                  loading={oauthLoading === 'vk'}
+                />
+                <OAuthButton
+                  provider="telegram"
+                  label="Войти через Telegram"
+                  icon={<TelegramIcon />}
+                  onClick={() => handleOAuthLogin('telegram')}
+                  disabled={oauthLoading !== null}
+                  loading={oauthLoading === 'telegram'}
+                />
+              </div>
 
-          <div className="relative mt-6 mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t" style={{ borderColor: 'hsl(var(--border))' }}></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2" style={{ color: 'hsl(var(--muted))', background: 'hsl(var(--surface))' }}>
-                или через email
-              </span>
-            </div>
-          </div>
+              <div className="relative mt-6 mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div
+                    className="w-full border-t"
+                    style={{ borderColor: 'hsl(var(--border))' }}
+                  ></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span
+                    className="px-2"
+                    style={{ color: 'hsl(var(--muted))', background: 'hsl(var(--surface))' }}
+                  >
+                    или через email
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Email/Password Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -156,7 +178,9 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label htmlFor="email" className="sr-only">Email</label>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
               <Input
                 id="email"
                 name="email"
@@ -168,16 +192,38 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">Пароль</label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                placeholder="Пароль"
-                className="rounded-t-none"
-              />
+              <label htmlFor="password" className="sr-only">
+                Пароль
+              </label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  placeholder="Пароль"
+                  className="rounded-t-none pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-v2-sm text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {/* Восстановления пароля на бэкенде пока нет — ведём в поддержку */}
+              <p className="mt-2 text-right">
+                <a
+                  href="mailto:support@spinlid.ru?subject=Восстановление%20пароля%20SpinLid"
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Забыли пароль?
+                </a>
+              </p>
             </div>
             <ButtonV2
               type="submit"

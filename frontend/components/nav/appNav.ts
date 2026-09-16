@@ -53,8 +53,6 @@ const WORK_SECTION: NavSection = {
   items: [
     { href: '/app/leads/presets', label: 'Мои пресеты', icon: Bookmark },
     { href: '/app/leads/templates', label: 'Шаблоны писем', icon: Mail },
-    { href: '/leads/dashboard', label: 'Дашборд', icon: LayoutDashboard },
-    { href: '/monitor', label: 'Request Monitor', icon: Activity },
   ],
 };
 
@@ -64,29 +62,47 @@ const SETTINGS_SECTION: NavSection = {
     { href: '/app/settings/profile', label: 'Профиль', icon: User },
     { href: '/app/leads/settings', label: 'Параметры поиска', icon: Settings },
     { href: '/app/leads/blacklist', label: 'Блеклист', icon: Ban },
-    { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
-    { href: '/app/settings/email-providers', label: 'Провайдеры email', icon: Mail, requiresSending: true },
+    {
+      href: '/app/settings/email-providers',
+      label: 'Провайдеры email',
+      icon: Mail,
+      requiresSending: true,
+    },
     { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send, requiresSending: true },
     { href: '/payment', label: 'Оплата', icon: CreditCard },
   ],
 };
 
-/** Только суперюзеру: служебные разделы и email-рассылка. */
+/**
+ * Только суперюзеру: служебные разделы, мониторинг и инфраструктура
+ * (UX-аудит 16.09: обычному бета-юзеру «Request Monitor» и «Провайдеры
+ * карт» — шум и риск, «Дашборд» — старый интерфейс).
+ */
 const ADMIN_SECTION: NavSection = {
   title: 'Админ',
   items: [
     { href: '/app/admin/website-leads', label: 'Заявки с сайта', icon: ShieldCheck },
     { href: '/app/admin/data-inventory', label: 'Data inventory', icon: Database },
+    { href: '/leads/dashboard', label: 'Дашборд', icon: LayoutDashboard },
+    { href: '/monitor', label: 'Request Monitor', icon: Activity },
+    { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
     { href: '/app/email/campaigns', label: 'Кампании', icon: Mail, requiresSending: true },
     { href: '/app/email/messages', label: 'Сообщения', icon: Inbox, requiresSending: true },
     { href: '/app/email/stats', label: 'Статистика', icon: BarChart3, requiresSending: true },
-    { href: '/app/email/settings', label: 'Настройка рассылки', icon: Settings2, requiresSending: true },
+    {
+      href: '/app/email/settings',
+      label: 'Настройка рассылки',
+      icon: Settings2,
+      requiresSending: true,
+    },
   ],
 };
 
 /** Секции меню профиля с учётом роли. */
 export function menuSectionsFor(isSuperuser: boolean): NavSection[] {
-  return isSuperuser ? [WORK_SECTION, SETTINGS_SECTION, ADMIN_SECTION] : [WORK_SECTION, SETTINGS_SECTION];
+  return isSuperuser
+    ? [WORK_SECTION, SETTINGS_SECTION, ADMIN_SECTION]
+    : [WORK_SECTION, SETTINGS_SECTION];
 }
 
 /** Активный пункт — с самым длинным совпавшим префиксом («История» внутри «Поиска»). */
