@@ -1,13 +1,16 @@
 'use client';
 
 import { BlacklistManager } from '@/components/BlacklistManager';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 
 export default function BlacklistPage() {
   return (
-    <div className="max-w-[1250px] mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <PageHeader breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Blacklist' }]} title="Blacklist" />
+    <PageContainer className="overflow-x-hidden">
+      <PageHeader
+        breadcrumbs={[{ label: 'Главная', href: '/' }, { label: 'Blacklist' }]}
+        title="Blacklist"
+      />
       <BlacklistManager />
-    </div>
+    </PageContainer>
   );
 }

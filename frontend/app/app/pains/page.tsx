@@ -24,6 +24,7 @@ import { CityCombobox } from '@/components/CityCombobox';
 import { SearchModeSwitch } from '@/components/search/SearchModeSwitch';
 import { Button, buttonClass } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PageContainer } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
 import {
   buildPainsExportUrl,
@@ -63,9 +64,17 @@ const REVIEW_SOURCES: { value: ReviewSource; label: string }[] = [
   { value: 'google', label: 'Google' },
 ];
 
-const SOURCE_SHORT: Record<string, string> = { yandex_maps: 'Я.Карты', '2gis': '2GIS', google: 'Google', google_maps: 'Google' };
+const SOURCE_SHORT: Record<string, string> = {
+  yandex_maps: 'Я.Карты',
+  '2gis': '2GIS',
+  google: 'Google',
+  google_maps: 'Google',
+};
 
-type ExpandedReviews = Record<number, { loading: boolean; reviews: ReviewOut[]; total: number; offset: number }>;
+type ExpandedReviews = Record<
+  number,
+  { loading: boolean; reviews: ReviewOut[]; total: number; offset: number }
+>;
 
 export default function PainsPage() {
   return (
@@ -127,8 +136,13 @@ function PainsPageInner() {
 
   // Поиск запускаем через счётчик, а не прямым вызовом: эффект видит уже обновлённые
   // выбор, город и нишу. Раньше клик по боли искал по предыдущему выбору.
-  const [searchRequest, setSearchRequest] = useState<{ n: number; offset: number; scroll: boolean }>({ n: 0, offset: 0, scroll: false });
-  const requestSearch = (nextOffset = 0, scroll = false) => setSearchRequest((r) => ({ n: r.n + 1, offset: nextOffset, scroll }));
+  const [searchRequest, setSearchRequest] = useState<{
+    n: number;
+    offset: number;
+    scroll: boolean;
+  }>({ n: 0, offset: 0, scroll: false });
+  const requestSearch = (nextOffset = 0, scroll = false) =>
+    setSearchRequest((r) => ({ n: r.n + 1, offset: nextOffset, scroll }));
 
   useEffect(() => {
     nicheSuggestions('')
@@ -152,7 +166,12 @@ function PainsPageInner() {
         setTopTags(tags);
         // Переход из data-inventory: сразу показываем компании с самой частой болью ниши,
         // а не пустую категорию по умолчанию.
-        if (!autoRunRef.current && (initialNiche || initialCity) && tags.length > 0 && selectedTagIds.size === 0) {
+        if (
+          !autoRunRef.current &&
+          (initialNiche || initialCity) &&
+          tags.length > 0 &&
+          selectedTagIds.size === 0
+        ) {
           autoRunRef.current = true;
           setSelectedTagIds(new Set([tags[0].id]));
           requestSearch(0);
@@ -175,7 +194,9 @@ function PainsPageInner() {
     try {
       const params = new URLSearchParams({ niche });
       if (city) params.set('city', city);
-      const res = await fetch(`/api/v1/maps/admin/rebuild-pain-tags-status?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/v1/maps/admin/rebuild-pain-tags-status?${params.toString()}`, {
+        cache: 'no-store',
+      });
       if (!res.ok) return;
       const body = await res.json();
       setRebuildProgress({
@@ -213,14 +234,19 @@ function PainsPageInner() {
     try {
       const params = new URLSearchParams({ niche, sentiment: 'negative' });
       if (city) params.set('city', city);
-      const res = await fetch(`/api/v1/maps/admin/rebuild-pain-tags-for-niche?${params.toString()}`, { method: 'POST' });
+      const res = await fetch(
+        `/api/v1/maps/admin/rebuild-pain-tags-for-niche?${params.toString()}`,
+        { method: 'POST' },
+      );
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setRebuildMsg(`Ошибка ${res.status}: ${body?.detail ?? 'попробуйте позже'}`);
         return;
       }
       if (body.queued) {
-        setRebuildMsg(`AI размечает отзывы ${body.companies_queued_for_analyze} компаний — прогресс ниже.`);
+        setRebuildMsg(
+          `AI размечает отзывы ${body.companies_queued_for_analyze} компаний — прогресс ниже.`,
+        );
         await pollRebuildStatus();
         if (rebuildPollTimer.current) clearInterval(rebuildPollTimer.current);
         rebuildPollTimer.current = setInterval(() => void pollRebuildStatus(), 20_000);
@@ -260,7 +286,8 @@ function PainsPageInner() {
   useEffect(() => {
     if (searchRequest.n === 0) return;
     void runSearch(searchRequest.offset);
-    if (searchRequest.scroll) resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (searchRequest.scroll)
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchRequest]);
 
@@ -278,13 +305,22 @@ function PainsPageInner() {
     const currentOffset = initialLoad ? 0 : (expandedCompanies[companyId]?.offset ?? 0);
     setExpandedCompanies((prev) => ({
       ...prev,
-      [companyId]: { loading: true, reviews: prev[companyId]?.reviews ?? [], total: prev[companyId]?.total ?? 0, offset: currentOffset },
+      [companyId]: {
+        loading: true,
+        reviews: prev[companyId]?.reviews ?? [],
+        total: prev[companyId]?.total ?? 0,
+        offset: currentOffset,
+      },
     }));
     try {
       const firstTagId = selectedTagIds.size > 0 ? Array.from(selectedTagIds)[0] : undefined;
       const res = await getCompanyReviews(
         companyId,
-        { sentiment: 'negative' as const, source: reviewSource !== 'all' ? reviewSource : undefined, pain_tag_id: firstTagId },
+        {
+          sentiment: 'negative' as const,
+          source: reviewSource !== 'all' ? reviewSource : undefined,
+          pain_tag_id: firstTagId,
+        },
         REVIEWS_PAGE,
         currentOffset,
       );
@@ -300,7 +336,10 @@ function PainsPageInner() {
     } catch {
       setExpandedCompanies((prev) => ({
         ...prev,
-        [companyId]: { ...(prev[companyId] ?? { reviews: [], total: 0, offset: 0 }), loading: false },
+        [companyId]: {
+          ...(prev[companyId] ?? { reviews: [], total: 0, offset: 0 }),
+          loading: false,
+        },
       }));
     }
   };
@@ -322,7 +361,10 @@ function PainsPageInner() {
     requestSearch(0);
   };
 
-  const selectedTags = useMemo(() => topTags.filter((t) => selectedTagIds.has(t.id)), [topTags, selectedTagIds]);
+  const selectedTags = useMemo(
+    () => topTags.filter((t) => selectedTagIds.has(t.id)),
+    [topTags, selectedTagIds],
+  );
   const activePainLabel = useMemo(() => {
     if (selectedTags.length === 1) return selectedTags[0].label;
     if (selectedTags.length > 1) {
@@ -346,410 +388,518 @@ function PainsPageInner() {
   const totalMentions = topTags.reduce((sum, t) => sum + t.occurrences_count, 0);
   const pageIds = data?.items.map((c) => c.id) ?? [];
   const allOnPageSelected = pageIds.length > 0 && pageIds.every((cid) => selectedIds.has(cid));
-  const actionCompanies = (data?.items ?? []).filter((c) => selectedIds.size === 0 || selectedIds.has(c.id));
+  const actionCompanies = (data?.items ?? []).filter(
+    (c) => selectedIds.size === 0 || selectedIds.has(c.id),
+  );
 
   return (
-    <div className="mx-auto w-full max-w-[1128px] px-4 pb-16 pt-10 sm:px-6 sm:pt-16">
-      {/* === Заголовок === */}
-      <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 pl-1 pr-4 text-small font-semibold text-ui-text-muted">
-        <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">ФИШКА</span>
-        Письмо, которое начинается с цитаты их же отзыва
-      </p>
-      <h1 className="max-w-[760px] text-hero font-extrabold text-ui-text">
-        Кто уже жалуется.
-        <span className="block font-bold text-ui-text-muted/75">Найдите по отзывам их клиентов.</span>
-      </h1>
-      <p className="mt-5 max-w-[58ch] text-base leading-relaxed text-ui-text-muted">
-        Выберите частую жалобу — покажем компании, где она встречается в реальных отзывах, с{' '}
-        <b className="font-semibold text-ui-text">цитатой и контактом</b>. Самый сильный повод для первого письма.
-      </p>
+    <PageContainer className="pb-16 pt-10 sm:pt-16">
+      <div className="mx-auto w-full max-w-[1128px]">
+        {/* === Заголовок === */}
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 pl-1 pr-4 text-small font-semibold text-ui-text-muted">
+          <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">
+            ФИШКА
+          </span>
+          Письмо, которое начинается с цитаты их же отзыва
+        </p>
+        <h1 className="max-w-[760px] text-hero font-extrabold text-ui-text">
+          Кто уже жалуется.
+          <span className="block font-bold text-ui-text-muted/75">
+            Найдите по отзывам их клиентов.
+          </span>
+        </h1>
+        <p className="mt-5 max-w-[58ch] text-base leading-relaxed text-ui-text-muted">
+          Выберите частую жалобу — покажем компании, где она встречается в реальных отзывах, с{' '}
+          <b className="font-semibold text-ui-text">цитатой и контактом</b>. Самый сильный повод для
+          первого письма.
+        </p>
 
-      <SearchModeSwitch active="pains" className="mx-0 mt-8" />
+        <SearchModeSwitch active="pains" className="mx-0 mt-8" />
 
-      <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
-        {/* === На что жалуются === */}
-        <section aria-labelledby="pains-what" className="overflow-hidden rounded-panel border border-black/[.05] bg-ui-surface shadow-raised">
-          <div className="px-5 pt-4 sm:px-6">
-            <h2 id="pains-what" className="text-xl font-extrabold tracking-tight text-ui-text">
-              На что жалуются
-            </h2>
-            <p className="text-small text-ui-text-muted">
-              {niche
-                ? `${capitalize(niche)}${city ? ` · ${city}` : ''}${totalMentions > 0 ? ` · ${totalMentions.toLocaleString('ru-RU')} упоминаний в отзывах` : ''}`
-                : 'Частые жалобы по всем нишам — выберите нишу справа, чтобы увидеть её боли'}
-            </p>
-          </div>
-          <div className="px-3 pb-3 pt-3">
-            {niche && topTagsLoading && topTags.length === 0 && <p className="px-3 py-4 text-small text-ui-text-muted">Загружаю боли ниши…</p>}
-            {niche && !topTagsLoading && topTags.length === 0 && (
-              <p className="px-3 py-4 text-small text-ui-text-muted">
-                Для этой ниши боли ещё не размечены. Выберите категорию ниже — или пересоберите AI-теги в результатах.
+        <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
+          {/* === На что жалуются === */}
+          <section
+            aria-labelledby="pains-what"
+            className="overflow-hidden rounded-panel border border-black/[.05] bg-ui-surface shadow-raised"
+          >
+            <div className="px-5 pt-4 sm:px-6">
+              <h2 id="pains-what" className="text-xl font-extrabold tracking-tight text-ui-text">
+                На что жалуются
+              </h2>
+              <p className="text-small text-ui-text-muted">
+                {niche
+                  ? `${capitalize(niche)}${city ? ` · ${city}` : ''}${totalMentions > 0 ? ` · ${totalMentions.toLocaleString('ru-RU')} упоминаний в отзывах` : ''}`
+                  : 'Частые жалобы по всем нишам — выберите нишу справа, чтобы увидеть её боли'}
               </p>
-            )}
-            {niche && topTags.length > 0
-              ? visibleTags.map((t) => (
-                  <PainRow
-                    key={t.id}
-                    label={t.label}
-                    title={t.description ?? undefined}
-                    count={t.occurrences_count}
-                    share={t.occurrences_count / maxOccurrences}
-                    active={selectedTagIds.has(t.id)}
-                    onClick={() => toggleTag(t)}
-                  />
-                ))
-              : PAIN_KEYS.map((k) => (
-                  <PainRow key={k} label={PAIN_KEY_LABELS[k]} active={selectedTagIds.size === 0 && painKey === k && data !== null} onClick={() => pickPainKey(k)} />
-                ))}
-            {niche && topTags.length > TAGS_SHOWN && (
-              <button
-                type="button"
-                onClick={() => setShowAllTags((v) => !v)}
-                className="mt-2 w-full border-t border-black/[.06] pt-3 text-center text-small font-semibold text-ui-accent hover:underline"
-              >
-                {showAllTags ? 'Скрыть' : `Показать ещё ${topTags.length - TAGS_SHOWN} ${plural(topTags.length - TAGS_SHOWN, 'боль', 'боли', 'болей')}`}
-              </button>
-            )}
-          </div>
-          <div className="border-t border-black/[.06] bg-ui-surface-2 px-5 pb-5 pt-4 sm:px-6">
-            <label htmlFor="pains-own" className="mb-1.5 block text-xs font-semibold text-ui-text-muted">
-              Или впишите своё — найдём подходящий тег
-            </label>
-            <Input
-              id="pains-own"
-              value={ownPain}
-              onChange={(e) => setOwnPain(e.target.value)}
-              disabled={!niche}
-              placeholder={niche ? 'например: «не перезвонили»' : 'сначала выберите нишу'}
-              className="h-11 bg-ui-surface"
-            />
-            {ownPain.trim().length >= 3 && (
-              <div className="mt-2.5 text-small text-ui-text-muted">
-                {ownMatches.length === 0 ? (
-                  'Подходящих тегов в этой нише нет — попробуйте другое слово.'
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span>Найдено:</span>
-                    {ownMatches.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => toggleTag(t)}
-                        className="rounded-full bg-ui-surface px-3 py-1 text-small font-semibold text-ui-accent shadow-raised hover:bg-ui-accent/[.06]"
-                      >
-                        «{t.label}» · {t.occurrences_count}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* === Где искать === */}
-        <section aria-labelledby="pains-where" className="rounded-panel border border-black/[.05] bg-ui-surface shadow-raised">
-          <div className="px-5 pt-4 sm:px-6">
-            <h2 id="pains-where" className="text-xl font-extrabold tracking-tight text-ui-text">
-              Где искать
-            </h2>
-          </div>
-          <div className="flex flex-col gap-4 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-            <div>
-              <label htmlFor="pains-city" className={LABEL}>
-                Город
-              </label>
-              <div className="flex items-center gap-1.5">
-                <CityCombobox id="pains-city" city={city} onCityChange={(c) => setCity(c)} placeholder="Любой" className="min-w-0 flex-1" />
-                {city && (
-                  <button
-                    type="button"
-                    onClick={() => setCity('')}
-                    aria-label="Убрать город"
-                    className="grid h-11 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
             </div>
-            <div>
-              <label htmlFor="pains-niche" className={LABEL}>
-                Ниша
-              </label>
-              <Input id="pains-niche" list="pains-niche-options" value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="Например: стоматология" className="h-11" />
-              <datalist id="pains-niche-options">
-                {niches.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
-              <p className="mt-1.5 text-xs text-ui-text-muted">Пусто — по всем нишам города</p>
-            </div>
-            <div>
-              <span className={LABEL}>Источник отзывов</span>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Источник отзывов">
-                {REVIEW_SOURCES.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    aria-pressed={reviewSource === opt.value}
-                    onClick={() => {
-                      setReviewSource(opt.value);
-                      setExpandedCompanies({});
-                    }}
-                    className={cn(
-                      'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                      reviewSource === opt.value ? 'border-ui-text bg-ui-text text-ui-surface' : 'border-ui-border text-ui-text-muted hover:text-ui-text',
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <Button onClick={() => requestSearch(0, true)} loading={isLoading} iconRight={!isLoading ? <ArrowRight /> : undefined} className="mt-1 h-12 w-full text-base">
-              Показать компании
-            </Button>
-            <p className="-mt-2 text-center text-xs text-ui-text-muted">по уже собранной базе — результат сразу</p>
-            {error && (
-              <p role="alert" className="rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger">
-                {error}
-              </p>
-            )}
-          </div>
-        </section>
-      </div>
-
-      {/* === Результаты === */}
-      <section ref={resultsRef} aria-label="Компании" className="mt-14 scroll-mt-20">
-        {data && data.items.length === 0 && !isLoading && (
-          <div className="rounded-panel bg-ui-surface-2 p-6 text-small text-ui-text-muted">
-            <p className="text-base font-bold text-ui-text">Компаний с болью «{activePainLabel}» не нашлось</p>
-            {city || niche ? (
-              <>
-                <p className="mt-1.5">
-                  {data.pain_labels.length > 0
-                    ? `Похожие теги в базе есть (${data.pain_labels
-                        .slice(0, 3)
-                        .map((l) => `«${l}»`)
-                        .join(', ')}${data.pain_labels.length > 3 ? '…' : ''}), но у компаний с этим фильтром их нет. Попробуйте снять фильтр:`
-                    : 'Для этого города и ниши боль ещё не размечена. Снимите фильтр или пересоберите AI-теги:'}
+            <div className="px-3 pb-3 pt-3">
+              {niche && topTagsLoading && topTags.length === 0 && (
+                <p className="px-3 py-4 text-small text-ui-text-muted">Загружаю боли ниши…</p>
+              )}
+              {niche && !topTagsLoading && topTags.length === 0 && (
+                <p className="px-3 py-4 text-small text-ui-text-muted">
+                  Для этой ниши боли ещё не размечены. Выберите категорию ниже — или пересоберите
+                  AI-теги в результатах.
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {city && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-ui-surface"
-                      onClick={() => {
-                        setCity('');
-                        requestSearch(0);
-                      }}
-                    >
-                      Убрать город «{city}»
-                    </Button>
-                  )}
-                  {niche && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-ui-surface"
-                      onClick={() => {
-                        setNiche('');
-                        requestSearch(0);
-                      }}
-                    >
-                      Убрать нишу «{niche}»
-                    </Button>
-                  )}
-                  {niche && (
-                    <Button size="sm" variant="secondary" className="bg-ui-surface" onClick={rebuildNiche} disabled={rebuildBusy}>
-                      {rebuildBusy ? 'Ставлю в очередь…' : 'Пересобрать AI-теги ниши'}
-                    </Button>
+              )}
+              {niche && topTags.length > 0
+                ? visibleTags.map((t) => (
+                    <PainRow
+                      key={t.id}
+                      label={t.label}
+                      title={t.description ?? undefined}
+                      count={t.occurrences_count}
+                      share={t.occurrences_count / maxOccurrences}
+                      active={selectedTagIds.has(t.id)}
+                      onClick={() => toggleTag(t)}
+                    />
+                  ))
+                : PAIN_KEYS.map((k) => (
+                    <PainRow
+                      key={k}
+                      label={PAIN_KEY_LABELS[k]}
+                      active={selectedTagIds.size === 0 && painKey === k && data !== null}
+                      onClick={() => pickPainKey(k)}
+                    />
+                  ))}
+              {niche && topTags.length > TAGS_SHOWN && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTags((v) => !v)}
+                  className="mt-2 w-full border-t border-black/[.06] pt-3 text-center text-small font-semibold text-ui-accent hover:underline"
+                >
+                  {showAllTags
+                    ? 'Скрыть'
+                    : `Показать ещё ${topTags.length - TAGS_SHOWN} ${plural(topTags.length - TAGS_SHOWN, 'боль', 'боли', 'болей')}`}
+                </button>
+              )}
+            </div>
+            <div className="border-t border-black/[.06] bg-ui-surface-2 px-5 pb-5 pt-4 sm:px-6">
+              <label
+                htmlFor="pains-own"
+                className="mb-1.5 block text-xs font-semibold text-ui-text-muted"
+              >
+                Или впишите своё — найдём подходящий тег
+              </label>
+              <Input
+                id="pains-own"
+                value={ownPain}
+                onChange={(e) => setOwnPain(e.target.value)}
+                disabled={!niche}
+                placeholder={niche ? 'например: «не перезвонили»' : 'сначала выберите нишу'}
+                className="h-11 bg-ui-surface"
+              />
+              {ownPain.trim().length >= 3 && (
+                <div className="mt-2.5 text-small text-ui-text-muted">
+                  {ownMatches.length === 0 ? (
+                    'Подходящих тегов в этой нише нет — попробуйте другое слово.'
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>Найдено:</span>
+                      {ownMatches.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => toggleTag(t)}
+                          className="rounded-full bg-ui-surface px-3 py-1 text-small font-semibold text-ui-accent shadow-raised hover:bg-ui-accent/[.06]"
+                        >
+                          «{t.label}» · {t.occurrences_count}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {rebuildMsg && <p className="mt-2 text-xs">{rebuildMsg}</p>}
-                {rebuildProgress && (
-                  <div className="mt-3 rounded-card bg-ui-surface p-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-ui-text">AI-разметка отзывов</span>
-                      <span className="tabular-nums">
-                        {rebuildProgress.reviews_analyzed.toLocaleString('ru-RU')} / {rebuildProgress.reviews_total.toLocaleString('ru-RU')} ·{' '}
-                        <b>{rebuildProgress.percent}%</b>
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-ui-border">
-                      <div
-                        className={cn('h-full rounded-full transition-all duration-500', rebuildProgress.ready ? 'bg-ui-success' : 'bg-ui-accent')}
-                        style={{ width: `${Math.max(2, Math.min(100, rebuildProgress.percent))}%` }}
-                      />
-                    </div>
-                    <p className="mt-1.5 text-xs">
-                      Тегов: {rebuildProgress.active_tags} · связей компания↔боль: {rebuildProgress.pain_scores}
-                      {rebuildProgress.ready ? ' · готово — выберите нишу заново' : ' · обновляется каждые 20 секунд'}
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="mt-1.5">
-                {data.pain_labels.length > 0
-                  ? `Теги есть (${data.pain_labels.length}), но ни одна компания с ними не связана — напишите в поддержку.`
-                  : 'AI ещё не выделил эту тему в отзывах. Запустите новый поиск по картам или подождите 5–10 минут.'}
-              </p>
-            )}
-          </div>
-        )}
-
-        {data && data.items.length > 0 && (
-          <>
-            <div className="flex flex-wrap items-end gap-x-6 gap-y-4 rounded-panel bg-ui-surface-2 p-5 sm:p-6">
-              <div className="min-w-0">
-                <div className="text-[44px] font-bold leading-none tabular-nums text-ui-accent">{data.total.toLocaleString('ru-RU')}</div>
-                <p className="mt-1.5 text-small text-ui-text-muted">
-                  {plural(data.total, 'компания', 'компании', 'компаний')} с жалобами на <b className="font-bold text-ui-text">«{activePainLabel}»</b>
-                </p>
-                {selectedTagIds.size === 0 && data.pain_labels.length > 0 && (
-                  <p className="mt-0.5 text-xs text-ui-text-muted" title={data.pain_labels.join(', ')}>
-                    по тегам: {data.pain_labels.slice(0, 3).join(', ')}
-                    {data.pain_labels.length > 3 && ` +${data.pain_labels.length - 3}`}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 pr-1 text-small font-semibold text-ui-text-muted">
-                  <input
-                    type="checkbox"
-                    checked={allOnPageSelected}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedIds((prev) => new Set([...prev, ...pageIds]));
-                      else
-                        setSelectedIds((prev) => {
-                          const next = new Set(prev);
-                          pageIds.forEach((cid) => next.delete(cid));
-                          return next;
-                        });
-                    }}
-                    className="h-4 w-4 cursor-pointer accent-[hsl(var(--color-accent))]"
-                  />
-                  Выбрать всех{selectedIds.size > 0 && ` · ${selectedIds.size}`}
-                </label>
-                <a
-                  href={buildPainsExportUrl({
-                    pain_key: selectedTagIds.size > 0 ? undefined : painKey,
-                    pain_tag_ids: selectedTagIds.size > 0 ? Array.from(selectedTagIds) : undefined,
-                    city: city || undefined,
-                    niche: niche || undefined,
-                    company_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
-                  })}
-                  title="Скачать .xlsx: выбранные компании или все по текущей боли"
-                  className={cn(buttonClass({ variant: 'secondary', size: 'sm' }), 'h-10 bg-ui-surface shadow-raised hover:bg-ui-surface')}
-                >
-                  <Download className="h-4 w-4" aria-hidden /> Excel
-                </a>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-10 bg-ui-surface shadow-raised hover:bg-ui-surface"
-                  iconLeft={<Send />}
-                  onClick={() => {
-                    setDraftCompanies(actionCompanies as CompanyForDraft[]);
-                    setDraftOpen(true);
-                  }}
-                  title="Шаблон письма с подставленной болью — скопировать или открыть в почте"
-                >
-                  Написать
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-10 bg-ui-surface shadow-raised hover:bg-ui-surface"
-                  iconLeft={<ListPlus />}
-                  onClick={() => setAddToListOpen(true)}
-                >
-                  В список
-                </Button>
-              </div>
+              )}
             </div>
+          </section>
 
-            <ul className="mt-5 flex flex-col gap-3.5">
-              {data.items.map((c) => (
-                <PainCompanyCard
-                  key={c.id}
-                  company={c}
-                  painLabel={selectedTags.length === 1 ? selectedTags[0].label : selectedTags.length > 1 ? null : PAIN_KEY_LABELS[painKey]}
-                  selected={selectedIds.has(c.id)}
-                  onToggleSelect={() =>
-                    setSelectedIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.id)) next.delete(c.id);
-                      else next.add(c.id);
-                      return next;
-                    })
-                  }
-                  onOpen={() => setDrawerCompanyId(c.id)}
-                  onWrite={() => {
-                    setDraftCompanies([c as CompanyForDraft]);
-                    setDraftOpen(true);
-                  }}
-                  reviews={expandedCompanies[c.id]}
-                  onToggleReviews={() => void toggleExpand(c.id, true)}
-                  onMoreReviews={() => void toggleExpand(c.id, false)}
-                  expandedReviewIds={expandedReviews}
-                  onToggleReviewText={(rid) =>
-                    setExpandedReviews((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(rid)) next.delete(rid);
-                      else next.add(rid);
-                      return next;
-                    })
-                  }
+          {/* === Где искать === */}
+          <section
+            aria-labelledby="pains-where"
+            className="rounded-panel border border-black/[.05] bg-ui-surface shadow-raised"
+          >
+            <div className="px-5 pt-4 sm:px-6">
+              <h2 id="pains-where" className="text-xl font-extrabold tracking-tight text-ui-text">
+                Где искать
+              </h2>
+            </div>
+            <div className="flex flex-col gap-4 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+              <div>
+                <label htmlFor="pains-city" className={LABEL}>
+                  Город
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <CityCombobox
+                    id="pains-city"
+                    city={city}
+                    onCityChange={(c) => setCity(c)}
+                    placeholder="Любой"
+                    className="min-w-0 flex-1"
+                  />
+                  {city && (
+                    <button
+                      type="button"
+                      onClick={() => setCity('')}
+                      aria-label="Убрать город"
+                      className="grid h-11 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="pains-niche" className={LABEL}>
+                  Ниша
+                </label>
+                <Input
+                  id="pains-niche"
+                  list="pains-niche-options"
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  placeholder="Например: стоматология"
+                  className="h-11"
                 />
-              ))}
-            </ul>
+                <datalist id="pains-niche-options">
+                  {niches.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+                <p className="mt-1.5 text-xs text-ui-text-muted">Пусто — по всем нишам города</p>
+              </div>
+              <div>
+                <span className={LABEL}>Источник отзывов</span>
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Источник отзывов">
+                  {REVIEW_SOURCES.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={reviewSource === opt.value}
+                      onClick={() => {
+                        setReviewSource(opt.value);
+                        setExpandedCompanies({});
+                      }}
+                      className={cn(
+                        'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                        reviewSource === opt.value
+                          ? 'border-ui-text bg-ui-text text-ui-surface'
+                          : 'border-ui-border text-ui-text-muted hover:text-ui-text',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button
+                onClick={() => requestSearch(0, true)}
+                loading={isLoading}
+                iconRight={!isLoading ? <ArrowRight /> : undefined}
+                className="mt-1 h-12 w-full text-base"
+              >
+                Показать компании
+              </Button>
+              <p className="-mt-2 text-center text-xs text-ui-text-muted">
+                по уже собранной базе — результат сразу
+              </p>
+              {error && (
+                <p
+                  role="alert"
+                  className="rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger"
+                >
+                  {error}
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
 
-            {(data.total > offset + data.items.length || offset > 0) && (
-              <nav aria-label="Страницы" className="flex items-center justify-center gap-4 pt-6 text-small text-ui-text-muted">
-                <Button variant="secondary" disabled={offset === 0 || isLoading} onClick={() => requestSearch(Math.max(0, offset - PAGE_SIZE), true)}>
-                  ← Назад
-                </Button>
-                <span>
-                  <b className="font-semibold tabular-nums text-ui-text">
-                    {offset + 1}–{offset + data.items.length}
-                  </b>{' '}
-                  из <b className="font-semibold tabular-nums text-ui-text">{data.total}</b>
-                </span>
-                <Button variant="secondary" disabled={offset + data.items.length >= data.total || isLoading} onClick={() => requestSearch(offset + PAGE_SIZE, true)}>
-                  Дальше →
-                </Button>
-              </nav>
-            )}
-          </>
-        )}
-      </section>
+        {/* === Результаты === */}
+        <section ref={resultsRef} aria-label="Компании" className="mt-14 scroll-mt-20">
+          {data && data.items.length === 0 && !isLoading && (
+            <div className="rounded-panel bg-ui-surface-2 p-6 text-small text-ui-text-muted">
+              <p className="text-base font-bold text-ui-text">
+                Компаний с болью «{activePainLabel}» не нашлось
+              </p>
+              {city || niche ? (
+                <>
+                  <p className="mt-1.5">
+                    {data.pain_labels.length > 0
+                      ? `Похожие теги в базе есть (${data.pain_labels
+                          .slice(0, 3)
+                          .map((l) => `«${l}»`)
+                          .join(
+                            ', ',
+                          )}${data.pain_labels.length > 3 ? '…' : ''}), но у компаний с этим фильтром их нет. Попробуйте снять фильтр:`
+                      : 'Для этого города и ниши боль ещё не размечена. Снимите фильтр или пересоберите AI-теги:'}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {city && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="bg-ui-surface"
+                        onClick={() => {
+                          setCity('');
+                          requestSearch(0);
+                        }}
+                      >
+                        Убрать город «{city}»
+                      </Button>
+                    )}
+                    {niche && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="bg-ui-surface"
+                        onClick={() => {
+                          setNiche('');
+                          requestSearch(0);
+                        }}
+                      >
+                        Убрать нишу «{niche}»
+                      </Button>
+                    )}
+                    {niche && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="bg-ui-surface"
+                        onClick={rebuildNiche}
+                        disabled={rebuildBusy}
+                      >
+                        {rebuildBusy ? 'Ставлю в очередь…' : 'Пересобрать AI-теги ниши'}
+                      </Button>
+                    )}
+                  </div>
+                  {rebuildMsg && <p className="mt-2 text-xs">{rebuildMsg}</p>}
+                  {rebuildProgress && (
+                    <div className="mt-3 rounded-card bg-ui-surface p-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-ui-text">AI-разметка отзывов</span>
+                        <span className="tabular-nums">
+                          {rebuildProgress.reviews_analyzed.toLocaleString('ru-RU')} /{' '}
+                          {rebuildProgress.reviews_total.toLocaleString('ru-RU')} ·{' '}
+                          <b>{rebuildProgress.percent}%</b>
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-ui-border">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-500',
+                            rebuildProgress.ready ? 'bg-ui-success' : 'bg-ui-accent',
+                          )}
+                          style={{
+                            width: `${Math.max(2, Math.min(100, rebuildProgress.percent))}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-xs">
+                        Тегов: {rebuildProgress.active_tags} · связей компания↔боль:{' '}
+                        {rebuildProgress.pain_scores}
+                        {rebuildProgress.ready
+                          ? ' · готово — выберите нишу заново'
+                          : ' · обновляется каждые 20 секунд'}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="mt-1.5">
+                  {data.pain_labels.length > 0
+                    ? `Теги есть (${data.pain_labels.length}), но ни одна компания с ними не связана — напишите в поддержку.`
+                    : 'AI ещё не выделил эту тему в отзывах. Запустите новый поиск по картам или подождите 5–10 минут.'}
+                </p>
+              )}
+            </div>
+          )}
 
-      <AddToListModal
-        open={addToListOpen}
-        companyIds={selectedIds.size > 0 ? Array.from(selectedIds) : pageIds}
-        defaultListName={data ? `Боль «${activePainLabel}»${niche ? ` — ${niche}` : ''}${city ? ` / ${city}` : ''}` : undefined}
-        onClose={() => setAddToListOpen(false)}
-        onDone={() => {
-          setAddToListOpen(false);
-          setSelectedIds(new Set());
-        }}
-      />
+          {data && data.items.length > 0 && (
+            <>
+              <div className="flex flex-wrap items-end gap-x-6 gap-y-4 rounded-panel bg-ui-surface-2 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <div className="text-[44px] font-bold leading-none tabular-nums text-ui-accent">
+                    {data.total.toLocaleString('ru-RU')}
+                  </div>
+                  <p className="mt-1.5 text-small text-ui-text-muted">
+                    {plural(data.total, 'компания', 'компании', 'компаний')} с жалобами на{' '}
+                    <b className="font-bold text-ui-text">«{activePainLabel}»</b>
+                  </p>
+                  {selectedTagIds.size === 0 && data.pain_labels.length > 0 && (
+                    <p
+                      className="mt-0.5 text-xs text-ui-text-muted"
+                      title={data.pain_labels.join(', ')}
+                    >
+                      по тегам: {data.pain_labels.slice(0, 3).join(', ')}
+                      {data.pain_labels.length > 3 && ` +${data.pain_labels.length - 3}`}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                  <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 pr-1 text-small font-semibold text-ui-text-muted">
+                    <input
+                      type="checkbox"
+                      checked={allOnPageSelected}
+                      onChange={(e) => {
+                        if (e.target.checked)
+                          setSelectedIds((prev) => new Set([...prev, ...pageIds]));
+                        else
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            pageIds.forEach((cid) => next.delete(cid));
+                            return next;
+                          });
+                      }}
+                      className="h-4 w-4 cursor-pointer accent-[hsl(var(--color-accent))]"
+                    />
+                    Выбрать всех{selectedIds.size > 0 && ` · ${selectedIds.size}`}
+                  </label>
+                  <a
+                    href={buildPainsExportUrl({
+                      pain_key: selectedTagIds.size > 0 ? undefined : painKey,
+                      pain_tag_ids:
+                        selectedTagIds.size > 0 ? Array.from(selectedTagIds) : undefined,
+                      city: city || undefined,
+                      niche: niche || undefined,
+                      company_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
+                    })}
+                    title="Скачать .xlsx: выбранные компании или все по текущей боли"
+                    className={cn(
+                      buttonClass({ variant: 'secondary', size: 'sm' }),
+                      'h-10 bg-ui-surface shadow-raised hover:bg-ui-surface',
+                    )}
+                  >
+                    <Download className="h-4 w-4" aria-hidden /> Excel
+                  </a>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-10 bg-ui-surface shadow-raised hover:bg-ui-surface"
+                    iconLeft={<Send />}
+                    onClick={() => {
+                      setDraftCompanies(actionCompanies as CompanyForDraft[]);
+                      setDraftOpen(true);
+                    }}
+                    title="Шаблон письма с подставленной болью — скопировать или открыть в почте"
+                  >
+                    Написать
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-10 bg-ui-surface shadow-raised hover:bg-ui-surface"
+                    iconLeft={<ListPlus />}
+                    onClick={() => setAddToListOpen(true)}
+                  >
+                    В список
+                  </Button>
+                </div>
+              </div>
 
-      {/* Карточка компании — без контекста поиска: «Найти ЛПР» и повтор источника не показываются. */}
-      <MapsCompanyDetailDrawer companyId={drawerCompanyId} searchId={null} onClose={() => setDrawerCompanyId(null)} />
+              <ul className="mt-5 flex flex-col gap-3.5">
+                {data.items.map((c) => (
+                  <PainCompanyCard
+                    key={c.id}
+                    company={c}
+                    painLabel={
+                      selectedTags.length === 1
+                        ? selectedTags[0].label
+                        : selectedTags.length > 1
+                          ? null
+                          : PAIN_KEY_LABELS[painKey]
+                    }
+                    selected={selectedIds.has(c.id)}
+                    onToggleSelect={() =>
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(c.id)) next.delete(c.id);
+                        else next.add(c.id);
+                        return next;
+                      })
+                    }
+                    onOpen={() => setDrawerCompanyId(c.id)}
+                    onWrite={() => {
+                      setDraftCompanies([c as CompanyForDraft]);
+                      setDraftOpen(true);
+                    }}
+                    reviews={expandedCompanies[c.id]}
+                    onToggleReviews={() => void toggleExpand(c.id, true)}
+                    onMoreReviews={() => void toggleExpand(c.id, false)}
+                    expandedReviewIds={expandedReviews}
+                    onToggleReviewText={(rid) =>
+                      setExpandedReviews((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(rid)) next.delete(rid);
+                        else next.add(rid);
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </ul>
 
-      <DraftEmailPopover
-        open={draftOpen}
-        companies={draftCompanies}
-        painLabel={activePainLabel}
-        painKey={selectedTagIds.size > 0 ? null : painKey}
-        onClose={() => setDraftOpen(false)}
-      />
-    </div>
+              {(data.total > offset + data.items.length || offset > 0) && (
+                <nav
+                  aria-label="Страницы"
+                  className="flex items-center justify-center gap-4 pt-6 text-small text-ui-text-muted"
+                >
+                  <Button
+                    variant="secondary"
+                    disabled={offset === 0 || isLoading}
+                    onClick={() => requestSearch(Math.max(0, offset - PAGE_SIZE), true)}
+                  >
+                    ← Назад
+                  </Button>
+                  <span>
+                    <b className="font-semibold tabular-nums text-ui-text">
+                      {offset + 1}–{offset + data.items.length}
+                    </b>{' '}
+                    из <b className="font-semibold tabular-nums text-ui-text">{data.total}</b>
+                  </span>
+                  <Button
+                    variant="secondary"
+                    disabled={offset + data.items.length >= data.total || isLoading}
+                    onClick={() => requestSearch(offset + PAGE_SIZE, true)}
+                  >
+                    Дальше →
+                  </Button>
+                </nav>
+              )}
+            </>
+          )}
+        </section>
+
+        <AddToListModal
+          open={addToListOpen}
+          companyIds={selectedIds.size > 0 ? Array.from(selectedIds) : pageIds}
+          defaultListName={
+            data
+              ? `Боль «${activePainLabel}»${niche ? ` — ${niche}` : ''}${city ? ` / ${city}` : ''}`
+              : undefined
+          }
+          onClose={() => setAddToListOpen(false)}
+          onDone={() => {
+            setAddToListOpen(false);
+            setSelectedIds(new Set());
+          }}
+        />
+
+        {/* Карточка компании — без контекста поиска: «Найти ЛПР» и повтор источника не показываются. */}
+        <MapsCompanyDetailDrawer
+          companyId={drawerCompanyId}
+          searchId={null}
+          onClose={() => setDrawerCompanyId(null)}
+        />
+
+        <DraftEmailPopover
+          open={draftOpen}
+          companies={draftCompanies}
+          painLabel={activePainLabel}
+          painKey={selectedTagIds.size > 0 ? null : painKey}
+          onClose={() => setDraftOpen(false)}
+        />
+      </div>
+    </PageContainer>
   );
 }
 
@@ -800,17 +950,29 @@ function PainRow({
             aria-hidden
             className={cn(
               'grid h-[17px] w-[17px] shrink-0 place-items-center rounded-full border-[1.5px] transition-colors',
-              active ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast' : 'border-ui-border text-transparent',
+              active
+                ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast'
+                : 'border-ui-border text-transparent',
             )}
           >
             <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
           </span>
-          <span className={cn('truncate text-small', active ? 'font-bold text-ui-accent' : 'font-semibold text-ui-text')}>{label}</span>
+          <span
+            className={cn(
+              'truncate text-small',
+              active ? 'font-bold text-ui-accent' : 'font-semibold text-ui-text',
+            )}
+          >
+            {label}
+          </span>
         </span>
         {share != null && (
           <span className="block h-1.5 overflow-hidden rounded-full bg-ui-surface-2">
             <span
-              className={cn('block h-full rounded-full', active ? 'bg-ui-accent' : 'bg-ui-text-muted/40')}
+              className={cn(
+                'block h-full rounded-full',
+                active ? 'bg-ui-accent' : 'bg-ui-text-muted/40',
+              )}
               style={{ width: `${Math.max(4, Math.round(share * 100))}%` }}
             />
           </span>
@@ -819,7 +981,9 @@ function PainRow({
       {count != null && (
         <span className="text-right text-small font-semibold tabular-nums text-ui-text">
           {count.toLocaleString('ru-RU')}
-          <span className="block text-xs font-medium text-ui-text-muted">{plural(count, 'отзыв', 'отзыва', 'отзывов')}</span>
+          <span className="block text-xs font-medium text-ui-text-muted">
+            {plural(count, 'отзыв', 'отзыва', 'отзывов')}
+          </span>
         </span>
       )}
     </button>
@@ -855,7 +1019,13 @@ function PainCompanyCard({
   const temp = c.lead_temperature;
   const tone = temp == null ? 'cool' : temp >= 70 ? 'hot' : temp >= 40 ? 'warm' : 'cool';
   const reviewsCount = c.reviews_negative_count || c.reviews_count;
-  const meta = [c.address, c.rating != null ? `★ ${c.rating.toFixed(1)}` : null, c.reviews_count ? `${c.reviews_count} ${plural(c.reviews_count, 'отзыв', 'отзыва', 'отзывов')}` : null]
+  const meta = [
+    c.address,
+    c.rating != null ? `★ ${c.rating.toFixed(1)}` : null,
+    c.reviews_count
+      ? `${c.reviews_count} ${plural(c.reviews_count, 'отзыв', 'отзыва', 'отзывов')}`
+      : null,
+  ]
     .filter(Boolean)
     .join(' · ');
 
@@ -874,7 +1044,16 @@ function PainCompanyCard({
       <div className="row-span-2 flex gap-3 lg:row-span-1">
         <span
           aria-hidden
-          className={cn('w-[5px] shrink-0 rounded-full', selected ? 'bg-ui-accent' : tone === 'hot' ? 'bg-red-300' : tone === 'warm' ? 'bg-amber-300' : 'bg-ui-border')}
+          className={cn(
+            'w-[5px] shrink-0 rounded-full',
+            selected
+              ? 'bg-ui-accent'
+              : tone === 'hot'
+                ? 'bg-red-300'
+                : tone === 'warm'
+                  ? 'bg-amber-300'
+                  : 'bg-ui-border',
+          )}
         />
         <input
           type="checkbox"
@@ -893,14 +1072,21 @@ function PainCompanyCard({
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-ui-accent/[.08] px-3 py-0.5 text-xs font-semibold text-ui-accent">
             {painLabel ?? 'упоминаний боли'}
-            <span className="font-medium tabular-nums text-ui-text-muted">×{c.pain_mention_count}</span>
+            <span className="font-medium tabular-nums text-ui-text-muted">
+              ×{c.pain_mention_count}
+            </span>
           </span>
         </div>
-        {c.top_quote && !reviews && <p className="mt-2.5 max-w-[62ch] text-small leading-relaxed text-ui-text-muted">«{c.top_quote}»</p>}
+        {c.top_quote && !reviews && (
+          <p className="mt-2.5 max-w-[62ch] text-small leading-relaxed text-ui-text-muted">
+            «{c.top_quote}»
+          </p>
+        )}
         <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-semibold">
           {c.reviews_negative_count > 0 && (
             <span className="text-ui-danger">
-              {c.reviews_negative_count} {plural(c.reviews_negative_count, 'негативный', 'негативных', 'негативных')}
+              {c.reviews_negative_count}{' '}
+              {plural(c.reviews_negative_count, 'негативный', 'негативных', 'негативных')}
             </span>
           )}
           {c.website ? (
@@ -921,8 +1107,14 @@ function PainCompanyCard({
 
         {reviews && (
           <div className="mt-3 flex flex-col gap-2 rounded-card bg-ui-surface-2 p-2.5">
-            {reviews.loading && reviews.reviews.length === 0 && <p className="px-1 text-xs text-ui-text-muted">Загружаю отзывы…</p>}
-            {!reviews.loading && reviews.reviews.length === 0 && <p className="px-1 text-xs text-ui-text-muted">Отзывов с этой болью в выбранном источнике нет.</p>}
+            {reviews.loading && reviews.reviews.length === 0 && (
+              <p className="px-1 text-xs text-ui-text-muted">Загружаю отзывы…</p>
+            )}
+            {!reviews.loading && reviews.reviews.length === 0 && (
+              <p className="px-1 text-xs text-ui-text-muted">
+                Отзывов с этой болью в выбранном источнике нет.
+              </p>
+            )}
             {reviews.reviews.map((r) => {
               const text = r.raw_text ?? '';
               const isLong = text.length > 280;
@@ -930,12 +1122,27 @@ function PainCompanyCard({
               return (
                 <div key={r.id} className="rounded-control bg-ui-surface p-2.5 text-xs">
                   <div className="flex flex-wrap items-center gap-2 text-ui-text-muted">
-                    {r.rating != null && <span className="font-semibold text-ui-danger">★ {r.rating}/5</span>}
+                    {r.rating != null && (
+                      <span className="font-semibold text-ui-danger">★ {r.rating}/5</span>
+                    )}
                     {r.source && <span>{SOURCE_SHORT[r.source] ?? r.source}</span>}
-                    {r.posted_at && <span>{new Date(r.posted_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                    {r.posted_at && (
+                      <span>
+                        {new Date(r.posted_at).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    )}
                     {r.has_owner_reply && <span className="text-ui-success">владелец ответил</span>}
                     {r.source_url && (
-                      <a href={r.source_url} target="_blank" rel="noreferrer" className="ml-auto hover:text-ui-accent">
+                      <a
+                        href={r.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-auto hover:text-ui-accent"
+                      >
                         открыть ↗
                       </a>
                     )}
@@ -946,7 +1153,11 @@ function PainCompanyCard({
                     </p>
                   )}
                   {isLong && (
-                    <button type="button" onClick={() => onToggleReviewText(r.id)} className="mt-1 text-xs font-semibold text-ui-accent hover:underline">
+                    <button
+                      type="button"
+                      onClick={() => onToggleReviewText(r.id)}
+                      className="mt-1 text-xs font-semibold text-ui-accent hover:underline"
+                    >
                       {full ? 'Свернуть' : 'Читать полностью'}
                     </button>
                   )}
@@ -954,8 +1165,16 @@ function PainCompanyCard({
               );
             })}
             {reviews.total > reviews.reviews.length && (
-              <Button size="sm" variant="secondary" className="bg-ui-surface" onClick={onMoreReviews} disabled={reviews.loading}>
-                {reviews.loading ? 'Загружаю…' : `Показать ещё · ${reviews.total - reviews.reviews.length}`}
+              <Button
+                size="sm"
+                variant="secondary"
+                className="bg-ui-surface"
+                onClick={onMoreReviews}
+                disabled={reviews.loading}
+              >
+                {reviews.loading
+                  ? 'Загружаю…'
+                  : `Показать ещё · ${reviews.total - reviews.reviews.length}`}
               </Button>
             )}
           </div>
@@ -964,13 +1183,32 @@ function PainCompanyCard({
 
       <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 lg:col-start-3 lg:w-[210px] lg:flex-col lg:items-end lg:justify-center lg:gap-1.5 lg:text-right">
         {temp != null && (
-          <span className="flex items-baseline gap-2 lg:flex-col lg:items-end lg:gap-0" title="Готовность 0–100: рейтинг, свежесть и число отзывов, контакты, ответы владельца">
-            <span className={cn('text-xl font-bold tabular-nums', tone === 'hot' ? 'text-ui-danger' : tone === 'warm' ? 'text-ui-warning' : 'text-ui-text-muted')}>{temp}</span>
-            <span className="text-xs font-bold uppercase tracking-widest text-ui-text-muted">готовность</span>
+          <span
+            className="flex items-baseline gap-2 lg:flex-col lg:items-end lg:gap-0"
+            title="Готовность 0–100: рейтинг, свежесть и число отзывов, контакты, ответы владельца"
+          >
+            <span
+              className={cn(
+                'text-xl font-bold tabular-nums',
+                tone === 'hot'
+                  ? 'text-ui-danger'
+                  : tone === 'warm'
+                    ? 'text-ui-warning'
+                    : 'text-ui-text-muted',
+              )}
+            >
+              {temp}
+            </span>
+            <span className="text-xs font-bold uppercase tracking-widest text-ui-text-muted">
+              готовность
+            </span>
           </span>
         )}
         {c.phone && (
-          <a href={`tel:${c.phone}`} className="whitespace-nowrap text-small font-semibold tabular-nums text-ui-text hover:text-ui-accent">
+          <a
+            href={`tel:${c.phone}`}
+            className="whitespace-nowrap text-small font-semibold tabular-nums text-ui-text hover:text-ui-accent"
+          >
             {c.phone}
           </a>
         )}

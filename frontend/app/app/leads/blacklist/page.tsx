@@ -1,16 +1,22 @@
 'use client';
 
 import { BlacklistManager } from '@/components/BlacklistManager';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageColumn, PageHeader } from '@/components/ui/page';
 
 export default function LeadsBlacklistPage() {
   return (
-    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 overflow-x-hidden">
-      <PageHeader
-        breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Лиды', href: '/app/leads' }, { label: 'Чёрный список' }]}
-        title="Чёрный список доменов"
-      />
-      <BlacklistManager />
-    </div>
+    <PageContainer className="overflow-x-hidden">
+      <PageColumn>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Главная', href: '/' },
+            { label: 'Лиды', href: '/app/leads' },
+            { label: 'Чёрный список' },
+          ]}
+          title="Чёрный список доменов"
+        />
+        <BlacklistManager />
+      </PageColumn>
+    </PageContainer>
   );
 }

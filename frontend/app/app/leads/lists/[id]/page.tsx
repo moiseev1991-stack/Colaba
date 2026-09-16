@@ -17,6 +17,7 @@ import { CreateCampaignFromListModal } from '@/components/maps/CreateCampaignFro
 import { DraftEmailModal } from '@/components/maps/DraftEmailModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { confirmDialog } from '@/components/ui/confirm';
+import { PageContainer } from '@/components/ui/page';
 import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 import {
   getLeadList,
@@ -65,7 +66,13 @@ export default function LeadListDetailPage() {
 
   async function remove(company: CompanyOut) {
     if (!data) return;
-    if (!(await confirmDialog({ title: `Убрать «${company.name}» из списка?`, confirmLabel: 'Убрать' }))) return;
+    if (
+      !(await confirmDialog({
+        title: `Убрать «${company.name}» из списка?`,
+        confirmLabel: 'Убрать',
+      }))
+    )
+      return;
     try {
       await removeLeadListItem(data.id, company.id);
       setData({
@@ -99,7 +106,7 @@ export default function LeadListDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1000px] px-6 py-6 text-sm text-slate-500">
+      <div className="mx-auto max-w-[1100px] px-6 py-6 text-sm text-slate-500">
         Загружаю список…
       </div>
     );
@@ -107,7 +114,7 @@ export default function LeadListDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="mx-auto max-w-[1000px] space-y-3 px-6 py-6">
+      <div className="mx-auto max-w-[1100px] space-y-3 px-6 py-6">
         <Link
           href="/app/leads/lists"
           className="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline"
@@ -122,7 +129,7 @@ export default function LeadListDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-5 px-6 py-6">
+    <PageContainer className="space-y-5">
       <Link
         href="/app/leads/lists"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline"
@@ -215,6 +222,6 @@ export default function LeadListDetailPage() {
         error={draftError}
         onClose={() => setDraftOpen(false)}
       />
-    </div>
+    </PageContainer>
   );
 }

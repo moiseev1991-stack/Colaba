@@ -273,6 +273,12 @@
     max-width: 100%;
   }
 
+  /* Стабильность вёрстки между маршрутами: скроллбар всегда занимает место,
+     контейнер не дёргается при переходе страница-со-скроллом → без (CLS). */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   /* shadcn/UI vars only; --text, --muted, --accent, --border, --surface from design tokens above */
   :root {
     /* shadcn-токены — псевдонимы семантического слоя (PR 3.1) */

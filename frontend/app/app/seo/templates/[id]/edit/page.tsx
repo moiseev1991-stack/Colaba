@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { toast } from '@/components/ui/toast';
+import { PageColumn, PageContainer } from '@/components/ui/page';
 import {
   getOutreachTemplates,
   updateOutreachTemplate,
@@ -25,10 +26,14 @@ export default function EditTemplatePage() {
   const id = params?.id ? Number(params.id) : NaN;
 
   const [template, setTemplate] = useState<OutreachTemplate | null>(null);
-  const [form, setForm] = useState<OutreachTemplateCreate>({ name: '', subject: '', body: '', module: 'seo' });
+  const [form, setForm] = useState<OutreachTemplateCreate>({
+    name: '',
+    subject: '',
+    body: '',
+    module: 'seo',
+  });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -49,7 +54,9 @@ export default function EditTemplatePage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,114 +93,120 @@ export default function EditTemplatePage() {
   if (!template) {
     return (
       <div className="mx-auto max-w-[760px] px-6 py-8">
-        <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>Шаблон не найден</p>
+        <p className="mb-4" style={{ color: 'hsl(var(--muted))' }}>
+          Шаблон не найден
+        </p>
         <Link href="/app/seo/templates" className="contents">
-          <ButtonV2 variant="secondary" size="md">К списку шаблонов</ButtonV2>
+          <ButtonV2 variant="secondary" size="md">
+            К списку шаблонов
+          </ButtonV2>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[760px] min-w-0 px-4 py-6 sm:px-6 sm:py-8 overflow-x-hidden">
-      <Link
-        href="/app/seo/templates"
-        className="inline-flex items-center gap-2 text-sm mb-6 transition-colors hover:text-[hsl(var(--text))]"
-        style={{ color: 'hsl(var(--muted))' }}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        К списку шаблонов
-      </Link>
+    <PageContainer className="min-w-0 overflow-x-hidden">
+      <PageColumn>
+        <Link
+          href="/app/seo/templates"
+          className="inline-flex items-center gap-2 text-sm mb-6 transition-colors hover:text-[hsl(var(--text))]"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          <ArrowLeft className="h-4 w-4" />К списку шаблонов
+        </Link>
 
-      <h1
-        className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
-        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
-      >
-        <FileText className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-        Редактировать шаблон
-      </h1>
+        <h1
+          className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
+          style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
+        >
+          <FileText className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+          Редактировать шаблон
+        </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <CardV2 className="p-6 space-y-4">
-          <div>
-            <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
-              Название шаблона
-            </label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Например: SEO короткий"
-              className="w-full"
-            />
-          </div>
-          <div>
-            <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
-              Тема письма
-            </label>
-            <Input
-              value={form.subject}
-              onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-              placeholder="Рекомендации по SEO для {{domain}}"
-              className="w-full"
-            />
-          </div>
-          <div>
-            <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
-              Текст письма
-            </label>
-            <textarea
-              value={form.body}
-              onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-              rows={10}
-              className="w-full rounded-v2-sm border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
-              style={{
-                background: 'hsl(var(--surface))',
-                borderColor: 'hsl(var(--border))',
-                color: 'hsl(var(--text))',
-              }}
-            />
-          </div>
-          <div
-            className="rounded-v2-sm p-3 text-xs"
-            style={{ background: 'hsl(var(--surface-2))' }}
-          >
-            <p className="font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>
-              Доступные плейсхолдеры:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PLACEHOLDERS.map(({ key }) => (
-                <code
-                  key={key}
-                  className="px-2 py-0.5 rounded-v2-sm border font-mono"
-                  style={{
-                    background: 'hsl(var(--surface))',
-                    borderColor: 'hsl(var(--border))',
-                    color: 'hsl(var(--text))',
-                  }}
-                >
-                  {key}
-                </code>
-              ))}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <CardV2 className="p-6 space-y-4">
+            <div>
+              <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
+                Название шаблона
+              </label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Например: SEO короткий"
+                className="w-full"
+              />
             </div>
-          </div>
-        </CardV2>
+            <div>
+              <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
+                Тема письма
+              </label>
+              <Input
+                value={form.subject}
+                onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+                placeholder="Рекомендации по SEO для {{domain}}"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLS} style={{ color: 'hsl(var(--text))' }}>
+                Текст письма
+              </label>
+              <textarea
+                value={form.body}
+                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                rows={10}
+                className="w-full rounded-v2-sm border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
+                style={{
+                  background: 'hsl(var(--surface))',
+                  borderColor: 'hsl(var(--border))',
+                  color: 'hsl(var(--text))',
+                }}
+              />
+            </div>
+            <div
+              className="rounded-v2-sm p-3 text-xs"
+              style={{ background: 'hsl(var(--surface-2))' }}
+            >
+              <p className="font-medium mb-2" style={{ color: 'hsl(var(--text))' }}>
+                Доступные плейсхолдеры:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PLACEHOLDERS.map(({ key }) => (
+                  <code
+                    key={key}
+                    className="px-2 py-0.5 rounded-v2-sm border font-mono"
+                    style={{
+                      background: 'hsl(var(--surface))',
+                      borderColor: 'hsl(var(--border))',
+                      color: 'hsl(var(--text))',
+                    }}
+                  >
+                    {key}
+                  </code>
+                ))}
+              </div>
+            </div>
+          </CardV2>
 
-        <div className="flex gap-3">
-          <ButtonV2
-            type="submit"
-            variant="primary"
-            size="md"
-            iconLeft={<Save />}
-            loading={submitting}
-          >
-            Сохранить
-          </ButtonV2>
-          <Link href="/app/seo/templates" className="contents">
-            <ButtonV2 type="button" variant="secondary" size="md">
-              Отмена
+          <div className="flex gap-3">
+            <ButtonV2
+              type="submit"
+              variant="primary"
+              size="md"
+              iconLeft={<Save />}
+              loading={submitting}
+            >
+              Сохранить
             </ButtonV2>
-          </Link>
-        </div>
-      </form>    </div>
+            <Link href="/app/seo/templates" className="contents">
+              <ButtonV2 type="button" variant="secondary" size="md">
+                Отмена
+              </ButtonV2>
+            </Link>
+          </div>
+        </form>
+      </PageColumn>
+    </PageContainer>
   );
 }

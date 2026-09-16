@@ -6,7 +6,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageColumn, PageHeader } from '@/components/ui/page';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
@@ -77,7 +77,6 @@ export default function EmailProvidersSettingsPage() {
   const [state, setState] = useState<Record<string, PerProviderState>>({});
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
-
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -229,273 +228,284 @@ export default function EmailProvidersSettingsPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <PageHeader
-        breadcrumb={[
-          { label: 'Главная', href: '/' },
-          { label: 'Конфигурация', href: '/settings' },
-          { label: 'Провайдеры email' },
-        ]}
-        title="Провайдеры email"
-      />
-      <div className="mx-auto max-w-3xl px-4 pt-4">
-        <p className="mb-6 text-sm" style={{ color: 'hsl(var(--muted))' }}>
-          Каналы отправки писем с автоматическим резервом
-        </p>
-        {/* Статус-баннер */}
-        <div
-          className="mb-6 rounded-[12px] border p-4"
-          style={{
-            borderColor:
-              activeCount > 0 ? 'hsl(var(--signal-good-border))' : 'hsl(var(--signal-warm-border))',
-            background:
-              activeCount > 0 ? 'hsl(var(--signal-good-bg))' : 'hsl(var(--signal-warm-bg))',
-          }}
-        >
-          <p className="text-sm font-medium">
-            {activeCount === 0 ? (
-              <>Нет активных каналов — рассылка невозможна. Включите хотя бы один.</>
-            ) : (
-              <>
-                Активны:{' '}
-                {sortedByPriority
-                  .filter((p) => p.is_enabled && p.is_configured)
-                  .map((p) => `${p.name} (${PRIORITY_LABELS[p.priority] ?? p.priority})`)
-                  .join(' → ')}
-                . При сбое основного — авто-переход на следующий.
-              </>
-            )}
+      <PageContainer>
+        <PageColumn>
+          <PageHeader
+            breadcrumbs={[
+              { label: 'Главная', href: '/' },
+              { label: 'Конфигурация', href: '/settings' },
+              { label: 'Провайдеры email' },
+            ]}
+            title="Провайдеры email"
+          />
+          <p className="mb-6 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+            Каналы отправки писем с автоматическим резервом
           </p>
-        </div>
-
-        {loading && (
-          <div className="flex items-center gap-2 text-sm" style={{ color: 'hsl(var(--muted))' }}>
-            <Loader2 className="h-4 w-4 animate-spin" /> Загрузка настроек…
+          {/* Статус-баннер */}
+          <div
+            className="mb-6 rounded-[12px] border p-4"
+            style={{
+              borderColor:
+                activeCount > 0
+                  ? 'hsl(var(--signal-good-border))'
+                  : 'hsl(var(--signal-warm-border))',
+              background:
+                activeCount > 0 ? 'hsl(var(--signal-good-bg))' : 'hsl(var(--signal-warm-bg))',
+            }}
+          >
+            <p className="text-sm font-medium">
+              {activeCount === 0 ? (
+                <>Нет активных каналов — рассылка невозможна. Включите хотя бы один.</>
+              ) : (
+                <>
+                  Активны:{' '}
+                  {sortedByPriority
+                    .filter((p) => p.is_enabled && p.is_configured)
+                    .map((p) => `${p.name} (${PRIORITY_LABELS[p.priority] ?? p.priority})`)
+                    .join(' → ')}
+                  . При сбое основного — авто-переход на следующий.
+                </>
+              )}
+            </p>
           </div>
-        )}
 
-        <div className="space-y-6">
-          {sortedByPriority.map((p) => {
-            const s = state[p.provider_id];
-            if (!s) return null;
-            const status: 'ok' | 'warn' | 'bad' = p.is_enabled
-              ? p.is_configured
-                ? 'ok'
-                : 'warn'
-              : 'bad';
-            const statusLabel =
-              status === 'ok'
-                ? 'Готов к отправке'
-                : status === 'warn'
-                  ? 'Включён, но не настроен'
-                  : 'Отключён';
+          {loading && (
+            <div className="flex items-center gap-2 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+              <Loader2 className="h-4 w-4 animate-spin" /> Загрузка настроек…
+            </div>
+          )}
 
-            return (
-              <CardV2 key={p.provider_id}>
-                <div
-                  className="flex flex-wrap items-start justify-between gap-3 border-b pb-4"
-                  style={{ borderColor: 'hsl(var(--border))' }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px]"
-                      style={{ background: 'hsl(var(--accent-soft))' }}
-                    >
-                      <Mail className="h-5 w-5" style={{ color: 'hsl(var(--accent))' }} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-base font-semibold">{p.name}</h2>
-                        <SignalPill
-                          tone={status === 'ok' ? 'good' : status === 'warn' ? 'warm' : 'muted'}
-                        >
-                          {statusLabel}
-                        </SignalPill>
+          <div className="space-y-6">
+            {sortedByPriority.map((p) => {
+              const s = state[p.provider_id];
+              if (!s) return null;
+              const status: 'ok' | 'warn' | 'bad' = p.is_enabled
+                ? p.is_configured
+                  ? 'ok'
+                  : 'warn'
+                : 'bad';
+              const statusLabel =
+                status === 'ok'
+                  ? 'Готов к отправке'
+                  : status === 'warn'
+                    ? 'Включён, но не настроен'
+                    : 'Отключён';
+
+              return (
+                <CardV2 key={p.provider_id}>
+                  <div
+                    className="flex flex-wrap items-start justify-between gap-3 border-b pb-4"
+                    style={{ borderColor: 'hsl(var(--border))' }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px]"
+                        style={{ background: 'hsl(var(--accent-soft))' }}
+                      >
+                        <Mail className="h-5 w-5" style={{ color: 'hsl(var(--accent))' }} />
                       </div>
-                      <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                        Приоритет: {PRIORITY_LABELS[p.priority] ?? p.priority}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ButtonV2
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => changePriority(p.provider_id, -1)}
-                      disabled={p.priority === 0}
-                      title="Повысить приоритет"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </ButtonV2>
-                    <ButtonV2
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => changePriority(p.provider_id, 1)}
-                      disabled={p.priority === 2}
-                      title="Понизить приоритет"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </ButtonV2>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={s.is_enabled}
-                        onChange={(e) => setEnabled(p.provider_id, e.target.checked)}
-                        className="rounded border"
-                        style={{ borderColor: 'hsl(var(--border))' }}
-                      />
-                      <span className="text-sm">Включён</span>
-                    </label>
-                  </div>
-
-                  {/* Переключатель транспорта для SMTP-провайдеров */}
-                  {(p.provider_id === 'postbox' || p.provider_id === 'ses') && (
-                    <div
-                      className="mt-3 flex flex-wrap items-center gap-3 rounded-[8px] border p-3"
-                      style={{
-                        borderColor: 'hsl(var(--border))',
-                        background: 'hsl(var(--surface-2))',
-                      }}
-                    >
-                      <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
-                        Способ отправки:
-                      </span>
-                      <label className="flex items-center gap-1.5 cursor-pointer text-sm">
-                        <input
-                          type="radio"
-                          name={`transport-${p.provider_id}`}
-                          checked={s.transport === 'smtp'}
-                          onChange={() => setTransport(p.provider_id, 'smtp')}
-                        />
-                        SMTP (порт 587)
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer text-sm">
-                        <input
-                          type="radio"
-                          name={`transport-${p.provider_id}`}
-                          checked={s.transport === 'http'}
-                          onChange={() => setTransport(p.provider_id, 'http')}
-                        />
-                        HTTP API (порт 443, обходит блокировки)
-                      </label>
-                      {s.transport === 'http' && (
-                        <span className="text-xs" style={{ color: 'hsl(var(--signal-good-text))' }}>
-                          ✓ Рекомендуется, если хостинг блокирует SMTP-порты
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <p className="mt-4 text-sm" style={{ color: 'hsl(var(--muted))' }}>
-                  {p.description}
-                </p>
-
-                <div className="mt-4 space-y-3">
-                  {p.fields.map((f) => (
-                    <div key={f.key}>
-                      {f.type === 'bool' ? (
-                        // Boolean-поля (smtp_use_ssl) — чекбокс.
-                        <label className="flex items-center gap-2 cursor-pointer text-sm">
-                          <input
-                            type="checkbox"
-                            checked={s.form[f.key] === '1'}
-                            onChange={(e) =>
-                              setField(p.provider_id, f.key, e.target.checked ? '1' : '0')
-                            }
-                            className="h-4 w-4"
-                          />
-                          <span className="font-medium">{f.label}</span>
-                          {f.required && (
-                            <span style={{ color: 'hsl(var(--signal-warm-text))' }}> *</span>
-                          )}
-                        </label>
-                      ) : (
-                        <>
-                          <label
-                            className="mb-1 block text-xs font-medium"
-                            style={{ color: 'hsl(var(--muted))' }}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-semibold">{p.name}</h2>
+                          <SignalPill
+                            tone={status === 'ok' ? 'good' : status === 'warn' ? 'warm' : 'muted'}
                           >
-                            {f.label}
+                            {statusLabel}
+                          </SignalPill>
+                        </div>
+                        <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                          Приоритет: {PRIORITY_LABELS[p.priority] ?? p.priority}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ButtonV2
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => changePriority(p.provider_id, -1)}
+                        disabled={p.priority === 0}
+                        title="Повысить приоритет"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </ButtonV2>
+                      <ButtonV2
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => changePriority(p.provider_id, 1)}
+                        disabled={p.priority === 2}
+                        title="Понизить приоритет"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </ButtonV2>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={s.is_enabled}
+                          onChange={(e) => setEnabled(p.provider_id, e.target.checked)}
+                          className="rounded border"
+                          style={{ borderColor: 'hsl(var(--border))' }}
+                        />
+                        <span className="text-sm">Включён</span>
+                      </label>
+                    </div>
+
+                    {/* Переключатель транспорта для SMTP-провайдеров */}
+                    {(p.provider_id === 'postbox' || p.provider_id === 'ses') && (
+                      <div
+                        className="mt-3 flex flex-wrap items-center gap-3 rounded-[8px] border p-3"
+                        style={{
+                          borderColor: 'hsl(var(--border))',
+                          background: 'hsl(var(--surface-2))',
+                        }}
+                      >
+                        <span
+                          className="text-xs font-medium"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
+                          Способ отправки:
+                        </span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-sm">
+                          <input
+                            type="radio"
+                            name={`transport-${p.provider_id}`}
+                            checked={s.transport === 'smtp'}
+                            onChange={() => setTransport(p.provider_id, 'smtp')}
+                          />
+                          SMTP (порт 587)
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-sm">
+                          <input
+                            type="radio"
+                            name={`transport-${p.provider_id}`}
+                            checked={s.transport === 'http'}
+                            onChange={() => setTransport(p.provider_id, 'http')}
+                          />
+                          HTTP API (порт 443, обходит блокировки)
+                        </label>
+                        {s.transport === 'http' && (
+                          <span
+                            className="text-xs"
+                            style={{ color: 'hsl(var(--signal-good-text))' }}
+                          >
+                            ✓ Рекомендуется, если хостинг блокирует SMTP-порты
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="mt-4 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+                    {p.description}
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    {p.fields.map((f) => (
+                      <div key={f.key}>
+                        {f.type === 'bool' ? (
+                          // Boolean-поля (smtp_use_ssl) — чекбокс.
+                          <label className="flex items-center gap-2 cursor-pointer text-sm">
+                            <input
+                              type="checkbox"
+                              checked={s.form[f.key] === '1'}
+                              onChange={(e) =>
+                                setField(p.provider_id, f.key, e.target.checked ? '1' : '0')
+                              }
+                              className="h-4 w-4"
+                            />
+                            <span className="font-medium">{f.label}</span>
                             {f.required && (
                               <span style={{ color: 'hsl(var(--signal-warm-text))' }}> *</span>
                             )}
                           </label>
-                          <Input
-                            type={f.secret ? 'password' : f.type === 'number' ? 'number' : 'text'}
-                            value={s.form[f.key] ?? ''}
-                            placeholder={f.default != null ? String(f.default) : ''}
-                            onChange={(e) => setField(p.provider_id, f.key, e.target.value)}
-                          />
-                        </>
-                      )}
-                      {f.description && (
-                        <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                          {f.description}
-                        </p>
-                      )}
+                        ) : (
+                          <>
+                            <label
+                              className="mb-1 block text-xs font-medium"
+                              style={{ color: 'hsl(var(--muted))' }}
+                            >
+                              {f.label}
+                              {f.required && (
+                                <span style={{ color: 'hsl(var(--signal-warm-text))' }}> *</span>
+                              )}
+                            </label>
+                            <Input
+                              type={f.secret ? 'password' : f.type === 'number' ? 'number' : 'text'}
+                              value={s.form[f.key] ?? ''}
+                              placeholder={f.default != null ? String(f.default) : ''}
+                              onChange={(e) => setField(p.provider_id, f.key, e.target.value)}
+                            />
+                          </>
+                        )}
+                        {f.description && (
+                          <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                            {f.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Цена за письмо (общая для всех) */}
+                    <div>
+                      <label
+                        className="mb-1 block text-xs font-medium"
+                        style={{ color: 'hsl(var(--muted))' }}
+                      >
+                        Цена за письмо (₽)
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        value={s.cost_per_mail}
+                        onChange={(e) => setCost(p.provider_id, e.target.value)}
+                      />
+                      <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                        Стоимость отправки одного письма. Используется для учёта расходов в
+                        api_call_log.
+                      </p>
                     </div>
-                  ))}
-
-                  {/* Цена за письмо (общая для всех) */}
-                  <div>
-                    <label
-                      className="mb-1 block text-xs font-medium"
-                      style={{ color: 'hsl(var(--muted))' }}
-                    >
-                      Цена за письмо (₽)
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.001"
-                      value={s.cost_per_mail}
-                      onChange={(e) => setCost(p.provider_id, e.target.value)}
-                    />
-                    <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                      Стоимость отправки одного письма. Используется для учёта расходов в
-                      api_call_log.
-                    </p>
                   </div>
-                </div>
 
-                {p.last_test_at && (
-                  <p className="mt-3 text-xs" style={{ color: 'hsl(var(--muted))' }}>
-                    Проверен {formatDate(p.last_test_at)} —{' '}
-                    {p.last_test_result === 'ok' ? (
-                      <span style={{ color: 'hsl(var(--signal-good-text))' }}>OK</span>
-                    ) : (
-                      <span style={{ color: 'hsl(var(--signal-warm-text))' }}>
-                        ошибка: {p.last_test_error ?? 'неизвестно'}
-                      </span>
-                    )}
-                  </p>
-                )}
+                  {p.last_test_at && (
+                    <p className="mt-3 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+                      Проверен {formatDate(p.last_test_at)} —{' '}
+                      {p.last_test_result === 'ok' ? (
+                        <span style={{ color: 'hsl(var(--signal-good-text))' }}>OK</span>
+                      ) : (
+                        <span style={{ color: 'hsl(var(--signal-warm-text))' }}>
+                          ошибка: {p.last_test_error ?? 'неизвестно'}
+                        </span>
+                      )}
+                    </p>
+                  )}
 
-                <div className="mt-5 flex gap-2">
-                  <ButtonV2 onClick={() => save(p.provider_id)} disabled={s.saving}>
-                    {s.saving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                    Сохранить
-                  </ButtonV2>
-                  <ButtonV2
-                    variant="secondary"
-                    onClick={() => test(p.provider_id)}
-                    disabled={s.testing}
-                  >
-                    {s.testing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Zap className="h-4 w-4" />
-                    )}
-                    Проверить
-                  </ButtonV2>
-                </div>
-              </CardV2>
-            );
-          })}
-        </div>
-      </div>    </div>
+                  <div className="mt-5 flex gap-2">
+                    <ButtonV2 onClick={() => save(p.provider_id)} disabled={s.saving}>
+                      {s.saving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      Сохранить
+                    </ButtonV2>
+                    <ButtonV2
+                      variant="secondary"
+                      onClick={() => test(p.provider_id)}
+                      disabled={s.testing}
+                    >
+                      {s.testing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4" />
+                      )}
+                      Проверить
+                    </ButtonV2>
+                  </div>
+                </CardV2>
+              );
+            })}
+          </div>
+        </PageColumn>
+      </PageContainer>
+    </div>
   );
 }

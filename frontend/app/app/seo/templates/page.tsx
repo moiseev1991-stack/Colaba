@@ -7,6 +7,7 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { confirmDialog } from '@/components/ui/confirm';
 import { toast } from '@/components/ui/toast';
+import { PageContainer } from '@/components/ui/page';
 import {
   getOutreachTemplates,
   getOutreachTemplatesSync,
@@ -21,7 +22,6 @@ const CODE_STYLE = { background: 'hsl(var(--surface-2))', color: 'hsl(var(--text
 export default function SeoTemplatesPage() {
   const [templates, setTemplates] = useState<OutreachTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,7 +56,7 @@ export default function SeoTemplatesPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-6 sm:px-6 sm:py-8 overflow-x-hidden">
+    <PageContainer className="min-w-0 overflow-x-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1
           className="flex items-center gap-2 font-display font-semibold tracking-tight"
@@ -71,17 +71,25 @@ export default function SeoTemplatesPage() {
           </ButtonV2>
         </Link>
       </div>
-
       <p className="text-small mb-2" style={{ color: 'hsl(var(--muted))' }}>
         Шаблоны используются при запуске SEO-поиска. В тексте можно использовать плейсхолдеры:{' '}
-        <code className={CODE_CLS} style={CODE_STYLE}>&#123;&#123;domain&#125;&#125;</code>,{' '}
-        <code className={CODE_CLS} style={CODE_STYLE}>&#123;&#123;issues&#125;&#125;</code>,{' '}
-        <code className={CODE_CLS} style={CODE_STYLE}>&#123;&#123;score&#125;&#125;</code> и др.
+        <code className={CODE_CLS} style={CODE_STYLE}>
+          &#123;&#123;domain&#125;&#125;
+        </code>
+        ,{' '}
+        <code className={CODE_CLS} style={CODE_STYLE}>
+          &#123;&#123;issues&#125;&#125;
+        </code>
+        ,{' '}
+        <code className={CODE_CLS} style={CODE_STYLE}>
+          &#123;&#123;score&#125;&#125;
+        </code>{' '}
+        и др.
       </p>
       <p className="text-xs mb-6" style={{ color: 'hsl(var(--muted))' }}>
-        Данные сохраняются в браузере (localStorage). После подключения бэкенда шаблоны будут синхронизироваться.
+        Данные сохраняются в браузере (localStorage). После подключения бэкенда шаблоны будут
+        синхронизироваться.
       </p>
-
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -100,7 +108,8 @@ export default function SeoTemplatesPage() {
             Шаблонов пока нет
           </p>
           <p className="text-small mb-6" style={{ color: 'hsl(var(--muted))' }}>
-            Создайте первый шаблон — он будет подставляться при генерации outreach для SEO-результатов.
+            Создайте первый шаблон — он будет подставляться при генерации outreach для
+            SEO-результатов.
           </p>
           <Link href="/app/seo/templates/new" className="contents">
             <ButtonV2 variant="primary" size="md" iconLeft={<Plus />}>
@@ -147,6 +156,7 @@ export default function SeoTemplatesPage() {
             </li>
           ))}
         </ul>
-      )}    </div>
+      )}{' '}
+    </PageContainer>
   );
 }

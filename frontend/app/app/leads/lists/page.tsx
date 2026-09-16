@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ListPlus, Trash2 } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/confirm';
+import { PageContainer } from '@/components/ui/page';
 
 import {
   createLeadList,
@@ -72,7 +73,7 @@ export default function LeadListsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1000px] space-y-5 px-6 py-6">
+    <PageContainer className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Списки лидов</h1>
@@ -128,7 +129,10 @@ export default function LeadListsPage() {
       ) : (
         <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
           {lists.map((l) => (
-            <li key={l.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+            <li
+              key={l.id}
+              className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
+            >
               <div className="min-w-0 flex-1">
                 <Link
                   href={`/app/leads/lists/${l.id}`}
@@ -153,6 +157,6 @@ export default function LeadListsPage() {
           ))}
         </ul>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -2,16 +2,35 @@
 
 import Link from 'next/link';
 import { Search, Users, BarChart3 } from 'lucide-react';
+import { PageContainer } from '@/components/ui/page';
 
 const modules = [
-  { id: 'seo', title: 'SEO', desc: 'Аудит, проверки, история запросов', icon: Search, href: '/app/seo' },
-  { id: 'leads', title: 'Поиск лидов', desc: 'Поиск, контакты, экспорт', icon: Users, href: '/app/leads' },
-  { id: 'gos', title: 'Госзакупки', desc: 'Мониторинг, история, фильтры', icon: BarChart3, href: '/app/gos' },
+  {
+    id: 'seo',
+    title: 'SEO',
+    desc: 'Аудит, проверки, история запросов',
+    icon: Search,
+    href: '/app/seo',
+  },
+  {
+    id: 'leads',
+    title: 'Поиск лидов',
+    desc: 'Поиск, контакты, экспорт',
+    icon: Users,
+    href: '/app/leads',
+  },
+  {
+    id: 'gos',
+    title: 'Госзакупки',
+    desc: 'Мониторинг, история, фильтры',
+    icon: BarChart3,
+    href: '/app/gos',
+  },
 ];
 
 export default function DashboardPage() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
+    <PageContainer>
       <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
         Выберите раздел
       </h1>
@@ -26,15 +45,22 @@ export default function DashboardPage() {
               style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
             >
               <Icon className="mb-3 h-8 w-8" style={{ color: 'hsl(var(--accent))' }} />
-              <h2 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>{m.title}</h2>
-              <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>{m.desc}</p>
-              <span className="mt-4 inline-block text-sm font-medium" style={{ color: 'hsl(var(--accent))' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
+                {m.title}
+              </h2>
+              <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+                {m.desc}
+              </p>
+              <span
+                className="mt-4 inline-block text-sm font-medium"
+                style={{ color: 'hsl(var(--accent))' }}
+              >
                 Открыть →
               </span>
             </Link>
           );
         })}
       </div>
-    </div>
+    </PageContainer>
   );
 }

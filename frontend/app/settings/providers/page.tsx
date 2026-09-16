@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageColumn, PageHeader } from '@/components/ui/page';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { SignalPill } from '@/components/ui/SignalPill';
@@ -27,7 +27,11 @@ function getErrorMessage(e: unknown, context: 'load' | 'save' | 'test'): string 
   if (!status) return 'Сервер недоступен';
   return (
     detail ||
-    (context === 'load' ? 'Ошибка загрузки провайдеров' : context === 'save' ? 'Ошибка сохранения' : 'Ошибка проверки')
+    (context === 'load'
+      ? 'Ошибка загрузки провайдеров'
+      : context === 'save'
+        ? 'Ошибка сохранения'
+        : 'Ошибка проверки')
   );
 }
 
@@ -134,9 +138,13 @@ export default function ProvidersPage() {
             className="rounded border"
             style={{ borderColor: 'hsl(var(--border))' }}
           />
-          <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>{f.label}</span>
+          <span className="text-sm" style={{ color: 'hsl(var(--text))' }}>
+            {f.label}
+          </span>
           {f.description && (
-            <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>({f.description})</span>
+            <span className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
+              ({f.description})
+            </span>
           )}
         </label>
       );
@@ -159,82 +167,90 @@ export default function ProvidersPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-x-hidden">      <PageHeader
-        breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Конфигурация', href: '/settings' }, { label: 'Провайдеры' }]}
-        title="Провайдеры поиска"
-      />
+    <PageContainer className="overflow-x-hidden">
+      <PageColumn>
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Главная', href: '/' },
+            { label: 'Конфигурация', href: '/settings' },
+            { label: 'Провайдеры' },
+          ]}
+          title="Провайдеры поиска"
+        />
 
-      {needsAuth ? (
-        <CardV2 className="p-6">
-          <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
-            Войдите для доступа к настройкам провайдеров.
-          </p>
-          <Link
-            href="/auth/login"
-            className="text-brand-600 dark:text-brand-400 hover:underline"
-          >
-            Войти
-          </Link>
-        </CardV2>
-      ) : loading ? (
-        <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
-      ) : (
-        <div className="space-y-6">
-          {list.map((p) => (
-            <CardV2 key={p.id} className="p-6">
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2
-                      className="font-display font-semibold tracking-tight text-xl"
-                      style={{ color: 'hsl(var(--text))' }}
-                    >
-                      {p.name}
-                    </h2>
-                    <SignalPill tone="muted" size="sm">
-                      {p.type === 'free' ? 'Бесплатный' : 'Платный'}
-                    </SignalPill>
-                    {p.configured ? (
-                      <SignalPill tone="good" size="sm">Настроен</SignalPill>
-                    ) : (
-                      <SignalPill tone="warm" size="sm">Не настроен</SignalPill>
+        {needsAuth ? (
+          <CardV2 className="p-6">
+            <p className="mb-3" style={{ color: 'hsl(var(--muted))' }}>
+              Войдите для доступа к настройкам провайдеров.
+            </p>
+            <Link href="/auth/login" className="text-brand-600 dark:text-brand-400 hover:underline">
+              Войти
+            </Link>
+          </CardV2>
+        ) : loading ? (
+          <p style={{ color: 'hsl(var(--muted))' }}>Загрузка…</p>
+        ) : (
+          <div className="space-y-6">
+            {list.map((p) => (
+              <CardV2 key={p.id} className="p-6">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2
+                        className="font-display font-semibold tracking-tight text-xl"
+                        style={{ color: 'hsl(var(--text))' }}
+                      >
+                        {p.name}
+                      </h2>
+                      <SignalPill tone="muted" size="sm">
+                        {p.type === 'free' ? 'Бесплатный' : 'Платный'}
+                      </SignalPill>
+                      {p.configured ? (
+                        <SignalPill tone="good" size="sm">
+                          Настроен
+                        </SignalPill>
+                      ) : (
+                        <SignalPill tone="warm" size="sm">
+                          Не настроен
+                        </SignalPill>
+                      )}
+                    </div>
+                    {p.description && (
+                      <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
+                        {p.description}
+                      </p>
                     )}
                   </div>
-                  {p.description && (
-                    <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>{p.description}</p>
-                  )}
                 </div>
-              </div>
 
-              <div className="space-y-4">
-                {p.settings_schema.map((f) => renderField(p, f))}
-              </div>
+                <div className="space-y-4">{p.settings_schema.map((f) => renderField(p, f))}</div>
 
-              <div
-                className="mt-4 pt-4 border-t flex gap-3"
-                style={{ borderColor: 'hsl(var(--border))' }}
-              >
-                <ButtonV2
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleTest(p.id)}
-                  loading={!!testing[p.id]}
+                <div
+                  className="mt-4 pt-4 border-t flex gap-3"
+                  style={{ borderColor: 'hsl(var(--border))' }}
                 >
-                  Проверить
-                </ButtonV2>
-                <ButtonV2
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleSave(p.id)}
-                  loading={!!saving[p.id]}
-                >
-                  Сохранить
-                </ButtonV2>
-              </div>
-            </CardV2>
-          ))}
-        </div>
-      )}
-    </div>
+                  <ButtonV2
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleTest(p.id)}
+                    loading={!!testing[p.id]}
+                  >
+                    Проверить
+                  </ButtonV2>
+                  <ButtonV2
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleSave(p.id)}
+                    loading={!!saving[p.id]}
+                  >
+                    Сохранить
+                  </ButtonV2>
+                </div>
+              </CardV2>
+            ))}
+          </div>
+        )}
+      </PageColumn>
+    </PageContainer>
   );
 }

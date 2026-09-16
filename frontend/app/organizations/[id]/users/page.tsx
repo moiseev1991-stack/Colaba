@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Trash2, ArrowLeft, UserCheck, User, Shield } from 'lucide-react';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 import {
   getOrganizationUsers,
   addUserToOrganization,
@@ -56,7 +56,9 @@ export default function OrganizationUsersPage() {
       setError(null);
     } catch (err: any) {
       if (err.response?.status === 403 || err.response?.status === 401) {
-        setError('Доступ запрещен. Только администраторы организации могут управлять пользователями.');
+        setError(
+          'Доступ запрещен. Только администраторы организации могут управлять пользователями.',
+        );
       } else if (err.response?.status === 404) {
         setError('Организация не найдена');
       } else {
@@ -87,7 +89,9 @@ export default function OrganizationUsersPage() {
       setShowAddUser(false);
       await loadData();
     } catch (err: any) {
-      toast.error(`Ошибка при добавлении пользователя: ${err.response?.data?.detail || err.message}`);
+      toast.error(
+        `Ошибка при добавлении пользователя: ${err.response?.data?.detail || err.message}`,
+      );
     }
   };
 
@@ -137,15 +141,17 @@ export default function OrganizationUsersPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-        <div className="text-center" style={{ color: 'hsl(var(--muted))' }}>Загрузка...</div>
-      </div>
+      <PageContainer className="overflow-x-hidden">
+        <div className="text-center" style={{ color: 'hsl(var(--muted))' }}>
+          Загрузка...
+        </div>
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+      <PageContainer className="overflow-x-hidden">
         <div
           className="rounded-v2-sm border p-4"
           style={{
@@ -166,15 +172,15 @@ export default function OrganizationUsersPage() {
             </ButtonV2>
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 overflow-x-hidden">
+    <PageContainer className="overflow-x-hidden">
       <div className="space-y-6">
         <PageHeader
-          breadcrumb={[
+          breadcrumbs={[
             { label: 'Главная', href: '/' },
             { label: 'Организации', href: '/organizations' },
             { label: organization?.name ?? 'Организация', href: undefined },
@@ -264,14 +270,16 @@ export default function OrganizationUsersPage() {
                   }}
                 >
                   <tr>
-                    {['ID пользователя', 'Роль', 'Дата добавления', 'Действия'].map((label, idx) => (
-                      <th
-                        key={label}
-                        className={`px-6 py-3 ${idx === 3 ? 'text-right' : 'text-left'} text-xs font-medium uppercase tracking-wider th-muted`}
-                      >
-                        {label}
-                      </th>
-                    ))}
+                    {['ID пользователя', 'Роль', 'Дата добавления', 'Действия'].map(
+                      (label, idx) => (
+                        <th
+                          key={label}
+                          className={`px-6 py-3 ${idx === 3 ? 'text-right' : 'text-left'} text-xs font-medium uppercase tracking-wider th-muted`}
+                        >
+                          {label}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -324,6 +332,6 @@ export default function OrganizationUsersPage() {
           </CardV2>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/confirm';
 import { toast } from '@/components/ui/toast';
+import { PageContainer } from '@/components/ui/page';
 
 // origin — из какой таблицы пришла заявка. website: главная + SEO-лендинги
 // (модуль website_leads). inbound: форма /razbor (модуль inbound_leads, своё
@@ -128,7 +129,10 @@ export default function AdminWebsiteLeadsPage() {
         return;
       }
       const wsData = await wsRes.json();
-      const wsItems: Lead[] = (wsData.items ?? []).map((i: any) => ({ ...i, origin: 'website' as const }));
+      const wsItems: Lead[] = (wsData.items ?? []).map((i: any) => ({
+        ...i,
+        origin: 'website' as const,
+      }));
       let inItems: Lead[] = [];
       if (inRes.ok) {
         const inData = await inRes.json();
@@ -165,7 +169,9 @@ export default function AdminWebsiteLeadsPage() {
 
   async function changeStatus(id: number, origin: Origin, newStatus: string) {
     const prev = items;
-    setItems((curr) => curr.map((i) => (i.id === id && i.origin === origin ? { ...i, status: newStatus } : i)));
+    setItems((curr) =>
+      curr.map((i) => (i.id === id && i.origin === origin ? { ...i, status: newStatus } : i)),
+    );
     try {
       const base = origin === 'inbound' ? '/api/v1/inbound-leads' : '/api/v1/website-leads';
       const apiStatus = origin === 'inbound' ? UI_TO_INBOUND[newStatus] : newStatus;
@@ -187,7 +193,13 @@ export default function AdminWebsiteLeadsPage() {
   async function softDelete(id: number) {
     // Удаление есть только у website_leads. Заявки с /razbor (inbound) не
     // удаляем кнопкой — у их API нет DELETE; помечать «Спам» можно статусом.
-    if (!(await confirmDialog({ title: 'Удалить заявку?', description: 'Заявка скроется из списка (мягкое удаление).' }))) return;
+    if (
+      !(await confirmDialog({
+        title: 'Удалить заявку?',
+        description: 'Заявка скроется из списка (мягкое удаление).',
+      }))
+    )
+      return;
     try {
       const res = await fetch(`/api/v1/website-leads/${id}`, { method: 'DELETE' });
       // Принимаем любой 2xx — бэк отдаёт 204 No Content, но прокси на
@@ -207,7 +219,7 @@ export default function AdminWebsiteLeadsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 py-4 sm:py-6">
+    <PageContainer>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
@@ -263,7 +275,10 @@ export default function AdminWebsiteLeadsPage() {
             {s.label} ({counters[s.value] ?? 0})
           </button>
         ))}
-        <label className="ml-2 flex items-center gap-2 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+        <label
+          className="ml-2 flex items-center gap-2 text-sm"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
           <input
             type="checkbox"
             checked={includeDeleted}
@@ -319,7 +334,10 @@ export default function AdminWebsiteLeadsPage() {
               </tr>
             )}
             {visible.map((it) => (
-              <tr key={`${it.origin}-${it.id}`} style={{ borderTop: '1px solid hsl(var(--border))' }}>
+              <tr
+                key={`${it.origin}-${it.id}`}
+                style={{ borderTop: '1px solid hsl(var(--border))' }}
+              >
                 <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>
                   {formatDate(it.created_at)}
                 </td>
@@ -342,7 +360,9 @@ export default function AdminWebsiteLeadsPage() {
                   )}
                 </td>
                 <td className="px-3 py-2" style={{ color: 'hsl(var(--muted))' }}>
-                  <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>{it.source_page}</span>
+                  <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                    {it.source_page}
+                  </span>
                 </td>
                 <td className="px-3 py-2">
                   <select
@@ -356,7 +376,9 @@ export default function AdminWebsiteLeadsPage() {
                     }}
                   >
                     {STATUSES.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
                     ))}
                   </select>
                 </td>
@@ -372,7 +394,10 @@ export default function AdminWebsiteLeadsPage() {
                       <Trash2 size={16} />
                     </button>
                   ) : (
-                    <span title="Заявка с /razbor — пометьте статусом «Спам»" style={{ color: 'hsl(var(--border))' }}>
+                    <span
+                      title="Заявка с /razbor — пометьте статусом «Спам»"
+                      style={{ color: 'hsl(var(--border))' }}
+                    >
                       /razbor
                     </span>
                   )}
@@ -382,6 +407,6 @@ export default function AdminWebsiteLeadsPage() {
           </tbody>
         </table>
       </div>
-    </div>
+    </PageContainer>
   );
 }

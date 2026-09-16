@@ -86,7 +86,7 @@ export function MapsSearchPanel() {
 
   if (mode !== 'idle' && search) {
     return (
-      <div className="mx-auto w-full max-w-[1232px] px-3 pb-10 pt-4 sm:px-6 sm:pt-6">
+      <div className="mx-auto w-full max-w-[1232px] px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
         <MapsSearchResults
           search={search}
           initialMode={mode === 'searching' ? 'searching' : 'results'}
@@ -99,9 +99,12 @@ export function MapsSearchPanel() {
 
   return (
     <>
-      {/* Подсказка для новых пользователей — над формой поиска */}
-      <div className="mx-auto w-full max-w-[1072px] px-4 pt-4 sm:px-6 sm:pt-6">
-        <OnboardingBanner />
+      {/* Подсказка для новых пользователей — над формой поиска.
+         Контейнер той же ширины 1232px, что и выдача: без прыжка при старте поиска. */}
+      <div className="mx-auto w-full max-w-[1232px] px-4 pt-4 sm:px-6 sm:pt-6">
+        <div className="mx-auto w-full max-w-[1072px]">
+          <OnboardingBanner />
+        </div>
       </div>
       <MapsSearchForm onStarted={handleStarted} />
     </>

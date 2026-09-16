@@ -6,7 +6,7 @@ import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogFooter } from '@/components/ui/dialog';
-import { PageHeader } from '@/components/PageHeader';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 import {
   listOrganizations,
   createOrganization,
@@ -107,7 +107,9 @@ export default function OrganizationsPage() {
       setOrgName('');
       await loadOrganizations();
     } catch (err: any) {
-      toast.error(`Ошибка при обновлении организации: ${err.response?.data?.detail || err.message}`);
+      toast.error(
+        `Ошибка при обновлении организации: ${err.response?.data?.detail || err.message}`,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -127,7 +129,12 @@ export default function OrganizationsPage() {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    if (!(await confirmDialog({ title: `Удалить организацию «${name}»?`, description: 'Это действие нельзя отменить.' }))) {
+    if (
+      !(await confirmDialog({
+        title: `Удалить организацию «${name}»?`,
+        description: 'Это действие нельзя отменить.',
+      }))
+    ) {
       return;
     }
 
@@ -145,15 +152,17 @@ export default function OrganizationsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
-        <div className="text-center" style={{ color: 'hsl(var(--muted))' }}>Загрузка...</div>
-      </div>
+      <PageContainer className="overflow-x-hidden">
+        <div className="text-center" style={{ color: 'hsl(var(--muted))' }}>
+          Загрузка...
+        </div>
+      </PageContainer>
     );
   }
 
   if (error && !isSuperuser) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+      <PageContainer className="overflow-x-hidden">
         <div
           className="rounded-v2-sm border p-4"
           style={{
@@ -164,15 +173,15 @@ export default function OrganizationsPage() {
         >
           <p>{error}</p>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-hidden">
+    <PageContainer className="overflow-x-hidden">
       <div className="space-y-6">
         <PageHeader
-          breadcrumb={[{ label: 'Главная', href: '/' }, { label: 'Организации' }]}
+          breadcrumbs={[{ label: 'Главная', href: '/' }, { label: 'Организации' }]}
           title="Организации"
           actions={
             <ButtonV2
@@ -215,7 +224,10 @@ export default function OrganizationsPage() {
                     >
                       {org.name}
                     </h2>
-                    <div className="flex gap-6 text-sm flex-wrap" style={{ color: 'hsl(var(--muted))' }}>
+                    <div
+                      className="flex gap-6 text-sm flex-wrap"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         <span>{org.users_count} пользователей</span>
@@ -263,17 +275,10 @@ export default function OrganizationsPage() {
       </div>
 
       {/* Create Organization Modal */}
-      <Dialog
-        open={createModalOpen}
-        onClose={closeModals}
-        title="Создать организацию"
-      >
+      <Dialog open={createModalOpen} onClose={closeModals} title="Создать организацию">
         <div className="space-y-4">
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
-              style={{ color: 'hsl(var(--text))' }}
-            >
+            <label className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>
               Название организации
             </label>
             <Input
@@ -295,17 +300,10 @@ export default function OrganizationsPage() {
       </Dialog>
 
       {/* Edit Organization Modal */}
-      <Dialog
-        open={editModalOpen}
-        onClose={closeModals}
-        title="Редактировать организацию"
-      >
+      <Dialog open={editModalOpen} onClose={closeModals} title="Редактировать организацию">
         <div className="space-y-4">
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
-              style={{ color: 'hsl(var(--text))' }}
-            >
+            <label className="block text-sm font-medium mb-1" style={{ color: 'hsl(var(--text))' }}>
               Название организации
             </label>
             <Input
@@ -325,6 +323,6 @@ export default function OrganizationsPage() {
           </ButtonV2>
         </DialogFooter>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }
