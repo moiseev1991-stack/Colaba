@@ -273,6 +273,46 @@
      контейнер не дёргается при переходе страница-со-скроллом → без (CLS). */
   html {
     scrollbar-gutter: stable;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Мобильный «нативный» отклик: без серого тап-хайлайта WebKit. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Моушен-токены (DESIGN.md §4, адаптация emilkowalski/skills):
+     всё ≤ 300мс; вход — ease-out, движение — ease-in-out. */
+  :root {
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --duration-slow: 280ms;
+    --ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-move: cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  /* Базовый фокус (DESIGN.md §6): один паттерн на все интерактивные элементы,
+     включая сырые <button>. Компоненты с собственным ring не конфликтуют —
+     глобальный outline только на :focus-visible. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--color-accent) / 0.55);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+
+  /* Числа в таблицах не «пляшут» (Linear-подход). */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* iOS не зумит страницу при фокусе полей (шрифт ≥ 16px на мобиле). */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 
   /* shadcn/UI vars only; --text, --muted, --accent, --border, --surface from design tokens above */

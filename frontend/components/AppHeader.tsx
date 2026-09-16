@@ -24,8 +24,16 @@ export function AppHeader({ email, onLogout }: { email: string | null; onLogout:
   return (
     <header className="sticky top-0 z-40 border-b border-black/[.06] bg-white/80 backdrop-blur-xl backdrop-saturate-150">
       <div className="mx-auto flex h-14 w-full max-w-[1232px] items-center gap-8 px-4 sm:px-6">
-        <Link href="/app/leads" aria-label="SpinLid — к поиску" className="flex shrink-0 items-center gap-2 rounded-control">
-          <BrandMark size={28} gradient="linear-gradient(135deg, #34d399 0%, #059669 100%)" glow="none" />
+        <Link
+          href="/app/leads"
+          aria-label="SpinLid — к поиску"
+          className="flex shrink-0 items-center gap-2 rounded-control"
+        >
+          <BrandMark
+            size={28}
+            gradient="linear-gradient(135deg, #34d399 0%, #059669 100%)"
+            glow="none"
+          />
           <span className="text-base font-bold tracking-tight text-ui-text">SpinLid</span>
         </Link>
 
@@ -49,12 +57,20 @@ export function AppHeader({ email, onLogout }: { email: string | null; onLogout:
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/#pricing" className={buttonClass({ variant: 'secondary', size: 'sm', className: 'gap-1.5' })}>
+          <Link
+            href="/#pricing"
+            className={buttonClass({ variant: 'secondary', size: 'sm', className: 'gap-1.5' })}
+          >
             <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
             <span className="hidden sm:inline">Купить подписку</span>
             <span className="sr-only sm:hidden">Купить подписку</span>
           </Link>
-          <ProfileMenu email={email} isSuperuser={isSuperuser} activeHref={activeHref} onLogout={onLogout} />
+          <ProfileMenu
+            email={email}
+            isSuperuser={isSuperuser}
+            activeHref={activeHref}
+            onLogout={onLogout}
+          />
         </div>
       </div>
     </header>
@@ -109,7 +125,7 @@ function ProfileMenu({
         {initial || <span className="h-2 w-2 rounded-full bg-ui-text-muted" aria-hidden />}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-card border border-black/[.06] bg-ui-surface p-1.5 shadow-overlay">
+        <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] w-72 overflow-y-auto rounded-card border border-black/[.06] bg-ui-surface p-1.5 shadow-overlay">
           <NavMenuList
             sections={menuSectionsFor(isSuperuser)}
             activeHref={activeHref}

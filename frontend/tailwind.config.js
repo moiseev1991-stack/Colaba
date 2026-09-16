@@ -20,9 +20,20 @@ module.exports = {
       // Размеры вне шкалы (text-[11px], text-lg, text-2xl…) в кабинете сведены к ним.
       fontSize: {
         small: ['13px', { lineHeight: '18px' }],
-        heading: ['28px', { lineHeight: '36px' }],
+        // Linear-подход: заголовкам — слегка уженный трекинг (DESIGN.md §5).
+        heading: ['28px', { lineHeight: '36px', letterSpacing: '-0.01em' }],
         // Вид Premium (16.09): крупный заголовок первого экрана раздела («Кому писать первым.»).
         hero: ['clamp(2.25rem, 5vw, 3.5rem)', { lineHeight: '1.06', letterSpacing: '-0.035em' }],
+      },
+      // Моушен-токены (DESIGN.md §4): длительности/изинги едины для всего кабинета.
+      transitionDuration: {
+        fast: '120ms',
+        base: '200ms',
+        slow: '280ms',
+      },
+      transitionTimingFunction: {
+        enter: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        move: 'cubic-bezier(0.77, 0, 0.175, 1)',
       },
       colors: {
         // === §1.1 редизайн 2026-06-03 — единая бренд-шкала ===
