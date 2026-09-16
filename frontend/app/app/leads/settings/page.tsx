@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Settings, List, Search, ChevronRight } from 'lucide-react';
 import { CardV2 } from '@/components/ui/CardV2';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 
 // §4.8 ТЗ редизайна 2026-06-03 (Phase C batch 1): сетка ссылок-настроек на CardV2,
 // с hover-lift и бренд-иконками вместо blue-600.
@@ -29,14 +30,15 @@ const ITEMS = [
 
 export default function LeadsSettingsPage() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <h1
-        className="flex items-center gap-2 mb-6 font-display font-semibold tracking-tight"
-        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
-      >
-        <Settings className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-        Настройки поиска лидов
-      </h1>
+    <PageContainer>
+      <PageHeader
+        title={
+          <>
+            <Settings className="h-5 w-5 text-ui-accent" aria-hidden />
+            Настройки поиска лидов
+          </>
+        }
+      />
 
       <div className="reveal-stack grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {ITEMS.map(({ href, icon: Icon, title, desc }) => (
@@ -57,11 +59,13 @@ export default function LeadsSettingsPage() {
               >
                 {title}
               </h2>
-              <p className="text-small" style={{ color: 'hsl(var(--muted))' }}>{desc}</p>
+              <p className="text-small" style={{ color: 'hsl(var(--muted))' }}>
+                {desc}
+              </p>
             </CardV2>
           </Link>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 }
