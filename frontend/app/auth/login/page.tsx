@@ -72,7 +72,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand"
+      className="min-h-screen flex items-center justify-center px-4 bg-ui-bg"
       style={{ backgroundColor: 'hsl(var(--bg))' }}
     >
       <div className="w-full max-w-[440px]">

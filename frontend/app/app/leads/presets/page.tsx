@@ -293,7 +293,7 @@ export default function MyPresetsPage() {
             color: 'hsl(var(--muted))',
           }}
         >
-          Загружаю пресеты…
+          Загрузка пресетов…
         </div>
       ) : visible.length === 0 ? (
         <div

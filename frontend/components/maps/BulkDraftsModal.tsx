@@ -87,8 +87,8 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
                 Сгенерируем драфт холодного письма для каждой компании списка, у которой есть
-                AI-боли клиентов с цитатами. LLM работает параллельно — обычно занимает 10-30
-                секунд на 25 компаний.
+                AI-боли клиентов с цитатами. LLM работает параллельно — обычно занимает 10-30 секунд
+                на 25 компаний.
               </p>
               <p className="text-xs text-slate-500">
                 Компании без болей с цитатами будут пропущены. Это норма — для них надо сначала
@@ -111,7 +111,7 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
                   <div className="h-full w-1/3 animate-pulse bg-slate-900" />
                 </div>
                 <span className="text-sm text-slate-600">
-                  Генерирую драфты для {itemsCount} компаний…
+                  Генерация драфтов для {itemsCount} компаний…
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -130,13 +130,14 @@ export function BulkDraftsModal({ open, listId, listName, itemsCount, onClose }:
             <div className="space-y-3">
               <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] px-3 py-2 text-sm text-[color:var(--signal-good)]">
                 <div className="font-medium">
-                  Готово: {result.drafts.length} драфт{result.drafts.length === 1 ? '' : result.drafts.length < 5 ? 'а' : 'ов'}{' '}
-                  из {result.total_companies} компаний
+                  Готово: {result.drafts.length} драфт
+                  {result.drafts.length === 1 ? '' : result.drafts.length < 5 ? 'а' : 'ов'} из{' '}
+                  {result.total_companies} компаний
                 </div>
                 {(result.skipped_no_pains > 0 || result.skipped_llm_error > 0) && (
                   <div className="mt-1 text-xs text-[color:var(--signal-good)]/80">
-                    Пропущено: {result.skipped_no_pains} без болей, {result.skipped_llm_error}{' '}
-                    с ошибкой LLM.
+                    Пропущено: {result.skipped_no_pains} без болей, {result.skipped_llm_error} с
+                    ошибкой LLM.
                   </div>
                 )}
               </div>

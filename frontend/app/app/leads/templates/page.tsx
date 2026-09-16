@@ -9,10 +9,11 @@
  *
  * Плейсхолдеры (subject/body): {{company}} {{city}} {{niche}} {{pain}}
  * {{quote}} {{mentions}} {{negative}} {{rating}} {{phone}} {{website}} {{address}}.
- * Подстановка происходит на /app/pains при клике «✉ Написать».
+ * Подстановка происходит на /app/pains при клике «Написать письмо».
  */
 
 import { useEffect, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 import {
   createOutreachTemplate,
@@ -44,7 +45,7 @@ const PLACEHOLDERS: Array<[string, string]> = [
   ['{{quote}}', 'Топ-цитата отзыва'],
   ['{{mentions}}', 'Кол-во упоминаний боли'],
   ['{{negative}}', 'Всего негативных отзывов'],
-  ['{{rating}}', 'Рейтинг ★'],
+  ['{{rating}}', 'Рейтинг'],
   ['{{phone}}', 'Телефон компании'],
   ['{{website}}', 'Сайт'],
   ['{{address}}', 'Адрес'],
@@ -276,7 +277,7 @@ export default function TemplatesPage() {
           </span>
         </div>
 
-        {loading && <p className="text-sm text-slate-500">Загружаем…</p>}
+        {loading && <p className="text-sm text-slate-500">Загрузка…</p>}
         {!loading && filtered.length === 0 && (
           <p className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 text-center">
             Пока нет шаблонов. Создай первый в форме выше.
@@ -304,16 +305,18 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     onClick={() => startEdit(t)}
-                    className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                    className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
                   >
-                    ✏ Ред.
+                    <Pencil className="h-4 w-4" aria-hidden />
+                    Ред.
                   </button>
                   <button
                     type="button"
                     onClick={() => void del(t.id)}
-                    className="rounded border border-rose-200 bg-white px-2 py-0.5 text-xs text-rose-700 hover:bg-rose-50"
+                    className="inline-flex items-center gap-1.5 rounded border border-rose-200 bg-white px-2 py-0.5 text-xs text-rose-700 hover:bg-rose-50"
                   >
-                    🗑 Удалить
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                    Удалить
                   </button>
                 </div>
               </div>

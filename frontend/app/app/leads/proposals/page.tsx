@@ -3,7 +3,7 @@
 /**
  * §4.4 ТЗ редизайна 2026-06-03 — Шаблоны КП.
  * Карточки на CardV2 + ButtonV2 + SignalPill, display-шрифт на h1,
- * EmptyState с bg-mesh-brand и атмосферной иконкой.
+ * EmptyState с атмосферной иконкой.
  */
 
 import { useEffect, useState } from 'react';
@@ -73,7 +73,7 @@ export default function ProposalsListPage() {
         className="mb-3 font-display font-semibold leading-[1.05] tracking-tight"
         style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
       >
-        Шаблоны <span className="text-gradient-brand">коммерческих предложений</span>
+        Шаблоны коммерческих предложений
       </h1>
       <p className="mb-8 max-w-[640px] text-base leading-relaxed text-[hsl(var(--muted))]">
         Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт в
@@ -98,8 +98,8 @@ export default function ProposalsListPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <CardV2 className="bg-mesh-brand px-6 py-12 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-v2-lg bg-brand-gradient text-white shadow-v2-sm">
+        <CardV2 className="px-6 py-12 text-center">
+          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-v2-lg bg-brand-600 text-white shadow-v2-sm">
             <FileText className="h-7 w-7" />
           </div>
           <h3 className="mb-2 font-display text-xl font-semibold text-[hsl(var(--text))]">

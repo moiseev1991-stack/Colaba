@@ -11,7 +11,7 @@ export function HeroHeader() {
       >
         {/* Logo placeholder 32–36px */}
         <div
-          className="w-9 h-9 flex-shrink-0 rounded-v2-sm bg-brand-gradient shadow-v2-sm flex items-center justify-center"
+          className="w-9 h-9 flex-shrink-0 rounded-v2-sm bg-brand-600 shadow-v2-sm flex items-center justify-center"
           aria-hidden
         >
           <span className="text-white font-bold text-sm">S</span>

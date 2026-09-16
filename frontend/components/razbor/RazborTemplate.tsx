@@ -81,7 +81,12 @@ function ldJson(config: RazborConfig) {
         description: config.hero.sub,
         areaServed: { '@type': 'Country', name: 'Россия' },
         provider: { '@type': 'Person', name: 'Дмитрий' },
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'RUB', availability: 'https://schema.org/InStock' },
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'RUB',
+          availability: 'https://schema.org/InStock',
+        },
         url,
       },
       {
@@ -100,13 +105,45 @@ function ldJson(config: RazborConfig) {
 // группе, но порядок близкий: дозвон/заявка → запись/ожидание → хаос.
 const PAIN_ICONS = [
   // phone-off
-  <path key="p" d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.42 19.42 0 01-3.33-2.67M5 5a2 2 0 00-.94.31A19.79 19.79 0 002 3.11M2 2l20 20M4.11 6.11A2 2 0 014.11 4h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 11.91" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path
+    key="p"
+    d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.42 19.42 0 01-3.33-2.67M5 5a2 2 0 00-.94.31A19.79 19.79 0 002 3.11M2 2l20 20M4.11 6.11A2 2 0 014.11 4h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 11.91"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    fill="none"
+  />,
   // message-x
-  <path key="m" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5zM9.5 9.5l5 5m0-5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path
+    key="m"
+    d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5zM9.5 9.5l5 5m0-5l-5 5"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    fill="none"
+  />,
   // calendar-x
-  <path key="c" d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zM10 14l4 4m0-4l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path
+    key="c"
+    d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zM10 14l4 4m0-4l-4 4"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    fill="none"
+  />,
   // shuffle / chaos
-  <path key="s" d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path
+    key="s"
+    d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    fill="none"
+  />,
 ];
 
 const STYLES = `
@@ -137,7 +174,7 @@ const STYLES = `
 .razbor p{margin:0 0 14px}
 .razbor a{color:var(--accent2)}
 .razbor section{padding:64px 0;position:relative;scroll-margin-top:70px}
-.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.grad-text{color:#10b981}
 
 /* REVEAL ON SCROLL */
 .razbor.js-reveal .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
@@ -347,8 +384,9 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
 
   // Появление блоков при прокрутке; без JS контент виден (см. lib/revealOnScroll.ts).
   useEffect(
-    () => initRevealOnScroll(document.querySelector('.razbor'), { rootMargin: '0px 0px -40px 0px' }),
-    []
+    () =>
+      initRevealOnScroll(document.querySelector('.razbor'), { rootMargin: '0px 0px -40px 0px' }),
+    [],
   );
 
   // Группа для deep-link и source_tag формы. Пустой slug (общий /razbor) → 'landing'.
@@ -401,7 +439,9 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
         }
       }
     } catch {
-      setErr('Не получилось отправить. Попробуйте ещё раз или напишите мне в Telegram — ссылка ниже.');
+      setErr(
+        'Не получилось отправить. Попробуйте ещё раз или напишите мне в Telegram — ссылка ниже.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -409,19 +449,33 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
 
   const TgIcon = (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 
   return (
     <div className="razbor">
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson(config)) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson(config)) }}
+      />
 
       {/* §0 — своя минимальная шапка: меню-переходы между страницами разбора + Telegram (без бренда SpinLid) */}
       <header className="rz-head">
         <div className="rz-head__in">
-          <a href="/razbor" className="rz-brand" aria-label="Разбор потерь клиентов" onClick={() => setMenuOpen(false)}>
+          <a
+            href="/razbor"
+            className="rz-brand"
+            aria-label="Разбор потерь клиентов"
+            onClick={() => setMenuOpen(false)}
+          >
             <span className="rz-brand__name">Разбор</span>
           </a>
           <nav className="rz-nav" aria-label="Страницы разбора">
@@ -450,9 +504,19 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 {menuOpen ? (
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 ) : (
-                  <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="M4 7h16M4 12h16M4 17h16"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 )}
               </svg>
             </button>
@@ -471,7 +535,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
                 {p.label}
               </a>
             ))}
-            <a className="rz-head__tg" href={tgUrl} rel="noopener" target="_blank" onClick={() => setMenuOpen(false)}>
+            <a
+              className="rz-head__tg"
+              href={tgUrl}
+              rel="noopener"
+              target="_blank"
+              onClick={() => setMenuOpen(false)}
+            >
               {TgIcon}
               Написать в Telegram
             </a>
@@ -500,7 +570,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             <div className="rz-actions">
               <a className="rz-btn rz-btn--primary" href="#form">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Получить бесплатный разбор
               </a>
@@ -511,10 +587,20 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             </div>
 
             <ul className="rz-trust">
-              {['По вашим реальным отзывам', 'Разбираю лично, не вебинар', 'Ничего не продаю на разборе'].map((t) => (
+              {[
+                'По вашим реальным отзывам',
+                'Разбираю лично, не вебинар',
+                'Ничего не продаю на разборе',
+              ].map((t) => (
                 <li className="rz-pill" key={t}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   {t}
                 </li>
@@ -526,7 +612,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             <div className="rz-fcard rz-fcard--pulse">
               <div className="rz-fcard__ic">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -538,7 +630,12 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--cyan">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -550,7 +647,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--violet">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -562,7 +665,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             <div className="rz-fcard">
               <div className="rz-fcard__ic rz-fcard__ic--amber">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2l2.9 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 7.1-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M12 2l2.9 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 7.1-1.01L12 2z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <div>
@@ -575,7 +684,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
 
         <a href="#quotes" className="rz-scroll" aria-label="Листайте вниз">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M12 5v14M5 12l7 7 7-7"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </a>
       </section>
@@ -585,12 +700,16 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
         <div className="wrap">
           <div className="rz-center">
             <h2 className="rz-h2 reveal">Так пишут клиенты. Про кого-то — прямо сейчас</h2>
-            <p className="rz-sub2 reveal">Реальные отзывы с карт. По вашей компании я смотрю такие же.</p>
+            <p className="rz-sub2 reveal">
+              Реальные отзывы с карт. По вашей компании я смотрю такие же.
+            </p>
           </div>
           <div className="rz-qgrid">
             {QUOTES.map((q) => (
               <blockquote className="rz-quote reveal" key={q}>
-                <span className="rz-quote__mark" aria-hidden>“</span>
+                <span className="rz-quote__mark" aria-hidden>
+                  “
+                </span>
                 <p>{q}</p>
                 <span className="rz-quote__src">
                   <i />
@@ -609,12 +728,16 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
       <section id="uznaete">
         <div className="wrap">
           <h2 className="rz-h2 reveal">{config.painsTitle}</h2>
-          <p className="rz-sub2 reveal">Хотя бы одно — уже тихо уводит ваших клиентов к конкурентам.</p>
+          <p className="rz-sub2 reveal">
+            Хотя бы одно — уже тихо уводит ваших клиентов к конкурентам.
+          </p>
           <div className="rz-paingrid">
             {config.pains.map((p, i) => (
               <div className="rz-pain reveal" key={p.title}>
                 <div className="rz-pain__ic">
-                  <svg width="24" height="24" viewBox="0 0 24 24">{PAIN_ICONS[i % PAIN_ICONS.length]}</svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24">
+                    {PAIN_ICONS[i % PAIN_ICONS.length]}
+                  </svg>
                 </div>
                 <b>{p.title}</b>
                 <span>{p.text}</span>
@@ -628,13 +751,21 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
       <section id="solutions">
         <div className="wrap">
           <h2 className="rz-h2 reveal">Что я делаю</h2>
-          <p className="rz-sub2 reveal">Показываю, чем закрыть найденные потери — по шагам и по-простому.</p>
+          <p className="rz-sub2 reveal">
+            Показываю, чем закрыть найденные потери — по шагам и по-простому.
+          </p>
           <div className="rz-solgrid">
             {config.solutions.map((s) => (
               <div className="rz-sol reveal" key={s}>
                 <div className="rz-sol__ic">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
                 <p>{s}</p>
@@ -655,14 +786,18 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
             </div>
             <div className="rz-step reveal">
               <div className="rz-step__n">2</div>
-              <p>За 10 минут показываю: где конкретно теряются клиенты и сколько это стоит в месяц.</p>
+              <p>
+                За 10 минут показываю: где конкретно теряются клиенты и сколько это стоит в месяц.
+              </p>
             </div>
             <div className="rz-step reveal">
               <div className="rz-step__n">3</div>
               <p>Дальше решаете сами. Разбор бесплатный, ничего покупать не обязательно.</p>
             </div>
           </div>
-          <p className="rz-note">Разбор делаю лично, по конкретно вашей компании — не презентация и не вебинар.</p>
+          <p className="rz-note">
+            Разбор делаю лично, по конкретно вашей компании — не презентация и не вебинар.
+          </p>
         </div>
       </section>
 
@@ -690,12 +825,27 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               <div className="rz-success" role="status">
                 <div className="rz-success__ic">
                   <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
                 <h3>Принял! Заявка у меня</h3>
-                <p>Напишу вам лично в течение пары часов в рабочее время. Если удобнее — можно сразу написать мне в Telegram.</p>
-                <a className="rz-btn rz-btn--primary" href={tgUrl} rel="noopener" target="_blank" style={{ display: 'inline-flex' }}>
+                <p>
+                  Напишу вам лично в течение пары часов в рабочее время. Если удобнее — можно сразу
+                  написать мне в Telegram.
+                </p>
+                <a
+                  className="rz-btn rz-btn--primary"
+                  href={tgUrl}
+                  rel="noopener"
+                  target="_blank"
+                  style={{ display: 'inline-flex' }}
+                >
                   {TgIcon}
                   Написать в Telegram
                 </a>
@@ -704,7 +854,9 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
               <>
                 <form className="rz-form" onSubmit={onSubmit} noValidate>
                   <div className="rz-field">
-                    <label htmlFor="company">Название или ссылка на вашу точку в 2ГИС / Яндекс.Картах</label>
+                    <label htmlFor="company">
+                      Название или ссылка на вашу точку в 2ГИС / Яндекс.Картах
+                    </label>
                     <input
                       type="text"
                       id="company"
@@ -742,7 +894,13 @@ export function RazborTemplate({ config }: { config: RazborConfig }) {
                     />
                   </div>
                   <label className="rz-consent">
-                    <input type="checkbox" id="consent" name="consent" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      id="consent"
+                      name="consent"
+                      checked={consent}
+                      onChange={(e) => setConsent(e.target.checked)}
+                    />
                     <span>
                       Согласен на обработку персональных данных согласно{' '}
                       <a href="/razbor/privacy" target="_blank" rel="noopener">

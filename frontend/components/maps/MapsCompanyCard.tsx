@@ -85,9 +85,13 @@ export function MapsCompanyCard({
   const website = focusedWebsite ?? company.website ?? null;
   const emails = focusedEmails ?? (Array.isArray(company.emails) ? company.emails : []);
   const topPains = dedupePains(
-    Array.isArray(company.top_pains) ? company.top_pains.filter((p) => !isUnnamedPainLabel(p.label)) : [],
+    Array.isArray(company.top_pains)
+      ? company.top_pains.filter((p) => !isUnnamedPainLabel(p.label))
+      : [],
   );
-  const negativeSnippets = Array.isArray(company.negative_snippets) ? company.negative_snippets : [];
+  const negativeSnippets = Array.isArray(company.negative_snippets)
+    ? company.negative_snippets
+    : [];
   const fallbackTags =
     topPains.length === 0 && Array.isArray(company.pain_tags)
       ? company.pain_tags.filter((t) => !isUnnamedPainLabel(t.label))
@@ -125,18 +129,36 @@ export function MapsCompanyCard({
     return 'cool';
   })();
 
-  const legalType = company.legal?.opf ?? company.legal?.legal_short_name?.match(/^([А-ЯЁ]{2,})\s/)?.[1] ?? null;
+  const legalType =
+    company.legal?.opf ?? company.legal?.legal_short_name?.match(/^([А-ЯЁ]{2,})\s/)?.[1] ?? null;
   const legalParts = [
     legalType,
     typeof company.legal?.age_years === 'number' ? formatYears(company.legal.age_years) : null,
-    typeof company.legal?.revenue === 'number' && company.legal.revenue > 0 ? formatRevenue(company.legal.revenue) : null,
+    typeof company.legal?.revenue === 'number' && company.legal.revenue > 0
+      ? formatRevenue(company.legal.revenue)
+      : null,
   ].filter(Boolean);
 
   const flags: { tone: FlagTone; text: string; title?: string }[] = [];
-  if (reviewsNeg > 0) flags.push({ tone: 'danger', text: `${reviewsNeg} ${plural(reviewsNeg, 'негативный отзыв', 'негативных отзыва', 'негативных отзывов')}` });
+  if (reviewsNeg > 0)
+    flags.push({
+      tone: 'danger',
+      text: `${reviewsNeg} ${plural(reviewsNeg, 'негативный отзыв', 'негативных отзыва', 'негативных отзывов')}`,
+    });
   if (company.hiring_marketing)
-    flags.push({ tone: 'danger', text: 'ищет маркетолога', title: company.hiring_url ? `Вакансия на hh.ru: ${company.hiring_url}` : 'Вакансия маркетолога на hh.ru' });
-  if (company.has_lpr === true) flags.push({ tone: 'success', text: 'ЛПР известен', title: 'Руководитель известен: DaData или страница «О нас» на сайте' });
+    flags.push({
+      tone: 'danger',
+      text: 'ищет маркетолога',
+      title: company.hiring_url
+        ? `Вакансия на hh.ru: ${company.hiring_url}`
+        : 'Вакансия маркетолога на hh.ru',
+    });
+  if (company.has_lpr === true)
+    flags.push({
+      tone: 'success',
+      text: 'ЛПР известен',
+      title: 'Руководитель известен: DaData или страница «О нас» на сайте',
+    });
   if (company.has_lpr === false) flags.push({ tone: 'muted', text: 'ЛПР не найден' });
   if (ownerReplies === true) flags.push({ tone: 'muted', text: 'владелец отвечает на отзывы' });
   if (legalParts.length > 0)
@@ -173,10 +195,22 @@ export function MapsCompanyCard({
       <div className="row-span-2 flex gap-3 lg:row-span-1">
         <span
           aria-hidden
-          title={stage === 'hot' ? 'Много негатива — горячий лид' : stage === 'warm' ? 'Есть негатив' : 'Негатива нет'}
+          title={
+            stage === 'hot'
+              ? 'Много негатива — горячий лид'
+              : stage === 'warm'
+                ? 'Есть негатив'
+                : 'Негатива нет'
+          }
           className={cn(
             'w-[5px] shrink-0 rounded-full',
-            selected ? 'bg-ui-accent' : stage === 'hot' ? 'bg-red-300' : stage === 'warm' ? 'bg-amber-300' : 'bg-ui-border',
+            selected
+              ? 'bg-ui-accent'
+              : stage === 'hot'
+                ? 'bg-red-300'
+                : stage === 'warm'
+                  ? 'bg-amber-300'
+                  : 'bg-ui-border',
           )}
         />
         {selectable && (
@@ -195,19 +229,29 @@ export function MapsCompanyCard({
       <div className="min-w-0">
         <div className="flex items-start gap-3">
           <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <h3 className="text-base font-bold leading-snug tracking-tight text-ui-text">{company.name || '—'}</h3>
-            {fullAddress && <span className="min-w-0 text-small text-ui-text-muted">{fullAddress}</span>}
+            <h3 className="text-base font-bold leading-snug tracking-tight text-ui-text">
+              {company.name || '—'}
+            </h3>
+            {fullAddress && (
+              <span className="min-w-0 text-small text-ui-text-muted">{fullAddress}</span>
+            )}
           </div>
           {rating != null && (
             <span
               className={cn(
                 'shrink-0 whitespace-nowrap rounded-full px-3 py-0.5 text-small font-semibold tabular-nums',
-                rating < 4 ? 'bg-red-50 text-red-700' : rating < 4.3 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700',
+                rating < 4
+                  ? 'bg-red-50 text-red-700'
+                  : rating < 4.3
+                    ? 'bg-amber-50 text-amber-700'
+                    : 'bg-green-50 text-green-700',
               )}
               title={`Рейтинг ${Number(rating).toFixed(1)} · ${reviewsTotal} ${plural(reviewsTotal, 'отзыв', 'отзыва', 'отзывов')}`}
             >
               {Number(rating).toFixed(1)} ★{' '}
-              {reviewsTotal > 0 && <span className="font-medium opacity-75">{reviewsTotal} отз.</span>}
+              {reviewsTotal > 0 && (
+                <span className="font-medium opacity-75">{reviewsTotal} отз.</span>
+              )}
             </span>
           )}
         </div>
@@ -223,12 +267,19 @@ export function MapsCompanyCard({
                 className="inline-flex items-center gap-1.5 rounded-full bg-ui-accent/[.08] px-3 py-0.5 text-xs font-semibold text-ui-accent"
               >
                 {p.label}
-                {p.mention_count > 1 && <span className="font-medium tabular-nums text-ui-text-muted">×{p.mention_count}</span>}
+                {p.mention_count > 1 && (
+                  <span className="font-medium tabular-nums text-ui-text-muted">
+                    ×{p.mention_count}
+                  </span>
+                )}
               </span>
             ))
           ) : fallbackTags.length > 0 ? (
             fallbackTags.slice(0, 4).map((t) => (
-              <span key={t.id} className="rounded-full bg-ui-surface-2 px-3 py-0.5 text-xs font-semibold text-ui-text-muted">
+              <span
+                key={t.id}
+                className="rounded-full bg-ui-surface-2 px-3 py-0.5 text-xs font-semibold text-ui-text-muted"
+              >
                 {t.label}
               </span>
             ))
@@ -239,7 +290,11 @@ export function MapsCompanyCard({
           )}
         </div>
 
-        {quote && <p className="mt-2.5 max-w-[62ch] text-small leading-relaxed text-ui-text-muted">«{quote}»</p>}
+        {quote && (
+          <p className="mt-2.5 max-w-[62ch] text-small leading-relaxed text-ui-text-muted">
+            «{quote}»
+          </p>
+        )}
 
         {flags.length > 0 && (
           <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-semibold">
@@ -334,7 +389,7 @@ export function MapsCompanyCard({
                 className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-ui-text px-3.5 text-small font-semibold text-ui-surface transition-colors hover:bg-black disabled:cursor-wait disabled:opacity-60"
               >
                 <Send className="h-3.5 w-3.5" aria-hidden />
-                {draftEmailLoading ? 'Готовлю…' : topPains.length > 0 ? 'КП под боль' : 'КП'}
+                {draftEmailLoading ? 'Подготовка…' : topPains.length > 0 ? 'КП под боль' : 'КП'}
               </button>
             )}
             {onAddToList && (
@@ -372,7 +427,10 @@ function AiAnalysisRow({ analysis }: { analysis: CompanyAnalysisOut }) {
             ? 'text-ui-warning'
             : 'text-ui-text-muted';
   return (
-    <p className={cn('mt-1.5 flex items-center gap-1.5 text-xs font-semibold', tone)} title={analysis.comment ?? analysis.error ?? ''}>
+    <p
+      className={cn('mt-1.5 flex items-center gap-1.5 text-xs font-semibold', tone)}
+      title={analysis.comment ?? analysis.error ?? ''}
+    >
       <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="truncate">
         {analysis.status === 'pending'
@@ -422,11 +480,15 @@ function sourceLabel(source: string | null | undefined): string {
   return source ?? '';
 }
 
-function buildSourceUrl(source: string | null | undefined, externalId: string | null | undefined): string | null {
+function buildSourceUrl(
+  source: string | null | undefined,
+  externalId: string | null | undefined,
+): string | null {
   if (!externalId || !source) return null;
   if (source === '2gis') return `https://2gis.ru/firm/${externalId}`;
   if (source === 'yandex_maps') return `https://yandex.ru/maps/org/${externalId}`;
-  if (source === 'google_maps') return `https://www.google.com/maps/place/?q=place_id:${externalId}`;
+  if (source === 'google_maps')
+    return `https://www.google.com/maps/place/?q=place_id:${externalId}`;
   return null;
 }
 
@@ -439,7 +501,10 @@ function stripScheme(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
-function formatAddressWithCity(address: string | null | undefined, city: string | null | undefined): string | null {
+function formatAddressWithCity(
+  address: string | null | undefined,
+  city: string | null | undefined,
+): string | null {
   const a = (address ?? '').trim();
   const c = (city ?? '').trim();
   if (!a && !c) return null;

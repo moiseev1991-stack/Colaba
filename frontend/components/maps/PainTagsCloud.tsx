@@ -11,11 +11,7 @@
 import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import {
-  getSearchPainTags,
-  listPainTags,
-  type PainTagOut,
-} from '@/src/services/api/maps';
+import { getSearchPainTags, listPainTags, type PainTagOut } from '@/src/services/api/maps';
 
 interface Props {
   niche: string;
@@ -53,13 +49,13 @@ export function PainTagsCloud({ niche, city, searchId, value, onChange }: Props)
   }
 
   if (isLoading) {
-    return <p className="text-sm text-slate-500">Загружаем теги болей…</p>;
+    return <p className="text-sm text-slate-500">Загрузка тегов болей…</p>;
   }
   if (tags.length === 0) {
     return (
       <p className="text-sm text-slate-500">
-        AI-теги ещё не созданы для этой ниши. Они появятся после того, как накопится
-        достаточно отзывов и пройдёт ночной recluster.
+        AI-теги ещё не созданы для этой ниши. Они появятся после того, как накопится достаточно
+        отзывов и пройдёт ночной recluster.
       </p>
     );
   }

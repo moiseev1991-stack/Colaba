@@ -74,7 +74,8 @@ const OP_TEXT: Record<string, string> = {
 const LABEL = 'mb-1.5 block text-xs font-semibold text-ui-text-muted';
 const CHIP =
   'inline-flex min-h-8 items-center gap-1.5 rounded-full border border-ui-border bg-ui-surface px-3.5 py-1 text-xs font-semibold text-ui-text-muted transition-colors hover:border-ui-text-muted/50 hover:text-ui-text disabled:cursor-not-allowed disabled:opacity-50';
-const CHIP_ON = 'border-ui-text bg-ui-text text-ui-surface hover:border-ui-text hover:text-ui-surface';
+const CHIP_ON =
+  'border-ui-text bg-ui-text text-ui-surface hover:border-ui-text hover:text-ui-surface';
 
 export function SiteLeadsPanel() {
   const [entry, setEntry] = useState('');
@@ -83,7 +84,10 @@ export function SiteLeadsPanel() {
   const [depth, setDepth] = useState(50);
   const [onlyWithPhone, setOnlyWithPhone] = useState(false);
   // Одно пустое условие сразу на виду — главный сценарий «на сайте есть слово».
-  const [filterSpec, setFilterSpec] = useState<FilterSpec>({ logic: 'and', conditions: [{ field: 'text', op: 'contains', value: '' }] });
+  const [filterSpec, setFilterSpec] = useState<FilterSpec>({
+    logic: 'and',
+    conditions: [{ field: 'text', op: 'contains', value: '' }],
+  });
   const [showAllNiches, setShowAllNiches] = useState(false);
   const [activePresetIdx, setActivePresetIdx] = useState<number | null>(null);
 
@@ -149,9 +153,15 @@ export function SiteLeadsPanel() {
     setResults([]);
 
     // Пустые условия не отправляем — сервер их всё равно пропустит.
-    const conditions = filterSpec.conditions.filter((c) => c.op === 'is_true' || c.op === 'is_false' || (c.value && c.value.trim()));
+    const conditions = filterSpec.conditions.filter(
+      (c) => c.op === 'is_true' || c.op === 'is_false' || (c.value && c.value.trim()),
+    );
     // «Только с телефоном» при условиях «все сразу» отдаём серверу — тогда и таблица /runs/{id} без сайтов без телефона.
-    if (onlyWithPhone && filterSpec.logic === 'and' && !conditions.some((c) => c.field === 'has_phone')) {
+    if (
+      onlyWithPhone &&
+      filterSpec.logic === 'and' &&
+      !conditions.some((c) => c.field === 'has_phone')
+    ) {
       conditions.push({ field: 'has_phone', op: 'is_true', value: '' });
     }
     try {
@@ -189,7 +199,11 @@ export function SiteLeadsPanel() {
       }, 2000);
     } catch (e: any) {
       const detail = e?.response?.data?.detail || e?.message;
-      setErrorMsg(typeof detail === 'string' ? detail : 'Не удалось запустить поиск. Проверьте подключение и попробуйте снова.');
+      setErrorMsg(
+        typeof detail === 'string'
+          ? detail
+          : 'Не удалось запустить поиск. Проверьте подключение и попробуйте снова.',
+      );
       setStatus('error');
     }
   }
@@ -197,10 +211,13 @@ export function SiteLeadsPanel() {
   const shownResults = onlyWithPhone ? results.filter((r) => r.phone && r.phone.trim()) : results;
   const niches = showAllNiches ? NICHE_PRESETS : NICHE_PRESETS.slice(0, 6);
   const searching = status === 'searching';
-  const filledConditions = filterSpec.conditions.filter((c) => c.op === 'is_true' || c.op === 'is_false' || c.value.trim());
+  const filledConditions = filterSpec.conditions.filter(
+    (c) => c.op === 'is_true' || c.op === 'is_false' || c.value.trim(),
+  );
   const conditionsText = filledConditions
     .map((c) => {
-      const field = DEFAULT_SITE_FIELDS.find((f) => f.id === c.field)?.label.toLowerCase() ?? c.field;
+      const field =
+        DEFAULT_SITE_FIELDS.find((f) => f.id === c.field)?.label.toLowerCase() ?? c.field;
       if (c.op === 'is_true') return field;
       if (c.op === 'is_false') return `нет: ${field}`;
       return `${field} ${OP_TEXT[c.op] ?? c.op} «${c.value.trim()}»`;
@@ -215,8 +232,9 @@ export function SiteLeadsPanel() {
           <span className="block font-bold text-ui-text-muted/75">Из выдачи Яндекса и Google.</span>
         </h1>
         <p className="mx-auto mt-5 max-w-[60ch] text-base leading-relaxed text-ui-text-muted">
-          Задайте запрос и город и добавьте условие по сайту — например, стоматологии Москвы, у которых на страницах есть{' '}
-          <b className="font-semibold text-ui-text">«протезирование»</b>. Получите сайты с телефонами, email и таблицу для выгрузки.
+          Задайте запрос и город и добавьте условие по сайту — например, стоматологии Москвы, у
+          которых на страницах есть <b className="font-semibold text-ui-text">«протезирование»</b>.
+          Получите сайты с телефонами, email и таблицу для выгрузки.
         </p>
       </div>
 
@@ -250,7 +268,15 @@ export function SiteLeadsPanel() {
               Город
             </label>
             <div className="flex items-center gap-1.5">
-              <CityCombobox id="sites-city" city={city} onCityChange={(c) => setCity(c)} disabled={searching} placeholder="Любой" triggerClassName="h-12" className="min-w-0 flex-1" />
+              <CityCombobox
+                id="sites-city"
+                city={city}
+                onCityChange={(c) => setCity(c)}
+                disabled={searching}
+                placeholder="Любой"
+                triggerClassName="h-12"
+                className="min-w-0 flex-1"
+              />
               {city && (
                 <button
                   type="button"
@@ -301,7 +327,11 @@ export function SiteLeadsPanel() {
               {n.label}
             </button>
           ))}
-          <button type="button" onClick={() => setShowAllNiches((v) => !v)} className={cn(CHIP, 'text-ui-accent')}>
+          <button
+            type="button"
+            onClick={() => setShowAllNiches((v) => !v)}
+            className={cn(CHIP, 'text-ui-accent')}
+          >
             {showAllNiches ? 'свернуть' : `+${NICHE_PRESETS.length - 6}`}
           </button>
         </div>
@@ -310,7 +340,8 @@ export function SiteLeadsPanel() {
           <div className="mb-3">
             <h2 className="text-base font-bold text-ui-text">Условия по сайту</h2>
             <p className="text-xs text-ui-text-muted">
-              Оставим только сайты, где выполняются условия: текст страниц содержит «протезирование», не содержит «вакансии», домен, телефон или email.
+              Оставим только сайты, где выполняются условия: текст страниц содержит
+              «протезирование», не содержит «вакансии», домен, телефон или email.
             </p>
           </div>
           <FilterBuilder
@@ -353,7 +384,9 @@ export function SiteLeadsPanel() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs font-semibold text-ui-text-muted">Готовые сценарии для веб-студий</span>
+          <span className="mr-1 text-xs font-semibold text-ui-text-muted">
+            Готовые сценарии для веб-студий
+          </span>
           {SITE_ENTRY_PRESETS.map((p, idx) => (
             <button
               key={p.query}
@@ -376,12 +409,13 @@ export function SiteLeadsPanel() {
             iconRight={!searching ? <ArrowRight /> : undefined}
             className="h-12 w-full px-7 text-base sm:w-auto"
           >
-            {searching ? 'Ищу…' : 'Найти сайты'}
+            {searching ? 'Поиск…' : 'Найти сайты'}
           </Button>
           <p className="min-w-0 flex-1 text-small text-ui-text-muted">
             {entry.trim() ? (
               <>
-                Найдём <b className="font-semibold text-ui-text">top {depth}</b> в {PROVIDERS.find((p) => p.value === provider)?.label} по{' '}
+                Найдём <b className="font-semibold text-ui-text">top {depth}</b> в{' '}
+                {PROVIDERS.find((p) => p.value === provider)?.label} по{' '}
                 <b className="font-semibold text-ui-text">«{query}»</b>
                 {conditionsText && <> — где {conditionsText}</>}
                 {onlyWithPhone && ', только с телефоном'}
@@ -394,15 +428,21 @@ export function SiteLeadsPanel() {
       </form>
 
       {(status !== 'idle' || results.length > 0) && (
-        <section aria-label="Найденные сайты" className="mx-auto mt-10 flex max-w-[860px] flex-col gap-3">
+        <section
+          aria-label="Найденные сайты"
+          className="mx-auto mt-10 flex max-w-[860px] flex-col gap-3"
+        >
           {searching && (
             <p className="rounded-card bg-ui-surface-2 px-4 py-3 text-small text-ui-text-muted">
-              Ищу сайты по запросу «{query}»…
+              Поиск сайтов по запросу «{query}»…
               {search && ` Найдено: ${search.result_count}.`}
             </p>
           )}
           {status === 'error' && errorMsg && (
-            <p role="alert" className="rounded-card bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger">
+            <p
+              role="alert"
+              className="rounded-card bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger"
+            >
               {errorMsg}
             </p>
           )}
@@ -410,7 +450,8 @@ export function SiteLeadsPanel() {
             <>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h2 className="text-xl font-extrabold tracking-tight text-ui-text">
-                  Найдено {shownResults.length} {plural(shownResults.length, 'сайт', 'сайта', 'сайтов')}.
+                  Найдено {shownResults.length}{' '}
+                  {plural(shownResults.length, 'сайт', 'сайта', 'сайтов')}.
                 </h2>
                 {onlyWithPhone && results.length !== shownResults.length && (
                   <span className="text-small text-ui-text-muted">
@@ -418,19 +459,29 @@ export function SiteLeadsPanel() {
                   </span>
                 )}
                 {search && (
-                  <Link href={`/runs/${search.id}`} className={buttonClass({ className: 'ml-auto' })}>
+                  <Link
+                    href={`/runs/${search.id}`}
+                    className={buttonClass({ className: 'ml-auto' })}
+                  >
                     <Table2 className="h-4 w-4" aria-hidden /> Таблица с контактами и выгрузкой
                   </Link>
                 )}
               </div>
               {shownResults.length === 0 ? (
                 <p className="rounded-card bg-ui-surface-2 px-4 py-6 text-center text-small text-ui-text-muted">
-                  По этому запросу ничего не нашлось. Попробуйте другой запрос, источник или уберите условия.
+                  По этому запросу ничего не нашлось. Попробуйте другой запрос, источник или уберите
+                  условия.
                 </p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {shownResults.map((r) => (
-                    <SiteResultCard key={r.id} result={r} entry={entry} query={query} onKpForLead={(lead) => setKpSiteLead(lead)} />
+                    <SiteResultCard
+                      key={r.id}
+                      result={r}
+                      entry={entry}
+                      query={query}
+                      onKpForLead={(lead) => setKpSiteLead(lead)}
+                    />
                   ))}
                 </ul>
               )}
@@ -445,7 +496,10 @@ export function SiteLeadsPanel() {
             Последние запуски.
           </h2>
           {recentRuns.length > 0 && (
-            <Link href="/app/leads/history?tab=sites" className="ml-auto inline-flex items-center gap-1 text-small font-semibold text-ui-text-muted hover:text-ui-accent">
+            <Link
+              href="/app/leads/history?tab=sites"
+              className="ml-auto inline-flex items-center gap-1 text-small font-semibold text-ui-text-muted hover:text-ui-accent"
+            >
               Вся история <ArrowUpRight className="h-4 w-4" aria-hidden />
             </Link>
           )}
@@ -469,11 +523,15 @@ export function SiteLeadsPanel() {
                   className="flex items-center gap-4 rounded-card border border-black/[.05] bg-ui-surface px-4 py-3 shadow-raised transition-all hover:-translate-y-px hover:shadow-floating"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-ui-text" title={r.query}>
+                    <span
+                      className="block truncate text-sm font-semibold text-ui-text"
+                      title={r.query}
+                    >
                       {r.query}
                     </span>
                     <span className="block text-xs text-ui-text-muted">
-                      {formatRelative(r.created_at)} · {r.result_count ?? 0} {plural(r.result_count ?? 0, 'сайт', 'сайта', 'сайтов')}
+                      {formatRelative(r.created_at)} · {r.result_count ?? 0}{' '}
+                      {plural(r.result_count ?? 0, 'сайт', 'сайта', 'сайтов')}
                     </span>
                   </span>
                   <span

@@ -97,7 +97,7 @@ export default function SeoTemplatesPage() {
           ))}
         </div>
       ) : templates.length === 0 ? (
-        <CardV2 className="p-12 text-center bg-mesh-brand">
+        <CardV2 className="p-12 text-center">
           <div className="inline-flex items-center justify-center rounded-v2-sm bg-brand-50 dark:bg-brand-500/10 p-3 mb-4">
             <FileText className="h-8 w-8 text-brand-600 dark:text-brand-400" />
           </div>

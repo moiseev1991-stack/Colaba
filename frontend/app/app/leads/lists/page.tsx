@@ -120,7 +120,7 @@ export default function LeadListsPage() {
 
       {loading ? (
         <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          Загружаю списки…
+          Загрузка списков…
         </div>
       ) : lists.length === 0 ? (
         <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">

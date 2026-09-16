@@ -202,7 +202,7 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   }
   if (items.length === 0) {
     return (
-      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))]">
         Карт-поисков ещё нет — запусти первый поиск по нише и городу.
       </CardV2>
     );
@@ -258,7 +258,7 @@ function MapsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
             disabled={loadingMore}
             className="w-full"
           >
-            {loadingMore ? 'Загружаю…' : `Показать ещё (показано ${items.length})`}
+            {loadingMore ? 'Загрузка…' : `Показать ещё (показано ${items.length})`}
           </ButtonV2>
         </li>
       )}
@@ -334,7 +334,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   }
   if (runs.length === 0) {
     return (
-      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))]">
         Поисков по сайтам ещё нет — запусти первый через провайдер.
       </CardV2>
     );
@@ -499,7 +499,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   }
   if (items.length === 0) {
     return (
-      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))]">
         Сгенерированных КП пока нет. Выбери компании в выдаче поиска и нажми «Сформировать КП» — все
         письма появятся здесь.
       </CardV2>
@@ -645,7 +645,7 @@ function KpJobsHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) 
 
   if (items.length === 0) {
     return (
-      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))]">
         Партий КП пока нет. Выбери компании в выдаче поиска и нажми «Сформировать КП» — каждая
         партия попадёт сюда отдельной строкой.
       </CardV2>
@@ -773,7 +773,7 @@ function KpSendsHistoryTab({ router }: { router: ReturnType<typeof useRouter> })
   }
   if (items.length === 0) {
     return (
-      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))] bg-mesh-brand">
+      <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))]">
         Отправок пока нет. Открой партию КП в «Партиях КП», выбери каналы и нажми «Отправить» —
         попытки появятся здесь.
       </CardV2>

@@ -228,7 +228,7 @@ function KpJobNewInner() {
         <p className="mt-1 text-small text-[hsl(var(--muted))]">
           {companyIds
             ? `${companyIds.length} ${companyIds.length === 1 ? 'компания' : 'компаний'} — выбери шаблон отправителя и тон, начнём генерацию.`
-            : 'Загружаю список компаний…'}
+            : 'Загрузка списка компаний…'}
         </p>
 
         {resolveError && (
@@ -254,7 +254,7 @@ function KpJobNewInner() {
               </label>
               {templatesLoading ? (
                 <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                  Загружаю шаблоны…
+                  Загрузка шаблонов…
                 </div>
               ) : templatesError ? (
                 <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">

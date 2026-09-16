@@ -77,8 +77,8 @@ import { toast } from '@/components/ui/toast';
 const MapsCompaniesMap = dynamic(() => import('@/components/maps/MapsCompaniesMap'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-sm text-slate-500">
-      Загружаю карту…
+    <div className="flex h-[560px] items-center justify-center rounded-md border border-ui-border bg-ui-surface-2 text-sm text-ui-text-muted">
+      Загрузка карты…
     </div>
   ),
 });
@@ -487,7 +487,8 @@ export function MapsSearchResults({
   // используется только пока бэк ещё не отработал — после listMapCompanies
   // мы переключаемся на серверную выдачу.
   const liveCompanies = stream.companies;
-  const baseList: any[] = companiesEverLoaded || companies.length > liveCompanies.length ? companies : liveCompanies;
+  const baseList: any[] =
+    companiesEverLoaded || companies.length > liveCompanies.length ? companies : liveCompanies;
   const renderTotal = baseList.length;
 
   // ----------- AI-анализ под кастомный промпт пресета -----------
@@ -893,12 +894,18 @@ export function MapsSearchResults({
 
   function handleExportSelected() {
     if (selectedIds.size === 0) return;
-    downloadUrl(exportSearchCsvUrl(search.id, filter, Array.from(selectedIds)), `maps_search_${search.id}_selected.csv`);
+    downloadUrl(
+      exportSearchCsvUrl(search.id, filter, Array.from(selectedIds)),
+      `maps_search_${search.id}_selected.csv`,
+    );
   }
 
   function handleExportWebsiteLeadsXlsx() {
     // Блок 4 ТЗ 2026-06-02: .xlsx с двумя вкладками для пакетной продажи сайтов.
-    downloadUrl(`/api/v1/maps/website-leads/export?search_id=${search.id}&only_website_leads=true`, `website-leads_${search.id}.xlsx`);
+    downloadUrl(
+      `/api/v1/maps/website-leads/export?search_id=${search.id}&only_website_leads=true`,
+      `website-leads_${search.id}.xlsx`,
+    );
   }
 
   const pageIds = renderList
@@ -931,7 +938,10 @@ export function MapsSearchResults({
     try {
       const r = await enrichCompaniesTeam(search.id, ids);
       const parts: string[] = [];
-      if (r.queued > 0) parts.push(`Ищу руководителя на ${r.queued} сайт${r.queued === 1 ? 'е' : 'ах'} — карточки обновятся через ~2 мин`);
+      if (r.queued > 0)
+        parts.push(
+          `Поиск руководителя на ${r.queued} сайт${r.queued === 1 ? 'е' : 'ах'} — карточки обновятся через ~2 мин`,
+        );
       if (r.skipped_already_has_lpr > 0) parts.push(`${r.skipped_already_has_lpr} уже с ЛПР`);
       if (r.skipped_no_website > 0) parts.push(`${r.skipped_no_website} без сайта — искать негде`);
       toast.info(parts.join(' · ') || 'У всех выбранных компаний ЛПР уже найден.');
@@ -959,7 +969,9 @@ export function MapsSearchResults({
     search.mode === 'radius' && search.address
       ? `${search.address}, ${((search.radius_meters ?? 0) / 1000).toFixed(1)} км`
       : search.city;
-  const unparsedCount = isTerminal ? companies.filter((c) => !c.top_pains || c.top_pains.length === 0).length : 0;
+  const unparsedCount = isTerminal
+    ? companies.filter((c) => !c.top_pains || c.top_pains.length === 0).length
+    : 0;
 
   const filtersPanel = (mobile: boolean) => (
     <MapsFiltersPanel
@@ -994,7 +1006,8 @@ export function MapsSearchResults({
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-small text-ui-text-muted">
             <span>
-              {isTerminal ? 'Найдено' : 'Уже найдено'} <b className="font-semibold tabular-nums text-ui-text">{foundCount}</b>
+              {isTerminal ? 'Найдено' : 'Уже найдено'}{' '}
+              <b className="font-semibold tabular-nums text-ui-text">{foundCount}</b>
             </span>
             {isTerminal && tokens.length > 0 && (
               <span>
@@ -1011,7 +1024,9 @@ export function MapsSearchResults({
               </span>
             )}
             {search.status === 'failed' && (
-              <span className="rounded-full bg-ui-danger/10 px-2.5 py-0.5 text-xs font-semibold text-ui-danger">ошибка</span>
+              <span className="rounded-full bg-ui-danger/10 px-2.5 py-0.5 text-xs font-semibold text-ui-danger">
+                ошибка
+              </span>
             )}
           </div>
         </div>
@@ -1030,7 +1045,11 @@ export function MapsSearchResults({
               </Button>
               {exportMenuOpen && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setExportMenuOpen(false)} aria-hidden />
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setExportMenuOpen(false)}
+                    aria-hidden
+                  />
                   <div
                     role="menu"
                     className="absolute right-0 z-40 mt-2 w-72 rounded-card border border-black/[.06] bg-ui-surface p-1.5 shadow-overlay"
@@ -1045,7 +1064,11 @@ export function MapsSearchResults({
                     />
                     <ExportItem
                       title={`CSV — выбранные${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
-                      hint={selectedIds.size === 0 ? 'отметьте карточки галочками' : 'только отмеченные карточки'}
+                      hint={
+                        selectedIds.size === 0
+                          ? 'отметьте карточки галочками'
+                          : 'только отмеченные карточки'
+                      }
                       disabled={selectedIds.size === 0}
                       onClick={() => {
                         setExportMenuOpen(false);
@@ -1088,13 +1111,20 @@ export function MapsSearchResults({
           const saved = p?.saved ?? p?.companies_processed ?? p?.processed;
           const expected = p?.expected ?? p?.companies_total ?? p?.total;
           // Пока бэк не прислал прогресса — считаем по пришедшим компаниям.
-          const done = typeof saved === 'number' && saved > 0 ? saved : Math.max(stream.companies.length, companies.length);
-          const pct = typeof expected === 'number' && expected > 0 ? Math.min(100, Math.round((done / expected) * 100)) : null;
+          const done =
+            typeof saved === 'number' && saved > 0
+              ? saved
+              : Math.max(stream.companies.length, companies.length);
+          const pct =
+            typeof expected === 'number' && expected > 0
+              ? Math.min(100, Math.round((done / expected) * 100))
+              : null;
           return (
             <div className="mt-4">
               <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-small text-ui-text-muted">
                 <span>
-                  <b className="font-semibold text-ui-text">Идёт сбор:</b> {p?.source ? `${sourceNames(p.source)} · ` : ''}
+                  <b className="font-semibold text-ui-text">Идёт сбор:</b>{' '}
+                  {p?.source ? `${sourceNames(p.source)} · ` : ''}
                   {pct != null ? (
                     <>
                       компания <b className="font-semibold tabular-nums text-ui-text">{done}</b> из{' '}
@@ -1117,16 +1147,24 @@ export function MapsSearchResults({
                   className="relative h-1.5 min-w-[140px] flex-1 overflow-hidden rounded-full bg-ui-border"
                 >
                   {pct != null ? (
-                    <span className="absolute inset-y-0 left-0 rounded-full bg-ui-accent transition-all duration-500" style={{ width: `${Math.max(2, pct)}%` }} />
+                    <span
+                      className="absolute inset-y-0 left-0 rounded-full bg-ui-accent transition-all duration-500"
+                      style={{ width: `${Math.max(2, pct)}%` }}
+                    />
                   ) : (
                     <span className="absolute inset-y-0 left-0 w-1/3 animate-pulse rounded-full bg-ui-accent" />
                   )}
                 </span>
-                {pct != null && <span className="text-small font-semibold tabular-nums text-ui-accent">{pct}%</span>}
+                {pct != null && (
+                  <span className="text-small font-semibold tabular-nums text-ui-accent">
+                    {pct}%
+                  </span>
+                )}
               </div>
               {stream.reconnectAttempt > 0 && !stream.error && (
                 <p className="mt-1.5 text-xs text-ui-warning">
-                  Связь прервалась, переподключаюсь (попытка {stream.reconnectAttempt}). Парсер продолжает работу.
+                  Связь прервалась, переподключаюсь (попытка {stream.reconnectAttempt}). Парсер
+                  продолжает работу.
                 </p>
               )}
             </div>
@@ -1153,7 +1191,11 @@ export function MapsSearchResults({
               </button>
             </span>
           ))}
-          <button type="button" onClick={resetAllFilters} className="px-2 py-1 text-small font-semibold text-ui-danger hover:underline">
+          <button
+            type="button"
+            onClick={resetAllFilters}
+            className="px-2 py-1 text-small font-semibold text-ui-danger hover:underline"
+          >
             Сбросить всё
           </button>
         </div>
@@ -1186,7 +1228,12 @@ export function MapsSearchResults({
           {aiLastRun && (
             <p className="basis-full text-xs text-ui-text-muted">
               Поставлено: {aiLastRun.queued}, из кэша: {aiLastRun.cached}
-              {aiLastRun.over_limit > 0 && <span className="text-ui-danger"> · {aiLastRun.over_limit} не ушло — дневной лимит исчерпан</span>}
+              {aiLastRun.over_limit > 0 && (
+                <span className="text-ui-danger">
+                  {' '}
+                  · {aiLastRun.over_limit} не ушло — дневной лимит исчерпан
+                </span>
+              )}
               {' · '}остаток лимита на сутки: {aiLastRun.limit_remaining}
             </p>
           )}
@@ -1236,7 +1283,10 @@ export function MapsSearchResults({
                   clusters_found: 0,
                   pain_tags_upserted: 0,
                   companies_with_pains_after: 0,
-                  error: typeof detail === 'string' ? detail : 'Не удалось выполнить diagnostic (timeout/500)',
+                  error:
+                    typeof detail === 'string'
+                      ? detail
+                      : 'Не удалось выполнить diagnostic (timeout/500)',
                 });
               } finally {
                 setDiagnosticRunning(false);
@@ -1263,7 +1313,10 @@ export function MapsSearchResults({
                   .join(', ')}`
               : 'частые жалобы, динамика отзывов, сравнение компаний'}
           </span>
-          <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-ui-text-muted transition-transform group-open:rotate-180" aria-hidden />
+          <ChevronDown
+            className="ml-auto h-4 w-4 shrink-0 text-ui-text-muted transition-transform group-open:rotate-180"
+            aria-hidden
+          />
         </summary>
         {summaryOpen && (
           <div className="border-t border-black/[.06] px-5 pb-5 pt-4">
@@ -1279,13 +1332,15 @@ export function MapsSearchResults({
               <div className="mt-3 rounded-card bg-ui-surface-2 p-4 text-small text-ui-text-muted">
                 <p className="font-semibold text-ui-text">Сильные стороны ниши ещё не посчитаны</p>
                 <p className="mt-1">
-                  AI разбирает позитивные отзывы отдельно от негативных. Нажмите «Запустить» — через 2–4 минуты появятся плитки: за что
-                  клиенты хвалят компании в этом городе.
+                  AI разбирает позитивные отзывы отдельно от негативных. Нажмите «Запустить» — через
+                  2–4 минуты появятся плитки: за что клиенты хвалят компании в этом городе.
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
-                    disabled={positiveReclusterState === 'queueing' || positiveReclusterState === 'queued'}
+                    disabled={
+                      positiveReclusterState === 'queueing' || positiveReclusterState === 'queued'
+                    }
                     onClick={async () => {
                       setPositiveReclusterState('queueing');
                       setPositiveReclusterMsg('');
@@ -1296,7 +1351,9 @@ export function MapsSearchResults({
                         setPositiveReclusterMsg(r.hint || 'Поставлено в очередь.');
                       } catch (e: any) {
                         setPositiveReclusterState('error');
-                        setPositiveReclusterMsg(e?.response?.data?.detail || e?.message || 'Не удалось поставить задачу.');
+                        setPositiveReclusterMsg(
+                          e?.response?.data?.detail || e?.message || 'Не удалось поставить задачу.',
+                        );
                       }
                     }}
                   >
@@ -1311,7 +1368,14 @@ export function MapsSearchResults({
                             : 'Запустить'}
                   </Button>
                   {positiveReclusterMsg && (
-                    <span className={cn('text-xs', positiveReclusterState === 'error' ? 'text-ui-danger' : 'text-ui-text-muted')}>
+                    <span
+                      className={cn(
+                        'text-xs',
+                        positiveReclusterState === 'error'
+                          ? 'text-ui-danger'
+                          : 'text-ui-text-muted',
+                      )}
+                    >
                       {positiveReclusterMsg}
                     </span>
                   )}
@@ -1326,7 +1390,9 @@ export function MapsSearchResults({
                 activeIds={filter.pain_tag_ids ?? []}
                 onToggle={(tagId) => {
                   const current = filter.pain_tag_ids ?? [];
-                  const next = current.includes(tagId) ? current.filter((x) => x !== tagId) : [...current, tagId];
+                  const next = current.includes(tagId)
+                    ? current.filter((x) => x !== tagId)
+                    : [...current, tagId];
                   handleFilterChange({ ...filter, pain_tag_ids: next.length > 0 ? next : null });
                   // Открываем/закрываем график на том же клике.
                   const tag = regionPainTags.find((t) => t.id === tagId) ?? null;
@@ -1352,7 +1418,9 @@ export function MapsSearchResults({
               sentiment={painSentiment}
               onPainClick={(tagId) => {
                 const current = filter.pain_tag_ids ?? [];
-                const next = current.includes(tagId) ? current.filter((x) => x !== tagId) : [...current, tagId];
+                const next = current.includes(tagId)
+                  ? current.filter((x) => x !== tagId)
+                  : [...current, tagId];
                 handleFilterChange({ ...filter, pain_tag_ids: next.length > 0 ? next : null });
               }}
             />
@@ -1368,7 +1436,12 @@ export function MapsSearchResults({
           </div>
         </div>
 
-        <BottomSheet open={mobileFiltersOpen} onClose={() => setMobileFiltersOpen(false)} title="Фильтры" maxHeight="92vh">
+        <BottomSheet
+          open={mobileFiltersOpen}
+          onClose={() => setMobileFiltersOpen(false)}
+          title="Фильтры"
+          maxHeight="92vh"
+        >
           {filtersPanel(true)}
           <div className="sticky bottom-0 -mx-4 mt-3 border-t border-ui-border bg-ui-surface px-4 py-3">
             <Button onClick={() => setMobileFiltersOpen(false)} className="w-full">
@@ -1438,7 +1511,9 @@ export function MapsSearchResults({
               <Select
                 id="results-sort"
                 value={filter.sort_by ?? 'rating_desc'}
-                onChange={(e) => handleFilterChange({ ...filter, sort_by: e.target.value as SortBy })}
+                onChange={(e) =>
+                  handleFilterChange({ ...filter, sort_by: e.target.value as SortBy })
+                }
                 className="min-w-[210px]"
               >
                 {SORT_OPTIONS.map((o) => (
@@ -1461,11 +1536,13 @@ export function MapsSearchResults({
               <Brain className="h-4 w-4 shrink-0 text-ui-accent" aria-hidden />
               <span className="min-w-0 flex-1">
                 {reclusterState === 'error' ? (
-                  <span className="text-ui-danger">{reclusterMsg || 'Не удалось поставить разбор в очередь.'}</span>
+                  <span className="text-ui-danger">
+                    {reclusterMsg || 'Не удалось поставить разбор в очередь.'}
+                  </span>
                 ) : (
                   <>
-                    У {unparsedCount} {plural(unparsedCount, 'компании', 'компаний', 'компаний')} на странице боли ещё не разобраны — AI
-                    прочитает отзывы за 3–5 минут.
+                    У {unparsedCount} {plural(unparsedCount, 'компании', 'компаний', 'компаний')} на
+                    странице боли ещё не разобраны — AI прочитает отзывы за 3–5 минут.
                   </>
                 )}
               </span>
@@ -1476,19 +1553,32 @@ export function MapsSearchResults({
                 disabled={reclusterState === 'queueing'}
                 className="bg-ui-surface shadow-raised hover:bg-ui-surface"
               >
-                {reclusterState === 'queueing' ? 'Ставлю в очередь…' : reclusterState === 'error' ? 'Повторить' : 'Разобрать боли AI'}
+                {reclusterState === 'queueing'
+                  ? 'Ставлю в очередь…'
+                  : reclusterState === 'error'
+                    ? 'Повторить'
+                    : 'Разобрать боли AI'}
               </Button>
             </div>
           )}
 
           {stream.error && !isSoftEmptyError(search.error) && search.status !== 'completed' && (
             <Notice tone="warning" title="Живое обновление приостановлено">
-              Сервер закрыл соединение после 3 попыток. Парсер продолжает работу в фоне — обновите страницу через пару минут.
+              Сервер закрыл соединение после 3 попыток. Парсер продолжает работу в фоне — обновите
+              страницу через пару минут.
             </Notice>
           )}
 
           {search.status === 'failed' && isSoftEmptyError(search.error) && (
-            <Notice tone="warning" title="Ничего не нашлось" action={<Button size="sm" variant="secondary" onClick={onNewSearch}>Новый поиск</Button>}>
+            <Notice
+              tone="warning"
+              title="Ничего не нашлось"
+              action={
+                <Button size="sm" variant="secondary" onClick={onNewSearch}>
+                  Новый поиск
+                </Button>
+              }
+            >
               По этому запросу 2GIS ничего не вернул. Переформулируйте нишу или смените город.
             </Notice>
           )}
@@ -1506,7 +1596,8 @@ export function MapsSearchResults({
                   .
                 </>
               ) : search.error_type === 'ProviderUnavailable' ? (
-                search.error || 'Источник временно недоступен (капча или лимит запросов). Попробуйте позже или смените источник.'
+                search.error ||
+                'Источник временно недоступен (капча или лимит запросов). Попробуйте позже или смените источник.'
               ) : (
                 search.error || `${search.error_type ?? 'Неизвестная ошибка'}.`
               )}
@@ -1514,11 +1605,16 @@ export function MapsSearchResults({
           )}
 
           {search.status === 'completed' &&
-            (search.error_type === 'MissingAPIKeyError' || search.error_type === 'ProviderUnavailable') &&
+            (search.error_type === 'MissingAPIKeyError' ||
+              search.error_type === 'ProviderUnavailable') &&
             renderTotal === 0 && (
               <Notice
                 tone="danger"
-                title={search.error_type === 'MissingAPIKeyError' ? 'Ключ провайдера карт не настроен' : 'Источник временно недоступен'}
+                title={
+                  search.error_type === 'MissingAPIKeyError'
+                    ? 'Ключ провайдера карт не настроен'
+                    : 'Источник временно недоступен'
+                }
               >
                 {search.error_type === 'MissingAPIKeyError' ? (
                   <>
@@ -1529,45 +1625,62 @@ export function MapsSearchResults({
                     .
                   </>
                 ) : (
-                  search.error || 'Провайдер встал в капчу или превысил лимит запросов. Попробуйте позже или смените источник.'
+                  search.error ||
+                  'Провайдер встал в капчу или превысил лимит запросов. Попробуйте позже или смените источник.'
                 )}
               </Notice>
             )}
 
-          {search.status === 'completed' && search.error_type === 'EmptyResult' && renderTotal === 0 && (
-            <Notice tone="warning" title="Ничего не нашлось" action={<Button size="sm" variant="secondary" onClick={onNewSearch}>Новый поиск</Button>}>
-              {search.error}
-              {reviewsTrend && reviewsTrend.companies_affected > 0 && (
-                <span className="mt-1 block">
-                  В базе уже есть {reviewsTrend.companies_affected}{' '}
-                  {plural(reviewsTrend.companies_affected, 'компания', 'компании', 'компаний')} этой ниши из прошлых поисков — по ним
-                  считается «Сводка по нише».
-                </span>
-              )}
-            </Notice>
-          )}
+          {search.status === 'completed' &&
+            search.error_type === 'EmptyResult' &&
+            renderTotal === 0 && (
+              <Notice
+                tone="warning"
+                title="Ничего не нашлось"
+                action={
+                  <Button size="sm" variant="secondary" onClick={onNewSearch}>
+                    Новый поиск
+                  </Button>
+                }
+              >
+                {search.error}
+                {reviewsTrend && reviewsTrend.companies_affected > 0 && (
+                  <span className="mt-1 block">
+                    В базе уже есть {reviewsTrend.companies_affected}{' '}
+                    {plural(reviewsTrend.companies_affected, 'компания', 'компании', 'компаний')}{' '}
+                    этой ниши из прошлых поисков — по ним считается «Сводка по нише».
+                  </span>
+                )}
+              </Notice>
+            )}
 
           {isLoading && renderList.length === 0 && search.status !== 'failed' && (
             <p className="rounded-card bg-ui-surface-2 px-4 py-6 text-center text-small text-ui-text-muted">
-              {isTerminal ? 'Загружаю компании по фильтрам…' : 'Парсер ищет компании — карточки появятся по мере готовности.'}
+              {isTerminal
+                ? 'Загрузка компаний по фильтрам…'
+                : 'Парсер ищет компании — карточки появятся по мере готовности.'}
             </p>
           )}
 
-          {!isLoading && companiesEverLoaded && renderList.length === 0 && search.status !== 'failed' && search.error_type !== 'EmptyResult' && (
-            <Notice
-              tone="warning"
-              title="Под фильтры не попала ни одна компания"
-              action={
-                tokens.length > 0 ? (
-                  <Button size="sm" variant="secondary" onClick={resetAllFilters}>
-                    Сбросить фильтры
-                  </Button>
-                ) : undefined
-              }
-            >
-              Ослабьте условия — например, уберите минимум рейтинга или «Только с сайтом».
-            </Notice>
-          )}
+          {!isLoading &&
+            companiesEverLoaded &&
+            renderList.length === 0 &&
+            search.status !== 'failed' &&
+            search.error_type !== 'EmptyResult' && (
+              <Notice
+                tone="warning"
+                title="Под фильтры не попала ни одна компания"
+                action={
+                  tokens.length > 0 ? (
+                    <Button size="sm" variant="secondary" onClick={resetAllFilters}>
+                      Сбросить фильтры
+                    </Button>
+                  ) : undefined
+                }
+              >
+                Ослабьте условия — например, уберите минимум рейтинга или «Только с сайтом».
+              </Notice>
+            )}
 
           {renderList.length > 0 && viewMode === 'list' && (
             <ul className="flex flex-col gap-3.5">
@@ -1602,18 +1715,33 @@ export function MapsSearchResults({
             />
           )}
 
-          {renderList.length > 0 && isTerminal && tokens.length > 0 && typeof search.companies_found === 'number' && shownTotal < search.companies_found && (
-            <p className="pt-5 text-center text-small text-ui-text-muted">
-              Под фильтры попали {shownTotal} из {search.companies_found} компаний ·{' '}
-              <button type="button" onClick={resetAllFilters} className="font-semibold text-ui-accent hover:underline">
-                показать всех
-              </button>
-            </p>
-          )}
+          {renderList.length > 0 &&
+            isTerminal &&
+            tokens.length > 0 &&
+            typeof search.companies_found === 'number' &&
+            shownTotal < search.companies_found && (
+              <p className="pt-5 text-center text-small text-ui-text-muted">
+                Под фильтры попали {shownTotal} из {search.companies_found} компаний ·{' '}
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="font-semibold text-ui-accent hover:underline"
+                >
+                  показать всех
+                </button>
+              </p>
+            )}
 
           {shownTotal > PAGE_SIZE && renderList.length > 0 && (
-            <nav aria-label="Страницы выдачи" className="flex items-center justify-center gap-4 pt-5 text-small text-ui-text-muted">
-              <Button variant="secondary" onClick={() => goToPage(page - 1)} disabled={page === 0 || isLoading}>
+            <nav
+              aria-label="Страницы выдачи"
+              className="flex items-center justify-center gap-4 pt-5 text-small text-ui-text-muted"
+            >
+              <Button
+                variant="secondary"
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 0 || isLoading}
+              >
                 ← Назад
               </Button>
               <span>
@@ -1622,7 +1750,11 @@ export function MapsSearchResults({
                 </b>{' '}
                 из <b className="font-semibold tabular-nums text-ui-text">{shownTotal}</b>
               </span>
-              <Button variant="secondary" onClick={() => goToPage(page + 1)} disabled={rangeTo >= shownTotal || isLoading}>
+              <Button
+                variant="secondary"
+                onClick={() => goToPage(page + 1)}
+                disabled={rangeTo >= shownTotal || isLoading}
+              >
                 Дальше →
               </Button>
             </nav>
@@ -1642,7 +1774,11 @@ export function MapsSearchResults({
           </span>
           <BulkButton onClick={() => setBulkAddOpen(true)}>В список</BulkButton>
           <BulkButton onClick={handleBulkKp}>КП</BulkButton>
-          <BulkButton onClick={() => void handleBulkLpr()} disabled={lprBulkBusy} title="Ищем руководителя на страницах сайтов выбранных компаний — ~2 минуты">
+          <BulkButton
+            onClick={() => void handleBulkLpr()}
+            disabled={lprBulkBusy}
+            title="Ищем руководителя на страницах сайтов выбранных компаний — ~2 минуты"
+          >
             {lprBulkBusy ? 'Ставлю…' : 'Найти ЛПР'}
           </BulkButton>
           <BulkButton onClick={handleExportSelected}>Экспорт</BulkButton>
@@ -1657,7 +1793,11 @@ export function MapsSearchResults({
         </div>
       )}
 
-      <MapsCompanyDetailDrawer companyId={drawerCompanyId} searchId={search.id} onClose={() => setDrawerCompanyId(null)} />
+      <MapsCompanyDetailDrawer
+        companyId={drawerCompanyId}
+        searchId={search.id}
+        onClose={() => setDrawerCompanyId(null)}
+      />
 
       <AddToListModal
         open={addToListCompanyId != null}
@@ -1726,7 +1866,12 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
   { value: 'website_score_desc', label: 'Нужен сайт — сверху' },
 ];
 
-const SOURCE_NAME: Record<string, string> = { '2gis': '2GIS', yandex_maps: 'Яндекс.Карты', google_maps: 'Google Maps', google: 'Google Maps' };
+const SOURCE_NAME: Record<string, string> = {
+  '2gis': '2GIS',
+  yandex_maps: 'Яндекс.Карты',
+  google_maps: 'Google Maps',
+  google: 'Google Maps',
+};
 
 function sourceNames(raw: string | null | undefined): string {
   if (!raw) return '';
@@ -1751,15 +1896,31 @@ function plural(n: number, one: string, few: string, many: string): string {
 }
 
 /** Активные фильтры — токенами над выдачей; patch снимает фильтр. */
-function filterTokens(f: MapSearchFilter, painTags: PainTagOut[]): { id: string; label: string; patch: Partial<MapSearchFilter> }[] {
+function filterTokens(
+  f: MapSearchFilter,
+  painTags: PainTagOut[],
+): { id: string; label: string; patch: Partial<MapSearchFilter> }[] {
   const out: { id: string; label: string; patch: Partial<MapSearchFilter> }[] = [];
-  const yesNo = (v: boolean | null | undefined, yes: string, no: string) => (v === true ? yes : v === false ? no : null);
+  const yesNo = (v: boolean | null | undefined, yes: string, no: string) =>
+    v === true ? yes : v === false ? no : null;
   if (f.min_rating != null && f.max_rating != null)
-    out.push({ id: 'rating', label: `Рейтинг ${f.min_rating}–${f.max_rating}`, patch: { min_rating: null, max_rating: null } });
-  else if (f.min_rating != null) out.push({ id: 'rating', label: `Рейтинг от ${f.min_rating}`, patch: { min_rating: null } });
-  else if (f.max_rating != null) out.push({ id: 'rating', label: `Рейтинг до ${f.max_rating}`, patch: { max_rating: null } });
-  if (f.min_reviews != null) out.push({ id: 'reviews', label: `Отзывов от ${f.min_reviews}`, patch: { min_reviews: null } });
-  if (f.min_negative != null) out.push({ id: 'negative', label: `Негативных от ${f.min_negative}`, patch: { min_negative: null } });
+    out.push({
+      id: 'rating',
+      label: `Рейтинг ${f.min_rating}–${f.max_rating}`,
+      patch: { min_rating: null, max_rating: null },
+    });
+  else if (f.min_rating != null)
+    out.push({ id: 'rating', label: `Рейтинг от ${f.min_rating}`, patch: { min_rating: null } });
+  else if (f.max_rating != null)
+    out.push({ id: 'rating', label: `Рейтинг до ${f.max_rating}`, patch: { max_rating: null } });
+  if (f.min_reviews != null)
+    out.push({ id: 'reviews', label: `Отзывов от ${f.min_reviews}`, patch: { min_reviews: null } });
+  if (f.min_negative != null)
+    out.push({
+      id: 'negative',
+      label: `Негативных от ${f.min_negative}`,
+      patch: { min_negative: null },
+    });
   const replies = yesNo(f.has_owner_replies, 'Владелец отвечает', 'Владелец не отвечает');
   if (replies) out.push({ id: 'replies', label: replies, patch: { has_owner_replies: null } });
   const site = yesNo(f.has_website, 'Только с сайтом', 'Только без сайта');
@@ -1769,20 +1930,40 @@ function filterTokens(f: MapSearchFilter, painTags: PainTagOut[]): { id: string;
   const hiring = yesNo(f.hiring_marketing, 'Ищут маркетолога', 'Не ищут маркетолога');
   if (hiring) out.push({ id: 'hiring', label: hiring, patch: { hiring_marketing: null } });
   if (f.opf_in?.length)
-    out.push({ id: 'opf', label: `Юр. лицо: ${f.opf_in.map((v) => (v === '__unknown__' ? 'нет данных' : v)).join(', ')}`, patch: { opf_in: null } });
+    out.push({
+      id: 'opf',
+      label: `Юр. лицо: ${f.opf_in.map((v) => (v === '__unknown__' ? 'нет данных' : v)).join(', ')}`,
+      patch: { opf_in: null },
+    });
   const contains = [f.review_text_contains, ...(f.review_text_contains_any ?? [])].filter(Boolean);
   if (contains.length)
-    out.push({ id: 'contains', label: `В отзывах: «${contains.join('», «')}»`, patch: { review_text_contains: null, review_text_contains_any: null } });
+    out.push({
+      id: 'contains',
+      label: `В отзывах: «${contains.join('», «')}»`,
+      patch: { review_text_contains: null, review_text_contains_any: null },
+    });
   const excludes = [f.review_text_excludes, ...(f.review_text_excludes_any ?? [])].filter(Boolean);
   if (excludes.length)
-    out.push({ id: 'excludes', label: `Без слов: «${excludes.join('», «')}»`, patch: { review_text_excludes: null, review_text_excludes_any: null } });
+    out.push({
+      id: 'excludes',
+      label: `Без слов: «${excludes.join('», «')}»`,
+      patch: { review_text_excludes: null, review_text_excludes_any: null },
+    });
   for (const tagId of f.pain_tag_ids ?? []) {
     const tag = painTags.find((t) => t.id === tagId);
     const rest = (f.pain_tag_ids ?? []).filter((x) => x !== tagId);
-    out.push({ id: `pain-${tagId}`, label: `Боль: «${tag?.label ?? `#${tagId}`}»`, patch: { pain_tag_ids: rest.length ? rest : null } });
+    out.push({
+      id: `pain-${tagId}`,
+      label: `Боль: «${tag?.label ?? `#${tagId}`}»`,
+      patch: { pain_tag_ids: rest.length ? rest : null },
+    });
   }
   if (f.source_filter && f.source_filter !== 'all')
-    out.push({ id: 'source', label: `Только ${SOURCE_NAME[f.source_filter] ?? f.source_filter}`, patch: { source_filter: 'all' } });
+    out.push({
+      id: 'source',
+      label: `Только ${SOURCE_NAME[f.source_filter] ?? f.source_filter}`,
+      patch: { source_filter: 'all' },
+    });
   return out;
 }
 
@@ -1800,10 +1981,17 @@ function Notice({
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('mb-4 flex flex-wrap items-start gap-3 rounded-card px-4 py-3 text-small', tone === 'danger' ? 'bg-ui-danger/[.07]' : 'bg-ui-warning/[.08]')}
+      className={cn(
+        'mb-4 flex flex-wrap items-start gap-3 rounded-card px-4 py-3 text-small',
+        tone === 'danger' ? 'bg-ui-danger/[.07]' : 'bg-ui-warning/[.08]',
+      )}
     >
       <div className="min-w-0 flex-1">
-        <p className={cn('font-semibold', tone === 'danger' ? 'text-ui-danger' : 'text-ui-warning')}>{title}</p>
+        <p
+          className={cn('font-semibold', tone === 'danger' ? 'text-ui-danger' : 'text-ui-warning')}
+        >
+          {title}
+        </p>
         <div className="mt-0.5 text-ui-text-muted">{children}</div>
       </div>
       {action}
@@ -1811,7 +1999,17 @@ function Notice({
   );
 }
 
-function ExportItem({ title, hint, onClick, disabled }: { title: string; hint: string; onClick: () => void; disabled?: boolean }) {
+function ExportItem({
+  title,
+  hint,
+  onClick,
+  disabled,
+}: {
+  title: string;
+  hint: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -1882,19 +2080,19 @@ function RegionPainSummary({
   if (visible.length === 0) return null;
 
   return (
-    <div className="mt-2 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <div aria-hidden className="w-1 shrink-0 bg-rose-500" />
+    <div className="mt-2 flex overflow-hidden rounded border border-ui-border bg-ui-surface">
+      <div aria-hidden className="w-1 shrink-0 bg-signal-hot" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
           <span>
             Топ-боли ниши — можно выбирать несколько плиток
             {activeCount > 0 && (
-              <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-xs normal-case text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
+              <span className="ml-1.5 rounded-full bg-[var(--signal-hot-bg)] px-1.5 py-0.5 text-xs normal-case text-signal-hot">
                 выбрано {activeCount}
               </span>
             )}
           </span>
-          <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <span className="rounded-sm border border-ui-border bg-ui-surface-2 px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-ui-text-muted">
             {niche}
             {city ? ` · ${city}` : ''}
           </span>
@@ -1902,7 +2100,7 @@ function RegionPainSummary({
             <button
               type="button"
               onClick={onClear}
-              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="ml-auto rounded border border-ui-border px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-ui-text-muted hover:bg-ui-surface-2"
             >
               × снять {activeCount > 1 ? `все ${activeCount}` : 'фильтр'}
             </button>
@@ -1922,18 +2120,16 @@ function RegionPainSummary({
                     : (t.description ?? 'Показать только компании с этой болью')
                 }
                 className={
-                  'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-1 dark:focus:ring-rose-700 dark:focus:ring-offset-slate-900 ' +
+                  'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[color:var(--signal-hot)] focus:ring-offset-1 ' +
                   (active
-                    ? 'border-rose-500 bg-rose-50 text-rose-900 ring-1 ring-rose-300 dark:border-rose-400 dark:bg-rose-900/30 dark:text-rose-100 dark:ring-rose-700'
-                    : 'border-slate-300 bg-white text-slate-800 hover:border-rose-400 hover:bg-rose-50/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-rose-500 dark:hover:bg-rose-900/20')
+                    ? 'border-signal-hot bg-[var(--signal-hot-bg)] text-signal-hot ring-1 ring-signal-hot'
+                    : 'border-ui-border bg-ui-surface text-ui-text hover:border-signal-hot hover:bg-[var(--signal-hot-bg)]')
                 }
               >
                 <Filter
                   className={
                     'h-3 w-3 shrink-0 transition-colors ' +
-                    (active
-                      ? 'text-rose-600 dark:text-rose-300'
-                      : 'text-slate-500 group-hover:text-rose-500 dark:text-slate-500 dark:group-hover:text-rose-400')
+                    (active ? 'text-signal-hot' : 'text-ui-text-muted group-hover:text-signal-hot')
                   }
                   aria-hidden
                 />
@@ -1942,8 +2138,8 @@ function RegionPainSummary({
                   className={
                     'rounded-sm px-1 text-xs tabular-nums ' +
                     (active
-                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-800/40 dark:text-rose-100'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300')
+                      ? 'bg-[var(--signal-hot-bg)] text-signal-hot'
+                      : 'bg-ui-surface-2 text-ui-text-muted')
                   }
                 >
                   {t.occurrences_count}
@@ -1955,7 +2151,7 @@ function RegionPainSummary({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center rounded border border-dashed border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              className="inline-flex items-center rounded border border-dashed border-ui-border bg-ui-surface px-2 py-1 text-xs font-medium text-ui-text-muted hover:text-ui-text"
               title={
                 expanded ? 'Скрыть, оставить топ-8' : `Показать ещё ${unique.length - 8} плиток`
               }
@@ -1991,11 +2187,11 @@ function PainHeaderControlsBar({
   onSentimentChange: (next: 'negative' | 'positive') => void;
 }) {
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900">
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-ui-border bg-ui-surface px-3 py-1.5 text-xs">
+      <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
         Тип:
       </span>
-      <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+      <div className="inline-flex overflow-hidden rounded border border-ui-border">
         {[
           { v: 'negative' as const, label: 'Боли' },
           { v: 'positive' as const, label: 'Сильные стороны' },
@@ -2007,20 +2203,18 @@ function PainHeaderControlsBar({
           // видно, какой срез сейчас доступен.
           const cls = active
             ? v === 'positive'
-              ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-900'
-              : 'bg-rose-600 text-white dark:bg-rose-500 dark:text-slate-900'
+              ? 'bg-signal-good text-white'
+              : 'bg-signal-hot text-white'
             : v === 'positive'
-              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50'
-              : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/50';
+              ? 'bg-[var(--signal-good-bg)] text-signal-good hover:opacity-80'
+              : 'bg-[var(--signal-hot-bg)] text-signal-hot hover:opacity-80';
           return (
             <button
               key={v}
               type="button"
               onClick={() => onSentimentChange(v)}
               className={
-                'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
-                cls +
-                ' border-slate-300 dark:border-slate-600'
+                'border-l px-2 py-0.5 font-medium first:border-l-0 ' + cls + ' border-ui-border'
               }
             >
               {label}
@@ -2028,10 +2222,10 @@ function PainHeaderControlsBar({
           );
         })}
       </div>
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
         Источник:
       </span>
-      <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+      <div className="inline-flex overflow-hidden rounded border border-ui-border">
         {[
           { v: null, label: 'Все' },
           { v: '2gis' as const, label: '2GIS' },
@@ -2047,9 +2241,9 @@ function PainHeaderControlsBar({
               className={
                 'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
                 (active
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
-                ' border-slate-300 dark:border-slate-600'
+                  ? 'bg-ui-accent text-white'
+                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2') +
+                ' border-ui-border'
               }
             >
               {label}
@@ -2057,10 +2251,10 @@ function PainHeaderControlsBar({
           );
         })}
       </div>
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
         Период:
       </span>
-      <div className="inline-flex overflow-hidden rounded border border-slate-300 dark:border-slate-600">
+      <div className="inline-flex overflow-hidden rounded border border-ui-border">
         {[
           { v: 30, label: '30д' },
           { v: 90, label: '90д' },
@@ -2076,9 +2270,9 @@ function PainHeaderControlsBar({
               className={
                 'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
                 (active
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700') +
-                ' border-slate-300 dark:border-slate-600'
+                  ? 'bg-ui-accent text-white'
+                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2') +
+                ' border-ui-border'
               }
             >
               {label}
@@ -2143,20 +2337,20 @@ function RegionPainTrendInline({
   const barWidth = Math.max(2, Math.min(24, (groupWidth - 4) / Math.max(1, allSources.length)));
 
   return (
-    <div className="mt-1.5 flex overflow-hidden rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <div aria-hidden className={cn('w-1 shrink-0', tag ? 'bg-rose-500' : 'bg-slate-400')} />
+    <div className="mt-1.5 flex overflow-hidden rounded border border-ui-border bg-ui-surface">
+      <div aria-hidden className={cn('w-1 shrink-0', tag ? 'bg-signal-hot' : 'bg-ui-border')} />
       <div className="flex min-w-0 flex-1 flex-col gap-1 px-2.5 py-1.5">
         <div className="flex flex-wrap items-baseline gap-2 text-xs">
-          <span className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span className="font-semibold uppercase tracking-wider text-ui-text-muted">
             {headline ?? 'Динамика по месяцам'}
           </span>
           {tag && (
-            <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
+            <span className="rounded-sm border border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] px-1.5 py-0.5 text-xs font-medium text-signal-hot">
               {tag.label}
             </span>
           )}
           {trend && (
-            <span className="text-slate-500 dark:text-slate-400 tabular-nums">
+            <span className="text-ui-text-muted tabular-nums">
               {trend.total_reviews} отз. · {trend.companies_affected} комп.
             </span>
           )}
@@ -2164,18 +2358,16 @@ function RegionPainTrendInline({
             <button
               type="button"
               onClick={onClose}
-              className="ml-auto rounded border border-slate-300 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="ml-auto rounded border border-ui-border px-1.5 py-0.5 text-xs font-medium text-ui-text-muted hover:bg-ui-surface-2"
             >
               × закрыть
             </button>
           )}
         </div>
         {loading && !trend ? (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            Загружаем динамику…
-          </div>
+          <div className="text-xs text-ui-text-muted">Загрузка динамики…</div>
         ) : months.length === 0 ? (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-ui-text-muted">
             Нет отзывов с датами в выбранном окне — попробуй расширить период.
           </div>
         ) : (
@@ -2196,7 +2388,7 @@ function RegionPainTrendInline({
                 x2={PAD.left + innerW}
                 y2={PAD.top + innerH}
                 stroke="currentColor"
-                className="text-slate-300 dark:text-slate-600"
+                className="text-ui-border"
                 strokeWidth={1}
               />
               <text
@@ -2204,7 +2396,7 @@ function RegionPainTrendInline({
                 y={PAD.top + 4}
                 textAnchor="end"
                 fontSize={9}
-                className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+                className="fill-ui-text-muted tabular-nums"
               >
                 {maxCount}
               </text>
@@ -2213,7 +2405,7 @@ function RegionPainTrendInline({
                 y={PAD.top + innerH}
                 textAnchor="end"
                 fontSize={9}
-                className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+                className="fill-ui-text-muted tabular-nums"
               >
                 0
               </text>
@@ -2251,7 +2443,7 @@ function RegionPainTrendInline({
                         y={PAD.top + innerH + 12}
                         textAnchor="middle"
                         fontSize={9}
-                        className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+                        className="fill-ui-text-muted tabular-nums"
                       >
                         {m.slice(2)}
                       </text>
@@ -2260,7 +2452,7 @@ function RegionPainTrendInline({
                 );
               })}
             </svg>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
               {allSources.map((src) => (
                 <span key={src} className="inline-flex items-center gap-1">
                   <span
@@ -2364,24 +2556,24 @@ function AiPainProgressBar({
         ? 'slate'
         : 'blue';
   const wrapCls = isStuck
-    ? 'border-rose-300 bg-white dark:border-rose-700 dark:bg-slate-900'
-    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
+    ? 'border-[color:var(--signal-hot)]/40 bg-ui-surface'
+    : 'border-ui-border bg-ui-surface';
   const stageBarColor =
     accent === 'rose'
-      ? 'bg-rose-500'
+      ? 'bg-signal-hot'
       : accent === 'emerald'
-        ? 'bg-emerald-500'
+        ? 'bg-signal-good'
         : accent === 'slate'
-          ? 'bg-slate-400'
-          : 'bg-blue-500';
+          ? 'bg-ui-border'
+          : 'bg-signal-cool';
   const stagePillCls =
     accent === 'rose'
-      ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200'
+      ? 'border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] text-signal-hot'
       : accent === 'emerald'
-        ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-200'
+        ? 'border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] text-signal-good'
         : accent === 'slate'
-          ? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-          : 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-200';
+          ? 'border-ui-border bg-ui-surface-2 text-ui-text-muted'
+          : 'border-[color:var(--signal-cool)]/40 bg-[var(--signal-cool-bg)] text-signal-cool';
   const stagePillText =
     accent === 'rose'
       ? 'Завис'
@@ -2396,56 +2588,43 @@ function AiPainProgressBar({
       <div aria-hidden className={`w-1 shrink-0 ${stageBarColor}`} />
       <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Brain className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-          <span className="font-semibold text-slate-900 dark:text-slate-100">
-            AI-разбор отзывов
-          </span>
+          <Brain className="h-3.5 w-3.5 text-ui-text-muted" />
+          <span className="font-semibold text-ui-text">AI-разбор отзывов</span>
           <span
             className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${stagePillCls}`}
           >
             {stagePillText}
           </span>
-          <span className="text-slate-600 dark:text-slate-300">{stageLabel}</span>
-          <span className="ml-auto tabular-nums text-xs font-semibold text-slate-700 dark:text-slate-200">
+          <span className="text-ui-text-muted">{stageLabel}</span>
+          <span className="ml-auto tabular-nums text-xs font-semibold text-ui-text-muted">
             {percent}%
           </span>
         </div>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-ui-surface-2">
           <div
             className={`h-full ${stageBarColor} transition-[width] duration-700`}
             style={{ width: `${Math.max(3, Math.min(100, percent))}%` }}
           />
         </div>
         {progress && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ui-text-muted">
             <span title="Сколько компаний поиска уже получили pain-теги">
-              <span className="text-slate-500 dark:text-slate-500">Готовы:</span>{' '}
-              <b className="tabular-nums text-slate-900 dark:text-slate-100">
-                {progress.companies_with_pains}
-              </b>
-              <span className="mx-1 text-slate-500">/</span>
-              <b className="tabular-nums text-slate-700 dark:text-slate-300">
-                {progress.companies_total}
-              </b>{' '}
-              компаний
+              <span className="text-ui-text-muted">Готовы:</span>{' '}
+              <b className="tabular-nums text-ui-text">{progress.companies_with_pains}</b>
+              <span className="mx-1 text-ui-text-muted">/</span>
+              <b className="tabular-nums text-ui-text-muted">{progress.companies_total}</b> компаний
             </span>
             {progress.reviews_total > 0 && (
               <span title="Сколько отзывов уже прошло через AI-эмбеддинги">
-                <span className="text-slate-500 dark:text-slate-500">Отзывы:</span>{' '}
-                <b className="tabular-nums text-slate-900 dark:text-slate-100">
-                  {progress.reviews_with_embedding}
-                </b>
-                <span className="mx-1 text-slate-500">/</span>
-                <b className="tabular-nums text-slate-700 dark:text-slate-300">
-                  {progress.reviews_total}
-                </b>
+                <span className="text-ui-text-muted">Отзывы:</span>{' '}
+                <b className="tabular-nums text-ui-text">{progress.reviews_with_embedding}</b>
+                <span className="mx-1 text-ui-text-muted">/</span>
+                <b className="tabular-nums text-ui-text-muted">{progress.reviews_total}</b>
               </span>
             )}
             <span title="Сколько кластеров болей создано для этой ниши">
-              <span className="text-slate-500 dark:text-slate-500">Кластеры:</span>{' '}
-              <b className="tabular-nums text-slate-900 dark:text-slate-100">
-                {progress.pain_tags_total}
-              </b>
+              <span className="text-ui-text-muted">Кластеры:</span>{' '}
+              <b className="tabular-nums text-ui-text">{progress.pain_tags_total}</b>
             </span>
             {startedAt && stage !== 'ready' && (
               <span title="Прошло времени с момента запуска AI-разбора" className="tabular-nums">
@@ -2457,7 +2636,7 @@ function AiPainProgressBar({
                 <button
                   type="button"
                   onClick={onRestart}
-                  className="rounded bg-rose-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-rose-700"
+                  className="rounded bg-signal-hot px-2 py-0.5 text-xs font-medium text-white hover:opacity-90"
                   title="Поставить AI-разбор в очередь повторно"
                 >
                   Запустить заново
@@ -2466,7 +2645,7 @@ function AiPainProgressBar({
               <button
                 type="button"
                 onClick={onDismiss}
-                className="text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+                className="text-ui-text-muted underline-offset-2 hover:text-ui-text hover:underline"
                 title="Скрыть прогресс-плашку. Запустить AI снова можно кнопкой выше."
               >
                 скрыть
@@ -2475,7 +2654,7 @@ function AiPainProgressBar({
           </div>
         )}
         {isStuck && (
-          <div className="space-y-1.5 border-t border-rose-200 pt-2 text-xs text-rose-800 dark:border-rose-800/60 dark:text-rose-200">
+          <div className="space-y-1.5 border-t border-[color:var(--signal-hot)]/40 pt-2 text-xs text-signal-hot">
             <div>
               Эмбеддинги все готовы, но AI не создал ни одного кластера болей за 3+ минуты. Скорее
               всего celery-задача зависла или кластеризация даёт 0 кластеров.
@@ -2485,23 +2664,21 @@ function AiPainProgressBar({
                 type="button"
                 disabled={diagnosticRunning}
                 onClick={onRunDiagnostic}
-                className="inline-flex items-center gap-1 rounded border border-rose-300 bg-white px-2 py-1 text-xs font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-200 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-1 rounded border border-[color:var(--signal-hot)]/40 bg-ui-surface px-2 py-1 text-xs font-medium text-signal-hot hover:bg-[var(--signal-hot-bg)] disabled:cursor-wait disabled:opacity-60"
                 title="Запустит синхронный recluster прямо сейчас и покажет точную причину (займёт до 1-2 минут)"
               >
                 {diagnosticRunning
                   ? 'Диагностика выполняется… (до 2 мин)'
                   : 'Запустить диагностику'}
               </button>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-ui-text-muted">
                 Синхронно прогонит кластеризацию и покажет точную причину
               </span>
             </div>
             {diagnostic && (
-              <div className="rounded border border-rose-200 bg-white px-2.5 py-1.5 text-xs dark:border-rose-700 dark:bg-slate-900">
-                <div className="font-semibold text-rose-900 dark:text-rose-100">
-                  Результат диагностики:
-                </div>
-                <ul className="mt-1 space-y-0.5 text-slate-700 dark:text-slate-200">
+              <div className="rounded border border-[color:var(--signal-hot)]/40 bg-ui-surface px-2.5 py-1.5 text-xs">
+                <div className="font-semibold text-signal-hot">Результат диагностики:</div>
+                <ul className="mt-1 space-y-0.5 text-ui-text-muted">
                   <li>
                     Отзывов с эмбеддингами:{' '}
                     <b className="tabular-nums">{diagnostic.reviews_with_embedding}</b>
@@ -2520,18 +2697,16 @@ function AiPainProgressBar({
                     {diagnostic.companies_total}
                   </li>
                   {diagnostic.error && (
-                    <li className="font-medium text-rose-800 dark:text-rose-200">
-                      Ошибка: {diagnostic.error}
-                    </li>
+                    <li className="font-medium text-signal-hot">Ошибка: {diagnostic.error}</li>
                   )}
                 </ul>
                 {diagnostic.companies_with_pains_after > 0 && (
-                  <div className="mt-1 text-emerald-700 dark:text-emerald-300">
+                  <div className="mt-1 text-signal-good">
                     Готово! Закрой плашку — плитки появились в карточках.
                   </div>
                 )}
                 {!diagnostic.error && diagnostic.companies_with_pains_after === 0 && (
-                  <div className="mt-1 text-rose-800 dark:text-rose-200">
+                  <div className="mt-1 text-signal-hot">
                     {diagnostic.reviews_with_embedding === 0
                       ? 'Не было отзывов с эмбеддингами — analyze не отрабатывал. Проверь ProxyAPI токены.'
                       : diagnostic.clusters_found === 0
@@ -2544,7 +2719,7 @@ function AiPainProgressBar({
           </div>
         )}
         {stage === 'idle' && (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-ui-text-muted">
             У компаний этой выдачи пока нет отзывов — разбирать нечего. Попробуй другую нишу или
             подожди, пока подтянутся отзывы.
           </div>

@@ -15,7 +15,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, Download, ListPlus, Send } from 'lucide-react';
+import { ArrowRight, Check, Download, ListPlus, Send, Star } from 'lucide-react';
 
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
@@ -78,7 +78,7 @@ type ExpandedReviews = Record<
 
 export default function PainsPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-ui-text-muted">Загружаем…</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-ui-text-muted">Загрузка…</div>}>
       <PainsPageInner />
     </Suspense>
   );
@@ -396,10 +396,7 @@ function PainsPageInner() {
     <PageContainer className="pb-16 pt-10 sm:pt-16">
       <div className="mx-auto w-full max-w-[1128px]">
         {/* === Заголовок === */}
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 pl-1 pr-4 text-small font-semibold text-ui-text-muted">
-          <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">
-            ФИШКА
-          </span>
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 px-4 text-small font-semibold text-ui-text-muted">
           Письмо, которое начинается с цитаты их же отзыва
         </p>
         <h1 className="max-w-[760px] text-hero font-extrabold text-ui-text">
@@ -434,7 +431,7 @@ function PainsPageInner() {
             </div>
             <div className="px-3 pb-3 pt-3">
               {niche && topTagsLoading && topTags.length === 0 && (
-                <p className="px-3 py-4 text-small text-ui-text-muted">Загружаю боли ниши…</p>
+                <p className="px-3 py-4 text-small text-ui-text-muted">Загрузка болей ниши…</p>
               )}
               {niche && !topTagsLoading && topTags.length === 0 && (
                 <p className="px-3 py-4 text-small text-ui-text-muted">
@@ -1108,7 +1105,7 @@ function PainCompanyCard({
         {reviews && (
           <div className="mt-3 flex flex-col gap-2 rounded-card bg-ui-surface-2 p-2.5">
             {reviews.loading && reviews.reviews.length === 0 && (
-              <p className="px-1 text-xs text-ui-text-muted">Загружаю отзывы…</p>
+              <p className="px-1 text-xs text-ui-text-muted">Загрузка отзывов…</p>
             )}
             {!reviews.loading && reviews.reviews.length === 0 && (
               <p className="px-1 text-xs text-ui-text-muted">
@@ -1123,7 +1120,10 @@ function PainCompanyCard({
                 <div key={r.id} className="rounded-control bg-ui-surface p-2.5 text-xs">
                   <div className="flex flex-wrap items-center gap-2 text-ui-text-muted">
                     {r.rating != null && (
-                      <span className="font-semibold text-ui-danger">★ {r.rating}/5</span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-ui-danger">
+                        <Star className="h-3.5 w-3.5 fill-current" aria-hidden />
+                        {r.rating}/5
+                      </span>
                     )}
                     {r.source && <span>{SOURCE_SHORT[r.source] ?? r.source}</span>}
                     {r.posted_at && (
@@ -1173,7 +1173,7 @@ function PainCompanyCard({
                 disabled={reviews.loading}
               >
                 {reviews.loading
-                  ? 'Загружаю…'
+                  ? 'Загрузка…'
                   : `Показать ещё · ${reviews.total - reviews.reviews.length}`}
               </Button>
             )}
