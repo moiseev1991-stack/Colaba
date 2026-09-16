@@ -609,7 +609,7 @@ function CampaignDrilldown({
           className="p-6 flex items-center justify-center gap-2 text-sm"
           style={{ color: 'hsl(var(--muted))' }}
         >
-          <Loader2 className="h-4 w-4 animate-spin" /> Загружаем получателей…
+          <Loader2 className="h-4 w-4 animate-spin" /> Загрузка получателей…
         </div>
       ) : logs.length === 0 ? (
         <div

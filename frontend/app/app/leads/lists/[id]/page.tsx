@@ -107,7 +107,7 @@ export default function LeadListDetailPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-[1100px] px-6 py-6 text-sm text-slate-500">
-        Загружаю список…
+        Загрузка списка…
       </div>
     );
   }

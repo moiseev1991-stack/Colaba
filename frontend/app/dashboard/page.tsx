@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { Search, Users, BarChart3, Calendar, ExternalLink, Loader2, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   getDashboard,
   type DashboardResponse,
@@ -805,7 +806,9 @@ export default function MainDashboardPage() {
               <h3 className="text-base font-semibold" style={{ color: 'hsl(var(--text))' }}>
                 Госзакупки
               </h3>
-              <span className="app-badge app-badge-warning">Скоро</span>
+              <Badge tone="warning" size="sm">
+                Скоро
+              </Badge>
             </div>
             <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted))' }}>
               Мониторинг, история, фильтры

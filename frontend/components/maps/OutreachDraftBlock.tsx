@@ -103,9 +103,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
       <div className="mb-2 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Письмо
-        </span>
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Письмо</span>
       </div>
 
       {/* Селект угла услуги */}
@@ -133,15 +131,11 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
           onClick={() => handleGenerate(false)}
           disabled={isLoading}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-gradient px-3 py-1.5 text-xs font-medium text-white shadow-v2-sm hover:shadow-v2-hover disabled:opacity-60',
+            'inline-flex items-center gap-1.5 rounded-v2-sm bg-brand-600 px-3 py-1.5 text-xs font-medium text-white shadow-v2-sm hover:shadow-v2-hover disabled:opacity-60',
           )}
         >
           <Sparkles className="h-3.5 w-3.5" />
-          {isLoading
-            ? 'Генерация…'
-            : draft
-              ? 'Перегенерировать кэш'
-              : 'Сгенерировать письмо'}
+          {isLoading ? 'Генерация…' : draft ? 'Перегенерировать кэш' : 'Сгенерировать письмо'}
         </button>
         {draft && (
           <button
@@ -161,17 +155,13 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
       {draft?.cached && (
         <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
           Из кэша · угол:{' '}
-          <span className="font-medium text-slate-700 dark:text-slate-200">
-            {draft.angle_used}
-          </span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">{draft.angle_used}</span>
         </div>
       )}
       {draft && !draft.cached && (
         <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
           Сгенерировано · угол:{' '}
-          <span className="font-medium text-slate-700 dark:text-slate-200">
-            {draft.angle_used}
-          </span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">{draft.angle_used}</span>
         </div>
       )}
 
@@ -206,9 +196,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
               </button>
             </div>
             {copied === 'subject' && (
-              <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                Скопировано
-              </div>
+              <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">Скопировано</div>
             )}
           </div>
 
@@ -233,12 +221,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  copyToClipboard(
-                    `Тема: ${subjectEdit}\n\n${bodyEdit}`,
-                    'all',
-                  )
-                }
+                onClick={() => copyToClipboard(`Тема: ${subjectEdit}\n\n${bodyEdit}`, 'all')}
                 className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <Copy className="h-3 w-3" />
@@ -261,9 +244,7 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
                 </span>
               )}
               {(copied === 'body' || copied === 'all') && (
-                <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                  Скопировано
-                </span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400">Скопировано</span>
               )}
             </div>
           </div>
@@ -293,9 +274,8 @@ export function OutreachDraftBlock({ companyId, companyEmails }: Props) {
       {/* Пустое состояние */}
       {!draft && !isLoading && !error && (
         <div className="text-xs text-slate-500 dark:text-slate-400">
-          Выбери угол услуги и жми «Сгенерировать». Письмо построится из
-          реальных болей клиентов этой компании (если они есть) или из угла
-          услуги.
+          Выбери угол услуги и жми «Сгенерировать». Письмо построится из реальных болей клиентов
+          этой компании (если они есть) или из угла услуги.
         </div>
       )}
     </div>

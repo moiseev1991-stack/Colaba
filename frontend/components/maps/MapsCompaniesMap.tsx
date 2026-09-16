@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet.heat';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { Star } from 'lucide-react';
 
 import {
   getSearchHeatmap,
@@ -144,9 +145,7 @@ function HeatLayer({ data }: { data: HeatmapOut | null }) {
     }
     if (!data || data.points.length === 0) return;
     // Leaflet.heat принимает массив [lat, lng, intensity].
-    const pts = data.points.map(
-      (p) => [p.lat, p.lng, p.weight] as [number, number, number],
-    );
+    const pts = data.points.map((p) => [p.lat, p.lng, p.weight] as [number, number, number]);
     // @ts-expect-error — leaflet.heat не имеет typings для L.heatLayer.
     const layer = L.heatLayer(pts, {
       radius: 32,
@@ -271,9 +270,9 @@ export default function MapsCompaniesMap({
   if (withCoords.length === 0) {
     return (
       <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/30 bg-[var(--signal-warm-bg)] px-4 py-6 text-sm text-[color:var(--signal-warm)]">
-        У этих компаний не сохранены координаты — карту построить не из чего.
-        Это бывает у старых поисков (до миграции координат в API). Сделай новый
-        поиск — у свежих компаний координаты есть.
+        У этих компаний не сохранены координаты — карту построить не из чего. Это бывает у старых
+        поисков (до миграции координат в API). Сделай новый поиск — у свежих компаний координаты
+        есть.
       </div>
     );
   }
@@ -316,13 +315,9 @@ export default function MapsCompaniesMap({
           })}
         </div>
         {heatLoading && (
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Загружаю…
-          </span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Загрузка…</span>
         )}
-        {heatError && (
-          <span className="text-xs text-rose-700 dark:text-rose-400">{heatError}</span>
-        )}
+        {heatError && <span className="text-xs text-rose-700 dark:text-rose-400">{heatError}</span>}
         {heatData && layer !== 'off' && (
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {heatData.contributing} из {heatData.total_companies} компаний дали вклад
@@ -354,10 +349,7 @@ export default function MapsCompaniesMap({
         </div>
       )}
 
-      <div
-        className="overflow-hidden rounded-md border border-slate-200"
-        style={{ height: 560 }}
-      >
+      <div className="overflow-hidden rounded-md border border-slate-200" style={{ height: 560 }}>
         <MapContainer
           center={initialCenter}
           zoom={11}
@@ -384,11 +376,14 @@ export default function MapsCompaniesMap({
                 <Popup>
                   <div className="space-y-1" style={{ minWidth: 200 }}>
                     <div className="text-small font-semibold text-slate-900">{c.name}</div>
-                    {c.address && (
-                      <div className="text-xs text-slate-500">{c.address}</div>
-                    )}
+                    {c.address && <div className="text-xs text-slate-500">{c.address}</div>}
                     <div className="text-xs text-slate-600">
-                      {typeof c.rating === 'number' && <>★ {c.rating.toFixed(1)} · </>}
+                      {typeof c.rating === 'number' && (
+                        <>
+                          <Star className="inline h-3.5 w-3.5 fill-current" aria-hidden />{' '}
+                          {c.rating.toFixed(1)} ·{' '}
+                        </>
+                      )}
                       {c.reviews_count} отз. ({c.reviews_negative_count} нег.)
                     </div>
                     {a?.status === 'done' && typeof a.score === 'number' && (

@@ -123,7 +123,7 @@ const SOURCE_OPTIONS: Array<{ id: MapSource; name: string; hint: string }> = [
 const HOW_IT_WORKS = [
   { title: 'Собираем карточки', text: 'Компании с карт: название, адрес, рейтинг, телефон, сайт.' },
   { title: 'Читаем отзывы', text: 'AI группирует жалобы в боли с числом упоминаний и цитатой.' },
-  { title: 'Готовим письмо', text: 'Черновик КП под конкретную боль — в один клик.' },
+  { title: 'Готовим письмо', text: 'Черновик КП под конкретную боль — готов к отправке.' },
 ];
 
 const HINT_NICHES = ['стоматология', 'автосервис', 'фитнес клуб'];
@@ -494,10 +494,7 @@ export function MapsSearchForm({ onStarted }: Props) {
     <div className="mx-auto w-full max-w-[1232px] px-4 sm:px-6">
       {/* === Первый экран: заголовок и форма === */}
       <div className="mx-auto w-full max-w-[1072px] pt-10 text-center sm:pt-16">
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 pl-1 pr-4 text-small font-semibold text-ui-text-muted">
-          <span className="rounded-full bg-ui-accent px-2.5 py-0.5 text-xs font-bold tracking-wide text-ui-accent-contrast">
-            NEW
-          </span>
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 px-4 text-small font-semibold text-ui-text-muted">
           <span className="sm:hidden">Отзывы с 2GIS, Яндекс и Google</span>
           <span className="hidden sm:inline">Отзывы с трёх карт — 2GIS, Яндекс и Google</span>
         </p>
@@ -891,12 +888,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                     { value: 'city', label: 'По городу' },
                     {
                       value: 'radius',
-                      label: (
-                        <>
-                          В радиусе от адреса{' '}
-                          <span className="text-xs font-bold text-ui-accent">NEW</span>
-                        </>
-                      ),
+                      label: 'В радиусе от адреса',
                       title: 'Компании в радиусе X км от адреса — «что у соседей по району»',
                     },
                   ]}

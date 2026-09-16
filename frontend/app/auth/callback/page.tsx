@@ -36,9 +36,12 @@ function CallbackContent() {
       }
 
       try {
-        const response = await fetch(`/api/v1/auth/oauth/${provider}/callback?code=${code}&state=${state}`, {
-          method: 'GET',
-        });
+        const response = await fetch(
+          `/api/v1/auth/oauth/${provider}/callback?code=${code}&state=${state}`,
+          {
+            method: 'GET',
+          },
+        );
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -52,7 +55,6 @@ function CallbackContent() {
           const next = searchParams.get('next');
           router.push(next || '/app');
         }, 2000);
-
       } catch (err: any) {
         setStatus('error');
         setMessage(err.message || 'Произошла ошибка при авторизации');
@@ -63,23 +65,19 @@ function CallbackContent() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-ui-bg">
       <div className="max-w-md w-full">
         <CardV2 className="p-8">
           {status === 'loading' && (
             <div className="text-center py-8">
-              <Loader2
-                className="h-12 w-12 animate-spin mx-auto mb-4 text-brand-600 dark:text-brand-400"
-              />
+              <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-brand-600 dark:text-brand-400" />
               <h2
                 className="font-display font-semibold tracking-tight text-xl mb-2"
                 style={{ color: 'hsl(var(--text))' }}
               >
                 Обработка авторизации...
               </h2>
-              <p style={{ color: 'hsl(var(--muted))' }}>
-                Пожалуйста, подождите
-              </p>
+              <p style={{ color: 'hsl(var(--muted))' }}>Пожалуйста, подождите</p>
             </div>
           )}
 
@@ -101,17 +99,16 @@ function CallbackContent() {
 
           {status === 'error' && (
             <div className="text-center py-8">
-              <XCircle
-                className="h-12 w-12 mx-auto mb-4"
-                style={{ color: 'var(--signal-hot)' }}
-              />
+              <XCircle className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--signal-hot)' }} />
               <h2
                 className="font-display font-semibold tracking-tight text-xl mb-2"
                 style={{ color: 'var(--signal-hot)' }}
               >
                 Ошибка
               </h2>
-              <p className="mb-6" style={{ color: 'hsl(var(--muted))' }}>{message}</p>
+              <p className="mb-6" style={{ color: 'hsl(var(--muted))' }}>
+                {message}
+              </p>
               <ButtonV2
                 variant="primary"
                 size="md"
@@ -130,11 +127,13 @@ function CallbackContent() {
 
 export default function OAuthCallbackPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-brand-600 dark:text-brand-400" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-brand-600 dark:text-brand-400" />
+        </div>
+      }
+    >
       <CallbackContent />
     </Suspense>
   );

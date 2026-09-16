@@ -18,14 +18,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { isUnnamedPainLabel } from '@/lib/painLabels';
 import {
+  Check,
+  Circle,
   ExternalLink,
   Globe,
+  Loader2,
   Mail,
   MessageCircle,
+  MessageSquare,
   Phone,
+  RotateCw,
   Search as SearchIcon,
   Send,
   Star,
+  Target,
+  User,
   X,
 } from 'lucide-react';
 
@@ -117,64 +124,65 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   // «○ ВК»/«○ hh.ru»/…). 2026-07-16: сделали НЕЗАВИСИМЫМ per-source —
   // юзер может нажать несколько плашек подряд, каждая крутится своим
   // счётчиком; disabled только та, у которой сейчас idem-запрос в полёте.
-  const [triggeringSources, setTriggeringSources] = useState<Set<EnrichSource>>(
-    () => new Set(),
-  );
-  const handleSourceRetry = useCallback(async (source: EnrichSource) => {
-    if (companyId == null) return;
-    // Уже крутится ЭТА плашка — тихо игнорируем повторный клик по ней.
-    // По другим источникам разрешено параллельно.
-    if (triggeringSources.has(source)) return;
-    setTriggeringSources((prev) => {
-      const next = new Set(prev);
-      next.add(source);
-      return next;
-    });
-    try {
-      // searchId=null — валидный кейс для /app/pains (бэк проверит владение
-      // через любой user-search'ев). Проксируем null.
-      await enrichCompanySource(companyId, source, searchId);
-      // eslint-disable-next-line no-console
-      console.log('[drawer] source-retry OK', { source, companyId, searchId });
-    } catch (e: any) {
-      const status = e?.response?.status;
-      const detail = e?.response?.data?.detail || e?.message || 'unknown';
-      // eslint-disable-next-line no-console
-      console.error('[drawer] source-retry FAILED', { source, status, detail });
-      setDmEnrichResult(
-        `Не удалось запустить ${source}: ${status ? `HTTP ${status} — ` : ''}${detail}`,
-      );
+  const [triggeringSources, setTriggeringSources] = useState<Set<EnrichSource>>(() => new Set());
+  const handleSourceRetry = useCallback(
+    async (source: EnrichSource) => {
+      if (companyId == null) return;
+      // Уже крутится ЭТА плашка — тихо игнорируем повторный клик по ней.
+      // По другим источникам разрешено параллельно.
+      if (triggeringSources.has(source)) return;
       setTriggeringSources((prev) => {
         const next = new Set(prev);
-        next.delete(source);
+        next.add(source);
         return next;
       });
-      return;
-    }
-    // Через 55с рефетч drawer'а. Если source нашёл что-то — плашка станет
-    // ✓·N. Если нет — останется ○. is_marketing_dm тоже может обновиться,
-    // потому что бэк ставит enrich_marketing_dm через 45с после source-таска.
-    window.setTimeout(async () => {
-      const clearTriggering = () =>
+      try {
+        // searchId=null — валидный кейс для /app/pains (бэк проверит владение
+        // через любой user-search'ев). Проксируем null.
+        await enrichCompanySource(companyId, source, searchId);
+        // eslint-disable-next-line no-console
+        console.log('[drawer] source-retry OK', { source, companyId, searchId });
+      } catch (e: any) {
+        const status = e?.response?.status;
+        const detail = e?.response?.data?.detail || e?.message || 'unknown';
+        // eslint-disable-next-line no-console
+        console.error('[drawer] source-retry FAILED', { source, status, detail });
+        setDmEnrichResult(
+          `Не удалось запустить ${source}: ${status ? `HTTP ${status} — ` : ''}${detail}`,
+        );
         setTriggeringSources((prev) => {
           const next = new Set(prev);
           next.delete(source);
           return next;
         });
-      if (companyId == null) {
-        clearTriggering();
         return;
       }
-      try {
-        const fresh = await getCompanyDetail(companyId);
-        setDetail(fresh);
-      } catch {
-        // Тихо.
-      } finally {
-        clearTriggering();
-      }
-    }, 55_000);
-  }, [companyId, searchId, triggeringSources]);
+      // Через 55с рефетч drawer'а. Если source нашёл что-то — плашка станет
+      // ✓·N. Если нет — останется ○. is_marketing_dm тоже может обновиться,
+      // потому что бэк ставит enrich_marketing_dm через 45с после source-таска.
+      window.setTimeout(async () => {
+        const clearTriggering = () =>
+          setTriggeringSources((prev) => {
+            const next = new Set(prev);
+            next.delete(source);
+            return next;
+          });
+        if (companyId == null) {
+          clearTriggering();
+          return;
+        }
+        try {
+          const fresh = await getCompanyDetail(companyId);
+          setDetail(fresh);
+        } catch {
+          // Тихо.
+        } finally {
+          clearTriggering();
+        }
+      }, 55_000);
+    },
+    [companyId, searchId, triggeringSources],
+  );
 
   const handleFindDm = useCallback(async () => {
     if (companyId == null || dmEnrichPending) return;
@@ -206,8 +214,8 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
           setDmSearchExhausted(true);
           setDmEnrichResult(
             'Не нашли маркетинг-ЛПР ни в одном источнике: hh.ru (нет вакансии маркетолога), ' +
-            'VK (нет контакта с маркетинг-ролью), сайт (нет раздела «команда/маркетинг»), ' +
-            'ЕГРЮЛ (директор — не маркетинг). Все найденные контакты — в блоке «Другие контакты для касания» ниже.',
+              'VK (нет контакта с маркетинг-ролью), сайт (нет раздела «команда/маркетинг»), ' +
+              'ЕГРЮЛ (директор — не маркетинг). Все найденные контакты — в блоке «Другие контакты для касания» ниже.',
           );
         } else {
           setDmEnrichResult(null);
@@ -275,14 +283,26 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
     // Дефолт «Все» без фильтров — используем уже загруженный recent_reviews,
     // не делаем лишний запрос.
     if (
-      tab === 'all' && !debouncedText && !onlyWithOwnerReply && sourceTab === 'all'
-      && activePainTagId == null
+      tab === 'all' &&
+      !debouncedText &&
+      !onlyWithOwnerReply &&
+      sourceTab === 'all' &&
+      activePainTagId == null
     ) {
       setReviews(detail.recent_reviews);
       return;
     }
     void loadReviews();
-  }, [tab, debouncedText, onlyWithOwnerReply, sourceTab, activePainTagId, companyId, detail, loadReviews]);
+  }, [
+    tab,
+    debouncedText,
+    onlyWithOwnerReply,
+    sourceTab,
+    activePainTagId,
+    companyId,
+    detail,
+    loadReviews,
+  ]);
 
   // Fetch chart-данных по выбранной боли (диапазон дат + помесячный count
   // по источникам). Перезапрашиваем при смене sourceTab/trendScope чтобы
@@ -324,17 +344,13 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   const showMultiSourceMeta = sourcesProfiles.length >= 2;
 
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      title={detail?.name ?? 'Загрузка…'}
-    >
+    <Drawer open={open} onClose={onClose} title={detail?.name ?? 'Загрузка…'}>
       {!detail ? (
-        <div className="py-6 text-sm text-slate-500 dark:text-slate-400">Загружаем карточку…</div>
+        <div className="py-6 text-sm text-ui-text-muted">Загрузка карточки…</div>
       ) : (
         <div className="space-y-4">
           {/* === Шапка компании === */}
-          <div className="text-sm text-slate-600 dark:text-slate-300">
+          <div className="text-sm text-ui-text-muted">
             {formatAddressWithCity(detail.address, detail.city) || '—'}
           </div>
 
@@ -454,7 +470,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
               блока со одним и тем же эффектом сбивают с толку. */}
           {Array.isArray(detail.pain_tags) && detail.pain_tags.length > 0 && (
             <div>
-              <div className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="mb-1 text-xs font-medium text-ui-text-muted">
                 Все темы болей компании
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -469,9 +485,9 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                 })().map((t) => (
                   <span
                     key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                    className="inline-flex items-center gap-1.5 rounded border border-ui-border bg-ui-surface-2 px-2 py-0.5 text-xs text-ui-text-muted"
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
+                    <span className="h-1.5 w-1.5 rounded-full bg-ui-border" aria-hidden />
                     {t.label}
                   </span>
                 ))}
@@ -485,16 +501,15 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
               источника отзывы и понимал что фильтр работает. Кнопки
               недоступных у компании источников рендерим как disabled
               серый pill (без перехода). */}
-          <div className="mb-2 rounded-md border border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-800/40">
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <div className="mb-2 rounded-md border border-ui-border bg-ui-surface-2 p-1.5">
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-ui-text-muted">
               Источник отзывов
             </div>
             <div className="flex flex-wrap gap-1.5">
               {(['all', '2gis', 'yandex_maps'] as SourceTab[]).map((st) => {
                 const sp = sourcesProfiles.find((s) => s.source === st);
                 const count = sp?.reviews_count ?? 0;
-                const label =
-                  st === 'all' ? 'Все' : st === '2gis' ? '2GIS' : 'Я.Карты';
+                const label = st === 'all' ? 'Все' : st === '2gis' ? '2GIS' : 'Я.Карты';
                 const available = st === 'all' || sp != null;
                 const active = sourceTab === st;
                 return (
@@ -506,10 +521,10 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
                     className={cn(
                       'rounded px-2 py-1 text-xs font-semibold transition-colors',
                       active
-                        ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                        ? 'bg-ui-accent text-white shadow-sm'
                         : available
-                          ? 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700'
-                          : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:ring-slate-700',
+                          ? 'bg-ui-surface text-ui-text-muted ring-1 ring-ui-border hover:bg-ui-surface-2'
+                          : 'bg-ui-surface-2 text-ui-text-muted ring-1 ring-ui-border cursor-not-allowed',
                     )}
                     title={
                       available
@@ -534,143 +549,139 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
             const activeProfile =
               sourceTab === 'all'
                 ? null
-                : sourcesProfiles.find((s) => s.source === sourceTab) ?? null;
+                : (sourcesProfiles.find((s) => s.source === sourceTab) ?? null);
             const totalAll = activeProfile?.reviews_count ?? detail.reviews_count;
-            const totalNeg =
-              activeProfile?.reviews_negative_count ?? detail.reviews_negative_count;
-            const totalPos =
-              activeProfile?.reviews_positive_count ?? detail.reviews_positive_count;
+            const totalNeg = activeProfile?.reviews_negative_count ?? detail.reviews_negative_count;
+            const totalPos = activeProfile?.reviews_positive_count ?? detail.reviews_positive_count;
             return (
-          <div ref={reviewsAnchorRef}>
-            {activePainTagId != null && (
-              <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-rose-200 bg-rose-50/60 px-2 py-1.5 text-xs dark:border-rose-700/60 dark:bg-rose-900/20">
-                <span className="text-slate-700 dark:text-slate-200">
-                  Отзывы темы <strong>«{activePainLabel}»</strong>
-                  {reviews.length > 0 ? ` · найдено ${reviews.length}` : ''}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActivePainTagId(null);
-                    setActivePainLabel('');
-                  }}
-                  className="ml-auto rounded border border-rose-300 px-1.5 py-0.5 text-xs font-medium text-rose-800 hover:bg-rose-100 dark:border-rose-700 dark:text-rose-200 dark:hover:bg-rose-900/40"
-                >
-                  × снять фильтр темы
-                </button>
-              </div>
-            )}
-            {/* Sentiment-tabs. 2026-06-12: повышен контраст неактивных
+              <div ref={reviewsAnchorRef}>
+                {activePainTagId != null && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] px-2 py-1.5 text-xs">
+                    <span className="text-ui-text-muted">
+                      Отзывы темы <strong>«{activePainLabel}»</strong>
+                      {reviews.length > 0 ? ` · найдено ${reviews.length}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivePainTagId(null);
+                        setActivePainLabel('');
+                      }}
+                      className="ml-auto rounded border border-[color:var(--signal-hot)]/40 px-1.5 py-0.5 text-xs font-medium text-signal-hot hover:bg-[var(--signal-hot-bg)]"
+                    >
+                      × снять фильтр темы
+                    </button>
+                  </div>
+                )}
+                {/* Sentiment-tabs. 2026-06-12: повышен контраст неактивных
                 (text-slate-700 вместо text-slate-500) — юзер жаловался
                 «нихуя не читаем». Активная подсвечена тёмным фоном +
                 bold border, чтобы было очевидно что таб кликабельный. */}
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {(['all', 'negative', 'positive'] as Tab[]).map((t) => {
-                const active = tab === t;
-                const label =
-                  t === 'all'
-                    ? `Все${totalAll > 0 ? ` · ${totalAll}` : ''}`
-                    : t === 'negative'
-                      ? `Негатив${totalNeg > 0 ? ` · ${totalNeg}` : ''}`
-                      : `Позитив${totalPos > 0 ? ` · ${totalPos}` : ''}`;
-                const tone =
-                  t === 'negative'
-                    ? active
-                      ? 'bg-rose-600 text-white shadow-sm'
-                      : 'bg-white text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 dark:bg-slate-900 dark:text-rose-300 dark:ring-rose-900/50'
-                    : t === 'positive'
-                      ? active
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:ring-emerald-900/50'
-                      : active
-                        ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
-                        : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700';
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTab(t)}
-                    className={cn(
-                      'rounded-md px-3 py-1.5 text-small font-semibold transition-colors',
-                      tone,
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {(['all', 'negative', 'positive'] as Tab[]).map((t) => {
+                    const active = tab === t;
+                    const label =
+                      t === 'all'
+                        ? `Все${totalAll > 0 ? ` · ${totalAll}` : ''}`
+                        : t === 'negative'
+                          ? `Негатив${totalNeg > 0 ? ` · ${totalNeg}` : ''}`
+                          : `Позитив${totalPos > 0 ? ` · ${totalPos}` : ''}`;
+                    const tone =
+                      t === 'negative'
+                        ? active
+                          ? 'bg-signal-hot text-white shadow-sm'
+                          : 'bg-ui-surface text-signal-hot ring-1 ring-ui-border hover:bg-[var(--signal-hot-bg)]'
+                        : t === 'positive'
+                          ? active
+                            ? 'bg-signal-good text-white shadow-sm'
+                            : 'bg-ui-surface text-signal-good ring-1 ring-ui-border hover:bg-[var(--signal-good-bg)]'
+                          : active
+                            ? 'bg-ui-accent text-white shadow-sm'
+                            : 'bg-ui-surface text-ui-text-muted ring-1 ring-ui-border hover:bg-ui-surface-2';
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTab(t)}
+                        className={cn(
+                          'rounded-md px-3 py-1.5 text-small font-semibold transition-colors',
+                          tone,
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* === Drawer filter row: text search + has_owner_reply === */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ui-text-muted" />
+                    <Input
+                      type="text"
+                      placeholder="Поиск в тексте отзыва…"
+                      value={textQuery}
+                      onChange={(e) => setTextQuery(e.target.value)}
+                      className="h-8 text-small pl-8 pr-7"
+                    />
+                    {textQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setTextQuery('')}
+                        aria-label="Очистить поиск"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-ui-text-muted hover:text-ui-text"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* === Drawer filter row: text search + has_owner_reply === */}
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px]">
-                <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 dark:text-slate-500" />
-                <Input
-                  type="text"
-                  placeholder="Поиск в тексте отзыва…"
-                  value={textQuery}
-                  onChange={(e) => setTextQuery(e.target.value)}
-                  className="h-8 text-small pl-8 pr-7"
-                />
-                {textQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setTextQuery('')}
-                    aria-label="Очистить поиск"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={onlyWithOwnerReply}
-                  onChange={(e) => setOnlyWithOwnerReply(e.target.checked)}
-                  className="h-3.5 w-3.5"
-                />
-                только с ответом владельца
-              </label>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab('all');
-                    setTextQuery('');
-                    setOnlyWithOwnerReply(false);
-                  }}
-                  className="text-xs text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  сбросить
-                </button>
-              )}
-            </div>
-
-            {isLoading && reviews.length === 0 ? (
-              <div className="text-sm text-slate-500 dark:text-slate-400">Загружаем отзывы…</div>
-            ) : reviews.length === 0 ? (
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                {hasActiveFilters
-                  ? 'Отзывов под текущие фильтры не найдено.'
-                  : 'Отзывов нет.'}
-              </div>
-            ) : (
-              <>
-                {hasActiveFilters && !isLoading && (
-                  <div className="mb-2 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-500">
-                    показано {reviews.length}
-                    {textQuery ? ` · по запросу «${debouncedText}»` : ''}
                   </div>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ui-text-muted">
+                    <input
+                      type="checkbox"
+                      checked={onlyWithOwnerReply}
+                      onChange={(e) => setOnlyWithOwnerReply(e.target.checked)}
+                      className="h-3.5 w-3.5"
+                    />
+                    только с ответом владельца
+                  </label>
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('all');
+                        setTextQuery('');
+                        setOnlyWithOwnerReply(false);
+                      }}
+                      className="text-xs text-ui-text-muted underline hover:text-ui-text"
+                    >
+                      сбросить
+                    </button>
+                  )}
+                </div>
+
+                {isLoading && reviews.length === 0 ? (
+                  <div className="text-sm text-ui-text-muted">Загрузка отзывов…</div>
+                ) : reviews.length === 0 ? (
+                  <div className="text-sm text-ui-text-muted">
+                    {hasActiveFilters ? 'Отзывов под текущие фильтры не найдено.' : 'Отзывов нет.'}
+                  </div>
+                ) : (
+                  <>
+                    {hasActiveFilters && !isLoading && (
+                      <div className="mb-2 text-xs uppercase tracking-wider text-ui-text-muted">
+                        показано {reviews.length}
+                        {textQuery ? ` · по запросу «${debouncedText}»` : ''}
+                      </div>
+                    )}
+                    <ul className="space-y-2">
+                      {reviews.map((r) => (
+                        <ReviewCard key={r.id} review={r} highlight={debouncedText} />
+                      ))}
+                    </ul>
+                  </>
                 )}
-                <ul className="space-y-2">
-                  {reviews.map((r) => (
-                    <ReviewCard key={r.id} review={r} highlight={debouncedText} />
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
+              </div>
             );
           })()}
         </div>
@@ -717,7 +728,7 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   // «не загружено» vs «нет в реестре». А когда матч есть, но конкретное
   // поле пусто — пишем «нет данных» серым, а не молча скрываем.
 
-  const missing = <span className="text-slate-500 italic">нет данных</span>;
+  const missing = <span className="text-ui-text-muted italic">нет данных</span>;
 
   if (!legal) {
     return (
@@ -725,8 +736,9 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
           Юр.данные (DaData)
         </div>
-        <div className="text-xs text-slate-600 dark:text-slate-300">
-          Не найдено в DaData — возможно, у компании нет юр.лица (самозанятый/ИП без OГРН) или название/адрес не совпали.
+        <div className="text-xs text-ui-text-muted">
+          Не найдено в DaData — возможно, у компании нет юр.лица (самозанятый/ИП без OГРН) или
+          название/адрес не совпали.
         </div>
       </div>
     );
@@ -760,9 +772,7 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
     },
     {
       label: 'ОКВЭД',
-      value: legal.okved_name
-        ? `${legal.okved ?? ''} ${legal.okved_name}`.trim()
-        : missing,
+      value: legal.okved_name ? `${legal.okved ?? ''} ${legal.okved_name}`.trim() : missing,
     },
     // ЛПР: ФИО + должность руководителя. Если у юр.лица нет руководителя
     // в реестре (бывает у ИП) — пишем «нет данных», чтобы юзер не думал
@@ -796,7 +806,9 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
     inn: 'по ИНН',
     manual: 'вручную',
   };
-  const matchedByLabel = legal.matched_by ? matchedByRu[legal.matched_by] ?? legal.matched_by : null;
+  const matchedByLabel = legal.matched_by
+    ? (matchedByRu[legal.matched_by] ?? legal.matched_by)
+    : null;
   return (
     <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -805,7 +817,7 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
         </div>
         {typeof legal.match_confidence === 'number' && (
           <div
-            className="text-xs text-blue-600 dark:text-blue-400"
+            className="text-xs text-signal-cool"
             title={
               `Уверенность матча DaData ↔ компания: ${(legal.match_confidence * 100).toFixed(0)}%. ` +
               `Чем выше — тем надёжнее что это именно та компания. ` +
@@ -822,13 +834,8 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
       <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
         {items.map((it) => (
           <React.Fragment key={it.label}>
-            <dt className="text-slate-500 dark:text-slate-400">{it.label}:</dt>
-            <dd
-              className={cn(
-                'min-w-0 break-words text-slate-800 dark:text-slate-200',
-                it.mono && 'font-mono'
-              )}
-            >
+            <dt className="text-ui-text-muted">{it.label}:</dt>
+            <dd className={cn('min-w-0 break-words text-ui-text', it.mono && 'font-mono')}>
               {it.value}
             </dd>
           </React.Fragment>
@@ -837,7 +844,6 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
     </div>
   );
 }
-
 
 function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   const extra: ContactsExtra = (detail.contacts_extra ?? {}) as ContactsExtra;
@@ -872,17 +878,16 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   if (!hasAny) {
     return (
       <div className="space-y-2">
-        <div className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
-          Контактов от провайдера нет. 2GIS на нашем плане Catalog API не всегда
-          отдаёт телефоны и не отдаёт мессенджеры — открой исходную карточку,
-          там обычно всё есть.
+        <div className="rounded-md border border-dashed border-ui-border px-3 py-2 text-xs text-ui-text-muted">
+          Контактов от провайдера нет. 2GIS на нашем плане Catalog API не всегда отдаёт телефоны и
+          не отдаёт мессенджеры — открой исходную карточку, там обычно всё есть.
         </div>
         {sourceUrl && (
           <a
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-ui-border bg-ui-surface px-3 py-1.5 text-xs font-medium text-ui-text-muted hover:bg-ui-surface-2"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Открыть в {sourceLabel(detail.source)}
@@ -893,27 +898,31 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   }
 
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <div className="rounded-md border border-ui-border bg-ui-surface-2 p-3">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ui-text-muted">
         Контакты
       </div>
       <div className="flex flex-col gap-1.5 text-small">
         {phones.map((p) => (
-          <ContactRow key={`tel-${p}`} icon={<Phone className="h-3.5 w-3.5" />} href={`tel:${normalizePhone(p)}`}>
+          <ContactRow
+            key={`tel-${p}`}
+            icon={<Phone className="h-3.5 w-3.5" />}
+            href={`tel:${normalizePhone(p)}`}
+          >
             {p}
           </ContactRow>
         ))}
         {emails.map((e) => (
-          <ContactRow key={`mail-${e}`} icon={<Mail className="h-3.5 w-3.5" />} href={`mailto:${e}`}>
+          <ContactRow
+            key={`mail-${e}`}
+            icon={<Mail className="h-3.5 w-3.5" />}
+            href={`mailto:${e}`}
+          >
             {e}
           </ContactRow>
         ))}
         {detail.website && (
-          <ContactRow
-            icon={<Globe className="h-3.5 w-3.5" />}
-            href={detail.website}
-            external
-          >
+          <ContactRow icon={<Globe className="h-3.5 w-3.5" />} href={detail.website} external>
             {prettifyUrl(detail.website)}
           </ContactRow>
         )}
@@ -1003,25 +1012,23 @@ function SourceMetricsBlock({ profiles }: { profiles: CompanyDetailOut['sources_
   const arr = profiles ?? [];
   if (arr.length < 2) return null;
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <div className="rounded-md border border-ui-border bg-ui-surface-2 p-3">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ui-text-muted">
         Метрики по источникам
       </div>
       <div className="grid grid-cols-[auto,1fr,1fr,1fr] gap-x-3 gap-y-1 text-xs">
-        <div className="text-slate-500 dark:text-slate-400">Источник</div>
-        <div className="text-slate-500 dark:text-slate-400">Рейтинг</div>
-        <div className="text-slate-500 dark:text-slate-400">Отзывы</div>
-        <div className="text-slate-500 dark:text-slate-400">Негатив</div>
+        <div className="text-ui-text-muted">Источник</div>
+        <div className="text-ui-text-muted">Рейтинг</div>
+        <div className="text-ui-text-muted">Отзывы</div>
+        <div className="text-ui-text-muted">Негатив</div>
         {arr.map((p) => (
           <React.Fragment key={p.source}>
-            <div className="font-medium text-slate-900 dark:text-slate-100">
-              {sourceShortLabel(p.source)}
-            </div>
-            <div className="text-slate-700 dark:text-slate-200">
+            <div className="font-medium text-ui-text">{sourceShortLabel(p.source)}</div>
+            <div className="text-ui-text-muted">
               {typeof p.rating === 'number' ? p.rating.toFixed(1) : '—'}
             </div>
-            <div className="text-slate-700 dark:text-slate-200">{p.reviews_count}</div>
-            <div className="text-slate-700 dark:text-slate-200">
+            <div className="text-ui-text-muted">{p.reviews_count}</div>
+            <div className="text-ui-text-muted">
               {p.reviews_negative_count > 0 ? p.reviews_negative_count : '—'}
             </div>
           </React.Fragment>
@@ -1040,7 +1047,11 @@ function SourceMetricsBlock({ profiles }: { profiles: CompanyDetailOut['sources_
 
 type ContactProfile = NonNullable<CompanyDetailOut['sources_profiles']>[number];
 
-function MultiSourceContactsBlock({ profiles }: { profiles: CompanyDetailOut['sources_profiles'] }) {
+function MultiSourceContactsBlock({
+  profiles,
+}: {
+  profiles: CompanyDetailOut['sources_profiles'];
+}) {
   const arr = profiles ?? [];
   if (arr.length === 0) return null;
   return (
@@ -1057,8 +1068,16 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
   if (cs.length === 0 && !profile.source_url) return null;
   // Сортируем: primary первые, потом по типу phone→website→email→социалки.
   const order: Record<string, number> = {
-    phone: 1, website: 2, email: 3, telegram: 4, whatsapp: 5,
-    vk: 6, instagram: 7, facebook: 8, ok: 9, youtube: 10,
+    phone: 1,
+    website: 2,
+    email: 3,
+    telegram: 4,
+    whatsapp: 5,
+    vk: 6,
+    instagram: 7,
+    facebook: 8,
+    ok: 9,
+    youtube: 10,
   };
   const sorted = [...cs].sort((a, b) => {
     if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
@@ -1066,9 +1085,9 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
   });
   const deepLink = buildSourceUrl(profile.source, profile.external_id);
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+    <div className="rounded-md border border-ui-border bg-ui-surface-2 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <div className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">
           По данным {sourceShortLabel(profile.source)}
         </div>
         {deepLink && (
@@ -1090,7 +1109,7 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
           ))}
         </div>
       ) : (
-        <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="text-xs text-ui-text-muted">
           {profile.source === '2gis'
             ? 'Catalog API 2GIS не отдал контакты — открой исходную карточку.'
             : 'Контактов с карточки Я.Карт не получено.'}
@@ -1142,9 +1161,7 @@ function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][numb
     );
   }
   if (type === 'whatsapp') {
-    const href = value.startsWith('http')
-      ? value
-      : `https://wa.me/${value.replace(/\D/g, '')}`;
+    const href = value.startsWith('http') ? value : `https://wa.me/${value.replace(/\D/g, '')}`;
     return (
       <ContactRow
         icon={<MessageCircle className="h-3.5 w-3.5" />}
@@ -1156,10 +1173,21 @@ function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][numb
       </ContactRow>
     );
   }
-  if (type === 'vk' || type === 'instagram' || type === 'facebook' || type === 'ok' || type === 'youtube') {
+  if (
+    type === 'vk' ||
+    type === 'instagram' ||
+    type === 'facebook' ||
+    type === 'ok' ||
+    type === 'youtube'
+  ) {
     const href = value.startsWith('http') ? value : `https://${value}`;
     return (
-      <ContactRow icon={<MessageCircle className="h-3.5 w-3.5" />} href={href} external label={type}>
+      <ContactRow
+        icon={<MessageCircle className="h-3.5 w-3.5" />}
+        href={href}
+        external
+        label={type}
+      >
         {prettifyUrl(value)}
       </ContactRow>
     );
@@ -1182,22 +1210,18 @@ function ContactRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-slate-500 dark:text-slate-500" aria-hidden>
+      <span className="text-ui-text-muted" aria-hidden>
         {icon}
       </span>
       <a
         href={href}
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
-        className="text-slate-700 underline hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
+        className="text-ui-text-muted underline hover:text-ui-text"
       >
         {children}
       </a>
-      {label && (
-        <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">
-          {label}
-        </span>
-      )}
+      {label && <span className="text-xs uppercase tracking-wide text-ui-text-muted">{label}</span>}
     </div>
   );
 }
@@ -1218,12 +1242,12 @@ function Metric({
   green?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">
-      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{label}</div>
+    <div className="rounded-md border border-ui-border px-2 py-1">
+      <div className="text-xs uppercase tracking-wide text-ui-text-muted">{label}</div>
       <div
         className={cn(
           'text-sm font-medium',
-          red ? 'text-red-700 dark:text-red-400' : green ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'
+          red ? 'text-signal-hot' : green ? 'text-signal-good' : 'text-ui-text',
         )}
       >
         {value}
@@ -1243,18 +1267,14 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
       ? 'border-l-[color:var(--signal-hot)] bg-[var(--signal-hot-bg)]'
       : sentiment === 'positive'
         ? 'border-l-[color:var(--signal-good)] bg-[var(--signal-good-bg)]'
-        : 'border-l-slate-300 bg-white dark:border-l-slate-600 dark:bg-slate-900';
+        : 'border-l-ui-border bg-ui-surface';
 
   return (
-    <li className={cn('rounded-md border border-slate-200 border-l-4 p-3 dark:border-slate-700', accent)}>
-      <div className="mb-1.5 flex items-center gap-2 text-xs text-slate-500 flex-wrap dark:text-slate-400">
-        <span className="font-medium text-slate-700 dark:text-slate-200">
-          {review.author_masked || 'Аноним'}
-        </span>
+    <li className={cn('rounded-md border border-ui-border border-l-4 p-3', accent)}>
+      <div className="mb-1.5 flex items-center gap-2 text-xs text-ui-text-muted flex-wrap">
+        <span className="font-medium text-ui-text-muted">{review.author_masked || 'Аноним'}</span>
         {review.rating != null && <StarRating value={review.rating} />}
-        {review.posted_at && (
-          <span>{new Date(review.posted_at).toLocaleDateString('ru-RU')}</span>
-        )}
+        {review.posted_at && <span>{new Date(review.posted_at).toLocaleDateString('ru-RU')}</span>}
         {sentiment && <SentimentBadge sentiment={sentiment} />}
         {review.has_owner_reply && (
           <span className="rounded-v2-sm bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-xs font-medium text-[color:var(--signal-good)]">
@@ -1263,7 +1283,7 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
         )}
       </div>
       {review.raw_text == null ? (
-        <div className="text-sm text-slate-500 dark:text-slate-500">
+        <div className="text-sm text-ui-text-muted">
           Текст удалён по политике хранения.{' '}
           {review.source_url && (
             <a
@@ -1277,20 +1297,26 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
           )}
         </div>
       ) : (
-        <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
-          {highlight ? <HighlightedText text={review.raw_text} needle={highlight} /> : review.raw_text}
+        <div className="whitespace-pre-wrap text-sm text-ui-text-muted">
+          {highlight ? (
+            <HighlightedText text={review.raw_text} needle={highlight} />
+          ) : (
+            review.raw_text
+          )}
         </div>
       )}
       {Array.isArray(review.pain_tags) && review.pain_tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {review.pain_tags.filter((t) => !isUnnamedPainLabel(t.label)).map((t) => (
-            <span
-              key={t.id}
-              className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-            >
-              {t.label}
-            </span>
-          ))}
+          {review.pain_tags
+            .filter((t) => !isUnnamedPainLabel(t.label))
+            .map((t) => (
+              <span
+                key={t.id}
+                className="rounded-full bg-ui-surface-2 px-2 py-0.5 text-xs text-ui-text-muted"
+              >
+                {t.label}
+              </span>
+            ))}
         </div>
       )}
     </li>
@@ -1304,10 +1330,7 @@ function StarRating({ value }: { value: number }) {
     return (
       <Star
         key={i}
-        className={cn(
-          'h-3 w-3',
-          filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
-        )}
+        className={cn('h-3 w-3', filled ? 'fill-signal-warm text-signal-warm' : 'text-ui-border')}
       />
     );
   });
@@ -1316,20 +1339,21 @@ function StarRating({ value }: { value: number }) {
 
 function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'neutral' }) {
   const cfg = {
-    positive: { label: 'позитив', cls: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]' },
+    positive: {
+      label: 'позитив',
+      cls: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]',
+    },
     negative: { label: 'негатив', cls: 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]' },
-    neutral: { label: 'нейтр.', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200' },
+    neutral: { label: 'нейтр.', cls: 'bg-ui-surface-2 text-ui-text-muted' },
   }[sentiment];
   return (
-    <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', cfg.cls)}>
-      {cfg.label}
-    </span>
+    <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', cfg.cls)}>{cfg.label}</span>
   );
 }
 
 function formatAddressWithCity(
   address: string | null | undefined,
-  city: string | null | undefined
+  city: string | null | undefined,
 ): string | null {
   const a = (address ?? '').trim();
   const c = (city ?? '').trim();
@@ -1351,7 +1375,7 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === needle.toLowerCase() ? (
-          <mark key={i} className="rounded bg-[var(--signal-warm)]/40 px-0.5 text-slate-900 dark:text-amber-100">
+          <mark key={i} className="rounded bg-[var(--signal-warm)]/40 px-0.5 text-ui-text">
             {part}
           </mark>
         ) : (
@@ -1361,7 +1385,6 @@ function HighlightedText({ text, needle }: { text: string; needle: string }) {
     </>
   );
 }
-
 
 // ЛПР со страниц сайта / ВК / hh / ЕГРЮЛ (ТЗ A.2 2026-06-04 + ТЗ
 // Marketing-DM 2026-06-20). decision_makers[] — массив, отсортированный
@@ -1394,16 +1417,22 @@ function SourcesCheckedStrip({
   const countBy = (prefixes: string[]) =>
     decisionMakers.filter((d) => prefixes.some((p) => d.source === p || d.source.startsWith(p)))
       .length;
-  const website = countBy(['website_team', 'website_about', 'website_contacts', 'website_partnership', 'website_career']);
+  const website = countBy([
+    'website_team',
+    'website_about',
+    'website_contacts',
+    'website_partnership',
+    'website_career',
+  ]);
   const vk = countBy(['vk']);
   const hh = countBy(['hh']);
   const egrul = countBy(['egrul_director', 'egrul_founder']);
   const dadata = legalMatchConfidence != null;
 
   // Плашка. 3 состояния:
-  //  - triggering: «⏳ ищем…» disabled (только эта плашка, остальные живут)
-  //  - found (count>0): «✓ N», по клику ре-парсинг источника (перепроверить)
-  //  - empty (count===0): «↻ N» / «○» — по клику запуск парсера
+  //  - triggering: спиннер + «ищем…» disabled (только эта плашка, остальные живут)
+  //  - found (count>0): галочка + N, по клику ре-парсинг источника (перепроверить)
+  //  - empty (count===0): круг/стрелка — по клику запуск парсера
   // Все клики независимы, глобального lock'а больше нет.
   const chip = (
     label: string,
@@ -1414,21 +1443,28 @@ function SourcesCheckedStrip({
     const found = count > 0;
     const isTriggering = sourceKey != null && !!triggeringSources?.has(sourceKey);
     const clickable = !isTriggering && !!onSourceRetry && sourceKey != null;
-    const baseCls =
-      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ';
+    const baseCls = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ';
     const stateCls = isTriggering
-      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+      ? 'bg-[var(--signal-warm-bg)] text-signal-warm'
       : found
         ? clickable
-          ? 'cursor-pointer bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60'
-          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+          ? 'cursor-pointer bg-[var(--signal-good-bg)] text-signal-good hover:opacity-80'
+          : 'bg-[var(--signal-good-bg)] text-signal-good'
         : clickable
-          ? 'cursor-pointer bg-slate-100 text-slate-600 hover:bg-brand-100 hover:text-brand-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-brand-900/30 dark:hover:text-brand-200'
-          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500';
+          ? 'cursor-pointer bg-ui-surface-2 text-ui-text-muted hover:bg-brand-100 hover:text-brand-800 dark:hover:bg-brand-900/30 dark:hover:text-brand-200'
+          : 'bg-ui-surface-2 text-ui-text-muted';
     const content = (
       <>
-        <span>
-          {isTriggering ? '⏳' : found ? '✓' : clickable ? '↻' : '○'}
+        <span aria-hidden>
+          {isTriggering ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : found ? (
+            <Check className="h-3 w-3" />
+          ) : clickable ? (
+            <RotateCw className="h-3 w-3" />
+          ) : (
+            <Circle className="h-3 w-3" />
+          )}
         </span>
         <span>{label}</span>
         {found && <span className="opacity-70">· {count}</span>}
@@ -1465,19 +1501,17 @@ function SourcesCheckedStrip({
   };
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
-      <span className="mr-0.5 uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Проверено:
-      </span>
+      <span className="mr-0.5 uppercase tracking-wide text-ui-text-muted">Проверено:</span>
       {chip('сайт', website, 'website')}
       {chip('ВК', vk, 'vk')}
-      {chip('hh.ru', hh, 'hh', hiringMarketing ? '🔥 ищет маркетолога' : undefined)}
+      {chip('hh.ru', hh, 'hh', hiringMarketing ? 'ищет маркетолога' : undefined)}
       {chip('ЕГРЮЛ', egrul, 'egrul')}
       <span
         className={
           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ' +
           (dadata
-            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500')
+            ? 'bg-[var(--signal-good-bg)] text-signal-good'
+            : 'bg-ui-surface-2 text-ui-text-muted')
         }
         title={
           dadata
@@ -1485,7 +1519,9 @@ function SourcesCheckedStrip({
             : 'DaData: юр.лицо не сматчено (перезапуск через плашку ЕГРЮЛ)'
         }
       >
-        <span>{dadata ? '✓' : '○'}</span>
+        <span aria-hidden>
+          {dadata ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+        </span>
         <span>DaData</span>
         {dadata && (
           <span className="opacity-70">· {Math.round((legalMatchConfidence ?? 0) * 100)}%</span>
@@ -1539,17 +1575,15 @@ function DecisionMakersBlock({
     if (generic.length === 0) return null;
     const box =
       variant === 'warn'
-        ? 'rounded border border-amber-200 bg-white/60 px-2 py-1.5 dark:border-amber-800 dark:bg-amber-950/40'
-        : 'rounded border border-slate-200 bg-white/60 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/40';
-    const textCls =
-      variant === 'warn'
-        ? 'text-amber-900 dark:text-amber-100'
-        : 'text-slate-700 dark:text-slate-200';
+        ? 'rounded border border-[color:var(--signal-warm)]/40 bg-ui-surface/60 px-2 py-1.5'
+        : 'rounded border border-ui-border bg-ui-surface/60 px-2 py-1.5';
+    const textCls = variant === 'warn' ? 'text-signal-warm' : 'text-ui-text-muted';
     return (
       <div className={`${box} text-xs ${textCls}`}>
-        <div className="mb-0.5 font-medium">
-          ✉ Общая почта компании
-          <span className="ml-1 rounded bg-slate-200/70 px-1 text-xs uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+        <div className="mb-0.5 flex items-center gap-1.5 font-medium">
+          <Mail className="h-4 w-4 shrink-0" aria-hidden />
+          Общая почта компании
+          <span className="ml-1 rounded bg-ui-surface-2 px-1 text-xs uppercase tracking-wide text-ui-text-muted">
             общая
           </span>
         </div>
@@ -1576,13 +1610,12 @@ function DecisionMakersBlock({
   if (!onFindDm && (!decisionMakers || decisionMakers.length === 0)) {
     if (generic.length === 0) return null;
     return (
-      <div className="rounded-v2-sm border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+      <div className="rounded-v2-sm border border-ui-border bg-ui-surface-2 p-3">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
           Кто за маркетинг
         </div>
-        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-          Персонального ЛПР пока нет. Пиши на общую почту — попадёшь в
-          общую переписку компании.
+        <div className="mb-2 text-xs text-ui-text-muted">
+          Персонального ЛПР пока нет. Пиши на общую почту — попадёшь в общую переписку компании.
         </div>
         {renderGenericMails('neutral')}
       </div>
@@ -1593,14 +1626,14 @@ function DecisionMakersBlock({
   if (!decisionMakers || decisionMakers.length === 0) {
     if (searchExhausted) {
       return (
-        <div className="rounded-v2-sm border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+        <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] p-3">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-signal-warm">
             Кто за маркетинг
           </div>
-          <div className="mb-2 text-xs text-amber-900 dark:text-amber-100">
-            🔍 Не нашли ЛПР ни в одном источнике. У компании нет активных
-            вакансий на hh.ru, привязанного VK-сообщества и данных в ЕГРЮЛ.
-            Попробуй запустить снова позже — источники обновляются.
+          <div className="mb-2 text-xs text-signal-warm">
+            Не нашли ЛПР ни в одном источнике. У компании нет активных вакансий на hh.ru,
+            привязанного VK-сообщества и данных в ЕГРЮЛ. Попробуй запустить снова позже — источники
+            обновляются.
           </div>
           <div className="mb-2">
             <SourcesCheckedStrip
@@ -1612,15 +1645,14 @@ function DecisionMakersBlock({
             />
           </div>
           {legalDirectorName && (
-            <div className="mb-2 rounded border border-amber-200 bg-white/60 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-              👤 <span className="font-medium">Из DaData известен только руководитель:</span>{' '}
+            <div className="mb-2 rounded border border-[color:var(--signal-warm)]/40 bg-ui-surface/60 px-2 py-1.5 text-xs text-signal-warm">
+              <User className="mr-1 inline h-4 w-4" aria-hidden />
+              <span className="font-medium">Из DaData известен только руководитель:</span>{' '}
               {legalDirectorName}
               {legalDirectorPost && (
-                <span className="text-amber-800/80 dark:text-amber-200/70">
-                  {` · ${legalDirectorPost}`}
-                </span>
+                <span className="text-signal-warm">{` · ${legalDirectorPost}`}</span>
               )}
-              <div className="text-amber-800/70 dark:text-amber-200/60">
+              <div className="text-signal-warm">
                 Можно писать на общую почту компании, обращаясь к нему.
               </div>
             </div>
@@ -1632,19 +1664,26 @@ function DecisionMakersBlock({
             type="button"
             onClick={onFindDm}
             disabled={dmEnrichPending}
-            className="rounded-md border border-amber-400 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-950 dark:text-amber-100 dark:hover:bg-amber-900"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--signal-warm)]/60 bg-ui-surface px-3 py-1.5 text-xs font-medium text-signal-warm hover:bg-[var(--signal-warm-bg)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {dmEnrichPending ? 'Ищем…' : '🔄 Попробовать снова'}
+            {dmEnrichPending ? (
+              'Поиск…'
+            ) : (
+              <>
+                <RotateCw className="h-4 w-4" aria-hidden />
+                Попробовать снова
+              </>
+            )}
           </button>
         </div>
       );
     }
     return (
-      <div className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+      <div className="rounded-v2-sm border border-ui-border bg-ui-surface-2 p-3">
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
           Кто за маркетинг
         </div>
-        <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="mb-2 text-xs text-ui-text-muted">
           ЛПР ещё не найден. Запустить поиск (сайт /team, hh.ru, ВК, ЕГРЮЛ).
         </div>
         {generic.length > 0 && <div className="mb-2">{renderGenericMails('neutral')}</div>}
@@ -1652,15 +1691,18 @@ function DecisionMakersBlock({
           type="button"
           onClick={onFindDm}
           disabled={dmEnrichPending}
-          className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {dmEnrichPending ? 'Ищем… (~1 мин)' : '🎯 Найти ЛПР'}
+          {dmEnrichPending ? (
+            'Поиск… (~1 мин)'
+          ) : (
+            <>
+              <Target className="h-4 w-4" aria-hidden />
+              Найти ЛПР
+            </>
+          )}
         </button>
-        {dmEnrichResult && (
-          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-            {dmEnrichResult}
-          </div>
-        )}
+        {dmEnrichResult && <div className="mt-2 text-xs text-ui-text-muted">{dmEnrichResult}</div>}
       </div>
     );
   }
@@ -1695,12 +1737,8 @@ function DecisionMakersBlock({
     (d) => d.source === 'reviews_ner' && !alternativeIds.has(d.name),
   );
   const nonReview = rest.filter((d) => d.source !== 'reviews_ner');
-  const dms = nonReview.filter(
-    (d) => d.is_decision_maker && !alternativeIds.has(d.name),
-  );
-  const others = nonReview.filter(
-    (d) => !d.is_decision_maker && !alternativeIds.has(d.name),
-  );
+  const dms = nonReview.filter((d) => d.is_decision_maker && !alternativeIds.has(d.name));
+  const others = nonReview.filter((d) => !d.is_decision_maker && !alternativeIds.has(d.name));
 
   const sourceLabel: Record<string, string> = {
     website_team: 'команда сайта',
@@ -1739,7 +1777,14 @@ function DecisionMakersBlock({
     else if (t === 'vk' || t === 'site') {
       href = d.contact_value.startsWith('http') ? d.contact_value : `https://${d.contact_value}`;
     }
-    const icon = t === 'email' ? '✉' : t === 'phone' ? '☎' : t === 'vk' ? 'VK' : '↗';
+    const icon =
+      t === 'email' ? (
+        <Mail className="h-4 w-4" aria-hidden />
+      ) : t === 'phone' ? (
+        <Phone className="h-4 w-4" aria-hidden />
+      ) : (
+        <ExternalLink className="h-4 w-4" aria-hidden />
+      );
     return (
       <a
         href={href}
@@ -1749,7 +1794,7 @@ function DecisionMakersBlock({
         className="ml-2 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline dark:text-brand-400"
         title={`Написать: ${d.contact_value}`}
       >
-        <span>{icon}</span>
+        {icon}
         <span>{d.contact_value}</span>
       </a>
     );
@@ -1766,7 +1811,7 @@ function DecisionMakersBlock({
     hr: 1,
   };
   const nearestCandidate = !marketingDm
-    ? [...rest]
+    ? ([...rest]
         .filter((d) => d.role_category && rolePriority[d.role_category] !== undefined)
         .sort((a, b) => {
           const ap = rolePriority[a.role_category ?? ''] ?? 0;
@@ -1775,7 +1820,7 @@ function DecisionMakersBlock({
           const ac = typeof a.confidence === 'number' ? a.confidence : 0;
           const bc = typeof b.confidence === 'number' ? b.confidence : 0;
           return bc - ac;
-        })[0] ?? null
+        })[0] ?? null)
     : null;
 
   return (
@@ -1783,54 +1828,61 @@ function DecisionMakersBlock({
       {/* Если оркестратор не выбрал маркетинг-ЛПР — предлагаем ре-триггер.
           Это ловит legacy-компании (парсились до этой ветки). */}
       {!marketingDm && (
-        <div className="flex items-center justify-between rounded-v2-sm border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
-          <span className="text-xs text-amber-800 dark:text-amber-200">
+        <div className="flex items-center justify-between rounded-v2-sm border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] px-3 py-2">
+          <span className="text-xs text-signal-warm">
             Маркетинг-ЛПР ещё не выбран. Запустить поиск?
           </span>
           <button
             type="button"
             onClick={onFindDm}
             disabled={dmEnrichPending}
-            className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {dmEnrichPending ? 'Ищем…' : '🎯 Найти ЛПР'}
+            {dmEnrichPending ? (
+              'Поиск…'
+            ) : (
+              <>
+                <Target className="h-4 w-4" aria-hidden />
+                Найти ЛПР
+              </>
+            )}
           </button>
         </div>
       )}
       {dmEnrichResult && !marketingDm && (
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          {dmEnrichResult}
-        </div>
+        <div className="text-xs text-ui-text-muted">{dmEnrichResult}</div>
       )}
       {/* Ближайший кандидат — фолбэк на владельца/директора, когда маркетолога
           нет. Пусть юзер увидит имя+контакт+вероятность в одном месте. */}
       {!marketingDm && nearestCandidate && (
-        <div className="rounded-v2-sm border border-sky-300 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/20">
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
-            <span>👤 Ближайший кандидат</span>
+        <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/40 bg-[var(--signal-cool-bg)] p-3">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-signal-cool">
+            <span className="inline-flex items-center gap-1.5">
+              <User className="h-4 w-4" aria-hidden />
+              Ближайший кандидат
+            </span>
             <span
-              className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
+              className="rounded-full bg-[var(--signal-cool-bg)] px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-signal-cool"
               title="Маркетолог не найден — предлагаем ЛПР со смежной ролью"
             >
-              роль: {roleLabel[nearestCandidate.role_category ?? ''] ?? nearestCandidate.role_category}
+              роль:{' '}
+              {roleLabel[nearestCandidate.role_category ?? ''] ?? nearestCandidate.role_category}
             </span>
           </div>
           <div className="text-small">
-            <span className="font-medium text-slate-900 dark:text-slate-100">
-              {nearestCandidate.name}
-            </span>
+            <span className="font-medium text-ui-text">{nearestCandidate.name}</span>
             {nearestCandidate.post && (
-              <span className="text-slate-600 dark:text-slate-300">{` · ${nearestCandidate.post}`}</span>
+              <span className="text-ui-text-muted">{` · ${nearestCandidate.post}`}</span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
             {nearestCandidate.source_url ? (
               <a
                 href={nearestCandidate.source_url}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-0.5 rounded bg-slate-200 px-1.5 py-0.5 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600"
+                className="inline-flex items-center gap-0.5 rounded bg-ui-surface-2 px-1.5 py-0.5 hover:bg-ui-border"
                 title={`Открыть источник: ${sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}`}
               >
                 <span>{sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}</span>
@@ -1838,7 +1890,7 @@ function DecisionMakersBlock({
               </a>
             ) : (
               <span
-                className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
+                className="rounded bg-ui-surface-2 px-1.5 py-0.5"
                 title={`Источник: ${sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}`}
               >
                 {sourceLabel[nearestCandidate.source] ?? nearestCandidate.source}
@@ -1849,10 +1901,10 @@ function DecisionMakersBlock({
                 title="Уверенность оркестратора, что это реальный ЛПР этой компании"
                 className={
                   nearestCandidate.confidence >= 0.8
-                    ? 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-signal-good'
                     : nearestCandidate.confidence >= 0.6
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-slate-500 dark:text-slate-400'
+                      ? 'text-signal-warm'
+                      : 'text-ui-text-muted'
                 }
               >
                 уверенность {Math.round(nearestCandidate.confidence * 100)}%
@@ -1861,7 +1913,7 @@ function DecisionMakersBlock({
           </div>
           <div className="mt-2">
             {renderContact(nearestCandidate) ?? (
-              <span className="text-xs italic text-slate-500 dark:text-slate-400">
+              <span className="text-xs italic text-ui-text-muted">
                 публичного контакта нет — пишите по общей почте компании
               </span>
             )}
@@ -1882,10 +1934,13 @@ function DecisionMakersBlock({
       {marketingDm && (
         <div className="rounded-v2-sm border-2 border-brand-500/50 bg-brand-50/40 p-3 dark:bg-brand-950/20">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
-            <span>🎯 Кто за маркетинг</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Target className="h-4 w-4" aria-hidden />
+              Кто за маркетинг
+            </span>
             {marketingDm.role_category && marketingDm.role_category !== 'marketing' && (
               <span
-                className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                className="rounded-full bg-[var(--signal-warm-bg)] px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-signal-warm"
                 title="Маркетолог не найден — контакт руководителя как фолбэк"
               >
                 фолбэк на {roleLabel[marketingDm.role_category] ?? 'руководителя'}
@@ -1893,18 +1948,14 @@ function DecisionMakersBlock({
             )}
           </div>
           <div className="text-small">
-            <span className="font-medium text-slate-900 dark:text-slate-100">
-              {marketingDm.name}
-            </span>
+            <span className="font-medium text-ui-text">{marketingDm.name}</span>
             {marketingDm.post && (
-              <span className="text-slate-600 dark:text-slate-300">
-                {` · ${marketingDm.post}`}
-              </span>
+              <span className="text-ui-text-muted">{` · ${marketingDm.post}`}</span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
             <span
-              className="rounded bg-slate-200 px-1.5 py-0.5 dark:bg-slate-700"
+              className="rounded bg-ui-surface-2 px-1.5 py-0.5"
               title={`Источник: ${sourceLabel[marketingDm.source] ?? marketingDm.source}`}
             >
               {sourceLabel[marketingDm.source] ?? marketingDm.source}
@@ -1914,10 +1965,10 @@ function DecisionMakersBlock({
                 title="Уверенность оркестратора"
                 className={
                   marketingDm.confidence >= 0.8
-                    ? 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-signal-good'
                     : marketingDm.confidence >= 0.6
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-slate-500 dark:text-slate-400'
+                      ? 'text-signal-warm'
+                      : 'text-ui-text-muted'
                 }
               >
                 уверенность {Math.round(marketingDm.confidence * 100)}%
@@ -1925,7 +1976,7 @@ function DecisionMakersBlock({
             )}
             {marketingDm.egrn_matches_founder === true && (
               <span
-                className="text-emerald-600 dark:text-emerald-400"
+                className="text-signal-good"
                 title="Собственник помещения (ЕГРН) совпадает с учредителем (ЕГРЮЛ)"
               >
                 ✓ подтверждён ЕГРН
@@ -1934,7 +1985,7 @@ function DecisionMakersBlock({
           </div>
           <div className="mt-2 space-y-1.5">
             {renderContact(marketingDm) ?? (
-              <span className="text-xs italic text-slate-500 dark:text-slate-400">
+              <span className="text-xs italic text-ui-text-muted">
                 публичного контакта нет — напишите по общей почте компании
               </span>
             )}
@@ -1949,7 +2000,7 @@ function DecisionMakersBlock({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 inline-block text-xs text-slate-500 hover:text-brand-600 dark:text-slate-400"
+              className="mt-1 inline-block text-xs text-ui-text-muted hover:text-brand-600"
             >
               открыть источник ↗
             </a>
@@ -1961,28 +2012,23 @@ function DecisionMakersBlock({
           Если marketingDm без контакта или юзер хочет второе касание —
           вот готовые адреса для outreach. */}
       {marketingDm && alternativesWithContact.length > 0 && (
-        <div className="rounded-v2-sm border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-            📞 Другие контакты для касания
+        <div className="rounded-v2-sm border border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-signal-good">
+            <Phone className="h-4 w-4" aria-hidden />
+            Другие контакты для касания
           </div>
           <ul className="space-y-1.5">
             {alternativesWithContact.map((d, i) => (
               <li key={`alt-${d.name}-${i}`} className="text-xs">
-                <span className="font-medium text-slate-800 dark:text-slate-100">
-                  {d.name}
-                </span>
-                {d.post && (
-                  <span className="text-slate-600 dark:text-slate-300">
-                    {` · ${d.post}`}
-                  </span>
-                )}
+                <span className="font-medium text-ui-text">{d.name}</span>
+                {d.post && <span className="text-ui-text-muted">{` · ${d.post}`}</span>}
                 {d.source_url ? (
                   <a
                     href={d.source_url}
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="ml-2 inline-flex items-center gap-0.5 rounded bg-emerald-200 px-1.5 py-0.5 text-xs text-emerald-800 hover:bg-emerald-300 dark:bg-emerald-800 dark:text-emerald-100 dark:hover:bg-emerald-700"
+                    className="ml-2 inline-flex items-center gap-0.5 rounded bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-xs text-signal-good hover:opacity-80"
                     title={`Открыть источник: ${sourceLabel[d.source] ?? d.source}`}
                   >
                     <span>{sourceLabel[d.source] ?? d.source}</span>
@@ -1990,7 +2036,7 @@ function DecisionMakersBlock({
                   </a>
                 ) : (
                   <span
-                    className="ml-2 rounded bg-emerald-200 px-1.5 py-0.5 text-xs text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100"
+                    className="ml-2 rounded bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-xs text-signal-good"
                     title={sourceLabel[d.source] ?? d.source}
                   >
                     {sourceLabel[d.source] ?? d.source}
@@ -1998,7 +2044,7 @@ function DecisionMakersBlock({
                 )}
                 {typeof d.confidence === 'number' && (
                   <span
-                    className="ml-1 text-xs text-slate-500 dark:text-slate-400"
+                    className="ml-1 text-xs text-ui-text-muted"
                     title="Уверенность оркестратора"
                   >
                     {Math.round(d.confidence * 100)}%
@@ -2017,78 +2063,77 @@ function DecisionMakersBlock({
           2026-07-16 (юзер): убрать слово «ЛПР» из заголовка когда там не
           обязательно ЛПР — писать «Прочие упоминающиеся люди» вместо
           «Прочие найденные ЛПР». */}
-      {(dms.length > 0 || others.length > 0) && (() => {
-        // Динамический заголовок:
-        //   - есть dms → «Прочие упоминающиеся люди» (если marketingDm) /
-        //     «Найденные люди» (если marketingDm нет)
-        //   - только others → «Прочие упоминающиеся люди (не ЛПР)»
-        const list = dms.length > 0 ? dms : others;
-        const heading =
-          dms.length > 0
-            ? marketingDm
-              ? 'Прочие упоминающиеся люди'
-              : 'Найденные люди'
-            : 'Прочие упоминающиеся люди (не ЛПР)';
-        return (
-          <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
-              {heading}
-            </div>
-            <ul className="space-y-1.5">
-              {list.map((d, i) => (
-                <li key={`${d.name}-${i}`} className="text-xs">
-                  <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
-                  {d.post && (
-                    <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
-                  )}
-                  <span
-                    className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-                    title={sourceLabel[d.source] ?? d.source}
-                  >
-                    {sourceLabel[d.source] ?? d.source}
-                  </span>
-                  {typeof d.confidence === 'number' && (
+      {(dms.length > 0 || others.length > 0) &&
+        (() => {
+          // Динамический заголовок:
+          //   - есть dms → «Прочие упоминающиеся люди» (если marketingDm) /
+          //     «Найденные люди» (если marketingDm нет)
+          //   - только others → «Прочие упоминающиеся люди (не ЛПР)»
+          const list = dms.length > 0 ? dms : others;
+          const heading =
+            dms.length > 0
+              ? marketingDm
+                ? 'Прочие упоминающиеся люди'
+                : 'Найденные люди'
+              : 'Прочие упоминающиеся люди (не ЛПР)';
+          return (
+            <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
+                {heading}
+              </div>
+              <ul className="space-y-1.5">
+                {list.map((d, i) => (
+                  <li key={`${d.name}-${i}`} className="text-xs">
+                    <span className="font-medium text-ui-text">{d.name}</span>
+                    {d.post && <span className="text-ui-text-muted">{` · ${d.post}`}</span>}
                     <span
-                      className="ml-1 text-xs text-slate-500 dark:text-slate-400"
-                      title="Уверенность оркестратора"
-                    >
-                      {Math.round(d.confidence * 100)}%
-                    </span>
-                  )}
-                  {renderContact(d)}
-                  {d.source_url && !d.contact_value && (
-                    <a
-                      href={d.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="ml-1 text-xs uppercase tracking-wider text-slate-500 hover:text-brand-600 dark:text-slate-400"
+                      className="ml-2 rounded bg-ui-surface-2 px-1.5 py-0.5 text-xs text-ui-text-muted"
                       title={sourceLabel[d.source] ?? d.source}
                     >
-                      ↗
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {dms.length > 0 && others.length > 0 && (
-              <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                <summary className="cursor-pointer">
-                  + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
-                </summary>
-                <ul className="mt-1 space-y-1 pl-3">
-                  {others.map((d, i) => (
-                    <li key={`other-${d.name}-${i}`}>
-                      <span className="font-medium">{d.name}</span>
-                      {d.post && <span>{` · ${d.post}`}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        );
-      })()}
+                      {sourceLabel[d.source] ?? d.source}
+                    </span>
+                    {typeof d.confidence === 'number' && (
+                      <span
+                        className="ml-1 text-xs text-ui-text-muted"
+                        title="Уверенность оркестратора"
+                      >
+                        {Math.round(d.confidence * 100)}%
+                      </span>
+                    )}
+                    {renderContact(d)}
+                    {d.source_url && !d.contact_value && (
+                      <a
+                        href={d.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="ml-1 text-xs uppercase tracking-wider text-ui-text-muted hover:text-brand-600"
+                        title={sourceLabel[d.source] ?? d.source}
+                      >
+                        ↗
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {dms.length > 0 && others.length > 0 && (
+                <details className="mt-2 text-xs text-ui-text-muted">
+                  <summary className="cursor-pointer">
+                    + {others.length} сотрудник{others.length > 1 ? 'ов' : 'а'} (не ЛПР)
+                  </summary>
+                  <ul className="mt-1 space-y-1 pl-3">
+                    {others.map((d, i) => (
+                      <li key={`other-${d.name}-${i}`}>
+                        <span className="font-medium">{d.name}</span>
+                        {d.post && <span>{` · ${d.post}`}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          );
+        })()}
 
       {/* 2026-07-16: имена, упомянутые клиентами в отзывах (LLM-NER по
           raw_text). Явный disclaimer: это НЕ ЛПР, это работники, которых
@@ -2096,30 +2141,27 @@ function DecisionMakersBlock({
           («Здравствуйте, Марина!»), но полагаться на них как на решение
           нельзя. */}
       {reviewsMentions.length > 0 && (
-        <details className="rounded-v2-sm border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-            💬 Упомянуты в отзывах ({reviewsMentions.length})
-            <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs normal-case tracking-normal text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+        <details className="rounded-v2-sm border border-ui-border bg-ui-surface-2 p-3">
+          <summary className="flex cursor-pointer flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
+            <MessageSquare className="h-4 w-4" aria-hidden />
+            Упомянуты в отзывах ({reviewsMentions.length})
+            <span className="ml-2 rounded bg-ui-surface-2 px-1.5 py-0.5 text-xs normal-case tracking-normal text-ui-text-muted">
               не ЛПР — сотрудники по упоминанию клиентов
             </span>
           </summary>
-          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-            Имена, которые клиенты называют в отзывах («спасибо Марине»).
-            Если это врач/мастер/администратор — это НЕ маркетинг-ЛПР,
-            но имя можно использовать в приветствии письма.
+          <div className="mt-2 text-xs text-ui-text-muted">
+            Имена, которые клиенты называют в отзывах («спасибо Марине»). Если это
+            врач/мастер/администратор — это НЕ маркетинг-ЛПР, но имя можно использовать в
+            приветствии письма.
           </div>
           <ul className="mt-2 space-y-1">
             {reviewsMentions.map((d, i) => (
               <li key={`rev-${d.name}-${i}`} className="text-xs">
-                <span className="font-medium text-slate-800 dark:text-slate-100">
-                  {d.name}
-                </span>
-                {d.post && (
-                  <span className="text-slate-600 dark:text-slate-300">{` · ${d.post}`}</span>
-                )}
+                <span className="font-medium text-ui-text">{d.name}</span>
+                {d.post && <span className="text-ui-text-muted">{` · ${d.post}`}</span>}
                 {typeof d.confidence === 'number' && (
                   <span
-                    className="ml-1 text-xs text-slate-500 dark:text-slate-400"
+                    className="ml-1 text-xs text-ui-text-muted"
                     title="Уверенность NER-парсера. Низкая ⇒ упомянут пару раз, высокая ⇒ упомянут в нескольких отзывах."
                   >
                     {Math.round(d.confidence * 100)}%
@@ -2167,7 +2209,8 @@ function PainTrendBlock({
 }) {
   // Когда trend пришёл из niche-endpoint у него есть companies_affected —
   // показываем его в шапке.
-  const companiesAffected = (trend as unknown as { companies_affected?: number }).companies_affected;
+  const companiesAffected = (trend as unknown as { companies_affected?: number })
+    .companies_affected;
   const fmt = (iso: string | null) => {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -2184,18 +2227,16 @@ function PainTrendBlock({
     byMonth.set(p.month, row);
   }
   const months = Array.from(byMonth.keys()).sort();
-  const allSources = Array.from(
-    new Set(trend.points.map((p) => p.source)),
-  );
+  const allSources = Array.from(new Set(trend.points.map((p) => p.source)));
   const sourceColor: Record<string, string> = {
-    '2gis': '#0ea5e9',         // sky-500
-    'yandex_maps': '#f43f5e',  // rose-500
-    'google': '#a855f7',       // purple-500
+    '2gis': '#0ea5e9', // sky-500
+    yandex_maps: '#f43f5e', // rose-500
+    google: '#a855f7', // purple-500
   };
   const sourceShortLabel: Record<string, string> = {
     '2gis': '2GIS',
-    'yandex_maps': 'Я.Карты',
-    'google': 'Google',
+    yandex_maps: 'Я.Карты',
+    google: 'Google',
   };
 
   // Размеры chart
@@ -2205,40 +2246,34 @@ function PainTrendBlock({
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
   const groupWidth = months.length > 0 ? innerW / months.length : innerW;
-  const barWidth = Math.max(
-    2,
-    Math.min(20, (groupWidth - 4) / Math.max(1, allSources.length)),
-  );
-  const maxCount = Math.max(
-    1,
-    ...trend.points.map((p) => p.count),
-  );
+  const barWidth = Math.max(2, Math.min(20, (groupWidth - 4) / Math.max(1, allSources.length)));
+  const maxCount = Math.max(1, ...trend.points.map((p) => p.count));
 
   return (
-    <div className="mt-3 rounded border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+    <div className="mt-3 rounded border border-ui-border bg-ui-surface p-3">
       <div className="mb-2 flex flex-wrap items-baseline gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
           Динамика боли
         </span>
-        <span className="rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-800 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200">
+        <span className="rounded-sm border border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] px-1.5 py-0.5 text-xs font-medium text-signal-hot">
           {label}
         </span>
-        <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="text-xs tabular-nums text-ui-text-muted">
           {fmt(trend.first_review_at)} — {fmt(trend.last_review_at)} · {trend.total_reviews} отз.
           {scope === 'niche' && typeof companiesAffected === 'number' && companiesAffected > 0 && (
             <> · {companiesAffected} комп.</>
           )}
         </span>
         {niche && (
-          <div className="ml-auto inline-flex overflow-hidden rounded border border-slate-300 text-xs dark:border-slate-600">
+          <div className="ml-auto inline-flex overflow-hidden rounded border border-ui-border text-xs">
             <button
               type="button"
               onClick={() => onScopeChange('company')}
               className={
                 'px-2 py-0.5 font-medium ' +
                 (scope === 'company'
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200')
+                  ? 'bg-ui-accent text-white'
+                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2')
               }
               title="График по этой компании"
             >
@@ -2248,10 +2283,10 @@ function PainTrendBlock({
               type="button"
               onClick={() => onScopeChange('niche')}
               className={
-                'border-l border-slate-300 px-2 py-0.5 font-medium dark:border-slate-600 ' +
+                'border-l border-ui-border px-2 py-0.5 font-medium ' +
                 (scope === 'niche'
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200')
+                  ? 'bg-ui-accent text-white'
+                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2')
               }
               title={`Общий график боли по всей нише${city ? ` · ${city}` : ''}`}
             >
@@ -2262,7 +2297,7 @@ function PainTrendBlock({
       </div>
 
       {months.length === 0 ? (
-        <div className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="text-xs text-ui-text-muted">
           Нет дат у отзывов этой боли (источник не отдаёт posted_at) — графика недоступна.
         </div>
       ) : (
@@ -2282,7 +2317,7 @@ function PainTrendBlock({
               x2={PAD.left + innerW}
               y2={PAD.top + innerH}
               stroke="currentColor"
-              className="text-slate-300 dark:text-slate-600"
+              className="text-ui-border"
               strokeWidth={1}
             />
             {/* Y axis ticks (0 / max) */}
@@ -2291,7 +2326,7 @@ function PainTrendBlock({
               y={PAD.top + 4}
               textAnchor="end"
               fontSize={9}
-              className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+              className="fill-ui-text-muted tabular-nums"
             >
               {maxCount}
             </text>
@@ -2300,7 +2335,7 @@ function PainTrendBlock({
               y={PAD.top + innerH}
               textAnchor="end"
               fontSize={9}
-              className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+              className="fill-ui-text-muted tabular-nums"
             >
               0
             </text>
@@ -2330,13 +2365,15 @@ function PainTrendBlock({
                       </rect>
                     );
                   })}
-                  {(mi === 0 || mi === months.length - 1 || mi % Math.ceil(months.length / 6) === 0) && (
+                  {(mi === 0 ||
+                    mi === months.length - 1 ||
+                    mi % Math.ceil(months.length / 6) === 0) && (
                     <text
                       x={groupX + (allSources.length * barWidth) / 2}
                       y={PAD.top + innerH + 12}
                       textAnchor="middle"
                       fontSize={9}
-                      className="fill-slate-500 dark:fill-slate-400 tabular-nums"
+                      className="fill-ui-text-muted tabular-nums"
                     >
                       {m.slice(2)}
                     </text>
@@ -2346,7 +2383,7 @@ function PainTrendBlock({
             })}
           </svg>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
             {allSources.map((src) => (
               <span key={src} className="inline-flex items-center gap-1">
                 <span
@@ -2358,7 +2395,7 @@ function PainTrendBlock({
               </span>
             ))}
             {hasSourceTabs && (
-              <span className="ml-auto italic text-slate-500 dark:text-slate-400">
+              <span className="ml-auto italic text-ui-text-muted">
                 {sourceTab === 'all'
                   ? 'Все источники'
                   : `Фильтр: ${sourceShortLabel[sourceTab] ?? sourceTab}`}

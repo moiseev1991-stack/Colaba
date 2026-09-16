@@ -78,7 +78,7 @@ function RegisterForm() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 bg-mesh-brand"
+      className="min-h-screen flex items-center justify-center px-4 bg-ui-bg"
       style={{ background: 'hsl(var(--bg))' }}
     >
       <div className="max-w-md w-full space-y-8">
@@ -87,7 +87,7 @@ function RegisterForm() {
             className="mt-6 text-center font-display font-semibold tracking-tight"
             style={{ fontSize: 'clamp(1.75rem, 4vw, 2.25rem)', color: 'hsl(var(--text))' }}
           >
-            Регистрация в <span className="text-gradient-brand">SpinLid</span>
+            Регистрация в SpinLid
           </h2>
           <p className="mt-2 text-center text-sm" style={{ color: 'hsl(var(--muted))' }}>
             Или{' '}

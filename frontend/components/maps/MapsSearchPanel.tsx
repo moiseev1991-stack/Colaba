@@ -81,7 +81,7 @@ export function MapsSearchPanel() {
   }
 
   if (loadingExisting) {
-    return <div className="py-16 text-center text-sm text-ui-text-muted">Загружаю поиск…</div>;
+    return <div className="py-16 text-center text-sm text-ui-text-muted">Загрузка поиска…</div>;
   }
 
   if (mode !== 'idle' && search) {

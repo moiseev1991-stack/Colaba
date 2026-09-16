@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   Download,
@@ -209,24 +210,27 @@ export default function RunsHistoryPage() {
     switch (status) {
       case 'done':
         return (
-          <span className="app-badge app-badge-success">
-            <CheckCircle className="h-3 w-3 shrink-0" />
+          <Badge tone="success" size="sm" icon={<CheckCircle />}>
             OK
-          </span>
+          </Badge>
         );
       case 'error':
         return (
-          <span className="app-badge app-badge-danger">
-            <XCircle className="h-3 w-3 shrink-0" />
+          <Badge tone="danger" size="sm" icon={<XCircle />}>
             Ошибка
-          </span>
+          </Badge>
         );
       case 'pending':
       case 'processing':
         return (
-          <span className="app-badge app-badge-warning" title="В процессе">
-            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />В работе
-          </span>
+          <Badge
+            tone="warning"
+            size="sm"
+            icon={<Loader2 className="animate-spin" />}
+            title="В процессе"
+          >
+            В работе
+          </Badge>
         );
       default:
         return null;
@@ -285,10 +289,18 @@ export default function RunsHistoryPage() {
           {/* Summary chips */}
           {!loading && runs.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm app-reveal app-reveal-delay-1">
-              <span className="app-badge app-badge-accent">Всего: {stats.total}</span>
-              <span className="app-badge app-badge-success">OK: {stats.done}</span>
-              <span className="app-badge app-badge-danger">Ошибки: {stats.error}</span>
-              <span className="app-badge app-badge-warning">В работе: {stats.inProgress}</span>
+              <Badge tone="accent" size="sm">
+                Всего: {stats.total}
+              </Badge>
+              <Badge tone="success" size="sm">
+                OK: {stats.done}
+              </Badge>
+              <Badge tone="danger" size="sm">
+                Ошибки: {stats.error}
+              </Badge>
+              <Badge tone="warning" size="sm">
+                В работе: {stats.inProgress}
+              </Badge>
               <span style={{ color: 'hsl(var(--muted))' }}>•</span>
               <span style={{ color: 'hsl(var(--muted))' }}>За период:</span>
               {(['week', 'month', 'all'] as PeriodFilter[]).map((p) => (

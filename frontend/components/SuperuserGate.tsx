@@ -59,7 +59,7 @@ export function SuperuserGate({ children }: { children: ReactNode }) {
   }, [state, router]);
 
   if (state === 'loading') {
-    return <div className="py-16 text-center text-sm text-ui-text-muted">Проверяю доступ…</div>;
+    return <div className="py-16 text-center text-sm text-ui-text-muted">Проверка доступа…</div>;
   }
   if (state === 'denied') return null;
   return <>{children}</>;

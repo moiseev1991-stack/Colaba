@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   generateKp,
@@ -39,14 +40,8 @@ import {
   type KpTemplate,
   type KpTone,
 } from '@/src/services/api/outreach-kp';
-import {
-  getCompanyDetail,
-  type CompanyPainOut,
-} from '@/src/services/api/maps';
-import {
-  getStoredKpTemplateKey,
-  recordOnboardingEvent,
-} from '@/lib/onboarding-storage';
+import { getCompanyDetail, type CompanyPainOut } from '@/src/services/api/maps';
+import { getStoredKpTemplateKey, recordOnboardingEvent } from '@/lib/onboarding-storage';
 
 interface Props {
   open: boolean;
@@ -113,18 +108,17 @@ export function KpModal({
   const [customPainOpen, setCustomPainOpen] = useState(false);
   const [customPainLabelInput, setCustomPainLabelInput] = useState('');
   const [customPainDescriptionInput, setCustomPainDescriptionInput] = useState('');
-  const [customPainSaved, setCustomPainSaved] = useState<
-    { label: string; description: string } | null
-  >(null);
+  const [customPainSaved, setCustomPainSaved] = useState<{
+    label: string;
+    description: string;
+  } | null>(null);
   // Edit-режим: subject/body можно править прямо в модалке поверх
   // AI-генерации. editSubject/editBody — локальные значения textarea;
   // dirty=true если есть несохранённые изменения; saveState управляет
   // кнопкой «Сохранить» (idle/saving/saved/error).
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
-  const [saveState, setSaveState] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const dirty =
@@ -160,8 +154,7 @@ export function KpModal({
         setSelectedKey(def?.key ?? null);
       })
       .catch((e: any) => {
-        if (!cancelled)
-          setTemplatesError(e?.message || 'Не удалось загрузить шаблоны КП');
+        if (!cancelled) setTemplatesError(e?.message || 'Не удалось загрузить шаблоны КП');
       })
       .finally(() => {
         if (!cancelled) setTemplatesLoading(false);
@@ -252,10 +245,7 @@ export function KpModal({
       custom_sender_profile: isCustom ? customSenderProfile.trim() : null,
       // 2026-07-11 multi-pain: передаём только если юзер выбрал ЯВНО
       // (иначе бэк возьмёт топ-1 автоматически — старое поведение).
-      pain_tag_ids:
-        targetCompanyId != null && selectedPainIds.length > 0
-          ? selectedPainIds
-          : null,
+      pain_tag_ids: targetCompanyId != null && selectedPainIds.length > 0 ? selectedPainIds : null,
       // 2026-07-11 «4 хода»: включается юзером в модалке.
       use_4hods: use4hods,
       channel: use4hods ? channel : undefined,
@@ -291,8 +281,10 @@ export function KpModal({
       if (respData && Array.isArray(respData.detail)) {
         msg = respData.detail
           .map((d: any) => {
-            const path = Array.isArray(d?.loc) ? d.loc.filter((p: any) => p !== 'body').join('.') : '';
-            return path ? `${path}: ${d?.msg ?? ''}` : d?.msg ?? '';
+            const path = Array.isArray(d?.loc)
+              ? d.loc.filter((p: any) => p !== 'body').join('.')
+              : '';
+            return path ? `${path}: ${d?.msg ?? ''}` : (d?.msg ?? '');
           })
           .filter(Boolean)
           .join('; ');
@@ -330,8 +322,7 @@ export function KpModal({
       // мог нажать «Сохранить» снова после новой правки.
       setTimeout(() => setSaveState('idle'), 2000);
     } catch (e: any) {
-      const detail =
-        e?.response?.data?.detail || e?.message || 'Не удалось сохранить.';
+      const detail = e?.response?.data?.detail || e?.message || 'Не удалось сохранить.';
       setSaveState('error');
       setSaveError(detail);
     }
@@ -363,13 +354,9 @@ export function KpModal({
               Холодное письмо под боль клиентов из отзывов компании.
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            aria-label="Закрыть"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -382,7 +369,7 @@ export function KpModal({
               </label>
               {templatesLoading ? (
                 <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                  Загружаю шаблоны…
+                  Загрузка шаблонов…
                 </div>
               ) : templatesError ? (
                 <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -393,20 +380,16 @@ export function KpModal({
                   {templates.map((t) => {
                     const active = t.key === selectedKey;
                     return (
-                      <button
+                      <Button
                         key={t.key}
                         type="button"
+                        variant={active ? 'primary' : 'secondary'}
+                        size="sm"
                         onClick={() => setSelectedKey(t.key)}
-                        className={cn(
-                          'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
-                          active
-                            ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
-                            : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
-                        )}
                         title={t.sender_profile || undefined}
                       >
                         {t.title}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -442,19 +425,16 @@ export function KpModal({
                 {TONE_OPTIONS.map((opt) => {
                   const active = opt.value === tone;
                   return (
-                    <button
+                    <Button
                       key={opt.value}
                       type="button"
+                      variant={active ? 'primary' : 'secondary'}
+                      size="sm"
                       onClick={() => setTone(opt.value)}
-                      className={cn(
-                        'rounded px-2.5 py-1 text-xs font-medium transition-colors',
-                        active
-                          ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-700'
-                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
-                      )}
+                      className="px-3 text-xs"
                     >
                       {opt.label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -499,9 +479,7 @@ export function KpModal({
                           if (e.target.checked) {
                             setSelectedPainIds((prev) => [...prev, p.pain_tag_id]);
                           } else {
-                            setSelectedPainIds((prev) =>
-                              prev.filter((id) => id !== p.pain_tag_id),
-                            );
+                            setSelectedPainIds((prev) => prev.filter((id) => id !== p.pain_tag_id));
                           }
                         }}
                         className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-600"
@@ -539,13 +517,15 @@ export function KpModal({
           {targetCompanyId != null && (
             <div className="mt-4 rounded-md border border-dashed border-slate-300 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-900/40">
               {!customPainOpen && !customPainSaved && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setCustomPainOpen(true)}
-                  className="text-xs font-medium text-violet-700 hover:text-violet-900 dark:text-violet-300"
+                  className="h-auto px-2 py-0.5 text-xs"
                 >
                   + Создать свою боль
-                </button>
+                </Button>
               )}
               {customPainOpen && !customPainSaved && (
                 <div className="space-y-2">
@@ -576,11 +556,13 @@ export function KpModal({
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       type="button"
+                      variant="primary"
+                      size="sm"
                       disabled={
-                        customPainLabelInput.trim().length < 2
-                        || customPainDescriptionInput.trim().length < 10
+                        customPainLabelInput.trim().length < 2 ||
+                        customPainDescriptionInput.trim().length < 10
                       }
                       onClick={() => {
                         setCustomPainSaved({
@@ -589,21 +571,22 @@ export function KpModal({
                         });
                         setCustomPainOpen(false);
                       }}
-                      className="rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Создать
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setCustomPainOpen(false);
                         setCustomPainLabelInput('');
                         setCustomPainDescriptionInput('');
                       }}
-                      className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      className="h-auto px-2 py-0.5 text-xs"
                     >
                       Отмена
-                    </button>
+                    </Button>
                     <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                       минимум 2 симв. + 10 симв.
                     </span>
@@ -624,29 +607,33 @@ export function KpModal({
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setCustomPainLabelInput(customPainSaved.label);
                         setCustomPainDescriptionInput(customPainSaved.description);
                         setCustomPainSaved(null);
                         setCustomPainOpen(true);
                       }}
-                      className="text-xs text-violet-700 hover:text-violet-900 dark:text-violet-300"
+                      className="h-auto px-2 py-0.5 text-xs"
                     >
                       Изменить
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setCustomPainSaved(null);
                         setCustomPainLabelInput('');
                         setCustomPainDescriptionInput('');
                       }}
-                      className="text-xs text-slate-500 hover:text-rose-700 dark:text-slate-400"
+                      className="h-auto px-2 py-0.5 text-xs"
                     >
                       Убрать
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -676,7 +663,8 @@ export function KpModal({
                 </span>
                 <span className="ml-1">· ТЗ 2026-07-11 · временно выключен</span>
                 <span className="block text-xs">
-                  Каркас: наблюдение → что стоит клиенту → решение результатом (без техник) → микрошаг.
+                  Каркас: наблюдение → что стоит клиенту → решение результатом (без техник) →
+                  микрошаг.
                 </span>
               </span>
             </div>
@@ -684,13 +672,12 @@ export function KpModal({
 
           {/* Generate button */}
           <div className="mt-4">
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="sm"
               onClick={handleGenerate}
-              disabled={
-                !hasTarget || !selectedKey || generating || templatesLoading
-              }
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-600 px-4 text-small font-semibold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!hasTarget || !selectedKey || generating || templatesLoading}
             >
               {generating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -699,12 +686,8 @@ export function KpModal({
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              {generating
-                ? 'Генерирую…'
-                : draft
-                  ? 'Сгенерировать заново'
-                  : 'Сгенерировать КП'}
-            </button>
+              {generating ? 'Генерация…' : draft ? 'Сгенерировать заново' : 'Сгенерировать КП'}
+            </Button>
             {generating && (
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Обычно 5-15 секунд. LLM собирает контекст из отзывов компании.
@@ -728,13 +711,15 @@ export function KpModal({
                   <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Тема · можно править
                   </label>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => copy(editSubject, 'subject')}
-                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="h-auto gap-1 px-2 py-0.5 text-xs"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'subject' ? 'скопировано' : 'копировать'}
-                  </button>
+                  </Button>
                 </div>
                 <input
                   type="text"
@@ -751,13 +736,15 @@ export function KpModal({
                   <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Текст · можно править
                   </label>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => copy(editBody, 'body')}
-                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    className="h-auto gap-1 px-2 py-0.5 text-xs"
                   >
                     <Copy className="h-3 w-3" />
                     {copied === 'body' ? 'скопировано' : 'копировать'}
-                  </button>
+                  </Button>
                 </div>
                 <textarea
                   value={editBody}
@@ -769,32 +756,31 @@ export function KpModal({
 
               {/* Save bar */}
               <div className="flex flex-wrap items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
                   disabled={!dirty || saveState === 'saving'}
                   onClick={handleSave}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-small font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saveState === 'saving' ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Сохраняю…
+                      Сохранение…
                     </>
                   ) : saveState === 'saved' ? (
                     <>Сохранено ✓</>
                   ) : (
                     <>Сохранить правки</>
                   )}
-                </button>
+                </Button>
                 {dirty && saveState !== 'saving' && (
                   <span className="text-xs text-amber-700 dark:text-amber-400">
                     Есть несохранённые изменения
                   </span>
                 )}
                 {saveState === 'error' && saveError && (
-                  <span className="text-xs text-rose-700 dark:text-rose-300">
-                    {saveError}
-                  </span>
+                  <span className="text-xs text-rose-700 dark:text-rose-300">{saveError}</span>
                 )}
                 <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                   Сохранённая версия попадёт в Историю → КП.
@@ -816,15 +802,14 @@ export function KpModal({
           </span>
           <div className="flex gap-2">
             {draft && (
-              <button
-                onClick={() =>
-                  copy(`${editSubject}\n\n${editBody}`, 'both')
-                }
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => copy(`${editSubject}\n\n${editBody}`, 'both')}
               >
                 <Copy className="h-4 w-4" />
                 {copied === 'both' ? 'Скопировано' : 'Скопировать всё'}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -878,7 +863,10 @@ function ArgumentsBlock({ args }: { args: KpArgumentsUsed }) {
         {painsList.map((p, idx) => {
           const src = sourceLabelOf(p.source);
           return (
-            <li key={`pain-${p.pain_tag_id ?? idx}`} className="border-l-2 border-violet-300 pl-2 dark:border-violet-700">
+            <li
+              key={`pain-${p.pain_tag_id ?? idx}`}
+              className="border-l-2 border-violet-300 pl-2 dark:border-violet-700"
+            >
               <div>
                 <span className="font-medium">Боль:</span> {p.label}
                 {p.mention_count != null && p.mention_count > 0 && (

@@ -222,10 +222,8 @@ export default function AdminWebsiteLeadsPage() {
     <PageContainer>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: 'hsl(var(--text))' }}>
-            Заявки с сайта
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
+          <h1 className="text-xl font-semibold text-ui-text">Заявки с сайта</h1>
+          <p className="text-sm mt-1 text-ui-text-muted">
             Лиды, оставленные на публичных страницах spinlid.ru. Всего: {total}.
           </p>
         </div>
@@ -233,12 +231,7 @@ export default function AdminWebsiteLeadsPage() {
           type="button"
           onClick={load}
           disabled={loading}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-60"
-          style={{
-            background: 'hsl(var(--surface))',
-            border: '1px solid hsl(var(--border))',
-            color: 'hsl(var(--text))',
-          }}
+          className="flex items-center gap-2 rounded-lg border border-ui-border bg-ui-surface px-3 py-2 text-sm font-medium text-ui-text disabled:opacity-60"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Обновить
@@ -249,11 +242,9 @@ export default function AdminWebsiteLeadsPage() {
         <button
           type="button"
           onClick={() => setStatusFilter('')}
-          className="rounded-full px-3 py-1 text-sm"
+          className="rounded-full border border-ui-border px-3 py-1 text-sm text-ui-text"
           style={{
             background: statusFilter === '' ? 'hsl(var(--accent) / 0.15)' : 'hsl(var(--surface))',
-            border: '1px solid hsl(var(--border))',
-            color: 'hsl(var(--text))',
             fontWeight: statusFilter === '' ? 600 : 400,
           }}
         >
@@ -264,21 +255,17 @@ export default function AdminWebsiteLeadsPage() {
             key={s.value}
             type="button"
             onClick={() => setStatusFilter(s.value === statusFilter ? '' : s.value)}
-            className="rounded-full px-3 py-1 text-sm"
+            className="rounded-full px-3 py-1 text-sm text-ui-text"
             style={{
               background: statusFilter === s.value ? `${s.color}22` : 'hsl(var(--surface))',
               border: `1px solid ${statusFilter === s.value ? s.color : 'hsl(var(--border))'}`,
-              color: 'hsl(var(--text))',
               fontWeight: statusFilter === s.value ? 600 : 400,
             }}
           >
             {s.label} ({counters[s.value] ?? 0})
           </button>
         ))}
-        <label
-          className="ml-2 flex items-center gap-2 text-sm"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
+        <label className="ml-2 flex items-center gap-2 text-sm text-ui-text-muted">
           <input
             type="checkbox"
             checked={includeDeleted}
@@ -289,25 +276,15 @@ export default function AdminWebsiteLeadsPage() {
       </div>
 
       {error && (
-        <div
-          className="mt-4 rounded-lg p-3 text-sm"
-          style={{
-            background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.3)',
-            color: '#dc2626',
-          }}
-        >
+        <div className="mt-4 rounded-lg border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] p-3 text-sm text-signal-hot">
           {error}
         </div>
       )}
 
-      <div
-        className="mt-4 overflow-x-auto rounded-lg"
-        style={{ border: '1px solid hsl(var(--border))' }}
-      >
+      <div className="mt-4 overflow-x-auto rounded-lg border border-ui-border">
         <table className="min-w-full text-sm">
           <thead>
-            <tr style={{ background: 'hsl(var(--surface))', color: 'hsl(var(--muted))' }}>
+            <tr className="bg-ui-surface text-ui-text-muted">
               <th className="text-left px-3 py-2 font-medium">Дата</th>
               <th className="text-left px-3 py-2 font-medium">Имя</th>
               <th className="text-left px-3 py-2 font-medium">Канал</th>
@@ -321,36 +298,33 @@ export default function AdminWebsiteLeadsPage() {
           <tbody>
             {loading && items.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-8" style={{ color: 'hsl(var(--muted))' }}>
+                <td colSpan={8} className="text-center py-8 text-ui-text-muted">
                   Загрузка…
                 </td>
               </tr>
             )}
             {!loading && visible.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-8" style={{ color: 'hsl(var(--muted))' }}>
+                <td colSpan={8} className="text-center py-8 text-ui-text-muted">
                   Пока заявок нет.
                 </td>
               </tr>
             )}
             {visible.map((it) => (
-              <tr
-                key={`${it.origin}-${it.id}`}
-                style={{ borderTop: '1px solid hsl(var(--border))' }}
-              >
-                <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'hsl(var(--muted))' }}>
+              <tr key={`${it.origin}-${it.id}`} className="border-t border-ui-border">
+                <td className="px-3 py-2 whitespace-nowrap text-ui-text-muted">
                   {formatDate(it.created_at)}
                 </td>
-                <td className="px-3 py-2" style={{ color: 'hsl(var(--text))' }}>
-                  {it.name || <span style={{ color: 'hsl(var(--muted))' }}>—</span>}
+                <td className="px-3 py-2 text-ui-text">
+                  {it.name || <span className="text-ui-text-muted">—</span>}
                 </td>
-                <td className="px-3 py-2" style={{ color: 'hsl(var(--text))' }}>
+                <td className="px-3 py-2 text-ui-text">
                   {CHANNEL_LABEL[it.channel] ?? it.channel}
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'hsl(var(--text))' }}>
+                <td className="px-3 py-2 whitespace-nowrap text-ui-text">
                   <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>{it.contact}</span>
                 </td>
-                <td className="px-3 py-2" style={{ color: 'hsl(var(--muted))', maxWidth: 240 }}>
+                <td className="px-3 py-2 text-ui-text-muted" style={{ maxWidth: 240 }}>
                   {it.wish ? (
                     <span title={it.wish}>
                       {it.wish.length > 60 ? `${it.wish.slice(0, 60)}…` : it.wish}
@@ -359,7 +333,7 @@ export default function AdminWebsiteLeadsPage() {
                     '—'
                   )}
                 </td>
-                <td className="px-3 py-2" style={{ color: 'hsl(var(--muted))' }}>
+                <td className="px-3 py-2 text-ui-text-muted">
                   <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>
                     {it.source_page}
                   </span>
@@ -368,12 +342,7 @@ export default function AdminWebsiteLeadsPage() {
                   <select
                     value={it.status}
                     onChange={(e) => changeStatus(it.id, it.origin, e.target.value)}
-                    className="rounded px-2 py-1 text-sm"
-                    style={{
-                      background: 'hsl(var(--bg))',
-                      border: '1px solid hsl(var(--border))',
-                      color: 'hsl(var(--text))',
-                    }}
+                    className="rounded border border-ui-border bg-ui-bg px-2 py-1 text-sm text-ui-text"
                   >
                     {STATUSES.map((s) => (
                       <option key={s.value} value={s.value}>
@@ -387,8 +356,7 @@ export default function AdminWebsiteLeadsPage() {
                     <button
                       type="button"
                       onClick={() => softDelete(it.id)}
-                      className="rounded p-1"
-                      style={{ color: '#94a3b8' }}
+                      className="rounded p-1 text-ui-text-muted"
                       title="Удалить"
                     >
                       <Trash2 size={16} />
@@ -396,7 +364,7 @@ export default function AdminWebsiteLeadsPage() {
                   ) : (
                     <span
                       title="Заявка с /razbor — пометьте статусом «Спам»"
-                      style={{ color: 'hsl(var(--border))' }}
+                      className="text-ui-text-muted"
                     >
                       /razbor
                     </span>

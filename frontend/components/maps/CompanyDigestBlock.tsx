@@ -14,14 +14,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { isUnnamedPainLabel } from '@/lib/painLabels';
-import {
-  ExternalLink,
-  MessageSquareQuote,
-  Reply,
-  Star,
-  ThumbsDown,
-  ThumbsUp,
-} from 'lucide-react';
+import { ExternalLink, MessageSquareQuote, Reply, Star, ThumbsDown, ThumbsUp } from 'lucide-react';
 
 import { getCompanyDigest, type CompanyDigestOut, type ReviewOut } from '@/src/services/api/maps';
 
@@ -94,7 +87,7 @@ export function CompanyDigestBlock({
   if (loading && !data) {
     return (
       <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-        Загружаю сводку {windowLabel}…
+        Загрузка сводки {windowLabel}…
       </div>
     );
   }
@@ -102,8 +95,7 @@ export function CompanyDigestBlock({
     return null; // тихо скрываем — это не критичный блок
   }
 
-  const ownerPct =
-    data.owner_reply_rate != null ? Math.round(data.owner_reply_rate * 100) : null;
+  const ownerPct = data.owner_reply_rate != null ? Math.round(data.owner_reply_rate * 100) : null;
 
   const negatives = data.top_negative_reviews_all_time ?? [];
   const hasNegatives = negatives.length > 0;
@@ -121,16 +113,10 @@ export function CompanyDigestBlock({
         </div>
         <div className="flex items-center gap-2">
           {data.total_reviews > 0 && (
-            <div className="text-xs text-slate-500">
-              {data.total_reviews} отзыв(ов)
-            </div>
+            <div className="text-xs text-slate-500">{data.total_reviews} отзыв(ов)</div>
           )}
           {onDaysChange && (
-            <DaysRangeToggle
-              value={days ?? null}
-              onChange={onDaysChange}
-              disabled={loading}
-            />
+            <DaysRangeToggle value={days ?? null} onChange={onDaysChange} disabled={loading} />
           )}
         </div>
       </div>
@@ -186,62 +172,65 @@ export function CompanyDigestBlock({
                   </button>
                 )}
               </div>
-              {data.top_pains.filter((p) => !isUnnamedPainLabel(p.label)).slice(0, 3).map((p) => {
-                const active = activePainTagId === p.pain_tag_id;
-                const clickable = !!onPainClick;
-                const baseCls =
-                  'block w-full text-left rounded border px-2 py-1.5 transition-colors';
-                const stateCls = active
-                  ? 'border-rose-500 bg-rose-50 dark:border-rose-400 dark:bg-rose-900/30'
-                  : 'border-amber-300 bg-amber-50/70 hover:border-rose-400 hover:bg-rose-50/40 dark:border-amber-700/60 dark:bg-amber-900/20';
-                const Inner = (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={
-                          'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ' +
-                          (active
-                            ? 'border-rose-500 bg-white text-rose-900 dark:bg-slate-900 dark:text-rose-100'
-                            : 'border-amber-300 bg-white text-amber-900 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-100')
-                        }
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
-                        {p.label}
-                      </span>
-                      {p.mention_count > 0 && (
-                        <span className="text-xs text-slate-600 dark:text-slate-300">
-                          × {p.mention_count}
+              {data.top_pains
+                .filter((p) => !isUnnamedPainLabel(p.label))
+                .slice(0, 3)
+                .map((p) => {
+                  const active = activePainTagId === p.pain_tag_id;
+                  const clickable = !!onPainClick;
+                  const baseCls =
+                    'block w-full text-left rounded border px-2 py-1.5 transition-colors';
+                  const stateCls = active
+                    ? 'border-rose-500 bg-rose-50 dark:border-rose-400 dark:bg-rose-900/30'
+                    : 'border-amber-300 bg-amber-50/70 hover:border-rose-400 hover:bg-rose-50/40 dark:border-amber-700/60 dark:bg-amber-900/20';
+                  const Inner = (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={
+                            'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ' +
+                            (active
+                              ? 'border-rose-500 bg-white text-rose-900 dark:bg-slate-900 dark:text-rose-100'
+                              : 'border-amber-300 bg-white text-amber-900 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-100')
+                          }
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
+                          {p.label}
                         </span>
-                      )}
-                    </div>
-                    {p.top_quote && (
-                      <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-200">
-                        <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
-                        <span className="italic">«{p.top_quote}»</span>
+                        {p.mention_count > 0 && (
+                          <span className="text-xs text-slate-600 dark:text-slate-300">
+                            × {p.mention_count}
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </>
-                );
-                return clickable ? (
-                  <button
-                    key={p.pain_tag_id}
-                    type="button"
-                    onClick={() => onPainClick!(p.pain_tag_id, p.label)}
-                    className={baseCls + ' ' + stateCls + ' cursor-pointer'}
-                    title={
-                      active
-                        ? 'Клик ещё раз — снять фильтр'
-                        : 'Открыть отзывы этой темы + chart динамики'
-                    }
-                  >
-                    {Inner}
-                  </button>
-                ) : (
-                  <div key={p.pain_tag_id} className={baseCls + ' ' + stateCls}>
-                    {Inner}
-                  </div>
-                );
-              })}
+                      {p.top_quote && (
+                        <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-200">
+                          <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                          <span className="italic">«{p.top_quote}»</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                  return clickable ? (
+                    <button
+                      key={p.pain_tag_id}
+                      type="button"
+                      onClick={() => onPainClick!(p.pain_tag_id, p.label)}
+                      className={baseCls + ' ' + stateCls + ' cursor-pointer'}
+                      title={
+                        active
+                          ? 'Клик ещё раз — снять фильтр'
+                          : 'Открыть отзывы этой темы + chart динамики'
+                      }
+                    >
+                      {Inner}
+                    </button>
+                  ) : (
+                    <div key={p.pain_tag_id} className={baseCls + ' ' + stateCls}>
+                      {Inner}
+                    </div>
+                  );
+                })}
             </div>
           )}
         </>
@@ -339,16 +328,13 @@ function TopNegativeReviewsPreview({
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          {emphasize
-            ? 'Самые яркие негативные отзывы (за всё время)'
-            : 'Топ-негатив за всё время'}
+          {emphasize ? 'Самые яркие негативные отзывы (за всё время)' : 'Топ-негатив за всё время'}
         </div>
         {availableSources.length > 2 && (
           <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
             {availableSources.map((src) => {
               const active = src === sourceFilter;
-              const label =
-                src === 'all' ? 'Все' : sourceLabel(src) ?? src;
+              const label = src === 'all' ? 'Все' : (sourceLabel(src) ?? src);
               return (
                 <button
                   key={src}
@@ -384,8 +370,7 @@ function TopNegativeReviewsPreview({
 
 function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
   const text = (review.raw_text || '').trim();
-  const truncated =
-    text.length > 220 ? text.slice(0, 220).trimEnd() + '…' : text;
+  const truncated = text.length > 220 ? text.slice(0, 220).trimEnd() + '…' : text;
   const date = review.posted_at ? formatShortDate(review.posted_at) : null;
   const srcLabel = sourceLabel(review.source);
   const href = review.source_url || null;
@@ -427,9 +412,7 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
         )}
         {date && <span>· {date}</span>}
         {review.has_owner_reply && (
-          <span className="text-emerald-700 dark:text-emerald-400">
-            · есть ответ владельца
-          </span>
+          <span className="text-emerald-700 dark:text-emerald-400">· есть ответ владельца</span>
         )}
         {href && (
           <span className="ml-auto inline-flex items-center gap-0.5 text-rose-700 dark:text-rose-300">

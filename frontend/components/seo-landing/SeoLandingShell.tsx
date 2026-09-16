@@ -106,9 +106,17 @@ const FALLBACK_NICHE: NicheExamples = {
     phone: '+7 (495) 123-45-67',
     email: 'info@ulybka-plus.ru',
     painTags: [
-      { label: 'Долгое ожидание', count: 12, quote: '«Записала ребёнка на 10:00, приняли в 11:20.»' },
+      {
+        label: 'Долгое ожидание',
+        count: 12,
+        quote: '«Записала ребёнка на 10:00, приняли в 11:20.»',
+      },
       { label: 'Непрозрачные цены', count: 7, quote: '«На сайте от 1500 ₽, по факту чек 4800.»' },
-      { label: 'Не перезванивают', count: 5, quote: '«Оставила заявку три дня назад — ни звонка, ни SMS.»' },
+      {
+        label: 'Не перезванивают',
+        count: 5,
+        quote: '«Оставила заявку три дня назад — ни звонка, ни SMS.»',
+      },
     ],
   },
   reviewSnippets: [
@@ -236,14 +244,14 @@ export function SeoLandingShell({
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex flex-col bg-ui-bg text-ui-text"
       data-theme="light"
-      style={{
-        ...SEO_LIGHT_VARS,
-        background: 'hsl(var(--bg))',
-        color: 'hsl(var(--text))',
-        fontFamily: 'var(--font-body), system-ui, sans-serif',
-      } as React.CSSProperties}
+      style={
+        {
+          ...SEO_LIGHT_VARS,
+          fontFamily: 'var(--font-body), system-ui, sans-serif',
+        } as React.CSSProperties
+      }
     >
       {/* Единая шапка публичных страниц (PublicHeader). variant="subpage" делает
           якоря (Диагноз/Цены/Примеры/FAQ) ссылками на /#id, а CTA — на
@@ -253,24 +261,44 @@ export function SeoLandingShell({
 
       <main className="flex-1">
         {/* === HERO: левая колонка (заголовок+CTA), правая (демо-карточка ниши) === */}
-        {isAuthed ? <CompactAuthedHero h1={h1} lead={lead} /> : <GuestHero h1={h1} lead={lead} decorTheme={decorTheme} niche={niche} showLeadCapture={showLeadCapture} />}
+        {isAuthed ? (
+          <CompactAuthedHero h1={h1} lead={lead} />
+        ) : (
+          <GuestHero
+            h1={h1}
+            lead={lead}
+            decorTheme={decorTheme}
+            niche={niche}
+            showLeadCapture={showLeadCapture}
+          />
+        )}
 
         {/* Trust-strip — короткие маркетинговые числа. На всех страницах. */}
-        <Reveal><TrustStrip /></Reveal>
+        <Reveal>
+          <TrustStrip />
+        </Reveal>
 
         {/* Большая демо-таблица выдачи — ТОЛЬКО на главной. Включается
             флагом showSignalsShowcase. */}
-        {showSignalsShowcase && <Reveal><SignalsTableShowcase /></Reveal>}
+        {showSignalsShowcase && (
+          <Reveal>
+            <SignalsTableShowcase />
+          </Reveal>
+        )}
 
         {/* «200 отзывов → 3 боли» — ТОЛЬКО на /parsing-otzyvov. */}
-        {showBeforeAfter && <Reveal><BeforeAfterDiagram niche={niche} /></Reveal>}
+        {showBeforeAfter && (
+          <Reveal>
+            <BeforeAfterDiagram niche={niche} />
+          </Reveal>
+        )}
 
         {/* Проблема → решение (плотные параграфы, max-width 640) */}
         <Reveal>
           <section className="max-w-2xl mx-auto px-6 py-12 md:py-16">
             <div className="space-y-4 text-base leading-relaxed">
               {problemSolutionParagraphs.map((p, i) => (
-                <p key={i} style={{ color: 'hsl(var(--text))' }}>
+                <p key={i} className="text-ui-text">
                   {p}
                 </p>
               ))}
@@ -283,10 +311,16 @@ export function SeoLandingShell({
         {customBlock && <Reveal>{customBlock}</Reveal>}
 
         {/* Как это работает — 4 шага с иконками. На всех страницах. */}
-        <Reveal><HowItWorksSection title={howItWorksTitle} items={howItWorks} /></Reveal>
+        <Reveal>
+          <HowItWorksSection title={howItWorksTitle} items={howItWorks} />
+        </Reveal>
 
         {/* «5 источников данных» — ТОЛЬКО на /baza-klientov. */}
-        {showSources && <Reveal><SourcesSection /></Reveal>}
+        {showSources && (
+          <Reveal>
+            <SourcesSection />
+          </Reveal>
+        )}
 
         {/* Скриншоты кабинета — каждый кусок под своим флагом.
             Карточка «Улыбка+» — /parsing-otzyvov. Драфт письма —
@@ -303,24 +337,42 @@ export function SeoLandingShell({
         )}
 
         {/* «Парсер vs SpinLid» — ТОЛЬКО на /parser-2gis. */}
-        {showCompareTable && <Reveal><CompareTable /></Reveal>}
+        {showCompareTable && (
+          <Reveal>
+            <CompareTable />
+          </Reveal>
+        )}
 
         {/* Фишка-блок (брендовая плашка) */}
-        <Reveal><KillerBlock title={killer.title} body={killer.body} /></Reveal>
+        <Reveal>
+          <KillerBlock title={killer.title} body={killer.body} />
+        </Reveal>
 
         {/* Карточка-форма «бесплатная бета» — только
             для неавторизованных и только на тех страницах, где явно
             включён showLeadCapture (топ-3 SEO-лендинги). */}
-        {showLeadCapture && !isAuthed && <Reveal><LeadCaptureForm /></Reveal>}
+        {showLeadCapture && !isAuthed && (
+          <Reveal>
+            <LeadCaptureForm />
+          </Reveal>
+        )}
 
         {/* FAQ */}
-        {faq.length > 0 && <Reveal><FaqSection items={faq} /></Reveal>}
+        {faq.length > 0 && (
+          <Reveal>
+            <FaqSection items={faq} />
+          </Reveal>
+        )}
 
         {/* Финальный CTA */}
         <Reveal>{isAuthed ? <CompactAuthedCta /> : <FinalCta />}</Reveal>
 
         {/* Перелинковка */}
-        {related.length > 0 && <Reveal><RelatedBlock related={related} /></Reveal>}
+        {related.length > 0 && (
+          <Reveal>
+            <RelatedBlock related={related} />
+          </Reveal>
+        )}
       </main>
 
       {/* Schema.org FAQPage — из тех же вопросов, что и видимый FAQ.
@@ -367,7 +419,10 @@ function GuestHero({
       {/* Декоративные «стикеры» — тема под конкретную SEO-страницу */}
       <HeroFloatingTags theme={decorTheme} />
 
-      <div className="relative max-w-6xl mx-auto px-6 pt-24 pb-16 md:pt-28 md:pb-24 grid gap-12 md:grid-cols-2 items-center" style={{ zIndex: 1 }}>
+      <div
+        className="relative max-w-6xl mx-auto px-6 pt-24 pb-16 md:pt-28 md:pb-24 grid gap-12 md:grid-cols-2 items-center"
+        style={{ zIndex: 1 }}
+      >
         <div>
           <h1
             className="font-display font-bold tracking-tight mb-5"
@@ -461,61 +516,243 @@ const HERO_DECOR: Record<string, DecorItem[]> = {
   // /parser-2gis — карты, точки, телефоны, рейтинг
   maps: [
     { Icon: MapPin, text: 'Москва · 2GIS', color: '#19c129', top: '10%', left: '5%', rotate: -8 },
-    { Icon: Star, text: '★ 3.8 · 142 отзыва', color: '#f59e0b', top: '22%', left: '44%', rotate: 4 },
-    { Icon: Phone, text: '+7 (495) 123-45-67', color: '#06b6d4', top: '72%', left: '6%', rotate: 5 },
-    { Icon: Building2, text: 'Карточка компании', color: '#a855f7', top: '8%', left: '76%', rotate: 6 },
-    { Icon: Tag, text: 'Ниша · стоматология', color: '#3b82f6', top: '78%', left: '50%', rotate: -3 },
-    { Icon: MapPin, text: '55.7558°, 37.6173°', color: '#ef4444', top: '58%', left: '86%', rotate: -5 },
+    {
+      Icon: Star,
+      text: '★ 3.8 · 142 отзыва',
+      color: '#f59e0b',
+      top: '22%',
+      left: '44%',
+      rotate: 4,
+    },
+    {
+      Icon: Phone,
+      text: '+7 (495) 123-45-67',
+      color: '#06b6d4',
+      top: '72%',
+      left: '6%',
+      rotate: 5,
+    },
+    {
+      Icon: Building2,
+      text: 'Карточка компании',
+      color: '#a855f7',
+      top: '8%',
+      left: '76%',
+      rotate: 6,
+    },
+    {
+      Icon: Tag,
+      text: 'Ниша · стоматология',
+      color: '#3b82f6',
+      top: '78%',
+      left: '50%',
+      rotate: -3,
+    },
+    {
+      Icon: MapPin,
+      text: '55.7558°, 37.6173°',
+      color: '#ef4444',
+      top: '58%',
+      left: '86%',
+      rotate: -5,
+    },
   ],
   // /parser-yandex-maps — карты Яндекс, склейка дублей
   'maps-yandex': [
     { Icon: MapIcon, text: 'Я.Карты · СПб', color: '#ffcc00', top: '10%', left: '5%', rotate: -8 },
-    { Icon: MapPin, text: 'Метро · Невский пр.', color: '#06b6d4', top: '22%', left: '44%', rotate: 4 },
+    {
+      Icon: MapPin,
+      text: 'Метро · Невский пр.',
+      color: '#06b6d4',
+      top: '22%',
+      left: '44%',
+      rotate: 4,
+    },
     { Icon: Sparkles, text: 'Склейка дублей', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
     { Icon: Star, text: '★ 4.2', color: '#f59e0b', top: '8%', left: '78%', rotate: 6 },
-    { Icon: Phone, text: '+7 (812) 555-12-34', color: '#19c129', top: '78%', left: '50%', rotate: -3 },
-    { Icon: Building2, text: '8 470 компаний', color: '#3b82f6', top: '58%', left: '86%', rotate: -5 },
+    {
+      Icon: Phone,
+      text: '+7 (812) 555-12-34',
+      color: '#19c129',
+      top: '78%',
+      left: '50%',
+      rotate: -3,
+    },
+    {
+      Icon: Building2,
+      text: '8 470 компаний',
+      color: '#3b82f6',
+      top: '58%',
+      left: '86%',
+      rotate: -5,
+    },
   ],
   // /parsing-otzyvov — отзывы, цитаты, рейтинги, pain-теги
   reviews: [
-    { Icon: Star, text: '★ 3.8 · 142 отзыва', color: '#f59e0b', top: '10%', left: '5%', rotate: -8 },
-    { Icon: Quote, text: '«долго ждали приём»', color: '#ef4444', top: '22%', left: '44%', rotate: 4 },
+    {
+      Icon: Star,
+      text: '★ 3.8 · 142 отзыва',
+      color: '#f59e0b',
+      top: '10%',
+      left: '5%',
+      rotate: -8,
+    },
+    {
+      Icon: Quote,
+      text: '«долго ждали приём»',
+      color: '#ef4444',
+      top: '22%',
+      left: '44%',
+      rotate: 4,
+    },
     { Icon: Tag, text: 'pain · цены', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
-    { Icon: MessageSquare, text: '31 негатив', color: '#ec4899', top: '8%', left: '76%', rotate: 6 },
-    { Icon: Sparkles, text: 'AI · кластеризация', color: '#06b6d4', top: '78%', left: '50%', rotate: -3 },
-    { Icon: Quote, text: '«не перезвонили»', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
+    {
+      Icon: MessageSquare,
+      text: '31 негатив',
+      color: '#ec4899',
+      top: '8%',
+      left: '76%',
+      rotate: 6,
+    },
+    {
+      Icon: Sparkles,
+      text: 'AI · кластеризация',
+      color: '#06b6d4',
+      top: '78%',
+      left: '50%',
+      rotate: -3,
+    },
+    {
+      Icon: Quote,
+      text: '«не перезвонили»',
+      color: '#f59e0b',
+      top: '58%',
+      left: '86%',
+      rotate: -5,
+    },
   ],
   // /baza-klientov — юр.данные, лиды, деньги, ИНН
   database: [
     { Icon: Hash, text: 'ИНН 7704123456', color: '#3b82f6', top: '10%', left: '5%', rotate: -8 },
-    { Icon: Banknote, text: 'выручка 18 млн ₽', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    {
+      Icon: Banknote,
+      text: 'выручка 18 млн ₽',
+      color: '#19c129',
+      top: '22%',
+      left: '44%',
+      rotate: 4,
+    },
     { Icon: Users, text: 'ЛПР: Иванов И. И.', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
     { Icon: FileText, text: 'ОГРН · ЕГРЮЛ', color: '#64748b', top: '8%', left: '78%', rotate: 6 },
-    { Icon: Building2, text: 'возраст 8 лет', color: '#06b6d4', top: '78%', left: '50%', rotate: -3 },
-    { Icon: Tag, text: 'DaData · обогащение', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
+    {
+      Icon: Building2,
+      text: 'возраст 8 лет',
+      color: '#06b6d4',
+      top: '78%',
+      left: '50%',
+      rotate: -3,
+    },
+    {
+      Icon: Tag,
+      text: 'DaData · обогащение',
+      color: '#f59e0b',
+      top: '58%',
+      left: '86%',
+      rotate: -5,
+    },
   ],
   // /sbor-kontaktov — email, телефоны, мессенджеры, краулер
   contacts: [
-    { Icon: AtSign, text: 'info@ulybka-plus.ru', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
-    { Icon: PhoneCall, text: '+7 (495) 123-45-67', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    {
+      Icon: AtSign,
+      text: 'info@ulybka-plus.ru',
+      color: '#06b6d4',
+      top: '10%',
+      left: '5%',
+      rotate: -8,
+    },
+    {
+      Icon: PhoneCall,
+      text: '+7 (495) 123-45-67',
+      color: '#19c129',
+      top: '22%',
+      left: '44%',
+      rotate: 4,
+    },
     { Icon: Globe, text: '/contacts · /team', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
-    { Icon: MessageSquare, text: 'Telegram · WhatsApp', color: '#3b82f6', top: '8%', left: '78%', rotate: 6 },
-    { Icon: Mail, text: '12 480 email собрано', color: '#ec4899', top: '78%', left: '50%', rotate: -3 },
-    { Icon: Phone, text: '+7 (812) 555-90-12', color: '#f59e0b', top: '58%', left: '86%', rotate: -5 },
+    {
+      Icon: MessageSquare,
+      text: 'Telegram · WhatsApp',
+      color: '#3b82f6',
+      top: '8%',
+      left: '78%',
+      rotate: 6,
+    },
+    {
+      Icon: Mail,
+      text: '12 480 email собрано',
+      color: '#ec4899',
+      top: '78%',
+      left: '50%',
+      rotate: -3,
+    },
+    {
+      Icon: Phone,
+      text: '+7 (812) 555-90-12',
+      color: '#f59e0b',
+      top: '58%',
+      left: '86%',
+      rotate: -5,
+    },
   ],
   // /holodnaya-rassylka — черновики писем под боль (SpinLid не рассылает)
   mailing: [
     { Icon: Send, text: 'отправляете сами', color: '#06b6d4', top: '10%', left: '5%', rotate: -8 },
-    { Icon: MailCheck, text: 'черновик готов', color: '#19c129', top: '22%', left: '44%', rotate: 4 },
+    {
+      Icon: MailCheck,
+      text: 'черновик готов',
+      color: '#19c129',
+      top: '22%',
+      left: '44%',
+      rotate: 4,
+    },
     { Icon: Mail, text: 'цитата из отзыва', color: '#a855f7', top: '72%', left: '6%', rotate: 5 },
-    { Icon: MailX, text: 'без «мы предлагаем»', color: '#ef4444', top: '8%', left: '78%', rotate: 6 },
-    { Icon: Sparkles, text: 'персональный pain', color: '#f59e0b', top: '78%', left: '50%', rotate: -3 },
-    { Icon: AtSign, text: 'ivan@example.ru', color: '#3b82f6', top: '58%', left: '86%', rotate: -5 },
+    {
+      Icon: MailX,
+      text: 'без «мы предлагаем»',
+      color: '#ef4444',
+      top: '8%',
+      left: '78%',
+      rotate: 6,
+    },
+    {
+      Icon: Sparkles,
+      text: 'персональный pain',
+      color: '#f59e0b',
+      top: '78%',
+      left: '50%',
+      rotate: -3,
+    },
+    {
+      Icon: AtSign,
+      text: 'ivan@example.ru',
+      color: '#3b82f6',
+      top: '58%',
+      left: '86%',
+      rotate: -5,
+    },
   ],
   // дефолтный микс — лендинг / непрофильные страницы
   mixed: [
     { Icon: MapPin, text: '2GIS · отзывы', color: '#19c129', top: '12%', left: '6%', rotate: -8 },
-    { Icon: PhoneCall, text: 'Я.Карты · контакты', color: '#ffcc00', top: '22%', left: '46%', rotate: 4 },
+    {
+      Icon: PhoneCall,
+      text: 'Я.Карты · контакты',
+      color: '#ffcc00',
+      top: '22%',
+      left: '46%',
+      rotate: 4,
+    },
     { Icon: Hash, text: 'DaData · ИНН/ОГРН', color: '#3b82f6', top: '70%', left: '8%', rotate: 5 },
     { Icon: Sparkles, text: 'AI · pain-теги', color: '#a855f7', top: '8%', left: '78%', rotate: 6 },
     { Icon: Users, text: 'ЛПР · /team', color: '#f59e0b', top: '60%', left: '88%', rotate: -5 },
@@ -572,30 +809,22 @@ function HeroFloatingTags({ theme }: { theme: keyof typeof HERO_DECOR }) {
 
 function CompactAuthedHero({ h1, lead }: { h1: string; lead: string }) {
   return (
-    <section
-      className="border-b"
-      style={{
-        borderColor: 'hsl(var(--border))',
-        background: 'hsl(var(--bg))',
-      }}
-    >
+    <section className="border-b border-ui-border bg-ui-bg">
       <div className="max-w-5xl mx-auto px-6 pt-24 pb-8">
         <h1
-          className="font-display font-semibold tracking-tight mb-2"
+          className="font-display font-semibold tracking-tight mb-2 text-ui-text"
           style={{
             fontSize: 'clamp(1.5rem, 3vw, 2rem)',
-            color: 'hsl(var(--text))',
           }}
         >
           {h1}
         </h1>
-        <p className="text-base" style={{ color: 'hsl(var(--muted))', maxWidth: '640px' }}>
+        <p className="text-base text-ui-text-muted" style={{ maxWidth: '640px' }}>
           {lead}
         </p>
         <Link
           href="/app/leads"
-          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold hover:underline"
-          style={{ color: '#047857' }}
+          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-ui-accent hover:underline"
         >
           Открыть в кабинете →
         </Link>
@@ -628,44 +857,28 @@ function DemoCompanyCard({
         color: '#0b1220',
       }}
     >
-      <div
-        className="px-5 py-2.5 border-b text-[11px] font-semibold tracking-wide uppercase"
-        style={{
-          background: '#f8fafc',
-          borderColor: '#e2e8f0',
-          color: '#64748b',
-        }}
-      >
+      <div className="px-5 py-2.5 border-b text-xs font-semibold tracking-wide uppercase border-ui-border bg-ui-surface-2 text-ui-text-muted">
         Карточка компании в кабинете
       </div>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-1">
           <div>
-            <div
-              className="font-semibold"
-              style={{ color: '#0f172a', fontSize: '18px' }}
-            >
+            <div className="font-semibold text-ui-text" style={{ fontSize: '18px' }}>
               {company.name}
             </div>
-            <div className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+            <div className="text-sm mt-0.5 text-ui-text-muted">
               {company.address} · ★ {company.rating} · {company.reviewsCount} отзыва
             </div>
           </div>
-          <span
-            className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: '#fee2e2', color: '#b91c1c' }}
-          >
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--signal-hot-bg)] text-signal-hot">
             {company.negativeCount} негатив
           </span>
         </div>
-        <div className="text-sm mb-3" style={{ color: '#64748b' }}>
+        <div className="text-sm mb-3 text-ui-text-muted">
           {company.phone}
           {company.email ? ` · ${company.email}` : ''}
         </div>
-        <div
-          className="text-[11px] font-semibold uppercase tracking-wide mb-3"
-          style={{ color: '#d97706' }}
-        >
+        <div className="text-xs font-semibold uppercase tracking-wide mb-3 text-signal-warm">
           Диагноз по отзывам
         </div>
         <div className="space-y-2">
@@ -676,14 +889,14 @@ function DemoCompanyCard({
         <div className="mt-4 flex gap-2">
           <button
             type="button"
-            className="flex-1 text-[13px] font-semibold py-2 rounded-lg"
+            className="flex-1 text-small font-semibold py-2 rounded-lg"
             style={{
               background: 'var(--brand-700)',
               color: '#fff',
               cursor: 'default',
             }}
           >
-            ✨ Сгенерировать КП
+            Сгенерировать КП
           </button>
         </div>
       </div>
@@ -691,40 +904,16 @@ function DemoCompanyCard({
   );
 }
 
-function DemoPainTag({
-  label,
-  count,
-  quote,
-}: {
-  label: string;
-  count: number;
-  quote: string;
-}) {
+function DemoPainTag({ label, count, quote }: { label: string; count: number; quote: string }) {
   return (
-    <div
-      className="rounded-lg px-3 py-2"
-      style={{
-        background: '#fef3c7',
-        border: '1px solid #fde68a',
-      }}
-    >
+    <div className="rounded-lg px-3 py-2 border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)]">
       <div className="flex items-center gap-2">
-        <span
-          className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-          style={{ background: '#fbbf24', color: '#78350f' }}
-        >
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--signal-warm-bg)] text-signal-warm">
           {label}
         </span>
-        <span className="text-[11px]" style={{ color: '#a16207' }}>
-          × {count}
-        </span>
+        <span className="text-xs text-signal-warm">× {count}</span>
       </div>
-      <div
-        className="mt-1 text-[13px] italic leading-snug"
-        style={{ color: '#0f172a' }}
-      >
-        {quote}
-      </div>
+      <div className="mt-1 text-small italic leading-snug text-ui-text">{quote}</div>
     </div>
   );
 }
@@ -735,19 +924,14 @@ function DemoPainTag({
 
 function TrustStrip() {
   return (
-    <section
-      className="border-y"
-      style={{
-        background: 'hsl(var(--surface))',
-        borderColor: 'hsl(var(--border))',
-      }}
-    >
+    <section className="border-y border-ui-border bg-ui-surface">
       <div className="max-w-5xl mx-auto px-6 py-5">
-        <div
-          className="grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-xl"
-          style={{ background: 'hsl(var(--border))' }}
-        >
-          <TrustCell value="5" label="источников данных" hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-xl bg-ui-border">
+          <TrustCell
+            value="5"
+            label="источников данных"
+            hint="2GIS, Я.Карты, сайты, ЕГРЮЛ, DaData"
+          />
           <TrustCell value="~60 сек" label="до результата" hint="первый поиск" />
           <TrustCell value="Бета" label="бесплатно" hint="без кредитной карты" />
           <TrustCell value="0 ₽" label="во время беты" hint="цены объявим заранее" />
@@ -757,17 +941,9 @@ function TrustStrip() {
   );
 }
 
-function TrustCell({
-  value,
-  label,
-  hint,
-}: {
-  value: string;
-  label: string;
-  hint?: string;
-}) {
+function TrustCell({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
-    <div className="px-3 py-3 md:px-4 md:py-4" style={{ background: 'hsl(var(--bg))' }}>
+    <div className="px-3 py-3 md:px-4 md:py-4 bg-ui-bg">
       <div
         className="font-bold text-xl md:text-2xl"
         style={{
@@ -781,17 +957,8 @@ function TrustCell({
       >
         {value}
       </div>
-      <div className="text-xs md:text-sm mt-0.5 font-medium" style={{ color: 'hsl(var(--text))' }}>
-        {label}
-      </div>
-      {hint && (
-        <div
-          className="text-[11px] mt-0.5 leading-tight"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
-          {hint}
-        </div>
-      )}
+      <div className="text-xs md:text-sm mt-0.5 font-medium text-ui-text">{label}</div>
+      {hint && <div className="text-xs mt-0.5 leading-tight text-ui-text-muted">{hint}</div>}
     </div>
   );
 }
@@ -804,30 +971,18 @@ function SignalsTableShowcase() {
   return (
     <section className="py-14 md:py-20">
       <div className="max-w-6xl mx-auto px-6">
-        <div
-          className="text-center text-xs font-semibold uppercase tracking-widest mb-3"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
+        <div className="text-center text-xs font-semibold uppercase tracking-widest mb-3 text-ui-text-muted">
           Так выглядит выдача
         </div>
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center text-ui-text">
           Не «вот 1000 контактов», а кому, с чем и как написать
         </h2>
-        <p
-          className="text-center text-sm md:text-base mb-8 max-w-2xl mx-auto"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
-          AI читает отзывы 2GIS и Я.Карт, выделяет повторяющиеся жалобы и
-          подкладывает цитату клиента под каждую боль — прямо в строке таблицы.
+        <p className="text-center text-sm md:text-base mb-8 max-w-2xl mx-auto text-ui-text-muted">
+          AI читает отзывы 2GIS и Я.Карт, выделяет повторяющиеся жалобы и подкладывает цитату
+          клиента под каждую боль — прямо в строке таблицы.
         </p>
         <SignalsTableDemo />
-        <div
-          className="mt-3 text-center text-[12px]"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
+        <div className="mt-3 text-center text-xs text-ui-text-muted">
           ПРИМЕР · так выглядит таблица «По картам» в кабинете
         </div>
       </div>
@@ -845,51 +1000,29 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
   return (
     <section className="py-14 md:py-20">
       <div className="max-w-5xl mx-auto px-6">
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-center text-ui-text">
           200 отзывов → 3 конкретные боли
         </h2>
-        <p
-          className="text-center text-sm md:text-base mb-10 max-w-xl mx-auto"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
-          Стандартный путь — таблица из 200 строк. Наш — три повторяющиеся
-          жалобы с цитатами клиента, готовые для зацепки в письме.
+        <p className="text-center text-sm md:text-base mb-10 max-w-xl mx-auto text-ui-text-muted">
+          Стандартный путь — таблица из 200 строк. Наш — три повторяющиеся жалобы с цитатами
+          клиента, готовые для зацепки в письме.
         </p>
         <div className="grid gap-4 md:grid-cols-[1fr_60px_1fr] items-center">
           {/* BEFORE */}
-          <div
-            className="rounded-2xl border p-5"
-            style={{
-              background: 'hsl(var(--surface))',
-              borderColor: 'hsl(var(--border))',
-            }}
-          >
-            <div
-              className="text-[11px] font-semibold uppercase tracking-wider mb-3"
-              style={{ color: 'hsl(var(--muted))' }}
-            >
+          <div className="rounded-2xl border p-5 border-ui-border bg-ui-surface">
+            <div className="text-xs font-semibold uppercase tracking-wider mb-3 text-ui-text-muted">
               Было: 200 отзывов в Excel
             </div>
             <div className="space-y-1.5">
               {snippets.map((t, i) => (
                 <div
                   key={i}
-                  className="text-[12px] px-2 py-1 rounded truncate"
-                  style={{
-                    background: 'hsl(var(--bg))',
-                    color: 'hsl(var(--muted))',
-                  }}
+                  className="text-xs px-2 py-1 rounded truncate bg-ui-bg text-ui-text-muted"
                 >
                   • {t}
                 </div>
               ))}
-              <div
-                className="text-[11px] text-center mt-2 italic"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
+              <div className="text-xs text-center mt-2 italic text-ui-text-muted">
                 ... и ещё {Math.max(0, 200 - snippets.length)} строки
               </div>
             </div>
@@ -906,13 +1039,9 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
             >
               AI
             </div>
-            <div className="text-3xl" style={{ color: '#047857' }}>
-              →
-            </div>
+            <div className="text-3xl text-signal-good">→</div>
           </div>
-          <div className="md:hidden flex justify-center my-2 text-2xl" style={{ color: '#047857' }}>
-            ↓
-          </div>
+          <div className="md:hidden flex justify-center my-2 text-2xl text-signal-good">↓</div>
 
           {/* AFTER */}
           <div
@@ -923,21 +1052,16 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
               borderColor: 'rgba(16, 185, 129, 0.35)',
             }}
           >
-            <div
-              className="text-[11px] font-semibold uppercase tracking-wider mb-3"
-              style={{ color: '#047857' }}
-            >
-              Стало: {tagsSummary.length} {tagsSummary.length === 1 ? 'боль с цитатой' : 'боли с цитатами'}
+            <div className="text-xs font-semibold uppercase tracking-wider mb-3 text-signal-good">
+              Стало: {tagsSummary.length}{' '}
+              {tagsSummary.length === 1 ? 'боль с цитатой' : 'боли с цитатами'}
             </div>
             <div className="space-y-2">
               {tagsSummary.map((t) => (
                 <AfterPainTag key={t.label} label={`${t.label} × ${t.count}`} />
               ))}
             </div>
-            <div
-              className="mt-3 text-[12px] leading-snug"
-              style={{ color: 'hsl(var(--text))' }}
-            >
+            <div className="mt-3 text-xs leading-snug text-ui-text">
               Каждая — с реальной цитатой клиента, готова для зацепки в письме.
             </div>
           </div>
@@ -949,15 +1073,8 @@ function BeforeAfterDiagram({ niche }: { niche: NicheExamples }) {
 
 function AfterPainTag({ label }: { label: string }) {
   return (
-    <div
-      className="px-3 py-2 rounded-lg text-sm font-medium"
-      style={{
-        background: 'rgba(245, 158, 11, 0.15)',
-        color: '#92400e',
-        border: '1px solid rgba(245, 158, 11, 0.3)',
-      }}
-    >
-      ⚠ {label}
+    <div className="px-3 py-2 rounded-lg text-sm font-medium border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] text-signal-warm">
+      {label}
     </div>
   );
 }
@@ -966,38 +1083,19 @@ function AfterPainTag({ label }: { label: string }) {
 // How it works — 4 шага с иконками
 // ============================================================================
 
-function HowItWorksSection({
-  title,
-  items,
-}: {
-  title: string;
-  items: HowItWorksItem[];
-}) {
+function HowItWorksSection({ title, items }: { title: string; items: HowItWorksItem[] }) {
   const stepIcons = [Search, Sparkles, Target, Mail];
   return (
-    <section
-      className="py-16 md:py-20"
-      style={{ background: 'hsl(var(--surface))' }}
-    >
+    <section className="py-16 md:py-20 bg-ui-surface">
       <div className="max-w-5xl mx-auto px-6">
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center text-ui-text">
           {title}
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {items.map((step, i) => {
             const Icon = stepIcons[i] ?? Sparkles;
             return (
-              <div
-                key={i}
-                className="rounded-2xl p-5 border"
-                style={{
-                  background: 'hsl(var(--bg))',
-                  borderColor: 'hsl(var(--border))',
-                }}
-              >
+              <div key={i} className="rounded-2xl p-5 border border-ui-border bg-ui-bg">
                 <div className="flex items-center gap-3 mb-3">
                   <div
                     className="inline-flex items-center justify-center w-11 h-11 rounded-xl"
@@ -1010,25 +1108,12 @@ function HowItWorksSection({
                   >
                     <Icon size={22} strokeWidth={2.2} color="#0b1220" />
                   </div>
-                  <div
-                    className="text-[11px] font-bold tracking-widest uppercase"
-                    style={{ color: '#0ea97a' }}
-                  >
+                  <div className="text-xs font-bold tracking-widest uppercase text-ui-accent">
                     Шаг {i + 1}
                   </div>
                 </div>
-                <h3
-                  className="font-semibold text-base mb-1.5"
-                  style={{ color: 'hsl(var(--text))' }}
-                >
-                  {step.title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: 'hsl(var(--muted))' }}
-                >
-                  {step.body}
-                </p>
+                <h3 className="font-semibold text-base mb-1.5 text-ui-text">{step.title}</h3>
+                <p className="text-sm leading-relaxed text-ui-text-muted">{step.body}</p>
               </div>
             );
           })}
@@ -1054,27 +1139,17 @@ function SourcesSection() {
   return (
     <section className="py-12 md:py-16">
       <div className="max-w-5xl mx-auto px-6">
-        <div
-          className="text-center text-xs font-semibold uppercase tracking-widest mb-3"
-          style={{ color: 'hsl(var(--muted))' }}
-        >
+        <div className="text-center text-xs font-semibold uppercase tracking-widest mb-3 text-ui-text-muted">
           5 источников данных
         </div>
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center text-ui-text">
           Не один парсер — пять открытых источников
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {SOURCES.map(({ label, hint, color, Icon }) => (
             <div
               key={label}
-              className="rounded-xl border p-4 text-center transition-shadow hover:shadow-md"
-              style={{
-                background: 'hsl(var(--surface))',
-                borderColor: 'hsl(var(--border))',
-              }}
+              className="rounded-xl border p-4 text-center transition-shadow hover:shadow-md border-ui-border bg-ui-surface"
             >
               <div
                 className="inline-flex items-center justify-center w-11 h-11 rounded-lg mx-auto mb-2"
@@ -1085,15 +1160,8 @@ function SourcesSection() {
               >
                 <Icon size={22} strokeWidth={2.2} color={color} />
               </div>
-              <div
-                className="font-semibold text-sm mb-0.5"
-                style={{ color: 'hsl(var(--text))' }}
-              >
-                {label}
-              </div>
-              <div className="text-[11px] leading-tight" style={{ color: 'hsl(var(--muted))' }}>
-                {hint}
-              </div>
+              <div className="font-semibold text-sm mb-0.5 text-ui-text">{label}</div>
+              <div className="text-xs leading-tight text-ui-text-muted">{hint}</div>
             </div>
           ))}
         </div>
@@ -1120,15 +1188,9 @@ function ScreensSection({
   const cols = [showDemoCompanyCard, showMockLetterDraft].filter(Boolean).length;
   const gridCols = cols === 1 ? 'md:grid-cols-1 max-w-xl mx-auto' : 'md:grid-cols-2';
   return (
-    <section
-      className="py-16 md:py-20"
-      style={{ background: 'hsl(var(--surface))' }}
-    >
+    <section className="py-16 md:py-20 bg-ui-surface">
       <div className="max-w-6xl mx-auto px-6">
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-10 text-center text-ui-text">
           Как это выглядит в кабинете
         </h2>
         <div className={`grid gap-5 ${gridCols}`}>
@@ -1152,56 +1214,28 @@ function ScreensSection({
   );
 }
 
-function ScreenMock({
-  title,
-  sub,
-  inner,
-}: {
-  title: string;
-  sub: string;
-  inner: React.ReactNode;
-}) {
+function ScreenMock({ title, sub, inner }: { title: string; sub: string; inner: React.ReactNode }) {
   return (
     <div>
       <div className="mb-2.5">
-        <div
-          className="font-semibold text-sm"
-          style={{ color: 'hsl(var(--text))' }}
-        >
-          {title}
-        </div>
-        <div className="text-[12px]" style={{ color: 'hsl(var(--muted))' }}>
-          {sub}
-        </div>
+        <div className="font-semibold text-sm text-ui-text">{title}</div>
+        <div className="text-xs text-ui-text-muted">{sub}</div>
       </div>
       <div>{inner}</div>
     </div>
   );
 }
 
-function MockLetterDraft({
-  letter,
-}: {
-  letter: NonNullable<NicheExamples['letter']>;
-}) {
+function MockLetterDraft({ letter }: { letter: NonNullable<NicheExamples['letter']> }) {
   return (
-    <div
-      className="rounded-2xl border p-4"
-      style={{ background: '#fff', borderColor: '#e2e8f0', color: '#0f172a' }}
-    >
-      <div
-        className="text-[10px] font-semibold uppercase tracking-wide mb-1.5"
-        style={{ color: '#64748b' }}
-      >
+    <div className="rounded-2xl border p-4 border-ui-border bg-ui-surface text-ui-text">
+      <div className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 text-ui-text-muted">
         Кому: {letter.to}
       </div>
-      <div
-        className="text-[12px] font-semibold mb-2 pb-2 border-b"
-        style={{ borderColor: '#f1f5f9' }}
-      >
+      <div className="text-xs font-semibold mb-2 pb-2 border-b border-ui-border">
         Тема: {letter.subject}
       </div>
-      <div className="text-[12px] leading-relaxed space-y-2">
+      <div className="text-xs leading-relaxed space-y-2">
         {letter.body.map((p, i) => (
           <p key={i}>{p}</p>
         ))}
@@ -1228,35 +1262,23 @@ function CompareTable() {
   return (
     <section className="py-16 md:py-20">
       <div className="max-w-4xl mx-auto px-6">
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-8 text-center text-ui-text">
           Чем отличается от обычного парсера
         </h2>
-        <div
-          className="rounded-2xl border overflow-hidden"
-          style={{
-            background: 'hsl(var(--bg))',
-            borderColor: 'hsl(var(--border))',
-          }}
-        >
+        <div className="rounded-2xl border overflow-hidden border-ui-border bg-ui-bg">
           <div
-            className="grid text-[12px] font-semibold uppercase tracking-wider"
+            className="grid text-xs font-semibold uppercase tracking-wider bg-ui-surface text-ui-text-muted"
             style={{
               gridTemplateColumns: '1.5fr 1fr 1fr',
-              background: 'hsl(var(--surface))',
-              color: 'hsl(var(--muted))',
             }}
           >
             <div className="px-4 py-3">Возможность</div>
             <div className="px-4 py-3 text-center">Обычный парсер</div>
             <div
-              className="px-4 py-3 text-center"
+              className="px-4 py-3 text-center text-signal-good"
               style={{
                 background:
                   'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.10))',
-                color: '#047857',
               }}
             >
               SpinLid
@@ -1265,15 +1287,12 @@ function CompareTable() {
           {rows.map((r, i) => (
             <div
               key={i}
-              className="grid text-sm border-t"
+              className="grid text-sm border-t border-ui-border"
               style={{
                 gridTemplateColumns: '1.5fr 1fr 1fr',
-                borderColor: 'hsl(var(--border))',
               }}
             >
-              <div className="px-4 py-3" style={{ color: 'hsl(var(--text))' }}>
-                {r.f}
-              </div>
+              <div className="px-4 py-3 text-ui-text">{r.f}</div>
               <CompareCell value={r.a} />
               <div
                 className="px-4 py-3 text-center"
@@ -1293,26 +1312,9 @@ function CompareTable() {
 }
 
 function CompareCell({ value }: { value: boolean | string }) {
-  if (value === true)
-    return (
-      <div className="px-4 py-3 text-center" style={{ color: '#10b981' }}>
-        ✓
-      </div>
-    );
-  if (value === false)
-    return (
-      <div className="px-4 py-3 text-center" style={{ color: 'hsl(var(--muted))' }}>
-        —
-      </div>
-    );
-  return (
-    <div
-      className="px-4 py-3 text-center text-[12px]"
-      style={{ color: '#f59e0b' }}
-    >
-      {value}
-    </div>
-  );
+  if (value === true) return <div className="px-4 py-3 text-center text-signal-good">✓</div>;
+  if (value === false) return <div className="px-4 py-3 text-center text-ui-text-muted">—</div>;
+  return <div className="px-4 py-3 text-center text-xs text-signal-warm">{value}</div>;
 }
 
 // ============================================================================
@@ -1340,18 +1342,10 @@ function KillerBlock({ title, body }: { title: string; body: string }) {
           >
             Фишка SpinLid
           </div>
-          <h2
-            className="font-semibold tracking-tight text-2xl md:text-3xl mb-3"
-            style={{ color: 'hsl(var(--text))' }}
-          >
+          <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-3 text-ui-text">
             {title}
           </h2>
-          <p
-            className="text-base md:text-lg leading-relaxed"
-            style={{ color: 'hsl(var(--text))' }}
-          >
-            {body}
-          </p>
+          <p className="text-base md:text-lg leading-relaxed text-ui-text">{body}</p>
         </div>
       </div>
     </section>
@@ -1360,36 +1354,18 @@ function KillerBlock({ title, body }: { title: string; body: string }) {
 
 function FaqSection({ items }: { items: FaqItem[] }) {
   return (
-    <section className="py-14" style={{ background: 'hsl(var(--surface))' }}>
+    <section className="py-14 bg-ui-surface">
       <div className="max-w-3xl mx-auto px-6">
-        <h2
-          className="font-semibold tracking-tight text-2xl md:text-3xl mb-7 text-center"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-2xl md:text-3xl mb-7 text-center text-ui-text">
           Частые вопросы
         </h2>
         <div className="space-y-2.5">
           {items.map((item, i) => (
-            <details
-              key={i}
-              className="rounded-xl border px-5 py-3"
-              style={{
-                background: 'hsl(var(--bg))',
-                borderColor: 'hsl(var(--border))',
-              }}
-            >
-              <summary
-                className="cursor-pointer font-semibold text-base"
-                style={{ color: 'hsl(var(--text))' }}
-              >
+            <details key={i} className="rounded-xl border px-5 py-3 border-ui-border bg-ui-bg">
+              <summary className="cursor-pointer font-semibold text-base text-ui-text">
                 {item.q}
               </summary>
-              <div
-                className="mt-2.5 text-sm leading-relaxed"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                {item.a}
-              </div>
+              <div className="mt-2.5 text-sm leading-relaxed text-ui-text-muted">{item.a}</div>
             </details>
           ))}
         </div>
@@ -1452,14 +1428,7 @@ function FinalCta() {
 
 function CompactAuthedCta() {
   return (
-    <section
-      className="py-10 border-t"
-      style={{
-        borderColor: 'hsl(var(--border))',
-        background: 'hsl(var(--surface))',
-        textAlign: 'center',
-      }}
-    >
+    <section className="py-10 border-t border-ui-border bg-ui-surface text-center">
       <div className="max-w-3xl mx-auto px-6">
         <Link
           href="/app/leads"
@@ -1486,10 +1455,7 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
   return (
     <section className="py-10 md:py-14">
       <div className="max-w-5xl mx-auto px-6">
-        <h2
-          className="font-semibold tracking-tight text-lg md:text-xl mb-5"
-          style={{ color: 'hsl(var(--text))' }}
-        >
+        <h2 className="font-semibold tracking-tight text-lg md:text-xl mb-5 text-ui-text">
           Смежные возможности
         </h2>
         <div className="grid gap-3 md:grid-cols-3">
@@ -1497,21 +1463,10 @@ function RelatedBlock({ related }: { related: RelatedLink[] }) {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-xl p-4 border transition-colors hover:border-brand-500"
-              style={{
-                background: 'hsl(var(--surface))',
-                borderColor: 'hsl(var(--border))',
-              }}
+              className="rounded-xl p-4 border border-ui-border bg-ui-surface transition-colors hover:border-brand-500"
             >
-              <div
-                className="font-semibold text-sm mb-1"
-                style={{ color: 'hsl(var(--text))' }}
-              >
-                {link.title}
-              </div>
-              <div className="text-[13px]" style={{ color: 'hsl(var(--muted))' }}>
-                {link.hint}
-              </div>
+              <div className="font-semibold text-sm mb-1 text-ui-text">{link.title}</div>
+              <div className="text-small text-ui-text-muted">{link.hint}</div>
             </Link>
           ))}
         </div>
@@ -1542,10 +1497,7 @@ function FaqJsonLd({ items }: { items: FaqItem[] }) {
   };
 
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
   );
 }
 
@@ -1574,9 +1526,6 @@ function BreadcrumbJsonLd({ path, name }: { path: string; name: string }) {
   };
 
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
   );
 }

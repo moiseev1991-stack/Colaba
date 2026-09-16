@@ -25,13 +25,7 @@ interface Props {
   onDone?: (listId: number) => void;
 }
 
-export function AddToListModal({
-  open,
-  companyIds,
-  defaultListName,
-  onClose,
-  onDone,
-}: Props) {
+export function AddToListModal({ open, companyIds, defaultListName, onClose, onDone }: Props) {
   const [lists, setLists] = useState<LeadListOut[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -66,7 +60,7 @@ export function AddToListModal({
       onDone?.(list.id);
       // обновляем items_count в локальном списке для UX
       setLists((prev) =>
-        prev.map((l) => (l.id === list.id ? { ...l, items_count: result.items_count } : l))
+        prev.map((l) => (l.id === list.id ? { ...l, items_count: result.items_count } : l)),
       );
       onClose();
     } catch (e: any) {
@@ -149,7 +143,7 @@ export function AddToListModal({
           </div>
 
           {loading ? (
-            <div className="text-sm text-slate-500">Загружаю списки…</div>
+            <div className="text-sm text-slate-500">Загрузка списков…</div>
           ) : lists.length === 0 ? (
             <div className="text-sm text-slate-500">Пока нет списков. Создай первый сверху.</div>
           ) : (

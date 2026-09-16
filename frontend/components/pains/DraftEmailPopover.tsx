@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Popover «✉ Написать» — на карточке /app/pains.
+ * Popover «Написать письмо» — на карточке /app/pains.
  *
  * Открывается кликом на кнопку рядом с карточкой компании. Юзер:
  *  1. Выбирает шаблон из списка (фильтр по pain_key активной боли + универсальные).
@@ -13,12 +13,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { Copy, Mail } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
 
-import {
-  getOutreachTemplates,
-  type OutreachTemplate,
-} from '@/src/services/api/outreachTemplates';
+import { getOutreachTemplates, type OutreachTemplate } from '@/src/services/api/outreachTemplates';
 
 export interface CompanyForDraft {
   id: number;
@@ -81,8 +79,12 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
           setSelectedId(rows[0].id);
         }
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, painKey]);
 
@@ -116,9 +118,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
 
   const copyOne = async () => {
     if (!preview) return;
-    await navigator.clipboard.writeText(
-      `Subject: ${preview.subject}\n\n${preview.body}`,
-    );
+    await navigator.clipboard.writeText(`Subject: ${preview.subject}\n\n${preview.body}`);
     toast.success('Скопировано в буфер');
   };
 
@@ -145,8 +145,9 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
       >
         <header className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
           <div>
-            <h3 className="font-semibold text-slate-900">
-              ✉ Написать письмо
+            <h3 className="flex items-center gap-1.5 font-semibold text-slate-900">
+              <Mail className="h-4 w-4" aria-hidden />
+              Написать письмо
               {companies.length > 1 && (
                 <span className="ml-2 text-xs text-slate-500">
                   ({companies.length} компаний батчем)
@@ -154,8 +155,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
               )}
             </h3>
             <p className="text-xs text-slate-500">
-              Боль: «{painLabel}»
-              {companies.length === 1 && ` · ${companies[0].name}`}
+              Боль: «{painLabel}»{companies.length === 1 && ` · ${companies[0].name}`}
             </p>
           </div>
           <button
@@ -168,7 +168,7 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
         </header>
 
         <div className="p-4 space-y-3">
-          {loading && <p className="text-sm text-slate-500">Загружаем шаблоны…</p>}
+          {loading && <p className="text-sm text-slate-500">Загрузка шаблонов…</p>}
 
           {!loading && templates.length === 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
@@ -261,26 +261,29 @@ export function DraftEmailPopover({ open, companies, painLabel, painKey, onClose
               <button
                 type="button"
                 onClick={copyOne}
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700"
+                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700"
               >
-                📋 Копировать текущее
+                <Copy className="h-4 w-4" aria-hidden />
+                Копировать текущее
               </button>
               {companies.length > 1 && (
                 <button
                   type="button"
                   onClick={copyAll}
-                  className="rounded-md border border-slate-900 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-slate-100"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-900 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-slate-100"
                 >
-                  📋 Копировать все {companies.length} писем
+                  <Copy className="h-4 w-4" aria-hidden />
+                  Копировать все {companies.length} писем
                 </button>
               )}
               <button
                 type="button"
                 onClick={mailto}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                 title="Откроет твой почтовик с готовым текстом (без адресата — вставишь сам)"
               >
-                ✉ Открыть в почтовике
+                <Mail className="h-4 w-4" aria-hidden />
+                Открыть в почтовике
               </button>
               <a
                 href="/app/leads/templates"

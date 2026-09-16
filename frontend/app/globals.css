@@ -24,9 +24,6 @@
   --brand-800: #065f46;
   --brand-gradient: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
 
-  /* === Акцент — ТОЛЬКО для главного CTA на экране === */
-  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-
   /* === Сигнальная шкала данных (температура/статусы) — единая === */
   --signal-hot: #ef4444; /* горячий лид / негатив / критично */
   --signal-warm: #f59e0b; /* внимание */
@@ -107,7 +104,6 @@
   --brand-300: #6ee7b7;
   --brand-800: #065f46;
   --brand-gradient: linear-gradient(135deg, #047857 0%, #065f46 100%); /* белый текст ≥ 5.5:1 */
-  --accent-gradient: var(--brand-gradient); /* был индиго→фиолетовый; решение Р3 — один акцент */
   --signal-hot: #dc2626;
   --signal-warm: #b45309;
   --signal-cool: #2563eb;

@@ -25,6 +25,7 @@ import {
   ChevronUp,
   Copy,
   Download,
+  HelpCircle,
   Loader2,
   Mail,
   MailX,
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react';
 
 import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { Button, buttonClass } from '@/components/ui/button';
 import { CardV2 } from '@/components/ui/CardV2';
 import { CompanyAvatar } from '@/components/CompanyAvatar';
 import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
@@ -268,7 +270,7 @@ export default function KpJobPage({ params }: PageProps) {
                   ? 'bg-rose-500'
                   : job.status === 'cancelled'
                     ? 'bg-amber-500'
-                    : 'bg-brand-gradient',
+                    : 'bg-brand-600',
               )}
               style={{ width: `${progressPct}%` }}
             />
@@ -1133,7 +1135,7 @@ function SendBar({
         <div className="flex flex-col gap-1 border-b border-[hsl(var(--border))] pb-3">
           <div className="text-small font-semibold text-[hsl(var(--text))]">
             {isActive
-              ? `Отправляем: ${status!.sent} из ${status!.total}…`
+              ? `Отправка: ${status!.sent} из ${status!.total}…`
               : hasAnySend
                 ? `Отправлено: ${status!.sent} · с ошибкой: ${status!.failed}${
                     status!.skipped > 0 ? ` · пропущено: ${status!.skipped}` : ''
@@ -1153,12 +1155,13 @@ function SendBar({
             </span>
             {breakdown.landlineOnly > 0 && (
               <span className="inline-flex items-center gap-1">
-                📞 {breakdown.landlineOnly} только звонок
+                <Phone className="h-3.5 w-3.5" aria-hidden /> {breakdown.landlineOnly} только звонок
               </span>
             )}
             {breakdown.noContacts > 0 && (
               <span className="inline-flex items-center gap-1 text-rose-600">
-                ❓ {breakdown.noContacts} без контактов
+                <HelpCircle className="h-3.5 w-3.5" aria-hidden /> {breakdown.noContacts} без
+                контактов
               </span>
             )}
           </div>
@@ -1336,7 +1339,7 @@ function SendBar({
             }
           >
             {callListDownloading
-              ? 'Готовлю…'
+              ? 'Подготовка…'
               : `На обзвон${callableCount > 0 ? ` (${callableCount})` : ''}`}
           </ButtonV2>
         </div>
@@ -1345,7 +1348,7 @@ function SendBar({
         {isActive && (
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
             <div
-              className="h-full bg-brand-gradient transition-all duration-500"
+              className="h-full bg-brand-600 transition-all duration-500"
               style={{
                 width:
                   status!.total > 0
@@ -1380,9 +1383,9 @@ function SendBar({
 //   - Галочка снята = company_id в excludedIds = НЕ попадёт в planOne/planAll.
 //   - Канал в пилле — режим one-per-company с учётом enabled-чекбоксов.
 //     При активных Email+WA email приоритетнее.
-//   - 'callable' (📞) = нет email/WA, но есть валидный телефон → попадёт
+//   - 'callable' (Phone) = нет email/WA, но есть валидный телефон → попадёт
 //     в xlsx «На обзвон» (если юзер скачает его).
-//   - 'none' (❓) = ни одного контакта вообще — компания не дойдёт
+//   - 'none' (HelpCircle) = ни одного контакта вообще — компания не дойдёт
 //     никому, юзер может снять галочку чтобы убрать из счётчика.
 //
 // Во время активной отправки (`isActive`) галочки disabled — нельзя
@@ -1439,22 +1442,26 @@ function RecipientsPanel({
               Снимай галочку у тех, кому слать не нужно — counter обновится.
             </span>
             <div className="flex gap-1.5">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={onIncludeAll}
                 disabled={isActive || excludedIds.size === 0}
-                className="rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                className="h-auto px-2 py-0.5 text-xs"
               >
                 Включить все
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={onExcludeAll}
                 disabled={isActive || excludedIds.size === totalCount}
-                className="rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                className="h-auto px-2 py-0.5 text-xs"
               >
                 Снять все
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -1671,7 +1678,12 @@ function RowSendButton({
         disabled
         title={SENDING_SOON_HINT}
         aria-label={SENDING_SOON_HINT}
-        className="inline-flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500 opacity-50"
+        className={buttonClass({
+          variant: 'secondary',
+          size: 'icon',
+          className:
+            'h-7 w-7 rounded-md border border-slate-200 bg-slate-50 text-slate-500 opacity-50',
+        })}
       >
         <Send className="h-3.5 w-3.5" />
       </button>
@@ -1695,16 +1707,20 @@ function RowSendButton({
       disabled={disabled}
       title={title}
       aria-label={title}
-      className={cn(
-        'inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors',
-        isSent
-          ? 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-300'
-          : isSending
-            ? 'cursor-wait border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
-            : error
-              ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-300'
-              : 'border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700/60 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30',
-      )}
+      className={buttonClass({
+        variant: 'secondary',
+        size: 'icon',
+        className: cn(
+          'h-7 w-7 rounded-md border transition-colors',
+          isSent
+            ? 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+            : isSending
+              ? 'cursor-wait border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+              : error
+                ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-300'
+                : 'border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700/60 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30',
+        ),
+      })}
     >
       {isSending ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1829,24 +1845,27 @@ function DraftDrawer({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {item.draft_id !== null && !editing && (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setEditing(true)}
                 title="Редактировать тему и тело письма"
-                className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-900/60"
+                className="h-auto px-2 py-1 text-xs"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Редактировать
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
               aria-label="Закрыть"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -1946,13 +1965,15 @@ function DraftDrawer({
                 Тема
               </label>
               {!editing && item.draft_id !== null && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setEditing(true)}
-                  className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+                  className="h-auto px-2 py-0.5 text-xs"
                 >
                   Изменить
-                </button>
+                </Button>
               )}
             </div>
             {editing ? (
@@ -1983,13 +2004,15 @@ function DraftDrawer({
                 Тело письма
               </label>
               {!editing && item.draft_id !== null && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setEditing(true)}
-                  className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+                  className="h-auto px-2 py-0.5 text-xs"
                 >
                   Изменить
-                </button>
+                </Button>
               )}
             </div>
             {editing ? (
@@ -2199,19 +2222,16 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
         {(Object.keys(CHANNEL_META) as PreviewChannel[]).map((key) => {
           const active = key === channel;
           return (
-            <button
+            <Button
               key={key}
               type="button"
+              variant={active ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => setChannel(key)}
-              className={cn(
-                'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                active
-                  ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
-                  : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
-              )}
+              className="px-3 text-xs"
             >
               {CHANNEL_META[key].label}
-            </button>
+            </Button>
           );
         })}
       </div>
