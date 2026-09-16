@@ -4,7 +4,9 @@ ARG GIT_SHA=unknown
 ARG BUILD_TIME=unknown
 # Флаг отправки писем из UI (lib/outreach.ts): NEXT_PUBLIC_* инлайнятся в бандл
 # при `next build`, поэтому значение нужно именно на сборке, а не в runtime.
-ARG NEXT_PUBLIC_OUTREACH_SENDING_ENABLED=false
+# Дефолт true (решение владельца 16.09): и Coolify, и deploy.yml собирают с
+# отправкой; выключить — явным build-arg/env NEXT_PUBLIC_OUTREACH_SENDING_ENABLED=false.
+ARG NEXT_PUBLIC_OUTREACH_SENDING_ENABLED=true
 
 FROM node:20-slim AS builder
 
