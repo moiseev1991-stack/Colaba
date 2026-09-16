@@ -7,30 +7,20 @@
  * чипами на странице и в меню профиля.
  */
 
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 
 import { MapsSearchPanel } from '@/components/maps/MapsSearchPanel';
 import { SiteLeadsPanel } from '@/components/sites/SiteLeadsPanel';
-import { PageContainer, PageHeader } from '@/components/ui/page';
 
 function LeadsPageInner() {
   const searchParams = useSearchParams();
 
   if (searchParams?.get('tab') === 'sites') {
     return (
-      <PageContainer className="max-w-[1048px]">
-        <Link href="/app/leads" className="mb-4 inline-flex items-center gap-1.5 text-small font-semibold text-ui-text-muted hover:text-ui-text">
-          <ArrowLeft className="h-4 w-4" aria-hidden /> Поиск по картам
-        </Link>
-        <PageHeader
-          title="Поиск по сайтам."
-          description="Сайты компаний из Яндекса и Google по нише и городу — или по слову на сайте («© 2021» — заброшенные сайты). На карточке — кнопка «КП»."
-        />
+      <div className="mx-auto w-full max-w-[1072px] px-4 pb-16 pt-10 sm:px-6 sm:pt-16">
         <SiteLeadsPanel />
-      </PageContainer>
+      </div>
     );
   }
 

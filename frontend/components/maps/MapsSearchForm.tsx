@@ -14,7 +14,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useIsSuperuser } from '@/lib/useIsSuperuser';
 import { ArrowRight, Check, ChevronDown, Info, Plus } from 'lucide-react';
 
@@ -30,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
+import { SearchModeSwitch } from '@/components/search/SearchModeSwitch';
 import { cn } from '@/lib/utils';
 import {
   createMapSearch,
@@ -445,7 +445,7 @@ export function MapsSearchForm({ onStarted }: Props) {
   const isReady = niche.trim().length >= 2 && sources.length > 0;
   // Под полем — три коротких примера, остальные по «ещё».
   const hintNiches = showAllPresets ? NICHE_PRESETS : NICHE_PRESETS.filter((p) => HINT_NICHES.includes(p.label));
-  const extraCount = [extraNiches, extraCities, reviewWord].filter((v) => v.trim()).length + filterSpec.conditions.length;
+  const extraCount = [extraNiches, extraCities].filter((v) => v.trim()).length + filterSpec.conditions.length;
 
   function switchMode(next: SearchModeTab) {
     setMode(next);
@@ -490,10 +490,12 @@ export function MapsSearchForm({ onStarted }: Props) {
           <b className="font-semibold text-ui-text">на что жалуются клиенты каждой компании</b> — с цитатой и контактом.
         </p>
 
+        <SearchModeSwitch active="maps" className="mt-10" />
+
         <form
           onSubmit={handleSubmit}
           aria-label="Параметры поиска"
-          className="mx-auto mt-10 max-w-[720px] rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
+          className="mx-auto mt-4 max-w-[720px] rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
         >
           <div className="grid gap-4 sm:grid-cols-[1.25fr_1fr]">
             <div className="min-w-0">
@@ -606,6 +608,30 @@ export function MapsSearchForm({ onStarted }: Props) {
                 </button>
               );
             })}
+          </div>
+
+          <div className="mt-5 border-t border-black/[.06] pt-5">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <label htmlFor="search-review-words" className="mr-1 text-xs font-semibold text-ui-text-muted">
+                Слова в отзывах — необязательно
+              </label>
+              {reviewToggle('contains', 'Содержит')}
+              {reviewToggle('excludes', 'Не содержит')}
+            </div>
+            <Input
+              id="search-review-words"
+              placeholder={reviewMode === 'contains' ? 'не дозвонился, не перезвонили, грязно' : 'реклама, спам'}
+              value={reviewWord}
+              onChange={(e) => setReviewWord(e.target.value)}
+              disabled={isLoading}
+              className="h-11"
+            />
+            <p className="mt-1.5 text-xs text-ui-text-muted">
+              Несколько слов через запятую — подходит любое.{' '}
+              {reviewMode === 'contains'
+                ? 'Останутся компании, у которых есть отзыв с одним из слов.'
+                : 'Пропадут компании, у которых хоть один отзыв содержит одно из слов.'}
+            </p>
           </div>
 
           {error && (
@@ -752,7 +778,7 @@ export function MapsSearchForm({ onStarted }: Props) {
             Тонкая настройка.
             <span className="ml-auto flex items-center gap-1.5 text-small font-medium text-ui-text-muted">
               <span className={cn(extraCount === 0 && 'hidden sm:inline')}>
-                {extraCount > 0 ? `задано: ${extraCount}` : 'режим, слова в отзывах, несколько городов'}
+                {extraCount > 0 ? `задано: ${extraCount}` : 'радиус, несколько ниш и городов, условия'}
               </span>
               <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden />
             </span>
@@ -818,27 +844,8 @@ export function MapsSearchForm({ onStarted }: Props) {
               </div>
 
               <div>
-                <label htmlFor="search-review-words" className={LABEL}>
-                  Слова в отзывах
-                </label>
-                <div className="mb-2.5 flex gap-2">
-                  {reviewToggle('contains', 'Содержит')}
-                  {reviewToggle('excludes', 'Не содержит')}
-                </div>
-                <Input
-                  id="search-review-words"
-                  placeholder={reviewMode === 'contains' ? 'не дозвонился, не перезвонили' : 'реклама, спам'}
-                  value={reviewWord}
-                  onChange={(e) => setReviewWord(e.target.value)}
-                  disabled={isLoading}
-                  className="h-11"
-                />
-                <p className="mt-1.5 text-xs text-ui-text-muted">
-                  Несколько слов через запятую — подходит любое.{' '}
-                  {reviewMode === 'contains'
-                    ? 'Останутся компании, у которых есть отзыв с одним из слов.'
-                    : 'Пропадут компании, у которых хоть один отзыв содержит одно из слов.'}
-                </p>
+                <span className={LABEL}>Несколько условий по отзывам</span>
+                <p className="text-xs text-ui-text-muted">Когда одного списка слов мало — например, «содержит «запись» и не содержит «рекомендую»».</p>
                 <button
                   type="button"
                   onClick={() => setAdvancedOpen(!advancedOpen)}
@@ -846,7 +853,7 @@ export function MapsSearchForm({ onStarted }: Props) {
                   className="mt-3 inline-flex items-center gap-1 text-small font-semibold text-ui-accent hover:underline"
                 >
                   <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', advancedOpen && 'rotate-180')} aria-hidden />
-                  Несколько условий
+                  {advancedOpen ? 'Скрыть условия' : 'Задать условия'}
                 </button>
                 {advancedOpen && (
                   <div className="mt-3 rounded-card bg-ui-surface-2 p-4">
@@ -869,12 +876,6 @@ export function MapsSearchForm({ onStarted }: Props) {
                 <b className="font-semibold text-ui-text">Фильтры по рейтингу, сайту, ЛПР и болям</b> — на странице результатов:
                 применяются к найденным компаниям сразу, без нового поиска.
               </span>
-            </p>
-            <p className="text-small text-ui-text-muted">
-              Нужны компании по вхождению слов на сайтах, а не по картам?{' '}
-              <Link href="/app/leads?tab=sites" className="font-semibold text-ui-accent hover:underline">
-                Поиск по сайтам →
-              </Link>
             </p>
           </div>
         </details>
