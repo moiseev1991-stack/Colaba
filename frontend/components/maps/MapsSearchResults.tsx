@@ -18,8 +18,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Brain,
+  Check,
   ChevronDown,
-  Filter,
   Download,
   List,
   Map as MapIcon,
@@ -36,12 +36,14 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { Select } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { AddToListModal } from '@/components/maps/AddToListModal';
 import { storeBulkKpPending } from '@/lib/kp-bulk-pending';
 import { KpModal } from '@/components/maps/KpModal';
 import { MapsCompanyCard } from '@/components/maps/MapsCompanyCard';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { MapsFiltersPanel } from '@/components/maps/MapsFiltersPanel';
+import { MonthlySourceBars } from '@/components/maps/MonthlySourceBars';
 import { NicheBenchmarkOverviewBlock } from '@/components/maps/NicheBenchmarkOverviewBlock';
 import { useSearchStream } from '@/components/maps/useSearchStream';
 import {
@@ -1382,48 +1384,58 @@ export function MapsSearchResults({
                 </div>
               </div>
             )}
-            {regionPainTags.length > 0 && (
-              <RegionPainSummary
-                tags={regionPainTags}
+            <div className="mt-5 flex flex-col gap-6 lg:flex-row">
+              <div className="min-w-0 space-y-5 lg:flex-[1.15]">
+                {regionPainTags.length > 0 && (
+                  <RegionPainSummary
+                    tags={regionPainTags}
+                    sentiment={painSentiment}
+                    niche={search.niche}
+                    city={search.city}
+                    activeIds={filter.pain_tag_ids ?? []}
+                    onToggle={(tagId) => {
+                      const current = filter.pain_tag_ids ?? [];
+                      const next = current.includes(tagId)
+                        ? current.filter((x) => x !== tagId)
+                        : [...current, tagId];
+                      handleFilterChange({
+                        ...filter,
+                        pain_tag_ids: next.length > 0 ? next : null,
+                      });
+                      // Открываем/закрываем график на том же клике.
+                      const tag = regionPainTags.find((t) => t.id === tagId) ?? null;
+                      setPainTagForChart((prev) => (prev?.id === tagId ? null : tag));
+                    }}
+                    onClear={() => {
+                      handleFilterChange({ ...filter, pain_tag_ids: null });
+                      setPainTagForChart(null);
+                    }}
+                  />
+                )}
+                <RegionPainTrendInline
+                  tag={painTagForChart}
+                  trend={painTagForChart ? painTrend : reviewsTrend}
+                  loading={painTagForChart ? painTrendLoading : reviewsTrendLoading}
+                  headline="Динамика отзывов в нише"
+                  onClose={painTagForChart ? () => setPainTagForChart(null) : undefined}
+                />
+              </div>
+              {/* Если сравнения нет (мало компаний), левая колонка занимает всю ширину. */}
+              <NicheBenchmarkOverviewBlock
+                className="min-w-0 lg:flex-1"
                 niche={search.niche}
                 city={search.city}
-                activeIds={filter.pain_tag_ids ?? []}
-                onToggle={(tagId) => {
+                activePainTagIds={filter.pain_tag_ids ?? []}
+                sentiment={painSentiment}
+                onPainClick={(tagId) => {
                   const current = filter.pain_tag_ids ?? [];
                   const next = current.includes(tagId)
                     ? current.filter((x) => x !== tagId)
                     : [...current, tagId];
                   handleFilterChange({ ...filter, pain_tag_ids: next.length > 0 ? next : null });
-                  // Открываем/закрываем график на том же клике.
-                  const tag = regionPainTags.find((t) => t.id === tagId) ?? null;
-                  setPainTagForChart((prev) => (prev?.id === tagId ? null : tag));
-                }}
-                onClear={() => {
-                  handleFilterChange({ ...filter, pain_tag_ids: null });
-                  setPainTagForChart(null);
                 }}
               />
-            )}
-            <RegionPainTrendInline
-              tag={painTagForChart}
-              trend={painTagForChart ? painTrend : reviewsTrend}
-              loading={painTagForChart ? painTrendLoading : reviewsTrendLoading}
-              headline="Динамика отзывов в нише"
-              onClose={painTagForChart ? () => setPainTagForChart(null) : undefined}
-            />
-            <NicheBenchmarkOverviewBlock
-              niche={search.niche}
-              city={search.city}
-              activePainTagIds={filter.pain_tag_ids ?? []}
-              sentiment={painSentiment}
-              onPainClick={(tagId) => {
-                const current = filter.pain_tag_ids ?? [];
-                const next = current.includes(tagId)
-                  ? current.filter((x) => x !== tagId)
-                  : [...current, tagId];
-                handleFilterChange({ ...filter, pain_tag_ids: next.length > 0 ? next : null });
-              }}
-            />
+            </div>
           </div>
         )}
       </details>
@@ -2047,6 +2059,7 @@ function RegionPainSummary({
   tags,
   niche,
   city,
+  sentiment,
   activeIds,
   onToggle,
   onClear,
@@ -2054,6 +2067,8 @@ function RegionPainSummary({
   tags: PainTagOut[];
   niche: string;
   city: string | null;
+  /** Боли или сильные стороны — от этого подписи и цвет выбранных плиток. */
+  sentiment: 'negative' | 'positive';
   /** Текущий фильтр pain_tag_ids — для подсветки активных плиток. */
   activeIds: number[];
   /** Клик по плитке: toggle id в фильтре списка компаний. */
@@ -2071,105 +2086,90 @@ function RegionPainSummary({
     seen.add(key);
     return true;
   });
-  // 2026-07-11: показываем до 8 плиток (было 6), плюс раскрывашка если
-  // в нише больше 8 болей. Юзер хотел «больше выбора» + чёткое multi-select.
+  // 2026-07-11: до 8 плиток плюс раскрывашка, выбирать можно несколько.
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? unique : unique.slice(0, 8);
-  const hasActive = activeIds.length > 0;
   const activeCount = activeIds.length;
+  const positive = sentiment === 'positive';
   if (visible.length === 0) return null;
 
   return (
-    <div className="mt-2 flex overflow-hidden rounded border border-ui-border bg-ui-surface">
-      <div aria-hidden className="w-1 shrink-0 bg-signal-hot" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
-          <span>
-            Топ-боли ниши — можно выбирать несколько плиток
-            {activeCount > 0 && (
-              <span className="ml-1.5 rounded-full bg-[var(--signal-hot-bg)] px-1.5 py-0.5 text-xs normal-case text-signal-hot">
-                выбрано {activeCount}
-              </span>
-            )}
-          </span>
-          <span className="rounded-sm border border-ui-border bg-ui-surface-2 px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-ui-text-muted">
-            {niche}
-            {city ? ` · ${city}` : ''}
-          </span>
-          {hasActive && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="ml-auto rounded border border-ui-border px-1.5 py-0.5 text-xs font-medium normal-case tracking-normal text-ui-text-muted hover:bg-ui-surface-2"
-            >
-              × снять {activeCount > 1 ? `все ${activeCount}` : 'фильтр'}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {visible.map((t) => {
-            const active = activeIds.includes(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onToggle(t.id)}
-                title={
-                  active
-                    ? 'Клик ещё раз — снять фильтр по этой боли'
-                    : (t.description ?? 'Показать только компании с этой болью')
-                }
-                className={
-                  'group inline-flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[color:var(--signal-hot)] focus:ring-offset-1 ' +
-                  (active
-                    ? 'border-signal-hot bg-[var(--signal-hot-bg)] text-signal-hot ring-1 ring-signal-hot'
-                    : 'border-ui-border bg-ui-surface text-ui-text hover:border-signal-hot hover:bg-[var(--signal-hot-bg)]')
-                }
-              >
-                <Filter
-                  className={
-                    'h-3 w-3 shrink-0 transition-colors ' +
-                    (active ? 'text-signal-hot' : 'text-ui-text-muted group-hover:text-signal-hot')
-                  }
-                  aria-hidden
-                />
-                <span className="leading-tight">{t.label}</span>
-                <span
-                  className={
-                    'rounded-sm px-1 text-xs tabular-nums ' +
-                    (active
-                      ? 'bg-[var(--signal-hot-bg)] text-signal-hot'
-                      : 'bg-ui-surface-2 text-ui-text-muted')
-                  }
-                >
-                  {t.occurrences_count}
-                </span>
-              </button>
-            );
-          })}
-          {unique.length > 8 && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center rounded border border-dashed border-ui-border bg-ui-surface px-2 py-1 text-xs font-medium text-ui-text-muted hover:text-ui-text"
-              title={
-                expanded ? 'Скрыть, оставить топ-8' : `Показать ещё ${unique.length - 8} плиток`
-              }
-            >
-              {expanded ? '× свернуть' : `+ ещё ${unique.length - 8}`}
-            </button>
-          )}
-        </div>
+    <section aria-label={positive ? 'За что хвалят' : 'Частые жалобы'}>
+      <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="text-sm font-bold text-ui-text">
+          {positive ? 'За что хвалят' : 'Частые жалобы'}
+        </h3>
+        <span className="text-small text-ui-text-muted">
+          {niche}
+          {city ? ` · ${city}` : ''} · нажмите одну или несколько — список ниже отфильтруется
+        </span>
+        {activeCount > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-auto inline-flex items-center gap-1 text-small font-semibold text-ui-text-muted hover:text-ui-text"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Снять выбор{activeCount > 1 ? ` (${activeCount})` : ''}
+          </button>
+        )}
       </div>
-    </div>
+      <div className="flex flex-wrap gap-2">
+        {visible.map((t) => {
+          const active = activeIds.includes(t.id);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onToggle(t.id)}
+              title={
+                active
+                  ? 'Нажмите ещё раз, чтобы снять фильтр'
+                  : (t.description ?? 'Показать только компании с этой темой')
+              }
+              className={cn(
+                'inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-small font-semibold transition-colors',
+                active
+                  ? positive
+                    ? 'bg-ui-success/10 text-ui-success ring-1 ring-inset ring-ui-success/40'
+                    : 'bg-ui-danger/10 text-ui-danger ring-1 ring-inset ring-ui-danger/40'
+                  : positive
+                    ? 'bg-ui-surface-2 text-ui-text hover:bg-ui-success/[.08]'
+                    : 'bg-ui-surface-2 text-ui-text hover:bg-ui-danger/[.06]',
+              )}
+            >
+              {active && <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+              <span className="leading-tight">{t.label}</span>
+              <span
+                className={cn(
+                  'font-medium tabular-nums',
+                  active ? 'opacity-80' : 'text-ui-text-muted',
+                )}
+              >
+                {t.occurrences_count}
+              </span>
+            </button>
+          );
+        })}
+        {unique.length > 8 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-small font-semibold text-ui-accent hover:bg-ui-accent/[.06]"
+          >
+            {expanded ? 'Свернуть' : `Ещё ${unique.length - 8}`}
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 
 /**
- * 2026-06-16: компактная полоса с переключателями «Источник / Период».
- * Вынесена из блока «ТОП-БОЛИ», чтобы оставаться видимой даже когда
- * для выбранного среза нет pain-тегов (раньше тогглы исчезали вместе
- * с блоком, и юзер не мог переключиться обратно).
+ * 2026-06-16: переключатели «Тип / Источник / Период» — отдельной строкой, чтобы
+ * оставаться видимыми, даже когда для выбранного среза нет тем (иначе нельзя
+ * переключиться обратно).
  */
 function PainHeaderControlsBar({
   sourceFilter,
@@ -2186,111 +2186,69 @@ function PainHeaderControlsBar({
   sentiment: 'negative' | 'positive';
   onSentimentChange: (next: 'negative' | 'positive') => void;
 }) {
+  // Segmented работает со строками: null («все», «всё время») кодируем как 'all'.
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-ui-border bg-ui-surface px-3 py-1.5 text-xs">
-      <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
-        Тип:
-      </span>
-      <div className="inline-flex overflow-hidden rounded border border-ui-border">
-        {[
-          { v: 'negative' as const, label: 'Боли' },
-          { v: 'positive' as const, label: 'Сильные стороны' },
-        ].map(({ v, label }) => {
-          const active = sentiment === v;
-          // 2026-06-19: семантический цвет тогглов всегда, не только в
-          // active-состоянии. Юзер: «Боли» должны быть красноватые,
-          // «Сильные стороны» — зелёные — чтобы по цвету было сразу
-          // видно, какой срез сейчас доступен.
-          const cls = active
-            ? v === 'positive'
-              ? 'bg-signal-good text-white'
-              : 'bg-signal-hot text-white'
-            : v === 'positive'
-              ? 'bg-[var(--signal-good-bg)] text-signal-good hover:opacity-80'
-              : 'bg-[var(--signal-hot-bg)] text-signal-hot hover:opacity-80';
-          return (
-            <button
-              key={v}
-              type="button"
-              onClick={() => onSentimentChange(v)}
-              className={
-                'border-l px-2 py-0.5 font-medium first:border-l-0 ' + cls + ' border-ui-border'
-              }
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-      <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
-        Источник:
-      </span>
-      <div className="inline-flex overflow-hidden rounded border border-ui-border">
-        {[
-          { v: null, label: 'Все' },
-          { v: '2gis' as const, label: '2GIS' },
-          { v: 'yandex_maps' as const, label: 'Я.Карты' },
-          { v: 'google' as const, label: 'Google' },
-        ].map(({ v, label }) => {
-          const active = sourceFilter === v;
-          return (
-            <button
-              key={String(v)}
-              type="button"
-              onClick={() => onSourceFilterChange(v)}
-              className={
-                'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
-                (active
-                  ? 'bg-ui-accent text-white'
-                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2') +
-                ' border-ui-border'
-              }
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-      <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
-        Период:
-      </span>
-      <div className="inline-flex overflow-hidden rounded border border-ui-border">
-        {[
-          { v: 30, label: '30д' },
-          { v: 90, label: '90д' },
-          { v: 365, label: 'год' },
-          { v: null, label: 'всё' },
-        ].map(({ v, label }) => {
-          const active = periodDays === v;
-          return (
-            <button
-              key={String(v)}
-              type="button"
-              onClick={() => onPeriodChange(v)}
-              className={
-                'border-l px-2 py-0.5 font-medium first:border-l-0 ' +
-                (active
-                  ? 'bg-ui-accent text-white'
-                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2') +
-                ' border-ui-border'
-              }
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Segmented<'negative' | 'positive'>
+        aria-label="Что показать"
+        size="sm"
+        value={sentiment}
+        onChange={onSentimentChange}
+        options={[
+          // 2026-06-19: «Боли» — красноватые, «Сильные стороны» — зелёные, сразу видно срез.
+          {
+            value: 'negative',
+            label: (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-ui-danger" aria-hidden />
+                Жалобы
+              </>
+            ),
+          },
+          {
+            value: 'positive',
+            label: (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-ui-success" aria-hidden />
+                Сильные стороны
+              </>
+            ),
+          },
+        ]}
+      />
+      <Segmented<'all' | '2gis' | 'yandex_maps' | 'google'>
+        aria-label="Источник отзывов"
+        size="sm"
+        value={sourceFilter ?? 'all'}
+        onChange={(v) => onSourceFilterChange(v === 'all' ? null : v)}
+        options={[
+          { value: 'all', label: 'Все' },
+          { value: '2gis', label: '2GIS' },
+          { value: 'yandex_maps', label: 'Я.Карты' },
+          { value: 'google', label: 'Google' },
+        ]}
+      />
+      <Segmented<string>
+        aria-label="Период отзывов"
+        size="sm"
+        value={periodDays == null ? 'all' : String(periodDays)}
+        onChange={(v) => onPeriodChange(v === 'all' ? null : Number(v))}
+        options={[
+          { value: '30', label: '30 дней' },
+          { value: '90', label: '90 дней' },
+          { value: '365', label: 'Год' },
+          { value: 'all', label: 'Всё время' },
+        ]}
+      />
     </div>
   );
 }
 
 /**
- * Inline-блок с барчартом динамики отзывов (по источникам).
- * Два режима:
- *   - tag != null: динамика конкретной боли (по клику на pain-плитку).
- *   - tag == null: общая динамика всех отзывов в нише+городе (всегда видна
- *     в шапке выдачи по запросу юзера 2026-06-12).
- * Источник данных — /maps/insights/pain-trend или /maps/insights/reviews-trend.
+ * Барчарт динамики отзывов по месяцам и источникам. Два режима:
+ *   - tag != null: динамика выбранной темы (клик по плитке);
+ *   - tag == null: все отзывы ниши и города (видно всегда, запрос юзера 2026-06-12).
+ * Данные — /maps/insights/pain-trend или /maps/insights/reviews-trend.
  */
 function RegionPainTrendInline({
   tag,
@@ -2306,168 +2264,47 @@ function RegionPainTrendInline({
   /** Подпись блока. По умолчанию «Динамика по месяцам». */
   headline?: string;
 }) {
-  const sourceColor: Record<string, string> = {
-    '2gis': '#0ea5e9',
-    yandex_maps: '#f43f5e',
-    google: '#a855f7',
-  };
-  const sourceShortLabel: Record<string, string> = {
-    '2gis': '2GIS',
-    yandex_maps: 'Я.Карты',
-    google: 'Google',
-  };
-
-  // Группировка по месяцу × источнику.
-  const byMonth = new Map<string, Record<string, number>>();
-  for (const p of trend?.points ?? []) {
-    const row = byMonth.get(p.month) ?? {};
-    row[p.source] = (row[p.source] ?? 0) + p.count;
-    byMonth.set(p.month, row);
-  }
-  const months = Array.from(byMonth.keys()).sort();
-  const allSources = Array.from(new Set((trend?.points ?? []).map((p) => p.source)));
-  const maxCount = Math.max(1, ...(trend?.points ?? []).map((p) => p.count));
-
-  const W = 720;
-  const H = 100;
-  const PAD = { top: 8, right: 8, bottom: 18, left: 22 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-  const groupWidth = months.length > 0 ? innerW / months.length : innerW;
-  const barWidth = Math.max(2, Math.min(24, (groupWidth - 4) / Math.max(1, allSources.length)));
+  const points = trend?.points ?? [];
 
   return (
-    <div className="mt-1.5 flex overflow-hidden rounded border border-ui-border bg-ui-surface">
-      <div aria-hidden className={cn('w-1 shrink-0', tag ? 'bg-signal-hot' : 'bg-ui-border')} />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 px-2.5 py-1.5">
-        <div className="flex flex-wrap items-baseline gap-2 text-xs">
-          <span className="font-semibold uppercase tracking-wider text-ui-text-muted">
-            {headline ?? 'Динамика по месяцам'}
+    <section aria-label={headline ?? 'Динамика по месяцам'}>
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="text-sm font-bold text-ui-text">
+          {tag ? `Динамика: ${tag.label}` : (headline ?? 'Динамика по месяцам')}
+        </h3>
+        {trend && (
+          <span className="text-small tabular-nums text-ui-text-muted">
+            {trend.total_reviews} {plural(trend.total_reviews, 'отзыв', 'отзыва', 'отзывов')} ·{' '}
+            {trend.companies_affected}{' '}
+            {plural(trend.companies_affected, 'компания', 'компании', 'компаний')}
           </span>
-          {tag && (
-            <span className="rounded-sm border border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] px-1.5 py-0.5 text-xs font-medium text-signal-hot">
-              {tag.label}
-            </span>
-          )}
-          {trend && (
-            <span className="text-ui-text-muted tabular-nums">
-              {trend.total_reviews} отз. · {trend.companies_affected} комп.
-            </span>
-          )}
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="ml-auto rounded border border-ui-border px-1.5 py-0.5 text-xs font-medium text-ui-text-muted hover:bg-ui-surface-2"
-            >
-              × закрыть
-            </button>
-          )}
-        </div>
-        {loading && !trend ? (
-          <div className="text-xs text-ui-text-muted">Загрузка динамики…</div>
-        ) : months.length === 0 ? (
-          <div className="text-xs text-ui-text-muted">
-            Нет отзывов с датами в выбранном окне — попробуй расширить период.
-          </div>
-        ) : (
-          <>
-            <svg
-              width="100%"
-              viewBox={`0 0 ${W} ${H}`}
-              preserveAspectRatio="none"
-              className="block"
-              role="img"
-              aria-label={
-                tag ? `Динамика «${tag.label}» по месяцам` : 'Динамика всех отзывов по месяцам'
-              }
-            >
-              <line
-                x1={PAD.left}
-                y1={PAD.top + innerH}
-                x2={PAD.left + innerW}
-                y2={PAD.top + innerH}
-                stroke="currentColor"
-                className="text-ui-border"
-                strokeWidth={1}
-              />
-              <text
-                x={PAD.left - 4}
-                y={PAD.top + 4}
-                textAnchor="end"
-                fontSize={9}
-                className="fill-ui-text-muted tabular-nums"
-              >
-                {maxCount}
-              </text>
-              <text
-                x={PAD.left - 4}
-                y={PAD.top + innerH}
-                textAnchor="end"
-                fontSize={9}
-                className="fill-ui-text-muted tabular-nums"
-              >
-                0
-              </text>
-              {months.map((m, mi) => {
-                const groupX = PAD.left + mi * groupWidth + 2;
-                const monthRow = byMonth.get(m) ?? {};
-                return (
-                  <g key={m}>
-                    {allSources.map((src, si) => {
-                      const count = monthRow[src] ?? 0;
-                      const h = (count / maxCount) * innerH;
-                      const x = groupX + si * barWidth;
-                      const y = PAD.top + innerH - h;
-                      return (
-                        <rect
-                          key={src}
-                          x={x}
-                          y={y}
-                          width={Math.max(1, barWidth - 1)}
-                          height={Math.max(0, h)}
-                          fill={sourceColor[src] ?? '#94a3b8'}
-                          opacity={0.9}
-                        >
-                          <title>
-                            {m} · {sourceShortLabel[src] ?? src} · {count}
-                          </title>
-                        </rect>
-                      );
-                    })}
-                    {(mi === 0 ||
-                      mi === months.length - 1 ||
-                      mi % Math.ceil(months.length / 8) === 0) && (
-                      <text
-                        x={groupX + (allSources.length * barWidth) / 2}
-                        y={PAD.top + innerH + 12}
-                        textAnchor="middle"
-                        fontSize={9}
-                        className="fill-ui-text-muted tabular-nums"
-                      >
-                        {m.slice(2)}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
-              {allSources.map((src) => (
-                <span key={src} className="inline-flex items-center gap-1">
-                  <span
-                    aria-hidden
-                    className="inline-block h-2 w-2 rounded-sm"
-                    style={{ background: sourceColor[src] ?? '#94a3b8' }}
-                  />
-                  {sourceShortLabel[src] ?? src}
-                </span>
-              ))}
-            </div>
-          </>
+        )}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto inline-flex items-center gap-1 text-small font-semibold text-ui-text-muted hover:text-ui-text"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Вся ниша
+          </button>
         )}
       </div>
-    </div>
+      {loading && !trend ? (
+        <Skeleton className="h-24" rounded="md" />
+      ) : points.length === 0 ? (
+        <p className="rounded-card bg-ui-surface-2 px-3 py-2.5 text-small text-ui-text-muted">
+          Нет отзывов с датами за выбранный период — выберите период длиннее.
+        </p>
+      ) : (
+        <MonthlySourceBars
+          points={points}
+          ariaLabel={
+            tag ? `Динамика «${tag.label}» по месяцам` : 'Динамика всех отзывов по месяцам'
+          }
+        />
+      )}
+    </section>
   );
 }
 

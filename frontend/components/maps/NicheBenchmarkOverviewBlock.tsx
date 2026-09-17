@@ -1,31 +1,31 @@
 'use client';
 
 /**
- * Шапка-блок «Сравнение с нишей» поверх списка компаний.
- * В отличие от drawer-версии PainBenchmarkBlock — без привязки к конкретной
- * компании. Показывает топ-болей ниши+города с метриками:
- *   - companies_affected — у скольки компаний эта боль упоминается
- *   - share_of_companies — доля
- *   - niche_avg_per_company — среднее упоминаний на компанию
- *
- * Бар-шкала строится по share_of_companies (0..100%).
- * Скрывается при выборке <5 компаний или пустом items.
+ * «Сравнение с нишей» в сводке над выдачей (вид Premium, 17.09).
+ * В отличие от PainBenchmarkBlock в карточке — без привязки к компании: топ тем
+ * ниши и города с метриками:
+ *   - companies_affected — у скольких компаний тема упоминается;
+ *   - share_of_companies — доля (по ней строится полоса, 0..100%);
+ *   - niche_avg_per_company — среднее упоминаний на компанию.
+ * Скрывается при малой выборке или пустом списке.
  */
 
 import { useEffect, useState } from 'react';
 import { isUnnamedPainLabel } from '@/lib/painLabels';
 
+import { cn } from '@/lib/utils';
 import { getDemandIndex, type DemandIndexOut } from '@/src/services/api/maps';
 
 interface Props {
   niche: string;
   city: string | null;
-  /** Опциональный клик по строке — фильтрует список компаний по pain_tag_id. */
+  /** Клик по строке — фильтрует список компаний по pain_tag_id. */
   onPainClick?: (painTagId: number) => void;
   /** Текущие активные pain_tag_ids — для подсветки строк. */
   activePainTagIds?: number[];
-  /** 2026-06-16: 'negative' (default) = боли клиентов; 'positive' = сильные стороны. */
+  /** 2026-06-16: 'negative' (по умолчанию) — жалобы; 'positive' — сильные стороны. */
   sentiment?: 'negative' | 'positive';
+  className?: string;
 }
 
 export function NicheBenchmarkOverviewBlock({
@@ -34,6 +34,7 @@ export function NicheBenchmarkOverviewBlock({
   onPainClick,
   activePainTagIds,
   sentiment = 'negative',
+  className,
 }: Props) {
   const [data, setData] = useState<DemandIndexOut | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,98 +63,94 @@ export function NicheBenchmarkOverviewBlock({
     !Array.isArray(data.items) ||
     data.items.length === 0 ||
     data.note === 'small_sample'
-  ) return null;
+  )
+    return null;
 
-  const cityLabel = data.city ? ` · ${data.city}` : '';
   const top = data.items.filter((it) => !isUnnamedPainLabel(it.label)).slice(0, 6);
   const active = new Set(activePainTagIds ?? []);
   const companiesTotal = data.companies_total ?? 0;
+  const positive = sentiment === 'positive';
 
   return (
-    <div className="mt-2 rounded border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900">
-      <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          {sentiment === 'positive'
-            ? 'Сравнение с нишей · сильные стороны'
-            : 'Сравнение с нишей · боли'}
-        </span>
-        <span className="rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-          {data.niche}{cityLabel}
-        </span>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          выборка: {data.companies_total} компаний
+    <section aria-label="Сравнение с нишей" className={className}>
+      <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="text-sm font-bold text-ui-text">Сравнение с нишей</h3>
+        <span className="text-small text-ui-text-muted">
+          доля компаний, у которых {positive ? 'хвалят' : 'жалуются'} · выборка {companiesTotal}
         </span>
       </div>
 
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {top.map((it) => {
           const share = typeof it.share_of_companies === 'number' ? it.share_of_companies : 0;
-          const avgPerCompany = typeof it.niche_avg_per_company === 'number'
-            ? it.niche_avg_per_company
-            : 0;
+          const avgPerCompany =
+            typeof it.niche_avg_per_company === 'number' ? it.niche_avg_per_company : 0;
           const affected = typeof it.companies_affected === 'number' ? it.companies_affected : 0;
           const sharePct = Math.round(share * 100);
-          const widthPct = Math.min(100, Math.max(6, sharePct));
+          const widthPct = Math.min(100, Math.max(4, sharePct));
           const isActive = active.has(it.pain_tag_id);
-          const clickable = !!onPainClick;
           const row = (
             <>
-              <span className="min-w-0 flex-[2] truncate text-xs text-slate-800 dark:text-slate-100">
+              <span className="min-w-0 truncate text-small font-medium text-ui-text">
                 {it.label}
               </span>
-              <div className="flex flex-[3] items-center gap-1.5">
-                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className={
-                      'h-full transition-[width] duration-500 ' +
-                      (isActive ? 'bg-rose-600' : 'bg-rose-500')
-                    }
+              <span className="flex items-center gap-2">
+                <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-ui-surface-2">
+                  <span
+                    className={cn(
+                      'block h-full rounded-full transition-[width] duration-300',
+                      positive ? 'bg-ui-success' : 'bg-ui-danger',
+                      !isActive && 'opacity-70',
+                    )}
                     style={{ width: `${widthPct}%` }}
                   />
-                </div>
-                <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                </span>
+                <span className="w-9 shrink-0 text-right text-small font-semibold tabular-nums text-ui-text">
                   {sharePct}%
                 </span>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                {affected}/{companiesTotal} комп.
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                ср. {avgPerCompany.toFixed(1)}
+              <span
+                className="hidden whitespace-nowrap text-right text-xs tabular-nums text-ui-text-muted sm:block"
+                title="Компаний с темой из выборки · среднее упоминаний на компанию"
+              >
+                {affected}/{companiesTotal} · ср. {avgPerCompany.toFixed(1)}
               </span>
             </>
           );
-          return clickable ? (
+          const grid =
+            'grid w-full grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-center gap-3 rounded-control px-2 py-1.5 text-left sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto]';
+          return onPainClick ? (
             <li key={it.pain_tag_id}>
               <button
                 type="button"
-                onClick={() => onPainClick!(it.pain_tag_id)}
-                title={it.description ?? `Показать только компании с болью «${it.label}»`}
-                className={
-                  'flex w-full items-center gap-2 rounded px-1 py-0.5 text-left transition-colors ' +
-                  (isActive
-                    ? 'bg-rose-50/70 dark:bg-rose-900/20'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/60')
-                }
+                aria-pressed={isActive}
+                onClick={() => onPainClick(it.pain_tag_id)}
+                title={it.description ?? `Показать только компании с темой «${it.label}»`}
+                className={cn(
+                  grid,
+                  'transition-colors',
+                  isActive
+                    ? positive
+                      ? 'bg-ui-success/[.08]'
+                      : 'bg-ui-danger/[.06]'
+                    : 'hover:bg-ui-surface-2',
+                )}
               >
                 {row}
               </button>
             </li>
           ) : (
-            <li
-              key={it.pain_tag_id}
-              className="flex items-center gap-2 px-1 py-0.5"
-              title={it.description ?? it.label}
-            >
+            <li key={it.pain_tag_id} className={grid} title={it.description ?? it.label}>
               {row}
             </li>
           );
         })}
       </ul>
 
-      <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-        Бар = доля компаний ниши, у которых эта боль упоминается. Среднее — упоминаний на компанию.
-      </div>
-    </div>
+      <p className="mt-2 px-2 text-xs text-ui-text-muted">
+        Полоса — доля компаний ниши с этой темой; справа — сколько компаний и среднее упоминаний на
+        компанию.
+      </p>
+    </section>
   );
 }
