@@ -1,6 +1,12 @@
+import { SuperuserGate } from '@/components/SuperuserGate';
 import { SendingGate } from '@/components/outreach/SendingGate';
 
-// Каналы рассылки нужны только для отправки из SpinLid, а она временно недоступна (lib/outreach.ts).
+// Каналы рассылки — конфигурация инстанса (17.09): только суперюзеру.
+// SendingGate дополнительно прячет, если отправка выключена флагом.
 export default function ChannelsLayout({ children }: { children: React.ReactNode }) {
-  return <SendingGate>{children}</SendingGate>;
+  return (
+    <SuperuserGate>
+      <SendingGate>{children}</SendingGate>
+    </SuperuserGate>
+  );
 }

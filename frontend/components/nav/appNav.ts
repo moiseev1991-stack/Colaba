@@ -62,13 +62,6 @@ const SETTINGS_SECTION: NavSection = {
     { href: '/app/settings/profile', label: 'Профиль', icon: User },
     { href: '/app/leads/settings', label: 'Параметры поиска', icon: Settings },
     { href: '/app/leads/blacklist', label: 'Блеклист', icon: Ban },
-    {
-      href: '/app/settings/email-providers',
-      label: 'Провайдеры email',
-      icon: Mail,
-      requiresSending: true,
-    },
-    { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send, requiresSending: true },
     { href: '/payment', label: 'Оплата', icon: CreditCard },
   ],
 };
@@ -77,6 +70,8 @@ const SETTINGS_SECTION: NavSection = {
  * Только суперюзеру: служебные разделы, мониторинг и инфраструктура
  * (UX-аудит 16.09: обычному бета-юзеру «Request Monitor» и «Провайдеры
  * карт» — шум и риск, «Дашборд» — старый интерфейс).
+ * 17.09: сюда же «Провайдеры email» и «Каналы рассылки» — это конфигурация
+ * инстанса, а не юзера (включение флага отправки открыло их всем).
  */
 const ADMIN_SECTION: NavSection = {
   title: 'Админ',
@@ -95,6 +90,13 @@ const ADMIN_SECTION: NavSection = {
       icon: Settings2,
       requiresSending: true,
     },
+    {
+      href: '/app/settings/email-providers',
+      label: 'Провайдеры email',
+      icon: Mail,
+      requiresSending: true,
+    },
+    { href: '/app/settings/channels', label: 'Каналы рассылки', icon: Send, requiresSending: true },
   ],
 };
 
