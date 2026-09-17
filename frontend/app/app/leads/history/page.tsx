@@ -33,6 +33,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { listMyMapSearches, type MapSearchOut } from '@/src/services/api/maps';
 import { formatMapSources } from '@/lib/mapSources';
 import { deleteSearch, listSearches, type SearchResponse } from '@/src/services/api/search';
+import { describeCondition, providerLabel, searchConditions } from '@/lib/siteSearchLabels';
 import {
   listKpDrafts,
   listKpJobs,
@@ -335,7 +336,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
   if (runs.length === 0) {
     return (
       <CardV2 className="px-6 py-12 text-center text-sm text-[hsl(var(--muted))]">
-        Поисков по сайтам ещё нет — запусти первый через провайдер.
+        Поисков сайтов ещё нет — запустите первый: «Поиск» → «Сайты».
       </CardV2>
     );
   }
@@ -367,9 +368,15 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   {r.query}
                 </div>
                 <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
-                  {formatDateTime(r.created_at)} · {r.search_provider} · {r.result_count ?? 0}{' '}
-                  {(r.result_count ?? 0) === 1 ? 'лид' : 'лидов'}
+                  {formatDateTime(r.created_at)} · {providerLabel(r.search_provider)} ·{' '}
+                  {r.result_count ?? 0}{' '}
+                  {pluralRu(r.result_count ?? 0, [
+                    'результат выдачи',
+                    'результата выдачи',
+                    'результатов выдачи',
+                  ])}
                 </div>
+                <SiteRunConditions config={r.config} />
               </div>
               <SignalPill tone={statusTone(r.status)} size="sm">
                 {statusLabel(r.status)}
@@ -378,7 +385,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 <button
                   type="button"
                   onClick={() => router.push(`/app/leads?tab=sites&search_id=${r.id}`)}
-                  className="hidden min-h-9 items-center gap-1 px-2 text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                  className="hidden min-h-9 items-center gap-1 px-2 text-small font-semibold text-ui-accent hover:underline sm:inline-flex"
                 >
                   <Eye className="h-4 w-4" />
                   Открыть
@@ -393,10 +400,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                     <MoreVertical className="h-4 w-4" />
                   </button>
                   {openMenuId === r.id && (
-                    <div
-                      className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-v2 border bg-[hsl(var(--surface))] py-1 shadow-v2"
-                      style={{ borderColor: 'hsl(var(--border))' }}
-                    >
+                    <div className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-card border border-ui-border bg-ui-surface py-1 shadow-floating">
                       {r.status === 'completed' && (
                         <a
                           href={`/api/v1/searches/${r.id}/results/export/csv`}
@@ -453,6 +457,21 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
         </div>
       </CardV2>
     </>
+  );
+}
+
+/** Условия запуска одной строкой: «текст страниц содержит «фундамент» и есть телефон». */
+function SiteRunConditions({ config }: { config: SearchResponse['config'] }) {
+  const { conditions, logic } = searchConditions(config);
+  const described = conditions
+    .filter((c) => c.field.startsWith('has_') || (c.value ?? '').trim())
+    .map(describeCondition);
+  if (described.length === 0) return null;
+  const text = described.join(logic === 'or' ? ' или ' : ' и ');
+  return (
+    <div className="mt-1 truncate text-xs font-medium text-ui-text" title={text}>
+      {text}
+    </div>
   );
 }
 
@@ -539,7 +558,7 @@ function KpHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
                       e.stopPropagation();
                       router.push(`/app/leads?open_company_id=${d.company_id}`);
                     }}
-                    className="hidden min-h-9 items-center gap-1 px-2 text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
+                    className="hidden min-h-9 items-center gap-1 px-2 text-small font-semibold text-ui-accent hover:underline sm:inline-flex"
                     title="Открыть карточку компании"
                   >
                     <Eye className="h-4 w-4" />

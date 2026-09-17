@@ -2,8 +2,7 @@
 
 /**
  * §4.4 ТЗ редизайна 2026-06-03 — Шаблоны КП.
- * Карточки на CardV2 + ButtonV2 + SignalPill, display-шрифт на h1,
- * EmptyState с атмосферной иконкой.
+ * Вид Premium (17.09): общий PageHeader, карточки-строки как в «Списках», EmptyState.
  */
 
 import { useEffect, useState } from 'react';
@@ -16,13 +15,14 @@ import {
   type ProposalTemplate,
 } from '@/lib/proposalTemplates';
 
-import { CardV2 } from '@/components/ui/CardV2';
-import { ButtonV2 } from '@/components/ui/ButtonV2';
+import { Badge } from '@/components/ui/badge';
+import { buttonClass } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { SignalPill } from '@/components/ui/SignalPill';
 import { confirmDialog } from '@/components/ui/confirm';
 import { toast } from '@/components/ui/toast';
-import { PageContainer } from '@/components/ui/page';
+import { PageContainer, PageHeader } from '@/components/ui/page';
+import { EmptyState } from '@/components/ui/states';
+import { pluralRu } from '@/lib/utils';
 
 const CHANNEL_ICON: Record<ProposalChannel, React.ReactNode> = {
   email: <Mail />,
@@ -67,109 +67,106 @@ export default function ProposalsListPage() {
     toast.success('Шаблон удалён');
   };
 
+  const countLabel = hydrated
+    ? `${items.length} ${pluralRu(items.length, ['шаблон', 'шаблона', 'шаблонов'])}`
+    : null;
+
   return (
     <PageContainer>
-      <h1
-        className="mb-3 font-display font-semibold leading-[1.05] tracking-tight"
-        style={{ fontSize: '28px', color: 'hsl(var(--text))' }}
-      >
-        Шаблоны коммерческих предложений
-      </h1>
-      <p className="mb-8 max-w-[640px] text-base leading-relaxed text-[hsl(var(--muted))]">
-        Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт в
-        каждое отправление. Можно несколько шаблонов под разные ситуации.
-      </p>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
-          {hydrated
-            ? `${items.length} шаблон${items.length === 1 ? '' : items.length < 5 ? 'а' : 'ов'}`
-            : '…'}
-        </div>
-        <Link href="/app/leads/proposals/new">
-          <ButtonV2 variant="primary" size="md" iconLeft={<Plus />}>
+      <PageHeader
+        title="Шаблоны КП"
+        description="Один раз пишете шаблон с переменными — SpinLid подставляет имя компании, домен и контакт в каждое письмо. Шаблонов может быть несколько под разные ситуации."
+        actions={
+          <Link href="/app/leads/proposals/new" className={buttonClass({ className: 'gap-1.5' })}>
+            <Plus className="h-4 w-4" aria-hidden />
             Новый шаблон
-          </ButtonV2>
-        </Link>
-      </div>
+          </Link>
+        }
+      />
       {!hydrated ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2.5" aria-busy="true">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[80px]" rounded="lg" />
+            <Skeleton key={i} className="h-[76px]" rounded="lg" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <CardV2 className="px-6 py-12 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-v2-lg bg-brand-600 text-white shadow-v2-sm">
-            <FileText className="h-7 w-7" />
-          </div>
-          <h3 className="mb-2 font-display text-xl font-semibold text-[hsl(var(--text))]">
-            Пока нет ни одного шаблона
-          </h3>
-          <p className="mx-auto mb-5 max-w-[480px] text-small leading-relaxed text-[hsl(var(--muted))]">
-            Создайте первый шаблон — потом сможете отправлять его по выбранным лидам с
-            автоматической подстановкой имени компании и контакта.
-          </p>
-          <Link href="/app/leads/proposals/new">
-            <ButtonV2 variant="primary" size="md" iconLeft={<Plus />}>
-              Создать первый шаблон
-            </ButtonV2>
-          </Link>
-        </CardV2>
+        <EmptyState
+          icon={<FileText className="h-6 w-6" aria-hidden />}
+          title="Пока нет ни одного шаблона"
+          description="Создайте первый шаблон — потом его можно отправлять выбранным компаниям с подстановкой имени и контакта."
+          action={
+            <Link href="/app/leads/proposals/new" className={buttonClass()}>
+              Создать шаблон
+            </Link>
+          }
+        />
       ) : (
-        <ul className="reveal-stack space-y-2">
-          {items.map((tpl) => (
-            <li key={tpl.id}>
-              <CardV2
-                interactive
-                reveal
-                className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
+        <>
+          <p className="mb-3 text-small text-ui-text-muted">{countLabel}</p>
+          <ul className="flex flex-col gap-2.5">
+            {items.map((tpl) => (
+              <li
+                key={tpl.id}
+                className="relative flex items-center gap-4 rounded-panel border border-black/[.05] bg-ui-surface p-4 shadow-raised transition-all hover:-translate-y-0.5 hover:shadow-floating sm:px-5"
               >
-                <SignalPill tone="accent" size="sm" icon={CHANNEL_ICON[tpl.channel]}>
+                <Badge tone="accent" icon={CHANNEL_ICON[tpl.channel]} className="shrink-0">
                   {CHANNEL_LABEL[tpl.channel]}
-                </SignalPill>
+                </Badge>
 
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-display text-sm font-semibold text-[hsl(var(--text))]">
-                    {tpl.name || <span className="text-[hsl(var(--muted))]">(без имени)</span>}
-                  </div>
-                  <div
-                    className="mt-0.5 truncate text-xs text-[hsl(var(--muted))]"
+                  {/* Ссылка на редактор растянута на всю карточку; кнопки лежат поверх. */}
+                  <Link
+                    href={`/app/leads/proposals/${tpl.id}/edit`}
+                    className="block truncate text-base font-bold text-ui-text after:absolute after:inset-0 after:rounded-panel after:content-['']"
+                  >
+                    {tpl.name || <span className="text-ui-text-muted">Без названия</span>}
+                  </Link>
+                  <p
+                    className="mt-0.5 truncate text-small text-ui-text-muted"
                     title={tpl.subject || tpl.body}
                   >
                     {tpl.channel === 'email' && tpl.subject
                       ? `Тема: ${tpl.subject}`
                       : tpl.body.slice(0, 90)}
-                  </div>
+                  </p>
                 </div>
 
-                <span className="hidden shrink-0 text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))] sm:inline">
+                <span className="hidden shrink-0 text-small text-ui-text-muted sm:inline">
                   {formatRelative(tpl.updatedAt)}
                 </span>
 
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="relative z-10 flex shrink-0 items-center gap-1">
                   <Link
                     href={`/app/leads/proposals/${tpl.id}/edit`}
-                    className="grid h-11 w-11 place-items-center rounded-v2-sm text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
+                    className={buttonClass({
+                      variant: 'ghost',
+                      size: 'icon',
+                      className: 'text-ui-text-muted hover:text-ui-accent',
+                    })}
                     title="Редактировать"
-                    aria-label="Редактировать"
+                    aria-label={`Редактировать шаблон «${tpl.name || 'без названия'}»`}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" aria-hidden />
                   </Link>
                   <button
                     type="button"
-                    onClick={() => handleDelete(tpl.id, tpl.name || 'без имени')}
-                    className="grid h-11 w-11 place-items-center rounded-v2-sm text-[hsl(var(--muted))] hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)]"
+                    onClick={() => handleDelete(tpl.id, tpl.name || 'без названия')}
+                    className={buttonClass({
+                      variant: 'ghost',
+                      size: 'icon',
+                      className: 'text-ui-text-muted hover:bg-ui-danger/10 hover:text-ui-danger',
+                    })}
                     title="Удалить"
-                    aria-label="Удалить"
+                    aria-label={`Удалить шаблон «${tpl.name || 'без названия'}»`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
-              </CardV2>
-            </li>
-          ))}
-        </ul>
-      )}{' '}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </PageContainer>
   );
 }
