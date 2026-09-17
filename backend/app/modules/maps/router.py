@@ -138,6 +138,8 @@ async def create_map_search(
     Если для всех sources уже свежий кэш — status='from_cache', Celery не ставим.
     Radius-режим не кэшируется.
     """
+    from app.modules.billing.enforcement import charge_or_402
+
     # Радиус-режим: геокодим адрес через 2GIS и подставляем координаты + город.
     point_lat = None
     point_lng = None
@@ -166,6 +168,10 @@ async def create_map_search(
         radius_address = geo.get("matched") or payload.address.strip()
     elif not resolved_city or len(resolved_city) < 2:
         raise HTTPException(status_code=400, detail="city слишком короткий")
+
+    # Тарификация: списываем до создания поиска; при провале parse-задача
+    # вернёт кредиты (refund). from_cache тоже стоит как обычный поиск.
+    await charge_or_402(db, user_id, "map_search", ref_type="map_search")
 
     search = await service.create_map_search(
         db,
@@ -1775,6 +1781,10 @@ async def draft_email_for_company(
     """
     company = await _get_company_or_404(db, company_id)
 
+    from app.modules.billing.enforcement import charge_or_402
+
+    await charge_or_402(db, user_id, "draft_email", ref_type="company", ref_id=company_id)
+
     pains_by_company = await service.get_top_pains_for_companies(db, [company.id], limit_per_company=3)
     pains = pains_by_company.get(company.id, [])
     pains_with_quote = [p for p in pains if p.get("top_quote")]
@@ -2063,6 +2073,18 @@ async def companies_enrich_team(
         raise HTTPException(status_code=400, detail="search_id обязателен")
     company_ids = [int(x) for x in company_ids if isinstance(x, (int, str))][:500]
 
+    from app.modules.billing.enforcement import charge_or_402
+    from app.modules.billing.tariffs import OPERATIONS_PRICES
+
+    await charge_or_402(
+        db,
+        user_id,
+        "enrich_team",
+        amount=OPERATIONS_PRICES["enrich_team"] * len(company_ids),
+        ref_type="search",
+        ref_id=int(search_id),
+    )
+
     await _get_owned_search(db, int(search_id), user_id)
 
     # Проверка что все id привязаны к этому search_id — защита от подмены.
@@ -2295,6 +2317,18 @@ async def companies_enrich_marketing_dm(
     if not isinstance(company_ids, list) or not company_ids:
         raise HTTPException(status_code=400, detail="company_ids обязателен")
     company_ids = [int(x) for x in company_ids if isinstance(x, (int, str))][:500]
+
+    from app.modules.billing.enforcement import charge_or_402
+    from app.modules.billing.tariffs import OPERATIONS_PRICES
+
+    await charge_or_402(
+        db,
+        user_id,
+        "enrich_dm",
+        amount=OPERATIONS_PRICES["enrich_dm"] * len(company_ids),
+        ref_type="search",
+        ref_id=int(search_id) if search_id is not None else None,
+    )
 
     if search_id is not None:
         # /app/maps: конкретный поиск — стандартная валидация.

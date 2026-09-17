@@ -31,7 +31,7 @@ async def create_search(
 ):
     """
     Create a new search.
-    
+
     Regular users: organization_id is automatically set from their organization.
     Superusers: can create searches without organization_id (global searches) or specify organization_id.
     """
@@ -41,13 +41,14 @@ async def create_search(
         # Superuser can use organization_id from request body, or create global search (None)
         organization_id = search_data.organization_id
         # If still None, superuser creates a global search (organization_id = None is allowed)
-    
-    return await service.create_search(
-        db=db,
-        user_id=user_id,
-        organization_id=organization_id,
-        search_data=search_data
-    )
+
+    from app.modules.billing.enforcement import charge_or_402
+
+    # Тарификация: поиск сайтов = 10 кредитов (до создания; фейл-режим
+    # обрабатывает execute_search_task — refund при полном провале)
+    await charge_or_402(db, user_id, "sites_search", ref_type="search")
+
+    return await service.create_search(db=db, user_id=user_id, organization_id=organization_id, search_data=search_data)
 
 
 @router.get("", response_model=List[schemas.SearchResponse])
@@ -87,16 +88,11 @@ async def get_search(
 ):
     """
     Get a specific search by ID.
-    
+
     Regular users can only access searches from their organization.
     Superusers can access any search.
     """
-    search = await service.get_search(
-        db=db,
-        search_id=search_id,
-        user_id=user_id,
-        organization_id=organization_id
-    )
+    search = await service.get_search(db=db, search_id=search_id, user_id=user_id, organization_id=organization_id)
     if not search:
         raise HTTPException(status_code=404, detail="Search not found")
     return search
@@ -136,12 +132,7 @@ async def delete_search(
     db=Depends(get_db),
 ):
     """Delete a search."""
-    await service.delete_search(
-        db=db,
-        search_id=search_id,
-        user_id=user_id,
-        organization_id=organization_id
-    )
+    await service.delete_search(db=db, search_id=search_id, user_id=user_id, organization_id=organization_id)
 
 
 @router.get("/{search_id}/results/export/csv")
@@ -165,19 +156,37 @@ async def export_search_results_csv(
     output = io.StringIO()
     output.write("﻿")
     writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_ALL)
-    writer.writerow([
-        "position", "domain", "url", "title", "phone", "email",
-        "seo_score", "contact_status", "outreach_subject", "outreach_text", "snippet",
-    ])
+    writer.writerow(
+        [
+            "position",
+            "domain",
+            "url",
+            "title",
+            "phone",
+            "email",
+            "seo_score",
+            "contact_status",
+            "outreach_subject",
+            "outreach_text",
+            "snippet",
+        ]
+    )
     for r in results:
-        writer.writerow([
-            r.position, r.domain or "", r.url, r.title,
-            r.phone or "", r.email or "",
-            r.seo_score if r.seo_score is not None else "",
-            r.contact_status or "",
-            r.outreach_subject or "", r.outreach_text or "",
-            r.snippet or "",
-        ])
+        writer.writerow(
+            [
+                r.position,
+                r.domain or "",
+                r.url,
+                r.title,
+                r.phone or "",
+                r.email or "",
+                r.seo_score if r.seo_score is not None else "",
+                r.contact_status or "",
+                r.outreach_subject or "",
+                r.outreach_text or "",
+                r.snippet or "",
+            ]
+        )
 
     output.seek(0)
     filename = f"search_{search_id}_results.csv"
@@ -221,14 +230,11 @@ async def get_search_results_grouped(
 ):
     """
     Get search results grouped by domain.
-    
+
     Regular users can only access results from their organization's searches.
     Superusers can access any search results.
     """
     grouped = await service.get_search_results_grouped_by_domain(
-        db=db,
-        search_id=search_id,
-        user_id=user_id,
-        organization_id=organization_id
+        db=db, search_id=search_id, user_id=user_id, organization_id=organization_id
     )
     return grouped

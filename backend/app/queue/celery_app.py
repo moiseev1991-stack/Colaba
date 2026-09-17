@@ -79,6 +79,11 @@ celery_app.conf.update(
         # (2gis-row, yandex_maps-row) одной компании по phone/coords/name
         # и склеиваем под один company_id. Раз в час — баланс между
         # «новые компании склеены быстро» и нагрузкой на БД.
+        # Биллинг: закрытие истёкших подписок (тарификация 2026-09)
+        "expire-subscriptions-daily": {
+            "task": "expire_subscriptions_daily",
+            "schedule": crontab(hour=2, minute=40),
+        },
         "dedup-multisource-hourly": {
             "task": "dedup_multisource_phase2",
             "schedule": crontab(minute=15),  # каждый час в :15

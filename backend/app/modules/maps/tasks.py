@@ -475,6 +475,18 @@ async def _parse_map_search_async(search_id: int) -> None:
             search.error = str(e)[:2000]
             search.error_type = type(e).__name__
             search.finished_at = datetime.now(timezone.utc)
+            # Тарификация: поиск не удался — возвращаем кредиты
+            from app.modules.billing.enforcement import refund_quietly
+            from app.modules.billing.tariffs import OPERATIONS_PRICES
+
+            await refund_quietly(
+                db,
+                search.user_id,
+                "map_search",
+                OPERATIONS_PRICES["map_search"],
+                ref_type="map_search",
+                ref_id=search.id,
+            )
             await db.commit()
             raise
 
