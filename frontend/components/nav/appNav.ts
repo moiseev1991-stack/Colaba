@@ -78,6 +78,7 @@ const ADMIN_SECTION: NavSection = {
   items: [
     { href: '/app/admin/website-leads', label: 'Заявки с сайта', icon: ShieldCheck },
     { href: '/app/admin/data-inventory', label: 'Data inventory', icon: Database },
+    { href: '/app/admin/billing', label: 'Биллинг-админ', icon: CreditCard },
     { href: '/leads/dashboard', label: 'Дашборд', icon: LayoutDashboard },
     { href: '/monitor', label: 'Request Monitor', icon: Activity },
     { href: '/app/settings/maps-providers', label: 'Провайдеры карт', icon: MapPin },
