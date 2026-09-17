@@ -195,7 +195,7 @@ class AdminSubscriptionRequest(BaseModel):
 async def admin_subscription(
     user_id: int,
     payload: AdminSubscriptionRequest,
-    admin_id: int = Depends(require_superuser),
+    admin=Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Ручное управление подпиской.
