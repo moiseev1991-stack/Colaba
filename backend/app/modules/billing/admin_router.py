@@ -165,7 +165,7 @@ class AdminGrantRequest(BaseModel):
 async def admin_grant_credits(
     user_id: int,
     payload: AdminGrantRequest,
-    admin_id: int = Depends(require_superuser),
+    admin=Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Начислить кредиты вручную (не сгорают). Аудит: comment в ledger + лог."""
@@ -173,9 +173,7 @@ async def admin_grant_credits(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    admin_email = (
-        await db.execute(select(User.email).where(User.id == admin_id))
-    ).scalar_one_or_none() or f"admin:{admin_id}"
+    admin_email = admin.email
     comment = f"admin:{admin_email}: {payload.comment}"
 
     balance = await credits.grant_credits(db, user_id, payload.amount, "admin", comment=comment)
@@ -209,9 +207,7 @@ async def admin_subscription(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    admin_email = (
-        await db.execute(select(User.email).where(User.id == admin_id))
-    ).scalar_one_or_none() or f"admin:{admin_id}"
+    admin_email = admin.email
 
     if payload.action == "activate":
         tariff = get_tariff(payload.tariff_code or "")
