@@ -58,7 +58,7 @@ export function AppHeader({ email, onLogout }: { email: string | null; onLogout:
 
         <div className="ml-auto flex items-center gap-2">
           <Link
-            href="/#pricing"
+            href="/app/billing"
             className={buttonClass({ variant: 'secondary', size: 'sm', className: 'gap-1.5' })}
           >
             <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
