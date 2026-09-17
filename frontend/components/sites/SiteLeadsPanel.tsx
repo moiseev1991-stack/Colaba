@@ -10,37 +10,26 @@
  * условия по сайту (FilterBuilder), популярные ниши и «Последние запуски». Поиск по вхождению
  * («© 2021», «Joomla») и кнопка «КП» на карточке — как в Эпике F.
  *
- * Поток: POST /searches (query = запрос + город, config.filters) → опрос GET /searches/{id} до
- * completed → GET /searches/{id}/results (условия применяет сервер) → карточки SiteResultCard.
- * «Только с телефоном» сервер больше не применяет — фильтруем карточки здесь.
+ * Поток: POST /searches (query = запрос + город, config.filters) → номер запуска в адрес
+ * (?search_id=N) → SiteSearchResults: прогресс выдачи и проверки сайтов, условия, таблица.
  */
 
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight, Table2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { CityCombobox } from '@/components/CityCombobox';
 import { DEFAULT_SITE_FIELDS, FilterBuilder, type FilterSpec } from '@/components/FilterBuilder';
-import { SearchModeSwitch } from '@/components/search/SearchModeSwitch';
-import { KpModal } from '@/components/maps/KpModal';
+import { SearchHero } from '@/components/search/SearchHero';
 import { SITE_ENTRY_PRESETS, type SiteEntryPreset } from '@/components/sites/siteEntryPresets';
-import { SiteResultCard } from '@/components/sites/SiteResultCard';
-import { Button, buttonClass } from '@/components/ui/button';
+import { SiteSearchResults } from '@/components/sites/SiteSearchResults';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { listSearches, type SearchResponse } from '@/src/services/api/search';
-import type { SiteLead } from '@/src/services/api/outreach-site-leads';
-import {
-  createWebSearch,
-  getWebSearch,
-  getWebSearchResults,
-  type WebSearchOut,
-  type WebSearchProvider,
-  type WebSearchResult,
-} from '@/src/services/api/web-searches';
-
-type Status = 'idle' | 'searching' | 'ready' | 'error';
+import { createWebSearch, type WebSearchProvider } from '@/src/services/api/web-searches';
 
 const NICHE_PRESETS: Array<{ label: string; cat: string }> = [
   { label: 'строительные компании', cat: 'B2B' },
@@ -91,17 +80,19 @@ export function SiteLeadsPanel() {
   const [showAllNiches, setShowAllNiches] = useState(false);
   const [activePresetIdx, setActivePresetIdx] = useState<number | null>(null);
 
-  const [status, setStatus] = useState<Status>('idle');
+  const [launching, setLaunching] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [search, setSearch] = useState<WebSearchOut | null>(null);
-  const [results, setResults] = useState<WebSearchResult[]>([]);
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Номер запуска — в адресе (?tab=sites&search_id=N): результат переживает обновление страницы
+  // и открывается из «Истории».
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeSearchId = Number(searchParams?.get('search_id')) || null;
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const [recentRuns, setRecentRuns] = useState<SearchResponse[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
 
-  // Какой SiteLead открыт в KpModal и какой шаблон КП подсветить (от пресета).
-  const [kpSiteLead, setKpSiteLead] = useState<SiteLead | null>(null);
+  // Какой шаблон КП подсветить в окне КП (от пресета).
   const [kpDefaultTemplateKey, setKpDefaultTemplateKey] = useState<string | undefined>(undefined);
 
   const loadRecent = useCallback(async () => {
@@ -120,15 +111,6 @@ export function SiteLeadsPanel() {
     void loadRecent();
   }, [loadRecent]);
 
-  function stopPolling() {
-    if (pollTimer.current) {
-      clearInterval(pollTimer.current);
-      pollTimer.current = null;
-    }
-  }
-
-  useEffect(() => stopPolling, []);
-
   const query = [entry.trim(), city.trim()].filter(Boolean).join(' ');
 
   async function handlePreset(preset: SiteEntryPreset, idx: number) {
@@ -146,17 +128,14 @@ export function SiteLeadsPanel() {
   }
 
   async function runSearch(q: string) {
-    stopPolling();
-    setStatus('searching');
+    setLaunching(true);
     setErrorMsg(null);
-    setSearch(null);
-    setResults([]);
 
     // Пустые условия не отправляем — сервер их всё равно пропустит.
     const conditions = filterSpec.conditions.filter(
       (c) => c.op === 'is_true' || c.op === 'is_false' || (c.value && c.value.trim()),
     );
-    // «Только с телефоном» при условиях «все сразу» отдаём серверу — тогда и таблица /runs/{id} без сайтов без телефона.
+    // «Только с телефоном» при условиях «все сразу» отдаём серверу — тогда и выгрузка без сайтов без телефона.
     if (
       onlyWithPhone &&
       filterSpec.logic === 'and' &&
@@ -175,28 +154,11 @@ export function SiteLeadsPanel() {
           ...(conditions.length > 0 ? { filters: { logic: filterSpec.logic, conditions } } : {}),
         },
       });
-      setSearch(s);
+      router.replace(`/app/leads?tab=sites&search_id=${s.id}`, { scroll: false });
       void loadRecent();
-      // Опрос раз в 2 секунды до завершения: modules/searches не отдаёт SSE.
-      pollTimer.current = setInterval(async () => {
-        try {
-          const latest = await getWebSearch(s.id);
-          setSearch(latest);
-          if (latest.status === 'completed') {
-            stopPolling();
-            setResults(await getWebSearchResults(s.id));
-            setStatus('ready');
-            void loadRecent();
-          } else if (latest.status === 'failed') {
-            stopPolling();
-            setStatus('error');
-            setErrorMsg('Поисковая система вернула ошибку. Попробуйте другой запрос или источник.');
-            void loadRecent();
-          }
-        } catch {
-          /* продолжаем опрос */
-        }
-      }, 2000);
+      requestAnimationFrame(() =>
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
     } catch (e: any) {
       const detail = e?.response?.data?.detail || e?.message;
       setErrorMsg(
@@ -204,13 +166,13 @@ export function SiteLeadsPanel() {
           ? detail
           : 'Не удалось запустить поиск. Проверьте подключение и попробуйте снова.',
       );
-      setStatus('error');
+    } finally {
+      setLaunching(false);
     }
   }
 
-  const shownResults = onlyWithPhone ? results.filter((r) => r.phone && r.phone.trim()) : results;
   const niches = showAllNiches ? NICHE_PRESETS : NICHE_PRESETS.slice(0, 6);
-  const searching = status === 'searching';
+  const searching = launching;
   const filledConditions = filterSpec.conditions.filter(
     (c) => c.op === 'is_true' || c.op === 'is_false' || c.value.trim(),
   );
@@ -226,24 +188,20 @@ export function SiteLeadsPanel() {
 
   return (
     <div>
-      <div className="text-center">
-        <h1 className="mx-auto max-w-[800px] text-hero font-extrabold text-ui-text">
-          Сайты с нужными словами.
-          <span className="block font-bold text-ui-text-muted/75">Из выдачи Яндекса и Google.</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-[60ch] text-base leading-relaxed text-ui-text-muted">
-          Задайте запрос и город и добавьте условие по сайту — например, стоматологии Москвы, у
-          которых на страницах есть <b className="font-semibold text-ui-text">«протезирование»</b>.
-          Получите сайты с телефонами, email и таблицу для выгрузки.
-        </p>
-      </div>
-
-      <SearchModeSwitch active="sites" className="mt-10" />
+      <SearchHero
+        active="sites"
+        eyebrow="Поиск по тексту страниц сайтов"
+        title="Сайты с нужными словами."
+        dim="Из выдачи Яндекса и Google."
+      >
+        Запрос, город и условие по сайту — например, стройкомпании, у которых на сайте есть{' '}
+        <b className="font-semibold text-ui-text">«фундамент»</b>. Получите контакты и таблицу.
+      </SearchHero>
 
       <form
         onSubmit={handleSubmit}
         aria-label="Параметры поиска по сайтам"
-        className="mx-auto mt-4 max-w-[860px] rounded-panel border border-black/[.06] bg-ui-surface p-5 shadow-floating sm:p-7"
+        className="mx-auto mt-4 max-w-[880px] rounded-panel border border-black/[.06] bg-ui-surface p-5 shadow-floating sm:p-7"
       >
         <div className="grid gap-4 md:grid-cols-[1.4fr_1fr_0.8fr]">
           <div className="min-w-0">
@@ -340,8 +298,8 @@ export function SiteLeadsPanel() {
           <div className="mb-3">
             <h2 className="text-base font-bold text-ui-text">Условия по сайту</h2>
             <p className="text-xs text-ui-text-muted">
-              Оставим только сайты, где выполняются условия: текст страниц содержит
-              «протезирование», не содержит «вакансии», домен, телефон или email.
+              Несколько слов в одном условии — на сайте должны быть все («фундамент сваи»). Нужно
+              «или» — добавьте ещё условие и выберите «любое». Проверяем текст страниц сайта.
             </p>
           </div>
           <FilterBuilder
@@ -409,7 +367,7 @@ export function SiteLeadsPanel() {
             iconRight={!searching ? <ArrowRight /> : undefined}
             className="h-12 w-full px-7 text-base sm:w-auto"
           >
-            {searching ? 'Поиск…' : 'Найти сайты'}
+            {searching ? 'Запуск…' : 'Найти сайты'}
           </Button>
           <p className="min-w-0 flex-1 text-small text-ui-text-muted">
             {entry.trim() ? (
@@ -427,70 +385,22 @@ export function SiteLeadsPanel() {
         </div>
       </form>
 
-      {(status !== 'idle' || results.length > 0) && (
-        <section
-          aria-label="Найденные сайты"
-          className="mx-auto mt-10 flex max-w-[860px] flex-col gap-3"
+      {errorMsg && (
+        <p
+          role="alert"
+          className="mx-auto mt-6 w-full max-w-[880px] rounded-card bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger"
         >
-          {searching && (
-            <p className="rounded-card bg-ui-surface-2 px-4 py-3 text-small text-ui-text-muted">
-              Поиск сайтов по запросу «{query}»…
-              {search && ` Найдено: ${search.result_count}.`}
-            </p>
-          )}
-          {status === 'error' && errorMsg && (
-            <p
-              role="alert"
-              className="rounded-card bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger"
-            >
-              {errorMsg}
-            </p>
-          )}
-          {status === 'ready' && (
-            <>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2 className="text-xl font-extrabold tracking-tight text-ui-text">
-                  Найдено {shownResults.length}{' '}
-                  {plural(shownResults.length, 'сайт', 'сайта', 'сайтов')}.
-                </h2>
-                {onlyWithPhone && results.length !== shownResults.length && (
-                  <span className="text-small text-ui-text-muted">
-                    с телефоном — из {results.length}
-                  </span>
-                )}
-                {search && (
-                  <Link
-                    href={`/runs/${search.id}`}
-                    className={buttonClass({ className: 'ml-auto' })}
-                  >
-                    <Table2 className="h-4 w-4" aria-hidden /> Таблица с контактами и выгрузкой
-                  </Link>
-                )}
-              </div>
-              {shownResults.length === 0 ? (
-                <p className="rounded-card bg-ui-surface-2 px-4 py-6 text-center text-small text-ui-text-muted">
-                  По этому запросу ничего не нашлось. Попробуйте другой запрос, источник или уберите
-                  условия.
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {shownResults.map((r) => (
-                    <SiteResultCard
-                      key={r.id}
-                      result={r}
-                      entry={entry}
-                      query={query}
-                      onKpForLead={(lead) => setKpSiteLead(lead)}
-                    />
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </section>
+          {errorMsg}
+        </p>
       )}
 
-      <section aria-labelledby="sites-recent" className="mx-auto mt-14 max-w-[860px]">
+      {activeSearchId && (
+        <div ref={resultsRef} className="mx-auto mt-10 w-full max-w-[880px] scroll-mt-20">
+          <SiteSearchResults searchId={activeSearchId} defaultTemplateKey={kpDefaultTemplateKey} />
+        </div>
+      )}
+
+      <section aria-labelledby="sites-recent" className="mx-auto mt-14 max-w-[880px]">
         <div className="mb-4 flex items-baseline gap-3">
           <h2 id="sites-recent" className="text-xl font-extrabold tracking-tight text-ui-text">
             Последние запуски.
@@ -519,7 +429,7 @@ export function SiteLeadsPanel() {
             {recentRuns.map((r) => (
               <li key={r.id}>
                 <Link
-                  href={`/runs/${r.id}`}
+                  href={`/app/leads?tab=sites&search_id=${r.id}`}
                   className="flex items-center gap-4 rounded-card border border-black/[.05] bg-ui-surface px-4 py-3 shadow-raised transition-all hover:-translate-y-px hover:shadow-floating"
                 >
                   <span className="min-w-0 flex-1">
@@ -553,14 +463,6 @@ export function SiteLeadsPanel() {
           </ul>
         )}
       </section>
-
-      <KpModal
-        open={kpSiteLead != null}
-        siteLeadId={kpSiteLead?.id ?? null}
-        companyName={kpSiteLead?.domain}
-        defaultTemplateKey={kpDefaultTemplateKey}
-        onClose={() => setKpSiteLead(null)}
-      />
     </div>
   );
 }

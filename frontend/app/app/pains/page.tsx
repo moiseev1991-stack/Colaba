@@ -21,7 +21,7 @@ import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { DraftEmailPopover, type CompanyForDraft } from '@/components/pains/DraftEmailPopover';
 import { CityCombobox } from '@/components/CityCombobox';
-import { SearchModeSwitch } from '@/components/search/SearchModeSwitch';
+import { SearchHero } from '@/components/search/SearchHero';
 import { Button, buttonClass } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageContainer } from '@/components/ui/page';
@@ -394,26 +394,18 @@ function PainsPageInner() {
 
   return (
     <PageContainer className="pb-16 pt-10 sm:pt-16">
-      <div className="mx-auto w-full max-w-[1128px]">
-        {/* === Заголовок === */}
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 px-4 text-small font-semibold text-ui-text-muted">
-          Письмо, которое начинается с цитаты их же отзыва
-        </p>
-        <h1 className="max-w-[760px] text-hero font-extrabold text-ui-text">
-          Кто уже жалуется.
-          <span className="block font-bold text-ui-text-muted/75">
-            Найдите по отзывам их клиентов.
-          </span>
-        </h1>
-        <p className="mt-5 max-w-[58ch] text-base leading-relaxed text-ui-text-muted">
+      <div className="mx-auto w-full max-w-[1072px]">
+        <SearchHero
+          active="pains"
+          eyebrow="Письмо, которое начинается с цитаты их же отзыва"
+          title="Кто уже жалуется."
+          dim="Найдём по отзывам клиентов."
+        >
           Выберите частую жалобу — покажем компании, где она встречается в реальных отзывах, с{' '}
-          <b className="font-semibold text-ui-text">цитатой и контактом</b>. Самый сильный повод для
-          первого письма.
-        </p>
+          <b className="font-semibold text-ui-text">цитатой и контактом</b>.
+        </SearchHero>
 
-        <SearchModeSwitch active="pains" className="mx-0 mt-8" />
-
-        <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
+        <div className="mx-auto mt-4 grid w-full max-w-[880px] items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
           {/* === На что жалуются === */}
           <section
             aria-labelledby="pains-what"
@@ -612,7 +604,11 @@ function PainsPageInner() {
         </div>
 
         {/* === Результаты === */}
-        <section ref={resultsRef} aria-label="Компании" className="mt-14 scroll-mt-20">
+        <section
+          ref={resultsRef}
+          aria-label="Компании"
+          className="mx-auto mt-14 w-full max-w-[880px] scroll-mt-20"
+        >
           {data && data.items.length === 0 && !isLoading && (
             <div className="rounded-panel bg-ui-surface-2 p-6 text-small text-ui-text-muted">
               <p className="text-base font-bold text-ui-text">

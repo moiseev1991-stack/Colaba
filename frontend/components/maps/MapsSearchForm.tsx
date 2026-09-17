@@ -29,7 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
-import { SearchModeSwitch } from '@/components/search/SearchModeSwitch';
+import { SearchHero } from '@/components/search/SearchHero';
 import { cn } from '@/lib/utils';
 import {
   createMapSearch,
@@ -494,29 +494,20 @@ export function MapsSearchForm({ onStarted }: Props) {
     <div className="mx-auto w-full max-w-[1232px] px-4 sm:px-6">
       {/* === Первый экран: заголовок и форма === */}
       <div className="mx-auto w-full max-w-[1072px] pt-10 text-center sm:pt-16">
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-ui-accent/15 bg-ui-accent/[.06] py-1 px-4 text-small font-semibold text-ui-text-muted">
-          <span className="sm:hidden">Отзывы с 2GIS, Яндекс и Google</span>
-          <span className="hidden sm:inline">Отзывы с трёх карт — 2GIS, Яндекс и Google</span>
-        </p>
-        <h1 className="mx-auto max-w-[760px] text-hero font-extrabold text-ui-text">
-          Кому писать первым.
-          <span className="block font-bold text-ui-text-muted/75">
-            Подскажут отзывы их клиентов.
-          </span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-[56ch] text-base leading-relaxed text-ui-text-muted">
-          Укажите нишу и город. SpinLid соберёт компании с 2GIS, Яндекс.Карт и Google Карт,
-          прочитает отзывы и покажет,{' '}
-          <b className="font-semibold text-ui-text">на что жалуются клиенты каждой компании</b> — с
-          цитатой и контактом.
-        </p>
-
-        <SearchModeSwitch active="maps" className="mt-10" />
+        <SearchHero
+          active="maps"
+          eyebrow="Отзывы с трёх карт — 2GIS, Яндекс и Google"
+          title="Кому писать первым."
+          dim="Подскажут отзывы клиентов."
+        >
+          Укажите нишу и город — соберём компании с карт, прочитаем отзывы и покажем,{' '}
+          <b className="font-semibold text-ui-text">на что жалуются клиенты</b> каждой компании.
+        </SearchHero>
 
         <form
           onSubmit={handleSubmit}
           aria-label="Параметры поиска"
-          className="mx-auto mt-4 max-w-[720px] rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
+          className="mx-auto mt-4 w-full max-w-[880px] rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
         >
           <div className="grid gap-4 sm:grid-cols-[1.25fr_1fr]">
             <div className="min-w-0">

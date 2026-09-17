@@ -43,7 +43,7 @@ export function OnboardingBanner() {
   return (
     <div
       role="note"
-      className="mb-6 flex items-start gap-3 rounded-v2-lg border p-4"
+      className="-mb-4 mt-4 flex items-start gap-3 rounded-v2-lg border p-4 sm:-mb-6 sm:mt-6"
       style={{ backgroundColor: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
     >
       <Sparkles

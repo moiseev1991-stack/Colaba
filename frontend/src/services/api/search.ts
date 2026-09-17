@@ -68,10 +68,14 @@ export async function listSearches(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.period) qs.set('period', params.period);
   const cacheKey = `searches:list:${qs.toString()}`;
-  return cachedFetch(cacheKey, async () => {
-    const response = await apiClient.get<SearchResponse[]>('/searches', { params });
-    return response.data;
-  }, 10_000);
+  return cachedFetch(
+    cacheKey,
+    async () => {
+      const response = await apiClient.get<SearchResponse[]>('/searches', { params });
+      return response.data;
+    },
+    10_000,
+  );
 }
 
 /**
@@ -92,6 +96,32 @@ export async function getSearchResults(searchId: number): Promise<SearchResultRe
   return response.data;
 }
 
+export interface SearchResultsGroupedResponse {
+  domains: Array<{
+    domain: string;
+    results_count: number;
+    phone?: string | null;
+    email?: string | null;
+    contact_status?: string | null;
+    results: SearchResultResponse[];
+  }>;
+  total_results: number;
+  unique_domains: number;
+}
+
+/**
+ * Все результаты запуска по доменам — БЕЗ условий config.filters. Нужен, чтобы считать,
+ * сколько сайтов уже проверено (contact_status), пока подходящих под условия ещё нет.
+ */
+export async function getSearchResultsGrouped(
+  searchId: number,
+): Promise<SearchResultsGroupedResponse> {
+  const response = await apiClient.get<SearchResultsGroupedResponse>(
+    `/searches/${searchId}/results/grouped`,
+  );
+  return response.data;
+}
+
 /**
  * Delete a search. Invalidates search list cache.
  */
@@ -105,10 +135,10 @@ export async function deleteSearch(id: number): Promise<void> {
  */
 export async function runResultAudit(
   searchId: number,
-  resultId: number
+  resultId: number,
 ): Promise<SearchResultResponse> {
   const response = await apiClient.post<SearchResultResponse>(
-    `/searches/${searchId}/results/${resultId}/audit`
+    `/searches/${searchId}/results/${resultId}/audit`,
   );
   return response.data;
 }
