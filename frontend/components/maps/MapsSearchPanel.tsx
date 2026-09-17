@@ -100,8 +100,10 @@ export function MapsSearchPanel() {
   return (
     <>
       {/* Подсказка для новых пользователей — над формой поиска.
-         Контейнер той же ширины 1232px, что и выдача: без прыжка при старте поиска. */}
-      <div className="mx-auto w-full max-w-[1232px] px-4 pt-4 sm:px-6 sm:pt-6">
+         Контейнер той же ширины 1232px, что и выдача: без прыжка при старте поиска.
+         Отступ — у самого баннера: скрытый баннер не сдвигает заголовок относительно
+         режимов «Сайты» и «По боли» (17.09). */}
+      <div className="mx-auto w-full max-w-[1232px] px-4 sm:px-6">
         <div className="mx-auto w-full max-w-[1072px]">
           <OnboardingBanner />
         </div>

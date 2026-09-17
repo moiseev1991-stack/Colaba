@@ -20,13 +20,7 @@ import { cn } from '@/lib/utils';
 export type FilterField = string;
 
 export type FilterOp =
-  | 'contains'
-  | 'not_contains'
-  | 'equals'
-  | 'not_equals'
-  | 'starts_with'
-  | 'is_true'
-  | 'is_false';
+  'contains' | 'not_contains' | 'equals' | 'not_equals' | 'starts_with' | 'is_true' | 'is_false';
 
 export interface FilterCondition {
   field: FilterField;
@@ -54,10 +48,10 @@ export interface FieldDef {
 // Другие места (например MapsSearchForm) передают свой набор через props.
 // `disabled: true` — опция отображается в выпадашке, но браузер не даст её
 // выбрать.
+// «Заголовок» и «Описание» убраны 17.09: сервер (searches/keyword_filter.py) ищет их
+// по всему тексту страниц, как «Текст страниц сайта», — отдельный пункт вводил в заблуждение.
 export const DEFAULT_SITE_FIELDS: FieldDef[] = [
   { id: 'text', label: 'Текст страниц сайта', kind: 'text' },
-  { id: 'title', label: 'Заголовок (title)', kind: 'text' },
-  { id: 'meta', label: 'Описание (meta)', kind: 'text' },
   { id: 'domain', label: 'Домен', kind: 'text', placeholder: 'Например: example.ru' },
   { id: 'has_phone', label: 'Есть телефон', kind: 'bool' },
   { id: 'has_email', label: 'Есть email', kind: 'bool' },
@@ -138,10 +132,14 @@ export function FilterBuilder({
       conditions: conditions.map((c, i) => {
         if (i !== idx) return c;
         const next = { ...c, ...patch };
-        // If the field changed, snap operator/value to defaults that fit the
-        // new field kind — otherwise we'd leave nonsense like "Тип сайта :
-        // не содержит : протезирование".
-        if (patch.field && patch.field !== c.field) {
+        // Поле сменили на поле другого вида (текст ↔ да/нет) — оператор и значение
+        // сбрасываем, иначе «Есть телефон : содержит : протезирование». Между текстовыми
+        // полями слово и оператор сохраняем (17.09: «фундамент» пропадал при смене поля).
+        if (
+          patch.field &&
+          patch.field !== c.field &&
+          fieldKind(fields, patch.field) !== fieldKind(fields, c.field)
+        ) {
           next.op = defaultOpFor(fields, patch.field);
           next.value = '';
         }
@@ -154,7 +152,11 @@ export function FilterBuilder({
       {conditions.length >= 2 && (
         <div className="flex items-center gap-2 text-xs text-ui-text-muted">
           Условия выполняются
-          <div role="group" aria-label="Как объединять условия" className="inline-flex gap-0.5 rounded-full bg-ui-surface-2 p-0.5">
+          <div
+            role="group"
+            aria-label="Как объединять условия"
+            className="inline-flex gap-0.5 rounded-full bg-ui-surface-2 p-0.5"
+          >
             {(['and', 'or'] as const).map((m) => (
               <button
                 key={m}
@@ -164,7 +166,9 @@ export function FilterBuilder({
                 onClick={() => updateLogic(m)}
                 className={cn(
                   'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
-                  logic === m ? 'bg-ui-surface text-ui-text shadow-[0_1px_4px_rgba(0,0,0,0.12)]' : 'text-ui-text-muted hover:text-ui-text',
+                  logic === m
+                    ? 'bg-ui-surface text-ui-text shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
+                    : 'text-ui-text-muted hover:text-ui-text',
                 )}
               >
                 {m === 'and' ? 'все сразу (И)' : 'любое (ИЛИ)'}
@@ -241,7 +245,8 @@ export function FilterBuilder({
         onClick={addCondition}
         className="inline-flex w-fit items-center gap-1.5 rounded-full px-1 py-1 text-small font-semibold text-ui-accent hover:underline disabled:opacity-50"
       >
-        <Plus className="h-4 w-4" aria-hidden /> {conditions.length === 0 ? 'Добавить условие' : 'Ещё условие'}
+        <Plus className="h-4 w-4" aria-hidden />{' '}
+        {conditions.length === 0 ? 'Добавить условие' : 'Ещё условие'}
       </button>
     </div>
   );

@@ -350,9 +350,9 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
               reveal
               role="button"
               tabIndex={0}
-              onClick={() => router.push(`/runs/${r.id}`)}
+              onClick={() => router.push(`/app/leads?tab=sites&search_id=${r.id}`)}
               onKeyDown={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter') router.push(`/runs/${r.id}`);
+                if (e.key === 'Enter') router.push(`/app/leads?tab=sites&search_id=${r.id}`);
               }}
               className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5"
             >
@@ -377,7 +377,7 @@ function SitesHistoryTab({ router }: { router: ReturnType<typeof useRouter> }) {
               <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
-                  onClick={() => router.push(`/runs/${r.id}`)}
+                  onClick={() => router.push(`/app/leads?tab=sites&search_id=${r.id}`)}
                   className="hidden min-h-9 items-center gap-1 px-2 text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 sm:inline-flex"
                 >
                   <Eye className="h-4 w-4" />
