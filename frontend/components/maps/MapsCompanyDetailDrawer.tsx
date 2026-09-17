@@ -39,6 +39,7 @@ import { AddToListModal } from '@/components/maps/AddToListModal';
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
 import { DrawerSection } from '@/components/maps/DrawerSection';
 import { KpModal } from '@/components/maps/KpModal';
+import { MonthlySourceBars } from '@/components/maps/MonthlySourceBars';
 import { NegativeTrendBadge } from '@/components/maps/NegativeTrendBadge';
 import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
 import { Badge } from '@/components/ui/badge';
@@ -2648,24 +2649,8 @@ function DecisionMakersBlock({
  *   - 3-C: график с разбивкой по источнику (2GIS / Я.Карты), фильтр
  *     синхронизирован с источником во вкладке «Отзывы».
  *
- * Чистый SVG (без recharts) — экономим ~150KB бандла. Цвета — сигнальные токены.
+ * Столбики — общий MonthlySourceBars (SVG без recharts, подписи текстом).
  */
-const TREND_SOURCE_FILL: Record<string, string> = {
-  '2gis': 'fill-signal-cool',
-  yandex_maps: 'fill-signal-hot',
-  google: 'fill-signal-warm',
-};
-const TREND_SOURCE_SWATCH: Record<string, string> = {
-  '2gis': 'bg-signal-cool',
-  yandex_maps: 'bg-signal-hot',
-  google: 'bg-signal-warm',
-};
-const TREND_SOURCE_LABEL: Record<string, string> = {
-  '2gis': '2GIS',
-  yandex_maps: 'Я.Карты',
-  google: 'Google',
-};
-
 function PainTrendBlock({
   trend,
   label,
@@ -2695,26 +2680,6 @@ function PainTrendBlock({
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
-
-  // Группируем по месяцам, внутри — по источнику:
-  // { '2026-03': { '2gis': 3, 'yandex_maps': 5 }, ... }
-  const byMonth = new Map<string, Record<string, number>>();
-  for (const p of trend.points) {
-    const row = byMonth.get(p.month) ?? {};
-    row[p.source] = (row[p.source] ?? 0) + p.count;
-    byMonth.set(p.month, row);
-  }
-  const months = Array.from(byMonth.keys()).sort();
-  const allSources = Array.from(new Set(trend.points.map((p) => p.source)));
-
-  const W = 460;
-  const H = 140;
-  const PAD = { top: 12, right: 8, bottom: 24, left: 24 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-  const groupWidth = months.length > 0 ? innerW / months.length : innerW;
-  const barWidth = Math.max(2, Math.min(20, (groupWidth - 4) / Math.max(1, allSources.length)));
-  const maxCount = Math.max(1, ...trend.points.map((p) => p.count));
 
   return (
     <DrawerSection
@@ -2750,114 +2715,22 @@ function PainTrendBlock({
               {pluralRu(companiesAffected, ['компания', 'компании', 'компаний'])}
             </>
           )}
+          {/* График следует источнику, выбранному во вкладке «Отзывы». */}
+          {hasSourceTabs &&
+            (sourceTab === 'all' ? ' · все источники' : ` · ${sourceShortLabel(sourceTab)}`)}
         </span>
       </p>
 
-      {months.length === 0 ? (
+      {trend.points.length === 0 ? (
         <p className="text-small text-ui-text-muted">
           У отзывов этой темы нет дат (источник их не отдаёт) — график построить нельзя.
         </p>
       ) : (
-        <>
-          <svg
-            width="100%"
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            className="block"
-            role="img"
-            aria-label={`Динамика жалоб «${label}» по месяцам`}
-          >
-            <line
-              x1={PAD.left}
-              y1={PAD.top + innerH}
-              x2={PAD.left + innerW}
-              y2={PAD.top + innerH}
-              stroke="currentColor"
-              className="text-ui-border"
-              strokeWidth={1}
-            />
-            <text
-              x={PAD.left - 4}
-              y={PAD.top + 4}
-              textAnchor="end"
-              fontSize={9}
-              className="fill-ui-text-muted tabular-nums"
-            >
-              {maxCount}
-            </text>
-            <text
-              x={PAD.left - 4}
-              y={PAD.top + innerH}
-              textAnchor="end"
-              fontSize={9}
-              className="fill-ui-text-muted tabular-nums"
-            >
-              0
-            </text>
-            {months.map((m, mi) => {
-              const groupX = PAD.left + mi * groupWidth + 2;
-              const monthRow = byMonth.get(m) ?? {};
-              return (
-                <g key={m}>
-                  {allSources.map((src, si) => {
-                    const count = monthRow[src] ?? 0;
-                    const h = (count / maxCount) * innerH;
-                    return (
-                      <rect
-                        key={src}
-                        x={groupX + si * barWidth}
-                        y={PAD.top + innerH - h}
-                        width={Math.max(1, barWidth - 1)}
-                        height={Math.max(0, h)}
-                        rx={1}
-                        className={TREND_SOURCE_FILL[src] ?? 'fill-signal-muted'}
-                      >
-                        <title>
-                          {m} · {TREND_SOURCE_LABEL[src] ?? src} · {count}
-                        </title>
-                      </rect>
-                    );
-                  })}
-                  {(mi === 0 ||
-                    mi === months.length - 1 ||
-                    mi % Math.ceil(months.length / 6) === 0) && (
-                    <text
-                      x={groupX + (allSources.length * barWidth) / 2}
-                      y={PAD.top + innerH + 12}
-                      textAnchor="middle"
-                      fontSize={9}
-                      className="fill-ui-text-muted tabular-nums"
-                    >
-                      {m.slice(2)}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
-            {allSources.map((src) => (
-              <span key={src} className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden
-                  className={cn(
-                    'inline-block h-2 w-2 rounded-sm',
-                    TREND_SOURCE_SWATCH[src] ?? 'bg-signal-muted',
-                  )}
-                />
-                {TREND_SOURCE_LABEL[src] ?? src}
-              </span>
-            ))}
-            {hasSourceTabs && (
-              <span className="ml-auto">
-                {sourceTab === 'all'
-                  ? 'Все источники'
-                  : `Источник: ${TREND_SOURCE_LABEL[sourceTab] ?? sourceTab}`}
-              </span>
-            )}
-          </div>
-        </>
+        <MonthlySourceBars
+          points={trend.points}
+          ariaLabel={`Динамика жалоб «${label}» по месяцам`}
+          maxLabels={6}
+        />
       )}
     </DrawerSection>
   );
