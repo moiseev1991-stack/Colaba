@@ -55,7 +55,7 @@ const CARDS: Card[] = [
     key: 'other',
     icon: <MoreHorizontal className="h-6 w-6" />,
     title: 'Другое',
-    description: 'Свой профиль — шаблон письма выберешь в момент генерации',
+    description: 'Свой профиль — шаблон письма выберете при генерации',
     kpTemplateKey: null,
   },
 ];
@@ -68,11 +68,10 @@ interface Props {
 export function ProfessionStep({ selected, onSelect }: Props) {
   return (
     <div>
-      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-        Кто вы?
-      </h2>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-        Это нужно, чтобы сразу подобрать готовые фильтры выдачи и шаблон письма.
+      <h2 className="text-heading font-extrabold tracking-tight text-ui-text">Кто вы?</h2>
+      <p className="mt-1 text-sm text-ui-text-muted">
+        Подберём готовые фильтры выдачи под вашу услугу и шаблон первого письма. Это можно изменить
+        в любой момент.
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -84,29 +83,25 @@ export function ProfessionStep({ selected, onSelect }: Props) {
               type="button"
               onClick={() => onSelect(card.key, card.kpTemplateKey)}
               className={cn(
-                'group flex items-start gap-3 rounded-lg border p-4 text-left transition-colors',
+                'group flex items-start gap-3 rounded-card border p-4 text-left transition-colors duration-fast',
                 active
-                  ? 'border-violet-600 bg-violet-50 shadow-sm dark:border-violet-400 dark:bg-violet-900/30'
-                  : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800',
+                  ? 'border-ui-accent bg-ui-accent/[.06] shadow-raised'
+                  : 'border-ui-border bg-ui-surface hover:border-ui-accent/40 hover:bg-ui-surface-2',
               )}
             >
               <div
                 className={cn(
-                  'rounded-md p-2',
+                  'rounded-control p-2 transition-colors duration-fast',
                   active
-                    ? 'bg-violet-600 text-white'
-                    : 'bg-slate-100 text-slate-700 group-hover:bg-violet-200 group-hover:text-violet-800 dark:bg-slate-800 dark:text-slate-300',
+                    ? 'bg-ui-accent text-ui-accent-contrast'
+                    : 'bg-ui-surface-2 text-ui-text-muted group-hover:text-ui-accent',
                 )}
               >
                 {card.icon}
               </div>
               <div className="min-w-0">
-                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                  {card.title}
-                </div>
-                <div className="mt-0.5 text-small text-slate-600 dark:text-slate-400">
-                  {card.description}
-                </div>
+                <div className="text-base font-semibold text-ui-text">{card.title}</div>
+                <div className="mt-0.5 text-small text-ui-text-muted">{card.description}</div>
               </div>
             </button>
           );

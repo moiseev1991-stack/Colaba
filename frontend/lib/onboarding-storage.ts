@@ -24,6 +24,8 @@ export type OnboardingEvent =
   | 'onboarding_started'
   | 'profession_selected'
   | 'niche_city_submitted'
+  | 'how_it_works_viewed'
+  | 'first_search_launched'
   | 'first_search_created'
   | 'demo_opened'
   | 'first_kp_generated';

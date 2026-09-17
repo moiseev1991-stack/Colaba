@@ -22,9 +22,10 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
 
   const getNextPath = (): string => {
-    // После регистрации — в кабинет поиска (middleware дальше ведёт /app → /app/leads)
-    const next = searchParams?.get('next') || '/app';
-    return next.startsWith('/') ? next : '/app';
+    // После регистрации — сразу в 4-шаговый обзор (онбординг): кто вы →
+    // ниша/город → как это работает → первый запуск. ?next= уважаем.
+    const next = searchParams?.get('next') || '/app/onboarding';
+    return next.startsWith('/') ? next : '/app/onboarding';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
