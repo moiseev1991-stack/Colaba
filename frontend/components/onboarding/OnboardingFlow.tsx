@@ -1,38 +1,30 @@
 'use client';
 
 /**
- * OnboardingFlow — корневой компонент 3-шагового онбординга
- * (Эпик B фокус-релиза «КП-конвейер», ТЗ 2026-06-12).
+ * OnboardingFlow — 4-шаговый онбординг новой жизни (v2, 17.09).
  *
- * State machine:
- *   step=1 → ProfessionStep
- *   step=2 → NicheCityStep
- *   step=3 → ProgressStep (создаётся search, затем редирект на /app/leads)
+ * Шаги:
+ *   1 «Кто вы» → ProfessionStep (профессия → дефолтные фильтры и шаблон КП)
+ *   2 «Ниша и город» → NicheCityStep (CityCombobox + примеры ниш)
+ *   3 «Как это работает» → HowItWorksStep (что соберём, сколько ждать,
+ *     что получится — осознанный запуск вместо внезапного редиректа)
+ *   4 «Запуск» → ProgressStep (createMapSearch → редирект на живую выдачу)
  *
- * Шкала прогресса вверху, кнопка «Назад» внизу (кроме шага прогресса —
- * там назад нельзя, поиск уже запущен).
+ * После регистрации пользователь попадает сюда автоматически
+ * (auth/register). Вернуться можно в любой момент: баннер на /app/leads
+ * для юзеров без поисков.
  *
- * Demo-режим: на шаге 2 кнопка «Показать на примере» делает router.push
- * на /app/leads?map_search_id={DEMO_ID}. MapsSearchPanel уже умеет
- * принимать этот параметр и грузить готовый поиск.
- *
- * После успешного create-а поиска:
- *  - сохраняем profession + niche + city в localStorage
- *  - редиректим на /app/leads?map_search_id={id}
- *  - на /app/leads ProfessionChipsRow читает localStorage и автоматически
- *    активирует chip; KpModal читает localStorage и выставляет default
- *    template_key.
+ * Стиль: токены Premium (DESIGN.md) — ui-*, CardV2, Button.
  */
 
 import { ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import {
-  ProfessionStep,
-  type ProfessionChoice,
-} from '@/components/onboarding/ProfessionStep';
+import { Button } from '@/components/ui/button';
+import { ProfessionStep, type ProfessionChoice } from '@/components/onboarding/ProfessionStep';
 import { NicheCityStep } from '@/components/onboarding/NicheCityStep';
+import { HowItWorksStep } from '@/components/onboarding/HowItWorksStep';
 import { ProgressStep } from '@/components/onboarding/ProgressStep';
 import { cn } from '@/lib/utils';
 import {
@@ -44,26 +36,19 @@ import {
   setStoredLastNiche,
   setStoredProfession,
 } from '@/lib/onboarding-storage';
-import {
-  createMapSearch,
-  type MapSearchCreate,
-} from '@/src/services/api/maps';
+import { createMapSearch, type MapSearchCreate } from '@/src/services/api/maps';
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 const STEP_LABELS: Record<Step, string> = {
   1: 'Кто вы',
   2: 'Ниша и город',
-  3: 'Поиск',
+  3: 'Как это работает',
+  4: 'Запуск',
 };
 
 export function OnboardingFlow() {
   const router = useRouter();
-
-  // Demo ID — public env, читается на этапе билда (Next.js inlining).
-  // Если не задан, кнопка «Показать на примере» скрыта.
-  const demoSearchId = process.env.NEXT_PUBLIC_DEMO_SEARCH_ID;
-  const demoAvailable = Boolean(demoSearchId && /^\d+$/.test(demoSearchId));
 
   const [step, setStep] = useState<Step>(1);
   const [profession, setProfession] = useState<ProfessionChoice | null>(null);
@@ -74,9 +59,8 @@ export function OnboardingFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // На монт — фиксируем старт онбординга для аналитики и подтягиваем
-  // последний поиск как defaults на шаге 2 (юзер вернулся в онбординг
-  // через закладку).
+  // На монт — фиксируем старт для аналитики и подтягиваем последний
+  // поиск как defaults (юзер вернулся в онбординг повторно).
   useEffect(() => {
     recordOnboardingEvent('onboarding_started');
     const lastNiche = getStoredLastNiche();
@@ -87,94 +71,91 @@ export function OnboardingFlow() {
 
   function handleProfessionPick(choice: ProfessionChoice, tplKey: string | null) {
     setProfession(choice);
-    // Сохраняем сразу в localStorage, чтобы даже если юзер закроет вкладку
-    // и вернётся на /app/leads — chip активировался корректно, а KpModal
-    // подхватила правильный шаблон по умолчанию.
+    // Сохраняем сразу: даже если вкладку закроют, на /app/leads чип
+    // активируется, а KpModal получит правильный шаблон по умолчанию.
     setStoredProfession(choice === 'other' ? null : choice);
     setStoredKpTemplateKey(tplKey);
     recordOnboardingEvent('profession_selected');
     setStep(2);
   }
 
-  async function handleNicheCitySubmit(n: string, c: string) {
+  function handleNicheCitySubmit(n: string, c: string) {
     setNiche(n);
     setCity(c);
     setStoredLastNiche(n);
     setStoredLastCity(c);
     recordOnboardingEvent('niche_city_submitted');
     setStep(3);
+    recordOnboardingEvent('how_it_works_viewed');
+  }
+
+  /** Шаг 3 → 4: осознанный запуск (кнопку нажали на шаге 3). */
+  async function handleLaunch() {
     setError(null);
+    setStep(4);
     setSubmitting(true);
+    recordOnboardingEvent('first_search_launched');
 
     try {
-      const payload: MapSearchCreate = { niche: n, city: c };
+      const payload: MapSearchCreate = { niche, city };
       const search = await createMapSearch(payload);
       recordOnboardingEvent('first_search_created');
-      // Редирект — MapsSearchPanel прочитает map_search_id и сам подхватит
-      // running/completed state. Если 'from_cache' — выдача мгновенная.
+      // Редирект: MapsSearchPanel прочитает map_search_id и покажет
+      // живую ленту (счётчик «Уже найдено N» растёт в реальном времени).
       router.push(`/app/leads?map_search_id=${search.id}`);
     } catch (e: any) {
       const detail =
         e?.response?.data?.detail ||
         e?.message ||
-        'Не удалось запустить поиск. Проверь соединение и попробуй ещё раз.';
+        'Не удалось запустить поиск. Проверьте соединение и попробуйте ещё раз.';
       setError(typeof detail === 'string' ? detail : 'Ошибка создания поиска');
       setSubmitting(false);
     }
   }
 
-  function handleDemo() {
-    if (!demoSearchId) return;
-    recordOnboardingEvent('demo_opened');
-    router.push(`/app/leads?map_search_id=${demoSearchId}`);
+  function handleBack() {
+    setError(null);
+    if (step === 2) setStep(1);
+    if (step === 3) setStep(2);
+    // С шага 4 назад нельзя: поиск мог уже создаться.
   }
 
-  function handleBack() {
-    if (step === 2) setStep(1);
-    // на шаге 3 backwards не даём — поиск уже создан или создаётся
-  }
+  const showBack = step === 2 || step === 3;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
-      {/* Прогресс-бар */}
-      <ol className="mb-8 flex items-center gap-2">
-        {([1, 2, 3] as Step[]).map((n, i) => {
+    <div className="mx-auto w-full max-w-[760px] px-4 py-8 sm:py-12">
+      {/* Прогресс-шкала: 4 шага, выполненные — с галочкой */}
+      <ol className="mb-8 flex items-center gap-2" aria-label="Шаги обзора">
+        {([1, 2, 3, 4] as Step[]).map((n, i) => {
           const active = step === n;
           const done = step > n;
           return (
-            <li key={n} className="flex flex-1 items-center gap-2">
+            <li key={n} className="flex min-w-0 flex-1 items-center gap-2">
               <div
+                aria-hidden
                 className={cn(
                   'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
                   done
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-ui-accent text-ui-accent-contrast'
                     : active
-                      ? 'bg-violet-600 text-white ring-4 ring-violet-200 dark:ring-violet-900/50'
-                      : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
+                      ? 'bg-ui-accent text-ui-accent-contrast ring-4 ring-ui-accent/20'
+                      : 'bg-ui-surface-2 text-ui-text-muted',
                 )}
               >
-                {n}
+                {done ? <CheckIcon /> : n}
               </div>
               <span
                 className={cn(
                   'truncate text-small font-medium',
-                  active
-                    ? 'text-slate-900 dark:text-slate-100'
-                    : done
-                      ? 'text-slate-700 dark:text-slate-300'
-                      : 'text-slate-500 dark:text-slate-500',
+                  active || done ? 'text-ui-text' : 'text-ui-text-muted',
                 )}
               >
                 {STEP_LABELS[n]}
               </span>
-              {i < 2 && (
+              {i < 3 && (
                 <div
-                  className={cn(
-                    'mx-1 h-px flex-1',
-                    done
-                      ? 'bg-violet-600'
-                      : 'bg-slate-200 dark:bg-slate-700',
-                  )}
+                  aria-hidden
+                  className={cn('mx-1 h-px flex-1', done ? 'bg-ui-accent/40' : 'bg-ui-border')}
                 />
               )}
             </li>
@@ -183,24 +164,20 @@ export function OnboardingFlow() {
       </ol>
 
       {/* Контент шага */}
-      <div className="rounded-lg border border-slate-200 bg-white p-5 sm:p-7 dark:border-slate-700 dark:bg-slate-900">
-        {step === 1 && (
-          <ProfessionStep
-            selected={profession}
-            onSelect={handleProfessionPick}
-          />
-        )}
+      <div className="rounded-panel border border-ui-border bg-ui-surface p-5 shadow-raised sm:p-7">
+        {step === 1 && <ProfessionStep selected={profession} onSelect={handleProfessionPick} />}
         {step === 2 && (
-          <NicheCityStep
-            initialNiche={niche}
-            initialCity={city}
-            onSubmit={handleNicheCitySubmit}
-            onDemo={handleDemo}
-            demoAvailable={demoAvailable}
+          <NicheCityStep initialNiche={niche} initialCity={city} onSubmit={handleNicheCitySubmit} />
+        )}
+        {step === 3 && (
+          <HowItWorksStep
+            niche={niche}
+            city={city}
+            onLaunch={handleLaunch}
             submitting={submitting}
           />
         )}
-        {step === 3 && (
+        {step === 4 && (
           <ProgressStep
             niche={niche}
             city={city}
@@ -208,7 +185,7 @@ export function OnboardingFlow() {
             onRetry={
               error
                 ? () => {
-                    setStep(2);
+                    setStep(3);
                     setError(null);
                   }
                 : undefined
@@ -217,18 +194,33 @@ export function OnboardingFlow() {
         )}
       </div>
 
-      {/* Кнопка «Назад» — только на шаге 2 (с шага 1 некуда, на шаге 3
-          поиск уже создаётся). */}
-      {step === 2 && (
-        <button
+      {/* «Назад» — на шагах 2-3 */}
+      {showBack && (
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={handleBack}
-          className="mt-3 inline-flex items-center gap-1 text-small text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+          className="mt-3"
+          iconLeft={<ChevronLeft className="h-4 w-4" />}
         >
-          <ChevronLeft className="h-4 w-4" />
           Назад
-        </button>
+        </Button>
       )}
     </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5" aria-hidden>
+      <path
+        d="M3.5 8.5l3 3 6-7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

@@ -1,13 +1,10 @@
 /**
- * /app/onboarding — точка входа в 3-шаговый онбординг
- * (Эпик B фокус-релиза «КП-конвейер», ТЗ 2026-06-12).
+ * /app/onboarding — точка входа в 4-шаговый обзор продукта (v2, 17.09):
+ * кто вы → ниша и город → как это работает → запуск первого поиска.
  *
- * Стратегия маршрутизации:
- *  - Новый пользователь из рекламы попадает сюда напрямую (с landing'а
- *    или auth callback'а). Пусть это будет явный URL без middleware
- *    redirect-логики — на MVP проще руками линковать.
- *  - В будущем (после Эпика B) /auth/callback может проверять — был ли
- *    у юзера хотя бы один MapSearch, и если нет — редиректить сюда.
+ * Маршрутизация: после регистрации пользователь попадает сюда автоматически
+ * (auth/register); вернуться можно через баннер на /app/leads (показывается
+ * пользователям без поисков) или прямой ссылкой.
  *
  * Вся логика — в OnboardingFlow.tsx (client component).
  */
@@ -18,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default function OnboardingPage() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-[100dvh] bg-ui-bg">
       <OnboardingFlow />
     </div>
   );
