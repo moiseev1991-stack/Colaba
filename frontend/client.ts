@@ -29,7 +29,7 @@ export const tokenStorage = {
     if (typeof document === 'undefined') return null;
     // httpOnly cookies are invisible to JS — return sentinel based on auth_present
     const cookies = document.cookie.split('; ');
-    const sentinel = cookies.find(c => c.startsWith('auth_present='));
+    const sentinel = cookies.find((c) => c.startsWith('auth_present='));
     return sentinel ? '1' : null;
   },
   getRefreshToken: (): string | null => null,
@@ -65,7 +65,7 @@ async function logoutAndRedirect(): Promise<void> {
   window.location.href = '/auth/login';
 }
 
-// Response interceptor: handle 401 (session expired)
+// Response interceptor: handle 401 (session expired) + 402 (недостаточно кредитов)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -74,7 +74,7 @@ apiClient.interceptors.response.use(
 
       // Skip refresh for endpoints that would cause infinite loops if they 401.
       const noRefreshEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];
-      if (noRefreshEndpoints.some(p => requestUrl.includes(p))) {
+      if (noRefreshEndpoints.some((p) => requestUrl.includes(p))) {
         return Promise.reject(error);
       }
 
@@ -91,6 +91,23 @@ apiClient.interceptors.response.use(
           await logoutAndRedirect();
         }
       }
+    }
+
+    // 402 = insufficient_credits (биллинг): тост с переходом к тарифам.
+    // Дубли не спамим: если на странице уже показан баннер — страница сама
+    // обработает reject; тост глобальный и дедуплицируется по сообщению.
+    if (error.response?.status === 402 && typeof window !== 'undefined') {
+      const detail = (error.response.data as { detail?: { message?: string } })?.detail;
+      const message =
+        (typeof detail === 'object' && detail?.message) ||
+        (typeof detail === 'string' && detail) ||
+        'Недостаточно кредитов для операции';
+      import('@/components/ui/toast').then(({ toast }) => {
+        toast.error(message, {
+          label: 'Тарифы',
+          onClick: () => (window.location.href = '/app/billing'),
+        });
+      });
     }
 
     return Promise.reject(error);

@@ -12,10 +12,16 @@ import { cn } from '@/lib/utils';
 
 type ToastType = 'success' | 'error' | 'info';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface ToastItem {
   id: number;
   type: ToastType;
   message: string;
+  action?: ToastAction;
 }
 
 const EMPTY: ToastItem[] = [];
@@ -33,9 +39,9 @@ export function dismissToast(id: number) {
   emit();
 }
 
-function push(type: ToastType, message: string) {
+function push(type: ToastType, message: string, action?: ToastAction) {
   const id = nextId++;
-  items = [...items, { id, type, message }].slice(-MAX_VISIBLE);
+  items = [...items, { id, type, message, action }].slice(-MAX_VISIBLE);
   emit();
   // Ошибку держим дольше: её нужно успеть прочитать.
   setTimeout(() => dismissToast(id), type === 'error' ? 6000 : 3500);
@@ -44,7 +50,7 @@ function push(type: ToastType, message: string) {
 
 export const toast = {
   success: (message: string) => push('success', message),
-  error: (message: string) => push('error', message),
+  error: (message: string, action?: ToastAction) => push('error', message, action),
   info: (message: string) => push('info', message),
 };
 
@@ -62,13 +68,19 @@ const TONE: Record<ToastType, string> = {
 };
 
 const ICON: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle2 className="h-5 w-5 shrink-0 text-[color:var(--signal-good)]" aria-hidden />,
+  success: (
+    <CheckCircle2 className="h-5 w-5 shrink-0 text-[color:var(--signal-good)]" aria-hidden />
+  ),
   error: <XCircle className="h-5 w-5 shrink-0 text-[color:var(--signal-hot)]" aria-hidden />,
   info: <Info className="h-5 w-5 shrink-0 text-[color:var(--signal-cool)]" aria-hidden />,
 };
 
 export function Toaster() {
-  const list = React.useSyncExternalStore(subscribe, () => items, () => EMPTY);
+  const list = React.useSyncExternalStore(
+    subscribe,
+    () => items,
+    () => EMPTY,
+  );
 
   return (
     <div
@@ -85,7 +97,21 @@ export function Toaster() {
           )}
         >
           {ICON[t.type]}
-          <p className="flex-1 whitespace-pre-line text-sm text-ui-text">{t.message}</p>
+          <div className="flex-1 min-w-0">
+            <p className="whitespace-pre-line text-sm text-ui-text">{t.message}</p>
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  t.action?.onClick();
+                  dismissToast(t.id);
+                }}
+                className="mt-1.5 rounded-pill bg-ui-accent px-3 py-1 text-xs font-semibold text-ui-accent-contrast transition-colors hover:opacity-90"
+              >
+                {t.action.label}
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => dismissToast(t.id)}
