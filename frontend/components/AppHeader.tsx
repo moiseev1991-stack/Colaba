@@ -62,8 +62,10 @@ export function AppHeader({ email, onLogout }: { email: string | null; onLogout:
             className={buttonClass({ variant: 'secondary', size: 'sm', className: 'gap-1.5' })}
           >
             <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="hidden sm:inline">Купить подписку</span>
-            <span className="sr-only sm:hidden">Купить подписку</span>
+            {/* 17.09: ведёт на секцию «Сейчас — бесплатно во время беты»,
+                так что честная формулировка — «Тарифы», не «Купить». */}
+            <span className="hidden sm:inline">Тарифы</span>
+            <span className="sr-only sm:hidden">Тарифы</span>
           </Link>
           <ProfileMenu
             email={email}

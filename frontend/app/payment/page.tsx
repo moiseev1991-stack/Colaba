@@ -83,23 +83,32 @@ export default function PaymentPage() {
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'hsl(var(--muted))' }} />
           </div>
+        ) : !configured ? (
+          /* Бета: оплата не подключена — никаких тарифов, кнопок и
+             внутренних подсказок (аудит 17.09: юзеру показывали env-переменные
+             ЮKassa и мёртвые кнопки «Оплатить»). Честная карточка беты. */
+          <CardV2 className="p-8 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-card bg-ui-accent/10 text-ui-accent">
+              <CheckCircle className="h-6 w-6" />
+            </div>
+            <h2 className="text-heading font-extrabold tracking-tight text-ui-text">
+              Сейчас SpinLid бесплатен
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-ui-text-muted">
+              Идёт открытая бета — все функции доступны без оплаты и без лимитов. Когда появится
+              платная подписка, тарифы откроются на этой странице, а мы предупредим заранее.
+            </p>
+            <ButtonV2
+              variant="primary"
+              size="lg"
+              className="mt-6"
+              onClick={() => (window.location.href = '/app/leads')}
+            >
+              Начать пользоваться
+            </ButtonV2>
+          </CardV2>
         ) : (
           <div className="space-y-4">
-            {!configured && (
-              <div
-                className="rounded-v2-sm border p-4 text-sm"
-                style={{
-                  background: 'var(--signal-warm-bg)',
-                  borderColor: 'rgb(245 158 11 / 0.3)',
-                  color: 'var(--signal-warm)',
-                }}
-              >
-                <strong>Тестовый режим:</strong> платёжный шлюз ЮКасса не настроен. Укажите{' '}
-                <code>YOOKASSA_SHOP_ID</code> и <code>YOOKASSA_SECRET_KEY</code> в переменных
-                окружения.
-              </div>
-            )}
-
             {/* Тарифы */}
             <div className="grid gap-3">
               {plans.map((plan) => {
