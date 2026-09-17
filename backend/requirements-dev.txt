@@ -17,3 +17,4 @@ isort==5.13.2
 mypy==1.7.1
 flake8==6.1.0
 
+aiosqlite>=0.20  # тесты биллинга: async sqlite fixture

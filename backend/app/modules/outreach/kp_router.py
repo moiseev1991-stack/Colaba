@@ -68,7 +68,10 @@ async def generate_kp(
 ) -> KpDraftOut:
     """Сгенерировать КП. Принимает либо company_id, либо site_lead_id (XOR).
 
+    Тарификация: 2 кредита за КП (списание до генерации).
+
     Возможные ошибки (понятные сообщения для UI):
+      402 — недостаточно кредитов.
       404 — компания/site-лид/шаблон не найдены.
       400 — для custom-шаблона не пришёл custom_sender_profile,
             либо передано и company_id и site_lead_id одновременно
@@ -85,6 +88,16 @@ async def generate_kp(
     remaining_free пока всегда None — счётчик месячных лимитов
     появится в Эпике E.
     """
+    from app.modules.billing.enforcement import charge_or_402
+
+    await charge_or_402(
+        db,
+        user_id,
+        "kp_generate",
+        ref_type="company" if payload.company_id else "site_lead",
+        ref_id=payload.company_id or payload.site_lead_id,
+    )
+
     try:
         if payload.site_lead_id is not None:
             result = await kp_service.generate_kp_for_site(
@@ -133,9 +146,7 @@ async def generate_kp(
     )
 
 
-def _job_to_out(
-    job, recent_drafts: list | None = None
-) -> KpBulkJobOut:
+def _job_to_out(job, recent_drafts: list | None = None) -> KpBulkJobOut:
     return KpBulkJobOut(
         id=job.id,
         status=job.status,
@@ -150,9 +161,7 @@ def _job_to_out(
         created_at=job.created_at,
         started_at=job.started_at,
         finished_at=job.finished_at,
-        recent_drafts=[
-            KpBulkDraftPreview.model_validate(d) for d in (recent_drafts or [])
-        ],
+        recent_drafts=[KpBulkDraftPreview.model_validate(d) for d in (recent_drafts or [])],
     )
 
 
@@ -171,6 +180,19 @@ async def bulk_generate_kp(
       400 — пустой/слишком большой список company_ids, нет валидных id.
       503 — Celery недоступен (broker down).
     """
+    from app.modules.billing.enforcement import charge_or_402
+
+    # Тарификация: 2 кредита × компаний (заранее, всей пачкой)
+    from app.modules.billing.tariffs import OPERATIONS_PRICES
+
+    await charge_or_402(
+        db,
+        user_id,
+        "kp_generate",
+        amount=OPERATIONS_PRICES["kp_generate"] * len(payload.company_ids),
+        ref_type="kp_job",
+    )
+
     try:
         job = await kp_bulk_service.create_bulk_job(
             db,
@@ -224,34 +246,33 @@ async def kp_common_pains(
     from app.models.pain_tag import CompanyPainScore, PainTag
 
     company_ids_raw = payload.get("company_ids") or []
-    company_ids = [
-        int(x) for x in company_ids_raw
-        if isinstance(x, (int, str)) and str(x).isdigit()
-    ][:500]
+    company_ids = [int(x) for x in company_ids_raw if isinstance(x, (int, str)) and str(x).isdigit()][:500]
     if len(company_ids) < 2:
         return []
 
-    rows = (await db.execute(
-        select(
-            CompanyPainScore.pain_tag_id,
-            PainTag.label,
-            sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).label("hits"),
-            sa_func.sum(CompanyPainScore.mention_count).label("mentions"),
-            sa_func.max(CompanyPainScore.top_quote).label("example_quote"),
+    rows = (
+        await db.execute(
+            select(
+                CompanyPainScore.pain_tag_id,
+                PainTag.label,
+                sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).label("hits"),
+                sa_func.sum(CompanyPainScore.mention_count).label("mentions"),
+                sa_func.max(CompanyPainScore.top_quote).label("example_quote"),
+            )
+            .join(PainTag, PainTag.id == CompanyPainScore.pain_tag_id)
+            .where(
+                CompanyPainScore.company_id.in_(company_ids),
+                PainTag.status == "active",
+            )
+            .group_by(CompanyPainScore.pain_tag_id, PainTag.label)
+            .having(sa_func.count(sa_func.distinct(CompanyPainScore.company_id)) >= 2)
+            .order_by(
+                sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).desc(),
+                sa_func.sum(CompanyPainScore.mention_count).desc(),
+            )
+            .limit(20)
         )
-        .join(PainTag, PainTag.id == CompanyPainScore.pain_tag_id)
-        .where(
-            CompanyPainScore.company_id.in_(company_ids),
-            PainTag.status == "active",
-        )
-        .group_by(CompanyPainScore.pain_tag_id, PainTag.label)
-        .having(sa_func.count(sa_func.distinct(CompanyPainScore.company_id)) >= 2)
-        .order_by(
-            sa_func.count(sa_func.distinct(CompanyPainScore.company_id)).desc(),
-            sa_func.sum(CompanyPainScore.mention_count).desc(),
-        )
-        .limit(20)
-    )).all()
+    ).all()
 
     return [
         KpCommonPainOut(
@@ -274,9 +295,7 @@ async def get_bulk_job(
     """Статус bulk-job + последние 5 сгенерированных drafts. Фронт поллит
     раз в ~1.5 сек.
     """
-    view = await kp_bulk_service.get_job_view(
-        db, user_id=user_id, job_id=job_id, drafts_limit=5
-    )
+    view = await kp_bulk_service.get_job_view(db, user_id=user_id, job_id=job_id, drafts_limit=5)
     if view is None:
         raise HTTPException(status_code=404, detail="Задача не найдена.")
     return _job_to_out(view.job, recent_drafts=view.recent_drafts)
@@ -290,9 +309,7 @@ async def list_jobs(
 ) -> KpJobListResponse:
     """Список всех bulk-партий юзера — для вкладки «Партии КП» в History."""
     jobs = await kp_bulk_service.list_user_jobs(db, user_id=user_id, limit=limit)
-    return KpJobListResponse(
-        items=[KpJobListItem.model_validate(j) for j in jobs]
-    )
+    return KpJobListResponse(items=[KpJobListItem.model_validate(j) for j in jobs])
 
 
 @router.get("/jobs/{job_id}/items", response_model=KpJobItemsResponse)
@@ -310,9 +327,7 @@ async def get_job_items(
     Список не пагинирует: bulk-лимит 500, payload ~1.5KB на компанию,
     укладывается в один запрос.
     """
-    result = await kp_bulk_service.list_job_items(
-        db, user_id=user_id, job_id=job_id
-    )
+    result = await kp_bulk_service.list_job_items(db, user_id=user_id, job_id=job_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Задача не найдена.")
     job, item_rows = result
@@ -358,25 +373,18 @@ async def export_job_call_list(
     email с валидным телефоном (нечего скачивать). Иначе — application/
     octet-stream-attachment с файлом.
     """
-    xlsx_bytes, count = await kp_call_list_export.build_call_list_xlsx(
-        db, user_id=user_id, job_id=job_id
-    )
+    xlsx_bytes, count = await kp_call_list_export.build_call_list_xlsx(db, user_id=user_id, job_id=job_id)
     if count == -1:
         raise HTTPException(status_code=404, detail="Партия не найдена.")
     if count == 0:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Нет ни одной компании без email с валидным телефоном — "
-                "обзванивать некого."
-            ),
+            detail=("Нет ни одной компании без email с валидным телефоном — обзванивать некого."),
         )
     filename = kp_call_list_export.build_call_list_filename(job_id)
     return StreamingResponse(
         iter([xlsx_bytes]),
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             # Чтобы фронт мог прочитать имя файла через axios (без CORS
@@ -408,9 +416,7 @@ async def update_draft(
 
     new_subject = payload.subject.strip() if payload.subject is not None else None
     new_body = payload.body.strip() if payload.body is not None else None
-    if (new_subject is None or new_subject == "") and (
-        new_body is None or new_body == ""
-    ):
+    if (new_subject is None or new_subject == "") and (new_body is None or new_body == ""):
         raise HTTPException(
             status_code=400,
             detail="Нужно передать хотя бы одно непустое поле (subject или body).",
@@ -449,9 +455,7 @@ async def list_drafts(
     Body режется до 240 символов как preview — открыть полное письмо
     можно по клику (UI откроет KpModal в режиме просмотра).
     """
-    items, total = await kp_bulk_service.list_user_drafts(
-        db, user_id=user_id, limit=limit, offset=offset
-    )
+    items, total = await kp_bulk_service.list_user_drafts(db, user_id=user_id, limit=limit, offset=offset)
     return KpDraftListResponse(
         items=[
             KpDraftListItem(
@@ -515,10 +519,23 @@ async def send_bulk_job(
         # Не падаем: строки KpSend уже созданы, юзер увидит их в History.
         # Следующий вызов /send или ручной retry допишет.
 
-    status = await kp_send_service.get_job_send_status(
-        db, user_id=user_id, job_id=job_id
-    )
+    status = await kp_send_service.get_job_send_status(db, user_id=user_id, job_id=job_id)
     assert status is not None  # job уже проверен внутри enqueue_job_send
+
+    # Тарификация: 1 кредит за каждую запланированную отправку (total).
+    from app.modules.billing.enforcement import charge_or_402
+
+    total_sends = getattr(status, "total", None) or 0
+    if total_sends:
+        await charge_or_402(
+            db,
+            user_id,
+            "kp_send",
+            amount=int(total_sends),
+            ref_type="kp_job",
+            ref_id=job_id,
+        )
+
     return KpJobSendStatusOut(**status)
 
 
@@ -531,9 +548,7 @@ async def get_bulk_send_status(
     """Сводка по отправкам конкретной партии — UI поллит во время
     рассылки, чтобы показать прогресс «отправлено N из M».
     """
-    status = await kp_send_service.get_job_send_status(
-        db, user_id=user_id, job_id=job_id
-    )
+    status = await kp_send_service.get_job_send_status(db, user_id=user_id, job_id=job_id)
     if status is None:
         raise HTTPException(status_code=404, detail="Партия не найдена.")
     return KpJobSendStatusOut(**status)
@@ -550,9 +565,7 @@ async def list_sends(
 
     Сортировка — по дате создания строки убыванием (свежие сверху).
     """
-    items, total = await kp_send_service.list_user_sends(
-        db, user_id=user_id, limit=limit, offset=offset
-    )
+    items, total = await kp_send_service.list_user_sends(db, user_id=user_id, limit=limit, offset=offset)
     return KpSendListResponse(
         items=[
             KpSendListItem(
@@ -590,9 +603,7 @@ async def cancel_bulk_job(
     статусе — возвращает текущее состояние без изменений.
     """
     try:
-        job = await kp_bulk_service.request_cancel(
-            db, user_id=user_id, job_id=job_id
-        )
+        job = await kp_bulk_service.request_cancel(db, user_id=user_id, job_id=job_id)
     except kp_bulk_service.BulkJobError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     return _job_to_out(job)

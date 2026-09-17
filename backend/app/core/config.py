@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     YOOKASSA_SECRET_KEY: str = Field(default="", description="ЮКасса: секретный ключ")
     YOOKASSA_RETURN_URL: str = Field(default="", description="ЮКасса: URL перенаправления после оплаты")
 
+    # Кредитная тарификация (docs/guides/BILLING_CREDITS.md). False = бета
+    # бесплатна: списания не производятся, ЛК показывает баланс без блокировок.
+    # Включаем при запуске продаж (после настройки ЮKassa).
+    CREDITS_ENABLED: bool = Field(default=False, description="Списывать кредиты за операции (False = бета бесплатна)")
+
     # SMTP for outreach email sending
     SMTP_HOST: str = Field(default="", description="SMTP server hostname")
     SMTP_PORT: int = Field(default=465, description="SMTP server port")

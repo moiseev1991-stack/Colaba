@@ -58,6 +58,28 @@ async def _process_email_replies_async() -> int:
 # днём (дедуп по email_logs не даёт дублей). TODO: параллельная генерация.
 # 15.09: 2ч не хватало: 90с/письмо × 100 КП = 2.5ч — дни 10-11 умирали
 # на 76-м письме. 4ч покрывает 300 КП × 30с (пик плана) с запасом.
+@celery_app.task(name="expire_subscriptions_daily", queue="maintenance")
+def expire_subscriptions_daily():
+    """Биллинг: закрывает подписки с истёкшим периодом (тарификация 2026-09).
+
+    Остатки подписочных кредитов перестают быть доступны автоматически
+    (у бакетов expires_at = period_end). См. billing/tariffs.py.
+    """
+    import asyncio
+
+    from app.core.database import AsyncSessionLocal
+    from app.modules.billing.service import expire_stale_subscriptions
+
+    async def _run():
+        async with AsyncSessionLocal() as db:
+            n = await expire_stale_subscriptions(db)
+            return n
+
+    expired = asyncio.run(_run())
+    if expired:
+        logger.info("expire_subscriptions_daily: %s subscriptions expired", expired)
+
+
 @celery_app.task(name="daily_warmup_task", soft_time_limit=14400, time_limit=14700)
 def daily_warmup_task():
     """Автоматический дневной прогрев доменов через рассылку КП.
@@ -322,6 +344,18 @@ async def _execute_search_async(search_id: int):
 
             search.status = "failed"
             search.finished_at = datetime.utcnow()
+            # Тарификация: поиск сайтов не удался — возвращаем кредиты
+            from app.modules.billing.enforcement import refund_quietly
+            from app.modules.billing.tariffs import OPERATIONS_PRICES
+
+            await refund_quietly(
+                db,
+                search.user_id,
+                "sites_search",
+                OPERATIONS_PRICES["sites_search"],
+                ref_type="search",
+                ref_id=search.id,
+            )
             # Сохраняем сообщение об ошибке в config
             # Важно: создаем новый словарь, чтобы SQLAlchemy увидел изменение
             current_config = search.config or {}

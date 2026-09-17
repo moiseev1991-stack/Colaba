@@ -26,13 +26,17 @@ async def create_payment(
     plan: str,
     description: str,
     return_url: str,
+    user_id: Optional[int] = None,
     idempotency_key: Optional[str] = None,
 ) -> dict:
-    """Create a YooKassa payment and return the JSON response."""
+    """Create a YooKassa payment and return the JSON response.
+
+    user_id уходит в metadata (лимит ЮKassa — короткие строки): по нему
+    webhook находит платёж в нашей БД (payments.user_id) и начисляет
+    кредиты правильному юзеру.
+    """
     if not _configured():
-        raise RuntimeError(
-            "ЮКасса не настроена. Укажите YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY в переменных окружения."
-        )
+        raise RuntimeError("ЮКасса не настроена. Обратитесь в поддержку.")
 
     key = idempotency_key or str(uuid.uuid4())
     payload = {
@@ -40,7 +44,7 @@ async def create_payment(
         "confirmation": {"type": "redirect", "return_url": return_url},
         "capture": True,
         "description": description,
-        "metadata": {"plan": plan},
+        "metadata": {"plan": plan, "uid": str(user_id) if user_id else ""},
     }
 
     async with httpx.AsyncClient(timeout=20) as client:

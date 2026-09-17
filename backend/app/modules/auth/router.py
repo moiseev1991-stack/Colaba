@@ -22,9 +22,20 @@ async def register(
     """
     Register a new user.
 
-    Creates a new user account with email and password.
+    Creates a new user account with email and password + приветственные
+    кредиты (WELCOME_CREDITS) — попробовать продукт (тарификация 2026-09).
     """
-    return await service.register_user(db=db, user_data=user_data)
+    user = await service.register_user(db=db, user_data=user_data)
+    try:
+        from app.modules.billing.service import grant_welcome_credits
+
+        await grant_welcome_credits(db, user.id)
+    except Exception:
+        # Кредиты — не причина блокировать регистрацию
+        import logging
+
+        logging.getLogger(__name__).exception("Welcome credits grant failed for user %s", user.id)
+    return user
 
 
 @router.post("/login", response_model=schemas.TokenResponse)
