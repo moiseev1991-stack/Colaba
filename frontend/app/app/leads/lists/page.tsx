@@ -1,24 +1,34 @@
 'use client';
 
 /**
- * /app/leads/lists — мои списки лидов.
+ * /app/leads/lists — мои списки лидов (вид Premium, 17.09).
  *
- * Простой плоский лист с количеством элементов и датой создания.
- * Создание и удаление — здесь же.
+ * Карточка на список: название, сколько компаний, откуда и когда создан.
+ * Создание и удаление — здесь же; открыть список — клик по карточке.
  */
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ListPlus, Trash2 } from 'lucide-react';
-import { confirmDialog } from '@/components/ui/confirm';
-import { PageContainer } from '@/components/ui/page';
+import { ListPlus, Rows3, Trash2 } from 'lucide-react';
 
+import { Button, buttonClass } from '@/components/ui/button';
+import { confirmDialog } from '@/components/ui/confirm';
+import { Input } from '@/components/ui/input';
+import { PageContainer, PageHeader } from '@/components/ui/page';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/states';
+import { pluralRu } from '@/lib/utils';
 import {
   createLeadList,
   deleteLeadList,
   listMyLeadLists,
   type LeadListOut,
 } from '@/src/services/api/leadLists';
+
+const SOURCE_LABEL: Record<string, string> = {
+  maps: 'из поиска по картам',
+  sites: 'из поиска сайтов',
+};
 
 export default function LeadListsPage() {
   const [lists, setLists] = useState<LeadListOut[]>([]);
@@ -44,7 +54,8 @@ export default function LeadListsPage() {
     void refresh();
   }, []);
 
-  async function create() {
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
     const name = newName.trim();
     if (!name) return;
     setCreating(true);
@@ -53,106 +64,133 @@ export default function LeadListsPage() {
       setNewName('');
       await refresh();
     } catch (e: any) {
-      setError(e?.message || 'Не удалось создать');
+      setError(e?.message || 'Не удалось создать список');
     } finally {
       setCreating(false);
     }
   }
 
-  async function remove(id: number) {
-    if (!(await confirmDialog('Удалить список?'))) return;
-    setDeletingId(id);
+  async function remove(list: LeadListOut) {
+    if (
+      !(await confirmDialog({
+        title: `Удалить список «${list.name}»?`,
+        description: 'Компании останутся в поиске — удалится только сам список.',
+        confirmLabel: 'Удалить',
+      }))
+    )
+      return;
+    setDeletingId(list.id);
     try {
-      await deleteLeadList(id);
-      setLists((prev) => prev.filter((l) => l.id !== id));
+      await deleteLeadList(list.id);
+      setLists((prev) => prev.filter((l) => l.id !== list.id));
     } catch (e: any) {
-      setError(e?.message || 'Не удалось удалить');
+      setError(e?.message || 'Не удалось удалить список');
     } finally {
       setDeletingId(null);
     }
   }
 
   return (
-    <PageContainer className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Списки лидов</h1>
-          <p className="text-sm text-slate-500">
-            Сохранённые карточки компаний из поиска по картам. Из списка можно создать
-            email-кампанию.
-          </p>
-        </div>
-        <Link
-          href="/app/leads"
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          ← К поиску
-        </Link>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Списки лидов"
+        description="Компании, которые вы сохранили из поиска. Из списка можно подготовить письма всем сразу и запустить рассылку."
+        actions={
+          <Link href="/app/leads" className={buttonClass({ variant: 'secondary' })}>
+            К поиску
+          </Link>
+        }
+      />
 
       {error && (
-        <div className="rounded-v2-sm border border-[color:var(--signal-hot)]/30 bg-[var(--signal-hot-bg)] px-3 py-2 text-sm text-[color:var(--signal-hot)]">
+        <p
+          role="alert"
+          className="mb-4 rounded-card bg-ui-danger/[.06] px-4 py-3 text-small text-ui-danger"
+        >
           {error}
-        </div>
+        </p>
       )}
 
-      <div className="rounded-md border border-dashed border-slate-300 px-4 py-3">
-        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <form
+        onSubmit={create}
+        className="mb-6 flex flex-col gap-3 rounded-panel border border-black/[.06] bg-ui-surface p-4 shadow-raised sm:flex-row sm:items-center sm:p-5"
+      >
+        <label htmlFor="new-list-name" className="shrink-0 text-sm font-bold text-ui-text sm:w-36">
           Новый список
-        </div>
-        <div className="flex gap-2">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Например: Стоматологии Москвы / горячие"
-            className="flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500"
-          />
-          <button
-            onClick={create}
-            disabled={creating || !newName.trim()}
-            className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-          >
-            <ListPlus className="h-4 w-4" />
-            {creating ? '…' : 'Создать'}
-          </button>
-        </div>
-      </div>
+        </label>
+        <Input
+          id="new-list-name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="Например: стоматологии Москвы — горячие"
+          className="flex-1"
+        />
+        <Button
+          type="submit"
+          loading={creating}
+          disabled={!newName.trim()}
+          iconLeft={<ListPlus className="h-4 w-4" />}
+        >
+          Создать
+        </Button>
+      </form>
 
       {loading ? (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          Загрузка списков…
+        <div className="flex flex-col gap-2.5" aria-busy="true">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[76px]" rounded="lg" />
+          ))}
         </div>
       ) : lists.length === 0 ? (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-          Пока нет списков. Создай первый сверху, или из карточки компании в поиске.
-        </div>
+        <EmptyState
+          icon={<Rows3 className="h-6 w-6" aria-hidden />}
+          title="Списков пока нет"
+          description="Создайте список здесь или добавьте компании кнопкой «В список» в выдаче поиска и в карточке компании."
+          action={
+            <Link href="/app/leads" className={buttonClass()}>
+              Перейти к поиску
+            </Link>
+          }
+        />
       ) : (
-        <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
+        <ul className="flex flex-col gap-2.5">
           {lists.map((l) => (
             <li
               key={l.id}
-              className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
+              className="relative flex items-center gap-4 rounded-panel border border-black/[.05] bg-ui-surface p-4 shadow-raised transition-all hover:-translate-y-0.5 hover:shadow-floating sm:px-5"
             >
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ui-accent/[.08] text-ui-accent"
+              >
+                <Rows3 className="h-5 w-5" />
+              </span>
               <div className="min-w-0 flex-1">
+                {/* Ссылка растянута на всю карточку; кнопка удаления лежит поверх. */}
                 <Link
                   href={`/app/leads/lists/${l.id}`}
-                  className="block truncate text-sm font-medium text-slate-900 hover:underline"
+                  className="line-clamp-2 text-base font-bold text-ui-text after:absolute after:inset-0 after:rounded-panel after:content-[''] sm:block sm:truncate"
                 >
                   {l.name}
                 </Link>
-                <div className="text-xs text-slate-500">
-                  {l.items_count} {l.items_count === 1 ? 'компания' : 'компаний'} ·{' '}
+                <p className="mt-0.5 truncate text-small text-ui-text-muted">
+                  <span className="font-semibold tabular-nums text-ui-text">{l.items_count}</span>{' '}
+                  {pluralRu(l.items_count, ['компания', 'компании', 'компаний'])}
+                  {SOURCE_LABEL[l.source] ? ` · ${SOURCE_LABEL[l.source]}` : ''} · создан{' '}
                   {new Date(l.created_at).toLocaleDateString('ru-RU')}
-                </div>
+                </p>
               </div>
-              <button
-                onClick={() => remove(l.id)}
-                disabled={deletingId === l.id}
-                className="inline-flex items-center gap-1 rounded-v2-sm border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-[var(--signal-hot-bg)] hover:text-[color:var(--signal-hot)] disabled:opacity-50"
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => remove(l)}
+                loading={deletingId === l.id}
+                aria-label={`Удалить список «${l.name}»`}
+                title="Удалить список"
+                className="relative z-10 text-ui-text-muted hover:bg-ui-danger/10 hover:text-ui-danger"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                {deletingId === l.id ? '…' : 'Удалить'}
-              </button>
+                {deletingId !== l.id && <Trash2 className="h-4 w-4" aria-hidden />}
+              </Button>
             </li>
           ))}
         </ul>

@@ -1,18 +1,16 @@
 'use client';
 
 /**
- * Подробный диалог компании: метрики, сайт/телефон, отзывы.
+ * Карточка компании — панель справа (вид Premium, 17.09).
  *
- * Drawer фильтрации отзывов:
- *  - вкладки sentiment (все / негатив / позитив)
- *  - текстовый поиск (text_contains)
- *  - фильтр «только с ответом владельца»
+ * Шапка не прокручивается: название, ниша и адрес, рейтинг и сигналы, действия
+ * «Написать» (КП под боль) и «В список», вкладки:
+ *  - Обзор — показатели, главная жалоба, кто принимает решение, данные по источникам, юр. данные;
+ *  - Жалобы — сводка за период; клик по боли → динамика и отзывы темы; сравнение с нишей; все темы;
+ *  - Отзывы — источник, тональность, поиск по тексту, «только с ответом владельца»;
+ *  - Контакты — телефоны, почта, мессенджеры, ЛПР и запуск поиска ЛПР.
  *
- * Карточки отзывов:
- *  - звёздный рейтинг
- *  - цветная боковая полоска по sentiment (красная/зелёная/серая)
- *  - бейджи sentiment и ответа владельца
- *  - подсветка совпадений с поисковой подстрокой
+ * Весь прежний функционал сохранён — блоки только разнесены по вкладкам.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,6 +20,7 @@ import {
   Circle,
   ExternalLink,
   Globe,
+  ListPlus,
   Loader2,
   Mail,
   MessageCircle,
@@ -36,13 +35,21 @@ import {
   X,
 } from 'lucide-react';
 
+import { AddToListModal } from '@/components/maps/AddToListModal';
 import { CompanyDigestBlock } from '@/components/maps/CompanyDigestBlock';
+import { DrawerSection } from '@/components/maps/DrawerSection';
+import { KpModal } from '@/components/maps/KpModal';
+import { MonthlySourceBars } from '@/components/maps/MonthlySourceBars';
 import { NegativeTrendBadge } from '@/components/maps/NegativeTrendBadge';
-import { KpQuickBlock } from '@/components/maps/KpQuickBlock';
 import { PainBenchmarkBlock } from '@/components/maps/PainBenchmarkBlock';
-import { Drawer } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonClass } from '@/components/ui/button';
+import { DialogCloseButton, Drawer } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { Segmented } from '@/components/ui/segmented';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Tabs } from '@/components/ui/tabs';
+import { cn, pluralRu } from '@/lib/utils';
 import {
   enrichCompaniesMarketingDm,
   enrichCompanySource,
@@ -59,6 +66,7 @@ import {
 
 type Tab = 'all' | 'negative' | 'positive';
 type SourceTab = 'all' | '2gis' | 'yandex_maps';
+type DrawerView = 'overview' | 'pains' | 'reviews' | 'contacts';
 
 interface Props {
   companyId: number | null;
@@ -73,32 +81,32 @@ interface Props {
 
 export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props) {
   const [detail, setDetail] = useState<CompanyDetailOut | null>(null);
+  const [view, setView] = useState<DrawerView>('overview');
+  // Окна поверх карточки: КП («Написать») и добавление в список.
+  const [kpOpen, setKpOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('all');
-  // Phase 5 multi-source: вкладка по источнику. Активна (видна) только если
-  // у компании 2+ источниковых профиля. 'all' = без фильтра.
+  // Phase 5 multi-source: вкладка по источнику. 'all' = без фильтра.
   const [sourceTab, setSourceTab] = useState<SourceTab>('all');
   const [reviews, setReviews] = useState<ReviewOut[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  // Юзер 2026-06-10: клик по pain-плитке → фильтр reviews + chart + диапазон
-  // дат. Когда null — обычный режим, плитки не активны как фильтр.
+  // Юзер 2026-06-10: клик по боли → фильтр отзывов + график + диапазон дат.
+  // Когда null — обычный режим.
   const [activePainTagId, setActivePainTagId] = useState<number | null>(null);
   const [activePainLabel, setActivePainLabel] = useState<string>('');
   const [painTrend, setPainTrend] = useState<PainTrendOut | null>(null);
-  // §B 2026-06-10: chart умеет переключаться между «эта компания» и
-  // «вся ниша» — общий тренд по нише через /maps/insights/pain-trend.
+  // §B 2026-06-10: график переключается между «эта компания» и «вся ниша».
   const [trendScope, setTrendScope] = useState<'company' | 'niche'>('company');
-  // Якорь на секцию отзывов — при клике на pain-плитку прокручиваем сюда,
-  // иначе юзер видит «×3» на плитке, но не понимает где сами отзывы
-  // (они НИЖЕ benchmark + tabs, нужно скроллить).
-  const reviewsAnchorRef = useRef<HTMLDivElement | null>(null);
+  // Корень содержимого: его родитель — прокручиваемая часть панели.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  // Динамика и отзывы выбранной боли во вкладке «Жалобы» — прокручиваем сюда после клика.
+  const painAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // drawer-level фильтры (применяются к /maps/companies/{id}/reviews)
   const [textQuery, setTextQuery] = useState('');
   const [onlyWithOwnerReply, setOnlyWithOwnerReply] = useState(false);
 
-  // Юзер 2026-06-11: окно для дайджеста отзывов в шапке drawer'а.
-  // null = «за всё время» (бэк снимает фильтр по posted_at). По умолчанию
-  // 30 — оставляем привычное поведение для свежих компаний.
+  // Юзер 2026-06-11: окно сводки отзывов. null = «за всё время».
   const [digestDays, setDigestDays] = useState<30 | 90 | 180 | 365 | null>(30);
 
   // debounce для текстового поиска (300мс)
@@ -113,23 +121,17 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
   // возвращает queued=1 и уходит в disabled на 45 секунд.
   const [dmEnrichPending, setDmEnrichPending] = useState(false);
   const [dmEnrichResult, setDmEnrichResult] = useState<string | null>(null);
-  // 2026-07-10: юзер жаловался «нажал Найти ЛПР — ничего не появилось».
-  // Раньше UI просто снимал disabled кнопки через 45s, а данные drawer'а
-  // (detail.decision_makers) НЕ рефетчились. Юзер видел ту же пустоту.
-  // Теперь через 55s после клика перезагружаем компанию → decision_makers
+  // 2026-07-10: через 55s после клика перезагружаем компанию → decision_makers
   // подтянутся автоматически. Если после рефетча всё ещё пусто — показываем
   // явный «не нашли», а не молча возвращаем кнопку.
   const [dmSearchExhausted, setDmSearchExhausted] = useState(false);
-  // 2026-07-11: точечный триггер source-парсера (клик по плашке
-  // «○ ВК»/«○ hh.ru»/…). 2026-07-16: сделали НЕЗАВИСИМЫМ per-source —
-  // юзер может нажать несколько плашек подряд, каждая крутится своим
-  // счётчиком; disabled только та, у которой сейчас idem-запрос в полёте.
+  // 2026-07-11: точечный триггер source-парсера (клик по плашке «ВК»/«hh.ru»/…).
+  // 2026-07-16: независимый per-source — disabled только та плашка, у которой запрос в полёте.
   const [triggeringSources, setTriggeringSources] = useState<Set<EnrichSource>>(() => new Set());
   const handleSourceRetry = useCallback(
     async (source: EnrichSource) => {
       if (companyId == null) return;
       // Уже крутится ЭТА плашка — тихо игнорируем повторный клик по ней.
-      // По другим источникам разрешено параллельно.
       if (triggeringSources.has(source)) return;
       setTriggeringSources((prev) => {
         const next = new Set(prev);
@@ -157,9 +159,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
         });
         return;
       }
-      // Через 55с рефетч drawer'а. Если source нашёл что-то — плашка станет
-      // ✓·N. Если нет — останется ○. is_marketing_dm тоже может обновиться,
-      // потому что бэк ставит enrich_marketing_dm через 45с после source-таска.
+      // Через 55с рефетч карточки: нашёл источник что-то — плашка станет ✓·N.
       window.setTimeout(async () => {
         const clearTriggering = () =>
           setTriggeringSources((prev) => {
@@ -201,7 +201,7 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
       setDmEnrichPending(false);
       return;
     }
-    // Через 55 сек: рефетч drawer + если пусто → пометить как «искали, не нашли».
+    // Через 55 сек: рефетч карточки + если пусто → пометить как «искали, не нашли».
     window.setTimeout(async () => {
       if (companyId == null) return;
       try {
@@ -252,6 +252,9 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
 
   // Сбрасываем состояние при смене компании
   useEffect(() => {
+    setView('overview');
+    setKpOpen(false);
+    setListOpen(false);
     if (companyId == null) {
       setDetail(null);
       setReviews([]);
@@ -265,6 +268,8 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
       setPainTrend(null);
       return;
     }
+    // Без сброса при переходе A → B шапка секунду показывала бы прошлую компанию.
+    setDetail(null);
     setIsLoading(true);
     void (async () => {
       try {
@@ -304,9 +309,8 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
     loadReviews,
   ]);
 
-  // Fetch chart-данных по выбранной боли (диапазон дат + помесячный count
-  // по источникам). Перезапрашиваем при смене sourceTab/trendScope чтобы
-  // chart соответствовал текущему source-фильтру и scope (компания vs ниша).
+  // Данные графика по выбранной боли (диапазон дат + помесячно по источникам).
+  // Перезапрашиваем при смене sourceTab/trendScope.
   useEffect(() => {
     if (companyId == null || activePainTagId == null) {
       setPainTrend(null);
@@ -330,364 +334,874 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
     };
   }, [companyId, activePainTagId, sourceTab, trendScope, detail?.niche, detail?.city]);
 
+  const changeView = useCallback((next: DrawerView) => {
+    setView(next);
+    // Новая вкладка открывается с начала, а не с места прокрутки прошлой.
+    const scroller = bodyRef.current?.parentElement;
+    if (scroller) scroller.scrollTop = 0;
+  }, []);
+
+  const clearPain = useCallback(() => {
+    setActivePainTagId(null);
+    setActivePainLabel('');
+    setPainTrend(null);
+  }, []);
+
+  // Выбор боли: фильтр отзывов по теме, график, прокрутка к ним во вкладке «Жалобы».
+  const activatePain = useCallback((painTagId: number, label: string) => {
+    setActivePainTagId(painTagId);
+    setActivePainLabel(label);
+    setTab('all');
+    setTextQuery('');
+    setOnlyWithOwnerReply(false);
+    // Даём вкладке отрисоваться, а фильтру — начать загрузку.
+    window.setTimeout(() => {
+      painAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, []);
+
+  const togglePain = useCallback(
+    (painTagId: number, label: string) => {
+      if (painTagId === -1 || activePainTagId === painTagId) clearPain();
+      else activatePain(painTagId, label);
+    },
+    [activePainTagId, activatePain, clearPain],
+  );
+
+  const handleClose = useCallback(() => {
+    // Escape при открытом окне КП или списка закрывает только это окно, а не всю карточку.
+    if (kpOpen) setKpOpen(false);
+    else if (listOpen) setListOpen(false);
+    else onClose();
+  }, [kpOpen, listOpen, onClose]);
+
   const open = companyId != null;
-  const hasActiveFilters =
-    tab !== 'all' || sourceTab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
   const sourcesProfiles = detail?.sources_profiles ?? [];
-  // 2026-06-12: source-toggle теперь рендерится ВСЕГДА (юзер не видел
-  // переключателя источников у одноисточниковых компаний и думал, что
-  // фильтра вообще нет). Если у компании только один источник —
-  // вторая кнопка просто не имеет «активного» количества и не кликабельна.
-  // showMultiSourceMeta остаётся прежним признаком для блока «метрики
-  // и контакты разнесены по источникам» — там нет смысла раздваивать,
-  // если источник один.
+  // Метрики и контакты разносим по источникам, только если источников 2+.
   const showMultiSourceMeta = sourcesProfiles.length >= 2;
+  const painTags = detail ? uniquePainTags(detail.pain_tags) : [];
 
   return (
-    <Drawer open={open} onClose={onClose} title={detail?.name ?? 'Загрузка…'}>
-      {!detail ? (
-        <div className="py-6 text-sm text-ui-text-muted">Загрузка карточки…</div>
-      ) : (
-        <div className="space-y-4">
-          {/* === Шапка компании === */}
-          <div className="text-sm text-ui-text-muted">
-            {formatAddressWithCity(detail.address, detail.city) || '—'}
+    <Drawer
+      open={open}
+      onClose={handleClose}
+      className="max-w-[640px]"
+      header={(titleId) => (
+        <CompanyDrawerHeader
+          titleId={titleId}
+          detail={detail}
+          view={view}
+          onViewChange={changeView}
+          onClose={handleClose}
+          onWrite={() => setKpOpen(true)}
+          onAddToList={() => setListOpen(true)}
+          painCount={painTags.length}
+          contactCount={detail ? countContacts(detail) : 0}
+        />
+      )}
+    >
+      <div ref={bodyRef}>
+        {!detail ? (
+          <div className="space-y-3" aria-busy="true">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" rounded="md" />
+              ))}
+            </div>
+            <Skeleton className="h-28" rounded="md" />
+            <Skeleton className="h-40" rounded="md" />
+            <span className="sr-only">Загрузка карточки…</span>
           </div>
+        ) : view === 'overview' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              <Stat label="Рейтинг" value={detail.rating?.toFixed(1) ?? '—'} />
+              <Stat label="Отзывов" value={detail.reviews_count} />
+              <Stat label="Негатив" value={detail.reviews_negative_count} tone="danger" />
+              <Stat label="Позитив" value={detail.reviews_positive_count} tone="success" />
+              <Stat
+                label="Ответы владельца"
+                value={detail.has_owner_replies ? detail.owner_replies_count : 'нет'}
+              />
+            </div>
 
-          {/* Phase 5 multi-source: метрики и контакты по каждому источнику раздельно.
-              Одноисточниковые компании fall-back на старый ContactsBlock без секций. */}
-          {showMultiSourceMeta ? (
-            <>
-              <SourceMetricsBlock profiles={sourcesProfiles} />
-              <MultiSourceContactsBlock profiles={sourcesProfiles} />
-            </>
-          ) : (
-            <ContactsBlock detail={detail} />
-          )}
-
-          {/* 2026-06-12 КП-конвейер: блок КП поднят на первый экран drawer'а
-              (выше юр.данных, ЛПР, дайджеста и benchmark). Старый
-              OutreachDraftBlock жёг токены на каждом open drawer'а; новый
-              KpQuickBlock ничего не грузит до клика «КП». */}
-          <KpQuickBlock
-            companyId={detail.id}
-            companyName={detail.name}
-            hasPains={Array.isArray(detail.top_pains) && detail.top_pains.length > 0}
-          />
-
-          {/* Юр.данные из DaData (блок 2 ТЗ). Рендерим всегда: если матч
-              не найден — плашка «не найдено в DaData»; если матч есть, но
-              отдельное поле пустое — «нет данных» серым, не молча. */}
-          <LegalBlock legal={detail.legal} />
-
-          {/* ЛПР со страниц сайта / ВК / hh / ЕГРЮЛ (ТЗ A.2 + Marketing-DM).
-              Блок отрисовывается всегда (даже когда список пуст) — в пустом
-              состоянии показывает кнопку «Найти ЛПР» для ручного триггера. */}
-          {/* dmSearchExhausted=true → в блок передан флаг для показа
-              «не нашли», а не заново кнопки. */}
-          <DecisionMakersBlock
-            decisionMakers={detail.decision_makers ?? []}
-            onFindDm={handleFindDm}
-            dmEnrichPending={dmEnrichPending}
-            dmEnrichResult={dmEnrichResult}
-            searchExhausted={dmSearchExhausted}
-            legalMatchConfidence={detail.legal?.match_confidence ?? null}
-            hiringMarketing={detail.hiring_marketing ?? false}
-            legalDirectorName={detail.legal?.director_name ?? null}
-            legalDirectorPost={detail.legal?.director_post ?? null}
-            genericEmails={detail.generic_emails ?? []}
-            onSourceRetry={handleSourceRetry}
-            triggeringSources={triggeringSources}
-          />
-
-          <div className="flex flex-wrap gap-3 text-xs">
-            <Metric label="Рейтинг" value={detail.rating?.toFixed(1) ?? '—'} />
-            <Metric label="Отзывов" value={String(detail.reviews_count)} />
-            <Metric label="Негатив" value={String(detail.reviews_negative_count)} red />
-            <Metric label="Позитив" value={String(detail.reviews_positive_count)} green />
-            <Metric
-              label="Ответы владельца"
-              value={detail.has_owner_replies ? `да (${detail.owner_replies_count})` : 'нет'}
+            <MainPainSection
+              detail={detail}
+              onOpenPain={(id, label) => {
+                changeView('pains');
+                activatePain(id, label);
+              }}
+              onOpenPains={() => changeView('pains')}
             />
-          </div>
 
-          {/* §3 ТЗ 2026-06-10: «негатив растёт» — сигнал «писать сейчас». */}
-          <div className="flex flex-wrap gap-2">
-            <NegativeTrendBadge companyId={detail.id} />
-          </div>
+            <DecisionMakerSummary detail={detail} onOpenContacts={() => changeView('contacts')} />
 
-          {/* Дайджест с переключаемым окном — лента метрик + кликабельные
-              топ-боли + независимый блок «Топ-негатив за всё время».
-              Клик по плитке боли → activePainTagId → ниже появляется
-              PainTrendBlock (даты + chart) + reviews-список фильтруется. */}
-          <CompanyDigestBlock
-            companyId={detail.id}
-            days={digestDays}
-            onDaysChange={setDigestDays}
-            activePainTagId={activePainTagId}
-            onPainClick={(painTagId, label) => {
-              if (painTagId === -1 || activePainTagId === painTagId) {
-                setActivePainTagId(null);
-                setActivePainLabel('');
-                setPainTrend(null);
-              } else {
-                setActivePainTagId(painTagId);
-                setActivePainLabel(label);
-                setTab('all');
-                setTextQuery('');
-                setOnlyWithOwnerReply(false);
-                // Прокручиваем drawer к списку отзывов через 50ms —
-                // даём reviews-фильтру успеть refetch'нуть.
-                setTimeout(() => {
-                  reviewsAnchorRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                  });
-                }, 50);
-              }
-            }}
-          />
-          {activePainTagId != null && painTrend && (
-            <PainTrendBlock
-              trend={painTrend}
-              label={activePainLabel}
-              hasSourceTabs={showMultiSourceMeta}
-              sourceTab={sourceTab}
-              scope={trendScope}
-              onScopeChange={setTrendScope}
-              niche={detail.niche ?? null}
-              city={detail.city ?? null}
+            {showMultiSourceMeta && <SourceMetricsBlock profiles={sourcesProfiles} />}
+
+            {/* Юр. данные из DaData (блок 2 ТЗ). Рендерим всегда: если матч не найден — пишем об этом. */}
+            <LegalBlock legal={detail.legal} />
+          </div>
+        ) : view === 'pains' ? (
+          <div className="space-y-4">
+            {/* Сводка за период + главные боли. Клик по боли → ниже динамика и отзывы темы. */}
+            <CompanyDigestBlock
+              companyId={detail.id}
+              days={digestDays}
+              onDaysChange={setDigestDays}
+              activePainTagId={activePainTagId}
+              onPainClick={togglePain}
             />
-          )}
 
-          {/* §1 ТЗ 2026-06-10: профиль болей компании vs средние по нише+городу.
-              Аргумент в письме лиду + база для будущих платных отчётов. */}
-          <PainBenchmarkBlock companyId={detail.id} />
-
-          {/* Полный список pain_tags компании — выводим как нейтральные
-              metadata-чипы (не кликабельные). Главный clickable-UX живёт
-              выше в CompanyDigestBlock (Топ-3 за 30 дней) — два кликабельных
-              блока со одним и тем же эффектом сбивают с толку. */}
-          {Array.isArray(detail.pain_tags) && detail.pain_tags.length > 0 && (
-            <div>
-              <div className="mb-1 text-xs font-medium text-ui-text-muted">
-                Все темы болей компании
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {(() => {
-                  const seen = new Set<string>();
-                  return detail.pain_tags.filter((t) => {
-                    const k = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
-                    if (!k || seen.has(k) || isUnnamedPainLabel(t.label)) return false;
-                    seen.add(k);
-                    return true;
-                  });
-                })().map((t) => (
-                  <span
-                    key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded border border-ui-border bg-ui-surface-2 px-2 py-0.5 text-xs text-ui-text-muted"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-ui-border" aria-hidden />
-                    {t.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* === Tabs по источнику отзывов ===
-              Phase 5 multi-source. 2026-06-12: рендерим ВСЕГДА — даже у
-              одноисточниковых компаний, чтобы юзер сразу видел из какого
-              источника отзывы и понимал что фильтр работает. Кнопки
-              недоступных у компании источников рендерим как disabled
-              серый pill (без перехода). */}
-          <div className="mb-2 rounded-md border border-ui-border bg-ui-surface-2 p-1.5">
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-ui-text-muted">
-              Источник отзывов
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {(['all', '2gis', 'yandex_maps'] as SourceTab[]).map((st) => {
-                const sp = sourcesProfiles.find((s) => s.source === st);
-                const count = sp?.reviews_count ?? 0;
-                const label = st === 'all' ? 'Все' : st === '2gis' ? '2GIS' : 'Я.Карты';
-                const available = st === 'all' || sp != null;
-                const active = sourceTab === st;
-                return (
-                  <button
-                    key={st}
-                    type="button"
-                    disabled={!available}
-                    onClick={() => available && setSourceTab(st)}
-                    className={cn(
-                      'rounded px-2 py-1 text-xs font-semibold transition-colors',
-                      active
-                        ? 'bg-ui-accent text-white shadow-sm'
-                        : available
-                          ? 'bg-ui-surface text-ui-text-muted ring-1 ring-ui-border hover:bg-ui-surface-2'
-                          : 'bg-ui-surface-2 text-ui-text-muted ring-1 ring-ui-border cursor-not-allowed',
-                    )}
-                    title={
-                      available
-                        ? `Показать отзывы: ${label}`
-                        : `${label}: у компании нет отзывов из этого источника`
-                    }
-                  >
-                    {label}
-                    {st !== 'all' && count > 0 ? ` · ${count}` : ''}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* === Tabs sentiment ===
-              Счётчики динамически зависят от sourceTab: когда выбран 2GIS или
-              Я.Карты — берём reviews_* из соответствующего CompanySourceOut, а
-              не из общих detail.reviews_* (иначе при переключении источника
-              счётчики «застревают» на общих и юзер думает что фильтр сломан). */}
-          {(() => {
-            const activeProfile =
-              sourceTab === 'all'
-                ? null
-                : (sourcesProfiles.find((s) => s.source === sourceTab) ?? null);
-            const totalAll = activeProfile?.reviews_count ?? detail.reviews_count;
-            const totalNeg = activeProfile?.reviews_negative_count ?? detail.reviews_negative_count;
-            const totalPos = activeProfile?.reviews_positive_count ?? detail.reviews_positive_count;
-            return (
-              <div ref={reviewsAnchorRef}>
-                {activePainTagId != null && (
-                  <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] px-2 py-1.5 text-xs">
-                    <span className="text-ui-text-muted">
-                      Отзывы темы <strong>«{activePainLabel}»</strong>
-                      {reviews.length > 0 ? ` · найдено ${reviews.length}` : ''}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActivePainTagId(null);
-                        setActivePainLabel('');
-                      }}
-                      className="ml-auto rounded border border-[color:var(--signal-hot)]/40 px-1.5 py-0.5 text-xs font-medium text-signal-hot hover:bg-[var(--signal-hot-bg)]"
-                    >
-                      × снять фильтр темы
-                    </button>
-                  </div>
+            {activePainTagId != null && (
+              <div ref={painAnchorRef} className="scroll-mt-2 space-y-4">
+                {painTrend && (
+                  <PainTrendBlock
+                    trend={painTrend}
+                    label={activePainLabel}
+                    hasSourceTabs={showMultiSourceMeta}
+                    sourceTab={sourceTab}
+                    scope={trendScope}
+                    onScopeChange={setTrendScope}
+                    niche={detail.niche ?? null}
+                    city={detail.city ?? null}
+                  />
                 )}
-                {/* Sentiment-tabs. 2026-06-12: повышен контраст неактивных
-                (text-slate-700 вместо text-slate-500) — юзер жаловался
-                «нихуя не читаем». Активная подсвечена тёмным фоном +
-                bold border, чтобы было очевидно что таб кликабельный. */}
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {(['all', 'negative', 'positive'] as Tab[]).map((t) => {
-                    const active = tab === t;
-                    const label =
-                      t === 'all'
-                        ? `Все${totalAll > 0 ? ` · ${totalAll}` : ''}`
-                        : t === 'negative'
-                          ? `Негатив${totalNeg > 0 ? ` · ${totalNeg}` : ''}`
-                          : `Позитив${totalPos > 0 ? ` · ${totalPos}` : ''}`;
-                    const tone =
-                      t === 'negative'
-                        ? active
-                          ? 'bg-signal-hot text-white shadow-sm'
-                          : 'bg-ui-surface text-signal-hot ring-1 ring-ui-border hover:bg-[var(--signal-hot-bg)]'
-                        : t === 'positive'
-                          ? active
-                            ? 'bg-signal-good text-white shadow-sm'
-                            : 'bg-ui-surface text-signal-good ring-1 ring-ui-border hover:bg-[var(--signal-good-bg)]'
-                          : active
-                            ? 'bg-ui-accent text-white shadow-sm'
-                            : 'bg-ui-surface text-ui-text-muted ring-1 ring-ui-border hover:bg-ui-surface-2';
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTab(t)}
-                        className={cn(
-                          'rounded-md px-3 py-1.5 text-small font-semibold transition-colors',
-                          tone,
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* === Drawer filter row: text search + has_owner_reply === */}
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <div className="relative flex-1 min-w-[200px]">
-                    <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ui-text-muted" />
-                    <Input
-                      type="text"
-                      placeholder="Поиск в тексте отзыва…"
-                      value={textQuery}
-                      onChange={(e) => setTextQuery(e.target.value)}
-                      className="h-8 text-small pl-8 pr-7"
-                    />
-                    {textQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setTextQuery('')}
-                        aria-label="Очистить поиск"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-ui-text-muted hover:text-ui-text"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ui-text-muted">
-                    <input
-                      type="checkbox"
-                      checked={onlyWithOwnerReply}
-                      onChange={(e) => setOnlyWithOwnerReply(e.target.checked)}
-                      className="h-3.5 w-3.5"
-                    />
-                    только с ответом владельца
-                  </label>
-                  {hasActiveFilters && (
+                <DrawerSection
+                  title={`Отзывы по теме «${activePainLabel}»`}
+                  aside={
                     <button
                       type="button"
-                      onClick={() => {
-                        setTab('all');
-                        setTextQuery('');
-                        setOnlyWithOwnerReply(false);
-                      }}
-                      className="text-xs text-ui-text-muted underline hover:text-ui-text"
+                      onClick={clearPain}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-ui-text-muted hover:text-ui-text"
                     >
-                      сбросить
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                      Снять тему
+                    </button>
+                  }
+                >
+                  <ReviewsList
+                    reviews={reviews}
+                    isLoading={isLoading}
+                    highlight=""
+                    emptyText="Отзывов по этой теме не нашлось."
+                  />
+                  {reviews.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => changeView('reviews')}
+                      className="mt-3 text-small font-semibold text-ui-accent hover:underline"
+                    >
+                      Искать в отзывах темы →
                     </button>
                   )}
-                </div>
-
-                {isLoading && reviews.length === 0 ? (
-                  <div className="text-sm text-ui-text-muted">Загрузка отзывов…</div>
-                ) : reviews.length === 0 ? (
-                  <div className="text-sm text-ui-text-muted">
-                    {hasActiveFilters ? 'Отзывов под текущие фильтры не найдено.' : 'Отзывов нет.'}
-                  </div>
-                ) : (
-                  <>
-                    {hasActiveFilters && !isLoading && (
-                      <div className="mb-2 text-xs uppercase tracking-wider text-ui-text-muted">
-                        показано {reviews.length}
-                        {textQuery ? ` · по запросу «${debouncedText}»` : ''}
-                      </div>
-                    )}
-                    <ul className="space-y-2">
-                      {reviews.map((r) => (
-                        <ReviewCard key={r.id} review={r} highlight={debouncedText} />
-                      ))}
-                    </ul>
-                  </>
-                )}
+                </DrawerSection>
               </div>
-            );
-          })()}
-        </div>
-      )}
+            )}
+
+            {/* §1 ТЗ 2026-06-10: профиль болей компании против средних по нише и городу. */}
+            <PainBenchmarkBlock companyId={detail.id} />
+
+            {/* Полный список тем — справочно, не кликается (кликабельные боли — в сводке выше). */}
+            {painTags.length > 0 && (
+              <DrawerSection title="Все темы жалоб">
+                <div className="flex flex-wrap gap-1.5">
+                  {painTags.map((t) => (
+                    <span
+                      key={t.id}
+                      className="rounded-full bg-ui-surface-2 px-3 py-1 text-xs font-medium text-ui-text-muted"
+                    >
+                      {t.label}
+                    </span>
+                  ))}
+                </div>
+              </DrawerSection>
+            )}
+          </div>
+        ) : view === 'reviews' ? (
+          <ReviewsView
+            detail={detail}
+            reviews={reviews}
+            isLoading={isLoading}
+            tab={tab}
+            onTabChange={setTab}
+            sourceTab={sourceTab}
+            onSourceTabChange={setSourceTab}
+            textQuery={textQuery}
+            debouncedText={debouncedText}
+            onTextQueryChange={setTextQuery}
+            onlyWithOwnerReply={onlyWithOwnerReply}
+            onOnlyWithOwnerReplyChange={setOnlyWithOwnerReply}
+            painLabel={activePainTagId != null ? activePainLabel : null}
+            onClearPain={clearPain}
+          />
+        ) : (
+          <div className="space-y-4">
+            {showMultiSourceMeta ? (
+              <>
+                <MultiSourceContactsBlock profiles={sourcesProfiles} />
+                {/* Почта и мессенджеры, найденные на сайте компании, — отдельно от карточек карт. */}
+                <ContactsBlock detail={detail} crawledOnly />
+              </>
+            ) : (
+              <ContactsBlock detail={detail} />
+            )}
+
+            {/* ЛПР со страниц сайта / ВК / hh / ЕГРЮЛ (ТЗ A.2 + Marketing-DM). Рендерится всегда:
+                в пустом состоянии — кнопка «Найти ЛПР»; после пустого поиска — «не нашли». */}
+            <DecisionMakersBlock
+              decisionMakers={detail.decision_makers ?? []}
+              onFindDm={handleFindDm}
+              dmEnrichPending={dmEnrichPending}
+              dmEnrichResult={dmEnrichResult}
+              searchExhausted={dmSearchExhausted}
+              legalMatchConfidence={detail.legal?.match_confidence ?? null}
+              hiringMarketing={detail.hiring_marketing ?? false}
+              legalDirectorName={detail.legal?.director_name ?? null}
+              legalDirectorPost={detail.legal?.director_post ?? null}
+              genericEmails={detail.generic_emails ?? []}
+              onSourceRetry={handleSourceRetry}
+              triggeringSources={triggeringSources}
+            />
+          </div>
+        )}
+
+        {detail && (
+          <>
+            {/* КП: модалка сама грузит шаблоны и генерирует письмо по клику. */}
+            <KpModal
+              open={kpOpen}
+              companyId={detail.id}
+              companyName={detail.name}
+              onClose={() => setKpOpen(false)}
+            />
+            <AddToListModal
+              open={listOpen}
+              companyIds={[detail.id]}
+              defaultListName={
+                detail.niche && detail.city ? `${detail.niche} — ${detail.city}` : undefined
+              }
+              onClose={() => setListOpen(false)}
+              onDone={() => setListOpen(false)}
+            />
+          </>
+        )}
+      </div>
     </Drawer>
   );
+}
+
+/* ===== Шапка ===== */
+
+function CompanyDrawerHeader({
+  titleId,
+  detail,
+  view,
+  onViewChange,
+  onClose,
+  onWrite,
+  onAddToList,
+  painCount,
+  contactCount,
+}: {
+  titleId: string;
+  detail: CompanyDetailOut | null;
+  view: DrawerView;
+  onViewChange: (view: DrawerView) => void;
+  onClose: () => void;
+  onWrite: () => void;
+  onAddToList: () => void;
+  painCount: number;
+  contactCount: number;
+}) {
+  const address = detail ? formatAddressWithCity(detail.address, detail.city) : null;
+  const meta = [detail?.niche, address].filter(Boolean).join(' · ');
+  const rating = detail?.rating ?? null;
+  const negatives = detail?.reviews_negative_count ?? 0;
+  const hasPains = (detail?.top_pains ?? []).length > 0;
+
+  return (
+    <div className="border-b border-ui-border px-6 pt-5">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h2
+            id={titleId}
+            className="text-xl font-bold leading-snug tracking-tight text-ui-text [overflow-wrap:anywhere]"
+          >
+            {detail?.name ?? 'Загрузка…'}
+          </h2>
+          {meta && <p className="mt-1 text-small text-ui-text-muted">{meta}</p>}
+        </div>
+        <DialogCloseButton onClose={onClose} />
+      </div>
+
+      {detail ? (
+        <>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-small">
+            {rating != null && (
+              <span
+                className={cn(
+                  'whitespace-nowrap rounded-full px-3 py-0.5 font-semibold tabular-nums',
+                  rating < 4
+                    ? 'bg-ui-danger/10 text-ui-danger'
+                    : rating < 4.3
+                      ? 'bg-ui-warning/10 text-ui-warning'
+                      : 'bg-ui-success/10 text-ui-success',
+                )}
+              >
+                {rating.toFixed(1)} ★{' '}
+                <span className="font-medium opacity-75">{detail.reviews_count} отз.</span>
+              </span>
+            )}
+            {negatives > 0 && (
+              <span className="font-semibold text-ui-danger">
+                {negatives}{' '}
+                {pluralRu(negatives, [
+                  'негативный отзыв',
+                  'негативных отзыва',
+                  'негативных отзывов',
+                ])}
+              </span>
+            )}
+            {/* §3 ТЗ 2026-06-10: «негатив растёт» — сигнал «писать сейчас». */}
+            <NegativeTrendBadge companyId={detail.id} />
+            {sourceCardLinks(detail).map((s) => (
+              <a
+                key={s.href}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-ui-text-muted hover:text-ui-accent"
+                title={`Открыть карточку в ${s.label}`}
+              >
+                {s.label}
+                <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              className="h-9 px-4"
+              onClick={onWrite}
+              iconLeft={<Send className="h-4 w-4" />}
+              title={
+                hasPains
+                  ? 'Холодное письмо под главную боль клиентов с цитатой из отзыва'
+                  : 'Общее письмо по шаблону — боли клиентов ещё не разобраны'
+              }
+            >
+              Написать
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-9 px-4"
+              onClick={onAddToList}
+              iconLeft={<ListPlus className="h-4 w-4" />}
+            >
+              В список
+            </Button>
+            {detail.website && (
+              <a
+                href={detail.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass({ variant: 'ghost', size: 'sm', className: 'h-9 px-4' })}
+              >
+                <Globe className="h-4 w-4" aria-hidden />
+                Сайт
+              </a>
+            )}
+          </div>
+
+          <Tabs<DrawerView>
+            aria-label="Разделы карточки компании"
+            // На телефоне вкладки плотнее и лента уходит под край панели — прокручивается, а не переносится.
+            className="-mx-6 mt-4 flex-nowrap gap-0 overflow-x-auto border-b-0 px-4 [scrollbar-width:none] sm:mx-0 sm:gap-1 sm:px-0 [&>button]:shrink-0 [&>button]:px-2.5 sm:[&>button]:px-3"
+            value={view}
+            onChange={onViewChange}
+            items={[
+              { value: 'overview', label: 'Обзор' },
+              { value: 'pains', label: <TabLabel text="Жалобы" count={painCount} /> },
+              { value: 'reviews', label: <TabLabel text="Отзывы" count={detail.reviews_count} /> },
+              { value: 'contacts', label: <TabLabel text="Контакты" count={contactCount} /> },
+            ]}
+          />
+        </>
+      ) : (
+        <div className="space-y-3 pb-4 pt-3" aria-hidden>
+          <Skeleton className="h-6 w-40 rounded-full" />
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-32 rounded-full" />
+            <Skeleton className="h-9 w-28 rounded-full" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabLabel({ text, count }: { text: string; count: number }) {
+  return (
+    <span className="whitespace-nowrap">
+      {text}
+      {count > 0 && (
+        <>
+          {' '}
+          <span className="ml-0.5 tabular-nums text-ui-text-muted">{count}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+/** Ссылки на карточки компании в 2GIS и Яндекс.Картах — по одной на источник. */
+function sourceCardLinks(detail: CompanyDetailOut): { label: string; href: string }[] {
+  const out: { label: string; href: string }[] = [];
+  const seen = new Set<string>();
+  const push = (source: string, href: string | null | undefined) => {
+    if (!href || seen.has(source)) return;
+    seen.add(source);
+    out.push({ label: sourceShortLabel(source), href });
+  };
+  for (const p of detail.sources_profiles ?? []) {
+    push(p.source, p.source_url || buildSourceUrl(p.source, p.external_id));
+  }
+  push(detail.source, buildSourceUrl(detail.source, detail.external_id));
+  return out;
+}
+
+/* ===== Обзор ===== */
+
+function Stat({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string | number;
+  tone?: 'neutral' | 'danger' | 'success';
+}) {
+  return (
+    <div className="flex flex-col justify-between gap-1 rounded-card bg-ui-surface-2 px-3 py-2.5">
+      <div className="text-xs leading-tight text-ui-text-muted">{label}</div>
+      <div
+        className={cn(
+          'text-base font-bold tabular-nums',
+          tone === 'danger'
+            ? 'text-ui-danger'
+            : tone === 'success'
+              ? 'text-ui-success'
+              : 'text-ui-text',
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MainPainSection({
+  detail,
+  onOpenPain,
+  onOpenPains,
+}: {
+  detail: CompanyDetailOut;
+  onOpenPain: (painTagId: number, label: string) => void;
+  onOpenPains: () => void;
+}) {
+  const topPain = (detail.top_pains ?? []).find((p) => !isUnnamedPainLabel(p.label)) ?? null;
+  if (!topPain) {
+    if (detail.reviews_negative_count === 0) return null;
+    return (
+      <DrawerSection title="Жалобы" tone="muted">
+        <p className="text-small text-ui-text-muted">
+          Темы жалоб появятся после разбора отзывов. Пока можно прочитать негативные отзывы во
+          вкладке «Отзывы».
+        </p>
+      </DrawerSection>
+    );
+  }
+  return (
+    <DrawerSection
+      title="Главная жалоба клиентов"
+      aside={
+        <button
+          type="button"
+          onClick={onOpenPains}
+          className="text-xs font-semibold text-ui-accent hover:underline"
+        >
+          Все жалобы →
+        </button>
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onOpenPain(topPain.pain_tag_id, topPain.label)}
+        className="group block w-full text-left"
+      >
+        <span className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-base font-semibold text-ui-text">{topPain.label}</span>
+          {topPain.mention_count > 0 && (
+            <span className="text-small tabular-nums text-ui-text-muted">
+              {topPain.mention_count}{' '}
+              {pluralRu(topPain.mention_count, ['упоминание', 'упоминания', 'упоминаний'])}
+            </span>
+          )}
+        </span>
+        {topPain.top_quote && (
+          <span className="mt-2 block border-l-2 border-ui-danger/40 pl-3 text-small italic leading-relaxed text-ui-text-muted">
+            «{topPain.top_quote}»
+          </span>
+        )}
+        <span className="mt-3 inline-block text-small font-semibold text-ui-accent group-hover:underline">
+          Динамика и отзывы по теме →
+        </span>
+      </button>
+    </DrawerSection>
+  );
+}
+
+/** Коротко «кому писать» — подробности и поиск ЛПР во вкладке «Контакты». */
+function DecisionMakerSummary({
+  detail,
+  onOpenContacts,
+}: {
+  detail: CompanyDetailOut;
+  onOpenContacts: () => void;
+}) {
+  const dms = detail.decision_makers ?? [];
+  const person = dms.find((d) => d.is_marketing_dm) ?? dms.find((d) => d.is_decision_maker) ?? null;
+  const director = detail.legal?.director_name ?? null;
+  const generic = (detail.generic_emails ?? []).filter(Boolean);
+
+  return (
+    <DrawerSection
+      title="Кому писать"
+      aside={
+        <button
+          type="button"
+          onClick={onOpenContacts}
+          className="text-xs font-semibold text-ui-accent hover:underline"
+        >
+          Все контакты →
+        </button>
+      }
+    >
+      {person ? (
+        <div className="space-y-1">
+          <div className="text-sm">
+            <span className="font-semibold text-ui-text">{person.name}</span>
+            {person.post && <span className="text-ui-text-muted">{` · ${person.post}`}</span>}
+          </div>
+          {person.contact_value ? (
+            <DecisionMakerContact dm={person} />
+          ) : (
+            <p className="text-small text-ui-text-muted">
+              Личного контакта нет{generic.length > 0 ? ` — общая почта ${generic[0]}` : ''}.
+            </p>
+          )}
+        </div>
+      ) : director ? (
+        <div className="space-y-1">
+          <div className="text-sm">
+            <span className="font-semibold text-ui-text">{director}</span>
+            {detail.legal?.director_post && (
+              <span className="text-ui-text-muted">{` · ${detail.legal.director_post}`}</span>
+            )}
+          </div>
+          <p className="text-small text-ui-text-muted">
+            Руководитель по данным ЕГРЮЛ
+            {generic.length > 0 ? ` — писать на общую почту ${generic[0]}` : ''}.
+          </p>
+        </div>
+      ) : (
+        <p className="text-small text-ui-text-muted">
+          ЛПР ещё не найден. Во вкладке «Контакты» можно запустить поиск: сайт, hh.ru, ВКонтакте,
+          ЕГРЮЛ.
+        </p>
+      )}
+    </DrawerSection>
+  );
+}
+
+function DecisionMakerContact({ dm }: { dm: DecisionMakerOut }) {
+  if (!dm.contact_value) return null;
+  const t = dm.contact_type ?? '';
+  const href =
+    t === 'email'
+      ? `mailto:${dm.contact_value}`
+      : t === 'phone'
+        ? `tel:${dm.contact_value}`
+        : dm.contact_value.startsWith('http')
+          ? dm.contact_value
+          : `https://${dm.contact_value}`;
+  const Icon = t === 'email' ? Mail : t === 'phone' ? Phone : ExternalLink;
+  return (
+    <a
+      href={href}
+      target={t === 'email' || t === 'phone' ? undefined : '_blank'}
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 text-small font-semibold text-ui-accent hover:underline"
+    >
+      <Icon className="h-4 w-4" aria-hidden />
+      {dm.contact_value}
+    </a>
+  );
+}
+
+/* ===== Отзывы ===== */
+
+function ReviewsView({
+  detail,
+  reviews,
+  isLoading,
+  tab,
+  onTabChange,
+  sourceTab,
+  onSourceTabChange,
+  textQuery,
+  debouncedText,
+  onTextQueryChange,
+  onlyWithOwnerReply,
+  onOnlyWithOwnerReplyChange,
+  painLabel,
+  onClearPain,
+}: {
+  detail: CompanyDetailOut;
+  reviews: ReviewOut[];
+  isLoading: boolean;
+  tab: Tab;
+  onTabChange: (tab: Tab) => void;
+  sourceTab: SourceTab;
+  onSourceTabChange: (tab: SourceTab) => void;
+  textQuery: string;
+  debouncedText: string;
+  onTextQueryChange: (q: string) => void;
+  onlyWithOwnerReply: boolean;
+  onOnlyWithOwnerReplyChange: (v: boolean) => void;
+  painLabel: string | null;
+  onClearPain: () => void;
+}) {
+  const sourcesProfiles = detail.sources_profiles ?? [];
+  // Счётчики тональности зависят от выбранного источника: берём их из профиля источника,
+  // иначе при переключении они «застревают» на общих и кажется, что фильтр сломан.
+  const activeProfile =
+    sourceTab === 'all' ? null : (sourcesProfiles.find((s) => s.source === sourceTab) ?? null);
+  const totalAll = activeProfile?.reviews_count ?? detail.reviews_count;
+  const totalNeg = activeProfile?.reviews_negative_count ?? detail.reviews_negative_count;
+  const totalPos = activeProfile?.reviews_positive_count ?? detail.reviews_positive_count;
+  const hasActiveFilters =
+    tab !== 'all' || sourceTab !== 'all' || debouncedText.length > 0 || onlyWithOwnerReply;
+  const count = (n: number) => (n > 0 ? ` · ${n}` : '');
+
+  return (
+    <div className="space-y-3">
+      {painLabel && (
+        <div className="flex flex-wrap items-center gap-2 rounded-card bg-ui-danger/[.06] px-3 py-2 text-small">
+          <span className="text-ui-text">
+            Отзывы темы <strong>«{painLabel}»</strong>
+          </span>
+          <button
+            type="button"
+            onClick={onClearPain}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-ui-text-muted hover:text-ui-text"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Снять тему
+          </button>
+        </div>
+      )}
+
+      {/* Источник рендерим всегда (2026-06-12): у одноисточниковых компаний видно, откуда отзывы;
+          недоступный у компании источник — неактивен. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented<SourceTab>
+          aria-label="Источник отзывов"
+          size="sm"
+          value={sourceTab}
+          onChange={onSourceTabChange}
+          options={(['all', '2gis', 'yandex_maps'] as SourceTab[]).map((st) => {
+            const sp = sourcesProfiles.find((s) => s.source === st);
+            const label = st === 'all' ? 'Все источники' : sourceShortLabel(st);
+            const available = st === 'all' || sp != null;
+            return {
+              value: st,
+              label: `${label}${st !== 'all' && sp ? count(sp.reviews_count) : ''}`,
+              disabled: !available,
+              title: available ? undefined : `${label}: у компании нет отзывов из этого источника`,
+            };
+          })}
+        />
+        <Segmented<Tab>
+          aria-label="Тональность отзывов"
+          size="sm"
+          value={tab}
+          onChange={onTabChange}
+          options={[
+            { value: 'all', label: `Все${count(totalAll)}` },
+            {
+              value: 'negative',
+              label: (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-ui-danger" aria-hidden />
+                  Негатив{count(totalNeg)}
+                </>
+              ),
+            },
+            {
+              value: 'positive',
+              label: (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-ui-success" aria-hidden />
+                  Позитив{count(totalPos)}
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="relative min-w-[200px] flex-1">
+          <SearchIcon
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-text-muted"
+            aria-hidden
+          />
+          <Input
+            type="text"
+            aria-label="Поиск в тексте отзывов"
+            placeholder="Слово в тексте отзыва"
+            value={textQuery}
+            onChange={(e) => onTextQueryChange(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {textQuery && (
+            <button
+              type="button"
+              onClick={() => onTextQueryChange('')}
+              aria-label="Очистить поиск"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-control p-1 text-ui-text-muted hover:text-ui-text"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          )}
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-small text-ui-text-muted">
+          <input
+            type="checkbox"
+            checked={onlyWithOwnerReply}
+            onChange={(e) => onOnlyWithOwnerReplyChange(e.target.checked)}
+            className="h-4 w-4 accent-[hsl(var(--color-accent))]"
+          />
+          С ответом владельца
+        </label>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              onTabChange('all');
+              onSourceTabChange('all');
+              onTextQueryChange('');
+              onOnlyWithOwnerReplyChange(false);
+            }}
+            className="text-small font-semibold text-ui-text-muted hover:text-ui-text"
+          >
+            Сбросить
+          </button>
+        )}
+      </div>
+
+      {hasActiveFilters && !isLoading && reviews.length > 0 && (
+        <p className="text-xs text-ui-text-muted">
+          Показано {reviews.length}
+          {debouncedText ? ` · со словом «${debouncedText}»` : ''}
+        </p>
+      )}
+
+      <ReviewsList
+        reviews={reviews}
+        isLoading={isLoading}
+        highlight={debouncedText}
+        emptyText={hasActiveFilters || painLabel ? 'Под эти фильтры отзывов нет.' : 'Отзывов нет.'}
+      />
+    </div>
+  );
+}
+
+function ReviewsList({
+  reviews,
+  isLoading,
+  highlight,
+  emptyText,
+}: {
+  reviews: ReviewOut[];
+  isLoading: boolean;
+  highlight: string;
+  emptyText: string;
+}) {
+  if (isLoading && reviews.length === 0) {
+    return (
+      <div className="space-y-2" aria-busy="true">
+        <Skeleton className="h-24" rounded="md" />
+        <Skeleton className="h-24" rounded="md" />
+        <span className="sr-only">Загрузка отзывов…</span>
+      </div>
+    );
+  }
+  if (reviews.length === 0) {
+    return <p className="text-small text-ui-text-muted">{emptyText}</p>;
+  }
+  return (
+    <ul
+      className={cn('space-y-2 transition-opacity', isLoading && 'opacity-60')}
+      aria-busy={isLoading || undefined}
+    >
+      {reviews.map((r) => (
+        <ReviewCard key={r.id} review={r} highlight={highlight} />
+      ))}
+    </ul>
+  );
+}
+
+/* ===== Вспомогательное ===== */
+
+/** Темы болей без дублей по названию и без безымянных кластеров. */
+function uniquePainTags(tags: CompanyDetailOut['pain_tags'] | undefined) {
+  const seen = new Set<string>();
+  return (tags ?? []).filter((t) => {
+    const k = (t.label || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!k || seen.has(k) || isUnnamedPainLabel(t.label)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** Сколько разных контактов у компании — для счётчика вкладки «Контакты». */
+function countContacts(detail: CompanyDetailOut): number {
+  const values = new Set<string>();
+  const add = (v: string | null | undefined) => {
+    const raw = (v ?? '').trim().toLowerCase();
+    if (!raw) return;
+    // Телефон в любом написании — одна запись: только цифры, 8 → 7.
+    if (/^[\d\s()+-]{6,}$/.test(raw)) {
+      values.add(raw.replace(/\D+/g, '').replace(/^8(\d{10})$/, '7$1'));
+      return;
+    }
+    values.add(raw.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''));
+  };
+  const extra = (detail.contacts_extra ?? {}) as ContactsExtra;
+  add(detail.phone);
+  add(detail.website);
+  (detail.emails ?? []).forEach(add);
+  (detail.generic_emails ?? []).forEach(add);
+  [extra.phones, extra.telegrams, extra.vks, extra.whatsapps].forEach((list) =>
+    (list ?? []).forEach(add),
+  );
+  for (const p of detail.sources_profiles ?? []) (p.contacts ?? []).forEach((c) => add(c.value));
+  for (const d of detail.decision_makers ?? []) add(d.contact_value);
+  return values.size;
 }
 
 // ---------------------------------------------------------------------------
@@ -701,8 +1215,6 @@ export function MapsCompanyDetailDrawer({ companyId, searchId, onClose }: Props)
 //     тоже от краулера. fetched_url/error — служебные, не показываем.
 //
 // Дубли телефона из 2GIS и из contacts_extra.phones схлопываем.
-// Если ни одного контакта нет — показываем подсказку, что обогащение
-// контактов работает только когда у компании есть website.
 // ---------------------------------------------------------------------------
 
 interface ContactsExtra {
@@ -720,38 +1232,31 @@ function normalizePhone(p: string): string {
 
 function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
   // Блок 2 ТЗ 2026-06-02 — юр.данные из DaData. На free-тарифе DaData
-  // revenue и employee_count всегда null — их вообще не показываем,
-  // чтобы не пугать юзера «нет данных» там, где их и не будет.
+  // revenue и employee_count всегда null — их вообще не показываем.
   //
   // 2026-06-12: даже если матч не нашёлся (legal === null) — рендерим
-  // блок с плашкой «не найдено в DaData», иначе юзер не понимает разницу
-  // «не загружено» vs «нет в реестре». А когда матч есть, но конкретное
-  // поле пусто — пишем «нет данных» серым, а не молча скрываем.
+  // блок с пояснением, иначе юзер не понимает разницу «не загружено» vs
+  // «нет в реестре». Пустое поле при найденном матче — «нет данных» серым.
 
-  const missing = <span className="text-ui-text-muted italic">нет данных</span>;
+  const missing = <span className="text-ui-text-muted">нет данных</span>;
 
   if (!legal) {
     return (
-      <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
-          Юр.данные (DaData)
-        </div>
-        <div className="text-xs text-ui-text-muted">
-          Не найдено в DaData — возможно, у компании нет юр.лица (самозанятый/ИП без OГРН) или
-          название/адрес не совпали.
-        </div>
-      </div>
+      <DrawerSection title="Юр. данные" tone="muted">
+        <p className="text-small text-ui-text-muted">
+          Не найдено в DaData — возможно, у компании нет юрлица (самозанятый или ИП без ОГРН) или
+          название и адрес не совпали.
+        </p>
+      </DrawerSection>
     );
   }
 
   // Опорный набор полей — рисуем всегда, даже когда поле пустое.
-  // Юзер видит «есть данные / нет данных» по каждому ключевому полю
-  // вместо «куда оно делось».
   const items: { label: string; value: React.ReactNode; mono?: boolean }[] = [
     { label: 'ИНН', value: legal.inn || missing, mono: !!legal.inn },
     { label: 'ОГРН', value: legal.ogrn || missing, mono: !!legal.ogrn },
     {
-      label: 'Юр.лицо',
+      label: 'Юрлицо',
       value: legal.legal_short_name || legal.legal_name || missing,
     },
     {
@@ -774,19 +1279,16 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
       label: 'ОКВЭД',
       value: legal.okved_name ? `${legal.okved ?? ''} ${legal.okved_name}`.trim() : missing,
     },
-    // ЛПР: ФИО + должность руководителя. Если у юр.лица нет руководителя
-    // в реестре (бывает у ИП) — пишем «нет данных», чтобы юзер не думал
-    // что мы потеряли данные.
+    // ЛПР: ФИО + должность руководителя. У ИП руководителя в реестре может не быть.
     {
-      label: 'ЛПР',
+      label: 'Руководитель',
       value: legal.director_name
         ? `${legal.director_name}${legal.director_post ? `, ${legal.director_post}` : ''}`
         : missing,
     },
   ];
 
-  // Опциональные поля (платный тариф DaData) — показываем только если
-  // есть значение. Их отсутствие — норма, а не «потеряли данные».
+  // Поля платного тарифа DaData — только если есть значение.
   if (typeof legal.revenue === 'number' && legal.revenue > 0) {
     items.push({
       label: 'Оборот',
@@ -797,8 +1299,7 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
     items.push({ label: 'Сотрудников', value: legal.employee_count });
   }
 
-  // Человечий вид способа матча: показываем рядом с %, чтобы юзеру было
-  // понятно «почему именно эти юр.данные» без раскрытия tooltip.
+  // Способ матча рядом с процентом — «почему именно эти юр. данные».
   const matchedByRu: Record<string, string> = {
     phone: 'по телефону',
     name_address: 'по названию и адресу',
@@ -810,48 +1311,57 @@ function LegalBlock({ legal }: { legal: CompanyDetailOut['legal'] }) {
     ? (matchedByRu[legal.matched_by] ?? legal.matched_by)
     : null;
   return (
-    <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/30 bg-[var(--signal-cool-bg)] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-cool)]">
-          Юр.данные (DaData)
-        </div>
-        {typeof legal.match_confidence === 'number' && (
-          <div
-            className="text-xs text-signal-cool"
+    <DrawerSection
+      title="Юр. данные"
+      aside={
+        typeof legal.match_confidence === 'number' ? (
+          <span
+            className={cn(
+              'text-xs font-semibold',
+              legal.match_confidence < 0.7 ? 'text-ui-warning' : 'text-ui-text-muted',
+            )}
             title={
-              `Уверенность матча DaData ↔ компания: ${(legal.match_confidence * 100).toFixed(0)}%. ` +
-              `Чем выше — тем надёжнее что это именно та компания. ` +
+              `Уверенность совпадения DaData ↔ компания: ${(legal.match_confidence * 100).toFixed(0)}%. ` +
               `Способ: ${matchedByLabel ?? '—'}. ` +
-              `100% — точный матч (например, по ИНН/телефону), ` +
-              `<70% — стоит вручную проверить что юр.лицо реально совпадает.`
+              `100% — точное совпадение (например, по ИНН или телефону), ` +
+              `меньше 70% — стоит проверить вручную, что юрлицо то же.`
             }
           >
             совпадение {(legal.match_confidence * 100).toFixed(0)}%
             {matchedByLabel ? ` · ${matchedByLabel}` : ''}
-          </div>
-        )}
-      </div>
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+          </span>
+        ) : undefined
+      }
+    >
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-small">
         {items.map((it) => (
           <React.Fragment key={it.label}>
-            <dt className="text-ui-text-muted">{it.label}:</dt>
+            <dt className="text-ui-text-muted">{it.label}</dt>
             <dd className={cn('min-w-0 break-words text-ui-text', it.mono && 'font-mono')}>
               {it.value}
             </dd>
           </React.Fragment>
         ))}
       </dl>
-    </div>
+    </DrawerSection>
   );
 }
 
-function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
+function ContactsBlock({
+  detail,
+  crawledOnly = false,
+}: {
+  detail: CompanyDetailOut;
+  /** Только найденное на сайте компании (почта, мессенджеры) — для компаний с 2+ источниками,
+   *  где телефон и сайт уже показаны в карточках источников. */
+  crawledOnly?: boolean;
+}) {
   const extra: ContactsExtra = (detail.contacts_extra ?? {}) as ContactsExtra;
   const emails: string[] = Array.isArray(detail.emails) ? detail.emails : [];
 
   // Телефоны: основной + extra.phones, без дублей по нормализованной форме.
   const phoneSet = new Map<string, string>();
-  if (detail.phone) phoneSet.set(normalizePhone(detail.phone), detail.phone);
+  if (detail.phone && !crawledOnly) phoneSet.set(normalizePhone(detail.phone), detail.phone);
   for (const p of extra.phones ?? []) {
     const key = normalizePhone(p);
     if (key && !phoneSet.has(key)) phoneSet.set(key, p);
@@ -861,6 +1371,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
   const telegrams = (extra.telegrams ?? []).filter(Boolean);
   const vks = (extra.vks ?? []).filter(Boolean);
   const whatsapps = (extra.whatsapps ?? []).filter(Boolean);
+  const website = crawledOnly ? null : detail.website;
 
   const hasAny =
     phones.length > 0 ||
@@ -868,62 +1379,51 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
     telegrams.length > 0 ||
     vks.length > 0 ||
     whatsapps.length > 0 ||
-    !!detail.website;
+    !!website;
 
-  // Deeplink в карточку источника — фолбэк когда контактов нет совсем.
-  // 2GIS: https://2gis.ru/firm/{external_id} — открывает реальную карточку
-  // с телефонами/мессенджерами (которые их Catalog API не отдал на нашем плане).
-  const sourceUrl = buildSourceUrl(detail.source, detail.external_id);
+  // Ссылка на карточку источника — запасной путь, когда контактов нет совсем.
+  // 2GIS: https://2gis.ru/firm/{external_id} — там обычно есть телефоны и мессенджеры.
+  const sourceUrl = crawledOnly ? null : buildSourceUrl(detail.source, detail.external_id);
 
   if (!hasAny) {
+    if (crawledOnly) return null;
     return (
-      <div className="space-y-2">
-        <div className="rounded-md border border-dashed border-ui-border px-3 py-2 text-xs text-ui-text-muted">
-          Контактов от провайдера нет. 2GIS на нашем плане Catalog API не всегда отдаёт телефоны и
-          не отдаёт мессенджеры — открой исходную карточку, там обычно всё есть.
-        </div>
+      <DrawerSection title="Контакты" tone="muted">
+        <p className="text-small text-ui-text-muted">
+          Контактов от провайдера нет. 2GIS на нашем тарифе отдаёт телефоны не всегда, а мессенджеры
+          не отдаёт — в исходной карточке обычно всё есть.
+        </p>
         {sourceUrl && (
           <a
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-ui-border bg-ui-surface px-3 py-1.5 text-xs font-medium text-ui-text-muted hover:bg-ui-surface-2"
+            className={buttonClass({ variant: 'secondary', size: 'sm', className: 'mt-3' })}
           >
-            <ExternalLink className="h-3.5 w-3.5" />
+            <ExternalLink className="h-4 w-4" aria-hidden />
             Открыть в {sourceLabel(detail.source)}
           </a>
         )}
-      </div>
+      </DrawerSection>
     );
   }
 
   return (
-    <div className="rounded-md border border-ui-border bg-ui-surface-2 p-3">
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ui-text-muted">
-        Контакты
-      </div>
-      <div className="flex flex-col gap-1.5 text-small">
+    <DrawerSection title={crawledOnly ? 'С сайта компании' : 'Контакты'}>
+      <div className="flex flex-col gap-2">
         {phones.map((p) => (
-          <ContactRow
-            key={`tel-${p}`}
-            icon={<Phone className="h-3.5 w-3.5" />}
-            href={`tel:${normalizePhone(p)}`}
-          >
+          <ContactRow key={`tel-${p}`} icon={<Phone />} href={`tel:${normalizePhone(p)}`}>
             {p}
           </ContactRow>
         ))}
         {emails.map((e) => (
-          <ContactRow
-            key={`mail-${e}`}
-            icon={<Mail className="h-3.5 w-3.5" />}
-            href={`mailto:${e}`}
-          >
+          <ContactRow key={`mail-${e}`} icon={<Mail />} href={`mailto:${e}`}>
             {e}
           </ContactRow>
         ))}
-        {detail.website && (
-          <ContactRow icon={<Globe className="h-3.5 w-3.5" />} href={detail.website} external>
-            {prettifyUrl(detail.website)}
+        {website && (
+          <ContactRow icon={<Globe />} href={website} external>
+            {prettifyUrl(website)}
           </ContactRow>
         )}
         {telegrams.map((t) => {
@@ -931,7 +1431,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
           return (
             <ContactRow
               key={`tg-${t}`}
-              icon={<Send className="h-3.5 w-3.5" />}
+              icon={<Send />}
               href={`https://t.me/${handle}`}
               external
               label="Telegram"
@@ -943,7 +1443,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
         {vks.map((v) => (
           <ContactRow
             key={`vk-${v}`}
-            icon={<MessageCircle className="h-3.5 w-3.5" />}
+            icon={<MessageCircle />}
             href={v.startsWith('http') ? v : `https://vk.com/${v.replace(/^@/, '')}`}
             external
             label="ВКонтакте"
@@ -958,7 +1458,7 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
           return (
             <ContactRow
               key={`wa-${w}`}
-              icon={<MessageCircle className="h-3.5 w-3.5" />}
+              icon={<MessageCircle />}
               href={href}
               external
               label="WhatsApp"
@@ -969,16 +1469,16 @@ function ContactsBlock({ detail }: { detail: CompanyDetailOut }) {
         })}
         {sourceUrl && (
           <ContactRow
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            icon={<ExternalLink />}
             href={sourceUrl}
             external
-            label={sourceLabel(detail.source)}
+            label={sourceShortLabel(detail.source)}
           >
-            открыть исходную карточку
+            исходная карточка
           </ContactRow>
         )}
       </div>
-    </div>
+    </DrawerSection>
   );
 }
 
@@ -1002,47 +1502,54 @@ function sourceShortLabel(source: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// SourceMetricsBlock — мини-таблица «рейтинг × отзывы» по каждому источнику
-// (Phase 5 multi-source). Расхождение rating/reviews между 2GIS и Я.Картами —
-// полезный сигнал юзеру, может означать вылетевшие отзывы в одном из них или
-// разную аудиторию.
+// SourceMetricsBlock — «рейтинг × отзывы» по каждому источнику (Phase 5 multi-source).
+// Расхождение между 2GIS и Я.Картами — полезный сигнал: вылетевшие отзывы
+// в одном из них или разная аудитория.
 // ---------------------------------------------------------------------------
 
 function SourceMetricsBlock({ profiles }: { profiles: CompanyDetailOut['sources_profiles'] }) {
   const arr = profiles ?? [];
   if (arr.length < 2) return null;
   return (
-    <div className="rounded-md border border-ui-border bg-ui-surface-2 p-3">
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ui-text-muted">
-        Метрики по источникам
-      </div>
-      <div className="grid grid-cols-[auto,1fr,1fr,1fr] gap-x-3 gap-y-1 text-xs">
-        <div className="text-ui-text-muted">Источник</div>
-        <div className="text-ui-text-muted">Рейтинг</div>
-        <div className="text-ui-text-muted">Отзывы</div>
-        <div className="text-ui-text-muted">Негатив</div>
-        {arr.map((p) => (
-          <React.Fragment key={p.source}>
-            <div className="font-medium text-ui-text">{sourceShortLabel(p.source)}</div>
-            <div className="text-ui-text-muted">
-              {typeof p.rating === 'number' ? p.rating.toFixed(1) : '—'}
-            </div>
-            <div className="text-ui-text-muted">{p.reviews_count}</div>
-            <div className="text-ui-text-muted">
-              {p.reviews_negative_count > 0 ? p.reviews_negative_count : '—'}
-            </div>
-          </React.Fragment>
-        ))}
-      </div>
-    </div>
+    <DrawerSection title="По источникам">
+      <table className="w-full text-small">
+        <thead>
+          <tr className="text-left text-xs text-ui-text-muted">
+            <th className="pb-1.5 font-medium">Источник</th>
+            <th className="pb-1.5 text-right font-medium">Рейтинг</th>
+            <th className="pb-1.5 text-right font-medium">Отзывы</th>
+            <th className="pb-1.5 text-right font-medium">Негатив</th>
+          </tr>
+        </thead>
+        <tbody>
+          {arr.map((p) => (
+            <tr key={p.source} className="border-t border-ui-border">
+              <td className="py-1.5 font-semibold text-ui-text">{sourceShortLabel(p.source)}</td>
+              <td className="py-1.5 text-right text-ui-text">
+                {typeof p.rating === 'number' ? p.rating.toFixed(1) : '—'}
+              </td>
+              <td className="py-1.5 text-right text-ui-text">{p.reviews_count}</td>
+              <td
+                className={cn(
+                  'py-1.5 text-right',
+                  p.reviews_negative_count > 0 ? 'text-ui-danger' : 'text-ui-text-muted',
+                )}
+              >
+                {p.reviews_negative_count > 0 ? p.reviews_negative_count : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DrawerSection>
   );
 }
 
 // ---------------------------------------------------------------------------
 // MultiSourceContactsBlock — контакты в РАЗДЕЛЁННЫХ секциях по источникам.
 // Активен когда у компании ≥2 источниковых профиля (Phase 5 multi-source).
-// Контакты внутри секции отсортированы: основной телефон/сайт первыми (is_primary),
-// потом дополнительные. Между секциями ничего не дедуплицируется — это ТЗ §1.3.
+// Контакты внутри секции: основные (is_primary) первыми, потом дополнительные.
+// Между секциями ничего не дедуплицируется — это ТЗ §1.3.
 // ---------------------------------------------------------------------------
 
 type ContactProfile = NonNullable<CompanyDetailOut['sources_profiles']>[number];
@@ -1055,11 +1562,11 @@ function MultiSourceContactsBlock({
   const arr = profiles ?? [];
   if (arr.length === 0) return null;
   return (
-    <div className="space-y-2">
+    <>
       {arr.map((p) => (
         <SourceContactsSection key={`${p.source}-${p.external_id}`} profile={p} />
       ))}
-    </div>
+    </>
   );
 }
 
@@ -1085,60 +1592,58 @@ function SourceContactsSection({ profile }: { profile: ContactProfile }) {
   });
   const deepLink = buildSourceUrl(profile.source, profile.external_id);
   return (
-    <div className="rounded-md border border-ui-border bg-ui-surface-2 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">
-          По данным {sourceShortLabel(profile.source)}
-        </div>
-        {deepLink && (
+    <DrawerSection
+      title={`Контакты · ${sourceShortLabel(profile.source)}`}
+      aside={
+        deepLink ? (
           <a
             href={deepLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-400"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-ui-accent hover:underline"
           >
-            <ExternalLink className="h-3 w-3" />
             Открыть в {sourceShortLabel(profile.source)}
+            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
       {sorted.length > 0 ? (
-        <div className="flex flex-col gap-1.5 text-small">
+        <div className="flex flex-col gap-2">
           {sorted.map((c, idx) => (
             <ContactValueRow key={`${c.type}-${c.value}-${idx}`} contact={c} />
           ))}
         </div>
       ) : (
-        <div className="text-xs text-ui-text-muted">
+        <p className="text-small text-ui-text-muted">
           {profile.source === '2gis'
-            ? 'Catalog API 2GIS не отдал контакты — открой исходную карточку.'
+            ? 'Каталог 2GIS не отдал контакты — откройте исходную карточку.'
             : 'Контактов с карточки Я.Карт не получено.'}
-        </div>
+        </p>
       )}
-    </div>
+    </DrawerSection>
   );
 }
 
 function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][number] }) {
   const { type, value } = contact;
-  // phone
   if (type === 'phone') {
     return (
-      <ContactRow icon={<Phone className="h-3.5 w-3.5" />} href={`tel:${normalizePhone(value)}`}>
+      <ContactRow icon={<Phone />} href={`tel:${normalizePhone(value)}`}>
         {value}
       </ContactRow>
     );
   }
   if (type === 'email') {
     return (
-      <ContactRow icon={<Mail className="h-3.5 w-3.5" />} href={`mailto:${value}`}>
+      <ContactRow icon={<Mail />} href={`mailto:${value}`}>
         {value}
       </ContactRow>
     );
   }
   if (type === 'website') {
     return (
-      <ContactRow icon={<Globe className="h-3.5 w-3.5" />} href={value} external>
+      <ContactRow icon={<Globe />} href={value} external>
         {prettifyUrl(value)}
       </ContactRow>
     );
@@ -1151,7 +1656,7 @@ function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][numb
         : value;
     return (
       <ContactRow
-        icon={<Send className="h-3.5 w-3.5" />}
+        icon={<Send />}
         href={value.startsWith('http') ? value : `https://t.me/${handle}`}
         external
         label="Telegram"
@@ -1163,12 +1668,7 @@ function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][numb
   if (type === 'whatsapp') {
     const href = value.startsWith('http') ? value : `https://wa.me/${value.replace(/\D/g, '')}`;
     return (
-      <ContactRow
-        icon={<MessageCircle className="h-3.5 w-3.5" />}
-        href={href}
-        external
-        label="WhatsApp"
-      >
+      <ContactRow icon={<MessageCircle />} href={href} external label="WhatsApp">
         {value}
       </ContactRow>
     );
@@ -1182,12 +1682,7 @@ function ContactValueRow({ contact }: { contact: ContactProfile['contacts'][numb
   ) {
     const href = value.startsWith('http') ? value : `https://${value}`;
     return (
-      <ContactRow
-        icon={<MessageCircle className="h-3.5 w-3.5" />}
-        href={href}
-        external
-        label={type}
-      >
+      <ContactRow icon={<MessageCircle />} href={href} external label={type}>
         {prettifyUrl(value)}
       </ContactRow>
     );
@@ -1209,19 +1704,22 @@ function ContactRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-ui-text-muted" aria-hidden>
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ui-surface-2 text-ui-text-muted [&_svg]:h-3.5 [&_svg]:w-3.5"
+        aria-hidden
+      >
         {icon}
       </span>
       <a
         href={href}
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
-        className="text-ui-text-muted underline hover:text-ui-text"
+        className="min-w-0 truncate text-sm font-medium text-ui-text hover:text-ui-accent hover:underline"
       >
         {children}
       </a>
-      {label && <span className="text-xs uppercase tracking-wide text-ui-text-muted">{label}</span>}
+      {label && <span className="ml-auto shrink-0 text-xs text-ui-text-muted">{label}</span>}
     </div>
   );
 }
@@ -1230,89 +1728,67 @@ function prettifyUrl(u: string): string {
   return u.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
-function Metric({
-  label,
-  value,
-  red,
-  green,
-}: {
-  label: string;
-  value: string;
-  red?: boolean;
-  green?: boolean;
-}) {
-  return (
-    <div className="rounded-md border border-ui-border px-2 py-1">
-      <div className="text-xs uppercase tracking-wide text-ui-text-muted">{label}</div>
-      <div
-        className={cn(
-          'text-sm font-medium',
-          red ? 'text-signal-hot' : green ? 'text-signal-good' : 'text-ui-text',
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // ReviewCard
 // ---------------------------------------------------------------------------
 
 function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: string }) {
   const sentiment = review.sentiment as 'positive' | 'negative' | 'neutral' | null;
-  const accent =
-    sentiment === 'negative'
-      ? 'border-l-[color:var(--signal-hot)] bg-[var(--signal-hot-bg)]'
-      : sentiment === 'positive'
-        ? 'border-l-[color:var(--signal-good)] bg-[var(--signal-good-bg)]'
-        : 'border-l-ui-border bg-ui-surface';
+  const source = review.source ? sourceShortLabel(review.source) : null;
 
   return (
-    <li className={cn('rounded-md border border-ui-border border-l-4 p-3', accent)}>
-      <div className="mb-1.5 flex items-center gap-2 text-xs text-ui-text-muted flex-wrap">
-        <span className="font-medium text-ui-text-muted">{review.author_masked || 'Аноним'}</span>
+    <li className="rounded-card border border-ui-border bg-ui-surface p-4">
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ui-text-muted">
+        <span className="font-semibold text-ui-text">{review.author_masked || 'Аноним'}</span>
         {review.rating != null && <StarRating value={review.rating} />}
         {review.posted_at && <span>{new Date(review.posted_at).toLocaleDateString('ru-RU')}</span>}
-        {sentiment && <SentimentBadge sentiment={sentiment} />}
+        {source && <span>· {source}</span>}
+        {sentiment === 'negative' && (
+          <Badge size="sm" tone="danger">
+            негатив
+          </Badge>
+        )}
+        {sentiment === 'positive' && (
+          <Badge size="sm" tone="success">
+            позитив
+          </Badge>
+        )}
         {review.has_owner_reply && (
-          <span className="rounded-v2-sm bg-[var(--signal-good-bg)] px-1.5 py-0.5 text-xs font-medium text-[color:var(--signal-good)]">
-            ответ владельца
-          </span>
+          <Badge size="sm" tone="info">
+            есть ответ владельца
+          </Badge>
+        )}
+        {review.source_url && (
+          <a
+            href={review.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto inline-flex items-center gap-0.5 font-semibold hover:text-ui-accent"
+          >
+            оригинал
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
         )}
       </div>
       {review.raw_text == null ? (
-        <div className="text-sm text-ui-text-muted">
-          Текст удалён по политике хранения.{' '}
-          {review.source_url && (
-            <a
-              className="underline"
-              href={review.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Открыть оригинал
-            </a>
-          )}
-        </div>
+        <p className="text-sm text-ui-text-muted">Текст удалён по политике хранения.</p>
       ) : (
-        <div className="whitespace-pre-wrap text-sm text-ui-text-muted">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-ui-text">
           {highlight ? (
             <HighlightedText text={review.raw_text} needle={highlight} />
           ) : (
             review.raw_text
           )}
-        </div>
+        </p>
       )}
       {Array.isArray(review.pain_tags) && review.pain_tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {review.pain_tags
             .filter((t) => !isUnnamedPainLabel(t.label))
             .map((t) => (
               <span
                 key={t.id}
-                className="rounded-full bg-ui-surface-2 px-2 py-0.5 text-xs text-ui-text-muted"
+                className="rounded-full bg-ui-surface-2 px-2.5 py-0.5 text-xs text-ui-text-muted"
               >
                 {t.label}
               </span>
@@ -1324,30 +1800,20 @@ function ReviewCard({ review, highlight }: { review: ReviewOut; highlight: strin
 }
 
 function StarRating({ value }: { value: number }) {
-  // value 1..5; красим первые value звёзд жёлтым, остальные серым
-  const stars = [1, 2, 3, 4, 5].map((i) => {
-    const filled = i <= value;
-    return (
-      <Star
-        key={i}
-        className={cn('h-3 w-3', filled ? 'fill-signal-warm text-signal-warm' : 'text-ui-border')}
-      />
-    );
-  });
-  return <span className="inline-flex items-center gap-0.5">{stars}</span>;
-}
-
-function SentimentBadge({ sentiment }: { sentiment: 'positive' | 'negative' | 'neutral' }) {
-  const cfg = {
-    positive: {
-      label: 'позитив',
-      cls: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)]',
-    },
-    negative: { label: 'негатив', cls: 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)]' },
-    neutral: { label: 'нейтр.', cls: 'bg-ui-surface-2 text-ui-text-muted' },
-  }[sentiment];
+  // value 1..5; первые value звёзд — жёлтые, остальные — серые
   return (
-    <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', cfg.cls)}>{cfg.label}</span>
+    <span className="inline-flex items-center gap-0.5" aria-label={`Оценка ${value} из 5`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          aria-hidden
+          className={cn(
+            'h-3 w-3',
+            i <= value ? 'fill-signal-warm text-signal-warm' : 'text-ui-border',
+          )}
+        />
+      ))}
+    </span>
   );
 }
 
@@ -1366,16 +1832,14 @@ function formatAddressWithCity(
 
 function HighlightedText({ text, needle }: { text: string; needle: string }) {
   if (!needle) return <>{text}</>;
-  // Регистронезависимое разбиение по needle. Не делаем regex-escape — пользователь
-  // вводит обычные слова, спецсимволы (скобки и т.п.) сломают сплит, поэтому
-  // экранируем minimally.
+  // Регистронезависимое разбиение по needle; спецсимволы экранируем.
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
   return (
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === needle.toLowerCase() ? (
-          <mark key={i} className="rounded bg-[var(--signal-warm)]/40 px-0.5 text-ui-text">
+          <mark key={i} className="rounded bg-ui-warning/20 px-0.5 text-ui-text">
             {part}
           </mark>
         ) : (
@@ -1451,7 +1915,7 @@ function SourcesCheckedStrip({
           ? 'cursor-pointer bg-[var(--signal-good-bg)] text-signal-good hover:opacity-80'
           : 'bg-[var(--signal-good-bg)] text-signal-good'
         : clickable
-          ? 'cursor-pointer bg-ui-surface-2 text-ui-text-muted hover:bg-brand-100 hover:text-brand-800 dark:hover:bg-brand-900/30 dark:hover:text-brand-200'
+          ? 'cursor-pointer bg-ui-surface-2 text-ui-text-muted hover:bg-ui-accent/10 hover:text-ui-accent'
           : 'bg-ui-surface-2 text-ui-text-muted';
     const content = (
       <>
@@ -1501,7 +1965,9 @@ function SourcesCheckedStrip({
   };
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
-      <span className="mr-0.5 uppercase tracking-wide text-ui-text-muted">Проверено:</span>
+      <span className="mr-0.5 font-semibold uppercase tracking-wide text-ui-text-muted">
+        Проверено:
+      </span>
       {chip('сайт', website, 'website')}
       {chip('ВК', vk, 'vk')}
       {chip('hh.ru', hh, 'hh', hiringMarketing ? 'ищет маркетолога' : undefined)}
@@ -1593,7 +2059,7 @@ function DecisionMakersBlock({
               key={`gm-${e}`}
               href={`mailto:${e}`}
               onClick={(ev) => ev.stopPropagation()}
-              className="text-brand-700 hover:underline dark:text-brand-300"
+              className="text-ui-accent hover:underline"
               title={`Написать на общую почту: ${e}`}
             >
               {e}
@@ -1610,7 +2076,7 @@ function DecisionMakersBlock({
   if (!onFindDm && (!decisionMakers || decisionMakers.length === 0)) {
     if (generic.length === 0) return null;
     return (
-      <div className="rounded-v2-sm border border-ui-border bg-ui-surface-2 p-3">
+      <div className="rounded-card border border-ui-border bg-ui-surface-2 p-4">
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
           Кто за маркетинг
         </div>
@@ -1626,7 +2092,7 @@ function DecisionMakersBlock({
   if (!decisionMakers || decisionMakers.length === 0) {
     if (searchExhausted) {
       return (
-        <div className="rounded-v2-sm border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] p-3">
+        <div className="rounded-card border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] p-4">
           <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-signal-warm">
             Кто за маркетинг
           </div>
@@ -1664,7 +2130,7 @@ function DecisionMakersBlock({
             type="button"
             onClick={onFindDm}
             disabled={dmEnrichPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--signal-warm)]/60 bg-ui-surface px-3 py-1.5 text-xs font-medium text-signal-warm hover:bg-[var(--signal-warm-bg)] disabled:cursor-not-allowed disabled:opacity-60"
+            className={buttonClass({ variant: 'secondary', size: 'sm' })}
           >
             {dmEnrichPending ? (
               'Поиск…'
@@ -1679,7 +2145,7 @@ function DecisionMakersBlock({
       );
     }
     return (
-      <div className="rounded-v2-sm border border-ui-border bg-ui-surface-2 p-3">
+      <div className="rounded-card border border-ui-border bg-ui-surface-2 p-4">
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
           Кто за маркетинг
         </div>
@@ -1691,7 +2157,7 @@ function DecisionMakersBlock({
           type="button"
           onClick={onFindDm}
           disabled={dmEnrichPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass({ size: 'sm' })}
         >
           {dmEnrichPending ? (
             'Поиск… (~1 мин)'
@@ -1791,7 +2257,7 @@ function DecisionMakersBlock({
         target="_blank"
         rel="noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="ml-2 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline dark:text-brand-400"
+        className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-ui-accent hover:underline"
         title={`Написать: ${d.contact_value}`}
       >
         {icon}
@@ -1828,7 +2294,7 @@ function DecisionMakersBlock({
       {/* Если оркестратор не выбрал маркетинг-ЛПР — предлагаем ре-триггер.
           Это ловит legacy-компании (парсились до этой ветки). */}
       {!marketingDm && (
-        <div className="flex items-center justify-between rounded-v2-sm border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-[color:var(--signal-warm)]/40 bg-[var(--signal-warm-bg)] px-3 py-2">
           <span className="text-xs text-signal-warm">
             Маркетинг-ЛПР ещё не выбран. Запустить поиск?
           </span>
@@ -1836,7 +2302,7 @@ function DecisionMakersBlock({
             type="button"
             onClick={onFindDm}
             disabled={dmEnrichPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className={buttonClass({ size: 'sm', className: 'shrink-0' })}
           >
             {dmEnrichPending ? (
               'Поиск…'
@@ -1855,7 +2321,7 @@ function DecisionMakersBlock({
       {/* Ближайший кандидат — фолбэк на владельца/директора, когда маркетолога
           нет. Пусть юзер увидит имя+контакт+вероятность в одном месте. */}
       {!marketingDm && nearestCandidate && (
-        <div className="rounded-v2-sm border border-[color:var(--signal-cool)]/40 bg-[var(--signal-cool-bg)] p-3">
+        <div className="rounded-card border border-[color:var(--signal-cool)]/40 bg-[var(--signal-cool-bg)] p-4">
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-signal-cool">
             <span className="inline-flex items-center gap-1.5">
               <User className="h-4 w-4" aria-hidden />
@@ -1932,8 +2398,8 @@ function DecisionMakersBlock({
       />
       {/* Выделенный блок целевого маркетинг-ЛПР (ТЗ §4.1) */}
       {marketingDm && (
-        <div className="rounded-v2-sm border-2 border-brand-500/50 bg-brand-50/40 p-3 dark:bg-brand-950/20">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+        <div className="rounded-card border border-ui-accent/30 bg-ui-accent/[.04] p-4">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ui-accent">
             <span className="inline-flex items-center gap-1.5">
               <Target className="h-4 w-4" aria-hidden />
               Кто за маркетинг
@@ -2000,7 +2466,7 @@ function DecisionMakersBlock({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 inline-block text-xs text-ui-text-muted hover:text-brand-600"
+              className="mt-1 inline-block text-xs text-ui-text-muted hover:text-ui-accent"
             >
               открыть источник ↗
             </a>
@@ -2012,7 +2478,7 @@ function DecisionMakersBlock({
           Если marketingDm без контакта или юзер хочет второе касание —
           вот готовые адреса для outreach. */}
       {marketingDm && alternativesWithContact.length > 0 && (
-        <div className="rounded-v2-sm border border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] p-3">
+        <div className="rounded-card border border-[color:var(--signal-good)]/40 bg-[var(--signal-good-bg)] p-4">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-signal-good">
             <Phone className="h-4 w-4" aria-hidden />
             Другие контакты для касания
@@ -2077,7 +2543,7 @@ function DecisionMakersBlock({
                 : 'Найденные люди'
               : 'Прочие упоминающиеся люди (не ЛПР)';
           return (
-            <div className="rounded-v2-sm border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-3">
+            <div className="rounded-card border border-[color:var(--signal-good)]/30 bg-[var(--signal-good-bg)] p-4">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--signal-good)]">
                 {heading}
               </div>
@@ -2107,7 +2573,7 @@ function DecisionMakersBlock({
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="ml-1 text-xs uppercase tracking-wider text-ui-text-muted hover:text-brand-600"
+                        className="ml-1 text-xs uppercase tracking-wider text-ui-text-muted hover:text-ui-accent"
                         title={sourceLabel[d.source] ?? d.source}
                       >
                         ↗
@@ -2141,7 +2607,7 @@ function DecisionMakersBlock({
           («Здравствуйте, Марина!»), но полагаться на них как на решение
           нельзя. */}
       {reviewsMentions.length > 0 && (
-        <details className="rounded-v2-sm border border-ui-border bg-ui-surface-2 p-3">
+        <details className="rounded-card border border-ui-border bg-ui-surface-2 p-4">
           <summary className="flex cursor-pointer flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ui-text-muted">
             <MessageSquare className="h-4 w-4" aria-hidden />
             Упомянуты в отзывах ({reviewsMentions.length})
@@ -2177,15 +2643,13 @@ function DecisionMakersBlock({
 }
 
 /**
- * Блок диапазона дат + помесячный bar-chart для выбранной боли.
+ * Диапазон дат + помесячный график для выбранной боли.
  * Юзер 2026-06-10:
- *   - 3-A: «12.03–28.05» рядом с тегом (first_review_at..last_review_at)
- *   - 3-C: полный chart с разбивкой по источнику (2GIS / Я.Карты), фильтр
- *     синхронизирован с sourceTab drawer-а.
+ *   - 3-A: «12.03–28.05» рядом с темой (first_review_at..last_review_at)
+ *   - 3-C: график с разбивкой по источнику (2GIS / Я.Карты), фильтр
+ *     синхронизирован с источником во вкладке «Отзывы».
  *
- * Chart реализован чистым SVG (без recharts) — экономим ~150KB бандла,
- * упрощаем темизацию. Группировка bars по source: 2GIS — sky, Я.Карты —
- * rose, остальные — slate.
+ * Столбики — общий MonthlySourceBars (SVG без recharts, подписи текстом).
  */
 function PainTrendBlock({
   trend,
@@ -2201,14 +2665,13 @@ function PainTrendBlock({
   label: string;
   hasSourceTabs: boolean;
   sourceTab: SourceTab;
-  /** §B 2026-06-10: scope chart — компания vs вся ниша+город. */
+  /** §B 2026-06-10: график — компания или вся ниша+город. */
   scope: 'company' | 'niche';
   onScopeChange: (next: 'company' | 'niche') => void;
   niche: string | null;
   city: string | null;
 }) {
-  // Когда trend пришёл из niche-endpoint у него есть companies_affected —
-  // показываем его в шапке.
+  // Когда trend пришёл из niche-endpoint, у него есть companies_affected.
   const companiesAffected = (trend as unknown as { companies_affected?: number })
     .companies_affected;
   const fmt = (iso: string | null) => {
@@ -2218,192 +2681,57 @@ function PainTrendBlock({
     return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  // Сгруппируем по месяцам, внутри — по источнику. Получаем матрицу
-  // { '2026-03': { '2gis': 3, 'yandex_maps': 5 }, ... }
-  const byMonth = new Map<string, Record<string, number>>();
-  for (const p of trend.points) {
-    const row = byMonth.get(p.month) ?? {};
-    row[p.source] = (row[p.source] ?? 0) + p.count;
-    byMonth.set(p.month, row);
-  }
-  const months = Array.from(byMonth.keys()).sort();
-  const allSources = Array.from(new Set(trend.points.map((p) => p.source)));
-  const sourceColor: Record<string, string> = {
-    '2gis': '#0ea5e9', // sky-500
-    yandex_maps: '#f43f5e', // rose-500
-    google: '#a855f7', // purple-500
-  };
-  const sourceShortLabel: Record<string, string> = {
-    '2gis': '2GIS',
-    yandex_maps: 'Я.Карты',
-    google: 'Google',
-  };
-
-  // Размеры chart
-  const W = 460;
-  const H = 140;
-  const PAD = { top: 12, right: 8, bottom: 24, left: 24 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-  const groupWidth = months.length > 0 ? innerW / months.length : innerW;
-  const barWidth = Math.max(2, Math.min(20, (groupWidth - 4) / Math.max(1, allSources.length)));
-  const maxCount = Math.max(1, ...trend.points.map((p) => p.count));
-
   return (
-    <div className="mt-3 rounded border border-ui-border bg-ui-surface p-3">
-      <div className="mb-2 flex flex-wrap items-baseline gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
-          Динамика боли
-        </span>
-        <span className="rounded-sm border border-[color:var(--signal-hot)]/40 bg-[var(--signal-hot-bg)] px-1.5 py-0.5 text-xs font-medium text-signal-hot">
-          {label}
-        </span>
-        <span className="text-xs tabular-nums text-ui-text-muted">
-          {fmt(trend.first_review_at)} — {fmt(trend.last_review_at)} · {trend.total_reviews} отз.
+    <DrawerSection
+      title="Динамика жалобы"
+      aside={
+        niche ? (
+          <Segmented<'company' | 'niche'>
+            aria-label="Масштаб графика"
+            size="sm"
+            value={scope}
+            onChange={onScopeChange}
+            options={[
+              { value: 'company', label: 'Компания', title: 'График по этой компании' },
+              {
+                value: 'niche',
+                label: `Вся ниша${city ? ` · ${city}` : ''}`,
+                title: `Общий график по нише${city ? ` · ${city}` : ''}`,
+              },
+            ]}
+          />
+        ) : undefined
+      }
+    >
+      <p className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-small">
+        <span className="font-semibold text-ui-text">{label}</span>
+        <span className="tabular-nums text-ui-text-muted">
+          {fmt(trend.first_review_at)} — {fmt(trend.last_review_at)} · {trend.total_reviews}{' '}
+          {pluralRu(trend.total_reviews, ['отзыв', 'отзыва', 'отзывов'])}
           {scope === 'niche' && typeof companiesAffected === 'number' && companiesAffected > 0 && (
-            <> · {companiesAffected} комп.</>
+            <>
+              {' '}
+              · {companiesAffected}{' '}
+              {pluralRu(companiesAffected, ['компания', 'компании', 'компаний'])}
+            </>
           )}
+          {/* График следует источнику, выбранному во вкладке «Отзывы». */}
+          {hasSourceTabs &&
+            (sourceTab === 'all' ? ' · все источники' : ` · ${sourceShortLabel(sourceTab)}`)}
         </span>
-        {niche && (
-          <div className="ml-auto inline-flex overflow-hidden rounded border border-ui-border text-xs">
-            <button
-              type="button"
-              onClick={() => onScopeChange('company')}
-              className={
-                'px-2 py-0.5 font-medium ' +
-                (scope === 'company'
-                  ? 'bg-ui-accent text-white'
-                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2')
-              }
-              title="График по этой компании"
-            >
-              Компания
-            </button>
-            <button
-              type="button"
-              onClick={() => onScopeChange('niche')}
-              className={
-                'border-l border-ui-border px-2 py-0.5 font-medium ' +
-                (scope === 'niche'
-                  ? 'bg-ui-accent text-white'
-                  : 'bg-ui-surface text-ui-text-muted hover:bg-ui-surface-2')
-              }
-              title={`Общий график боли по всей нише${city ? ` · ${city}` : ''}`}
-            >
-              Вся ниша{city ? ` · ${city}` : ''}
-            </button>
-          </div>
-        )}
-      </div>
+      </p>
 
-      {months.length === 0 ? (
-        <div className="text-xs text-ui-text-muted">
-          Нет дат у отзывов этой боли (источник не отдаёт posted_at) — графика недоступна.
-        </div>
+      {trend.points.length === 0 ? (
+        <p className="text-small text-ui-text-muted">
+          У отзывов этой темы нет дат (источник их не отдаёт) — график построить нельзя.
+        </p>
       ) : (
-        <>
-          <svg
-            width="100%"
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            className="block"
-            role="img"
-            aria-label={`Динамика жалоб «${label}» по месяцам`}
-          >
-            {/* baseline */}
-            <line
-              x1={PAD.left}
-              y1={PAD.top + innerH}
-              x2={PAD.left + innerW}
-              y2={PAD.top + innerH}
-              stroke="currentColor"
-              className="text-ui-border"
-              strokeWidth={1}
-            />
-            {/* Y axis ticks (0 / max) */}
-            <text
-              x={PAD.left - 4}
-              y={PAD.top + 4}
-              textAnchor="end"
-              fontSize={9}
-              className="fill-ui-text-muted tabular-nums"
-            >
-              {maxCount}
-            </text>
-            <text
-              x={PAD.left - 4}
-              y={PAD.top + innerH}
-              textAnchor="end"
-              fontSize={9}
-              className="fill-ui-text-muted tabular-nums"
-            >
-              0
-            </text>
-            {months.map((m, mi) => {
-              const groupX = PAD.left + mi * groupWidth + 2;
-              const monthRow = byMonth.get(m) ?? {};
-              return (
-                <g key={m}>
-                  {allSources.map((src, si) => {
-                    const count = monthRow[src] ?? 0;
-                    const h = (count / maxCount) * innerH;
-                    const x = groupX + si * barWidth;
-                    const y = PAD.top + innerH - h;
-                    return (
-                      <rect
-                        key={src}
-                        x={x}
-                        y={y}
-                        width={Math.max(1, barWidth - 1)}
-                        height={Math.max(0, h)}
-                        fill={sourceColor[src] ?? '#94a3b8'}
-                        opacity={0.9}
-                      >
-                        <title>
-                          {m} · {sourceShortLabel[src] ?? src} · {count}
-                        </title>
-                      </rect>
-                    );
-                  })}
-                  {(mi === 0 ||
-                    mi === months.length - 1 ||
-                    mi % Math.ceil(months.length / 6) === 0) && (
-                    <text
-                      x={groupX + (allSources.length * barWidth) / 2}
-                      y={PAD.top + innerH + 12}
-                      textAnchor="middle"
-                      fontSize={9}
-                      className="fill-ui-text-muted tabular-nums"
-                    >
-                      {m.slice(2)}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
-
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
-            {allSources.map((src) => (
-              <span key={src} className="inline-flex items-center gap-1">
-                <span
-                  aria-hidden
-                  className="inline-block h-2 w-2 rounded-sm"
-                  style={{ background: sourceColor[src] ?? '#94a3b8' }}
-                />
-                {sourceShortLabel[src] ?? src}
-              </span>
-            ))}
-            {hasSourceTabs && (
-              <span className="ml-auto italic text-ui-text-muted">
-                {sourceTab === 'all'
-                  ? 'Все источники'
-                  : `Фильтр: ${sourceShortLabel[sourceTab] ?? sourceTab}`}
-              </span>
-            )}
-          </div>
-        </>
+        <MonthlySourceBars
+          points={trend.points}
+          ariaLabel={`Динамика жалоб «${label}» по месяцам`}
+          maxLabels={6}
+        />
       )}
-    </div>
+    </DrawerSection>
   );
 }

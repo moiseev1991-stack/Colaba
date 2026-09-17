@@ -1,45 +1,48 @@
 'use client';
 
 /**
- * Блок дайджеста отзывов компании за N дней — в drawer'е.
+ * Сводка отзывов компании за N дней — вкладка «Жалобы» карточки компании.
  *
- * Показывает агрегаты (sentiment, рейтинг, ответы владельца) + топ-боли,
- * плюс независимый блок «Самые яркие негативные отзывы за всё время».
+ * Показывает агрегаты (тональность, рейтинг, ответы владельца) + главные боли,
+ * плюс независимый блок «Самые резкие негативные отзывы за всё время».
  *
- * `days` controlled из drawer'а: юзер кликает 30/90/полгода/год/«всё»,
- * drawer передаёт значение сюда. `null` = за всё время (бэк снимает
- * фильтр по posted_at). Превью негатива не зависит от `days` —
- * чтобы у компаний без новых отзывов цитаты всё равно показывались.
+ * `days` приходит из карточки: юзер выбирает 30/90/полгода/год/«всё».
+ * `null` = за всё время (бэк снимает фильтр по posted_at). Негатив за всё время
+ * не зависит от `days` — чтобы у компаний без новых отзывов цитаты всё равно были.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { isUnnamedPainLabel } from '@/lib/painLabels';
-import { ExternalLink, MessageSquareQuote, Reply, Star, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { ExternalLink, Reply, Star, ThumbsDown, ThumbsUp } from 'lucide-react';
 
+import { DrawerSection } from '@/components/maps/DrawerSection';
+import { Segmented } from '@/components/ui/segmented';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { cn, pluralRu } from '@/lib/utils';
 import { getCompanyDigest, type CompanyDigestOut, type ReviewOut } from '@/src/services/api/maps';
 
 type NegativeSourceFilter = 'all' | '2gis' | 'yandex_maps' | 'google';
 
 type DaysOption = 30 | 90 | 180 | 365 | null;
 
-const DAYS_OPTIONS: { value: DaysOption; label: string }[] = [
-  { value: 30, label: '30д' },
-  { value: 90, label: '90д' },
-  { value: 180, label: 'Полгода' },
-  { value: 365, label: 'Год' },
-  { value: null, label: 'Всё' },
+// Segmented работает со строками: null («всё время») кодируем как 'all'.
+const DAYS_OPTIONS: { value: string; days: DaysOption; label: string; title: string }[] = [
+  { value: '30', days: 30, label: '30 дней', title: 'Отзывы за последние 30 дней' },
+  { value: '90', days: 90, label: '90 дней', title: 'Отзывы за последние 90 дней' },
+  { value: '180', days: 180, label: 'Полгода', title: 'Отзывы за полгода' },
+  { value: '365', days: 365, label: 'Год', title: 'Отзывы за год' },
+  { value: 'all', days: null, label: 'Всё', title: 'Все отзывы без фильтра по дате' },
 ];
 
 interface Props {
   companyId: number;
-  /** Окно дайджеста. `null` = за всё время. По умолчанию 30. */
+  /** Окно сводки. `null` = за всё время. По умолчанию 30. */
   days?: DaysOption;
-  /** Если передан — рендерим toggle переключатель в шапке блока. */
+  /** Если передан — в шапке блока переключатель периода. */
   onDaysChange?: (days: DaysOption) => void;
-  /** Юзер 2026-06-10: клик по плитке боли → drawer выставляет
-   *  activePainTagId (фильтр reviews + chart-блок). */
+  /** Юзер 2026-06-10: клик по боли → карточка включает фильтр отзывов и график. */
   onPainClick?: (painTagId: number, label: string) => void;
-  /** Подсветка активной плитки. */
+  /** Подсветка выбранной боли. */
   activePainTagId?: number | null;
 }
 
@@ -80,14 +83,14 @@ export function CompanyDigestBlock({
     };
   }, [companyId, days]);
 
-  // На время загрузки показываем плейсхолдер, но если есть данные —
-  // продолжаем рендерить блок (быстрая визуальная реакция на смену окна).
+  // Пока грузится новое окно, показываем прежние данные — без мигания блока.
   const windowLabel = formatWindowLabel(data?.days ?? days);
 
   if (loading && !data) {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-        Загрузка сводки {windowLabel}…
+      <div aria-busy="true">
+        <Skeleton className="h-36" rounded="md" />
+        <span className="sr-only">Загрузка сводки {windowLabel}…</span>
       </div>
     );
   }
@@ -99,191 +102,136 @@ export function CompanyDigestBlock({
 
   const negatives = data.top_negative_reviews_all_time ?? [];
   const hasNegatives = negatives.length > 0;
-  // Какие источники реально встречаются среди топ-негатива — для тогглера.
-  // Если у компании есть только Я.Карты в списке негатива, нет смысла
-  // показывать кнопки 2GIS/Google. Без useMemo (после early-return ниже —
-  // нельзя вызывать хуки; вычисление лёгкое, на 3 элементах).
+  // Какие источники реально встречаются среди негатива — для переключателя.
   const availableNegativeSources = computeAvailableSources(negatives);
+  const pains = data.top_pains.filter((p) => !isUnnamedPainLabel(p.label)).slice(0, 3);
 
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-3 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Сводка {windowLabel}
-        </div>
-        <div className="flex items-center gap-2">
-          {data.total_reviews > 0 && (
-            <div className="text-xs text-slate-500">{data.total_reviews} отзыв(ов)</div>
-          )}
-          {onDaysChange && (
-            <DaysRangeToggle value={days ?? null} onChange={onDaysChange} disabled={loading} />
-          )}
-        </div>
-      </div>
+    <DrawerSection
+      title={`Сводка ${windowLabel}`}
+      aside={
+        onDaysChange && (
+          <Segmented
+            aria-label="Период сводки"
+            size="sm"
+            disabled={loading}
+            value={DAYS_OPTIONS.find((o) => o.days === (days ?? null))?.value ?? '30'}
+            onChange={(v) => onDaysChange(DAYS_OPTIONS.find((o) => o.value === v)?.days ?? null)}
+            options={DAYS_OPTIONS.map((o) => ({ value: o.value, label: o.label, title: o.title }))}
+          />
+        )
+      }
+    >
+      <div className={cn('space-y-4 transition-opacity', loading && 'opacity-60')}>
+        {data.total_reviews === 0 ? (
+          <p className="rounded-card bg-ui-surface-2 px-3 py-2.5 text-small text-ui-text-muted">
+            {days == null
+              ? 'Отзывов за всё время не найдено.'
+              : `Новых отзывов ${windowLabel} нет — выберите период длиннее.`}
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <DigestMetric
+                icon={<ThumbsUp className="h-3.5 w-3.5 text-ui-success" />}
+                label="Позитив"
+                value={data.positive_count}
+                tone="success"
+              />
+              <DigestMetric
+                icon={<ThumbsDown className="h-3.5 w-3.5 text-ui-danger" />}
+                label="Негатив"
+                value={data.negative_count}
+                tone="danger"
+              />
+              <DigestMetric
+                icon={<Star className="h-3.5 w-3.5 text-signal-warm" />}
+                label="Ср. рейтинг"
+                value={data.avg_rating != null ? data.avg_rating.toFixed(2) : '—'}
+                tone="neutral"
+              />
+              <DigestMetric
+                icon={<Reply className="h-3.5 w-3.5 text-ui-text-muted" />}
+                label="Отв. владельца"
+                value={ownerPct != null ? `${ownerPct}%` : '—'}
+                tone="neutral"
+              />
+            </div>
 
-      {data.total_reviews === 0 ? (
-        <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-          {days == null
-            ? 'Отзывов за всё время не найдено.'
-            : `${windowLabel} новых отзывов нет — попробуй расширить окно.`}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <DigestMetric
-              icon={<ThumbsUp className="h-3.5 w-3.5 text-emerald-600" />}
-              label="Позитив"
-              value={data.positive_count}
-              tone="success"
-            />
-            <DigestMetric
-              icon={<ThumbsDown className="h-3.5 w-3.5 text-red-600" />}
-              label="Негатив"
-              value={data.negative_count}
-              tone="danger"
-            />
-            <DigestMetric
-              icon={<Star className="h-3.5 w-3.5 text-amber-500" />}
-              label="Ср. рейтинг"
-              value={data.avg_rating != null ? data.avg_rating.toFixed(2) : '—'}
-              tone="neutral"
-            />
-            <DigestMetric
-              icon={<Reply className="h-3.5 w-3.5 text-slate-500" />}
-              label="Отв. владельца"
-              value={ownerPct != null ? `${ownerPct}%` : '—'}
-              tone="neutral"
-            />
-          </div>
-
-          {data.top_pains.some((p) => !isUnnamedPainLabel(p.label)) && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Топ-боли клиентов · клик = отзывы темы
-                </div>
-                {activePainTagId != null && onPainClick && (
-                  <button
-                    type="button"
-                    onClick={() => onPainClick(-1, '')}
-                    className="rounded border border-slate-300 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    × снять
-                  </button>
-                )}
-              </div>
-              {data.top_pains
-                .filter((p) => !isUnnamedPainLabel(p.label))
-                .slice(0, 3)
-                .map((p) => {
+            {pains.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-small font-semibold text-ui-text">
+                  Главные жалобы
+                  {onPainClick && (
+                    <span className="font-normal text-ui-text-muted">
+                      {' '}
+                      · нажмите — покажем динамику и отзывы
+                    </span>
+                  )}
+                </h4>
+                {pains.map((p) => {
                   const active = activePainTagId === p.pain_tag_id;
-                  const clickable = !!onPainClick;
-                  const baseCls =
-                    'block w-full text-left rounded border px-2 py-1.5 transition-colors';
-                  const stateCls = active
-                    ? 'border-rose-500 bg-rose-50 dark:border-rose-400 dark:bg-rose-900/30'
-                    : 'border-amber-300 bg-amber-50/70 hover:border-rose-400 hover:bg-rose-50/40 dark:border-amber-700/60 dark:bg-amber-900/20';
-                  const Inner = (
+                  const inner = (
                     <>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={
-                            'inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ' +
-                            (active
-                              ? 'border-rose-500 bg-white text-rose-900 dark:bg-slate-900 dark:text-rose-100'
-                              : 'border-amber-300 bg-white text-amber-900 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-100')
-                          }
-                        >
-                          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />
+                      <span className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-ui-text">
+                          <span className="h-1.5 w-1.5 rounded-full bg-ui-danger" aria-hidden />
                           {p.label}
                         </span>
                         {p.mention_count > 0 && (
-                          <span className="text-xs text-slate-600 dark:text-slate-300">
-                            × {p.mention_count}
+                          <span className="text-xs tabular-nums text-ui-text-muted">
+                            {p.mention_count}{' '}
+                            {pluralRu(p.mention_count, ['упоминание', 'упоминания', 'упоминаний'])}
                           </span>
                         )}
-                      </div>
+                      </span>
                       {p.top_quote && (
-                        <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-200">
-                          <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
-                          <span className="italic">«{p.top_quote}»</span>
-                        </div>
+                        <span className="mt-1.5 block text-small italic leading-relaxed text-ui-text-muted">
+                          «{p.top_quote}»
+                        </span>
                       )}
                     </>
                   );
-                  return clickable ? (
+                  const cls = cn(
+                    'block w-full rounded-card border px-3 py-2.5 text-left transition-colors',
+                    active
+                      ? 'border-ui-danger/50 bg-ui-danger/[.05]'
+                      : 'border-ui-border bg-ui-surface',
+                  );
+                  return onPainClick ? (
                     <button
                       key={p.pain_tag_id}
                       type="button"
-                      onClick={() => onPainClick!(p.pain_tag_id, p.label)}
-                      className={baseCls + ' ' + stateCls + ' cursor-pointer'}
+                      aria-pressed={active}
+                      onClick={() => onPainClick(p.pain_tag_id, p.label)}
+                      className={cn(cls, !active && 'hover:border-ui-danger/40')}
                       title={
-                        active
-                          ? 'Клик ещё раз — снять фильтр'
-                          : 'Открыть отзывы этой темы + chart динамики'
+                        active ? 'Нажмите ещё раз, чтобы снять тему' : 'Динамика и отзывы темы'
                       }
                     >
-                      {Inner}
+                      {inner}
                     </button>
                   ) : (
-                    <div key={p.pain_tag_id} className={baseCls + ' ' + stateCls}>
-                      {Inner}
+                    <div key={p.pain_tag_id} className={cls}>
+                      {inner}
                     </div>
                   );
                 })}
-            </div>
-          )}
-        </>
-      )}
+              </div>
+            )}
+          </>
+        )}
 
-      {hasNegatives && (
-        <TopNegativeReviewsPreview
-          reviews={negatives}
-          availableSources={availableNegativeSources}
-          // у компаний без свежих отзывов раздел становится главным
-          emphasize={data.total_reviews === 0}
-        />
-      )}
-    </div>
-  );
-}
-
-function DaysRangeToggle({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: DaysOption;
-  onChange: (v: DaysOption) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
-      {DAYS_OPTIONS.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <button
-            key={String(opt.value)}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(opt.value)}
-            className={
-              'rounded px-1.5 py-0.5 transition-colors ' +
-              (active
-                ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
-                : 'text-slate-500 hover:text-slate-700')
-            }
-            title={
-              opt.value == null
-                ? 'Считать по всем отзывам без фильтра по дате'
-                : `Окно ${opt.label}`
-            }
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
+        {hasNegatives && (
+          <TopNegativeReviewsPreview
+            reviews={negatives}
+            availableSources={availableNegativeSources}
+            // у компаний без свежих отзывов раздел становится главным
+            emphasize={data.total_reviews === 0}
+          />
+        )}
+      </div>
+    </DrawerSection>
   );
 }
 
@@ -315,9 +263,8 @@ function TopNegativeReviewsPreview({
   availableSources: NegativeSourceFilter[];
   emphasize: boolean;
 }) {
-  // Юзер 2026-06-12: внутри топ-негатива хочет переключаться между
-  // источниками, чтобы читать отзывы 2GIS отдельно от Я.Карт. Фильтр
-  // живёт на клиенте (бэк отдал все 3 топ-негатива за всё время).
+  // Юзер 2026-06-12: переключение между источниками внутри негатива.
+  // Фильтр на клиенте — бэк отдал негативные отзывы за всё время.
   const [sourceFilter, setSourceFilter] = useState<NegativeSourceFilter>('all');
   const filtered = useMemo(
     () => (sourceFilter === 'all' ? reviews : reviews.filter((r) => r.source === sourceFilter)),
@@ -325,45 +272,33 @@ function TopNegativeReviewsPreview({
   );
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          {emphasize ? 'Самые яркие негативные отзывы (за всё время)' : 'Топ-негатив за всё время'}
-        </div>
+        <h4 className="text-small font-semibold text-ui-text">
+          {emphasize
+            ? 'Самые резкие негативные отзывы за всё время'
+            : 'Резкий негатив за всё время'}
+        </h4>
         {availableSources.length > 2 && (
-          <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
-            {availableSources.map((src) => {
-              const active = src === sourceFilter;
-              const label = src === 'all' ? 'Все' : (sourceLabel(src) ?? src);
-              return (
-                <button
-                  key={src}
-                  type="button"
-                  onClick={() => setSourceFilter(src)}
-                  className={
-                    'rounded px-1.5 py-0.5 transition-colors ' +
-                    (active
-                      ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
-                      : 'text-slate-500 hover:text-slate-700')
-                  }
-                  title={`Только из источника: ${label}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+          <Segmented<NegativeSourceFilter>
+            aria-label="Источник негативных отзывов"
+            size="sm"
+            value={sourceFilter}
+            onChange={setSourceFilter}
+            options={availableSources.map((src) => ({
+              value: src,
+              label: src === 'all' ? 'Все' : (sourceLabel(src) ?? src),
+            }))}
+          />
         )}
       </div>
-      <div className="space-y-1.5">
-        {filtered.length === 0 ? (
-          <div className="rounded border border-dashed border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-500">
-            Нет негативных отзывов из этого источника.
-          </div>
-        ) : (
-          filtered.slice(0, 3).map((r) => <NegativeReviewSnippet key={r.id} review={r} />)
-        )}
-      </div>
+      {filtered.length === 0 ? (
+        <p className="rounded-card bg-ui-surface-2 px-3 py-2 text-small text-ui-text-muted">
+          Нет негативных отзывов из этого источника.
+        </p>
+      ) : (
+        filtered.slice(0, 3).map((r) => <NegativeReviewSnippet key={r.id} review={r} />)
+      )}
     </div>
   );
 }
@@ -375,9 +310,7 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
   const srcLabel = sourceLabel(review.source);
   const href = review.source_url || null;
 
-  // Юзер 2026-06-12: вся карточка отзыва должна быть кликабельной — открывать
-  // источник (Я.Карты/2GIS/Google) в новой вкладке. Без явного линка юзер
-  // не понимал, что цитата ведёт на оригинал.
+  // Юзер 2026-06-12: весь отзыв кликабелен — открывает оригинал в новой вкладке.
   const Outer: React.ElementType = href ? 'a' : 'div';
   const outerProps = href
     ? {
@@ -391,39 +324,30 @@ function NegativeReviewSnippet({ review }: { review: ReviewOut }) {
   return (
     <Outer
       {...outerProps}
-      className={
-        'block rounded border border-rose-200 bg-rose-50/50 px-2 py-1.5 transition-colors dark:border-rose-900/60 dark:bg-rose-900/20 ' +
-        (href
-          ? 'cursor-pointer hover:border-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40'
-          : '')
-      }
+      className={cn(
+        'block rounded-card border border-ui-border bg-ui-surface px-3 py-2.5 transition-colors',
+        href && 'hover:border-ui-danger/40',
+      )}
     >
-      <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ui-text-muted">
         {review.rating != null && (
-          <span className="inline-flex items-center gap-0.5 font-medium text-rose-700 dark:text-rose-300">
-            <Star className="h-3 w-3 fill-current" />
+          <span className="inline-flex items-center gap-0.5 font-semibold text-ui-danger">
+            <Star className="h-3 w-3 fill-current" aria-hidden />
             {review.rating}/5
           </span>
         )}
-        {srcLabel && (
-          <span className="rounded bg-slate-100 px-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            {srcLabel}
-          </span>
-        )}
+        {srcLabel && <span>{srcLabel}</span>}
         {date && <span>· {date}</span>}
-        {review.has_owner_reply && (
-          <span className="text-emerald-700 dark:text-emerald-400">· есть ответ владельца</span>
-        )}
+        {review.has_owner_reply && <span className="text-ui-success">· есть ответ владельца</span>}
         {href && (
-          <span className="ml-auto inline-flex items-center gap-0.5 text-rose-700 dark:text-rose-300">
-            открыть <ExternalLink className="h-3 w-3" />
+          <span className="ml-auto inline-flex items-center gap-0.5 font-semibold">
+            оригинал <ExternalLink className="h-3 w-3" aria-hidden />
           </span>
         )}
-      </div>
-      <div className="mt-1 flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-200">
-        <MessageSquareQuote className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
-        <span className="italic">«{truncated || '(текст отсутствует)'}»</span>
-      </div>
+      </span>
+      <span className="mt-1.5 block text-small italic leading-relaxed text-ui-text">
+        «{truncated || 'текст отсутствует'}»
+      </span>
     </Outer>
   );
 }
@@ -453,18 +377,22 @@ function DigestMetric({
   value: string | number;
   tone: 'success' | 'danger' | 'neutral';
 }) {
-  const bg = {
-    success: 'bg-[var(--signal-good-bg)] ring-[color:var(--signal-good)]/30',
-    danger: 'bg-[var(--signal-hot-bg)] ring-[color:var(--signal-hot)]/30',
-    neutral: 'bg-slate-50 ring-slate-200',
-  }[tone];
   return (
-    <div className={`rounded-md px-2 py-1.5 ring-1 ring-inset ${bg}`}>
-      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+    <div
+      className={cn(
+        'rounded-card px-3 py-2',
+        tone === 'success'
+          ? 'bg-ui-success/[.07]'
+          : tone === 'danger'
+            ? 'bg-ui-danger/[.06]'
+            : 'bg-ui-surface-2',
+      )}
+    >
+      <div className="flex items-center gap-1.5 text-xs text-ui-text-muted">
         {icon}
         {label}
       </div>
-      <div className="mt-0.5 text-sm font-semibold text-slate-900">{value}</div>
+      <div className="mt-0.5 text-base font-bold tabular-nums text-ui-text">{value}</div>
     </div>
   );
 }

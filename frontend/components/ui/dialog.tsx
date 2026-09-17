@@ -24,6 +24,36 @@ interface DialogProps {
    * на телефоне — во всю ширину. Для неё есть короткая запись <Drawer>.
    */
   position?: 'center' | 'right';
+  /**
+   * Своя шапка вместо стандартной «заголовок + крестик» (карточка компании: действия и вкладки).
+   * Не прокручивается вместе с содержимым. Получает id, который нужно поставить заголовку,
+   * — на него ссылается aria-labelledby. Крестик — <DialogCloseButton>.
+   */
+  header?: (titleId: string) => React.ReactNode;
+}
+
+/** Крестик шапки: -m-2 p-2 даёт зону нажатия 40×40 при видимом значке 20×20. */
+export function DialogCloseButton({
+  onClose,
+  className,
+}: {
+  onClose: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      data-dialog-close
+      className={cn(
+        '-m-2 ml-1 shrink-0 rounded-control p-2 text-ui-text-muted transition-colors hover:bg-ui-surface-2 hover:text-ui-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent/40',
+        className,
+      )}
+      aria-label="Закрыть"
+    >
+      <X className="h-5 w-5" aria-hidden />
+    </button>
+  );
 }
 
 function DialogHeader({ id, title, onClose }: { id: string; title: string; onClose: () => void }) {
@@ -32,21 +62,20 @@ function DialogHeader({ id, title, onClose }: { id: string; title: string; onClo
       <h2 id={id} className="text-base font-semibold tracking-tight text-ui-text">
         {title}
       </h2>
-      <button
-        type="button"
-        onClick={onClose}
-        data-dialog-close
-        // -m-2 p-2: зона нажатия 40×40 при видимом крестике 20×20.
-        className="-m-2 ml-1 shrink-0 rounded-control p-2 text-ui-text-muted transition-colors hover:bg-ui-surface-2 hover:text-ui-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent/40"
-        aria-label="Закрыть"
-      >
-        <X className="h-5 w-5" aria-hidden />
-      </button>
+      <DialogCloseButton onClose={onClose} />
     </div>
   );
 }
 
-export function Dialog({ open, onClose, title, children, className, position = 'center' }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  children,
+  className,
+  position = 'center',
+  header: renderHeader,
+}: DialogProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   const titleId = React.useId();
   const [mounted, setMounted] = React.useState(false);
@@ -64,7 +93,11 @@ export function Dialog({ open, onClose, title, children, className, position = '
     const panel = panelRef.current;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const focusables = () =>
-      panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null) : [];
+      panel
+        ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+            (el) => el.offsetParent !== null,
+          )
+        : [];
 
     // Первый фокус — на первое поле или кнопку внутри (не на крестик), иначе на саму панель.
     (focusables().find((el) => !el.hasAttribute('data-dialog-close')) ?? panel)?.focus();
@@ -111,10 +144,14 @@ export function Dialog({ open, onClose, title, children, className, position = '
     ref: panelRef,
     role: 'dialog',
     'aria-modal': true,
-    'aria-labelledby': title ? titleId : undefined,
+    'aria-labelledby': title || renderHeader ? titleId : undefined,
     tabIndex: -1,
   } as const;
-  const header = title ? <DialogHeader id={titleId} title={title} onClose={onClose} /> : null;
+  const header = renderHeader ? (
+    <div className="shrink-0">{renderHeader(titleId)}</div>
+  ) : title ? (
+    <DialogHeader id={titleId} title={title} onClose={onClose} />
+  ) : null;
 
   const content =
     position === 'right' ? (

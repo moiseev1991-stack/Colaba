@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { KpModal } from '@/components/maps/KpModal';
 import { Button, buttonClass } from '@/components/ui/button';
+import { describeCondition, providerLabel, type SiteCondition } from '@/lib/siteSearchLabels';
 import { cn } from '@/lib/utils';
 import { createSiteLead, type SiteLead } from '@/src/services/api/outreach-site-leads';
 import {
@@ -31,35 +32,6 @@ import {
 const POLL_MS = 3000;
 /** Сколько ждём проверку сайтов, прежде чем перестать опрашивать (часть сайтов отвечает долго). */
 const CHECK_TIMEOUT_MS = 10 * 60 * 1000;
-
-const PROVIDER_LABEL: Record<string, string> = {
-  yandex_xml: 'Яндекс XML',
-  yandex_html: 'Яндекс',
-  google_html: 'Google',
-};
-
-const FIELD_LABEL: Record<string, string> = {
-  text: 'текст страниц',
-  title: 'текст страниц',
-  meta: 'текст страниц',
-  domain: 'домен',
-};
-
-const OP_LABEL: Record<string, string> = {
-  contains: 'содержит',
-  not_contains: 'не содержит',
-  equals: '=',
-  not_equals: '≠',
-  starts_with: 'начинается с',
-};
-
-type Condition = { field: string; op: string; value?: string };
-
-export function describeCondition(c: Condition): string {
-  if (c.field === 'has_phone') return c.op === 'is_false' ? 'нет телефона' : 'есть телефон';
-  if (c.field === 'has_email') return c.op === 'is_false' ? 'нет email' : 'есть email';
-  return `${FIELD_LABEL[c.field] ?? c.field} ${OP_LABEL[c.op] ?? c.op} «${(c.value ?? '').trim()}»`;
-}
 
 export function SiteSearchResults({
   searchId,
@@ -77,7 +49,7 @@ export function SiteSearchResults({
   const startedAt = useRef<number>(Date.now());
   const [timedOut, setTimedOut] = useState(false);
 
-  const conditions: Condition[] = Array.isArray(search?.config?.filters?.conditions)
+  const conditions: SiteCondition[] = Array.isArray(search?.config?.filters?.conditions)
     ? search!.config!.filters.conditions
     : [];
   const logic: 'and' | 'or' = search?.config?.filters?.logic === 'or' ? 'or' : 'and';
@@ -134,7 +106,7 @@ export function SiteSearchResults({
 
   const onlyWithPhone = search?.config?.filter_phone === true;
   const shown = onlyWithPhone ? rows.filter((r) => r.phone && r.phone.trim()) : rows;
-  const provider = PROVIDER_LABEL[search?.search_provider ?? ''] ?? search?.search_provider ?? '';
+  const provider = providerLabel(search?.search_provider);
   const collectPct =
     search && search.num_results > 0
       ? Math.min(100, Math.round((search.result_count / search.num_results) * 100))
