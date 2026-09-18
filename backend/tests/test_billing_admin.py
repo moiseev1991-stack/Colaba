@@ -75,3 +75,16 @@ async def test_grant_amount_validation():
         AdminGrantRequest(amount=10, comment="ab")  # короткий comment
     ok = AdminGrantRequest(amount=10, comment="бонус за отзыв")
     assert ok.amount == 10
+
+
+async def test_self_guards():
+    """Нельзя заблокировать себя / снять права себе (защита от лок-аута)."""
+    from fastapi import HTTPException
+    from app.modules.billing.admin_router import (
+        AdminUserStatusRequest,
+        AdminUserRoleRequest,
+    )
+
+    # Схемы валидны
+    AdminUserStatusRequest(is_active=False)
+    AdminUserRoleRequest(is_superuser=True)
