@@ -12,10 +12,14 @@
  */
 
 import { Mail, X } from 'lucide-react';
+import { pluralRu } from '@/lib/utils';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { createCampaignFromList, type CreateCampaignFromListOut } from '@/src/services/api/leadLists';
+import {
+  createCampaignFromList,
+  type CreateCampaignFromListOut,
+} from '@/src/services/api/leadLists';
 
 interface Props {
   open: boolean;
@@ -76,15 +80,18 @@ export function CreateCampaignFromListModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-8">
-      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Кампания из списка «{listName}» ({itemsCount} компаний)
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
+      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-ui-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-ui-border px-5 py-3">
+          <h3 className="text-sm font-semibold text-ui-text">
+            Кампания из списка «{listName}» ({itemsCount}{' '}
+            {pluralRu(itemsCount, ['компания', 'компании', 'компаний'])})
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Закрыть"
+            className="rounded-md p-1 text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
           >
             <X className="h-4 w-4" />
           </button>
@@ -105,9 +112,9 @@ export function CreateCampaignFromListModal({
                   )}
                 </div>
               </div>
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-ui-text-muted">
                 Чтобы запустить рассылку — перейди в раздел{' '}
-                <Link href="/app/email/campaigns" className="text-slate-900 underline">
+                <Link href="/app/email/campaigns" className="text-ui-text underline">
                   кампании
                 </Link>
                 .
@@ -121,47 +128,46 @@ export function CreateCampaignFromListModal({
                 </div>
               )}
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                   Название кампании (внутреннее)
                 </label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500"
+                  className="mt-1 w-full rounded-md border border-ui-border px-2 py-1.5 text-sm outline-none focus:border-ui-accent"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                   Тема письма
                 </label>
                 <input
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-500"
+                  className="mt-1 w-full rounded-md border border-ui-border px-2 py-1.5 text-sm outline-none focus:border-ui-accent"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                   Текст письма
                 </label>
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   rows={12}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 font-mono text-small outline-none focus:border-slate-500"
+                  className="mt-1 w-full rounded-md border border-ui-border px-2 py-1.5 font-mono text-small outline-none focus:border-ui-accent"
                 />
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-xs text-ui-text-muted">
                   Плейсхолдеры: <code>{'{company_name}'}</code> <code>{'{city}'}</code>{' '}
-                  <code>{'{niche}'}</code> <code>{'{top_pain}'}</code>{' '}
-                  <code>{'{pain_quote}'}</code>
+                  <code>{'{niche}'}</code> <code>{'{top_pain}'}</code> <code>{'{pain_quote}'}</code>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <label className="flex items-center gap-2 text-sm text-ui-text">
                 <input
                   type="checkbox"
                   checked={autoPersonalize}
                   onChange={(e) => setAutoPersonalize(e.target.checked)}
-                  className="rounded border-slate-300"
+                  className="rounded border-ui-border"
                 />
                 Подставлять реальные значения вместо плейсхолдеров
               </label>
@@ -169,11 +175,11 @@ export function CreateCampaignFromListModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-ui-border bg-ui-surface-2 px-5 py-3">
           {result ? (
             <button
               onClick={onClose}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+              className="rounded-full bg-ui-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-ui-accent-hover"
             >
               Закрыть
             </button>
@@ -181,14 +187,14 @@ export function CreateCampaignFromListModal({
             <>
               <button
                 onClick={onClose}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-ui-border bg-ui-surface px-3 py-1.5 text-sm font-medium text-ui-text hover:bg-ui-surface-2"
               >
                 Отмена
               </button>
               <button
                 onClick={submit}
                 disabled={saving}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-ui-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-ui-accent-hover disabled:opacity-50"
               >
                 <Mail className="h-4 w-4" />
                 {saving ? 'Создаём…' : 'Создать кампанию'}
