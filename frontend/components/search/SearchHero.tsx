@@ -1,48 +1,106 @@
+'use client';
+
 import * as React from 'react';
+import { Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchModeSwitch } from './SearchModeSwitch';
 
 /**
- * Первый экран трёх видов поиска (карты · сайты · по боли) — одна разметка, чтобы при
- * переключении ничего не прыгало (17.09): пилюля, заголовок в две строки, подзаголовок
- * фиксированной высоты и переключатель режимов на одном и том же месте.
- * Ширина контента под ним — SEARCH_CONTENT_WIDTH.
+ * Шапка трёх видов поиска (карты · сайты · по боли) — одна разметка, чтобы при
+ * переключении ничего не прыгало. 18.09 (@user): вместо крупного лозунга — компактная строка
+ * «Поиск» + переключатель режимов, объяснение режима — в подсказке «Как это работает».
+ * Главный акцент — форма поиска сразу под шапкой. Ширина контента — SEARCH_CONTENT_WIDTH.
  */
 export const SEARCH_CONTENT_WIDTH = 'mx-auto w-full max-w-[880px]';
 
 export function SearchHero({
   active,
-  eyebrow,
-  title,
-  dim,
+  hintTitle,
   children,
 }: {
   active: 'maps' | 'sites' | 'pains';
-  eyebrow: string;
-  title: string;
-  dim: string;
-  /** Подзаголовок — не длиннее двух строк на десктопе. */
+  /** Заголовок подсказки «Как это работает». */
+  hintTitle: string;
+  /** Текст подсказки: что делает режим и что получится на выходе. */
   children: React.ReactNode;
 }) {
   return (
-    <div className="text-center">
-      <p className="mx-auto mb-6 inline-flex max-w-full items-center rounded-full border border-ui-accent/15 bg-ui-accent/[.06] px-4 py-1 text-small font-semibold text-ui-text-muted">
-        <span className="truncate">{eyebrow}</span>
-      </p>
-      {/* Высота заголовка и подзаголовка закреплена: разная длина текста не сдвигает переключатель. */}
-      <h1 className="mx-auto flex min-h-[4.24em] max-w-[900px] flex-col justify-center text-hero font-extrabold text-ui-text [text-wrap:balance] sm:min-h-[2.12em]">
-        <span>{title}</span>
-        <span className="font-bold text-ui-text-muted/75">{dim}</span>
-      </h1>
-      <p
+    <div
+      className={cn(
+        SEARCH_CONTENT_WIDTH,
+        'relative flex flex-wrap items-center justify-between gap-3',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-extrabold tracking-tight text-ui-text">Поиск</h1>
+        <SearchHint title={hintTitle}>{children}</SearchHint>
+      </div>
+      <SearchModeSwitch active={active} />
+    </div>
+  );
+}
+
+function SearchHint({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const panelId = React.useId();
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={panelId}
         className={cn(
-          'mx-auto mt-5 max-w-[62ch] text-base leading-relaxed text-ui-text-muted [text-wrap:balance]',
-          'min-h-[6.5em] sm:min-h-[3.25em]',
+          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-small font-semibold transition-colors',
+          open
+            ? 'bg-ui-accent/10 text-ui-accent'
+            : 'text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text',
         )}
       >
-        {children}
-      </p>
-      <SearchModeSwitch active={active} className="mt-8" />
+        <Info className="h-4 w-4" aria-hidden />
+        Как это работает
+      </button>
+      {open && (
+        <div
+          id={panelId}
+          role="dialog"
+          aria-label={title}
+          className="absolute left-0 top-12 z-40 w-[min(360px,calc(100vw-32px))] rounded-card border border-black/[.06] bg-ui-surface p-4 text-left shadow-overlay"
+        >
+          <div className="mb-1.5 flex items-start justify-between gap-3">
+            <p className="text-small font-bold text-ui-text">{title}</p>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Закрыть"
+              className="-mr-1 -mt-1 grid h-6 w-6 shrink-0 place-items-center rounded text-ui-text-muted hover:text-ui-text"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+          <div className="space-y-1.5 text-small leading-relaxed text-ui-text-muted">
+            {children}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

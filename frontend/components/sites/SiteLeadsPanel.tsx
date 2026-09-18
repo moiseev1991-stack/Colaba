@@ -188,14 +188,12 @@ export function SiteLeadsPanel() {
 
   return (
     <div>
-      <SearchHero
-        active="sites"
-        eyebrow="Поиск по тексту страниц сайтов"
-        title="Сайты с нужными словами."
-        dim="Из выдачи Яндекса и Google."
-      >
-        Запрос, город и условие по сайту — например, стройкомпании, у которых на сайте есть{' '}
-        <b className="font-semibold text-ui-text">«фундамент»</b>. Получите контакты и таблицу.
+      <SearchHero active="sites" hintTitle="Поиск сайтов в Яндексе и Google">
+        <p>
+          Запрос, город и условие по тексту страниц — например, стройкомпании, у которых на сайте
+          есть <b className="font-semibold text-ui-text">«фундамент»</b>.
+        </p>
+        <p>Получите список сайтов с контактами и таблицу для выгрузки.</p>
       </SearchHero>
 
       <form

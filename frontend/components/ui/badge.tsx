@@ -11,12 +11,12 @@ import { cn } from '@/lib/utils';
 export type BadgeTone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
 
 const TONES: Record<BadgeTone, string> = {
-  neutral: 'bg-[var(--signal-muted-bg)] text-[color:var(--signal-muted)] ring-slate-200/70',
+  neutral: 'bg-[var(--signal-muted-bg)] text-[color:var(--signal-muted)] ring-ui-border',
   accent: 'bg-ui-accent/10 text-ui-accent ring-ui-accent/20',
-  success: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] ring-emerald-200/70',
-  warning: 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] ring-amber-200/70',
-  danger: 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)] ring-red-200/70',
-  info: 'bg-[var(--signal-cool-bg)] text-[color:var(--signal-cool)] ring-blue-200/70',
+  success: 'bg-[var(--signal-good-bg)] text-[color:var(--signal-good)] ring-ui-success/25',
+  warning: 'bg-[var(--signal-warm-bg)] text-[color:var(--signal-warm)] ring-ui-warning/25',
+  danger: 'bg-[var(--signal-hot-bg)] text-[color:var(--signal-hot)] ring-ui-danger/25',
+  info: 'bg-[var(--signal-cool-bg)] text-[color:var(--signal-cool)] ring-ui-info/25',
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -25,7 +25,14 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: 'sm' | 'md';
 }
 
-export function Badge({ tone = 'neutral', icon, size = 'md', className, children, ...rest }: BadgeProps) {
+export function Badge({
+  tone = 'neutral',
+  icon,
+  size = 'md',
+  className,
+  children,
+  ...rest
+}: BadgeProps) {
   return (
     <span
       className={cn(

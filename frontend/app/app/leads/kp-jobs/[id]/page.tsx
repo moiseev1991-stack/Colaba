@@ -34,7 +34,6 @@ import {
   Phone,
   PhoneCall,
   Send,
-  Sparkles,
   X,
 } from 'lucide-react';
 
@@ -44,7 +43,7 @@ import { CardV2 } from '@/components/ui/CardV2';
 import { CompanyAvatar } from '@/components/CompanyAvatar';
 import { SignalPill, type SignalTone } from '@/components/ui/SignalPill';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { PageContainer } from '@/components/ui/page';
+import { PageContainer, PageHeader } from '@/components/ui/page';
 import {
   buildTelLink,
   buildWhatsappLink,
@@ -224,19 +223,18 @@ export default function KpJobPage({ params }: PageProps) {
   // --- Render
   return (
     <PageContainer>
-      {/* Header */}
-      <div className="mb-4">
-        <h1 className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
-          <Sparkles className="mr-1.5 inline h-5 w-5 -translate-y-0.5 text-violet-600" />
-          Партия КП{job ? ` #${job.id}` : ''}
-        </h1>
-        {job && (
-          <p className="mt-1 text-xs text-[hsl(var(--muted))]">
-            {templateLabel(job.template_key)} · тон:{' '}
-            {job.tone === 'bold' ? 'уверенный' : 'нейтральный'} · {formatDateTime(job.created_at)}
-          </p>
-        )}
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'История', href: '/app/leads/history?tab=kp-jobs' },
+          { label: job ? `Партия #${job.id}` : 'Партия КП' },
+        ]}
+        title={`Партия КП${job ? ` #${job.id}` : ''}`}
+        description={
+          job
+            ? `${templateLabel(job.template_key)} · тон: ${job.tone === 'bold' ? 'уверенный' : 'нейтральный'} · ${formatDateTime(job.created_at)}`
+            : undefined
+        }
+      />
 
       {/* Progress */}
       {job && (
@@ -245,32 +243,30 @@ export default function KpJobPage({ params }: PageProps) {
             <span
               className={cn(
                 'rounded-full px-2 py-0.5 text-xs font-medium',
-                job.status === 'done' && 'bg-emerald-100 text-emerald-700',
-                job.status === 'running' && 'bg-violet-100 text-violet-700',
-                job.status === 'cancelled' && 'bg-amber-100 text-amber-700',
-                job.status === 'failed' && 'bg-rose-100 text-rose-700',
-                job.status === 'queued' && 'bg-slate-100 text-slate-700',
+                job.status === 'done' && 'bg-ui-success/10 text-ui-success',
+                job.status === 'running' && 'bg-ui-accent/10 text-ui-accent',
+                job.status === 'cancelled' && 'bg-ui-warning/10 text-ui-warning',
+                job.status === 'failed' && 'bg-ui-danger/10 text-ui-danger',
+                job.status === 'queued' && 'bg-ui-surface-2 text-ui-text',
               )}
             >
               {jobStatusLabel(job.status)}
             </span>
-            <span className="text-[hsl(var(--text))]">
+            <span className="text-ui-text">
               {job.generated + job.failed} / {job.total}
             </span>
-            {job.failed > 0 && <span className="text-rose-600">с ошибкой: {job.failed}</span>}
-            <span className="ml-auto font-medium tabular-nums text-[hsl(var(--text))]">
-              {progressPct}%
-            </span>
+            {job.failed > 0 && <span className="text-ui-danger">с ошибкой: {job.failed}</span>}
+            <span className="ml-auto font-medium tabular-nums text-ui-text">{progressPct}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div className="h-2 overflow-hidden rounded-full bg-ui-surface-2">
             <div
               className={cn(
                 'h-full transition-all duration-500',
                 job.status === 'failed'
-                  ? 'bg-rose-500'
+                  ? 'bg-ui-danger'
                   : job.status === 'cancelled'
-                    ? 'bg-amber-500'
-                    : 'bg-brand-600',
+                    ? 'bg-ui-warning'
+                    : 'bg-ui-accent',
               )}
               style={{ width: `${progressPct}%` }}
             />
@@ -279,7 +275,7 @@ export default function KpJobPage({ params }: PageProps) {
       )}
 
       {job?.status === 'failed' && (
-        <CardV2 className="mb-4 border-rose-200 bg-rose-50 px-4 py-3 text-small text-rose-700">
+        <CardV2 className="mb-4 border-ui-danger/35 bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -303,11 +299,11 @@ export default function KpJobPage({ params }: PageProps) {
       )}
 
       {!loading && error && (
-        <CardV2 className="px-6 py-10 text-center text-sm text-rose-700">{error}</CardV2>
+        <CardV2 className="px-6 py-10 text-center text-sm text-ui-danger">{error}</CardV2>
       )}
 
       {!loading && !error && items.length === 0 && (
-        <CardV2 className="px-6 py-10 text-center text-sm text-[hsl(var(--muted))]">
+        <CardV2 className="px-6 py-10 text-center text-sm text-ui-text-muted">
           В этой партии нет компаний.
         </CardV2>
       )}
@@ -330,7 +326,7 @@ export default function KpJobPage({ params }: PageProps) {
                   <col className="w-24" />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--surface-2))] text-left text-xs uppercase tracking-wider text-[hsl(var(--muted))]">
+                  <tr className="border-b border-ui-border bg-ui-surface-2 text-left text-xs uppercase tracking-wider text-ui-text-muted">
                     <th className="px-3 py-2 font-medium">#</th>
                     <th className="px-3 py-2 font-medium">Компания</th>
                     <th className="px-3 py-2 font-medium">Город</th>
@@ -364,15 +360,14 @@ export default function KpJobPage({ params }: PageProps) {
                       <tr
                         key={`${it.company_id}-${idx}`}
                         className={cn(
-                          'border-b border-[hsl(var(--border))] last:border-b-0 transition-colors',
-                          clickable ? 'cursor-pointer hover:bg-[hsl(var(--surface-2))]' : '',
-                          idx % 2 === 1 && 'bg-[hsl(var(--surface-2))]/40',
-                          drawerCompanyId === it.company_id &&
-                            'bg-violet-50/60 dark:bg-violet-950/30',
+                          'border-b border-ui-border last:border-b-0 transition-colors',
+                          clickable ? 'cursor-pointer hover:bg-ui-surface-2' : '',
+                          idx % 2 === 1 && 'bg-ui-surface-2/40',
+                          drawerCompanyId === it.company_id && 'bg-ui-accent/[.07]',
                         )}
                         onClick={clickable ? () => setDrawerCompanyId(it.company_id) : undefined}
                       >
-                        <td className="px-3 py-2.5 text-xs tabular-nums text-[hsl(var(--muted))]">
+                        <td className="px-3 py-2.5 text-xs tabular-nums text-ui-text-muted">
                           {idx + 1}
                         </td>
                         <td className="max-w-0 px-3 py-2.5">
@@ -382,25 +377,25 @@ export default function KpJobPage({ params }: PageProps) {
                               logoUrl={it.company_logo_url}
                               size={28}
                             />
-                            <div className="flex min-w-0 items-center gap-1.5">
-                              {it.company_legal_short && (
-                                <span
-                                  className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                                  title={it.company_legal_short}
-                                >
-                                  {it.company_legal_short}
-                                </span>
-                              )}
-                              <span
-                                className="truncate font-medium text-[hsl(var(--text))]"
+                            <div className="min-w-0">
+                              <div
+                                className="truncate font-medium text-ui-text"
                                 title={it.company_name || undefined}
                               >
                                 {it.company_name || `Компания #${it.company_id}`}
-                              </span>
+                              </div>
+                              {it.company_legal_short && (
+                                <div
+                                  className="truncate text-xs text-ui-text-muted"
+                                  title={it.company_legal_short}
+                                >
+                                  {it.company_legal_short}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-[hsl(var(--muted))]">
+                        <td className="px-3 py-2.5 text-ui-text-muted">
                           <span className="truncate" title={it.company_city || ''}>
                             {it.company_city || '—'}
                           </span>
@@ -414,27 +409,27 @@ export default function KpJobPage({ params }: PageProps) {
                             {meta.label}
                           </SignalPill>
                         </td>
-                        <td className="max-w-0 px-3 py-2.5 text-[hsl(var(--text))]">
+                        <td className="max-w-0 px-3 py-2.5 text-ui-text">
                           {it.subject ? (
                             <span className="block truncate" title={it.subject}>
                               {it.subject}
                             </span>
                           ) : (
-                            <span className="text-[hsl(var(--muted))]">—</span>
+                            <span className="text-ui-text-muted">—</span>
                           )}
                         </td>
                         <td className="max-w-0 px-3 py-2.5">
                           {hasRecipient ? (
                             <span
-                              className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-ui-border bg-ui-surface-2 px-1.5 py-0.5 text-xs text-ui-text"
                               title={it.recipient_email!}
                             >
-                              <AtSign className="h-3 w-3 shrink-0 text-slate-500" />
+                              <AtSign className="h-3 w-3 shrink-0 text-ui-text-muted" />
                               <span className="truncate">{it.recipient_email}</span>
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200"
+                              className="inline-flex items-center gap-1 rounded-md border border-ui-warning/35 bg-ui-warning/[.07] px-1.5 py-0.5 text-xs font-medium text-ui-warning"
                               title="У компании не найден email — КП по почте не уйдёт"
                             >
                               <MailX className="h-3 w-3 shrink-0" />
@@ -452,7 +447,7 @@ export default function KpJobPage({ params }: PageProps) {
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
+                              className="inline-flex items-center gap-1 rounded-md border border-ui-success/35 bg-ui-success/[.07] px-1.5 py-0.5 text-xs font-medium text-ui-success transition-colors hover:border-ui-success/35 hover:bg-ui-success/10"
                               title={`Открыть WhatsApp: ${phoneDisplay}`}
                             >
                               <Phone className="h-3 w-3 shrink-0" />
@@ -465,14 +460,14 @@ export default function KpJobPage({ params }: PageProps) {
                             <a
                               href={telLink}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                              className="inline-flex items-center gap-1 rounded-md border border-ui-border bg-ui-surface-2 px-1.5 py-0.5 text-xs font-medium text-ui-text transition-colors hover:border-ui-text-muted/40 hover:bg-ui-surface-2"
                               title={`Позвонить: ${phoneDisplay}`}
                             >
                               <Phone className="h-3 w-3 shrink-0" />
                               <span className="truncate">{phoneDisplay}</span>
                             </a>
                           ) : (
-                            <span className="text-xs text-[hsl(var(--muted))]">—</span>
+                            <span className="text-xs text-ui-text-muted">—</span>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right">
@@ -496,7 +491,7 @@ export default function KpJobPage({ params }: PageProps) {
                                 );
                               })()}
                             {clickable && (
-                              <span className="text-xs font-medium text-violet-700 underline-offset-2 hover:underline">
+                              <span className="text-xs font-medium text-ui-accent underline-offset-2 hover:underline">
                                 Открыть
                               </span>
                             )}
@@ -532,8 +527,7 @@ export default function KpJobPage({ params }: PageProps) {
                   onClick={clickable ? () => setDrawerCompanyId(it.company_id) : undefined}
                   className={cn(
                     'p-3',
-                    drawerCompanyId === it.company_id &&
-                      'border-violet-300 bg-violet-50/60 dark:bg-violet-950/30',
+                    drawerCompanyId === it.company_id && 'border-ui-accent/35 bg-ui-accent/[.07]',
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -545,24 +539,19 @@ export default function KpJobPage({ params }: PageProps) {
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs tabular-nums text-[hsl(var(--muted))]">
+                          <span className="text-xs tabular-nums text-ui-text-muted">
                             #{idx + 1}
                           </span>
-                          {it.company_legal_short && (
-                            <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              {it.company_legal_short}
-                            </span>
-                          )}
                           <span
-                            className="truncate font-medium text-[hsl(var(--text))]"
+                            className="truncate font-medium text-ui-text"
                             title={it.company_name || undefined}
                           >
                             {it.company_name || `Компания #${it.company_id}`}
                           </span>
                         </div>
-                        {it.company_city && (
-                          <div className="mt-0.5 text-xs text-[hsl(var(--muted))]">
-                            {it.company_city}
+                        {(it.company_legal_short || it.company_city) && (
+                          <div className="mt-0.5 truncate text-xs text-ui-text-muted">
+                            {[it.company_legal_short, it.company_city].filter(Boolean).join(' · ')}
                           </div>
                         )}
                       </div>
@@ -576,21 +565,19 @@ export default function KpJobPage({ params }: PageProps) {
                     </SignalPill>
                   </div>
                   {it.subject && (
-                    <div className="mt-2 line-clamp-2 text-small text-[hsl(var(--text))]">
-                      {it.subject}
-                    </div>
+                    <div className="mt-2 line-clamp-2 text-small text-ui-text">{it.subject}</div>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     {hasRecipient ? (
                       <span
-                        className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        className="inline-flex min-w-0 items-center gap-1 truncate rounded-md border border-ui-border bg-ui-surface-2 px-1.5 py-0.5 text-xs text-ui-text"
                         title={it.recipient_email!}
                       >
-                        <AtSign className="h-3 w-3 shrink-0 text-slate-500" />
+                        <AtSign className="h-3 w-3 shrink-0 text-ui-text-muted" />
                         <span className="truncate">{it.recipient_email}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-200">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-ui-warning/35 bg-ui-warning/[.07] px-1.5 py-0.5 text-xs font-medium text-ui-warning">
                         <MailX className="h-3 w-3" />
                         нет email
                       </span>
@@ -601,7 +588,7 @@ export default function KpJobPage({ params }: PageProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:text-emerald-200"
+                        className="inline-flex items-center gap-1 rounded-md border border-ui-success/35 bg-ui-success/[.07] px-1.5 py-0.5 text-xs font-medium text-ui-success hover:border-ui-success/35 hover:bg-ui-success/10"
                       >
                         <Phone className="h-3 w-3" />
                         {phoneDisplay}
@@ -610,7 +597,7 @@ export default function KpJobPage({ params }: PageProps) {
                       <a
                         href={telLink}
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                        className="inline-flex items-center gap-1 rounded-md border border-ui-border bg-ui-surface-2 px-1.5 py-0.5 text-xs font-medium text-ui-text hover:border-ui-text-muted/40 hover:bg-ui-surface-2"
                       >
                         <Phone className="h-3 w-3" />
                         {phoneDisplay}
@@ -636,7 +623,7 @@ export default function KpJobPage({ params }: PageProps) {
                           );
                         })()}
                       {clickable && (
-                        <span className="text-xs font-medium text-violet-700">Открыть →</span>
+                        <span className="text-xs font-medium text-ui-accent">Открыть →</span>
                       )}
                     </div>
                   </div>
@@ -1130,10 +1117,10 @@ function SendBar({
 
   return (
     <div className="sticky bottom-3 z-30 mt-5 pb-[env(safe-area-inset-bottom)]">
-      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
+      <div className="rounded-xl border border-ui-border bg-ui-surface px-4 py-3 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.18)] sm:px-5">
         {/* Шапка: общий статус партии — что вообще готово и сколько уже улетело */}
-        <div className="flex flex-col gap-1 border-b border-[hsl(var(--border))] pb-3">
-          <div className="text-small font-semibold text-[hsl(var(--text))]">
+        <div className="flex flex-col gap-1 border-b border-ui-border pb-3">
+          <div className="text-small font-semibold text-ui-text">
             {isActive
               ? `Отправка: ${status!.sent} из ${status!.total}…`
               : hasAnySend
@@ -1145,12 +1132,12 @@ function SendBar({
           {/* Разбор «куда уйдёт» — независим от выбранного режима, чтобы
               юзер понимал, какие данные у нас вообще есть. Чекбоксы
               ниже только включают/выключают каналы — числа не меняют. */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[hsl(var(--muted))]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-text-muted">
             <span className="inline-flex items-center gap-1">
-              <Mail className="h-3.5 w-3.5 text-violet-600" /> {breakdown.emailEligible} email
+              <Mail className="h-3.5 w-3.5 text-ui-accent" /> {breakdown.emailEligible} email
             </span>
             <span className="inline-flex items-center gap-1">
-              <MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> {breakdown.waEligible}{' '}
+              <MessageCircle className="h-3.5 w-3.5 text-ui-success" /> {breakdown.waEligible}{' '}
               WhatsApp
             </span>
             {breakdown.landlineOnly > 0 && (
@@ -1159,7 +1146,7 @@ function SendBar({
               </span>
             )}
             {breakdown.noContacts > 0 && (
-              <span className="inline-flex items-center gap-1 text-rose-600">
+              <span className="inline-flex items-center gap-1 text-ui-danger">
                 <HelpCircle className="h-3.5 w-3.5" aria-hidden /> {breakdown.noContacts} без
                 контактов
               </span>
@@ -1193,13 +1180,11 @@ function SendBar({
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
                   !working
-                    ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500'
+                    ? 'cursor-not-allowed border-dashed border-ui-border bg-ui-surface-2 text-ui-text-muted'
                     : 'disabled:cursor-not-allowed disabled:opacity-60',
-                  working && active
-                    ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                    : '',
+                  working && active ? 'border-ui-accent/35 bg-ui-accent/[.07] text-ui-accent' : '',
                   working && !active
-                    ? 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                    ? 'border-ui-border bg-white text-ui-text-muted hover:border-ui-border'
                     : '',
                 )}
               >
@@ -1207,10 +1192,10 @@ function SendBar({
                   className={cn(
                     'grid h-3.5 w-3.5 place-items-center rounded-sm border',
                     !working
-                      ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
+                      ? 'border-ui-border bg-ui-surface-2'
                       : active
-                        ? 'border-violet-500 bg-violet-500 text-white'
-                        : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900',
+                        ? 'border-ui-accent bg-ui-accent text-white'
+                        : 'border-ui-border bg-white',
                   )}
                 >
                   {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
@@ -1218,7 +1203,7 @@ function SendBar({
                 <Icon className="h-3.5 w-3.5" />
                 {label}
                 {!working && (
-                  <span className="ml-0.5 rounded bg-slate-200 px-1 text-xs font-medium uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                  <span className="ml-0.5 rounded bg-ui-border px-1 text-xs font-medium uppercase tracking-wider text-ui-text-muted">
                     скоро
                   </span>
                 )}
@@ -1228,10 +1213,10 @@ function SendBar({
         </div>
 
         {/* Ошибки */}
-        {error && <div className="mt-2 text-xs text-rose-700">{error}</div>}
-        {callListError && <div className="mt-2 text-xs text-rose-700">{callListError}</div>}
+        {error && <div className="mt-2 text-xs text-ui-danger">{error}</div>}
+        {callListError && <div className="mt-2 text-xs text-ui-danger">{callListError}</div>}
         {status?.last_error && !error && (
-          <div className="mt-2 truncate text-xs text-rose-700" title={status.last_error}>
+          <div className="mt-2 truncate text-xs text-ui-danger" title={status.last_error}>
             Последняя ошибка: {status.last_error}
           </div>
         )}
@@ -1263,13 +1248,13 @@ function SendBar({
             ответить на КП (ответ уйдёт на системный From, а не клиенту).
             Показываем только когда выбран email-канал и reply_to пуст. */}
         {replyToMissing && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-small text-amber-900">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-ui-warning/35 bg-ui-warning/[.07] px-3 py-2 text-small text-ui-warning">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ui-warning" />
             <div>
               Не указан email для ответов — лиди не смогут вам ответить.{' '}
               <Link
                 href="/app/settings/profile"
-                className="font-medium underline underline-offset-2 hover:text-amber-700"
+                className="font-medium underline underline-offset-2 hover:text-ui-warning"
               >
                 Указать email →
               </Link>
@@ -1346,9 +1331,9 @@ function SendBar({
 
         {/* Прогресс-бар */}
         {isActive && (
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ui-surface-2">
             <div
-              className="h-full bg-brand-600 transition-all duration-500"
+              className="h-full bg-ui-accent transition-all duration-500"
               style={{
                 width:
                   status!.total > 0
@@ -1359,7 +1344,7 @@ function SendBar({
           </div>
         )}
         {!isActive && hasAnySend && inFlight === 0 && (
-          <div className="mt-2 text-xs text-[hsl(var(--muted))]">
+          <div className="mt-2 text-xs text-ui-text-muted">
             Полный лог — в{' '}
             <a className="underline" href="/app/leads/history?tab=sends">
               «Отправки»
@@ -1418,27 +1403,27 @@ function RecipientsPanel({
 }) {
   const ChevronIcon = expanded ? ChevronUp : ChevronDown;
   return (
-    <div className="mt-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--surface-2,var(--surface)))]">
+    <div className="mt-3 rounded-lg border border-ui-border bg-[hsl(var(--surface-2,var(--surface)))]">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-small font-medium text-[hsl(var(--text))] hover:bg-slate-50 dark:hover:bg-slate-900/40"
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-small font-medium text-ui-text hover:bg-ui-surface-2"
         aria-expanded={expanded}
       >
         <span className="inline-flex items-center gap-2">
-          <ChevronIcon className="h-4 w-4 text-[hsl(var(--muted))]" />
+          <ChevronIcon className="h-4 w-4 text-ui-text-muted" />
           Кто получит КП ({includedCount}
           {totalCount !== includedCount ? ` из ${totalCount}` : ''})
         </span>
-        <span className="text-xs font-normal text-[hsl(var(--muted))]">
+        <span className="text-xs font-normal text-ui-text-muted">
           {expanded ? 'Скрыть' : 'Показать список'}
         </span>
       </button>
 
       {expanded && (
-        <div className="border-t border-[hsl(var(--border))] px-3 py-2">
+        <div className="border-t border-ui-border px-3 py-2">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-[hsl(var(--muted))]">
+            <span className="text-ui-text-muted">
               Снимай галочку у тех, кому слать не нужно — counter обновится.
             </span>
             <div className="flex gap-1.5">
@@ -1524,7 +1509,7 @@ function RecipientRow({
     <li
       className={cn(
         'flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-xs',
-        excluded ? 'opacity-50' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40',
+        excluded ? 'opacity-50' : 'hover:bg-ui-surface-2',
       )}
     >
       <button
@@ -1536,20 +1521,16 @@ function RecipientRow({
         onClick={onToggle}
         className={cn(
           'mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-sm border',
-          excluded
-            ? 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'
-            : 'border-violet-500 bg-violet-500 text-white',
+          excluded ? 'border-ui-border bg-white' : 'border-ui-accent bg-ui-accent text-white',
           (disabled || onToggle === undefined) && 'cursor-not-allowed opacity-60',
         )}
       >
         {!excluded && <Check className="h-3 w-3" strokeWidth={3} />}
       </button>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-[hsl(var(--text))]">{title}</div>
+        <div className="truncate font-medium text-ui-text">{title}</div>
         {subtitleParts.length > 0 && (
-          <div className="truncate text-xs text-[hsl(var(--muted))]">
-            {subtitleParts.join(' · ')}
-          </div>
+          <div className="truncate text-xs text-ui-text-muted">{subtitleParts.join(' · ')}</div>
         )}
       </div>
       <span
@@ -1572,28 +1553,28 @@ function channelChip(eff: KpSendChannel | 'callable' | 'none') {
       return {
         Icon: Mail,
         label: 'Email',
-        cls: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200',
+        cls: 'bg-ui-accent/[.07] text-ui-accent',
         title: 'Уйдёт по Email в режиме «Отправить всем».',
       };
     case 'whatsapp':
       return {
         Icon: MessageCircle,
         label: 'WhatsApp',
-        cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200',
+        cls: 'bg-ui-success/[.07] text-ui-success',
         title: 'Уйдёт по WhatsApp в режиме «Отправить всем».',
       };
     case 'sms':
       return {
         Icon: MessageCircle,
         label: 'SMS',
-        cls: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200',
+        cls: 'bg-ui-info/[.07] text-ui-info',
         title: 'Короткое уведомление в SMS через SMS.ru (обрезано до ~300 знаков).',
       };
     case 'callable':
       return {
         Icon: PhoneCall,
         label: 'Обзвон',
-        cls: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200',
+        cls: 'bg-ui-warning/[.07] text-ui-warning',
         title: 'Нет email и мобильного — попадёт в xlsx «На обзвон». КП не уйдёт автоматически.',
       };
     case 'telegram':
@@ -1603,7 +1584,7 @@ function channelChip(eff: KpSendChannel | 'callable' | 'none') {
       return {
         Icon: AlertCircle,
         label: 'Нет канала',
-        cls: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+        cls: 'bg-ui-surface-2 text-ui-text-muted',
         title: 'Ни email, ни телефона. КП не дойдёт ни одним каналом — можно снять галочку.',
       };
   }
@@ -1682,7 +1663,7 @@ function RowSendButton({
           variant: 'secondary',
           size: 'icon',
           className:
-            'h-7 w-7 rounded-md border border-slate-200 bg-slate-50 text-slate-500 opacity-50',
+            'h-7 w-7 rounded-md border border-ui-border bg-ui-surface-2 text-ui-text-muted opacity-50',
         })}
       >
         <Send className="h-3.5 w-3.5" />
@@ -1713,12 +1694,12 @@ function RowSendButton({
         className: cn(
           'h-7 w-7 rounded-md border transition-colors',
           isSent
-            ? 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+            ? 'cursor-default border-ui-success/35 bg-ui-success/[.07] text-ui-success'
             : isSending
-              ? 'cursor-wait border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+              ? 'cursor-wait border-ui-border bg-ui-surface-2 text-ui-text-muted'
               : error
-                ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-300'
-                : 'border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700/60 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30',
+                ? 'border-ui-danger/35 bg-ui-danger/[.07] text-ui-danger hover:bg-ui-danger/10'
+                : 'border-ui-success/35 bg-white text-ui-success hover:bg-ui-success/[.07]',
         ),
       })}
     >
@@ -1815,28 +1796,28 @@ function DraftDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-slate-900/30" onClick={onClose} aria-hidden />
+      <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} aria-hidden />
       {/* Panel */}
       <aside
         role="dialog"
         aria-label={`КП: ${companyTitle}`}
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-white shadow-2xl dark:bg-slate-900"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[hsl(var(--border))] px-5 py-3">
+        <div className="flex items-start justify-between gap-3 border-b border-ui-border px-5 py-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <CompanyAvatar name={item.company_name} logoUrl={item.company_logo_url} size={40} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {item.company_legal_short && (
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="rounded bg-ui-surface-2 px-1.5 py-0.5 text-xs font-medium text-ui-text-muted">
                     {item.company_legal_short}
                   </span>
                 )}
-                <h2 className="truncate font-display text-base font-semibold text-[hsl(var(--text))]">
+                <h2 className="truncate font-display text-base font-semibold text-ui-text">
                   {companyTitle}
                 </h2>
               </div>
-              <p className="mt-0.5 text-xs uppercase tracking-wider text-[hsl(var(--muted))]">
+              <p className="mt-0.5 text-xs uppercase tracking-wider text-ui-text-muted">
                 {templateLabel(item.template_key)}
                 {item.company_city ? ` · ${item.company_city}` : ''}
                 {item.draft_created_at ? ` · ${formatDateTime(item.draft_created_at)}` : ''}
@@ -1874,22 +1855,20 @@ function DraftDrawer({
               предупреждение «нет email», но это уже не дед-энд — справа
               рядом блок «Телефон» с альтернативными каналами. */}
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
               Email
             </label>
             {item.recipient_email ? (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-small dark:border-emerald-700/50 dark:bg-emerald-900/30">
-                <AtSign className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+              <div className="flex items-center gap-2 rounded-md border border-ui-success/35 bg-ui-success/[.07] px-3 py-1.5 text-small">
+                <AtSign className="h-4 w-4 shrink-0 text-ui-success" />
                 <div className="min-w-0 flex-1 truncate">
-                  <span className="font-medium text-emerald-900 dark:text-emerald-100">
-                    {item.recipient_email}
-                  </span>
+                  <span className="font-medium text-ui-success">{item.recipient_email}</span>
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-small dark:border-amber-700/50 dark:bg-amber-900/30">
-                <MailX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                <div className="text-amber-800 dark:text-amber-200">
+              <div className="flex items-start gap-2 rounded-md border border-ui-warning/35 bg-ui-warning/[.07] px-3 py-1.5 text-small">
+                <MailX className="mt-0.5 h-4 w-4 shrink-0 text-ui-warning" />
+                <div className="text-ui-warning">
                   Email не найден — добавь в карточке компании, чтобы включить отправку.
                 </div>
               </div>
@@ -1914,7 +1893,7 @@ function DraftDrawer({
             const phoneDisplay = formatPhoneForDisplay(item.company_phone);
             return (
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                   Телефон
                 </label>
                 {waLink ? (
@@ -1923,33 +1902,29 @@ function DraftDrawer({
                       href={waLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-small transition-colors hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/60"
+                      className="flex items-center gap-2 rounded-md border border-ui-success/35 bg-ui-success/[.07] px-3 py-1.5 text-small transition-colors hover:border-ui-success/35 hover:bg-ui-success/10"
                     >
-                      <Phone className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                      <Phone className="h-4 w-4 shrink-0 text-ui-success" />
                       <div className="min-w-0 flex-1 truncate">
-                        <span className="font-medium text-emerald-900 dark:text-emerald-100">
-                          {phoneDisplay}
-                        </span>
-                        <span className="ml-1.5 text-xs uppercase tracking-wider text-emerald-700/80 dark:text-emerald-300/80">
+                        <span className="font-medium text-ui-success">{phoneDisplay}</span>
+                        <span className="ml-1.5 text-xs uppercase tracking-wider text-ui-success">
                           WhatsApp
                         </span>
                       </div>
                     </a>
-                    <p className="text-xs leading-tight text-[hsl(var(--muted))]">
+                    <p className="text-xs leading-tight text-ui-text-muted">
                       Клик — wa.me с пред-заполненным КП. Шлём руками (bulk-коннектора WA пока нет).
                     </p>
                   </div>
                 ) : telLink ? (
                   <a
                     href={telLink}
-                    className="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-small transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    className="flex items-center gap-2 rounded-md border border-ui-border bg-ui-surface-2 px-3 py-1.5 text-small transition-colors hover:border-ui-text-muted/40 hover:bg-ui-surface-2"
                   >
-                    <Phone className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+                    <Phone className="h-4 w-4 shrink-0 text-ui-text-muted" />
                     <div className="min-w-0 flex-1 truncate">
-                      <span className="font-medium text-slate-900 dark:text-slate-100">
-                        {phoneDisplay}
-                      </span>
-                      <span className="ml-1.5 text-xs uppercase tracking-wider text-slate-600/80 dark:text-slate-400">
+                      <span className="font-medium text-ui-text">{phoneDisplay}</span>
+                      <span className="ml-1.5 text-xs uppercase tracking-wider text-ui-text-muted">
                         Городской · звонок
                       </span>
                     </div>
@@ -1961,7 +1936,7 @@ function DraftDrawer({
 
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              <label className="block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                 Тема
               </label>
               {!editing && item.draft_id !== null && (
@@ -1983,7 +1958,7 @@ function DraftDrawer({
                 onChange={(e) => setSubject(e.target.value)}
                 maxLength={500}
                 autoFocus
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-md border border-ui-border bg-white px-3 py-1.5 text-sm font-medium text-ui-text focus:border-ui-accent focus:outline-none focus:ring-2 focus:ring-ui-accent/25"
               />
             ) : (
               <button
@@ -1991,16 +1966,16 @@ function DraftDrawer({
                 onClick={() => item.draft_id !== null && setEditing(true)}
                 disabled={item.draft_id === null}
                 title={item.draft_id !== null ? 'Клик — отредактировать тему' : undefined}
-                className="w-full rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-sm font-medium text-slate-800 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+                className="w-full rounded-md border border-dashed border-ui-border bg-ui-surface-2 px-3 py-1.5 text-left text-sm font-medium text-ui-text transition-colors hover:border-ui-accent/35 hover:bg-ui-accent/[.07] disabled:cursor-not-allowed disabled:hover:border-ui-border disabled:hover:bg-ui-surface-2"
               >
-                {subject || <span className="italic text-slate-500">Тема пустая.</span>}
+                {subject || <span className="italic text-ui-text-muted">Тема пустая.</span>}
               </button>
             )}
           </div>
 
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              <label className="block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                 Тело письма
               </label>
               {!editing && item.draft_id !== null && (
@@ -2020,7 +1995,7 @@ function DraftDrawer({
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={Math.max(10, Math.min(28, body.split('\n').length + 2))}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-small leading-relaxed text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-md border border-ui-border bg-white px-3 py-2 text-small leading-relaxed text-ui-text focus:border-ui-accent focus:outline-none focus:ring-2 focus:ring-ui-accent/25"
               />
             ) : (
               <button
@@ -2028,9 +2003,9 @@ function DraftDrawer({
                 onClick={() => item.draft_id !== null && setEditing(true)}
                 disabled={item.draft_id === null}
                 title={item.draft_id !== null ? 'Клик — отредактировать тело письма' : undefined}
-                className="w-full whitespace-pre-wrap rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-left text-small leading-relaxed text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+                className="w-full whitespace-pre-wrap rounded-md border border-dashed border-ui-border bg-ui-surface-2 px-3 py-2 text-left text-small leading-relaxed text-ui-text transition-colors hover:border-ui-accent/35 hover:bg-ui-accent/[.07] disabled:cursor-not-allowed disabled:hover:border-ui-border disabled:hover:bg-ui-surface-2"
               >
-                {body || <span className="italic text-slate-500">Тело письма пустое.</span>}
+                {body || <span className="italic text-ui-text-muted">Тело письма пустое.</span>}
               </button>
             )}
           </div>
@@ -2043,20 +2018,20 @@ function DraftDrawer({
           {item.draft_id !== null && <ChannelPreviewBlock subject={subject} body={body} />}
 
           {saveError && (
-            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="rounded-md border border-ui-danger/35 bg-ui-danger/[.07] px-3 py-2 text-xs text-ui-danger">
               {saveError}
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[hsl(var(--border))] px-5 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-ui-border px-5 py-3">
           {!editing && (
             <>
               <ButtonV2
                 variant="ghost"
                 size="sm"
                 iconLeft={
-                  copyFlash === 'subject' ? <Check className="text-emerald-600" /> : <Copy />
+                  copyFlash === 'subject' ? <Check className="text-ui-success" /> : <Copy />
                 }
                 onClick={() => copyToClipboard(subject, 'subject')}
               >
@@ -2065,7 +2040,7 @@ function DraftDrawer({
               <ButtonV2
                 variant="ghost"
                 size="sm"
-                iconLeft={copyFlash === 'body' ? <Check className="text-emerald-600" /> : <Copy />}
+                iconLeft={copyFlash === 'body' ? <Check className="text-ui-success" /> : <Copy />}
                 onClick={() => copyToClipboard(body, 'body')}
               >
                 {copyFlash === 'body' ? 'Скопировано' : 'Тело'}
@@ -2124,7 +2099,9 @@ function DraftDrawer({
             singleSendState &&
             typeof singleSendState === 'object' &&
             'error' in singleSendState && (
-              <div className="w-full text-right text-xs text-rose-700">{singleSendState.error}</div>
+              <div className="w-full text-right text-xs text-ui-danger">
+                {singleSendState.error}
+              </div>
             )}
           {editing && (
             <>
@@ -2215,7 +2192,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
 
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
         Как это будет выглядеть в…
       </label>
       <div className="mb-2 flex flex-wrap gap-1">
@@ -2239,24 +2216,24 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
         className={cn(
           'rounded-md border px-3 py-2 text-small leading-relaxed',
           overLimit
-            ? 'border-rose-300 bg-rose-50 dark:border-rose-700/50 dark:bg-rose-950/30'
+            ? 'border-ui-danger/35 bg-ui-danger/[.07]'
             : warn
-              ? 'border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-950/30'
-              : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900',
+              ? 'border-ui-warning/35 bg-ui-warning/[.07]'
+              : 'border-ui-border bg-ui-surface-2',
         )}
       >
         {channel === 'email' && subject && (
-          <div className="mb-1.5 border-b border-slate-200 pb-1.5 text-xs dark:border-slate-700">
-            <span className="font-medium text-[hsl(var(--muted))]">Тема: </span>
-            <span className="text-[hsl(var(--text))]">{subject}</span>
+          <div className="mb-1.5 border-b border-ui-border pb-1.5 text-xs">
+            <span className="font-medium text-ui-text-muted">Тема: </span>
+            <span className="text-ui-text">{subject}</span>
           </div>
         )}
-        <pre className="whitespace-pre-wrap font-sans text-[hsl(var(--text))]">
-          {rendered || <span className="italic text-slate-500">Тело пустое</span>}
+        <pre className="whitespace-pre-wrap font-sans text-ui-text">
+          {rendered || <span className="italic text-ui-text-muted">Тело пустое</span>}
         </pre>
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-        <span className="text-[hsl(var(--muted))]">
+        <span className="text-ui-text-muted">
           {channel === 'email'
             ? 'В письме уйдут шапка с лого и контакты SpinLid (подпись внизу).'
             : 'Канал в работе — пока шлём только Email. Контакты SpinLid добавятся в конец. Превью для проверки длины.'}
@@ -2264,11 +2241,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
         <span
           className={cn(
             'font-mono tabular-nums',
-            overLimit
-              ? 'text-rose-700 dark:text-rose-300'
-              : warn
-                ? 'text-amber-700 dark:text-amber-300'
-                : 'text-[hsl(var(--muted))]',
+            overLimit ? 'text-ui-danger' : warn ? 'text-ui-warning' : 'text-ui-text-muted',
           )}
         >
           {length.toLocaleString('ru-RU')}
@@ -2276,7 +2249,7 @@ function ChannelPreviewBlock({ subject, body }: { subject: string; body: string 
         </span>
       </div>
       {overLimit && meta.limit !== null && (
-        <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+        <p className="mt-1 text-xs text-ui-danger">
           Превышен лимит {meta.label} на {(length - meta.limit).toLocaleString('ru-RU')} симв. —
           урежь тело перед отправкой через этот канал.
         </p>

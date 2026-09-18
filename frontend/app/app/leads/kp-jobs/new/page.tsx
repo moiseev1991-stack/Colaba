@@ -23,8 +23,8 @@ import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
 import { ColdEmailCalculator } from '@/components/ColdEmailCalculator';
-import { PageColumn, PageContainer } from '@/components/ui/page';
-import { cn } from '@/lib/utils';
+import { PageColumn, PageContainer, PageHeader } from '@/components/ui/page';
+import { cn, pluralRu } from '@/lib/utils';
 import { clearBulkKpPending, readBulkKpPending } from '@/lib/kp-bulk-pending';
 import {
   findCommonPains,
@@ -214,25 +214,26 @@ function KpJobNewInner() {
           <button
             type="button"
             onClick={() => window.close()}
-            className="inline-flex items-center gap-1 text-small text-[hsl(var(--muted))] hover:text-[hsl(var(--text))]"
+            className="inline-flex items-center gap-1 text-small text-ui-text-muted hover:text-ui-text"
           >
             <ArrowLeft className="h-4 w-4" />
             Закрыть вкладку
           </button>
         </div>
 
-        <h1 className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--text))]">
-          <Sparkles className="mr-1.5 inline h-5 w-5 -translate-y-0.5 text-violet-600" />
-          Новая партия КП
-        </h1>
-        <p className="mt-1 text-small text-[hsl(var(--muted))]">
-          {companyIds
-            ? `${companyIds.length} ${companyIds.length === 1 ? 'компания' : 'компаний'} — выбери шаблон отправителя и тон, начнём генерацию.`
-            : 'Загрузка списка компаний…'}
-        </p>
+        <PageHeader
+          title="Новая партия КП"
+          description={
+            companyIds
+              ? `${companyIds.length} ${pluralRu(companyIds.length, ['компания', 'компании', 'компаний'])} — выберите шаблон отправителя и тон, начнём генерацию.`
+              : resolveError
+                ? 'Список компаний не получен.'
+                : 'Загрузка списка компаний…'
+          }
+        />
 
         {resolveError && (
-          <CardV2 className="mt-5 border-rose-200 bg-rose-50 px-4 py-3 text-small text-rose-700">
+          <CardV2 className="mt-5 border-ui-danger/35 bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger">
             <div className="flex items-start gap-2">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="flex-1">{resolveError}</div>
@@ -249,15 +250,15 @@ function KpJobNewInner() {
           <div className="mt-6 space-y-5">
             {/* Шаблон */}
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                 Шаблон отправителя
               </label>
               {templatesLoading ? (
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                <div className="rounded-md border border-ui-border bg-ui-surface-2 px-3 py-2 text-sm text-ui-text-muted">
                   Загрузка шаблонов…
                 </div>
               ) : templatesError ? (
-                <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <div className="rounded-md border border-ui-danger/35 bg-ui-danger/[.07] px-3 py-2 text-sm text-ui-danger">
                   {templatesError}
                 </div>
               ) : (
@@ -272,8 +273,8 @@ function KpJobNewInner() {
                         className={cn(
                           'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
                           active
-                            ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
-                            : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+                            ? 'border-ui-accent bg-ui-accent text-white shadow-sm'
+                            : 'border-ui-border bg-white text-ui-text hover:border-ui-text-muted/40',
                         )}
                         title={t.sender_profile || undefined}
                       >
@@ -284,7 +285,7 @@ function KpJobNewInner() {
                 </div>
               )}
               {selectedTemplate && !isCustom && selectedTemplate.sender_profile && (
-                <p className="mt-1 text-xs italic text-[hsl(var(--muted))]">
+                <p className="mt-1 text-xs italic text-ui-text-muted">
                   Пишешь от лица: {selectedTemplate.sender_profile}
                 </p>
               )}
@@ -292,7 +293,7 @@ function KpJobNewInner() {
 
             {isCustom && (
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                   Кто ты — 1-2 предложения
                 </label>
                 <textarea
@@ -301,13 +302,13 @@ function KpJobNewInner() {
                   rows={3}
                   maxLength={600}
                   placeholder="Например: маркетолог-фрилансер, делаю настройку Яндекс.Директа и веду рекламные кампании."
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="w-full rounded-md border border-ui-border bg-white px-3 py-2 text-sm text-ui-text placeholder:text-ui-text-muted focus:border-ui-accent focus:outline-none focus:ring-2 focus:ring-ui-accent/25"
                 />
               </div>
             )}
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                 Тон письма
               </label>
               <div className="flex gap-1.5">
@@ -321,8 +322,8 @@ function KpJobNewInner() {
                       className={cn(
                         'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
                         active
-                          ? 'border-violet-600 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                          : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+                          ? 'border-ui-accent bg-ui-accent/[.07] text-ui-accent'
+                          : 'border-ui-border bg-white text-ui-text hover:border-ui-text-muted/40',
                       )}
                     >
                       {opt.label}
@@ -338,24 +339,24 @@ function KpJobNewInner() {
               компании берётся её топ-1 автоматически. */}
             {!commonPainsLoading && commonPains.length > 0 && (
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[hsl(var(--muted))]">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                   Общая боль партии{' '}
-                  <span className="normal-case text-xs text-slate-500">
+                  <span className="normal-case text-xs text-ui-text-muted">
                     · {commonPains.length} найдено, {companyIds.length} компаний
                   </span>
                 </label>
-                <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/30">
-                  <label className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small hover:bg-slate-100 dark:hover:bg-slate-800/40">
+                <div className="space-y-1.5 rounded-md border border-ui-border bg-ui-surface-2 p-2">
+                  <label className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small hover:bg-ui-surface-2">
                     <input
                       type="radio"
                       name="common-pain"
                       checked={selectedCommonPainId === null}
                       onChange={() => setSelectedCommonPainId(null)}
-                      className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
+                      className="mt-0.5 h-3.5 w-3.5 accent-[hsl(var(--color-accent))]"
                     />
                     <span className="flex-1">
                       <span className="font-medium">Автоматически</span>
-                      <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                      <span className="ml-1.5 text-ui-text-muted">
                         · каждой компании — её топ-1 боль
                       </span>
                     </span>
@@ -366,8 +367,8 @@ function KpJobNewInner() {
                       className={cn(
                         'flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-small transition-colors',
                         selectedCommonPainId === p.pain_tag_id
-                          ? 'bg-violet-100 dark:bg-violet-900/30'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/40',
+                          ? 'bg-ui-accent/10'
+                          : 'hover:bg-ui-surface-2',
                       )}
                     >
                       <input
@@ -375,18 +376,16 @@ function KpJobNewInner() {
                         name="common-pain"
                         checked={selectedCommonPainId === p.pain_tag_id}
                         onChange={() => setSelectedCommonPainId(p.pain_tag_id)}
-                        className="mt-0.5 h-3.5 w-3.5 accent-violet-600"
+                        className="mt-0.5 h-3.5 w-3.5 accent-[hsl(var(--color-accent))]"
                       />
                       <span className="flex-1">
-                        <span className="font-medium text-slate-800 dark:text-slate-100">
-                          {p.label}
-                        </span>
-                        <span className="ml-1.5 text-slate-500 dark:text-slate-400">
+                        <span className="font-medium text-ui-text">{p.label}</span>
+                        <span className="ml-1.5 text-ui-text-muted">
                           · {p.companies_hit} из {companyIds.length} компаний · {p.total_mentions}{' '}
                           упоминаний
                         </span>
                         {p.example_quote && (
-                          <span className="block truncate text-xs italic text-slate-500 dark:text-slate-400">
+                          <span className="block truncate text-xs italic text-ui-text-muted">
                             «{p.example_quote.slice(0, 100)}
                             {p.example_quote.length > 100 ? '…' : ''}»
                           </span>
@@ -399,34 +398,32 @@ function KpJobNewInner() {
             )}
 
             {/* 2026-07-12: включить «4 хода» для всей партии. */}
-            <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+            <div className="rounded-md border border-ui-border bg-white p-3">
               <label className="flex cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
                   checked={bulkUse4hods}
                   onChange={(e) => setBulkUse4hods(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-violet-600"
+                  className="mt-0.5 h-4 w-4 accent-[hsl(var(--color-accent))]"
                 />
                 <span className="flex-1 text-small">
-                  <span className="font-medium text-slate-900 dark:text-slate-100">
-                    Промпт «4 хода» для всей партии
-                  </span>
-                  <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+                  <span className="font-medium text-ui-text">Промпт «4 хода» для всей партии</span>
+                  <span className="ml-1 rounded-full bg-ui-accent/10 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-ui-accent">
                     beta
                   </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  <span className="block text-xs text-ui-text-muted">
                     Каркас: наблюдение → что стоит клиенту → решение результатом → микрошаг.
                     Справочник — «автоматизация связи».
                   </span>
                 </span>
               </label>
               {bulkUse4hods && (
-                <div className="mt-3 space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                <div className="mt-3 space-y-2 border-t border-ui-border pt-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                       Канал
                     </label>
-                    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/40">
+                    <div className="inline-flex rounded-md border border-ui-border bg-ui-surface-2 p-0.5">
                       {(['messenger', 'email'] as const).map((c) => {
                         const active = bulkChannel === c;
                         return (
@@ -437,8 +434,8 @@ function KpJobNewInner() {
                             className={cn(
                               'rounded px-2.5 py-1 text-xs font-medium transition-colors',
                               active
-                                ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-100'
-                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400',
+                                ? 'bg-white text-ui-text shadow-sm ring-1 ring-ui-border'
+                                : 'text-ui-text-muted hover:text-ui-text',
                             )}
                           >
                             {c === 'messenger' ? 'Мессенджер' : 'Email'}
@@ -448,7 +445,7 @@ function KpJobNewInner() {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ui-text-muted">
                       Микрошаг (ХОД 4)
                     </label>
                     <input
@@ -457,7 +454,7 @@ function KpJobNewInner() {
                       onChange={(e) => setBulkOfferStep(e.target.value)}
                       placeholder="созвон 10 минут / показ на примере / мини-аудит"
                       maxLength={200}
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-full rounded-md border border-ui-border bg-white px-3 py-1.5 text-xs text-ui-text placeholder:text-ui-text-muted focus:border-ui-accent focus:outline-none focus:ring-2 focus:ring-ui-accent/25"
                     />
                   </div>
                 </div>
@@ -470,7 +467,7 @@ function KpJobNewInner() {
             <ColdEmailCalculator letterCount={companyIds.length} />
 
             {startError && (
-              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <div className="rounded-md border border-ui-danger/35 bg-ui-danger/[.07] px-3 py-2 text-sm text-ui-danger">
                 {startError}
               </div>
             )}
