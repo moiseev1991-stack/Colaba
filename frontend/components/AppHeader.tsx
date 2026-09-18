@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
-import { BrandMark } from '@/components/BrandMark';
+import { BrandWordmark } from '@/components/BrandLogo';
 import { buttonClass } from '@/components/ui/button';
 import { NavMenuList } from '@/components/nav/NavMenuList';
 import { PRIMARY_NAV, allNavItems, getBestMatch, menuSectionsFor } from '@/components/nav/appNav';
@@ -29,12 +29,8 @@ export function AppHeader({ email, onLogout }: { email: string | null; onLogout:
           aria-label="SpinLid — к поиску"
           className="flex shrink-0 items-center gap-2 rounded-control"
         >
-          <BrandMark
-            size={28}
-            gradient="linear-gradient(135deg, #34d399 0%, #059669 100%)"
-            glow="none"
-          />
-          <span className="text-base font-bold tracking-tight text-ui-text">SpinLid</span>
+          {/* Логотип №15 (18.09): надпись SPINLID, название уже в aria-label ссылки. */}
+          <BrandWordmark height={20} title="" className="text-ui-text" />
         </Link>
 
         <nav aria-label="Разделы" className="hidden items-center gap-6 md:flex">

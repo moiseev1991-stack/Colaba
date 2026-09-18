@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BrandMark } from '@/components/BrandMark';
+import { BrandWordmark } from '@/components/BrandLogo';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
 import { LEGAL_LINKS, SITE_NAME, SUPPORT_EMAIL } from '@/lib/site';
 
@@ -62,8 +62,7 @@ export function PublicFooter({ currentHref }: { currentHref?: string } = {}) {
               textDecoration: 'none',
             }}
           >
-            <BrandMark size={28} glow="none" />
-            {SITE_NAME}
+            <BrandWordmark height={22} title={SITE_NAME} />
           </Link>
           <div style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.5 }} suppressHydrationWarning>
             © {new Date().getFullYear()} · Сбор лидов и письма под боль клиента
