@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import '@/components/landing/landing.css';
 import { SEO_NAV_LINKS } from '@/components/landing/seoNavLinks';
-import { BrandMark } from '@/components/BrandMark';
+import { BrandWordmark } from '@/components/BrandLogo';
 
 const ANCHORS = [
   { id: 'how', label: 'Как работает' },
@@ -80,7 +80,7 @@ export function PublicHeader({
             }
           });
         },
-        { threshold: 0.35, rootMargin: '-20% 0px -40% 0px' }
+        { threshold: 0.35, rootMargin: '-20% 0px -40% 0px' },
       );
       observer.observe(section);
       observersRef.current.push(observer);
@@ -103,138 +103,148 @@ export function PublicHeader({
     // Обёртка .landing-light нужна, чтобы CSS-переменные --landing-* резолвились
     // на любых публичных страницах, а не только на главной. display:contents — без своего бокса.
     <div className="landing-light" style={{ display: 'contents' }}>
-    <nav className={`l-nav${navSolid ? ' scrolled' : ''}`} id="l-nav">
-      <div className="l-nav__inner">
-        {isSubpage ? (
-          <Link href="/" className="l-nav__logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BrandMark size={32} />
-            <span>SpinLid</span>
-          </Link>
-        ) : (
-          <a href="#top" className="l-nav__logo" onClick={(e) => { e.preventDefault(); scrollTo('top'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BrandMark size={32} />
-            <span>SpinLid</span>
-          </a>
-        )}
+      <nav className={`l-nav${navSolid ? ' scrolled' : ''}`} id="l-nav">
+        <div className="l-nav__inner">
+          {isSubpage ? (
+            <Link
+              href="/"
+              className="l-nav__logo"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <BrandWordmark height={22} />
+            </Link>
+          ) : (
+            <a
+              href="#top"
+              className="l-nav__logo"
+              onClick={(e) => {
+                e.preventDefault();
+                scrollTo('top');
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <BrandWordmark height={22} />
+            </a>
+          )}
 
-        <ul className={`l-nav__links${mobileOpen ? ' open' : ''}`}>
-          {/* Dropdown «Возможности» — ведёт на 6 SEO-страниц. Открывается
+          <ul className={`l-nav__links${mobileOpen ? ' open' : ''}`}>
+            {/* Dropdown «Возможности» — ведёт на 6 SEO-страниц. Открывается
               по клику и остаётся открытым до клика вне, Escape или клика
               на пункт. Hover не используется — был баг: при движении
               курсора с кнопки на список меню успевало закрыться через
               onMouseLeave. */}
-          <li ref={solutionsRef} style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setSolutionsOpen((v) => !v)}
-              aria-expanded={solutionsOpen}
-              aria-haspopup="menu"
-            >
-              Возможности ▾
-            </button>
-            {solutionsOpen && (
-              <div
-                role="menu"
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  marginTop: '4px',
-                  minWidth: '320px',
-                  padding: '8px',
-                  background: 'rgba(15, 23, 42, 0.97)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
-                  display: 'grid',
-                  gap: '2px',
-                  zIndex: 50,
-                }}
+            <li ref={solutionsRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setSolutionsOpen((v) => !v)}
+                aria-expanded={solutionsOpen}
+                aria-haspopup="menu"
               >
-                {SEO_NAV_LINKS.map((s) => (
-                  <Link
-                    key={s.href}
-                    href={s.href}
-                    role="menuitem"
-                    onClick={() => {
-                      setSolutionsOpen(false);
-                      setMobileOpen(false);
-                    }}
-                    style={{
-                      display: 'block',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      color: 'rgba(255,255,255,0.92)',
-                      textDecoration: 'none',
-                      transition: 'background-color 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(16,185,129,0.12)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                      {s.label}
-                    </div>
-                    <div
+                Возможности ▾
+              </button>
+              {solutionsOpen && (
+                <div
+                  role="menu"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '4px',
+                    minWidth: '320px',
+                    padding: '8px',
+                    background: 'rgba(15, 23, 42, 0.97)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '12px',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+                    display: 'grid',
+                    gap: '2px',
+                    zIndex: 50,
+                  }}
+                >
+                  {SEO_NAV_LINKS.map((s) => (
+                    <Link
+                      key={s.href}
+                      href={s.href}
+                      role="menuitem"
+                      onClick={() => {
+                        setSolutionsOpen(false);
+                        setMobileOpen(false);
+                      }}
                       style={{
-                        fontSize: '12px',
-                        color: 'rgba(255,255,255,0.6)',
-                        marginTop: '2px',
-                        lineHeight: 1.4,
+                        display: 'block',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        color: 'rgba(255,255,255,0.92)',
+                        textDecoration: 'none',
+                        transition: 'background-color 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(16,185,129,0.12)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
                       }}
                     >
-                      {s.hint}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </li>
-          {ANCHORS.map(({ id, label }) => (
-            <li key={id}>
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>{s.label}</div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'rgba(255,255,255,0.6)',
+                          marginTop: '2px',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {s.hint}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </li>
+            {ANCHORS.map(({ id, label }) => (
+              <li key={id}>
+                {isSubpage ? (
+                  <Link href={`/#${id}`}>{label}</Link>
+                ) : (
+                  <button
+                    className={activeSection === id ? 'active' : ''}
+                    onClick={() => scrollTo(id)}
+                  >
+                    {label}
+                  </button>
+                )}
+              </li>
+            ))}
+            <li>
+              <Link href="/auth/login" className="l-nav__login">
+                Войти
+              </Link>
+            </li>
+            <li>
               {isSubpage ? (
-                <Link href={`/#${id}`}>{label}</Link>
+                <Link href="/auth/register" className="l-nav__cta">
+                  Создать аккаунт
+                </Link>
               ) : (
-                <button
-                  className={activeSection === id ? 'active' : ''}
-                  onClick={() => scrollTo(id)}
-                >
-                  {label}
+                <button className="l-nav__cta" onClick={() => scrollTo('register', true)}>
+                  Создать аккаунт
                 </button>
               )}
             </li>
-          ))}
-          <li>
-            <Link href="/auth/login" className="l-nav__login">Войти</Link>
-          </li>
-          <li>
-            {isSubpage ? (
-              <Link href="/auth/register" className="l-nav__cta">
-                Создать аккаунт
-              </Link>
-            ) : (
-              <button className="l-nav__cta" onClick={() => scrollTo('register', true)}>
-                Создать аккаунт
-              </button>
-            )}
-          </li>
-        </ul>
+          </ul>
 
-        <button
-          className={`l-nav__burger${mobileOpen ? ' open' : ''}`}
-          id="l-burger"
-          aria-label="Меню"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </div>
-    </nav>
+          <button
+            className={`l-nav__burger${mobileOpen ? ' open' : ''}`}
+            id="l-burger"
+            aria-label="Меню"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
