@@ -92,6 +92,21 @@ services:
       # SerpAPI ключ для источника Google Maps (см. backend/app/modules/maps/providers/google_maps.py).
       # Без него health/providers.google_maps вернёт "no_api_key".
       SERPAPI_KEY: ${SERPAPI_KEY:-}
+      # === OAuth-вход (аудит 18.09, docs/guides/OAUTH_SETUP.md) ===
+      # VK ID (id.vk.ru) + Яндекс ID: client id/secret из кабинетов разработчика.
+      VK_CLIENT_ID: ${VK_CLIENT_ID:-}
+      VK_CLIENT_SECRET: ${VK_CLIENT_SECRET:-}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Публичный origin фронта: на него OAuth-редиректы и ссылки писем.
+      OAUTH_FRONTEND_URL: ${OAUTH_FRONTEND_URL:-https://www.spinlid.ru}
+      # === SMTP для транзакционных писем (сброс пароля / верификация) ===
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       # Бот-приёмник заявок лендинга /razbor (inbound_leads): webhook + ответы
       # пользователю + TG-уведомление владельцу. Без токена бот не отвечает.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
