@@ -18,6 +18,7 @@ router = APIRouter(prefix="/email", tags=["Email Replies"])
 
 class EmailReplyResponse(BaseModel):
     """Schema for email reply response."""
+
     id: int
     from_email: str
     from_name: Optional[str]
@@ -53,10 +54,7 @@ async def get_email_replies(
     replies = result.scalars().all()
 
     # Get total count
-    count_result = await db.execute(
-        select(EmailReply)
-        .where(EmailReply.user_id == user_id)
-    )
+    count_result = await db.execute(select(EmailReply).where(EmailReply.user_id == user_id))
     total = len(count_result.scalars().all())
 
     return {
@@ -87,10 +85,7 @@ async def get_email_reply(
     """
     Get a specific email reply by ID.
     """
-    result = await db.execute(
-        select(EmailReply)
-        .where(EmailReply.id == reply_id, EmailReply.user_id == user_id)
-    )
+    result = await db.execute(select(EmailReply).where(EmailReply.id == reply_id, EmailReply.user_id == user_id))
     reply = result.scalar_one_or_none()
 
     if not reply:

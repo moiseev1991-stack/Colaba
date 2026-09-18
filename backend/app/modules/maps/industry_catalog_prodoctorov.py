@@ -61,21 +61,39 @@ logger = logging.getLogger(__name__)
 
 _BASE = "https://prodoctorov.ru"
 _TIMEOUT = httpx.Timeout(15.0, connect=8.0)
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 
 # Медицинские keywords в названии компании — только для них запускаем
 # парсер (не тратим запросы на автосервисы, кафе и т.п.).
-_MEDICAL_KEYWORDS = frozenset({
-    "клиник", "стомат", "медицинск", "медцентр", "ветклиник",
-    "ветеринар", "косметолог", "косметологи", "дерматолог", "гинеколог",
-    "офтальмолог", "офтальмологи", "лор", "лор-клиник", "педиатр",
-    "поликлиник", "лпу", "госпитал", "хирург", "терапевт",
-    "лаборатори", "аптек", "здравниц", "санатор",
-})
+_MEDICAL_KEYWORDS = frozenset(
+    {
+        "клиник",
+        "стомат",
+        "медицинск",
+        "медцентр",
+        "ветклиник",
+        "ветеринар",
+        "косметолог",
+        "косметологи",
+        "дерматолог",
+        "гинеколог",
+        "офтальмолог",
+        "офтальмологи",
+        "лор",
+        "лор-клиник",
+        "педиатр",
+        "поликлиник",
+        "лпу",
+        "госпитал",
+        "хирург",
+        "терапевт",
+        "лаборатори",
+        "аптек",
+        "здравниц",
+        "санатор",
+    }
+)
 
 
 # 2GIS city → prodoctorov city slug. Топ-20 городов покрывают ~80% рынка.
@@ -135,9 +153,7 @@ def _city_slug(city: str | None) -> str | None:
     return _CITY_TO_SLUG.get(city.strip().lower())
 
 
-async def _search_lpu(
-    client: httpx.AsyncClient, city_slug: str, name: str
-) -> list[str]:
+async def _search_lpu(client: httpx.AsyncClient, city_slug: str, name: str) -> list[str]:
     """Возвращает список абсолютных URL кандидатов /{city_slug}/lpu/{id-slug}/."""
     url = f"{_BASE}/{city_slug}/lpu/"
     try:
@@ -160,9 +176,7 @@ async def _search_lpu(
     return [urljoin(_BASE, h + "/") for h in seen[:5]]  # top-5 кандидатов
 
 
-async def _fetch_lpu_page(
-    client: httpx.AsyncClient, url: str
-) -> dict[str, Any] | None:
+async def _fetch_lpu_page(client: httpx.AsyncClient, url: str) -> dict[str, Any] | None:
     """Скачивает страницу клиники, extract'ит контакты и название.
 
     Возвращает dict с ключами:
@@ -243,9 +257,7 @@ def _fuzzy_match(company_name: str, candidate_title: str) -> bool:
     return False
 
 
-async def enrich_from_prodoctorov(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def enrich_from_prodoctorov(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Главная точка входа: находит клинику в prodoctorov и обогащает
     контактами + возможно ФИО главврача."""
     company = await db.get(Company, company_id)
@@ -260,9 +272,7 @@ async def enrich_from_prodoctorov(
     if not city_slug:
         return {"status": "no_city_slug", "city": company.city}
 
-    async with httpx.AsyncClient(
-        timeout=_TIMEOUT, headers={"User-Agent": _UA}
-    ) as client:
+    async with httpx.AsyncClient(timeout=_TIMEOUT, headers={"User-Agent": _UA}) as client:
         candidates = await _search_lpu(client, city_slug, company.name)
         if not candidates:
             return {"status": "no_candidates"}
@@ -276,7 +286,9 @@ async def enrich_from_prodoctorov(
 
             # Матч! Сохраняем данные и выходим.
             saved_contacts = await _save_contacts(
-                db, company_id, url,
+                db,
+                company_id,
+                url,
                 phones=details.get("phones") or [],
                 emails=details.get("emails") or [],
             )
@@ -284,7 +296,10 @@ async def enrich_from_prodoctorov(
             chief = details.get("chief_name")
             if chief:
                 saved_dm = await _save_chief(
-                    db, company_id, chief, source_url=url,
+                    db,
+                    company_id,
+                    chief,
+                    source_url=url,
                     phone=(details.get("phones") or [None])[0],
                     email=(details.get("emails") or [None])[0],
                 )
@@ -319,11 +334,7 @@ async def _save_contacts(
     if company_source is None:
         # Fallback — берём любой company_source.
         company_source = (
-            await db.execute(
-                select(CompanySource)
-                .where(CompanySource.company_id == company_id)
-                .limit(1)
-            )
+            await db.execute(select(CompanySource).where(CompanySource.company_id == company_id).limit(1))
         ).scalar_one_or_none()
     if company_source is None:
         # Нет ни одного profile — пишем в Company.contacts_extra JSONB.
@@ -332,14 +343,18 @@ async def _save_contacts(
 
     saved = 0
     for phone in phones:
-        stmt = pg_insert(CompanyContact).values(
-            company_source_id=company_source.id,
-            company_id=company_id,
-            source="prodoctorov",
-            type="phone",
-            value=phone[:500],
-            is_primary=False,
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(CompanyContact)
+            .values(
+                company_source_id=company_source.id,
+                company_id=company_id,
+                source="prodoctorov",
+                type="phone",
+                value=phone[:500],
+                is_primary=False,
+            )
+            .on_conflict_do_nothing()
+        )
         try:
             await db.execute(stmt)
             saved += 1
@@ -347,14 +362,18 @@ async def _save_contacts(
             logger.debug("prodoctorov: insert phone %r: %s", phone, e)
 
     for email in emails:
-        stmt = pg_insert(CompanyContact).values(
-            company_source_id=company_source.id,
-            company_id=company_id,
-            source="prodoctorov",
-            type="email",
-            value=email[:500],
-            is_primary=False,
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(CompanyContact)
+            .values(
+                company_source_id=company_source.id,
+                company_id=company_id,
+                source="prodoctorov",
+                type="email",
+                value=email[:500],
+                is_primary=False,
+            )
+            .on_conflict_do_nothing()
+        )
         try:
             await db.execute(stmt)
             saved += 1
@@ -381,21 +400,25 @@ async def _save_chief(
     elif phone:
         contact_type, contact_value = "phone", phone[:500]
 
-    stmt = pg_insert(CompanyDecisionMaker).values(
-        company_id=company_id,
-        name=chief_name[:200],
-        post="Главврач",
-        source="prodoctorov",
-        source_url=source_url,
-        # Главврач в клинике — реальный ЛПР по продвижению услуг.
-        # Confidence 0.75 — источник (медкаталог) авторитетный, но у
-        # клиник иногда номинально главврач ≠ маркетинговый ЛПР.
-        confidence=0.75,
-        is_decision_maker=True,
-        role_category="management",
-        contact_type=contact_type,
-        contact_value=contact_value,
-    ).on_conflict_do_nothing()
+    stmt = (
+        pg_insert(CompanyDecisionMaker)
+        .values(
+            company_id=company_id,
+            name=chief_name[:200],
+            post="Главврач",
+            source="prodoctorov",
+            source_url=source_url,
+            # Главврач в клинике — реальный ЛПР по продвижению услуг.
+            # Confidence 0.75 — источник (медкаталог) авторитетный, но у
+            # клиник иногда номинально главврач ≠ маркетинговый ЛПР.
+            confidence=0.75,
+            is_decision_maker=True,
+            role_category="management",
+            contact_type=contact_type,
+            contact_value=contact_value,
+        )
+        .on_conflict_do_nothing()
+    )
     try:
         await db.execute(stmt)
         return 1

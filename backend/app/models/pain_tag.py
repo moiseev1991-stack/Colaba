@@ -35,7 +35,10 @@ class PainTag(Base):
     __tablename__ = "pain_tags"
     __table_args__ = (
         UniqueConstraint(
-            "niche", "city", "label", "sentiment",
+            "niche",
+            "city",
+            "label",
+            "sentiment",
             name="uq_pain_tags_niche_city_label_sentiment",
         ),
     )

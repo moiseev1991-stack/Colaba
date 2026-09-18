@@ -60,11 +60,39 @@ logger = logging.getLogger(__name__)
 # Упрощённая транслитерация ГОСТ 7.79-2000 (система Б). Для матчинга email
 # точная система не критична — важно чтобы Иванов → ivanov, не 'ivanof'.
 _CYRILLIC_TO_LATIN = {
-    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
-    "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
-    "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
-    "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch",
-    "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+    "а": "a",
+    "б": "b",
+    "в": "v",
+    "г": "g",
+    "д": "d",
+    "е": "e",
+    "ё": "e",
+    "ж": "zh",
+    "з": "z",
+    "и": "i",
+    "й": "y",
+    "к": "k",
+    "л": "l",
+    "м": "m",
+    "н": "n",
+    "о": "o",
+    "п": "p",
+    "р": "r",
+    "с": "s",
+    "т": "t",
+    "у": "u",
+    "ф": "f",
+    "х": "kh",
+    "ц": "ts",
+    "ч": "ch",
+    "ш": "sh",
+    "щ": "shch",
+    "ъ": "",
+    "ы": "y",
+    "ь": "",
+    "э": "e",
+    "ю": "yu",
+    "я": "ya",
 }
 
 
@@ -174,9 +202,7 @@ def _match_email_to_person(
     return 0.0
 
 
-async def _collect_company_emails(
-    db: AsyncSession, company_id: int
-) -> list[str]:
+async def _collect_company_emails(db: AsyncSession, company_id: int) -> list[str]:
     """Все emails компании — из Company.emails (JSONB) + company_contacts.
     Дедупликация по нижнему регистру.
 
@@ -211,9 +237,7 @@ async def _collect_company_emails(
     return list(out.values())
 
 
-async def attribute_emails_to_dms(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def attribute_emails_to_dms(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Основная точка входа: для одной компании пробует связать найденные
     emails с директорами/учредителями из ЕГРЮЛ.
 
@@ -225,11 +249,7 @@ async def attribute_emails_to_dms(
             await db.execute(
                 select(CompanyDecisionMaker)
                 .where(CompanyDecisionMaker.company_id == company_id)
-                .where(
-                    CompanyDecisionMaker.source.in_(
-                        ["egrul_director", "egrul_founder"]
-                    )
-                )
+                .where(CompanyDecisionMaker.source.in_(["egrul_director", "egrul_founder"]))
                 .where(CompanyDecisionMaker.contact_value.is_(None))
             )
         )
@@ -269,7 +289,9 @@ async def attribute_emails_to_dms(
             if not mx_ok:
                 logger.info(
                     "email_to_dm: skip company=%d dm=%d email=%r no_mx",
-                    company_id, dm.id, best_email,
+                    company_id,
+                    dm.id,
+                    best_email,
                 )
                 continue
             dm.contact_type = "email"
@@ -285,7 +307,11 @@ async def attribute_emails_to_dms(
             attributed += 1
             logger.info(
                 "email_to_dm: company=%d dm=%d name=%r attributed email=%r conf=%.2f",
-                company_id, dm.id, dm.name, best_email, best_conf,
+                company_id,
+                dm.id,
+                dm.name,
+                best_email,
+                best_conf,
             )
 
     if attributed:

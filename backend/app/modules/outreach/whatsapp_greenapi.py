@@ -60,9 +60,7 @@ def _phone_to_chat_id(phone_digits: str) -> str:
     return f"{phone_digits}@c.us"
 
 
-async def send_text_message(
-    phone_digits: str, text: str, *, timeout: float = DEFAULT_TIMEOUT_SEC
-) -> str:
+async def send_text_message(phone_digits: str, text: str, *, timeout: float = DEFAULT_TIMEOUT_SEC) -> str:
     """Шлёт одно текстовое WhatsApp-сообщение через GreenAPI.
 
     Возвращает idMessage (записывается в KpSend.provider_message_id для
@@ -74,8 +72,7 @@ async def send_text_message(
     """
     if not is_configured():
         raise WhatsAppSendError(
-            "GreenAPI не настроен — добавь GREENAPI_INSTANCE_ID и "
-            "GREENAPI_API_TOKEN в env коннектора.",
+            "GreenAPI не настроен — добавь GREENAPI_INSTANCE_ID и GREENAPI_API_TOKEN в env коннектора.",
             code="not_configured",
         )
 

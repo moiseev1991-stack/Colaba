@@ -76,24 +76,30 @@ async def persist_dm_persons(
         is_dm = role_category in ("marketing", "owner", "founder", "management", "hr")
         contact_type, contact_value = _pick_best_contact(item)
 
-        stmt = pg_insert(CompanyDecisionMaker).values(
-            company_id=company_id,
-            name=name,
-            post=post,
-            source=source,
-            source_url=(source_url or None) if source_url is None else source_url[:1000],
-            confidence=confidence,
-            is_decision_maker=is_dm,
-            role_category=role_category,
-            contact_type=contact_type,
-            contact_value=contact_value,
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(CompanyDecisionMaker)
+            .values(
+                company_id=company_id,
+                name=name,
+                post=post,
+                source=source,
+                source_url=(source_url or None) if source_url is None else source_url[:1000],
+                confidence=confidence,
+                is_decision_maker=is_dm,
+                role_category=role_category,
+                contact_type=contact_type,
+                contact_value=contact_value,
+            )
+            .on_conflict_do_nothing()
+        )
         try:
             await db.execute(stmt)
             saved += 1
         except Exception as e:
             logger.debug(
                 "persist_dm_persons: insert conflict for %s (src=%s): %s",
-                name, source, e,
+                name,
+                source,
+                e,
             )
     return saved

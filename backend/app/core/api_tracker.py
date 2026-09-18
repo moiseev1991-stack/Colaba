@@ -37,15 +37,11 @@ logger = logging.getLogger(__name__)
 # Контекст вызова (contextvars)
 # ────────────────────────────────────────────────────────────────────
 
-_current_user_id: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar(
-    "current_user_id", default=None
-)
+_current_user_id: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar("current_user_id", default=None)
 _current_map_search_id: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar(
     "current_map_search_id", default=None
 )
-_current_company_id: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar(
-    "current_company_id", default=None
-)
+_current_company_id: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar("current_company_id", default=None)
 
 
 def set_call_context(
@@ -124,12 +120,8 @@ async def log_call(
 
     # Контекст: явный параметр имеет приоритет над contextvar.
     ctx_user_id = user_id if user_id is not None else _current_user_id.get()
-    ctx_search_id = (
-        map_search_id if map_search_id is not None else _current_map_search_id.get()
-    )
-    ctx_company_id = (
-        company_id if company_id is not None else _current_company_id.get()
-    )
+    ctx_search_id = map_search_id if map_search_id is not None else _current_map_search_id.get()
+    ctx_company_id = company_id if company_id is not None else _current_company_id.get()
 
     # Стоимость.
     cost = compute_cost_rub(

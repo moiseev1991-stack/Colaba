@@ -62,10 +62,14 @@ def _has_website(company: Company) -> bool:
         return False
     # Псевдо-«сайты» которые на самом деле соцсети/2gis — считаем за «нет».
     bad_hosts = (
-        "2gis.ru", "2gis.com",
-        "vk.com", "vk.ru",
-        "instagram.com", "facebook.com",
-        "t.me", "telegram.me",
+        "2gis.ru",
+        "2gis.com",
+        "vk.com",
+        "vk.ru",
+        "instagram.com",
+        "facebook.com",
+        "t.me",
+        "telegram.me",
         "ok.ru",
     )
     return not any(h in raw for h in bad_hosts)
@@ -89,12 +93,8 @@ def pick_angle(company: Company, pains: list[dict]) -> str:
         return "website"
 
     # Слова-маркеры в label/цитате, по которым угадываем угол.
-    text_blob = " ".join(
-        (p.get("label") or "") + " " + (p.get("top_quote") or "")
-        for p in pains
-    ).lower()
-    automation_markers = ("дозвониться", "не отвечают", "не берут трубку",
-                          "не перезвонил", "телефон", "связ")
+    text_blob = " ".join((p.get("label") or "") + " " + (p.get("top_quote") or "") for p in pains).lower()
+    automation_markers = ("дозвониться", "не отвечают", "не берут трубку", "не перезвонил", "телефон", "связ")
     if any(m in text_blob for m in automation_markers):
         return "automation"
 
@@ -107,9 +107,7 @@ def pick_angle(company: Company, pains: list[dict]) -> str:
     return "seo"
 
 
-async def _load_cached(
-    db: AsyncSession, company_id: int, angle: str
-) -> CompanyOutreachDraft | None:
+async def _load_cached(db: AsyncSession, company_id: int, angle: str) -> CompanyOutreachDraft | None:
     """Читает кэш по (company_id, angle). None если нет."""
     stmt = select(CompanyOutreachDraft).where(
         CompanyOutreachDraft.company_id == company_id,
@@ -135,23 +133,27 @@ async def _upsert(
     Используем pg-specific insert with ON CONFLICT — это атомарно и
     не требует отдельного SELECT перед UPDATE.
     """
-    stmt = pg_insert(CompanyOutreachDraft).values(
-        company_id=company_id,
-        angle=angle,
-        subject=subject[:500],
-        body=body,
-        pains_used=pains_used,
-        tone=tone,
-        language=language,
-    ).on_conflict_do_update(
-        index_elements=["company_id", "angle"],
-        set_={
-            "subject": subject[:500],
-            "body": body,
-            "pains_used": pains_used,
-            "tone": tone,
-            "language": language,
-        },
+    stmt = (
+        pg_insert(CompanyOutreachDraft)
+        .values(
+            company_id=company_id,
+            angle=angle,
+            subject=subject[:500],
+            body=body,
+            pains_used=pains_used,
+            tone=tone,
+            language=language,
+        )
+        .on_conflict_do_update(
+            index_elements=["company_id", "angle"],
+            set_={
+                "subject": subject[:500],
+                "body": body,
+                "pains_used": pains_used,
+                "tone": tone,
+                "language": language,
+            },
+        )
     )
     await db.execute(stmt)
     await db.commit()
@@ -175,9 +177,7 @@ async def generate_or_get_draft(
     Кэш: один драфт на (company_id, angle). regenerate=True перезаписывает.
     """
     # 1. Тянем топ-3 боли с цитатами для этой компании.
-    pains_map = await maps_service.get_top_pains_for_companies(
-        db, [company.id], limit_per_company=3
-    )
+    pains_map = await maps_service.get_top_pains_for_companies(db, [company.id], limit_per_company=3)
     pains = pains_map.get(company.id, [])
     pains_with_quote = [p for p in pains if p.get("top_quote")]
 
@@ -193,9 +193,7 @@ async def generate_or_get_draft(
     if not regenerate:
         cached = await _load_cached(db, company.id, resolved_angle)
         if cached is not None:
-            cached_pains = (
-                cached.pains_used if isinstance(cached.pains_used, list) else []
-            )
+            cached_pains = cached.pains_used if isinstance(cached.pains_used, list) else []
             return (
                 DraftResult(
                     subject=cached.subject,
@@ -216,31 +214,26 @@ async def generate_or_get_draft(
     # другого — письмо будет с «Здравствуйте!».
     from app.models.company_decision_maker import CompanyDecisionMaker
 
-    marketing_dm = (await db.execute(
-        select(CompanyDecisionMaker)
-        .where(CompanyDecisionMaker.company_id == company.id)
-        .where(CompanyDecisionMaker.is_marketing_dm.is_(True))
-        .limit(1)
-    )).scalar_one_or_none()
+    marketing_dm = (
+        await db.execute(
+            select(CompanyDecisionMaker)
+            .where(CompanyDecisionMaker.company_id == company.id)
+            .where(CompanyDecisionMaker.is_marketing_dm.is_(True))
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
-    legal = (await db.execute(
-        select(CompanyLegal).where(CompanyLegal.company_id == company.id)
-    )).scalar_one_or_none()
+    legal = (await db.execute(select(CompanyLegal).where(CompanyLegal.company_id == company.id))).scalar_one_or_none()
 
     if marketing_dm is not None and marketing_dm.name:
         recipient_first_name = extract_first_name(marketing_dm.name)
         recipient_post = marketing_dm.post
     else:
-        recipient_first_name = (
-            extract_first_name(legal.director_name) if legal and legal.director_name else None
-        )
+        recipient_first_name = extract_first_name(legal.director_name) if legal and legal.director_name else None
         recipient_post = legal.director_post if legal and legal.director_post else None
 
     # 4. Зовём LLM. pains может быть пустым — функция это умеет.
-    pains_for_llm = [
-        {"label": p["label"], "quote": p.get("top_quote") or ""}
-        for p in pains_with_quote
-    ]
+    pains_for_llm = [{"label": p["label"], "quote": p.get("top_quote") or ""} for p in pains_with_quote]
     draft = await call_llm_outreach_draft(
         db,
         company_name=company.name or "",
@@ -289,7 +282,9 @@ async def generate_or_get_draft(
     except Exception as e:
         logger.warning(
             "generate_or_get_draft: cache upsert failed for company=%s angle=%s: %s",
-            company.id, resolved_angle, e,
+            company.id,
+            resolved_angle,
+            e,
         )
 
     return (

@@ -1,9 +1,9 @@
 """HTTP endpoints приёмника заявок.
 
-  POST   /api/v1/inbound-leads        — приём заявки (бот), X-Inbound-Secret
-  POST   /api/v1/inbound-leads/public — публичная форма лендинга (без секрета)
-  GET    /api/v1/inbound-leads        — список (только is_superuser)
-  PATCH  /api/v1/inbound-leads/{id}   — смена статуса (admin)
+POST   /api/v1/inbound-leads        — приём заявки (бот), X-Inbound-Secret
+POST   /api/v1/inbound-leads/public — публичная форма лендинга (без секрета)
+GET    /api/v1/inbound-leads        — список (только is_superuser)
+PATCH  /api/v1/inbound-leads/{id}   — смена статуса (admin)
 """
 
 import logging
@@ -74,9 +74,7 @@ async def create_public_inbound_lead(
     # Honeypot: бот заполнил скрытое поле → отвечаем «успехом», ничего не пишем.
     if (payload.hp or "").strip():
         logger.info("inbound_leads: honeypot сработал, заявка отброшена")
-        return schemas.InboundLeadSubmitResponse(
-            id=0, status="new", matched_company_id=None, is_new=True
-        )
+        return schemas.InboundLeadSubmitResponse(id=0, status="new", matched_company_id=None, is_new=True)
     if not payload.consent:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -106,9 +104,7 @@ async def list_inbound_leads(
     _: object = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total = await service.list_leads(
-        db, status_filter=status_filter, limit=limit, offset=offset
-    )
+    items, total = await service.list_leads(db, status_filter=status_filter, limit=limit, offset=offset)
     return schemas.InboundLeadListResponse(
         items=[schemas.InboundLeadOut.model_validate(i) for i in items],
         total=total,

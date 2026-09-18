@@ -80,7 +80,4 @@ class KpSend(Base):
     sent_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
-        return (
-            f"<KpSend #{self.id} draft={self.draft_id} channel={self.channel!r} "
-            f"status={self.status!r}>"
-        )
+        return f"<KpSend #{self.id} draft={self.draft_id} channel={self.channel!r} status={self.status!r}>"

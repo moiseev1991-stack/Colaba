@@ -12,6 +12,7 @@ Slug-ID — машинно-читаемое имя; они отдаются на
 для клона, никогда не пересекаются с числовыми ID БД (используем отдельный
 namespace).
 """
+
 from __future__ import annotations
 
 from typing import Any

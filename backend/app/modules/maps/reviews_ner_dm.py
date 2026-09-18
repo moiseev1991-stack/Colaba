@@ -87,38 +87,40 @@ async def enrich_dm_from_reviews(
     # Идемпотентность: если недавний прогон уже был — пропускаем.
     if not force:
         cutoff = datetime.now(timezone.utc) - timedelta(days=_REPROCESS_AFTER_DAYS)
-        recent_ner = (await db.execute(
-            select(CompanyDecisionMaker.id)
-            .where(CompanyDecisionMaker.company_id == company_id)
-            .where(CompanyDecisionMaker.source == "reviews_ner")
-            .where(CompanyDecisionMaker.created_at >= cutoff)
-            .limit(1)
-        )).scalar_one_or_none()
+        recent_ner = (
+            await db.execute(
+                select(CompanyDecisionMaker.id)
+                .where(CompanyDecisionMaker.company_id == company_id)
+                .where(CompanyDecisionMaker.source == "reviews_ner")
+                .where(CompanyDecisionMaker.created_at >= cutoff)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         if recent_ner is not None:
             return {"status": "skip_already_processed"}
 
     # Берём последние отзывы с непустым текстом. По posted_at desc, чтобы
     # свежие имена (2026 год) шли раньше древних (2019). raw_text может быть
     # NULL после cron-очистки — таких пропускаем.
-    rows = (await db.execute(
-        select(Review.raw_text)
-        .where(Review.company_id == company_id)
-        .where(Review.raw_text.isnot(None))
-        .order_by(Review.posted_at.desc().nullslast())
-        .limit(_MAX_REVIEWS_FOR_NER * 2)  # запас, часть отфильтруем по длине
-    )).all()
+    rows = (
+        await db.execute(
+            select(Review.raw_text)
+            .where(Review.company_id == company_id)
+            .where(Review.raw_text.isnot(None))
+            .order_by(Review.posted_at.desc().nullslast())
+            .limit(_MAX_REVIEWS_FOR_NER * 2)  # запас, часть отфильтруем по длине
+        )
+    ).all()
 
-    texts = [
-        (r[0] or "").strip()
-        for r in rows
-        if r[0] and len(r[0].strip()) >= _MIN_TEXT_LEN
-    ][:_MAX_REVIEWS_FOR_NER]
+    texts = [(r[0] or "").strip() for r in rows if r[0] and len(r[0].strip()) >= _MIN_TEXT_LEN][:_MAX_REVIEWS_FOR_NER]
 
     if not texts:
         return {"status": "no_reviews_with_text", "texts": 0, "saved": 0}
 
     extracted = await call_llm_extract_from_reviews(
-        db, company_name=company.name or "", review_texts=texts,
+        db,
+        company_name=company.name or "",
+        review_texts=texts,
     )
     if extracted is None:
         return {"status": "llm_unavailable", "texts": len(texts), "saved": 0}
@@ -140,18 +142,22 @@ async def enrich_dm_from_reviews(
         # сотрудник компании — юзер увидит имя для «здравствуйте, Марина!».
         is_dm = role_category in ("marketing", "owner", "founder", "management")
 
-        stmt = pg_insert(CompanyDecisionMaker).values(
-            company_id=company_id,
-            name=name,
-            post=post,
-            source="reviews_ner",
-            source_url=None,
-            confidence=confidence,
-            is_decision_maker=is_dm,
-            role_category=role_category,
-            contact_type=None,
-            contact_value=None,
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(CompanyDecisionMaker)
+            .values(
+                company_id=company_id,
+                name=name,
+                post=post,
+                source="reviews_ner",
+                source_url=None,
+                confidence=confidence,
+                is_decision_maker=is_dm,
+                role_category=role_category,
+                contact_type=None,
+                contact_value=None,
+            )
+            .on_conflict_do_nothing()
+        )
         try:
             await db.execute(stmt)
             saved += 1
@@ -159,7 +165,8 @@ async def enrich_dm_from_reviews(
             # Гонка по UNIQUE (company_id, lower(name)) — норма, тихо.
             logger.debug(
                 "enrich_dm_from_reviews: insert conflict for %s: %s",
-                name, e,
+                name,
+                e,
             )
 
     await db.commit()

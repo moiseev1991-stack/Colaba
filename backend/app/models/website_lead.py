@@ -59,7 +59,4 @@ class WebsiteLead(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<WebsiteLead #{self.id} {self.channel}={self.contact!r} "
-            f"status={self.status!r}>"
-        )
+        return f"<WebsiteLead #{self.id} {self.channel}={self.contact!r} status={self.status!r}>"

@@ -67,7 +67,9 @@ async def test_2captcha(
         return {"ok": False, "error": "Укажите API ключ 2captcha в настройках или в теле запроса"}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get("https://2captcha.com/res.php", params={"key": api_key, "action": "getbalance", "json": 1})
+            r = await client.get(
+                "https://2captcha.com/res.php", params={"key": api_key, "action": "getbalance", "json": 1}
+            )
             r.raise_for_status()
             data = r.json()
         if data.get("status") == 1:

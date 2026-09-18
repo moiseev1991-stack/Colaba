@@ -33,7 +33,9 @@ class UserFilterPreset(Base):
     __tablename__ = "user_filter_presets"
     __table_args__ = (
         UniqueConstraint(
-            "user_id", "module", "name",
+            "user_id",
+            "module",
+            "name",
             name="uq_user_filter_presets_user_module_name",
         ),
     )

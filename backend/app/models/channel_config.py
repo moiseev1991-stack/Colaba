@@ -61,15 +61,10 @@ class ChannelConfig(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
-    created_at = Column(
-        DateTime, default=datetime.utcnow, nullable=False, server_default="now()"
-    )
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, server_default="now()")
 
     def __str__(self):
-        return (
-            f"ChannelConfig [{self.channel_id}] "
-            f"enabled={self.enabled} configured={self.is_configured}"
-        )
+        return f"ChannelConfig [{self.channel_id}] enabled={self.enabled} configured={self.is_configured}"
 
     def __repr__(self):
         return self.__str__()

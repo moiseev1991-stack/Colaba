@@ -19,7 +19,7 @@ from .pain_dictionaries import find_stop_words, has_url
 
 @dataclass
 class ValidationIssue:
-    kind: str      # 'length' | 'question_end' | 'url' | 'stop_word' | 'tech_word'
+    kind: str  # 'length' | 'question_end' | 'url' | 'stop_word' | 'tech_word'
     detail: str
 
 
@@ -31,7 +31,7 @@ class ValidationResult:
 
 # Лимиты — из ТЗ.
 _MESSENGER_MAX_LINES = 6
-_MESSENGER_MIN_LINES = 3   # 3 — минимум чтобы влезли ходы 1+3+4 (2 иногда опускается)
+_MESSENGER_MIN_LINES = 3  # 3 — минимум чтобы влезли ходы 1+3+4 (2 иногда опускается)
 _MESSENGER_MAX_CHARS = 700
 
 _EMAIL_MAX_BODY_LINES = 12  # чуть свободнее 6-9 из ТЗ, чтобы LLM не бился о жёсткие 9
@@ -57,9 +57,7 @@ def _has_single_question_at_end(text: str) -> tuple[bool, str]:
     if q_count > 1:
         return False, f"слишком много вопросов ({q_count}), должен быть ровно 1"
     # Один вопрос — проверим что он ближе к концу.
-    tail = "\n".join(
-        line for line in text.strip().splitlines()[-3:] if line.strip()
-    )
+    tail = "\n".join(line for line in text.strip().splitlines()[-3:] if line.strip())
     if "?" not in tail:
         return False, "вопрос есть, но не в последних 3 строках"
     return True, ""
@@ -88,43 +86,57 @@ def validate_kp(
     body_chars = len(body or "")
     if ch == "messenger":
         if body_lines < _MESSENGER_MIN_LINES:
-            issues.append(ValidationIssue(
-                "length",
-                f"мессенджер: строк {body_lines} < мин. {_MESSENGER_MIN_LINES}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"мессенджер: строк {body_lines} < мин. {_MESSENGER_MIN_LINES}",
+                )
+            )
         if body_lines > _MESSENGER_MAX_LINES:
-            issues.append(ValidationIssue(
-                "length",
-                f"мессенджер: строк {body_lines} > макс. {_MESSENGER_MAX_LINES}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"мессенджер: строк {body_lines} > макс. {_MESSENGER_MAX_LINES}",
+                )
+            )
         if body_chars > _MESSENGER_MAX_CHARS:
-            issues.append(ValidationIssue(
-                "length",
-                f"мессенджер: {body_chars} символов > макс. {_MESSENGER_MAX_CHARS}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"мессенджер: {body_chars} символов > макс. {_MESSENGER_MAX_CHARS}",
+                )
+            )
     else:  # email
         if body_lines < _EMAIL_MIN_BODY_LINES:
-            issues.append(ValidationIssue(
-                "length",
-                f"email: строк {body_lines} < мин. {_EMAIL_MIN_BODY_LINES}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"email: строк {body_lines} < мин. {_EMAIL_MIN_BODY_LINES}",
+                )
+            )
         if body_lines > _EMAIL_MAX_BODY_LINES:
-            issues.append(ValidationIssue(
-                "length",
-                f"email: строк {body_lines} > макс. {_EMAIL_MAX_BODY_LINES}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"email: строк {body_lines} > макс. {_EMAIL_MAX_BODY_LINES}",
+                )
+            )
         if body_chars > _EMAIL_MAX_BODY_CHARS:
-            issues.append(ValidationIssue(
-                "length",
-                f"email: {body_chars} симв > макс. {_EMAIL_MAX_BODY_CHARS}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"email: {body_chars} симв > макс. {_EMAIL_MAX_BODY_CHARS}",
+                )
+            )
         # Тема — до 8 слов (грубо, разделяя по пробелам).
         subj_words = len((subject or "").split())
         if subj_words > 10:
-            issues.append(ValidationIssue(
-                "length",
-                f"email: тема {subj_words} слов > макс. 10",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "length",
+                    f"email: тема {subj_words} слов > макс. 10",
+                )
+            )
 
     # --- question at end ---------------------------------------------------
     q_ok, q_reason = _has_single_question_at_end(body)
@@ -133,29 +145,35 @@ def validate_kp(
 
     # --- URLs (только messenger) --------------------------------------------
     if ch == "messenger" and has_url(body):
-        issues.append(ValidationIssue(
-            "url",
-            "мессенджер: найдена ссылка в теле — запрещено (триггер бана WA/TG)",
-        ))
+        issues.append(
+            ValidationIssue(
+                "url",
+                "мессенджер: найдена ссылка в теле — запрещено (триггер бана WA/TG)",
+            )
+        )
 
     # --- Contact for reply --------------------------------------------------
     body_low = (body or "").lower()
     bot = (bot_username or "").lstrip("@").strip().lower()
     if ch == "messenger":
         if bot and f"@{bot}" not in body_low:
-            issues.append(ValidationIssue(
-                "no_contact",
-                f"мессенджер: нет контакта для ответа @{bot} в тексте",
-            ))
+            issues.append(
+                ValidationIssue(
+                    "no_contact",
+                    f"мессенджер: нет контакта для ответа @{bot} в тексте",
+                )
+            )
     else:  # email
         if bot or contact_email:
             has_tg = bool(bot) and (f"t.me/{bot}" in body_low or f"@{bot}" in body_low)
             has_mail = bool(contact_email) and contact_email.strip().lower() in body_low
             if not (has_tg or has_mail):
-                issues.append(ValidationIssue(
-                    "no_contact",
-                    "email: в подписи нет ни ссылки на бота, ни контактного e-mail",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        "no_contact",
+                        "email: в подписи нет ни ссылки на бота, ни контактного e-mail",
+                    )
+                )
 
     # --- Stop words ---------------------------------------------------------
     combined = f"{subject}\n{body}"

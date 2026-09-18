@@ -97,7 +97,7 @@ def _md_to_html(text: str | None) -> str:
         # markdown почти никогда не падает, но если расширения сломаны —
         # отдадим экранированный plain-text, лишь бы письмо ушло.
         logger.warning("kp_html_renderer: markdown failed (%s), falling back to <pre>", e)
-        return f"<pre style=\"white-space:pre-wrap;font-family:inherit\">{html.escape(text)}</pre>"
+        return f'<pre style="white-space:pre-wrap;font-family:inherit">{html.escape(text)}</pre>'
 
 
 def _logo_block(logo_url: str | None, brand_color: str) -> str:
@@ -159,7 +159,7 @@ def render_kp_html(
         '<meta name="viewport" content="width=device-width,initial-scale=1"/>'
         "<title>Предложение</title></head>"
         '<body style="margin:0;padding:0;background:#f4f5f7;'
-        'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;'
+        "font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;"
         'color:#1f2937;line-height:1.55;">'
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
         'border="0" style="background:#f4f5f7;padding:24px 12px;">'

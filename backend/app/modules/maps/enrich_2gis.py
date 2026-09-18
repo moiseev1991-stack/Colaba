@@ -43,19 +43,16 @@ logger = logging.getLogger(__name__)
 
 _FIRM_URL = "https://2gis.ru/firm/{external_id}"
 
-_PAGE_TIMEOUT_MS = 25_000        # навигация + первичный рендер
+_PAGE_TIMEOUT_MS = 25_000  # навигация + первичный рендер
 _NETWORK_IDLE_TIMEOUT_MS = 12_000  # 2GIS грузит десятки JS-чанков, нужно больше времени
-_SHOW_PHONE_TIMEOUT_MS = 2_000    # клик по «Показать телефон» — не блокируем если нет
-_POST_RENDER_WAIT_MS = 1_500      # доп. пауза после networkidle — даём XHR контактов долететь
+_SHOW_PHONE_TIMEOUT_MS = 2_000  # клик по «Показать телефон» — не блокируем если нет
+_POST_RENDER_WAIT_MS = 1_500  # доп. пауза после networkidle — даём XHR контактов долететь
 
 # UA Chrome 148 — соответствует реальной версии нашего chromium-headless-shell
 # (chromium-headless-shell v1223 = Chrome 148.0.7778). Со старым UA Chrome 124
 # 2GIS перенаправлял на /museum («У вас не самый новый браузер») и реальные
 # контакты не отдавались.
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 
 # Client Hints: без них 2GIS видит дефолтный sec-ch-ua headless-shell
 # (`HeadlessChrome`) и также может детектить как бот. Подделываем как
@@ -322,7 +319,8 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
                             if el:
                                 await el.click(timeout=3_000)
                                 await page.wait_for_load_state(
-                                    "domcontentloaded", timeout=_PAGE_TIMEOUT_MS,
+                                    "domcontentloaded",
+                                    timeout=_PAGE_TIMEOUT_MS,
                                 )
                                 break
                         except Exception:
@@ -427,5 +425,5 @@ async def fetch_and_extract_2gis_firm(external_id: str) -> ContactEnrichResult:
     #     if direct:
     #         result.website = direct
 
-    result.fetched_url = final_url if 'final_url' in locals() else url
+    result.fetched_url = final_url if "final_url" in locals() else url
     return result

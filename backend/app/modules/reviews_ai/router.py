@@ -44,10 +44,10 @@ class RunPresetAnalysisIn(BaseModel):
 
 
 class RunPresetAnalysisOut(BaseModel):
-    queued: int          # сколько новых задач реально поставлено
-    cached: int          # сколько компаний уже было посчитано (взяли из БД)
-    skipped: int         # сколько пропущено (уже pending, не дублируем)
-    limit_remaining: int # сколько слотов осталось у юзера сегодня
+    queued: int  # сколько новых задач реально поставлено
+    cached: int  # сколько компаний уже было посчитано (взяли из БД)
+    skipped: int  # сколько пропущено (уже pending, не дублируем)
+    limit_remaining: int  # сколько слотов осталось у юзера сегодня
     limit_total: int = svc.AI_ANALYSIS_DAILY_LIMIT
     over_limit: int = 0  # сколько не уехало в очередь из-за исчерпанного лимита
 
@@ -103,12 +103,14 @@ async def run_preset_analysis(
             e.errors(),
         )
         raise HTTPException(status_code=422, detail=e.errors())
-    preset = (await db.execute(
-        select(UserFilterPreset).where(
-            UserFilterPreset.id == payload.preset_id,
-            UserFilterPreset.user_id == user_id,
+    preset = (
+        await db.execute(
+            select(UserFilterPreset).where(
+                UserFilterPreset.id == payload.preset_id,
+                UserFilterPreset.user_id == user_id,
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if preset is None:
         raise HTTPException(status_code=404, detail="Пресет не найден")
     prompt = (preset.ai_prompt or "").strip()
@@ -120,7 +122,8 @@ async def run_preset_analysis(
 
     prompt_hash_value = svc.prompt_hash(prompt)
     existing = await svc.get_existing(
-        db, user_id=user_id,
+        db,
+        user_id=user_id,
         company_ids=payload.company_ids,
         prompt_hash_value=prompt_hash_value,
     )
@@ -144,7 +147,10 @@ async def run_preset_analysis(
     skipped = 0
     for cid in to_queue:
         created = await svc.ensure_pending_row(
-            db, user_id=user_id, company_id=cid, prompt_hash_value=prompt_hash_value,
+            db,
+            user_id=user_id,
+            company_id=cid,
+            prompt_hash_value=prompt_hash_value,
         )
         if not created:
             # уже была — кто-то параллельно поставил, пропускаем
@@ -177,23 +183,30 @@ async def list_company_analyses(
 ):
     """Возвращает текущие результаты AI-анализа для (preset, companies).
     UI поллит этот endpoint каждые ~3 сек, пока есть pending."""
-    preset = (await db.execute(
-        select(UserFilterPreset).where(
-            UserFilterPreset.id == preset_id,
-            UserFilterPreset.user_id == user_id,
+    preset = (
+        await db.execute(
+            select(UserFilterPreset).where(
+                UserFilterPreset.id == preset_id,
+                UserFilterPreset.user_id == user_id,
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if preset is None or not (preset.ai_prompt or "").strip():
         return []
     prompt_hash_value = svc.prompt_hash(preset.ai_prompt)
     existing = await svc.get_existing(
-        db, user_id=user_id, company_ids=company_ids,
+        db,
+        user_id=user_id,
+        company_ids=company_ids,
         prompt_hash_value=prompt_hash_value,
     )
     return [
         CompanyAnalysisOut(
-            company_id=cid, score=r.score, comment=r.comment,
-            status=r.status, error=r.error,
+            company_id=cid,
+            score=r.score,
+            comment=r.comment,
+            status=r.status,
+            error=r.error,
         )
         for cid, r in existing.items()
     ]

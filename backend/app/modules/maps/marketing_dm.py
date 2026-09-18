@@ -135,9 +135,7 @@ def _pick_best(dms: list[CompanyDecisionMaker]) -> CompanyDecisionMaker | None:
     return candidates[0]
 
 
-async def enrich_marketing_dm(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def enrich_marketing_dm(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Оркестратор: подтягивает egrul-персон если ещё не подтянуты, выбирает
     целевого маркетинг-ЛПР, ставит is_marketing_dm=True одной записи.
 
@@ -154,7 +152,8 @@ async def enrich_marketing_dm(
         # нашёл маркетолога, выберем его без ЕГРЮЛ.
         logger.warning(
             "enrich_marketing_dm: import_persons_from_legal failed for #%d: %s",
-            company_id, e,
+            company_id,
+            e,
         )
 
     # Шаг 1b. Сверка ЕГРН↔ЕГРЮЛ (если есть ЕГРН-записи). Тихо no-op'ит
@@ -165,7 +164,8 @@ async def enrich_marketing_dm(
     except Exception as e:
         logger.warning(
             "enrich_marketing_dm: reconcile_egrn failed for #%d: %s",
-            company_id, e,
+            company_id,
+            e,
         )
 
     # Шаг 1c. Атрибуция email компании ↔ ФИО директора (2026-07-10).
@@ -178,7 +178,8 @@ async def enrich_marketing_dm(
     except Exception as e:
         logger.warning(
             "enrich_marketing_dm: email_to_dm failed for #%d: %s",
-            company_id, e,
+            company_id,
+            e,
         )
 
     # Шаг 1d. NER имён сотрудников из отзывов клиентов (2026-07-16).
@@ -191,7 +192,8 @@ async def enrich_marketing_dm(
     except Exception as e:
         logger.warning(
             "enrich_marketing_dm: reviews_ner failed for #%d: %s",
-            company_id, e,
+            company_id,
+            e,
         )
 
     # Шаги 1e-1h. 4 новых источника ЛПР (2026-07-16):
@@ -213,15 +215,17 @@ async def enrich_marketing_dm(
         except Exception as e:
             logger.warning(
                 "enrich_marketing_dm: %s failed for #%d: %s",
-                step_name, company_id, e,
+                step_name,
+                company_id,
+                e,
             )
 
     # Шаг 2. Все decision_makers компании.
-    dms = (await db.execute(
-        select(CompanyDecisionMaker).where(
-            CompanyDecisionMaker.company_id == company_id
-        )
-    )).scalars().all()
+    dms = (
+        (await db.execute(select(CompanyDecisionMaker).where(CompanyDecisionMaker.company_id == company_id)))
+        .scalars()
+        .all()
+    )
 
     if not dms:
         return {
@@ -245,9 +249,7 @@ async def enrich_marketing_dm(
     )
     if best is not None:
         await db.execute(
-            update(CompanyDecisionMaker)
-            .where(CompanyDecisionMaker.id == best.id)
-            .values(is_marketing_dm=True)
+            update(CompanyDecisionMaker).where(CompanyDecisionMaker.id == best.id).values(is_marketing_dm=True)
         )
 
     await db.commit()

@@ -12,12 +12,12 @@ def generate_outreach_text(
 ) -> Dict[str, str]:
     """
     Generate outreach text and subject based on SEO issues.
-    
+
     Args:
         domain: Domain name
         seo_issues: List of SEO issues found
         seo_score: SEO score (0-100)
-    
+
     Returns:
         Dict with 'subject' and 'text'
     """
@@ -31,17 +31,17 @@ def generate_outreach_text(
         "no_h1": "отсутствуют заголовки H1",
         "multiple_h1": "несколько заголовков H1 на странице",
     }
-    
+
     # Build issues list
     issues_list = []
     for issue in seo_issues[:3]:  # Top 3 issues
         desc = issue_descriptions.get(issue, issue)
         issues_list.append(desc)
-    
+
     issues_text = ", ".join(issues_list)
     if len(seo_issues) > 3:
         issues_text += f" и еще {len(seo_issues) - 3} проблем"
-    
+
     # Generate subject
     if seo_score is not None and seo_score < 50:
         subject = f"Критические SEO проблемы на {domain}"
@@ -49,7 +49,7 @@ def generate_outreach_text(
         subject = f"SEO проблемы на {domain} - можно улучшить"
     else:
         subject = f"Рекомендации по SEO для {domain}"
-    
+
     # Generate text
     text = f"""Здравствуйте!
 
@@ -64,7 +64,7 @@ def generate_outreach_text(
 
 С уважением,
 SEO специалист"""
-    
+
     return {
         "subject": subject,
         "text": text,

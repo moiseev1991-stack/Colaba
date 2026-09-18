@@ -78,7 +78,4 @@ class ApiCallLog(Base):
     cost_rub = Column(Numeric(12, 6), nullable=False, default=0)
 
     def __repr__(self) -> str:
-        return (
-            f"<ApiCallLog #{self.id} {self.provider!r} "
-            f"ok={self.ok} cost={self.cost_rub} ts={self.created_at}>"
-        )
+        return f"<ApiCallLog #{self.id} {self.provider!r} ok={self.ok} cost={self.cost_rub} ts={self.created_at}>"

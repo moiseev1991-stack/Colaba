@@ -76,9 +76,7 @@ class KpGenerateRequest(BaseModel):
         has_site = self.site_lead_id is not None
         if has_company == has_site:
             # Оба или ни одного — оба варианта нарушают XOR.
-            raise ValueError(
-                "Нужно передать ровно одно: company_id или site_lead_id."
-            )
+            raise ValueError("Нужно передать ровно одно: company_id или site_lead_id.")
         return self
 
 
@@ -317,9 +315,7 @@ class KpJobItem(BaseModel):
     # Статус последней email-отправки этого draft'а — для подсветки
     # RowSendButton после reload, чтобы юзер не нажал send повторно.
     # null → ещё не пытались отправить.
-    email_send_status: Literal[
-        "queued", "sending", "sent", "failed", "skipped"
-    ] | None = None
+    email_send_status: Literal["queued", "sending", "sent", "failed", "skipped"] | None = None
     # ИНН компании (company_legal.inn) — для раскрывающегося списка
     # «Кто получит КП» в SendBar, чтобы юзер опознавал компанию по
     # реквизитам и при желании снимал галочку.

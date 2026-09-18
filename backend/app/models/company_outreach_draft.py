@@ -30,7 +30,8 @@ class CompanyOutreachDraft(Base):
     __tablename__ = "company_outreach_drafts"
     __table_args__ = (
         UniqueConstraint(
-            "company_id", "angle",
+            "company_id",
+            "angle",
             name="uq_company_outreach_drafts_company_angle",
         ),
     )
@@ -64,7 +65,4 @@ class CompanyOutreachDraft(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<CompanyOutreachDraft #{self.id} company={self.company_id} "
-            f"angle={self.angle!r}>"
-        )
+        return f"<CompanyOutreachDraft #{self.id} company={self.company_id} angle={self.angle!r}>"

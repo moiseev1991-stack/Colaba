@@ -21,8 +21,7 @@ MAPS_PROVIDER_REGISTRY: list[dict] = [
         "id": "twogis",
         "name": "2ГИС",
         "description": (
-            "Каталог фирм + отзывы. Widget API как бесплатный fallback "
-            "(если Catalog-ключа нет или лимит исчерпан)."
+            "Каталог фирм + отзывы. Widget API как бесплатный fallback (если Catalog-ключа нет или лимит исчерпан)."
         ),
         "source_label": "2ГИС",
         "fields": [

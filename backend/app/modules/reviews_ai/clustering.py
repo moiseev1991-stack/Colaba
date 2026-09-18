@@ -86,7 +86,10 @@ def cluster_embeddings(
     n_clusters = len({int(l) for l in labels if l >= 0})
     logger.info(
         "cluster_embeddings: HDBSCAN pass-1 n=%d min_size=%d → %d clusters, %d noise",
-        n, min_cluster_size, n_clusters, int(np.sum(labels < 0)),
+        n,
+        min_cluster_size,
+        n_clusters,
+        int(np.sum(labels < 0)),
     )
     if n_clusters >= MIN_USEFUL_CLUSTERS:
         return labels
@@ -98,7 +101,9 @@ def cluster_embeddings(
         n_clusters = len({int(l) for l in labels if l >= 0})
         logger.info(
             "cluster_embeddings: HDBSCAN pass-2 min_size=%d → %d clusters, %d noise",
-            fallback_size, n_clusters, int(np.sum(labels < 0)),
+            fallback_size,
+            n_clusters,
+            int(np.sum(labels < 0)),
         )
         if n_clusters >= MIN_USEFUL_CLUSTERS:
             return labels
@@ -119,7 +124,8 @@ def cluster_embeddings(
         labels = km.fit_predict(normalized)
         logger.info(
             "cluster_embeddings: KMeans fallback k=%d → %d кластеров (всё в кластеры, шума нет)",
-            k, k,
+            k,
+            k,
         )
     except Exception as e:
         logger.warning("cluster_embeddings: KMeans fallback упал: %s", e)

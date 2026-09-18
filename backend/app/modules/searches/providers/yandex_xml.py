@@ -42,6 +42,7 @@ def _is_permission_denied(err: BaseException) -> bool:
 def _fetch_page_sync(folder_id: str, api_key: str, query: str, page: int) -> bytes:
     """Синхронный вызов SDK: одна страница в XML. Блокирует — вызывать из to_thread."""
     from yandex_cloud_ml_sdk import YCloudML
+
     # Public API (0.19+ moved away from private _auth module)
     from yandex_cloud_ml_sdk.auth import APIKeyAuth
 
@@ -129,9 +130,7 @@ async def fetch_search_results(
     pages_needed = (num_results + 9) // 10
 
     for page_num in range(pages_needed):
-        xml_bytes = await asyncio.to_thread(
-            _fetch_page_sync, folder_id, api_key, query, page_num
-        )
+        xml_bytes = await asyncio.to_thread(_fetch_page_sync, folder_id, api_key, query, page_num)
         page_results = _parse_xml_results(xml_bytes, page_num)
         all_results.extend(page_results)
         if len(page_results) < 10:

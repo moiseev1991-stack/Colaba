@@ -43,10 +43,7 @@ GREETING_TEXT = (
     "я посмотрю отзывы и покажу, где теряются клиенты. Это бесплатно."
 )
 ASK_CONTACT_TEXT = "Принял. Как с вами связаться — телефон или удобно здесь, в Telegram?"
-THANKS_TEXT = (
-    "Спасибо! Разбор пришлю в течение пары часов в рабочее время. "
-    "Если срочно — просто напишите сюда."
-)
+THANKS_TEXT = "Спасибо! Разбор пришлю в течение пары часов в рабочее время. Если срочно — просто напишите сюда."
 EXTRA_ACK_TEXT = "Принял 👍 Отвечу здесь в ближайшее время."
 
 # Одна кнопка «Оставить контакт» (TZ §2.2 — не плодить меню).
@@ -306,11 +303,7 @@ async def _upsert_subscriber(
     try:
         async with AsyncSessionLocal() as db:
             existing = (
-                await db.execute(
-                    select(TelegramSubscriber).where(
-                        TelegramSubscriber.chat_id == chat_id
-                    )
-                )
+                await db.execute(select(TelegramSubscriber).where(TelegramSubscriber.chat_id == chat_id))
             ).scalar_one_or_none()
 
             if existing:
@@ -341,11 +334,7 @@ async def _upsert_subscriber(
                 # Concurrent /start — кто-то уже создал. Перечитываем.
                 await db.rollback()
                 sub = (
-                    await db.execute(
-                        select(TelegramSubscriber).where(
-                            TelegramSubscriber.chat_id == chat_id
-                        )
-                    )
+                    await db.execute(select(TelegramSubscriber).where(TelegramSubscriber.chat_id == chat_id))
                 ).scalar_one()
             await db.refresh(sub)
             return sub

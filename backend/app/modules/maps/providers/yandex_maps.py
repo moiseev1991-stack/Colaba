@@ -71,8 +71,7 @@ MAX_CAPTCHA_ATTEMPTS = 3
 # UA Chrome 148 — соответствует реальной версии chromium-headless-shell в Docker.
 # С дефолтным UA HeadlessChrome Я.Карты быстрее показывают капчу.
 _PLAYWRIGHT_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 )
 _PLAYWRIGHT_HEADERS = {
     "Accept-Language": "ru-RU,ru;q=0.9",
@@ -81,16 +80,16 @@ _PLAYWRIGHT_HEADERS = {
     "Sec-Ch-Ua-Platform": '"Windows"',
 }
 
-_PAGE_TIMEOUT_MS = 30_000        # навигация
-_LIST_TIMEOUT_MS = 15_000        # ждём появления первой карточки
+_PAGE_TIMEOUT_MS = 30_000  # навигация
+_LIST_TIMEOUT_MS = 15_000  # ждём появления первой карточки
 # 2026-07-12: раньше 20 итераций + no_growth=3 давало потолок ~50 компаний
 # в узкой нише СПб, хотя Я.Карты по типовым запросам держат до 200-500.
 # Юзер жаловался «мало компаний в парсе» — расширяем до 80 итераций,
 # no-growth порог 5 (виртуализированный DOM иногда не догоняет за 3 такта).
 _SCROLL_MAX_ITERATIONS = 80
 _SCROLL_STEP_PX = 1200
-_SCROLL_WAIT_MS = 900            # пауза между скроллами для подгрузки
-_SCROLL_NO_GROWTH_STOP = 5       # столько итераций подряд без роста → выход
+_SCROLL_WAIT_MS = 900  # пауза между скроллами для подгрузки
+_SCROLL_NO_GROWTH_STOP = 5  # столько итераций подряд без роста → выход
 
 
 # ID организации Я.Карт — длинная цифра в URL после slug:
@@ -181,6 +180,7 @@ def _playwright_proxy_from_url(proxy_url: str | None) -> dict[str, str] | None:
     if not proxy_url:
         return None
     from urllib.parse import urlparse
+
     p = urlparse(proxy_url)
     if not p.hostname or not p.port:
         return None
@@ -334,9 +334,7 @@ class YandexMapsProvider(MapProvider):
         либо None если solver недоступен или не справился.
         Бросает CaptchaWallError если attempts_so_far >= MAX_CAPTCHA_ATTEMPTS."""
         if attempts_so_far >= MAX_CAPTCHA_ATTEMPTS:
-            raise CaptchaWallError(
-                f"Yandex Maps: {MAX_CAPTCHA_ATTEMPTS} капч подряд, отступаем"
-            )
+            raise CaptchaWallError(f"Yandex Maps: {MAX_CAPTCHA_ATTEMPTS} капч подряд, отступаем")
         if self._db is None:
             logger.warning("yandex_maps: капча, но db не передана — solver вызвать не можем")
             return None
@@ -400,7 +398,8 @@ class YandexMapsProvider(MapProvider):
                     except PWTimeout:
                         logger.warning(
                             "yandex_maps: page.goto timeout url=%s proxy=%s",
-                            url, bool(proxy_arg),
+                            url,
+                            bool(proxy_arg),
                         )
                         return
 
@@ -409,7 +408,9 @@ class YandexMapsProvider(MapProvider):
                     if "/showcaptcha" in page.url.lower() or "/checkcaptcha" in page.url.lower():
                         logger.warning(
                             "yandex_maps: captcha redirect landed=%s query=%r proxy=%s",
-                            page.url, query, bool(proxy_arg),
+                            page.url,
+                            query,
+                            bool(proxy_arg),
                         )
                         captcha_html = await page.content()
                         await self._solve_captcha_or_raise(captcha_html, page.url, 1)
@@ -429,7 +430,8 @@ class YandexMapsProvider(MapProvider):
                         if any(k in low for k in ("showcaptcha", "smartcaptcha", "checkcaptcha")):
                             logger.warning(
                                 "yandex_maps: SmartCaptcha wall on results page url=%s query=%r",
-                                page.url, query,
+                                page.url,
+                                query,
                             )
                             raise CaptchaWallError("Yandex Maps: SmartCaptcha на странице выдачи")
                         # Собираем диагностику: URL, длина HTML, наличие типовых классов.
@@ -438,12 +440,18 @@ class YandexMapsProvider(MapProvider):
                             "search_list_view": "search-list-view" in low,
                             "business_segments_list_view": "business-segments-list-view" in low,
                             "nothing_found": ("ничего не найдено" in low) or ("nothing found" in low),
-                            "generic_maps_home": "search-form-view__input" in html_check and ".search-business-snippet-view" not in html_check,
+                            "generic_maps_home": "search-form-view__input" in html_check
+                            and ".search-business-snippet-view" not in html_check,
                         }
                         logger.warning(
                             "yandex_maps: selector .search-business-snippet-view не появился за %dмс. "
                             "url=%s final_url=%s query=%r html_len=%d markers=%s html_head=%r",
-                            _LIST_TIMEOUT_MS, url, page.url, query, len(html_check), markers,
+                            _LIST_TIMEOUT_MS,
+                            url,
+                            page.url,
+                            query,
+                            len(html_check),
+                            markers,
                             html_check[:400],
                         )
                         return
@@ -490,14 +498,18 @@ class YandexMapsProvider(MapProvider):
                                 # (либо реально всё, либо capped серверной стороной).
                                 logger.info(
                                     "yandex_maps: no growth for %d iters, stop at %d companies",
-                                    _SCROLL_NO_GROWTH_STOP, len(collected),
+                                    _SCROLL_NO_GROWTH_STOP,
+                                    len(collected),
                                 )
                                 break
                         else:
                             no_growth_iters = 0
                     logger.info(
                         "yandex_maps: search '%s %s' — собрано %d компаний за %d скроллов",
-                        niche, city, len(collected), _ + 1,
+                        niche,
+                        city,
+                        len(collected),
+                        _ + 1,
                     )
                 finally:
                     await browser.close()
@@ -509,7 +521,10 @@ class YandexMapsProvider(MapProvider):
             # ProxyError (dead proxy) или что-то иное.
             logger.warning(
                 "yandex_maps: Playwright error type=%s msg=%s query=%r use_proxy=%s",
-                type(e).__name__, e, f"{niche} {city}", self._use_proxy,
+                type(e).__name__,
+                e,
+                f"{niche} {city}",
+                self._use_proxy,
                 exc_info=True,
             )
             return
@@ -562,11 +577,7 @@ class YandexMapsProvider(MapProvider):
                 break
             if not isinstance(item, dict):
                 continue
-            external_id = (
-                extract_org_id_from_url(item.get("url"))
-                or str(item.get("id") or "").strip()
-                or None
-            )
+            external_id = extract_org_id_from_url(item.get("url")) or str(item.get("id") or "").strip() or None
             name = item.get("title") or item.get("name")
             if not external_id or not name:
                 continue
@@ -641,7 +652,9 @@ class YandexMapsProvider(MapProvider):
                     continue
                 logger.warning(
                     "yandex_maps reviews: прокси не выдал ноду за %d попыток business=%s: %s",
-                    max_attempts, company_external_id, e,
+                    max_attempts,
+                    company_external_id,
+                    e,
                 )
                 return
             except httpx.HTTPError as e:
@@ -657,7 +670,8 @@ class YandexMapsProvider(MapProvider):
         if response is None or response.status_code != 200:
             logger.warning(
                 "yandex_maps reviews HTML: status=%s for business=%s",
-                getattr(response, "status_code", "none"), company_external_id,
+                getattr(response, "status_code", "none"),
+                company_external_id,
             )
             return
 
@@ -666,7 +680,8 @@ class YandexMapsProvider(MapProvider):
         if not review_nodes:
             logger.info(
                 "yandex_maps reviews HTML: no review nodes for business=%s (len=%d)",
-                company_external_id, len(response.content),
+                company_external_id,
+                len(response.content),
             )
             return
 
@@ -708,9 +723,7 @@ def _parse_review_node(node: Any, business_id: str) -> ReviewRaw | None:
     author_masked = mask_author(raw_name) if raw_name else None
 
     # body: <span itemprop="reviewBody"> ИЛИ .business-review-view__body
-    body_node = node.select_one('[itemprop="reviewBody"]') or node.select_one(
-        ".business-review-view__body"
-    )
+    body_node = node.select_one('[itemprop="reviewBody"]') or node.select_one(".business-review-view__body")
     raw_text = body_node.get_text(separator="\n", strip=True) if body_node else None
 
     # owner reply: блок .business-review-view__date._org-answer присутствует,

@@ -15,6 +15,7 @@ SECRET_KEYS = {"api_key"}
 
 class UsedInCaptchaError(Exception):
     """AI-ассистент используется в CaptchaBypassConfig."""
+
     pass
 
 
@@ -157,7 +158,9 @@ async def delete_ai_assistant(assistant_id: int, db: AsyncSession) -> bool:
     row = await get_ai_assistant_row(assistant_id, db)
     if not row:
         return False
-    cap = await db.execute(select(CaptchaBypassConfig).where(CaptchaBypassConfig.ai_assistant_id == assistant_id).limit(1))
+    cap = await db.execute(
+        select(CaptchaBypassConfig).where(CaptchaBypassConfig.ai_assistant_id == assistant_id).limit(1)
+    )
     if cap.scalar_one_or_none():
         raise UsedInCaptchaError()
     await db.delete(row)

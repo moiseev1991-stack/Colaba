@@ -50,10 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 _TIMEOUT = httpx.Timeout(15.0, connect=10.0)
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 _REPROCESS_AFTER_DAYS = 30
 _MAX_HANDLES_PER_COMPANY = 5
 
@@ -65,10 +62,10 @@ def _normalize_handle(raw: str) -> str | None:
     s = raw.strip().lower()
     for prefix in ("https://", "http://"):
         if s.startswith(prefix):
-            s = s[len(prefix):]
+            s = s[len(prefix) :]
     for prefix in ("t.me/", "telegram.me/", "tg://resolve?domain="):
         if s.startswith(prefix):
-            s = s[len(prefix):]
+            s = s[len(prefix) :]
     if s.startswith("@"):
         s = s[1:]
     # Убираем query string
@@ -88,11 +85,17 @@ async def _collect_handles(db: AsyncSession, company: Company) -> list[str]:
     seen: set[str] = set()
 
     # 1. CompanyContact type='telegram'
-    rows = (await db.execute(
-        select(CompanyContact.value)
-        .where(CompanyContact.company_id == company.id)
-        .where(CompanyContact.type == "telegram")
-    )).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(CompanyContact.value)
+                .where(CompanyContact.company_id == company.id)
+                .where(CompanyContact.type == "telegram")
+            )
+        )
+        .scalars()
+        .all()
+    )
     for v in rows:
         h = _normalize_handle(v)
         if h and h not in seen:
@@ -101,7 +104,7 @@ async def _collect_handles(db: AsyncSession, company: Company) -> list[str]:
 
     # 2. contacts_extra.telegrams
     extra = company.contacts_extra or {}
-    for v in (extra.get("telegrams") or []):
+    for v in extra.get("telegrams") or []:
         h = _normalize_handle(v)
         if h and h not in seen:
             seen.add(h)
@@ -177,13 +180,15 @@ async def enrich_dm_from_telegram_bio(
 
     if not force:
         cutoff = datetime.now(timezone.utc) - timedelta(days=_REPROCESS_AFTER_DAYS)
-        recent = (await db.execute(
-            select(CompanyDecisionMaker.id)
-            .where(CompanyDecisionMaker.company_id == company_id)
-            .where(CompanyDecisionMaker.source == "telegram_bio")
-            .where(CompanyDecisionMaker.created_at >= cutoff)
-            .limit(1)
-        )).scalar_one_or_none()
+        recent = (
+            await db.execute(
+                select(CompanyDecisionMaker.id)
+                .where(CompanyDecisionMaker.company_id == company_id)
+                .where(CompanyDecisionMaker.source == "telegram_bio")
+                .where(CompanyDecisionMaker.created_at >= cutoff)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         if recent is not None:
             return {"status": "skip_already_processed"}
 

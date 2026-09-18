@@ -25,8 +25,8 @@ HEADERS = {
 
 def _parse_price(text: str) -> Optional[float]:
     """Extract numeric price from string like '1 234 567,89 руб.'"""
-    cleaned = re.sub(r'[^\d,.]', '', text.replace('\xa0', '').replace(' ', ''))
-    cleaned = cleaned.replace(',', '.')
+    cleaned = re.sub(r"[^\d,.]", "", text.replace("\xa0", "").replace(" ", ""))
+    cleaned = cleaned.replace(",", ".")
     try:
         return float(cleaned)
     except ValueError:
@@ -42,22 +42,22 @@ def _parse_results_html(html: str, base_url: str) -> tuple[list[dict[str, Any]],
     total = 0
 
     # Extract total count
-    total_match = re.search(r'найдено[:\s]*<[^>]*>\s*([\d\s]+)', html, re.IGNORECASE)
+    total_match = re.search(r"найдено[:\s]*<[^>]*>\s*([\d\s]+)", html, re.IGNORECASE)
     if not total_match:
-        total_match = re.search(r'Всего записей.*?(\d[\d\s]*)', html, re.IGNORECASE)
+        total_match = re.search(r"Всего записей.*?(\d[\d\s]*)", html, re.IGNORECASE)
     if total_match:
         try:
-            total = int(re.sub(r'\D', '', total_match.group(1)))
+            total = int(re.sub(r"\D", "", total_match.group(1)))
         except Exception as e:
             logger.warning("Failed to parse total count: %s", e)
 
     # Extract tender cards via regex patterns
     card_pattern = re.compile(
-        r'registry-entry__header-mid__number.*?>(.*?)</.*?'
+        r"registry-entry__header-mid__number.*?>(.*?)</.*?"
         r'registry-entry__body-title.*?href="([^"]+)"[^>]*>(.*?)</a.*?'
-        r'customer-name[^>]*>(.*?)</.*?'
-        r'price-block__value[^>]*>(.*?)</.*?'
-        r'(?:registry-entry__header-top__title[^>]*>(.*?)</|)',
+        r"customer-name[^>]*>(.*?)</.*?"
+        r"price-block__value[^>]*>(.*?)</.*?"
+        r"(?:registry-entry__header-top__title[^>]*>(.*?)</|)",
         re.DOTALL,
     )
 
@@ -65,61 +65,65 @@ def _parse_results_html(html: str, base_url: str) -> tuple[list[dict[str, Any]],
     card_blocks = re.split(r'class="registry-entry__header', html)
     for i, block in enumerate(card_blocks[1:], 1):  # skip first empty part
         try:
-            num_m = re.search(r'registry-entry__header-mid__number[^>]*>[^<]*<[^>]+>([^<]+)<', block)
+            num_m = re.search(r"registry-entry__header-mid__number[^>]*>[^<]*<[^>]+>([^<]+)<", block)
             number = num_m.group(1).strip() if num_m else f"#{i}"
 
             # Title and URL
-            title_m = re.search(r'registry-entry__body-title[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([^<]+)</a', block, re.DOTALL)
+            title_m = re.search(
+                r'registry-entry__body-title[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([^<]+)</a', block, re.DOTALL
+            )
             if not title_m:
                 title_m = re.search(r'href="(/epz/order/notice[^"]+)"[^>]*>([^<]{5,})</a', block, re.DOTALL)
             title = title_m.group(2).strip() if title_m else "Без названия"
             href = title_m.group(1) if title_m else ""
-            url = f"https://zakupki.gov.ru{href}" if href.startswith('/') else href
+            url = f"https://zakupki.gov.ru{href}" if href.startswith("/") else href
 
             # Customer
-            cust_m = re.search(r'customer-name[^>]*>([^<]+)<', block)
+            cust_m = re.search(r"customer-name[^>]*>([^<]+)<", block)
             customer = cust_m.group(1).strip() if cust_m else "Неизвестен"
 
             # Price
-            price_m = re.search(r'price-block__value[^>]*>([^<]+)<', block)
+            price_m = re.search(r"price-block__value[^>]*>([^<]+)<", block)
             price_str = price_m.group(1).strip() if price_m else ""
             price = _parse_price(price_str) if price_str else None
 
             # Status
-            status_m = re.search(r'registry-entry__header-top__title[^>]*>([^<]+)<', block)
+            status_m = re.search(r"registry-entry__header-top__title[^>]*>([^<]+)<", block)
             status = status_m.group(1).strip() if status_m else ""
 
             # Dates
-            pub_m = re.search(r'(?:Дата размещения|Опубликовано)[:\s]*([0-9.]+)', block, re.IGNORECASE)
-            end_m = re.search(r'(?:Дата окончания|окончания приёма)[:\s]*([0-9.]+)', block, re.IGNORECASE)
+            pub_m = re.search(r"(?:Дата размещения|Опубликовано)[:\s]*([0-9.]+)", block, re.IGNORECASE)
+            end_m = re.search(r"(?:Дата окончания|окончания приёма)[:\s]*([0-9.]+)", block, re.IGNORECASE)
             publish_date = pub_m.group(1) if pub_m else ""
             end_date = end_m.group(1) if end_m else None
 
             # Law type
-            law_m = re.search(r'(44-ФЗ|223-ФЗ|615)', block)
+            law_m = re.search(r"(44-ФЗ|223-ФЗ|615)", block)
             law = law_m.group(1) if law_m else ""
 
             # Region
-            region_m = re.search(r'region[^>]*>([^<]{3,})<', block, re.IGNORECASE)
+            region_m = re.search(r"region[^>]*>([^<]{3,})<", block, re.IGNORECASE)
             region = region_m.group(1).strip() if region_m else ""
 
             if not title or title == "Без названия":
                 continue
 
-            items.append({
-                "id": number.replace("/", "-").replace(" ", ""),
-                "number": number,
-                "name": title,
-                "customerName": customer,
-                "price": price,
-                "currency": "руб.",
-                "status": status,
-                "publishDate": publish_date,
-                "endDate": end_date,
-                "region": region,
-                "type": law,
-                "url": url or ZAKUPKI_SEARCH_URL,
-            })
+            items.append(
+                {
+                    "id": number.replace("/", "-").replace(" ", ""),
+                    "number": number,
+                    "name": title,
+                    "customerName": customer,
+                    "price": price,
+                    "currency": "руб.",
+                    "status": status,
+                    "publishDate": publish_date,
+                    "endDate": end_date,
+                    "region": region,
+                    "type": law,
+                    "url": url or ZAKUPKI_SEARCH_URL,
+                }
+            )
         except Exception as e:
             logger.debug("Failed to parse tender card #%d: %s", i, e)
             continue

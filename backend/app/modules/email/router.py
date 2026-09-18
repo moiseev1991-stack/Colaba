@@ -27,6 +27,7 @@ router.include_router(providers_router)
 # Webhook event schemas
 class HyvorWebhookEvent(BaseModel):
     """Hyvor Relay webhook event payload."""
+
     event: str = Field(..., description="Event type: sent, delivered, bounced, opened, clicked, spam")
     message_id: str = Field(..., description="External message ID from Hyvor")
     timestamp: str = Field(..., description="ISO timestamp of the event")
@@ -43,7 +44,7 @@ async def hyvor_webhook(
 ):
     """
     Handle webhook events from Hyvor Relay.
-    
+
     Events: sent, delivered, bounced, opened, clicked, spam
     """
     body = await request.body()
@@ -53,13 +54,10 @@ async def hyvor_webhook(
     cfg = await db.execute(select(EmailConfig).where(EmailConfig.id == 1))
     cfg_row = cfg.scalar_one_or_none()
     wh_secret = (
-        (cfg_row.hyvor_webhook_secret if cfg_row and cfg_row.hyvor_webhook_secret else None)
-        or app_settings.HYVOR_RELAY_WEBHOOK_SECRET
-    )
+        cfg_row.hyvor_webhook_secret if cfg_row and cfg_row.hyvor_webhook_secret else None
+    ) or app_settings.HYVOR_RELAY_WEBHOOK_SECRET
 
-    if not email_service.verify_webhook_signature(
-        body, signature, secret_override=wh_secret or None
-    ):
+    if not email_service.verify_webhook_signature(body, signature, secret_override=wh_secret or None):
         logger.warning("Invalid webhook signature")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -74,16 +72,13 @@ async def hyvor_webhook(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
         )
-    
+
     event_type = payload.get("event")
     if not event_type:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing event type"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing event type")
+
     logger.info(f"Received Hyvor webhook: {event_type}")
-    
+
     # Process the event
     try:
         log = await email_service.process_webhook_event(
@@ -91,12 +86,12 @@ async def hyvor_webhook(
             event_type=event_type,
             data=payload,
         )
-        
+
         if log:
             logger.info(f"Updated EmailLog {log.id} status to {log.status}")
-        
+
         return {"status": "ok", "event": event_type}
-    
+
     except Exception as e:
         logger.error(f"Failed to process webhook event: {e}")
         # Return 200 anyway to prevent Hyvor from retrying

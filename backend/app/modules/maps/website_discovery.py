@@ -40,15 +40,29 @@ logger = logging.getLogger(__name__)
 # Публичные почтовые домены — не используем как кандидата (gmail.com сайтом
 # компании быть не может).
 _PUBLIC_MAIL_DOMAINS = {
-    "gmail.com", "googlemail.com",
-    "mail.ru", "list.ru", "inbox.ru", "bk.ru", "internet.ru",
-    "yandex.ru", "ya.ru", "yandex.com", "yandex.by",
-    "rambler.ru", "lenta.ru", "icloud.com",
-    "outlook.com", "hotmail.com", "live.com",
-    "proton.me", "protonmail.com",
+    "gmail.com",
+    "googlemail.com",
+    "mail.ru",
+    "list.ru",
+    "inbox.ru",
+    "bk.ru",
+    "internet.ru",
+    "yandex.ru",
+    "ya.ru",
+    "yandex.com",
+    "yandex.by",
+    "rambler.ru",
+    "lenta.ru",
+    "icloud.com",
+    "outlook.com",
+    "hotmail.com",
+    "live.com",
+    "proton.me",
+    "protonmail.com",
     "yahoo.com",
     # 2GIS-плейсхолдер (уже фильтруется _accept_email, но на всякий)
-    "2gis.ru", "2gis.com",
+    "2gis.ru",
+    "2gis.com",
 }
 
 
@@ -207,7 +221,9 @@ async def discover_website(company: Company) -> WebsiteCandidate | None:
             if await _is_alive(client, cand.url):
                 logger.info(
                     "discover_website: company=%s found=%s source=%s",
-                    company.id, cand.url, cand.source,
+                    company.id,
+                    cand.url,
+                    cand.source,
                 )
                 return cand
     return None

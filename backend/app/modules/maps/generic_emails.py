@@ -23,19 +23,52 @@ Whitelist local-part'ов — по практике российских кор�
 from __future__ import annotations
 
 
-_GENERIC_LOCAL_WHITELIST = frozenset({
-    "info", "contact", "contacts", "kontakt", "kontakti", "kontakty",
-    "hello", "hi", "office", "mail", "email", "post",
-    "order", "orders", "zakaz", "zakazy",
-    "sales", "sale", "prodazhi", "prodaji",
-    "help", "support", "podderzhka",
-    "admin", "administration", "administracia",
-    "reception", "priem",
-    "reklama", "advertising", "ads",
-    "partner", "partners", "partnership",
-    "hr", "rabota", "job", "jobs", "career",
-    "press", "media", "pr",
-})
+_GENERIC_LOCAL_WHITELIST = frozenset(
+    {
+        "info",
+        "contact",
+        "contacts",
+        "kontakt",
+        "kontakti",
+        "kontakty",
+        "hello",
+        "hi",
+        "office",
+        "mail",
+        "email",
+        "post",
+        "order",
+        "orders",
+        "zakaz",
+        "zakazy",
+        "sales",
+        "sale",
+        "prodazhi",
+        "prodaji",
+        "help",
+        "support",
+        "podderzhka",
+        "admin",
+        "administration",
+        "administracia",
+        "reception",
+        "priem",
+        "reklama",
+        "advertising",
+        "ads",
+        "partner",
+        "partners",
+        "partnership",
+        "hr",
+        "rabota",
+        "job",
+        "jobs",
+        "career",
+        "press",
+        "media",
+        "pr",
+    }
+)
 
 
 def split_generic_emails(

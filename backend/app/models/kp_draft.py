@@ -73,7 +73,4 @@ class KpDraft(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<KpDraft #{self.id} user={self.user_id} company={self.company_id} "
-            f"template={self.template_key!r}>"
-        )
+        return f"<KpDraft #{self.id} user={self.user_id} company={self.company_id} template={self.template_key!r}>"

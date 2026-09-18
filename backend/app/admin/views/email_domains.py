@@ -21,12 +21,9 @@ def _format_organization(model, prop):
 
 def _format_verification(model, prop):
     """Show overall verification status."""
-    if (model.dkim_status == "verified" and 
-        model.spf_status == "verified" and 
-        model.dmarc_status == "verified"):
+    if model.dkim_status == "verified" and model.spf_status == "verified" and model.dmarc_status == "verified":
         return "Fully Verified"
-    elif (model.dkim_status == "verified" or 
-          model.spf_status == "verified"):
+    elif model.dkim_status == "verified" or model.spf_status == "verified":
         return "Partially Verified"
     return "Not Verified"
 

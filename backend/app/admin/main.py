@@ -49,7 +49,7 @@ class LanguageMiddleware(BaseHTTPMiddleware):
             if language not in SUPPORTED_LANGUAGES:
                 language = DEFAULT_LANGUAGE
             set_language(language)
-        
+
         response = await call_next(request)
         return response
 
@@ -78,7 +78,7 @@ def setup_admin(app) -> Admin:
         # Redirect back to admin with cookie
         referer = request.headers.get("referer", "/admin")
         response = RedirectResponse(url=referer, status_code=303)
-        response.set_cookie("admin_lang", language, max_age=365*24*60*60)
+        response.set_cookie("admin_lang", language, max_age=365 * 24 * 60 * 60)
         return response
 
     # Create admin instance (using default templates).

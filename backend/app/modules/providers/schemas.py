@@ -15,7 +15,9 @@ class ProviderTestBody(BaseModel):
     """Body for POST /providers/{id}/test. config — переопределения на время проверки (если не пусто)."""
 
     query: str = Field(default="кофе москва", description="Test search query")
-    config: dict[str, Any] | None = Field(default=None, description="Подставить эти значения поверх сохранённых (пустые/*** не перезаписывают)")
+    config: dict[str, Any] | None = Field(
+        default=None, description="Подставить эти значения поверх сохранённых (пустые/*** не перезаписывают)"
+    )
 
 
 class ProviderTestResponse(BaseModel):

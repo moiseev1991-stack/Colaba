@@ -87,9 +87,7 @@ def _domain(url: str) -> str:
     return host
 
 
-async def _vk_call(
-    client: httpx.AsyncClient, method: str, params: dict[str, Any]
-) -> dict[str, Any] | None:
+async def _vk_call(client: httpx.AsyncClient, method: str, params: dict[str, Any]) -> dict[str, Any] | None:
     """POST-обёртка над api.vk.com/method/*. Возвращает `response` или None
     при ошибке (в т.ч. на error.error_code — VK ошибки не raise'ятся)."""
     payload = {
@@ -111,7 +109,9 @@ async def _vk_call(
         err = data["error"]
         logger.info(
             "vk %s error: code=%s msg=%s",
-            method, err.get("error_code"), err.get("error_msg"),
+            method,
+            err.get("error_code"),
+            err.get("error_msg"),
         )
         return None
     return data.get("response") if isinstance(data, dict) else None
@@ -150,9 +150,7 @@ def _extract_vk_slug(vk_value: str) -> str | None:
     return slug
 
 
-async def _pick_vk_slug_for_company(
-    db: AsyncSession, company_id: int
-) -> str | None:
+async def _pick_vk_slug_for_company(db: AsyncSession, company_id: int) -> str | None:
     """Достаёт VK-slug из company_contacts (type='vk'). Первый is_primary=True
     выигрывает; иначе — любая свежая запись."""
     stmt = (
@@ -170,15 +168,17 @@ async def _pick_vk_slug_for_company(
     return None
 
 
-async def _get_group_details(
-    client: httpx.AsyncClient, group_id: str
-) -> dict[str, Any] | None:
+async def _get_group_details(client: httpx.AsyncClient, group_id: str) -> dict[str, Any] | None:
     """groups.getById с fields=contacts,site,city. group_id принимает как
     числовой id, так и screen_name (VK API сам резолвит slug)."""
-    resp = await _vk_call(client, "groups.getById", {
-        "group_id": group_id,
-        "fields": "contacts,site,city,description",
-    })
+    resp = await _vk_call(
+        client,
+        "groups.getById",
+        {
+            "group_id": group_id,
+            "fields": "contacts,site,city,description",
+        },
+    )
     # API 5.199: response.groups — массив.
     if isinstance(resp, dict) and "groups" in resp:
         groups = resp.get("groups") or []
@@ -188,9 +188,7 @@ async def _get_group_details(
     return None
 
 
-async def enrich_from_vk(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def enrich_from_vk(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Главная функция: находит группу компании в ВК, тянет блок «Контакты»,
     сохраняет персон в company_decision_makers."""
     if not (settings.VK_SERVICE_TOKEN or "").strip():
@@ -252,7 +250,13 @@ async def enrich_from_vk(
 
     # Маркетинговые роли для повышения confidence и role_category='marketing'.
     marketing_keywords = (
-        "маркет", "cmo", "smm", "бренд", "pr", "пиар", "реклам",
+        "маркет",
+        "cmo",
+        "smm",
+        "бренд",
+        "pr",
+        "пиар",
+        "реклам",
     )
 
     saved = 0
@@ -321,14 +325,19 @@ async def enrich_from_vk(
             email_local = email.split("@", 1)[0].strip().lower()
         # Marketing/PR-роль по email: pr@, marketing@, smm@, reklama@, brand@,
         # media@, press@.
-        email_marketing_locals = frozenset({
-            "pr", "marketing", "smm", "reklama", "reklamma",
-            "brand", "media", "press",
-        })
-        is_marketing = (
-            any(k in post_low for k in marketing_keywords)
-            or email_local in email_marketing_locals
+        email_marketing_locals = frozenset(
+            {
+                "pr",
+                "marketing",
+                "smm",
+                "reklama",
+                "reklamma",
+                "brand",
+                "media",
+                "press",
+            }
         )
+        is_marketing = any(k in post_low for k in marketing_keywords) or email_local in email_marketing_locals
         if is_marketing:
             role_category = "marketing"
         elif any(k in post_low for k in ("директор", "руководител", "владел", "основател", "учредител")):
@@ -350,18 +359,22 @@ async def enrich_from_vk(
         # Confidence: +0.1 если явно маркетолог.
         confidence = min(0.95, base_confidence + (0.1 if is_marketing else 0.0))
 
-        stmt = pg_insert(CompanyDecisionMaker).values(
-            company_id=company_id,
-            name=name,
-            post=post,
-            source="vk",
-            source_url=group_url,
-            confidence=confidence,
-            is_decision_maker=is_marketing or role_category in ("owner", "management"),
-            role_category=role_category,
-            contact_type=contact_type,
-            contact_value=contact_value,
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(CompanyDecisionMaker)
+            .values(
+                company_id=company_id,
+                name=name,
+                post=post,
+                source="vk",
+                source_url=group_url,
+                confidence=confidence,
+                is_decision_maker=is_marketing or role_category in ("owner", "management"),
+                role_category=role_category,
+                contact_type=contact_type,
+                contact_value=contact_value,
+            )
+            .on_conflict_do_nothing()
+        )
         try:
             await db.execute(stmt)
             saved += 1

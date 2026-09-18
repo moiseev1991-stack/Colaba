@@ -47,11 +47,7 @@ KP_4HODS_EMAIL_HEADER = (
 
 
 KP_4HODS_RECIPIENT = (
-    "\n"
-    "Получатель: {company_name} — {niche}, {city}.\n"
-    "{addressing_line}"
-    "\n"
-    "ДАННЫЕ ДЛЯ ХОДОВ (используй ТОЛЬКО их):\n"
+    "\nПолучатель: {company_name} — {niche}, {city}.\n{addressing_line}\nДАННЫЕ ДЛЯ ХОДОВ (используй ТОЛЬКО их):\n"
 )
 
 
@@ -78,7 +74,7 @@ def _fmt_hod1(pains: list[PainFilled]) -> str:
             chunk = f"на {src}: {chunk}"
         if p.top_quote:
             safe = p.top_quote.strip().replace("\n", " ")[:180]
-            chunk += f' — цитата клиента: «{safe}»'
+            chunk += f" — цитата клиента: «{safe}»"
         parts.append(chunk)
     joined = "; плюс ".join(parts)
     return f"ХОД1: смотрел отзывы — {joined}."
@@ -92,7 +88,7 @@ def _fmt_hod2(pains: list[PainFilled]) -> str | None:
     не выдумывать)."""
     for p in pains:
         if p.consequence:
-            return f'ХОД2: последствие боли для их бизнеса — «{p.consequence}». Без выдуманных цифр.'
+            return f"ХОД2: последствие боли для их бизнеса — «{p.consequence}». Без выдуманных цифр."
     return None
 
 
@@ -103,10 +99,10 @@ def _fmt_hod3(pains: list[PainFilled]) -> str | None:
     for p in pains:
         if p.solution:
             return (
-                f'ХОД3: что предлагаешь как результат для клиента — '
-                f'«{p.solution}». ЗАПРЕЩЕНО в этом ходе использовать слова: '
-                f'«бот», «CRM», «интеграция», «автоматизация», «внедрение», '
-                f'«IP-телефония» — только эффект для клиента.'
+                f"ХОД3: что предлагаешь как результат для клиента — "
+                f"«{p.solution}». ЗАПРЕЩЕНО в этом ходе использовать слова: "
+                f"«бот», «CRM», «интеграция», «автоматизация», «внедрение», "
+                f"«IP-телефония» — только эффект для клиента."
             )
     return None
 
@@ -118,9 +114,9 @@ def _fmt_hod4(my_offer_step: str) -> str:
     (созвон, показ на их примере, мини-аудит)."""
     step = my_offer_step or "короткий созвон 10 минут"
     return (
-        f'ХОД4: микрошаг — «{step}». '
-        'Заверши ОДНИМ вопросом («Удобно завтра / в такой-то день?» или '
-        '«Скинуть пример на вашей нише?»). Больше вопросов в тексте нет.'
+        f"ХОД4: микрошаг — «{step}». "
+        "Заверши ОДНИМ вопросом («Удобно завтра / в такой-то день?» или "
+        "«Скинуть пример на вашей нише?»). Больше вопросов в тексте нет."
     )
 
 
@@ -141,7 +137,7 @@ KP_4HODS_TAIL_MESSENGER = (
     "   НЕ оформляй как ссылку (без https://, без t.me/).\n"
     "7. Тон: {tone}. Живой человек написал лично, не маркетинг.\n"
     "\n"
-    "Верни строго JSON: {{\"subject\": \"\", \"body\": \"...\"}} — subject для\n"
+    'Верни строго JSON: {{"subject": "", "body": "..."}} — subject для\n'
     "Telegram пусто, body — сообщение.\n"
 )
 
@@ -163,7 +159,7 @@ KP_4HODS_TAIL_EMAIL = (
     "   сайт: {landing_url}\n"
     "8. Тон: {tone}. Уважительно, на «вы», без канцелярита.\n"
     "\n"
-    "Верни строго JSON: {{\"subject\": \"...\", \"body\": \"...\"}}\n"
+    'Верни строго JSON: {{"subject": "...", "body": "..."}}\n'
 )
 
 
@@ -219,21 +215,13 @@ def build_prompt_4hods(
     tg_deeplink = f"https://t.me/{bot}?start=email" if bot else _BOT_PLACEHOLDER
     landing_link = _with_utm(landing_url or "", "email") or "[сайт_не_задан]"
     contact_email = (contact_email or "").strip() or "[email_не_задан]"
-    header_tpl = (
-        KP_4HODS_MESSENGER_HEADER if channel == "messenger" else KP_4HODS_EMAIL_HEADER
-    )
-    tail_tpl = (
-        KP_4HODS_TAIL_MESSENGER if channel == "messenger" else KP_4HODS_TAIL_EMAIL
-    )
+    header_tpl = KP_4HODS_MESSENGER_HEADER if channel == "messenger" else KP_4HODS_EMAIL_HEADER
+    tail_tpl = KP_4HODS_TAIL_MESSENGER if channel == "messenger" else KP_4HODS_TAIL_EMAIL
 
     if recipient_first_name:
-        addressing_line = (
-            f"Обращение: по имени «{recipient_first_name}».\n"
-        )
+        addressing_line = f"Обращение: по имени «{recipient_first_name}».\n"
     else:
-        addressing_line = (
-            "Обращение: нейтральное «Здравствуйте!» (ЛПР не найден).\n"
-        )
+        addressing_line = "Обращение: нейтральное «Здравствуйте!» (ЛПР не найден).\n"
 
     parts: list[str] = [
         header_tpl.format(sender_profile=sender_profile or "—"),
@@ -249,10 +237,7 @@ def build_prompt_4hods(
     if h2:
         parts.append(h2)
     else:
-        parts.append(
-            "ХОД2: последствие боли не задано в справочнике — пропусти этот ход, "
-            "перейди сразу к ходу 3."
-        )
+        parts.append("ХОД2: последствие боли не задано в справочнике — пропусти этот ход, перейди сразу к ходу 3.")
     h3 = _fmt_hod3(pains)
     if h3:
         parts.append(h3)

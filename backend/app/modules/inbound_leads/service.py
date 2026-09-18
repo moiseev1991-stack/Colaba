@@ -117,9 +117,7 @@ async def company_brief(db: AsyncSession, company_id: int) -> dict:
     return brief
 
 
-async def _resolve_company(
-    db: AsyncSession, company_id: Optional[int], company_text: str
-) -> Optional[Company]:
+async def _resolve_company(db: AsyncSession, company_id: Optional[int], company_text: str) -> Optional[Company]:
     """Приоритет: валидный company_id → по нему; иначе — матчинг по тексту.
 
     Битый/чужой id молча игнорируется (fallback на текст), чтобы подделанный
@@ -187,9 +185,7 @@ def _normalize_messages(raw: list) -> list[dict]:
     return out
 
 
-async def submit_lead(
-    db: AsyncSession, payload: schemas.InboundLeadSubmit
-) -> schemas.InboundLeadSubmitResponse:
+async def submit_lead(db: AsyncSession, payload: schemas.InboundLeadSubmit) -> schemas.InboundLeadSubmitResponse:
     """Создаёт заявку (или дописывает существующую от того же tg_user_id),
     матчит компанию и шлёт уведомления. Уведомления — best-effort."""
     new_messages = _normalize_messages(payload.raw_messages)

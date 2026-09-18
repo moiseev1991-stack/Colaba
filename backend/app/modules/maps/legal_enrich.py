@@ -120,22 +120,34 @@ async def _suggest(client: httpx.AsyncClient, query: str, count: int = 5) -> lis
         latency_ms = int((perf_counter() - t0) * 1000)
         if r.is_success:
             await log_call(
-                "dadata", "/suggest/party", method="POST",
-                http_status=r.status_code, ok=True, latency_ms=latency_ms,
+                "dadata",
+                "/suggest/party",
+                method="POST",
+                http_status=r.status_code,
+                ok=True,
+                latency_ms=latency_ms,
             )
         else:
             await log_call(
-                "dadata", "/suggest/party", method="POST",
-                http_status=r.status_code, ok=False,
-                error=f"http {r.status_code}", latency_ms=latency_ms,
+                "dadata",
+                "/suggest/party",
+                method="POST",
+                http_status=r.status_code,
+                ok=False,
+                error=f"http {r.status_code}",
+                latency_ms=latency_ms,
             )
         r.raise_for_status()
         return list((r.json() or {}).get("suggestions") or [])
     except httpx.HTTPError as e:
         logger.warning("dadata suggest %r failed: %s", query, e)
         await log_call(
-            "dadata", "/suggest/party", method="POST", ok=False,
-            error=str(e), latency_ms=int((perf_counter() - t0) * 1000),
+            "dadata",
+            "/suggest/party",
+            method="POST",
+            ok=False,
+            error=str(e),
+            latency_ms=int((perf_counter() - t0) * 1000),
         )
         return []
 
@@ -158,9 +170,7 @@ def _parse_date(s: str | int | None) -> date | None:
     return None
 
 
-def _build_match_from_suggestion(
-    s: dict[str, Any], *, confidence: float, matched_by: str
-) -> LegalMatch:
+def _build_match_from_suggestion(s: dict[str, Any], *, confidence: float, matched_by: str) -> LegalMatch:
     data = s.get("data") or {}
     state = data.get("state") or {}
     finance = data.get("finance") or {}
@@ -230,12 +240,14 @@ def _build_match_from_suggestion(
             if not isinstance(f, dict):
                 continue
             share = f.get("share") or {}
-            founders_compact.append({
-                "name": _titlecase_fio(f.get("name")),
-                "share_value": share.get("value") if isinstance(share, dict) else None,
-                "share_type": share.get("type") if isinstance(share, dict) else None,
-                "inn": f.get("inn"),
-            })
+            founders_compact.append(
+                {
+                    "name": _titlecase_fio(f.get("name")),
+                    "share_value": share.get("value") if isinstance(share, dict) else None,
+                    "share_type": share.get("type") if isinstance(share, dict) else None,
+                    "inn": f.get("inn"),
+                }
+            )
 
     return LegalMatch(
         inn=str(data.get("inn") or "")[:12] or None,
@@ -321,15 +333,11 @@ async def find_legal_for_company(company: Company) -> LegalMatch | None:
         if phone:
             sug = await _suggest(client, phone, count=3)
             if len(sug) == 1:
-                return _build_match_from_suggestion(
-                    sug[0], confidence=0.95, matched_by="phone"
-                )
+                return _build_match_from_suggestion(sug[0], confidence=0.95, matched_by="phone")
             if len(sug) > 1:
                 # Берём топ, но даём более низкий confidence — мог быть
                 # один и тот же номер у разных юр.лиц (редко, но бывает).
-                return _build_match_from_suggestion(
-                    sug[0], confidence=0.7, matched_by="phone"
-                )
+                return _build_match_from_suggestion(sug[0], confidence=0.7, matched_by="phone")
 
         # 2. По названию + городу.
         # Чистим имя: 2GIS часто отдаёт "Зимверк, металлообработка" —
@@ -363,14 +371,10 @@ async def find_legal_for_company(company: Company) -> LegalMatch | None:
             for cand in sug:
                 addr = ((cand.get("data") or {}).get("address") or {}).get("value") or ""
                 if city_low in addr.lower():
-                    return _build_match_from_suggestion(
-                        cand, confidence=0.7, matched_by="name_address"
-                    )
+                    return _build_match_from_suggestion(cand, confidence=0.7, matched_by="name_address")
         # Fallback — топ-1 с низким confidence (юзер видит match_confidence,
         # сможет отфильтровать вручную).
-        return _build_match_from_suggestion(
-            sug[0], confidence=0.4, matched_by="name_address"
-        )
+        return _build_match_from_suggestion(sug[0], confidence=0.4, matched_by="name_address")
 
 
 async def upsert_legal(
@@ -385,33 +389,32 @@ async def upsert_legal(
         "status": "ok" if match is not None else "not_found",
     }
     if match is not None:
-        base_values.update({
-            "inn": match.inn,
-            "ogrn": match.ogrn,
-            "kpp": match.kpp,
-            "legal_name": match.legal_name,
-            "legal_short_name": match.legal_short_name,
-            "opf": match.opf,
-            "registration_date": match.registration_date,
-            "revenue": match.revenue,
-            "employee_count": match.employee_count,
-            "legal_status": match.legal_status,
-            "okved": match.okved,
-            "okved_name": match.okved_name,
-            "director_name": match.director_name,
-            "director_post": match.director_post,
-            "founders_json": match.founders_json,
-            "match_confidence": match.match_confidence,
-            "matched_by": match.matched_by,
-            "source": "dadata",
-            "raw_json": match.raw_json,
-        })
+        base_values.update(
+            {
+                "inn": match.inn,
+                "ogrn": match.ogrn,
+                "kpp": match.kpp,
+                "legal_name": match.legal_name,
+                "legal_short_name": match.legal_short_name,
+                "opf": match.opf,
+                "registration_date": match.registration_date,
+                "revenue": match.revenue,
+                "employee_count": match.employee_count,
+                "legal_status": match.legal_status,
+                "okved": match.okved,
+                "okved_name": match.okved_name,
+                "director_name": match.director_name,
+                "director_post": match.director_post,
+                "founders_json": match.founders_json,
+                "match_confidence": match.match_confidence,
+                "matched_by": match.matched_by,
+                "source": "dadata",
+                "raw_json": match.raw_json,
+            }
+        )
 
     stmt = pg_insert(CompanyLegal).values(**base_values)
-    update_set = {
-        k: stmt.excluded[k] for k in base_values.keys()
-        if k != "company_id"
-    }
+    update_set = {k: stmt.excluded[k] for k in base_values.keys() if k != "company_id"}
     update_set["updated_at"] = stmt.excluded.updated_at  # noqa
     stmt = stmt.on_conflict_do_update(
         index_elements=["company_id"],
@@ -429,9 +432,9 @@ async def enrich_company(db: AsyncSession, company_id: int) -> dict[str, Any]:
 
     # Skip если уже есть запись со status='ok' или 'not_found' — не
     # дёргаем повторно (юзер может явно перезапустить через force).
-    existing = (await db.execute(
-        select(CompanyLegal).where(CompanyLegal.company_id == company_id)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(CompanyLegal).where(CompanyLegal.company_id == company_id))
+    ).scalar_one_or_none()
     if existing is not None:
         return {"status": "skip_already_processed"}
 

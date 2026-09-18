@@ -75,9 +75,7 @@ def _phone_to_smsru(phone_digits: str) -> str:
     return p
 
 
-async def send_text_message(
-    phone_digits: str, text: str, *, timeout: float = DEFAULT_TIMEOUT_SEC
-) -> str:
+async def send_text_message(phone_digits: str, text: str, *, timeout: float = DEFAULT_TIMEOUT_SEC) -> str:
     """Шлёт одно текстовое SMS через SMS.ru.
 
     Возвращает sms_id (пишется в KpSend.provider_message_id — SMS.ru

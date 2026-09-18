@@ -12,6 +12,7 @@ from app.core.database import Base
 
 class OrganizationRole(str, enum.Enum):
     """Organization user roles."""
+
     OWNER = "OWNER"  # Full access, can delete organization
     ADMIN = "ADMIN"  # Can manage users and settings
     MEMBER = "MEMBER"  # Can view and create searches
@@ -30,6 +31,7 @@ user_organizations = Table(
 
 class Organization(Base):
     """Organization model."""
+
     __tablename__ = "organizations"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -38,12 +40,7 @@ class Organization(Base):
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
     # Relationships
-    users = relationship(
-        "User",
-        secondary=user_organizations,
-        back_populates="organizations",
-        lazy="dynamic"
-    )
+    users = relationship("User", secondary=user_organizations, back_populates="organizations", lazy="dynamic")
     searches = relationship("Search", back_populates="organization", cascade="all, delete-orphan")
     email_domains = relationship("EmailDomain", back_populates="organization", cascade="all, delete-orphan")
     email_templates = relationship("EmailTemplate", back_populates="organization", cascade="all, delete-orphan")

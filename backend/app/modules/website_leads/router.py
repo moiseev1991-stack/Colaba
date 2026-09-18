@@ -1,9 +1,9 @@
 """HTTP endpoints для website_leads.
 
-  POST   /api/v1/website-leads/submit  — публичный, без auth, rate-limit
-  GET    /api/v1/website-leads         — список (только is_superuser)
-  PATCH  /api/v1/website-leads/{id}    — смена статуса (admin)
-  DELETE /api/v1/website-leads/{id}    — soft-delete (admin)
+POST   /api/v1/website-leads/submit  — публичный, без auth, rate-limit
+GET    /api/v1/website-leads         — список (только is_superuser)
+PATCH  /api/v1/website-leads/{id}    — смена статуса (admin)
+DELETE /api/v1/website-leads/{id}    — soft-delete (admin)
 """
 
 from typing import Optional

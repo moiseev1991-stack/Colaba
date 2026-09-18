@@ -24,7 +24,7 @@ async def create_organization(
 ):
     """
     Create a new organization.
-    
+
     Only superusers can create organizations.
     """
     return await service.create_organization(db=db, org_data=org_data)
@@ -37,7 +37,7 @@ async def list_organizations(
 ):
     """
     List all organizations with statistics.
-    
+
     Only superusers can view all organizations.
     """
     return await service.get_organizations(db=db)
@@ -51,7 +51,7 @@ async def get_organization(
 ):
     """
     Get a specific organization by ID.
-    
+
     Only superusers can view organizations.
     """
     organization = await service.get_organization(db=db, organization_id=organization_id)
@@ -69,14 +69,10 @@ async def update_organization(
 ):
     """
     Update an organization.
-    
+
     Only superusers can update organizations.
     """
-    return await service.update_organization(
-        db=db,
-        organization_id=organization_id,
-        org_data=org_data
-    )
+    return await service.update_organization(db=db, organization_id=organization_id, org_data=org_data)
 
 
 @router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -87,7 +83,7 @@ async def delete_organization(
 ):
     """
     Delete an organization.
-    
+
     Only superusers can delete organizations.
     """
     await service.delete_organization(db=db, organization_id=organization_id)
@@ -101,7 +97,7 @@ async def get_organization_users(
 ):
     """
     Get all users in an organization.
-    
+
     Accessible by:
     - Superusers (can view any organization)
     - Organization owners (OWNER role)
@@ -110,7 +106,9 @@ async def get_organization_users(
     return await service.get_organization_users(db=db, organization_id=organization_id)
 
 
-@router.post("/{organization_id}/users", response_model=schemas.UserOrganizationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{organization_id}/users", response_model=schemas.UserOrganizationResponse, status_code=status.HTTP_201_CREATED
+)
 async def add_user_to_organization(
     organization_id: int,
     user_data: schemas.AddUserToOrganizationRequest,
@@ -119,7 +117,7 @@ async def add_user_to_organization(
 ):
     """
     Add a user to an organization.
-    
+
     Accessible by:
     - Superusers (can add users to any organization)
     - Organization owners (OWNER role)
@@ -127,10 +125,7 @@ async def add_user_to_organization(
     """
     user, org_id, role = access_info
     return await service.add_user_to_organization(
-        db=db,
-        organization_id=organization_id,
-        user_id=user_data.user_id,
-        role=user_data.role
+        db=db, organization_id=organization_id, user_id=user_data.user_id, role=user_data.role
     )
 
 
@@ -144,7 +139,7 @@ async def update_user_role(
 ):
     """
     Update user's role in an organization.
-    
+
     Accessible by:
     - Superusers (can update roles in any organization)
     - Organization owners (OWNER role) - can set any role
@@ -152,19 +147,15 @@ async def update_user_role(
     """
     user, org_id, user_role = access_info
     from app.models.organization import OrganizationRole
-    
+
     # Admins can only set MEMBER role, not ADMIN or OWNER
     if user_role == OrganizationRole.ADMIN and role_data.role != OrganizationRole.MEMBER:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organization admins can only assign MEMBER role"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Organization admins can only assign MEMBER role"
         )
-    
+
     return await service.update_user_role_in_organization(
-        db=db,
-        organization_id=organization_id,
-        user_id=user_id,
-        new_role=role_data.role
+        db=db, organization_id=organization_id, user_id=user_id, new_role=role_data.role
     )
 
 
@@ -177,14 +168,10 @@ async def remove_user_from_organization(
 ):
     """
     Remove a user from an organization.
-    
+
     Accessible by:
     - Superusers (can remove users from any organization)
     - Organization owners (OWNER role)
     - Organization admins (ADMIN role)
     """
-    await service.remove_user_from_organization(
-        db=db,
-        organization_id=organization_id,
-        user_id=user_id
-    )
+    await service.remove_user_from_organization(db=db, organization_id=organization_id, user_id=user_id)

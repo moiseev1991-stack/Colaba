@@ -100,9 +100,7 @@ class TopPain:
     source: str | None
 
 
-async def _resolve_pain_source(
-    db: AsyncSession, company_id: int, top_quote: str | None
-) -> str | None:
+async def _resolve_pain_source(db: AsyncSession, company_id: int, top_quote: str | None) -> str | None:
     """best-effort: определить источник (2gis/yandex_maps/google) по цитате,
     находя Review с такой же головой текста. Общий хелпер — используется и
     в load_top_pain, и в load_pains_by_ids."""
@@ -125,9 +123,7 @@ async def _resolve_pain_source(
     return src_row[0] if src_row is not None else None
 
 
-async def load_pains_by_ids(
-    db: AsyncSession, company_id: int, pain_tag_ids: list[int]
-) -> list[TopPain]:
+async def load_pains_by_ids(db: AsyncSession, company_id: int, pain_tag_ids: list[int]) -> list[TopPain]:
     """Загрузить конкретные боли по списку id (2026-07-11: multi-pain КП).
 
     Возвращает TopPain-объекты только для тех id, у которых у компании
@@ -242,16 +238,13 @@ async def compute_negative_trend_verdict(db: AsyncSession, company_id: int) -> s
     now = datetime.now(timezone.utc)
 
     async def count_neg(since: datetime, until: datetime | None) -> int:
-        q = (
-            select(sa_func.count(Review.id))
-            .where(
-                Review.company_id == company_id,
-                Review.posted_at >= since,
-                or_(
-                    Review.sentiment.in_(["negative", "neutral"]),
-                    and_(Review.sentiment.is_(None), Review.rating <= 3),
-                ),
-            )
+        q = select(sa_func.count(Review.id)).where(
+            Review.company_id == company_id,
+            Review.posted_at >= since,
+            or_(
+                Review.sentiment.in_(["negative", "neutral"]),
+                and_(Review.sentiment.is_(None), Review.rating <= 3),
+            ),
         )
         if until is not None:
             q = q.where(Review.posted_at < until)
@@ -270,9 +263,7 @@ async def compute_negative_trend_verdict(db: AsyncSession, company_id: int) -> s
     return "stable"
 
 
-async def compute_benchmark_ratio(
-    db: AsyncSession, company: Company, pain_tag_id: int
-) -> float | None:
+async def compute_benchmark_ratio(db: AsyncSession, company: Company, pain_tag_id: int) -> float | None:
     """Считает ratio для конкретной боли (Эпик D §3 контекста).
 
     Возвращает None если ниши/города компании нет, либо в нише <1 компании
@@ -395,7 +386,8 @@ def build_kp_prompt(
         if source_label:
             facts.append(
                 KP_FACT_QUOTE_WITH_SOURCE_LINE.format(
-                    source_label=source_label, top_quote=safe_quote,
+                    source_label=source_label,
+                    top_quote=safe_quote,
                 )
             )
         else:
@@ -407,11 +399,7 @@ def build_kp_prompt(
         extra_mention = extra.get("mention_count")
         extra_quote = extra.get("top_quote")
         if extra_label and extra_mention is not None:
-            facts.append(
-                KP_FACT_PAIN_LINE.format(
-                    pain_label=extra_label, mention_count=extra_mention
-                )
-            )
+            facts.append(KP_FACT_PAIN_LINE.format(pain_label=extra_label, mention_count=extra_mention))
         if extra_quote:
             safe_extra_quote = str(extra_quote).strip().replace("\n", " ")[:280]
             extra_source_label = _source_label_of(extra.get("source"))
@@ -492,16 +480,11 @@ def build_kp_prompt_for_site(
         receiver_line = f"Получатель: {domain} ({title})."
     else:
         receiver_line = f"Получатель: {domain}."
-    parts.append(
-        "\n" + receiver_line + "\n"
-        "Факты о получателе (используй ТОЛЬКО их, ничего не выдумывай):\n"
-    )
+    parts.append("\n" + receiver_line + "\nФакты о получателе (используй ТОЛЬКО их, ничего не выдумывай):\n")
 
     facts: list[str] = [KP_FACT_SITE_URL_LINE.format(url=url)]
     if entry and entry_meaning:
-        facts.append(
-            KP_FACT_SITE_ENTRY_LINE.format(entry=entry, entry_meaning=entry_meaning)
-        )
+        facts.append(KP_FACT_SITE_ENTRY_LINE.format(entry=entry, entry_meaning=entry_meaning))
     parts.append("\n".join(facts))
 
     parts.append(
@@ -593,7 +576,7 @@ def _extract_kp_plaintext(raw: str) -> dict[str, str] | None:
         low = ln.lstrip().lower()
         for lab in _PLAIN_SUBJECT_LABELS:
             if low.startswith(lab):
-                subject_value = ln.lstrip()[len(lab):].strip(" \"'«»–—-")
+                subject_value = ln.lstrip()[len(lab) :].strip(" \"'«»–—-")
                 subject_line_idx = i
                 break
         if subject_value:
@@ -602,7 +585,7 @@ def _extract_kp_plaintext(raw: str) -> dict[str, str] | None:
     if subject_value:
         # body = всё после строки темы, отбрасываем подряд идущие
         # «Тело:»/«Body:» метки в начале.
-        rest = "\n".join(lines[subject_line_idx + 1:]).strip()
+        rest = "\n".join(lines[subject_line_idx + 1 :]).strip()
         rest = re.sub(r"^(тело|body|текст письма|письмо)[:\-—]\s*", "", rest, flags=re.IGNORECASE).strip()
         if rest:
             return {"subject": subject_value[:500], "body": rest}
@@ -617,7 +600,7 @@ def _extract_kp_plaintext(raw: str) -> dict[str, str] | None:
         # «Здравствуйте, Иван! Заметил...».
         is_greeting = first_line.lower().startswith(("здравствуйте", "добрый день", "приветствую", "уважаем"))
         if not is_greeting and len(first_line) <= 120 and not first_line.endswith("."):
-            rest = "\n".join(lines[first_idx + 1:]).strip()
+            rest = "\n".join(lines[first_idx + 1 :]).strip()
             if len(rest) >= 30:  # body должен быть содержательным
                 return {"subject": first_line[:500], "body": rest}
 
@@ -728,9 +711,7 @@ class GeneratedKp:
     arguments_used: dict[str, Any]
 
 
-async def _resolve_template(
-    db: AsyncSession, template_key: str, custom_sender_profile: str | None
-) -> tuple[str, str]:
+async def _resolve_template(db: AsyncSession, template_key: str, custom_sender_profile: str | None) -> tuple[str, str]:
     """Возвращает (sender_profile, offer_hint).
 
     Для системных шаблонов берёт значения из БД.
@@ -753,8 +734,7 @@ async def _resolve_template(
         profile = (custom_sender_profile or "").strip()
         if not profile:
             raise KpGenerationError(
-                "Для шаблона «Свой вариант» нужно описание профиля отправителя "
-                "(1-2 предложения о вас).",
+                "Для шаблона «Свой вариант» нужно описание профиля отправителя (1-2 предложения о вас).",
                 status_code=400,
             )
         return profile, ""
@@ -818,12 +798,11 @@ async def _call_llm_with_retry(
 
     if parsed is None:
         retry_prompt = (
-            prompt_text
-            + "\n\nВажно: твой предыдущий ответ не удалось распарсить. "
+            prompt_text + "\n\nВажно: твой предыдущий ответ не удалось распарсить. "
             "Верни СТРОГО валидный JSON в одну строку, без markdown-fence, "
             "без префиксов и без комментариев после JSON. Внутри строковых "
             "значений переносы строк экранируй как \\n. "
-            "Формат: {\"subject\": \"...\", \"body\": \"...\"}"
+            'Формат: {"subject": "...", "body": "..."}'
         )
         raw_retry: str | None = None
         try:
@@ -888,9 +867,7 @@ async def generate_kp_for_site(
         # Не отдаём 403 чтобы не палить факт существования id чужому юзеру.
         raise KpGenerationError("Site-лид не найден.", status_code=404)
 
-    sender_profile, offer_hint = await _resolve_template(
-        db, template_key, custom_sender_profile
-    )
+    sender_profile, offer_hint = await _resolve_template(db, template_key, custom_sender_profile)
 
     entry_meaning = lookup_entry_meaning(site_lead.entry)
 
@@ -993,9 +970,7 @@ async def generate_kp(
         raise KpGenerationError("Компания не найдена.", status_code=404)
 
     # 2. Шаблон → sender_profile + offer_hint
-    sender_profile, offer_hint = await _resolve_template(
-        db, template_key, custom_sender_profile
-    )
+    sender_profile, offer_hint = await _resolve_template(db, template_key, custom_sender_profile)
 
     # 3. Боли. Если юзер выбрал в UI конкретные id (multi-pain) — грузим их.
     #    Иначе fallback на топ-1 (старое поведение до 2026-07-11).
@@ -1013,23 +988,22 @@ async def generate_kp(
 
     # 4. Тренд + бенчмарк + средний рейтинг ниши (по первой боли)
     trend_verdict = await compute_negative_trend_verdict(db, company_id)
-    ratio = (
-        await compute_benchmark_ratio(db, company, primary_pain.pain_tag_id)
-        if primary_pain is not None
-        else None
-    )
+    ratio = await compute_benchmark_ratio(db, company, primary_pain.pain_tag_id) if primary_pain is not None else None
     niche_avg_rating = await compute_niche_avg_rating(db, company)
 
     # 5. ЛПР — имя для обращения (для 4hods-каркаса)
     recipient_first_name: str | None = None
     if use_4hods:
         from app.models.company_decision_maker import CompanyDecisionMaker
-        marketing_dm = (await db.execute(
-            select(CompanyDecisionMaker)
-            .where(CompanyDecisionMaker.company_id == company_id)
-            .where(CompanyDecisionMaker.is_marketing_dm.is_(True))
-            .limit(1)
-        )).scalar_one_or_none()
+
+        marketing_dm = (
+            await db.execute(
+                select(CompanyDecisionMaker)
+                .where(CompanyDecisionMaker.company_id == company_id)
+                .where(CompanyDecisionMaker.is_marketing_dm.is_(True))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         if marketing_dm and marketing_dm.name:
             recipient_first_name = str(marketing_dm.name).strip().split()[0] or None
 
@@ -1050,6 +1024,7 @@ async def generate_kp(
         # Новый каркас: подставляем боли + справочники + канал.
         from .pain_dictionaries import fill_pains
         from .kp_prompts_v2 import build_prompt_4hods
+
         pains_dicts = [
             {
                 "label": p.label,
@@ -1076,6 +1051,7 @@ async def generate_kp(
             )
         filled_pains = fill_pains(pains_dicts, offer_theme="automation")
         from app.core.config import settings as _settings
+
         if channel == "email" and not _settings.PUBLIC_BOT_USERNAME:
             logger.warning(
                 "generate_kp 4hods email: PUBLIC_BOT_USERNAME не задан — "
@@ -1134,6 +1110,7 @@ async def generate_kp(
     if use_4hods:
         from app.core.config import settings as _settings
         from .kp_validator import validate_kp, issues_summary
+
         v = validate_kp(
             subject=str(parsed.get("subject") or ""),
             body=str(parsed.get("body") or ""),
@@ -1231,10 +1208,8 @@ async def list_kp_templates(db: AsyncSession) -> list[KpTemplate]:
     is_system=True достаточен — пользовательских ещё нет.
     """
     rows = (
-        await db.execute(
-            select(KpTemplate)
-            .where(KpTemplate.is_system.is_(True))
-            .order_by(KpTemplate.id.asc())
-        )
-    ).scalars().all()
+        (await db.execute(select(KpTemplate).where(KpTemplate.is_system.is_(True)).order_by(KpTemplate.id.asc())))
+        .scalars()
+        .all()
+    )
     return list(rows)

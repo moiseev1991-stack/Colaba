@@ -32,9 +32,7 @@ async def list_for_user(
       выбранной боли увидел свои специальные шаблоны + мог использовать
       общие.
     """
-    stmt = select(UserOutreachTemplate).where(
-        UserOutreachTemplate.user_id == user_id
-    )
+    stmt = select(UserOutreachTemplate).where(UserOutreachTemplate.user_id == user_id)
     if module is not None:
         stmt = stmt.where(UserOutreachTemplate.module == module)
     if pain_key is not None:
@@ -110,9 +108,7 @@ async def update(
     return template
 
 
-async def delete_template(
-    db: AsyncSession, *, template_id: int, user_id: int
-) -> bool:
+async def delete_template(db: AsyncSession, *, template_id: int, user_id: int) -> bool:
     """Удаление с проверкой user-scope. True если что-то удалили."""
     stmt = delete(UserOutreachTemplate).where(
         UserOutreachTemplate.id == template_id,

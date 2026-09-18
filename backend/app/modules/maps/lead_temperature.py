@@ -32,16 +32,16 @@ from app.models.maps import Company
 # Веса блоков (сумма ~110 положительных при максимуме, отрицательные
 # штрафы выводят score ниже нуля → clamp 0..100). Веса в одном месте,
 # чтобы потом легко калибровать.
-_W_RATING_MAX = 25      # рейтинг 4.0..5.0
-_W_REVIEWS_MAX = 25     # лог-шкала отзывов 1..N
-_W_FRESHNESS = 15       # отзывы за последние ~3 мес
-_W_PHONE = 10           # есть телефон
+_W_RATING_MAX = 25  # рейтинг 4.0..5.0
+_W_REVIEWS_MAX = 25  # лог-шкала отзывов 1..N
+_W_FRESHNESS = 15  # отзывы за последние ~3 мес
+_W_PHONE = 10  # есть телефон
 _W_EMAIL_OR_MESSENGER = 10  # есть email ИЛИ мессенджер (tg/wa)
-_W_OWNER_REPLIES = 10   # отвечает владелец на отзывы
-_W_HAS_WEBSITE = 5      # есть сайт (небольшой бонус за «не мёртвая»)
+_W_OWNER_REPLIES = 10  # отвечает владелец на отзывы
+_W_HAS_WEBSITE = 5  # есть сайт (небольшой бонус за «не мёртвая»)
 
-_PENALTY_LOW_RATING = -15   # рейтинг < 3.5
-_PENALTY_NO_REVIEWS = -20   # 0 отзывов — мёртвая карточка
+_PENALTY_LOW_RATING = -15  # рейтинг < 3.5
+_PENALTY_NO_REVIEWS = -20  # 0 отзывов — мёртвая карточка
 
 # Параметры свежести: «свежие» = отзывы за последние N дней.
 _FRESHNESS_DAYS = 90
@@ -119,18 +119,20 @@ def _has_active_website(c: Company) -> bool:
     if not raw:
         return False
     bad_hosts = (
-        "2gis.ru", "2gis.com",
-        "vk.com", "instagram.com", "facebook.com",
-        "t.me", "ok.ru",
+        "2gis.ru",
+        "2gis.com",
+        "vk.com",
+        "instagram.com",
+        "facebook.com",
+        "t.me",
+        "ok.ru",
     )
     return not any(h in raw for h in bad_hosts)
 
 
 def compute(company: Company) -> int:
     """Считает score 0-100 для одной компании. Чистая функция, без I/O."""
-    rating_bonus, rating_penalty = _rating_component(
-        float(company.rating) if company.rating is not None else None
-    )
+    rating_bonus, rating_penalty = _rating_component(float(company.rating) if company.rating is not None else None)
     reviews_bonus, reviews_penalty = _reviews_component(company.reviews_count)
     freshness = _freshness_bonus(company.last_review_at)
 
@@ -140,8 +142,7 @@ def compute(company: Company) -> int:
     website = _W_HAS_WEBSITE if _has_active_website(company) else 0.0
 
     total = (
-        rating_bonus + reviews_bonus + freshness + phone + contact + owner + website
-        + rating_penalty + reviews_penalty
+        rating_bonus + reviews_bonus + freshness + phone + contact + owner + website + rating_penalty + reviews_penalty
     )
     # Clamp 0..100 и в int.
     return max(0, min(100, round(total)))
@@ -158,17 +159,11 @@ async def recompute_for_company(db: AsyncSession, company_id: int) -> int | None
     if c is None:
         return None
     value = compute(c)
-    await db.execute(
-        update(Company)
-        .where(Company.id == company_id)
-        .values(lead_temperature=value)
-    )
+    await db.execute(update(Company).where(Company.id == company_id).values(lead_temperature=value))
     return value
 
 
-async def recompute_for_companies(
-    db: AsyncSession, company_ids: Iterable[int]
-) -> int:
+async def recompute_for_companies(db: AsyncSession, company_ids: Iterable[int]) -> int:
     """Bulk-пересчёт. Возвращает кол-во обработанных компаний.
 
     Делает один SELECT на всех + индивидуальные UPDATE. Для нашего scale

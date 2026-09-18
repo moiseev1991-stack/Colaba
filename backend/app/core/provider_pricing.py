@@ -100,7 +100,5 @@ def compute_cost_rub(
     if ptype == "commission":
         if amount_rub is None:
             return Decimal("0")
-        return (Decimal(str(amount_rub)) * Decimal(p.get("rate", 0))).quantize(
-            Decimal("0.000001")
-        )
+        return (Decimal(str(amount_rub)) * Decimal(p.get("rate", 0))).quantize(Decimal("0.000001"))
     return Decimal("0")

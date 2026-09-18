@@ -17,20 +17,20 @@ def _format_external_services(model, prop):
     """Format external services config for display."""
     if not model.external_services:
         return "None configured"
-    
+
     enabled = []
     for service, config in model.external_services.items():
         if isinstance(config, dict) and config.get("enabled"):
             enabled.append(service)
-    
+
     if not enabled:
         return "None enabled"
-    
+
     service_names = {
         "2captcha": "2Captcha",
         "anticaptcha": "Anti-Captcha",
     }
-    
+
     return ", ".join([service_names.get(s, s) for s in enabled])
 
 

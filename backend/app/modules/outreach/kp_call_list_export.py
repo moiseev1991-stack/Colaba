@@ -110,9 +110,7 @@ def _filter_callable_rows(items: list[JobItemRow]) -> list[tuple[JobItemRow, str
     return out
 
 
-async def build_call_list_xlsx(
-    db: AsyncSession, *, user_id: int, job_id: int
-) -> tuple[bytes, int]:
+async def build_call_list_xlsx(db: AsyncSession, *, user_id: int, job_id: int) -> tuple[bytes, int]:
     """Главная entry-point. Возвращает (bytes-файл, кол-во строк).
 
     Кол-во строк позволяет роутеру вернуть 204 No Content или 404, если
@@ -141,9 +139,7 @@ async def build_call_list_xlsx(
     for row_idx, (item, digits) in enumerate(callable_rows, start=2):
         is_mobile = is_russian_mobile(digits)
         values = _row_for_xlsx(row_idx - 1, item, digits)
-        for col_idx, ((_header, _width, fmt), value) in enumerate(
-            zip(_COLUMNS, values), start=1
-        ):
+        for col_idx, ((_header, _width, fmt), value) in enumerate(zip(_COLUMNS, values), start=1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
             if fmt == "wrap":
                 cell.alignment = Alignment(wrap_text=True, vertical="top")

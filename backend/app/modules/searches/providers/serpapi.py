@@ -21,13 +21,13 @@ async def fetch_search_results(
 ) -> List[Dict[str, Any]]:
     """
     Fetch search results from SerpAPI.
-    
+
     Args:
         query: Search query
         num_results: Number of results to fetch (max 100)
         region: Search region (ru, us, etc.)
         engine: Search engine (yandex, google, bing)
-    
+
     Returns:
         List of search results with title, url, snippet, position
     """
@@ -47,33 +47,35 @@ async def fetch_search_results(
         "engine": engine,
         "num": num_results,
     }
-    
+
     if engine == "yandex":
         params["lr"] = region  # Language region for Yandex
-    
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get("https://serpapi.com/search", params=params)
             response.raise_for_status()
             data = response.json()
-            
+
             results = []
             organic_results = data.get("organic_results", [])
-            
+
             for idx, item in enumerate(organic_results[:num_results], start=1):
                 url = item.get("link", "")
                 domain = urlparse(url).netloc if url else ""
-                
-                results.append({
-                    "position": idx,
-                    "title": item.get("title", ""),
-                    "url": url,
-                    "snippet": item.get("snippet", ""),
-                    "domain": domain,
-                })
-            
+
+                results.append(
+                    {
+                        "position": idx,
+                        "title": item.get("title", ""),
+                        "url": url,
+                        "snippet": item.get("snippet", ""),
+                        "domain": domain,
+                    }
+                )
+
             return results
-            
+
         except httpx.HTTPStatusError as e:
             raise ValueError(f"SerpAPI error: {e.response.status_code} - {e.response.text}")
         except Exception as e:

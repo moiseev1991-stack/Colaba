@@ -102,11 +102,7 @@ async def get_keyword_hits_per_result(
         stmt = (
             select(SearchResultPage.search_result_id)
             .where(SearchResultPage.search_id == search_id)
-            .where(
-                SearchResultPage.search_vector.op("@@")(
-                    func.to_tsquery("russian", per_kw_query)
-                )
-            )
+            .where(SearchResultPage.search_vector.op("@@")(func.to_tsquery("russian", per_kw_query)))
             .distinct()
         )
         rows = (await db.execute(stmt)).scalars().all()
@@ -148,7 +144,7 @@ def parse_keywords_and_query(
 # Field → which FTS document section it queries. None means "not an FTS field"
 # and is handled by SQL instead.
 _FTS_SECTION: dict[str, str | None] = {
-    "text": None,   # full document — no extra restriction
+    "text": None,  # full document — no extra restriction
     "title": "A",
     "meta": "B",
     "h1": "B",
@@ -317,20 +313,14 @@ async def apply_filter_spec(
         if field in _FTS_FIELDS and op in _TEXT_OPS:
             if not isinstance(value, str) or not value.strip():
                 continue
-            ids = await _ids_matching_fts_condition(
-                db, search_id=search_id, field=field, op=op, value=value
-            )
+            ids = await _ids_matching_fts_condition(db, search_id=search_id, field=field, op=op, value=value)
             highlight_words.extend(parse_keywords(value))
         elif field in {"domain", "site_type"}:
             if not isinstance(value, str) or not value.strip():
                 continue
-            ids = await _ids_matching_sql_condition(
-                db, search_id=search_id, field=field, op=op, value=value
-            )
+            ids = await _ids_matching_sql_condition(db, search_id=search_id, field=field, op=op, value=value)
         elif field in {"has_phone", "has_email"} and op in _BOOL_OPS:
-            ids = await _ids_matching_sql_condition(
-                db, search_id=search_id, field=field, op=op, value=""
-            )
+            ids = await _ids_matching_sql_condition(db, search_id=search_id, field=field, op=op, value="")
         else:
             continue
 

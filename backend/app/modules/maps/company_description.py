@@ -29,9 +29,7 @@ from app.modules.reviews_ai.llm import call_llm_company_description
 logger = logging.getLogger(__name__)
 
 
-async def _load_positive_quotes(
-    db: AsyncSession, company_id: int, limit: int = 5
-) -> list[str]:
+async def _load_positive_quotes(db: AsyncSession, company_id: int, limit: int = 5) -> list[str]:
     """Берёт до N коротких позитивных отзывов компании."""
     stmt = (
         select(Review.raw_text)
@@ -58,9 +56,7 @@ async def _load_positive_quotes(
     return cleaned
 
 
-async def generate_for_company(
-    db: AsyncSession, company_id: int, *, force: bool = False
-) -> str | None:
+async def generate_for_company(db: AsyncSession, company_id: int, *, force: bool = False) -> str | None:
     """Главный entry-point: генерит и сохраняет ai_description.
 
     Если описание уже есть и force=False — пропускаем и возвращаем существующее.
@@ -97,16 +93,10 @@ async def generate_for_company(
     return desc
 
 
-async def find_company_ids_without_description(
-    db: AsyncSession, company_ids: list[int]
-) -> list[int]:
+async def find_company_ids_without_description(db: AsyncSession, company_ids: list[int]) -> list[int]:
     """Из переданного списка ID вернёт только те, у кого ai_description NULL."""
     if not company_ids:
         return []
-    stmt = (
-        select(Company.id)
-        .where(Company.id.in_(company_ids))
-        .where(Company.ai_description.is_(None))
-    )
+    stmt = select(Company.id).where(Company.id.in_(company_ids)).where(Company.ai_description.is_(None))
     rows = (await db.execute(stmt)).scalars().all()
     return list(rows)

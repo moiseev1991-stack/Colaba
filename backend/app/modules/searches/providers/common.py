@@ -39,7 +39,7 @@ USER_AGENTS = [
 def get_random_user_agent() -> str:
     """
     Получить случайный User-Agent из списка.
-    
+
     Returns:
         Случайная строка User-Agent
     """
@@ -65,8 +65,10 @@ def get_proxy_config(proxy_overrides: Optional[Dict[str, Any]] = None) -> Option
     proxy_url = None
     proxy_list = None
 
-    if proxy_overrides and proxy_overrides.get("use_proxy", True) and (
-        proxy_overrides.get("proxy_url") or proxy_overrides.get("proxy_list")
+    if (
+        proxy_overrides
+        and proxy_overrides.get("use_proxy", True)
+        and (proxy_overrides.get("proxy_url") or proxy_overrides.get("proxy_list"))
     ):
         use_proxy = True
         proxy_url = proxy_overrides.get("proxy_url") or None
@@ -107,7 +109,7 @@ def get_maps_proxy() -> Optional[str]:
 async def random_delay(min_seconds: float = 1.0, max_seconds: float = 3.0):
     """
     Случайная задержка между запросами.
-    
+
     Args:
         min_seconds: Минимальная задержка в секундах
         max_seconds: Максимальная задержка в секундах
@@ -151,11 +153,11 @@ def _html_has_captcha(html_content: Optional[str]) -> bool:
 def detect_blocking(response: httpx.Response, html_content: Optional[str] = None) -> Dict[str, Any]:
     """
     Детектировать блокировку или капчу в ответе.
-    
+
     Args:
         response: HTTP ответ
         html_content: HTML содержимое страницы (опционально, для анализа)
-    
+
     Returns:
         Словарь с информацией о блокировке:
         {
@@ -164,11 +166,7 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
             "message": str
         }
     """
-    result = {
-        "blocked": False,
-        "block_type": None,
-        "message": None
-    }
+    result = {"blocked": False, "block_type": None, "message": None}
 
     # Для 403/429: если в теле страницы капча — считать block_type=captcha,
     # чтобы fetch_with_retry вернул response и провайдер мог вызвать solver
@@ -193,7 +191,7 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
         result["block_type"] = "rate_limit"
         result["message"] = "429 Too Many Requests - превышен лимит запросов"
         return result
-    
+
     # Проверка редиректов на страницы капчи
     final_url = str(response.url)
     if "/showcaptcha" in final_url or "/captcha" in final_url.lower():
@@ -201,13 +199,13 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
         result["block_type"] = "captcha"
         result["message"] = "Обнаружена капча (редирект на страницу капчи)"
         return result
-    
+
     if "/sorry" in final_url.lower() or "unusual traffic" in final_url.lower():
         result["blocked"] = True
         result["block_type"] = "captcha"
         result["message"] = "Google обнаружил подозрительный трафик"
         return result
-    
+
     # Анализ HTML содержимого
     if html_content:
         content_lower = html_content.lower()
@@ -218,7 +216,7 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
                 result["block_type"] = "captcha"
                 result["message"] = f"Обнаружена капча (ключевое слово: {keyword})"
                 return result
-        
+
         # Проверка на маленький размер ответа (может быть блокировка)
         if len(html_content) < 1000 and response.status_code == 200:
             # Проверяем, не является ли это страницей блокировки
@@ -227,7 +225,7 @@ def detect_blocking(response: httpx.Response, html_content: Optional[str] = None
                 result["block_type"] = "forbidden"
                 result["message"] = "Возможная блокировка (маленький размер ответа с ключевыми словами)"
                 return result
-    
+
     return result
 
 
@@ -243,7 +241,7 @@ async def fetch_with_retry(
 ) -> Optional[httpx.Response]:
     """
     Выполнить HTTP запрос с ретраями и защитой от блокировок.
-    
+
     Args:
         url: URL для запроса
         max_retries: Максимальное количество попыток
@@ -251,12 +249,12 @@ async def fetch_with_retry(
         timeout: Таймаут запроса в секундах
         use_proxy: Использовать прокси если настроено
         referer: Реферер для запроса (опционально, напр. https://yandex.ru/ или https://www.google.com/)
-    
+
     Returns:
         Response объект или None если все попытки провалились
     """
     proxy_config = get_proxy_config(proxy_overrides) if use_proxy else None
-    
+
     for attempt in range(max_retries):
         try:
             # Случайная задержка перед запросом (кроме первой попытки)
@@ -266,7 +264,7 @@ async def fetch_with_retry(
             else:
                 # Небольшая случайная задержка перед первым запросом
                 await random_delay(0.5, 1.5)
-            
+
             # Создаем клиент с прокси и случайным User-Agent; заголовки «как у браузера»
             headers = {
                 "User-Agent": get_random_user_agent(),
@@ -284,7 +282,7 @@ async def fetch_with_retry(
             }
             if referer:
                 headers["Referer"] = referer
-            
+
             async with httpx.AsyncClient(
                 timeout=timeout,
                 follow_redirects=True,
@@ -308,21 +306,20 @@ async def fetch_with_retry(
                         return response
 
                     logger.warning(
-                        f"Blocking detected for {url} (attempt {attempt + 1}/{max_retries}): "
-                        f"{blocking_info['message']}"
+                        f"Blocking detected for {url} (attempt {attempt + 1}/{max_retries}): {blocking_info['message']}"
                     )
                     if attempt < max_retries - 1:
-                        delay = base_delay * (2 ** attempt) * 2
+                        delay = base_delay * (2**attempt) * 2
                         await asyncio.sleep(delay)
                         continue
                     else:
                         logger.error(f"All attempts failed due to blocking: {blocking_info['message']}")
                         return None
-                
+
                 # Если статус 200 и нет блокировок - возвращаем ответ
                 if response.status_code == 200:
                     return response
-                
+
                 # Для других статусов пробуем еще раз
                 if attempt < max_retries - 1:
                     logger.warning(f"Status {response.status_code} for {url}, retrying...")
@@ -330,7 +327,7 @@ async def fetch_with_retry(
                 else:
                     logger.error(f"Failed to fetch {url} after {max_retries} attempts: status {response.status_code}")
                     return None
-                    
+
         except httpx.TimeoutException as e:
             logger.warning(f"Timeout for {url} (attempt {attempt + 1}/{max_retries})")
             if attempt < max_retries - 1:
@@ -338,7 +335,7 @@ async def fetch_with_retry(
             else:
                 logger.error(f"Timeout for {url} after {max_retries} attempts")
                 return None
-                
+
         except httpx.RequestError as e:
             logger.warning(f"Request error for {url} (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
@@ -346,7 +343,7 @@ async def fetch_with_retry(
             else:
                 logger.error(f"Request error for {url} after {max_retries} attempts: {e}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Unexpected error for {url} (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
@@ -354,5 +351,5 @@ async def fetch_with_retry(
             else:
                 logger.error(f"Unexpected error for {url} after {max_retries} attempts: {e}")
                 return None
-    
+
     return None

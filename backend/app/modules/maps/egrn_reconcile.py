@@ -76,27 +76,22 @@ def _same_person(a: str, b: str) -> bool:
     return True
 
 
-async def reconcile_egrn_for_company(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def reconcile_egrn_for_company(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Сверяет все ЕГРН-записи компании с учредителями/директором из ЕГРЮЛ.
     Проставляет egrn_matches_founder и повышает confidence совпавшего
     учредителя.
     """
-    persons = (await db.execute(
-        select(CompanyDecisionMaker).where(
-            CompanyDecisionMaker.company_id == company_id
-        )
-    )).scalars().all()
+    persons = (
+        (await db.execute(select(CompanyDecisionMaker).where(CompanyDecisionMaker.company_id == company_id)))
+        .scalars()
+        .all()
+    )
 
     egrn_persons = [p for p in persons if p.source == "egrn"]
     if not egrn_persons:
         return {"status": "no_egrn", "company_id": company_id}
 
-    egrul_persons = [
-        p for p in persons
-        if p.source in ("egrul_founder", "egrul_director")
-    ]
+    egrul_persons = [p for p in persons if p.source in ("egrul_founder", "egrul_director")]
     if not egrul_persons:
         # ЕГРН есть, ЕГРЮЛ нет — сверять не с чем. Ставим False всем
         # ЕГРН-записям (это справка, не ЛПР).
@@ -120,9 +115,7 @@ async def reconcile_egrn_for_company(
 
         matched = match is not None
         await db.execute(
-            update(CompanyDecisionMaker)
-            .where(CompanyDecisionMaker.id == e.id)
-            .values(egrn_matches_founder=matched)
+            update(CompanyDecisionMaker).where(CompanyDecisionMaker.id == e.id).values(egrn_matches_founder=matched)
         )
         if match is not None:
             matches += 1
@@ -131,9 +124,7 @@ async def reconcile_egrn_for_company(
             # для будущего «личное общение проведено».
             new_conf = min(0.99, float(match.confidence or 0.0) + 0.05)
             await db.execute(
-                update(CompanyDecisionMaker)
-                .where(CompanyDecisionMaker.id == match.id)
-                .values(confidence=new_conf)
+                update(CompanyDecisionMaker).where(CompanyDecisionMaker.id == match.id).values(confidence=new_conf)
             )
 
     await db.commit()

@@ -50,9 +50,7 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         except ImportError:
             CompanyLegal = None  # type: ignore
         if CompanyLegal is not None:
-            query = query.join(
-                CompanyLegal, CompanyLegal.company_id == Company.id
-            ).where(CompanyLegal.status == "ok")
+            query = query.join(CompanyLegal, CompanyLegal.company_id == Company.id).where(CompanyLegal.status == "ok")
             if filters.min_revenue is not None:
                 query = query.where(CompanyLegal.revenue >= filters.min_revenue)
             if filters.min_age_years is not None:
@@ -77,22 +75,25 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
     if filters.source_filter and filters.source_filter != "all":
         try:
             from app.models.maps import CompanySource
+
             query = query.where(
                 exists(
-                    select(CompanySource.id)
-                    .where(
+                    select(CompanySource.id).where(
                         CompanySource.company_id == Company.id,
                         CompanySource.source == filters.source_filter,
                     )
                 )
             )
         except ImportError:
-            logger.info("apply_filters: source_filter указан, но CompanySource ещё не создан (миграция 028) — фильтр игнорируется")
+            logger.info(
+                "apply_filters: source_filter указан, но CompanySource ещё не создан (миграция 028) — фильтр игнорируется"
+            )
     if filters.has_website is not None:
         # 2GIS иногда отдаёт "", " " или строку только из пробелов —
         # фронт-индикатор такие считает «нет сайта», SQL-фильтр должен
         # вести себя так же, иначе фильтр и pill расходятся.
         from sqlalchemy import func
+
         trimmed = func.btrim(func.coalesce(Company.website, ""))
         if filters.has_website:
             query = query.where(trimmed != "")
@@ -106,6 +107,7 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         try:
             from app.models.company_legal import CompanyLegal as _CL
             from sqlalchemy import and_ as _and, or_ as _or
+
             normal = [v for v in filters.opf_in if v and v != "__unknown__"]
             include_unknown = "__unknown__" in filters.opf_in
             conds = []
@@ -161,7 +163,9 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
             else:
                 query = query.where(and_(~legal_dir_exists, ~dm_exists))
         except ImportError:
-            logger.info("apply_filters: has_lpr задан, но модели CompanyLegal/CompanyDecisionMaker недоступны — фильтр игнорируется")
+            logger.info(
+                "apply_filters: has_lpr задан, но модели CompanyLegal/CompanyDecisionMaker недоступны — фильтр игнорируется"
+            )
 
     # ТЗ Marketing-DM 2026-06-20 §4.2: пресет «ищут маркетолога» — только
     # компании с активной hh-вакансией маркетолога.
@@ -177,20 +181,10 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
 
     if contains_terms:
         conds = [Review.raw_text.ilike(f"%{t}%") for t in contains_terms]
-        query = query.where(
-            exists(
-                select(Review.id)
-                .where(Review.company_id == Company.id, or_(*conds))
-            )
-        )
+        query = query.where(exists(select(Review.id).where(Review.company_id == Company.id, or_(*conds))))
     if excludes_terms:
         conds = [Review.raw_text.ilike(f"%{t}%") for t in excludes_terms]
-        query = query.where(
-            ~exists(
-                select(Review.id)
-                .where(Review.company_id == Company.id, or_(*conds))
-            )
-        )
+        query = query.where(~exists(select(Review.id).where(Review.company_id == Company.id, or_(*conds))))
 
     # ---- WHERE: pain tags (требует таблиц из миграции 016)
     pain_sort_active = filters.sort_by == "pain_desc"
@@ -198,7 +192,9 @@ def apply_filters(query: Select, filters: MapSearchFilter) -> Select:
         try:
             from app.models.pain_tag import CompanyPainScore  # type: ignore
         except ImportError:
-            logger.info("apply_filters: pain_tag_ids указаны, но модель ещё не создана (миграция 016 не накатана) — фильтр игнорируется")
+            logger.info(
+                "apply_filters: pain_tag_ids указаны, но модель ещё не создана (миграция 016 не накатана) — фильтр игнорируется"
+            )
             pain_sort_active = False  # не можем сортировать по тому, чего нет
         else:
             query = query.join(

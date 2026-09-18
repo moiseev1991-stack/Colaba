@@ -129,9 +129,7 @@ async def verify_form_token(token: str, fill_time_ms: int) -> tuple[bool, str]:
         if not ok:
             return False, "token_reuse"
     except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "antispam.redis_unavailable check=used_token err=%r", exc
-        )
+        logger.warning("antispam.redis_unavailable check=used_token err=%r", exc)
 
     return True, "ok"
 
@@ -193,7 +191,5 @@ async def check_dedup(ip: str, contact: str) -> bool:
         ok = await redis.set(key, "1", ex=DEDUP_TTL_S, nx=True)
         return bool(ok)
     except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "antispam.redis_unavailable check=dedup err=%r", exc
-        )
+        logger.warning("antispam.redis_unavailable check=dedup err=%r", exc)
         return True
