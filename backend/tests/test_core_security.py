@@ -76,10 +76,12 @@ class TestJWTTokens:
         payload = decode_token(token)
         assert payload.get("type") == "refresh"
 
-    def test_access_token_no_type(self):
+    def test_access_token_has_access_type(self):
+        # 18.09 (КР-1): access обязан иметь type=access — refresh больше
+        # не может проходить как access в зависимостях.
         token = create_access_token(data={"sub": "1"})
         payload = decode_token(token)
-        assert "type" not in payload
+        assert payload.get("type") == "access"
 
     def test_custom_expiry(self):
         token = create_access_token(data={"sub": "1"}, expires_delta=timedelta(seconds=1))
