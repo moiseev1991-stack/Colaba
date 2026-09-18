@@ -82,78 +82,141 @@ async def admin_overview(db: AsyncSession = Depends(get_db)):
 @router.get("/users")
 async def admin_users(
     q: str = Query(default="", description="Поиск по email"),
+    status: str = Query(
+        default="",
+        pattern="^(|active|blocked|superuser|subscriber|zero_balance)$",
+        description="Фильтр: активные/заблокированные/админы/с подпиской/без кредитов",
+    ),
+    sort: str = Query(default="created_desc", pattern="^(created_desc|created_asc|email_asc|id_desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Пользователи с биллинг-статусом: баланс, подписка, платежи."""
+    """Пользователи с биллинг-статусом: баланс, подписка + фильтры и пагинация.
+
+    Практики enterprise-таблиц (Pencil&Paper/NN/g): пагинация, фильтры по
+    состоянию, предсказуемый порядок. Балансы/подписки читаются пачкой
+    для страницы (2 запроса), а не N+1.
+    """
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    cond = User.email.ilike(f"%{q}%") if q else True
+
+    conds = []
+    if q:
+        conds.append(User.email.ilike(f"%{q}%"))
+    if status == "active":
+        conds.append(User.is_active.is_(True))
+    elif status == "blocked":
+        conds.append(User.is_active.is_(False))
+    elif status == "superuser":
+        conds.append(User.is_superuser.is_(True))
+    elif status in ("subscriber", "zero_balance"):
+        # фильтр по наличию активной подписки / остатку кредитов — через
+        # подзапросы, чтобы не тащить все строки в python
+        sub_exists = (
+            select(Subscription.id)
+            .where(
+                Subscription.user_id == User.id,
+                Subscription.status == "active",
+                Subscription.period_end > now,
+            )
+            .exists()
+        )
+        bucket_sum = (
+            select(func.coalesce(func.sum(CreditBucket.amount_granted - CreditBucket.amount_spent), 0))
+            .where(
+                CreditBucket.user_id == User.id,
+                CreditBucket.amount_granted > CreditBucket.amount_spent,
+                or_(CreditBucket.expires_at.is_(None), CreditBucket.expires_at > now),
+            )
+            .scalar_subquery()
+        )
+        if status == "subscriber":
+            conds.append(sub_exists)
+        else:
+            conds.append(bucket_sum == 0)
+
+    from sqlalchemy import and_
+
+    cond = and_(*conds) if conds else True
+
+    order = {
+        "created_desc": User.id.desc(),
+        "created_asc": User.id.asc(),
+        "email_asc": User.email.asc(),
+        "id_desc": User.id.desc(),
+    }[sort]
 
     total = (await db.execute(select(func.count()).select_from(User).where(cond))).scalar_one()
 
     rows = (
-        (
-            await db.execute(
-                select(User).where(cond).order_by(User.id.desc()).limit(page_size).offset((page - 1) * page_size)
-            )
-        )
+        (await db.execute(select(User).where(cond).order_by(order).limit(page_size).offset((page - 1) * page_size)))
         .scalars()
         .all()
     )
 
-    items = []
-    for u in rows:
-        balance = 0
-        buckets = (
+    ids = [u.id for u in rows]
+    buckets_by_user: dict[int, int] = {i: 0 for i in ids}
+    subs_by_user: dict[int, Subscription] = {}
+    if ids:
+        for b in (
             (
                 await db.execute(
                     select(CreditBucket).where(
-                        CreditBucket.user_id == u.id,
+                        CreditBucket.user_id.in_(ids),
                         CreditBucket.amount_granted > CreditBucket.amount_spent,
                     )
                 )
             )
             .scalars()
             .all()
-        )
-        balance = sum(
-            b.amount_granted - b.amount_spent
-            for b in buckets
-            if b.expires_at is None or b.expires_at.replace(tzinfo=None) > now
-        )
-        sub = (
-            await db.execute(
-                select(Subscription)
-                .where(
-                    Subscription.user_id == u.id,
-                    Subscription.status == "active",
-                    Subscription.period_end > now,
+        ):
+            if b.expires_at is None or b.expires_at.replace(tzinfo=None) > now:
+                buckets_by_user[b.user_id] = buckets_by_user.get(b.user_id, 0) + (b.amount_granted - b.amount_spent)
+        for s in (
+            (
+                await db.execute(
+                    select(Subscription)
+                    .where(
+                        Subscription.user_id.in_(ids),
+                        Subscription.status == "active",
+                        Subscription.period_end > now,
+                    )
+                    .order_by(Subscription.period_end.desc())
                 )
-                .order_by(Subscription.period_end.desc())
-                .limit(1)
             )
-        ).scalar_one_or_none()
-        items.append(
-            {
-                "id": u.id,
-                "email": u.email,
-                "is_superuser": bool(u.is_superuser),
-                "created_at": u.created_at.isoformat() if u.created_at else None,
-                "balance": balance,
-                "subscription": (
-                    {
-                        "tariff_code": sub.tariff_code,
-                        "period_end": sub.period_end.isoformat(),
-                        "auto_renew": sub.auto_renew,
-                    }
-                    if sub
-                    else None
-                ),
-            }
-        )
+            .scalars()
+            .all()
+        ):
+            subs_by_user.setdefault(s.user_id, s)
 
-    return {"items": items, "total": total, "page": page, "page_size": page_size}
+    items = [
+        {
+            "id": u.id,
+            "email": u.email,
+            "is_active": bool(u.is_active),
+            "is_superuser": bool(u.is_superuser),
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "balance": buckets_by_user.get(u.id, 0),
+            "subscription": (
+                {
+                    "tariff_code": subs_by_user[u.id].tariff_code,
+                    "period_end": subs_by_user[u.id].period_end.isoformat(),
+                    "auto_renew": subs_by_user[u.id].auto_renew,
+                }
+                if u.id in subs_by_user
+                else None
+            ),
+        }
+        for u in rows
+    ]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, -(-total // page_size)),
+    }
 
 
 class AdminGrantRequest(BaseModel):
@@ -296,3 +359,193 @@ async def admin_payments(
         "total": total,
         "page": page,
     }
+
+
+@router.get("/users/{user_id}/detail")
+async def admin_user_detail(user_id: int, db: AsyncSession = Depends(get_db)):
+    """Карточка юзера для админа (master-detail): профиль, активность,
+    гранты кредитов, подписка, последние транзакции."""
+    from app.models.maps import MapSearch
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    searches_stat = (
+        await db.execute(select(func.count(), func.max(MapSearch.created_at)).where(MapSearch.user_id == user_id))
+    ).one()
+
+    buckets = (
+        (
+            await db.execute(
+                select(CreditBucket)
+                .where(
+                    CreditBucket.user_id == user_id,
+                    CreditBucket.amount_granted > CreditBucket.amount_spent,
+                )
+                .order_by(CreditBucket.expires_at.asc().nullslast())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    balance = sum(
+        b.amount_granted - b.amount_spent
+        for b in buckets
+        if b.expires_at is None or b.expires_at.replace(tzinfo=None) > now
+    )
+
+    sub = (
+        await db.execute(
+            select(Subscription)
+            .where(
+                Subscription.user_id == user_id,
+                Subscription.status == "active",
+                Subscription.period_end > now,
+            )
+            .order_by(Subscription.period_end.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    txs, tx_total = await credits.list_transactions(db, user_id, limit=10)
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "is_active": bool(user.is_active),
+        "is_superuser": bool(user.is_superuser),
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "stats": {
+            "searches_count": searches_stat[0] or 0,
+            "last_search_at": searches_stat[1].isoformat() if searches_stat[1] else None,
+        },
+        "balance": balance,
+        "buckets": [
+            {
+                "source": b.source,
+                "remaining": b.amount_granted - b.amount_spent,
+                "expires_at": b.expires_at.isoformat() if b.expires_at else None,
+            }
+            for b in buckets
+            if b.expires_at is None or b.expires_at.replace(tzinfo=None) > now
+        ],
+        "subscription": (
+            {
+                "tariff_code": sub.tariff_code,
+                "period_end": sub.period_end.isoformat(),
+                "auto_renew": sub.auto_renew,
+            }
+            if sub
+            else None
+        ),
+        "transactions": [
+            {
+                "id": t.id,
+                "type": t.type,
+                "amount": t.amount,
+                "operation": t.operation,
+                "comment": t.comment,
+                "created_at": t.created_at.isoformat(),
+            }
+            for t in txs
+        ],
+        "transactions_total": tx_total,
+    }
+
+
+class AdminUserStatusRequest(BaseModel):
+    is_active: bool
+
+
+@router.post("/users/{user_id}/status")
+async def admin_user_status(
+    user_id: int,
+    payload: AdminUserStatusRequest,
+    admin=Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Блокировка/разблокировка (практика: нельзя заблокировать себя;
+    красная кнопка + подтверждение на фронте). Блокировка закрывает вход,
+    существующие JWT живут до экспирации — ограничение MVP."""
+    if user_id == admin.id and not payload.is_active:
+        raise HTTPException(status_code=400, detail="Нельзя заблокировать самого себя")
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.is_active = payload.is_active
+    await db.commit()
+    logger.info("ADMIN USER STATUS: admin=%s user=%s is_active=%s", admin.email, user_id, payload.is_active)
+    return {"user_id": user_id, "is_active": payload.is_active}
+
+
+class AdminUserRoleRequest(BaseModel):
+    is_superuser: bool
+
+
+@router.post("/users/{user_id}/role")
+async def admin_user_role(
+    user_id: int,
+    payload: AdminUserRoleRequest,
+    admin=Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """Выдача/снятие прав суперадмина (нельзя снять себе — защита от лок-аута)."""
+    if user_id == admin.id and not payload.is_superuser:
+        raise HTTPException(status_code=400, detail="Нельзя снять права админа у самого себя")
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.is_superuser = payload.is_superuser
+    await db.commit()
+    logger.info("ADMIN USER ROLE: admin=%s user=%s is_superuser=%s", admin.email, user_id, payload.is_superuser)
+    return {"user_id": user_id, "is_superuser": payload.is_superuser}
+
+
+@router.get("/users/export")
+async def admin_users_export(
+    q: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """CSV всех (или найденных фильтром) юзеров — для таблиц/поддержки."""
+    from fastapi.responses import PlainTextResponse
+
+    cond = User.email.ilike(f"%{q}%") if q else True
+    rows = (await db.execute(select(User).where(cond).order_by(User.id))).scalars().all()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    ids = [u.id for u in rows]
+    bal: dict[int, int] = {i: 0 for i in ids}
+    if ids:
+        for b in (
+            (
+                await db.execute(
+                    select(CreditBucket).where(
+                        CreditBucket.user_id.in_(ids),
+                        CreditBucket.amount_granted > CreditBucket.amount_spent,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        ):
+            if b.expires_at is None or b.expires_at.replace(tzinfo=None) > now:
+                bal[b.user_id] = bal.get(b.user_id, 0) + (b.amount_granted - b.amount_spent)
+
+    lines = ["id;email;created;active;superuser;balance"]
+    for u in rows:
+        lines.append(
+            f"{u.id};{u.email};{(u.created_at or '').strftime('%Y-%m-%d')};"
+            f"{'yes' if u.is_active else 'no'};{'yes' if u.is_superuser else 'no'};{bal.get(u.id, 0)}"
+        )
+    csv = "\n".join(lines)
+    return PlainTextResponse(
+        csv,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=users.csv"},
+    )
