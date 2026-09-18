@@ -36,9 +36,9 @@ interface ColdEmailCalculatorProps {
 }
 
 interface StoredPrefs {
-  reply_rate_pct: number;   // 0.5–5
-  deal_rate_pct: number;    // 5–35
-  avg_deal_value: number;   // ₽
+  reply_rate_pct: number; // 0.5–5
+  deal_rate_pct: number; // 5–35
+  avg_deal_value: number; // ₽
   collapsed?: boolean;
 }
 
@@ -59,7 +59,12 @@ function loadPrefs(): StoredPrefs {
     return {
       reply_rate_pct: clampNumber(parsed.reply_rate_pct, 0.1, 10, DEFAULTS.reply_rate_pct),
       deal_rate_pct: clampNumber(parsed.deal_rate_pct, 1, 60, DEFAULTS.deal_rate_pct),
-      avg_deal_value: clampNumber(parsed.avg_deal_value, 1_000, 10_000_000, DEFAULTS.avg_deal_value),
+      avg_deal_value: clampNumber(
+        parsed.avg_deal_value,
+        1_000,
+        10_000_000,
+        DEFAULTS.avg_deal_value,
+      ),
       collapsed: Boolean(parsed.collapsed),
     };
   } catch {
@@ -134,31 +139,31 @@ export function ColdEmailCalculator({
       <button
         type="button"
         onClick={() => update({ collapsed: !collapsed })}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[hsl(var(--surface-2))]"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-ui-surface-2"
         aria-expanded={!collapsed}
       >
         <span className="flex items-center gap-2">
-          <Calculator className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-          <span className="font-display text-sm font-semibold tracking-tight text-[hsl(var(--text))]">
+          <Calculator className="h-4 w-4 text-ui-accent" />
+          <span className="font-display text-sm font-semibold tracking-tight text-ui-text">
             {title}
           </span>
           {/* Свёрнутое состояние — показываем компактный итог справа от заголовка. */}
           {collapsed && letterCount > 0 && (
-            <span className="ml-1 text-xs text-[hsl(var(--muted))]">
+            <span className="ml-1 text-xs text-ui-text-muted">
               ~{formatCount(result.deals)} сделок · {formatRub(result.revenue)}
             </span>
           )}
         </span>
         <ChevronDown
           className={cn(
-            'h-4 w-4 shrink-0 text-[hsl(var(--muted))] transition-transform',
+            'h-4 w-4 shrink-0 text-ui-text-muted transition-transform',
             !collapsed && 'rotate-180',
           )}
         />
       </button>
 
       {!collapsed && (
-        <div className="space-y-4 border-t border-[hsl(var(--border))] px-4 py-4">
+        <div className="space-y-4 border-t border-ui-border px-4 py-4">
           {/* Слайдеры */}
           <SliderRow
             label="Доля ответов"
@@ -182,10 +187,8 @@ export function ColdEmailCalculator({
           />
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-xs font-medium text-[hsl(var(--text))]">
-                Средний чек
-              </span>
-              <span className="font-mono text-xs tabular-nums text-[hsl(var(--text))]">
+              <span className="text-xs font-medium text-ui-text">Средний чек</span>
+              <span className="text-xs tabular-nums text-ui-text">
                 {formatRub(prefs.avg_deal_value)}
               </span>
             </div>
@@ -198,42 +201,31 @@ export function ColdEmailCalculator({
                 const n = Number(e.target.value);
                 if (Number.isFinite(n) && n >= 0) update({ avg_deal_value: n });
               }}
-              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-small tabular-nums focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-control border border-ui-border bg-ui-surface px-2.5 py-1.5 text-small tabular-nums text-ui-text focus:border-ui-accent focus:outline-none focus:ring-4 focus:ring-ui-accent/15"
             />
           </div>
 
           {/* Воронка-результат */}
-          <div className="rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 to-white px-3 py-3 dark:border-violet-800/40 dark:from-violet-950/30 dark:to-transparent">
-            <FunnelLine
-              label="Писем уйдёт"
-              value={letterCount.toLocaleString('ru-RU')}
-              dim
-            />
-            <FunnelLine
-              label="Ожидаем ответов"
-              value={`~${formatCount(result.replies)}`}
-            />
-            <FunnelLine
-              label="Из них сделок"
-              value={`~${formatCount(result.deals)}`}
-            />
-            <div className="mt-2 border-t border-violet-200 pt-2 dark:border-violet-800/40">
+          <div className="rounded-control border border-ui-accent/25 bg-ui-accent/[.05] px-3 py-3">
+            <FunnelLine label="Писем уйдёт" value={letterCount.toLocaleString('ru-RU')} dim />
+            <FunnelLine label="Ожидаем ответов" value={`~${formatCount(result.replies)}`} />
+            <FunnelLine label="Из них сделок" value={`~${formatCount(result.deals)}`} />
+            <div className="mt-2 border-t border-ui-accent/35 pt-2">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted))]">
+                <span className="text-xs font-medium uppercase tracking-wider text-ui-text-muted">
                   Выручка
                 </span>
-                <span className="font-display text-xl font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+                <span className="font-display text-xl font-semibold tabular-nums text-ui-accent">
                   {formatRub(result.revenue)}
                 </span>
               </div>
             </div>
           </div>
 
-          <p className="text-xs leading-relaxed text-[hsl(var(--muted))]">
-            Цифры — оценка, не гарантия. На реальный отклик влияют качество
-            болей, корректность email-а у компании, спам-репутация домена,
-            время суток отправки. Используй как ориентир для решения
-            «сколько писать сегодня».
+          <p className="text-xs leading-relaxed text-ui-text-muted">
+            Цифры — оценка, не гарантия. На реальный отклик влияют качество болей, корректность
+            email-а у компании, спам-репутация домена, время суток отправки. Используй как ориентир
+            для решения «сколько писать сегодня».
           </p>
         </div>
       )}
@@ -252,23 +244,12 @@ interface SliderRowProps {
   onChange: (v: number) => void;
 }
 
-function SliderRow({
-  label,
-  hint,
-  value,
-  min,
-  max,
-  step,
-  unit = '',
-  onChange,
-}: SliderRowProps) {
+function SliderRow({ label, hint, value, min, max, step, unit = '', onChange }: SliderRowProps) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-[hsl(var(--text))]">
-          {label}
-        </span>
-        <span className="font-mono text-xs tabular-nums text-[hsl(var(--text))]">
+        <span className="text-xs font-medium text-ui-text">{label}</span>
+        <span className="text-xs tabular-nums text-ui-text">
           {value.toFixed(step < 1 ? 1 : 0).replace('.', ',')}
           {unit}
         </span>
@@ -280,12 +261,10 @@ function SliderRow({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-100 accent-violet-600 dark:bg-violet-950/60"
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-ui-accent/10 accent-[hsl(var(--color-accent))]"
         aria-label={label}
       />
-      <p className="mt-1 text-xs leading-tight text-[hsl(var(--muted))]">
-        {hint}
-      </p>
+      <p className="mt-1 text-xs leading-tight text-ui-text-muted">{hint}</p>
     </div>
   );
 }
@@ -301,11 +280,11 @@ function FunnelLine({ label, value, dim }: FunnelLineProps) {
     <div
       className={cn(
         'flex items-baseline justify-between gap-2 py-0.5 text-small',
-        dim && 'text-[hsl(var(--muted))]',
+        dim && 'text-ui-text-muted',
       )}
     >
       <span>{label}</span>
-      <span className="font-mono tabular-nums">{value}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }
