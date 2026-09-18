@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import {
+  Check,
   Copy,
   ExternalLink,
   Ban,
@@ -40,14 +41,14 @@ type SortOrder = 'asc' | 'desc';
 // Visual config for the «тип» column. Order in this map also drives sort order:
 // company first, junk later. Values are ASCII-friendly so they're stable across locales.
 const SITE_TYPE_META: Record<SiteType, { label: string; tint: string; sortRank: number }> = {
-  company: { label: 'фирма',     tint: 'hsl(var(--success))',          sortRank: 0 },
-  market:  { label: 'маркет',    tint: '#F59E0B',                       sortRank: 1 },
-  catalog: { label: 'каталог',   tint: '#A78BFA',                       sortRank: 2 },
-  social:  { label: 'соцсеть',   tint: '#26A5E4',                       sortRank: 3 },
-  news:    { label: 'новости',   tint: '#94A3B8',                       sortRank: 4 },
-  gov:     { label: 'госорган',  tint: '#64748B',                       sortRank: 5 },
-  broken:  { label: 'битый',     tint: 'hsl(var(--danger))',           sortRank: 6 },
-  unknown: { label: '?',         tint: 'hsl(var(--muted))',            sortRank: 7 },
+  company: { label: 'фирма', tint: 'hsl(var(--success))', sortRank: 0 },
+  market: { label: 'маркет', tint: '#F59E0B', sortRank: 1 },
+  catalog: { label: 'каталог', tint: '#A78BFA', sortRank: 2 },
+  social: { label: 'соцсеть', tint: '#26A5E4', sortRank: 3 },
+  news: { label: 'новости', tint: '#94A3B8', sortRank: 4 },
+  gov: { label: 'госорган', tint: '#64748B', sortRank: 5 },
+  broken: { label: 'битый', tint: 'hsl(var(--danger))', sortRank: 6 },
+  unknown: { label: '?', tint: 'hsl(var(--muted))', sortRank: 7 },
 };
 
 function statusLabel(s: LeadRow['status']): string {
@@ -113,8 +114,16 @@ function detectMessengers(r: LeadRow): Messengers {
   }
 
   return {
-    tg: { has: Boolean(tgHandle) || /\btelegram\b/i.test(haystack), handle: tgHandle, url: tgUrlStr },
-    vk: { has: Boolean(vkHandle) || /\bвконтакте\b/i.test(haystack), handle: vkHandle, url: vkUrlStr },
+    tg: {
+      has: Boolean(tgHandle) || /\btelegram\b/i.test(haystack),
+      handle: tgHandle,
+      url: tgUrlStr,
+    },
+    vk: {
+      has: Boolean(vkHandle) || /\bвконтакте\b/i.test(haystack),
+      handle: vkHandle,
+      url: vkUrlStr,
+    },
   };
 }
 
@@ -137,14 +146,12 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
     leads: [],
   });
 
-
   // Decorate each row with derived fields used both in the UI and for sorting.
   const decorated = useMemo(() => {
     return results.map((r, originalIdx) => {
       const company =
-        (r.titleFromSearch ?? r.sitePageTitle ?? '')
-          .replace(/\s+[|—–-]\s+.*$/, '')
-          .trim() || r.domain;
+        (r.titleFromSearch ?? r.sitePageTitle ?? '').replace(/\s+[|—–-]\s+.*$/, '').trim() ||
+        r.domain;
       // Prefer the backend-cleaned description; the raw fields stay as graceful fallbacks
       // for old rows that ran before the classifier shipped.
       const description =
@@ -168,12 +175,22 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
       // unknown stays visible because we'd rather leak a real lead than hide one.
       if (companiesOnly && siteType !== 'company' && siteType !== 'unknown') return false;
       if (q) {
-        const hay = `${row.domain} ${company} ${description} ${row.phone ?? ''} ${row.email ?? ''}`.toLowerCase();
+        const hay =
+          `${row.domain} ${company} ${description} ${row.phone ?? ''} ${row.email ?? ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [decorated, filterPhoneOnly, filterEmailOnly, filterTgOnly, filterVkOnly, hideErrors, companiesOnly, searchQuery]);
+  }, [
+    decorated,
+    filterPhoneOnly,
+    filterEmailOnly,
+    filterTgOnly,
+    filterVkOnly,
+    hideErrors,
+    companiesOnly,
+    searchQuery,
+  ]);
 
   // Sorting
   const sorted = useMemo(() => {
@@ -271,9 +288,8 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
     (rows: LeadRow[]): LeadValues[] =>
       rows.map((r) => {
         const company =
-          (r.titleFromSearch ?? r.sitePageTitle ?? '')
-            .replace(/\s+[|—–-]\s+.*$/, '')
-            .trim() || r.domain;
+          (r.titleFromSearch ?? r.sitePageTitle ?? '').replace(/\s+[|—–-]\s+.*$/, '').trim() ||
+          r.domain;
         return {
           company,
           domain: r.domain,
@@ -300,7 +316,10 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
   };
 
   const exportSelected = () => {
-    const rows = selectedIds.size > 0 ? results.filter((r) => selectedIds.has(r.id)) : sorted.map((d) => d.row);
+    const rows =
+      selectedIds.size > 0
+        ? results.filter((r) => selectedIds.has(r.id))
+        : sorted.map((d) => d.row);
     if (rows.length === 0) {
       toast.error('Нет данных для экспорта');
       return;
@@ -310,7 +329,12 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
         domain: r.domain,
         type: r.siteType ?? '',
         title: r.titleFromSearch ?? '',
-        description: r.cleanDescription ?? r.siteMetaDescription ?? r.sitePageTitle ?? r.snippetFromSearch ?? '',
+        description:
+          r.cleanDescription ??
+          r.siteMetaDescription ??
+          r.sitePageTitle ??
+          r.snippetFromSearch ??
+          '',
         phone: r.phone ?? '',
         email: r.email ?? '',
         status: r.status,
@@ -334,14 +358,19 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
     };
   }, [results, decorated]);
 
-  const allOnPageSelected = pageItems.length > 0 && pageItems.every(({ row }) => selectedIds.has(row.id));
+  const allOnPageSelected =
+    pageItems.length > 0 && pageItems.every(({ row }) => selectedIds.has(row.id));
 
   return (
     <div className="w-full">
       {/* Toolbar */}
       <div
         className="flex flex-wrap items-center gap-3 mb-3 px-4 py-3"
-        style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 6 }}
+        style={{
+          background: 'hsl(var(--surface))',
+          border: '1px solid hsl(var(--border))',
+          borderRadius: 6,
+        }}
       >
         {/* Search */}
         <div
@@ -352,7 +381,10 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
             borderRadius: 4,
           }}
         >
-          <SearchIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(var(--muted))' }} />
+          <SearchIcon
+            className="h-3.5 w-3.5 flex-shrink-0"
+            style={{ color: 'hsl(var(--muted))' }}
+          />
           <input
             type="text"
             value={searchQuery}
@@ -379,26 +411,53 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
 
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
-          <FilterToggle checked={companiesOnly} onChange={setCompaniesOnly} label="только компании" count={counts.companies} />
-          <FilterToggle checked={filterPhoneOnly} onChange={setFilterPhoneOnly} label="с телефоном" count={counts.withPhone} />
-          <FilterToggle checked={filterEmailOnly} onChange={setFilterEmailOnly} label="с email" count={counts.withEmail} />
-          <FilterToggle checked={filterTgOnly} onChange={setFilterTgOnly} label="с Telegram" count={counts.withTg} />
-          <FilterToggle checked={filterVkOnly} onChange={setFilterVkOnly} label="с VK" count={counts.withVk} />
+          <FilterToggle
+            checked={companiesOnly}
+            onChange={setCompaniesOnly}
+            label="только компании"
+            count={counts.companies}
+          />
+          <FilterToggle
+            checked={filterPhoneOnly}
+            onChange={setFilterPhoneOnly}
+            label="с телефоном"
+            count={counts.withPhone}
+          />
+          <FilterToggle
+            checked={filterEmailOnly}
+            onChange={setFilterEmailOnly}
+            label="с email"
+            count={counts.withEmail}
+          />
+          <FilterToggle
+            checked={filterTgOnly}
+            onChange={setFilterTgOnly}
+            label="с Telegram"
+            count={counts.withTg}
+          />
+          <FilterToggle
+            checked={filterVkOnly}
+            onChange={setFilterVkOnly}
+            label="с VK"
+            count={counts.withVk}
+          />
           <FilterToggle checked={hideErrors} onChange={setHideErrors} label="скрыть ошибки" />
         </div>
 
-        <div className="flex items-center gap-3 app-mono-label ml-auto" style={{ color: 'hsl(var(--muted))' }}>
+        <div
+          className="flex items-center gap-3 app-mono-label ml-auto"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
           <span>
-            показано <span style={{ color: 'hsl(var(--text))', fontWeight: 700 }}>{sorted.length}</span> из {results.length}
+            показано{' '}
+            <span style={{ color: 'hsl(var(--text))', fontWeight: 700 }}>{sorted.length}</span> из{' '}
+            {results.length}
           </span>
           {counts.processing > 0 && (
-            <span style={{ color: 'hsl(var(--warning))' }}>
-              · {counts.processing} в работе
-            </span>
+            <span style={{ color: 'hsl(var(--warning))' }}>· {counts.processing} в работе</span>
           )}
         </div>
       </div>
-
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
         <div
@@ -427,7 +486,12 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
               type="button"
               onClick={exportSelected}
               className="inline-flex items-center gap-1.5 h-9 px-3 text-small font-semibold border transition-colors hover:bg-[hsl(var(--surface))]"
-              style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))', borderRadius: 4, color: 'hsl(var(--text))' }}
+              style={{
+                background: 'hsl(var(--surface))',
+                borderColor: 'hsl(var(--border))',
+                borderRadius: 4,
+                color: 'hsl(var(--text))',
+              }}
             >
               <Copy className="h-4 w-4" /> CSV
             </button>
@@ -444,28 +508,37 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
           </div>
         </div>
       )}
-
       {/* Table */}
       <div
         className="overflow-hidden"
-        style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 6 }}
+        style={{
+          background: 'hsl(var(--surface))',
+          border: '1px solid hsl(var(--border))',
+          borderRadius: 6,
+        }}
       >
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ tableLayout: 'fixed' }}>
+          <table className="w-full" style={{ tableLayout: 'fixed', minWidth: 1200 }}>
+            {/* Сумма фиксированных колонок 1002px: при ширине 1200+ «о компании» получает ~200px, а телефон и email читаются целиком. */}
             <colgroup>
               <col style={{ width: 40 }} />
-              <col style={{ width: 56 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 200 }} />
+              <col style={{ width: 48 }} />
+              <col style={{ width: 72 }} />
+              <col style={{ width: 170 }} />
               <col />
-              <col style={{ width: 70 }} />
-              <col style={{ width: 70 }} />
-              <col style={{ width: 150 }} />
-              <col style={{ width: 200 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 130 }} />
+              <col style={{ width: 60 }} />
+              <col style={{ width: 60 }} />
+              <col style={{ width: 166 }} />
+              <col style={{ width: 186 }} />
+              <col style={{ width: 92 }} />
+              <col style={{ width: 108 }} />
             </colgroup>
-            <thead style={{ background: 'hsl(var(--surface-2) / 0.6)', borderBottom: '1px solid hsl(var(--border))' }}>
+            <thead
+              style={{
+                background: 'hsl(var(--surface-2) / 0.6)',
+                borderBottom: '1px solid hsl(var(--border))',
+              }}
+            >
               <tr>
                 <th className="px-3 py-3 text-left">
                   <input
@@ -477,22 +550,62 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                     aria-label="выбрать всё на странице"
                   />
                 </th>
-                <SortableTh sortKey="idx" current={sortKey} order={sortOrder} onClick={toggleSort}>#</SortableTh>
-                <SortableTh sortKey="type" current={sortKey} order={sortOrder} onClick={toggleSort}>тип</SortableTh>
-                <SortableTh sortKey="company" current={sortKey} order={sortOrder} onClick={toggleSort}>компания</SortableTh>
+                <SortableTh sortKey="idx" current={sortKey} order={sortOrder} onClick={toggleSort}>
+                  #
+                </SortableTh>
+                <SortableTh sortKey="type" current={sortKey} order={sortOrder} onClick={toggleSort}>
+                  тип
+                </SortableTh>
+                <SortableTh
+                  sortKey="company"
+                  current={sortKey}
+                  order={sortOrder}
+                  onClick={toggleSort}
+                >
+                  компания
+                </SortableTh>
                 <Th>о компании</Th>
-                <SortableTh sortKey="tg" current={sortKey} order={sortOrder} onClick={toggleSort}>TG</SortableTh>
-                <SortableTh sortKey="vk" current={sortKey} order={sortOrder} onClick={toggleSort}>VK</SortableTh>
-                <SortableTh sortKey="phone" current={sortKey} order={sortOrder} onClick={toggleSort}>телефон</SortableTh>
-                <SortableTh sortKey="email" current={sortKey} order={sortOrder} onClick={toggleSort}>email</SortableTh>
-                <SortableTh sortKey="status" current={sortKey} order={sortOrder} onClick={toggleSort}>статус</SortableTh>
+                <SortableTh sortKey="tg" current={sortKey} order={sortOrder} onClick={toggleSort}>
+                  TG
+                </SortableTh>
+                <SortableTh sortKey="vk" current={sortKey} order={sortOrder} onClick={toggleSort}>
+                  VK
+                </SortableTh>
+                <SortableTh
+                  sortKey="phone"
+                  current={sortKey}
+                  order={sortOrder}
+                  onClick={toggleSort}
+                >
+                  телефон
+                </SortableTh>
+                <SortableTh
+                  sortKey="email"
+                  current={sortKey}
+                  order={sortOrder}
+                  onClick={toggleSort}
+                >
+                  email
+                </SortableTh>
+                <SortableTh
+                  sortKey="status"
+                  current={sortKey}
+                  order={sortOrder}
+                  onClick={toggleSort}
+                >
+                  статус
+                </SortableTh>
                 <Th align="right">действия</Th>
               </tr>
             </thead>
             <tbody>
               {pageItems.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-12 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+                  <td
+                    colSpan={11}
+                    className="text-center py-12 text-sm"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
                     Нет результатов под выбранные фильтры
                   </td>
                 </tr>
@@ -504,7 +617,10 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                   <tr
                     key={r.id}
                     className="border-b last:border-b-0 transition-colors"
-                    style={{ borderColor: 'hsl(var(--border))', background: checked ? 'hsl(var(--accent-weak))' : undefined }}
+                    style={{
+                      borderColor: 'hsl(var(--border))',
+                      background: checked ? 'hsl(var(--accent-weak))' : undefined,
+                    }}
                   >
                     <td className="px-3 py-3 align-middle">
                       <input
@@ -549,21 +665,15 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                         {description || <span style={{ color: 'hsl(var(--muted))' }}>—</span>}
                       </div>
                       {r.keywordHits && r.keywordHits.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
+                        <div className="mt-1.5 flex min-w-0 flex-wrap gap-1">
                           {r.keywordHits.map((kw) => (
                             <span
                               key={kw}
-                              className="inline-flex items-center px-1.5 h-4 text-xs font-semibold"
-                              style={{
-                                background: 'hsl(var(--success) / 0.15)',
-                                color: 'hsl(var(--success))',
-                                border: '1px solid hsl(var(--success) / 0.4)',
-                                borderRadius: 3,
-                                letterSpacing: '0.02em',
-                              }}
+                              className="inline-flex max-w-full items-center gap-1 rounded-full bg-ui-success/10 px-2 py-0.5 text-xs font-semibold leading-4 text-ui-success"
                               title={`Слово найдено на сайте: ${kw}`}
                             >
-                              ✓ {kw}
+                              <Check className="h-3 w-3 shrink-0" aria-hidden />
+                              <span className="truncate">{kw}</span>
                             </span>
                           ))}
                         </div>
@@ -589,14 +699,24 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                     </td>
                     <td className="px-3 py-3 align-middle">
                       {r.phone ? (
-                        <ContactCell value={r.phone} icon={<Phone className="h-3.5 w-3.5" />} href={`tel:${r.phone}`} onCopy={() => copyValue(r.phone!, 'Телефон')} />
+                        <ContactCell
+                          value={r.phone}
+                          icon={<Phone className="h-3.5 w-3.5" />}
+                          href={`tel:${r.phone}`}
+                          onCopy={() => copyValue(r.phone!, 'Телефон')}
+                        />
                       ) : (
                         <Empty status={r.status} />
                       )}
                     </td>
                     <td className="px-3 py-3 align-middle">
                       {r.email ? (
-                        <ContactCell value={r.email} icon={<Mail className="h-3.5 w-3.5" />} href={`mailto:${r.email}`} onCopy={() => copyValue(r.email!, 'Email')} />
+                        <ContactCell
+                          value={r.email}
+                          icon={<Mail className="h-3.5 w-3.5" />}
+                          href={`mailto:${r.email}`}
+                          onCopy={() => copyValue(r.email!, 'Email')}
+                        />
                       ) : (
                         <Empty status={r.status} />
                       )}
@@ -610,7 +730,10 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
                     </td>
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center justify-end gap-1">
-                        <IconBtn title="Открыть сайт" onClick={() => window.open(`https://${r.domain}`, '_blank', 'noopener')}>
+                        <IconBtn
+                          title="Открыть сайт"
+                          onClick={() => window.open(`https://${r.domain}`, '_blank', 'noopener')}
+                        >
                           <ExternalLink className="h-3.5 w-3.5" />
                         </IconBtn>
                         <IconBtn
@@ -636,7 +759,10 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
         {totalPages > 1 && (
           <div
             className="flex items-center justify-between px-4 py-3"
-            style={{ borderTop: '1px solid hsl(var(--border))', background: 'hsl(var(--surface-2) / 0.4)' }}
+            style={{
+              borderTop: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--surface-2) / 0.4)',
+            }}
           >
             <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
               стр. {safePage} из {totalPages}
@@ -652,7 +778,6 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
           </div>
         )}
       </div>
-
       <ProposalSendModal
         open={proposalModal.open}
         leads={proposalModal.leads}
@@ -660,10 +785,12 @@ export function LeadsResultsTable({ results, runId: _runId }: LeadsResultsTableP
         onConfirm={() => {
           // Frontend stub — real campaign API hook lands later. We give the
           // user clear feedback that the action was understood.
-          toast.success(`Кампания подготовлена: ${proposalModal.leads.length} ${proposalModal.leads.length === 1 ? 'отправление' : 'отправлений'} (отправка появится после подключения бэка)`,
+          toast.success(
+            `Кампания подготовлена: ${proposalModal.leads.length} ${proposalModal.leads.length === 1 ? 'отправление' : 'отправлений'} (отправка появится после подключения бэка)`,
           );
         }}
-      />    </div>
+      />{' '}
+    </div>
   );
 }
 
@@ -697,7 +824,7 @@ function SortableTh({
 }) {
   const active = current === sortKey;
   return (
-    <th className="px-3 py-3" style={{ whiteSpace: 'nowrap' }}>
+    <th className="px-3 py-3 text-left" style={{ whiteSpace: 'nowrap' }}>
       <button
         type="button"
         onClick={() => onClick(sortKey)}
@@ -706,7 +833,11 @@ function SortableTh({
       >
         {children}
         {active ? (
-          order === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+          order === 'asc' ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )
         ) : (
           <ChevronsUpDown className="h-3 w-3 opacity-40" />
         )}
@@ -715,7 +846,17 @@ function SortableTh({
   );
 }
 
-function FilterToggle({ checked, onChange, label, count }: { checked: boolean; onChange: (v: boolean) => void; label: string; count?: number }) {
+function FilterToggle({
+  checked,
+  onChange,
+  label,
+  count,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  count?: number;
+}) {
   return (
     <label className="inline-flex items-center gap-2 cursor-pointer select-none">
       <input
@@ -790,27 +931,37 @@ function MessengerCell({
   return pill;
 }
 
-function ContactCell({ value, icon, href, onCopy }: { value: string; icon: React.ReactNode; href: string; onCopy: () => void }) {
+function ContactCell({
+  value,
+  icon,
+  href,
+  onCopy,
+}: {
+  value: string;
+  icon: React.ReactNode;
+  href: string;
+  onCopy: () => void;
+}) {
+  // Кнопка «копировать» проявляется поверх ячейки при наведении или фокусе — иначе она
+  // съедала ~30px и телефон обрезался на последних цифрах (18.09).
   return (
-    <div className="flex items-center gap-2 min-w-0">
+    <div className="group relative flex min-w-0 items-center">
       <a
         href={href}
-        className="flex items-center gap-1.5 text-small font-medium truncate hover:underline"
-        style={{ color: 'hsl(var(--text))' }}
+        className="flex min-w-0 items-center gap-1.5 text-small font-medium tabular-nums text-ui-text hover:underline"
         title={value}
       >
-        <span style={{ color: 'hsl(var(--accent))' }}>{icon}</span>
+        <span className="shrink-0 text-ui-accent">{icon}</span>
         <span className="truncate">{value}</span>
       </a>
       <button
         type="button"
         onClick={onCopy}
-        className="shrink-0 inline-flex items-center justify-center w-6 h-6 hover:bg-[hsl(var(--accent-weak))] transition-colors"
-        style={{ borderRadius: 3, color: 'hsl(var(--muted))' }}
+        className="absolute right-0 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-control bg-ui-surface text-ui-text-muted opacity-0 shadow-raised transition-opacity hover:text-ui-text focus-visible:opacity-100 group-hover:opacity-100"
         title="Копировать"
-        aria-label="Копировать"
+        aria-label={`Копировать: ${value}`}
       >
-        <Copy className="h-3 w-3" />
+        <Copy className="h-3 w-3" aria-hidden />
       </button>
     </div>
   );
@@ -819,12 +970,19 @@ function ContactCell({ value, icon, href, onCopy }: { value: string; icon: React
 function Empty({ status }: { status: LeadRow['status'] }) {
   if (status === 'processing') {
     return (
-      <span className="inline-flex items-center gap-1.5 app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
+      <span
+        className="inline-flex items-center gap-1.5 app-mono-label"
+        style={{ color: 'hsl(var(--muted))' }}
+      >
         <Loader2 className="h-3 w-3 animate-spin" /> сбор…
       </span>
     );
   }
-  return <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>—</span>;
+  return (
+    <span className="app-mono-label" style={{ color: 'hsl(var(--muted))' }}>
+      —
+    </span>
+  );
 }
 
 function IconBtn({
@@ -852,10 +1010,10 @@ function IconBtn({
         border: accent ? '1px solid hsl(var(--accent) / 0.3)' : undefined,
       }}
       onMouseEnter={(e) => {
-        if (!accent) (e.currentTarget.style.background = 'hsl(var(--accent-weak))');
+        if (!accent) e.currentTarget.style.background = 'hsl(var(--accent-weak))';
       }}
       onMouseLeave={(e) => {
-        if (!accent) (e.currentTarget.style.background = '');
+        if (!accent) e.currentTarget.style.background = '';
       }}
     >
       {children}
@@ -883,7 +1041,15 @@ function SiteTypeBadge({ type }: { type: SiteType }) {
   );
 }
 
-function PageBtn({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
+function PageBtn({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
@@ -891,7 +1057,9 @@ function PageBtn({ children, disabled, onClick }: { children: React.ReactNode; d
       disabled={disabled}
       className={cn(
         'inline-flex items-center justify-center w-8 h-8 transition-colors',
-        disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[hsl(var(--accent-weak))] cursor-pointer',
+        disabled
+          ? 'opacity-40 cursor-not-allowed'
+          : 'hover:bg-[hsl(var(--accent-weak))] cursor-pointer',
       )}
       style={{ borderRadius: 3, color: 'hsl(var(--text))' }}
     >

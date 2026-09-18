@@ -5,7 +5,6 @@ import {
   CreditCard,
   Database,
   FileText,
-  Flame,
   History,
   Inbox,
   LayoutDashboard,
@@ -33,13 +32,17 @@ export type NavItem = {
   icon: LucideIcon;
   /** Пункт про отправку писем из SpinLid — пока она выключена, пункт серый с пометкой «скоро» (lib/outreach.ts). */
   requiresSending?: boolean;
+  /** Другие адреса, на которых пункт тоже подсвечен («По боли» — режим «Поиска»). */
+  alsoActiveOn?: string[];
 };
 export type NavSection = { title?: string; items: NavItem[] };
 
-/** Верхнее меню. */
+/**
+ * Верхнее меню. 18.09 (@user): «По боли» убран из меню — это режим «Поиска»,
+ * он открывается переключателем «Карты · Сайты · По боли» на странице поиска.
+ */
 export const PRIMARY_NAV: NavItem[] = [
-  { href: '/app/leads', label: 'Поиск', icon: Search },
-  { href: '/app/pains', label: 'По боли', icon: Flame },
+  { href: '/app/leads', label: 'Поиск', icon: Search, alsoActiveOn: ['/app/pains'] },
   { href: '/app/leads/history', label: 'История', icon: History },
   { href: '/app/leads/lists', label: 'Списки', icon: ListPlus },
   { href: '/app/leads/proposals', label: 'Шаблоны КП', icon: FileText },
@@ -111,10 +114,17 @@ export function menuSectionsFor(isSuperuser: boolean): NavSection[] {
 /** Активный пункт — с самым длинным совпавшим префиксом («История» внутри «Поиска»). */
 export function getBestMatch(pathname: string | null, items: NavItem[]): string | null {
   if (!pathname) return null;
+  const matchLength = (item: NavItem) =>
+    Math.max(
+      ...[item.href, ...(item.alsoActiveOn ?? [])].map((prefix) =>
+        pathname === prefix || pathname.startsWith(prefix + '/') ? prefix.length : -1,
+      ),
+    );
   const matches = items
-    .filter((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
-    .sort((a, b) => b.href.length - a.href.length);
-  return matches[0]?.href ?? null;
+    .map((item) => ({ item, length: matchLength(item) }))
+    .filter((m) => m.length >= 0)
+    .sort((a, b) => b.length - a.length);
+  return matches[0]?.item.href ?? null;
 }
 
 /** Все пункты (для поиска активного): верхнее меню + меню профиля. */
