@@ -540,7 +540,7 @@ async def admin_users_export(
     lines = ["id;email;created;active;superuser;balance"]
     for u in rows:
         lines.append(
-            f"{u.id};{u.email};{(u.created_at or '').strftime('%Y-%m-%d')};"
+            f"{u.id};{u.email};{(u.created_at.strftime('%Y-%m-%d') if u.created_at else '')};"
             f"{'yes' if u.is_active else 'no'};{'yes' if u.is_superuser else 'no'};{bal.get(u.id, 0)}"
         )
     csv = "\n".join(lines)

@@ -2,7 +2,7 @@
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
@@ -88,3 +88,33 @@ async def test_self_guards():
     # Схемы валидны
     AdminUserStatusRequest(is_active=False)
     AdminUserRoleRequest(is_superuser=True)
+
+
+async def test_admin_csv_none_created_at():
+    """CSV-выражение не падает на created_at=None (крашфикс 2026-09-18)."""
+    from datetime import datetime
+
+    u = User(email="x@t.ru", hashed_password="x")
+    assert u.created_at is None
+    assert (u.created_at.strftime("%Y-%m-%d") if u.created_at else "") == ""
+    u2 = User(email="y@t.ru", hashed_password="x", created_at=datetime(2026, 9, 1))
+    assert u2.created_at.strftime("%Y-%m-%d") == "2026-09-01"
+
+
+async def test_filters_zero_balance_subquery(db: AsyncSession):
+    """Фильтр zero_balance: подзапрос остатков корректно считает пустые."""
+    await credits.grant_credits(db, 1, 10, "welcome")  # юзер 1 с кредитами
+    await db.commit()
+
+    bucket_sum = (
+        select(func.coalesce(func.sum(CreditBucket.amount_granted - CreditBucket.amount_spent), 0))
+        .where(
+            CreditBucket.user_id == User.id,
+            CreditBucket.amount_granted > CreditBucket.amount_spent,
+        )
+        .scalar_subquery()
+    )
+    rows = (await db.execute(select(User.id, bucket_sum.label("bal")).order_by(User.id))).all()
+    bal = dict(rows)
+    assert bal[1] == 10
+    assert bal[2] == 0  # без кредитов
