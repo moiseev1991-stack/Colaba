@@ -21,6 +21,7 @@ import { AddToListModal } from '@/components/maps/AddToListModal';
 import { MapsCompanyDetailDrawer } from '@/components/maps/MapsCompanyDetailDrawer';
 import { DraftEmailPopover, type CompanyForDraft } from '@/components/pains/DraftEmailPopover';
 import { CityCombobox } from '@/components/CityCombobox';
+import { NicheCombobox, type NicheOption } from '@/components/NicheCombobox';
 import { SearchHero } from '@/components/search/SearchHero';
 import { Button, buttonClass } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ import {
   buildPainsExportUrl,
   getCompanyReviews,
   listCompaniesByPain,
+  listInsightsNiches,
   listPainTags,
   nicheSuggestions,
   PAIN_KEY_LABELS,
@@ -95,7 +97,8 @@ function PainsPageInner() {
   const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
   const [city, setCity] = useState<string>(initialCity);
   const [niche, setNiche] = useState<string>(initialNiche);
-  const [niches, setNiches] = useState<string[]>([]);
+  const [niches, setNiches] = useState<NicheOption[]>([]);
+  const [nichesLoading, setNichesLoading] = useState(true);
 
   const [data, setData] = useState<CompaniesByPainListOut | null>(null);
   const [offset, setOffset] = useState(0);
@@ -145,9 +148,16 @@ function PainsPageInner() {
     setSearchRequest((r) => ({ n: r.n + 1, offset: nextOffset, scroll }));
 
   useEffect(() => {
-    nicheSuggestions('')
-      .then(setNiches)
-      .catch(() => setNiches([]));
+    // Ниши из базы с числом компаний (крупные сверху); если список недоступен —
+    // прежние пресеты, чтобы поле не осталось пустым.
+    listInsightsNiches()
+      .then((rows) => setNiches(rows))
+      .catch(() =>
+        nicheSuggestions('')
+          .then((names) => setNiches(names.map((n) => ({ niche: n }))))
+          .catch(() => setNiches([])),
+      )
+      .finally(() => setNichesLoading(false));
   }, []);
 
   const autoRunRef = useRef(false);
@@ -541,20 +551,31 @@ function PainsPageInner() {
                 <label htmlFor="pains-niche" className={LABEL}>
                   Ниша
                 </label>
-                <Input
-                  id="pains-niche"
-                  list="pains-niche-options"
-                  value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
-                  placeholder="Например: стоматология"
-                  className="h-11"
-                />
-                <datalist id="pains-niche-options">
-                  {niches.map((n) => (
-                    <option key={n} value={n} />
-                  ))}
-                </datalist>
-                <p className="mt-1.5 text-xs text-ui-text-muted">Пусто — по всем нишам города</p>
+                {/* 18.09 (@user): ниша — выпадающий список ниш из базы, как город. */}
+                <div className="flex items-center gap-1.5">
+                  <NicheCombobox
+                    id="pains-niche"
+                    niche={niche}
+                    onNicheChange={setNiche}
+                    options={niches}
+                    loading={nichesLoading}
+                    placeholder="Все ниши"
+                    className="min-w-0 flex-1"
+                  />
+                  {niche && (
+                    <button
+                      type="button"
+                      onClick={() => setNiche('')}
+                      aria-label="Убрать нишу"
+                      className="grid h-11 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs text-ui-text-muted">
+                  Все ниши — жалобы по всему городу; выберите нишу, чтобы увидеть её жалобы слева
+                </p>
               </div>
               <div>
                 <span className={LABEL}>Источник отзывов</span>
