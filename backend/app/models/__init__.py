@@ -110,3 +110,4 @@ __all__ = [
     "InboundLead",
 ]
 from app.models.billing import CreditBucket, CreditTransaction, Subscription, Payment
+from app.models.auth_token import AuthToken

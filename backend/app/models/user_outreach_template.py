@@ -36,7 +36,8 @@ class UserOutreachTemplate(Base):
     __tablename__ = "user_outreach_templates"
     __table_args__ = (
         UniqueConstraint(
-            "user_id", "name",
+            "user_id",
+            "name",
             name="uq_user_outreach_tpl_user_name",
         ),
     )
@@ -81,7 +82,4 @@ class UserOutreachTemplate(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<UserOutreachTemplate #{self.id} {self.name!r} "
-            f"module={self.module!r} user={self.user_id}>"
-        )
+        return f"<UserOutreachTemplate #{self.id} {self.name!r} module={self.module!r} user={self.user_id}>"

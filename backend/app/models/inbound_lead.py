@@ -41,7 +41,7 @@ class InboundLead(Base):
 
     id = Column(Integer, primary_key=True)
 
-    source = Column(String(20), nullable=False)          # 'tg_bot' | 'landing_form'
+    source = Column(String(20), nullable=False)  # 'tg_bot' | 'landing_form'
     source_tag = Column(String(120), nullable=False, default="")  # start payload / utm_source
 
     # Telegram-идентификаторы (только для source='tg_bot'). tg_user_id —
@@ -50,8 +50,8 @@ class InboundLead(Base):
     tg_username = Column(String(64), nullable=True)
 
     name = Column(String(255), nullable=False, default="")
-    company_text = Column(Text, nullable=False, default="")   # что прислал лид: название/ссылка
-    contact_text = Column(Text, nullable=False, default="")   # телефон/username/«пишите сюда»
+    company_text = Column(Text, nullable=False, default="")  # что прислал лид: название/ссылка
+    contact_text = Column(Text, nullable=False, default="")  # телефон/username/«пишите сюда»
 
     # Полная лента входящих сообщений: [{"at": iso, "text": "..."}]. При
     # повторных сообщениях дописывается, а не перезаписывается.
@@ -85,7 +85,4 @@ class InboundLead(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<InboundLead #{self.id} {self.source} "
-            f"company={self.company_text[:40]!r} status={self.status!r}>"
-        )
+        return f"<InboundLead #{self.id} {self.source} company={self.company_text[:40]!r} status={self.status!r}>"

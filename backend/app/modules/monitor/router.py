@@ -62,12 +62,10 @@ async def get_monitor_requests(
     для админ-дашборда). Если нужно per-user — добавим query-параметр.
     """
     rows = (
-        await db.execute(
-            select(ApiCallLog)
-            .order_by(ApiCallLog.created_at.desc(), ApiCallLog.id.desc())
-            .limit(limit)
-        )
-    ).scalars().all()
+        (await db.execute(select(ApiCallLog).order_by(ApiCallLog.created_at.desc(), ApiCallLog.id.desc()).limit(limit)))
+        .scalars()
+        .all()
+    )
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "requests": [_row_to_dict(r) for r in rows],

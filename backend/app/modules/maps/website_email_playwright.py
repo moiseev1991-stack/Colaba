@@ -56,10 +56,7 @@ _PAGE_TIMEOUT_MS = 15_000
 _NETWORK_IDLE_TIMEOUT_MS = 8_000
 _POST_RENDER_WAIT_MS = 800
 
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 
 # Кандидатные страницы. Первый — корень (там часто futer с mailto),
 # дальше явные контактные.
@@ -74,8 +71,13 @@ _PATHS: tuple[str, ...] = (
 )
 
 _SKIP_HOSTS = (
-    "vk.com", "instagram.com", "facebook.com",
-    "ok.ru", "t.me", "2gis.ru", "yandex.",
+    "vk.com",
+    "instagram.com",
+    "facebook.com",
+    "ok.ru",
+    "t.me",
+    "2gis.ru",
+    "yandex.",
 )
 
 # Кнопки «показать email/телефон» — селекторы, характерные для CMS
@@ -87,19 +89,18 @@ _REVEAL_SELECTORS = (
     'a:has-text("показать e-mail")',
     'a:has-text("показать email")',
     '[data-role="showphone"]',
-    '.showphone',
-    '.show-phone',
-    '.show-email',
-    '.b-showphone',
+    ".showphone",
+    ".show-phone",
+    ".show-email",
+    ".b-showphone",
 )
 
 # Email должен выглядеть валидно; отбрасываем изображения (svg/png в imghover),
 # escape-sequences и явно опечатки типа «example@example.com».
-_RE_EMAIL_PLAIN = re.compile(
-    r'\b([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})\b'
-)
+_RE_EMAIL_PLAIN = re.compile(r"\b([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})\b")
 _RE_MAILTO = re.compile(r'mailto:([^"\'<>\s?]+)', re.IGNORECASE)
-_RE_TEL = re.compile(r'tel:([+\d\s\-\(\)]+)', re.IGNORECASE)
+_RE_TEL = re.compile(r"tel:([+\d\s\-\(\)]+)", re.IGNORECASE)
+
 
 def _looks_like_real_email(email: str) -> bool:
     """Фильтр: не placeholder, не системная почта CMS, не sentry-id.
@@ -162,9 +163,7 @@ async def _extract_from_page(page) -> tuple[set[str], set[str]]:
         if norm:
             phones.add(norm)
     # Из видимого текста — только российский формат чтобы не хватать мусор.
-    phone_pattern = re.compile(
-        r'(?:\+7|8)[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}'
-    )
+    phone_pattern = re.compile(r"(?:\+7|8)[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}")
     for m in phone_pattern.findall(text):
         norm = _normalize_phone_ru(m)
         if norm:
@@ -173,9 +172,7 @@ async def _extract_from_page(page) -> tuple[set[str], set[str]]:
     return emails, phones
 
 
-async def enrich_from_website_playwright(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def enrich_from_website_playwright(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Открывает сайт компании в headless-chromium, обходит /contacts /о-нас,
     кликает «показать email»-кнопки, извлекает email/phone из финального DOM.
     Сохраняет в Company.emails (merge) + отметку contacts_extra.playwright_at.
@@ -236,7 +233,8 @@ async def enrich_from_website_playwright(
                     pages_tried += 1
                     try:
                         await page.goto(
-                            url, wait_until="domcontentloaded",
+                            url,
+                            wait_until="domcontentloaded",
                             timeout=_PAGE_TIMEOUT_MS,
                         )
                     except PWTimeout:
@@ -248,7 +246,8 @@ async def enrich_from_website_playwright(
                     # на аналитиках/чат-виджетах.
                     try:
                         await page.wait_for_load_state(
-                            "networkidle", timeout=_NETWORK_IDLE_TIMEOUT_MS,
+                            "networkidle",
+                            timeout=_NETWORK_IDLE_TIMEOUT_MS,
                         )
                     except PWTimeout:
                         pass
@@ -272,6 +271,7 @@ async def enrich_from_website_playwright(
 
     # contacts_extra.playwright_website_at — отметка для идемпотентности.
     from datetime import datetime, timezone
+
     new_extra = dict(extra) if isinstance(extra, dict) else {}
     new_extra["playwright_website_at"] = datetime.now(timezone.utc).isoformat()
     if all_phones:
@@ -281,9 +281,7 @@ async def enrich_from_website_playwright(
         new_extra["phones_playwright"] = sorted(all_phones)
 
     await db.execute(
-        update(Company)
-        .where(Company.id == company_id)
-        .values(emails=merged_emails, contacts_extra=new_extra)
+        update(Company).where(Company.id == company_id).values(emails=merged_emails, contacts_extra=new_extra)
     )
     await db.commit()
 

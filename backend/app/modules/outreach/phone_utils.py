@@ -55,9 +55,7 @@ def format_phone_for_display(digits: str | None) -> str:
     if not digits:
         return ""
     if len(digits) == 11 and digits.startswith("7"):
-        return (
-            f"+7 ({digits[1:4]}) {digits[4:7]}-{digits[7:9]}-{digits[9:11]}"
-        )
+        return f"+7 ({digits[1:4]}) {digits[4:7]}-{digits[7:9]}-{digits[9:11]}"
     return f"+{digits}"
 
 

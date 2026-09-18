@@ -47,21 +47,40 @@ class OAuthService:
         return f"https://oauth.yandex.ru/authorize?{urlencode(params)}"
 
     @staticmethod
-    def get_vk_oauth_url(redirect_uri: str, state: str) -> str:
-        """Generate VK ID OAuth authorization URL."""
+    def get_vk_oauth_url(redirect_uri: str, state: str, code_challenge: str) -> str:
+        """VK ID OAuth 2.1 (id.vk.ru, аудит 18.09): PKCE обязателен.
+
+        code_challenge = BASE64URL(SHA256(code_verifier)) без паддинга;
+        code_verifier хранится в подписанной state-куке и возвращается
+        при обмене кода.
+        """
         params = {
+            "response_type": "code",
             "client_id": settings.VK_CLIENT_ID,
             "redirect_uri": redirect_uri,
-            "response_type": "code",
-            "scope": "email",
             "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+            "scope": "vkid.personal_info email",
         }
-        return f"https://oauth.vk.com/authorize?{urlencode(params)}"
+        return f"https://id.vk.ru/authorize?{urlencode(params)}"
+
+    TELEGRAM_AUTH_MAX_AGE = 24 * 3600  # реплей-фикс (аудит В-3): виджет живёт сутки
 
     @staticmethod
     def verify_telegram_auth(auth_data: Dict[str, Any], bot_token: str) -> bool:
-        """Verify Telegram Login Widget authentication data."""
+        """Verify Telegram Login Widget authentication data (HMAC + свежесть)."""
+        import time
+
         if "hash" not in auth_data:
+            return False
+
+        # 18.09: перехваченные данные виджета не должны работать вечно
+        auth_date = auth_data.get("auth_date")
+        try:
+            if not auth_date or time.time() - int(auth_date) > OAuthService.TELEGRAM_AUTH_MAX_AGE:
+                return False
+        except (TypeError, ValueError):
             return False
 
         hash_value = auth_data.pop("hash")
@@ -130,6 +149,10 @@ class OAuthService:
             user.hashed_password = hash_password(random_password)
             db.add(user)
             await db.flush()
+
+        # 18.09 (Этап 3): email от OAuth-провайдера считается верифицированным
+        if email and user.email_verified is False:
+            user.email_verified = True
 
         # Create social account
         social_account = SocialAccount(

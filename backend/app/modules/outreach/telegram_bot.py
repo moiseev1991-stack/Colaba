@@ -95,9 +95,7 @@ async def _tg_request(
             )
             continue
         return r.json()
-    raise TelegramSendError(
-        f"network: все прокси недоступны ({last_err})", code="network_error"
-    )
+    raise TelegramSendError(f"network: все прокси недоступны ({last_err})", code="network_error")
 
 
 class TelegramSendError(Exception):
@@ -134,11 +132,7 @@ def _get_bot_token_sync() -> str:
 
         factory = get_sync_session_factory()
         with factory() as db:
-            row = (
-                db.query(ChannelConfig)
-                .filter(ChannelConfig.channel_id == "telegram")
-                .first()
-            )
+            row = db.query(ChannelConfig).filter(ChannelConfig.channel_id == "telegram").first()
             if row and row.config:
                 return str(row.config.get("bot_token") or "").strip()
     except Exception as e:
@@ -161,9 +155,7 @@ async def get_bot_info() -> dict[str, Any]:
         raise TelegramSendError("TELEGRAM_BOT_TOKEN не задан", code="not_configured")
     data = await _tg_request("getMe", token)
     if not data.get("ok"):
-        raise TelegramSendError(
-            f"getMe failed: {data.get('description', 'unknown')}", code="http_error"
-        )
+        raise TelegramSendError(f"getMe failed: {data.get('description', 'unknown')}", code="http_error")
     return data
 
 
@@ -211,12 +203,8 @@ async def send_text_message(
                 code="forbidden",
             )
         if err_code == 400 and "chat not found" in desc.lower():
-            raise TelegramSendError(
-                f"invalid chat_id: {desc}", code="invalid_chat_id"
-            )
-        raise TelegramSendError(
-            f"send failed ({err_code}): {desc}", code="http_error"
-        )
+            raise TelegramSendError(f"invalid chat_id: {desc}", code="invalid_chat_id")
+        raise TelegramSendError(f"send failed ({err_code}): {desc}", code="http_error")
 
     result = data.get("result") or {}
     message_id = result.get("message_id")
@@ -243,9 +231,7 @@ async def delete_webhook() -> dict[str, Any]:
     token = _get_bot_token_sync()
     if not token:
         raise TelegramSendError("TELEGRAM_BOT_TOKEN не задан", code="not_configured")
-    return await _tg_request(
-        "deleteWebhook", token, json_body={"drop_pending_updates": True}
-    )
+    return await _tg_request("deleteWebhook", token, json_body={"drop_pending_updates": True})
 
 
 def mask_token(token: Optional[str]) -> str:

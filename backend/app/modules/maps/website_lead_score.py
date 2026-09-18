@@ -23,6 +23,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.maps import Company
+
 # Переиспользуем helper из lead_temperature — определение «активного сайта»
 # одинаково (фильтр псевдо-сайтов типа vk.com / 2gis.ru / t.me).
 from app.modules.maps.lead_temperature import _has_active_website  # type: ignore
@@ -30,13 +31,13 @@ from app.modules.maps.lead_temperature import _has_active_website  # type: ignor
 
 # Веса под продажу сайтов (не общий lead). Логика связочная: ценность
 # website-лида НЕ в одном «нет сайта», а в «нет сайта + бизнес живой».
-_W_REVIEWS_MAX = 30        # много отзывов → есть поток клиентов → есть деньги
-_W_RATING_MAX = 20         # рейтинг ≥4.0 → бизнес держит планку
-_W_FRESHNESS = 15          # отзывы свежие → карточка живая
-_W_PHONE = 10              # есть куда продавать
-_W_OWNER_REPLIES = 10      # отвечает владелец = карточкой кто-то занимается
-_W_CONTACT_BREADTH = 10    # мессенджер/email = расширенный канал
-_W_RATING_HIGH_BONUS = 5   # рейтинг ≥4.5 — небольшой доп. подъём
+_W_REVIEWS_MAX = 30  # много отзывов → есть поток клиентов → есть деньги
+_W_RATING_MAX = 20  # рейтинг ≥4.0 → бизнес держит планку
+_W_FRESHNESS = 15  # отзывы свежие → карточка живая
+_W_PHONE = 10  # есть куда продавать
+_W_OWNER_REPLIES = 10  # отвечает владелец = карточкой кто-то занимается
+_W_CONTACT_BREADTH = 10  # мессенджер/email = расширенный канал
+_W_RATING_HIGH_BONUS = 5  # рейтинг ≥4.5 — небольшой доп. подъём
 
 _PENALTY_LOW_RATING = -15  # rating < 3.5 — продажа сайта мёртвой компании
 _PENALTY_NO_REVIEWS = -25  # 0 отзывов — карточка мёртвая, нет триггера купить
@@ -115,18 +116,13 @@ def compute(company: Company) -> int | None:
         return None
 
     reviews_bonus, reviews_penalty = _reviews_component(company.reviews_count)
-    rating_bonus, rating_penalty = _rating_component(
-        float(company.rating) if company.rating is not None else None
-    )
+    rating_bonus, rating_penalty = _rating_component(float(company.rating) if company.rating is not None else None)
     freshness = _freshness_bonus(company.last_review_at)
     phone = _W_PHONE if _has_phone(company) else 0.0
     owner = _W_OWNER_REPLIES if company.has_owner_replies else 0.0
     breadth = _W_CONTACT_BREADTH if _has_contact_breadth(company) else 0.0
 
-    total = (
-        reviews_bonus + rating_bonus + freshness + phone + owner + breadth
-        + reviews_penalty + rating_penalty
-    )
+    total = reviews_bonus + rating_bonus + freshness + phone + owner + breadth + reviews_penalty + rating_penalty
     return max(0, min(100, round(total)))
 
 
@@ -137,17 +133,11 @@ async def recompute_for_company(db: AsyncSession, company_id: int) -> int | None
     if c is None:
         return None
     value = compute(c)
-    await db.execute(
-        update(Company)
-        .where(Company.id == company_id)
-        .values(website_lead_score=value)
-    )
+    await db.execute(update(Company).where(Company.id == company_id).values(website_lead_score=value))
     return value
 
 
-async def recompute_for_companies(
-    db: AsyncSession, company_ids: Iterable[int]
-) -> int:
+async def recompute_for_companies(db: AsyncSession, company_ids: Iterable[int]) -> int:
     """Bulk-пересчёт. Возвращает кол-во обработанных."""
     ids = list(company_ids)
     if not ids:

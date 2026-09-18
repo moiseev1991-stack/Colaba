@@ -36,10 +36,10 @@ async def list_my_templates(
     request: Request,
     module: Optional[str] = Query(default=None, max_length=50),
     pain_key: Optional[str] = Query(
-        default=None, max_length=64,
+        default=None,
+        max_length=64,
         description=(
-            "Фильтр по боли. При заданном pain_key возвращает шаблоны с "
-            "этой болью + универсальные (pain_key IS NULL)."
+            "Фильтр по боли. При заданном pain_key возвращает шаблоны с этой болью + универсальные (pain_key IS NULL)."
         ),
     ),
     user_id: int = Depends(get_current_user_id),
@@ -78,10 +78,7 @@ async def create_template(
         )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"Шаблон с именем «{payload.name}» уже существует. "
-                "Выберите другое имя."
-            ),
+            detail=(f"Шаблон с именем «{payload.name}» уже существует. Выберите другое имя."),
         )
     return UserOutreachTemplateOut.model_validate(tpl)
 
@@ -105,10 +102,7 @@ async def update_template(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"Шаблон с именем «{payload.name}» уже существует. "
-                "Выберите другое имя."
-            ),
+            detail=(f"Шаблон с именем «{payload.name}» уже существует. Выберите другое имя."),
         )
     return UserOutreachTemplateOut.model_validate(updated)
 
@@ -121,8 +115,6 @@ async def delete_template(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    ok = await service.delete_template(
-        db, template_id=template_id, user_id=user_id
-    )
+    ok = await service.delete_template(db, template_id=template_id, user_id=user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Шаблон не найден")

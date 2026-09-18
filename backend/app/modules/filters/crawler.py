@@ -186,22 +186,22 @@ async def fetch_page_with_retry(
 ) -> Optional[httpx.Response]:
     """
     Fetch page with exponential backoff retry.
-    
+
     Args:
         client: httpx AsyncClient
         url: URL to fetch
         max_retries: Maximum number of retry attempts
         base_delay: Base delay in seconds for exponential backoff
-    
+
     Returns:
         Response object or None if all retries failed
     """
     last_exception = None
-    
+
     for attempt in range(max_retries):
         try:
             response = await client.get(url)
-            
+
             # Handle different status codes
             if response.status_code == 200:
                 return response
@@ -209,7 +209,7 @@ async def fetch_page_with_retry(
                 # Forbidden - might be rate limiting or captcha
                 logger.warning(f"403 Forbidden for {url} (attempt {attempt + 1}/{max_retries})")
                 if attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt)
+                    delay = base_delay * (2**attempt)
                     await asyncio.sleep(delay)
                     continue
                 else:
@@ -219,7 +219,7 @@ async def fetch_page_with_retry(
                 # Rate limited - wait longer
                 logger.warning(f"429 Rate Limited for {url} (attempt {attempt + 1}/{max_retries})")
                 if attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt) * 2  # Double delay for rate limits
+                    delay = base_delay * (2**attempt) * 2  # Double delay for rate limits
                     await asyncio.sleep(delay)
                     continue
                 else:
@@ -233,7 +233,7 @@ async def fetch_page_with_retry(
                 # Server error - retry
                 logger.warning(f"Server error {response.status_code} for {url} (attempt {attempt + 1}/{max_retries})")
                 if attempt < max_retries - 1:
-                    delay = base_delay * (2 ** attempt)
+                    delay = base_delay * (2**attempt)
                     await asyncio.sleep(delay)
                     continue
                 else:
@@ -243,40 +243,40 @@ async def fetch_page_with_retry(
                 # Other status codes - don't retry
                 logger.debug(f"Status {response.status_code} for {url}")
                 return None
-                
+
         except httpx.TimeoutException as e:
             last_exception = e
             logger.warning(f"Timeout for {url} (attempt {attempt + 1}/{max_retries})")
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
+                delay = base_delay * (2**attempt)
                 await asyncio.sleep(delay)
                 continue
             else:
                 logger.error(f"Timeout for {url} after {max_retries} attempts")
                 return None
-                
+
         except httpx.RequestError as e:
             last_exception = e
             logger.warning(f"Request error for {url} (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
+                delay = base_delay * (2**attempt)
                 await asyncio.sleep(delay)
                 continue
             else:
                 logger.error(f"Request error for {url} after {max_retries} attempts: {e}")
                 return None
-                
+
         except Exception as e:
             last_exception = e
             logger.error(f"Unexpected error for {url} (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
+                delay = base_delay * (2**attempt)
                 await asyncio.sleep(delay)
                 continue
             else:
                 logger.error(f"Unexpected error for {url} after {max_retries} attempts: {e}")
                 return None
-    
+
     return None
 
 
@@ -289,7 +289,7 @@ async def crawl_domain_with_fallback(
 ) -> Dict[str, Any]:
     """
     Crawl domain with fallback strategies.
-    
+
     If main crawl fails, tries fallback approaches:
     1. Try cached data (if available)
     2. Try minimal crawl (just base URL)
@@ -304,13 +304,13 @@ async def crawl_domain_with_fallback(
             max_retries=max_retries,
             use_cache=use_cache,
         )
-        
+
         # If we got at least one page, return result
         if result.get("total_pages", 0) > 0:
             return result
     except Exception as e:
         logger.warning(f"Main crawl failed for {base_url}: {e}")
-    
+
     # Fallback 1: Try minimal crawl (just base URL, fewer retries)
     try:
         logger.info(f"Trying minimal crawl for {base_url}")
@@ -321,25 +321,27 @@ async def crawl_domain_with_fallback(
             max_retries=1,  # Single attempt
             use_cache=False,  # Don't use cache for fallback
         )
-        
+
         if result.get("total_pages", 0) > 0:
             logger.info(f"Minimal crawl succeeded for {base_url}")
             return result
     except Exception as e:
         logger.warning(f"Minimal crawl failed for {base_url}: {e}")
-    
+
     # Fallback 2: Return minimal structure with base URL only
     logger.warning(f"All crawl attempts failed for {base_url}, returning minimal data")
     base_domain = urlparse(base_url).netloc
     return {
-        "pages": [{
-            "url": base_url,
-            "status_code": None,
-            "title": None,
-            "meta_description": None,
-            "h1_count": 0,
-            "h1_text": None,
-        }],
+        "pages": [
+            {
+                "url": base_url,
+                "status_code": None,
+                "title": None,
+                "meta_description": None,
+                "h1_count": 0,
+                "h1_text": None,
+            }
+        ],
         "total_pages": 1,
         "contacts": {"phone": None, "email": None},
         "base_domain": base_domain,
@@ -384,6 +386,7 @@ async def crawl_domain(
     if use_cache:
         try:
             from app.modules.filters.cache import get_cached_crawl
+
             cached_data = await get_cached_crawl(base_domain)
             if cached_data:
                 logger.info(f"Using cached crawl data for {base_domain}")
@@ -407,8 +410,8 @@ async def crawl_domain(
         follow_redirects=True,
         limits=limits,
         headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
     ) as client:
         # Check robots.txt for SEO audit (only once at the start)
         seo_data = await check_robots_txt(client, base_url)
@@ -423,38 +426,37 @@ async def crawl_domain(
             response = await fetch_page_with_retry(client, url, max_retries=max_retries)
 
             if response is None:
-                errors.append({
-                    "url": url,
-                    "error": "Failed to fetch after retries"
-                })
+                errors.append({"url": url, "error": "Failed to fetch after retries"})
                 continue
 
             try:
                 visited.add(url)
                 content = response.text
-                soup = BeautifulSoup(content, 'html.parser')
+                soup = BeautifulSoup(content, "html.parser")
 
                 # Extract meta tags
-                title = soup.find('title')
-                meta_desc = soup.find('meta', attrs={'name': 'description'})
-                h1_tags = soup.find_all('h1')
+                title = soup.find("title")
+                meta_desc = soup.find("meta", attrs={"name": "description"})
+                h1_tags = soup.find_all("h1")
 
                 # Visible text for keyword filtering. Strip scripts/styles/svg/nav/etc
                 # before extracting — the body text is what users actually read,
                 # navigation chrome only adds noise to the FTS index.
-                text_soup = BeautifulSoup(content, 'html.parser')
-                for tag in text_soup(['script', 'style', 'noscript', 'svg', 'iframe', 'template']):
+                text_soup = BeautifulSoup(content, "html.parser")
+                for tag in text_soup(["script", "style", "noscript", "svg", "iframe", "template"]):
                     tag.decompose()
-                raw_text = text_soup.get_text(separator=' ', strip=True)
+                raw_text = text_soup.get_text(separator=" ", strip=True)
                 # Collapse whitespace and cap at 10 KB — Postgres tsvector handles
                 # this fine, and it keeps the row small enough not to bloat the heap.
-                cleaned_text = ' '.join(raw_text.split())[:10000] if raw_text else None
+                cleaned_text = " ".join(raw_text.split())[:10000] if raw_text else None
 
                 page_data = {
                     "url": url,
                     "status_code": response.status_code,
                     "title": title.get_text().strip() if title else None,
-                    "meta_description": meta_desc.get('content').strip() if meta_desc and meta_desc.get('content') else None,
+                    "meta_description": meta_desc.get("content").strip()
+                    if meta_desc and meta_desc.get("content")
+                    else None,
                     "h1_count": len(h1_tags),
                     "h1_text": h1_tags[0].get_text().strip() if h1_tags else None,
                     "text_content": cleaned_text,
@@ -481,10 +483,7 @@ async def crawl_domain(
 
             except Exception as e:
                 logger.error(f"Error processing page {url}: {e}")
-                errors.append({
-                    "url": url,
-                    "error": str(e)
-                })
+                errors.append({"url": url, "error": str(e)})
                 continue
 
     # Calculate SEO score from collected data
@@ -511,6 +510,7 @@ async def crawl_domain(
     if use_cache and len(pages_data) > 0:
         try:
             from app.modules.filters.cache import set_cached_crawl
+
             await set_cached_crawl(base_domain, result)
         except Exception as e:
             logger.warning(f"Failed to cache crawl results for {base_domain}: {e}")
@@ -538,27 +538,27 @@ def extract_email(text: str) -> str | None:
 def extract_internal_links(soup: BeautifulSoup, base_url: str, base_domain: str) -> List[str]:
     """Extract internal links from page."""
     links = []
-    
-    for a_tag in soup.find_all('a', href=True):
-        href = a_tag['href']
-        
+
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
+
         # Skip non-HTML files
-        if re.search(r'\.(pdf|doc|docx|xls|xlsx|zip|rar|jpg|png|gif)$', href, re.I):
+        if re.search(r"\.(pdf|doc|docx|xls|xlsx|zip|rar|jpg|png|gif)$", href, re.I):
             continue
-        
+
         # Skip special links
-        if href.startswith(('mailto:', 'tel:', 'javascript:', '#')):
+        if href.startswith(("mailto:", "tel:", "javascript:", "#")):
             continue
-        
+
         # Convert relative to absolute
         full_url = urljoin(base_url, href)
         parsed = urlparse(full_url)
-        
+
         # Only internal links
-        if parsed.netloc == base_domain or parsed.netloc == '':
+        if parsed.netloc == base_domain or parsed.netloc == "":
             # Remove query strings and fragments
             clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
             if clean_url not in links:
                 links.append(clean_url)
-    
+
     return links

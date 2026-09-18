@@ -235,9 +235,7 @@ async def _solve_2captcha(
     return None
 
 
-async def _solve_2captcha_yandex_smart(
-    api_key: str, sitekey: str, pageurl: str
-) -> Optional[str]:
+async def _solve_2captcha_yandex_smart(api_key: str, sitekey: str, pageurl: str) -> Optional[str]:
     """2captcha: Yandex SmartCaptcha — method=yandex, sitekey, pageurl; res.php как обычно."""
     params = {
         "key": api_key,
@@ -276,9 +274,7 @@ async def _solve_2captcha_yandex_smart(
     return None
 
 
-async def solve_yandex_smartcaptcha(
-    html_content: str, pageurl: str, db: AsyncSession
-) -> Optional[str]:
+async def solve_yandex_smartcaptcha(html_content: str, pageurl: str, db: AsyncSession) -> Optional[str]:
     """
     Решить Yandex SmartCaptcha через 2captcha (method=yandex).
     Возвращает токен для подстановки в smart-token / captcha-token / g-recaptcha-response.
@@ -297,7 +293,9 @@ async def solve_yandex_smartcaptcha(
     return await _solve_2captcha_yandex_smart(c2.get("api_key"), sitekey, pageurl)
 
 
-async def _solve_anticaptcha(sitekey: str, pageurl: str, version: str, action: Optional[str], api_key: str) -> Optional[str]:
+async def _solve_anticaptcha(
+    sitekey: str, pageurl: str, version: str, action: Optional[str], api_key: str
+) -> Optional[str]:
     """Anti-captcha API: createTask → getTaskResult."""
     task_type = "RecaptchaV3TaskProxyless" if version == "v3" else "RecaptchaV2TaskProxyless"
     task: dict = {"type": task_type, "websiteURL": pageurl, "websiteKey": sitekey}
@@ -320,7 +318,9 @@ async def _solve_anticaptcha(sitekey: str, pageurl: str, version: str, action: O
 
         for _ in range(24):
             await asyncio.sleep(5)
-            r2 = await http.post("https://api.anti-captcha.com/getTaskResult", json={"clientKey": api_key, "taskId": task_id})
+            r2 = await http.post(
+                "https://api.anti-captcha.com/getTaskResult", json={"clientKey": api_key, "taskId": task_id}
+            )
             r2.raise_for_status()
             d2 = r2.json()
             if d2.get("errorId", 1) != 0:

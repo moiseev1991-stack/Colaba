@@ -25,16 +25,16 @@ LOCALES_DIR = os.path.join(os.path.dirname(__file__), "locales")
 def get_translations(language: str) -> GNUTranslations | NullTranslations:
     """
     Get translations for the specified language.
-    
+
     Args:
         language: Language code (e.g., "ru", "en")
-    
+
     Returns:
         Translation object
     """
     if language not in SUPPORTED_LANGUAGES:
         language = DEFAULT_LANGUAGE
-    
+
     try:
         return translation(
             "admin",
@@ -50,7 +50,7 @@ def get_translations(language: str) -> GNUTranslations | NullTranslations:
 def set_language(language: str) -> None:
     """
     Set the current language for translations.
-    
+
     Args:
         language: Language code (e.g., "ru", "en")
     """
@@ -70,11 +70,11 @@ def get_current_language() -> str:
 def _(message: str, language: Optional[str] = None) -> str:
     """
     Translate a message to the current language.
-    
+
     Args:
         message: Message to translate
         language: Optional language override
-    
+
     Returns:
         Translated message
     """
@@ -86,13 +86,13 @@ def _(message: str, language: Optional[str] = None) -> str:
 def n_(singular: str, plural: str, n: int, language: Optional[str] = None) -> str:
     """
     Translate a message with plural forms.
-    
+
     Args:
         singular: Singular form
         plural: Plural form
         n: Count
         language: Optional language override
-    
+
     Returns:
         Translated message
     """
@@ -103,16 +103,16 @@ def n_(singular: str, plural: str, n: int, language: Optional[str] = None) -> st
 
 class TranslationContext:
     """Context manager for temporary language change."""
-    
+
     def __init__(self, language: str):
         self.language = language
         self.previous_language = None
-    
+
     def __enter__(self):
         self.previous_language = _current_language
         set_language(self.language)
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         set_language(self.previous_language)
         return False
@@ -122,16 +122,16 @@ class TranslationContext:
 def get_translator(language: str = None):
     """
     Get a translator function for use in templates.
-    
+
     Args:
         language: Language code (uses current if not specified)
-    
+
     Returns:
         Translation function
     """
     lang = language or _current_language
-    
+
     def translate(message: str) -> str:
         return _(message, lang)
-    
+
     return translate

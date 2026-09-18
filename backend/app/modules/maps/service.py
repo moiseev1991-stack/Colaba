@@ -255,7 +255,11 @@ async def create_map_search(
         if not await check_cache(db, niche=niche, city=city, source=s):
             continue
         copied = await copy_results_from_previous_search(
-            db, niche=niche, city=city, source=s, new_search_id=search.id,
+            db,
+            niche=niche,
+            city=city,
+            source=s,
+            new_search_id=search.id,
         )
         if copied > 0:
             cached_sources.append(s)
@@ -265,7 +269,9 @@ async def create_map_search(
             # следующий парсинг прошёл нормально.
             logger.warning(
                 "create_map_search: stale cache for (%s, %s, %s) — no rows to copy, dropping",
-                niche, city, s,
+                niche,
+                city,
+                s,
             )
             await delete_cache_entry(db, niche=niche, city=city, source=s)
 
@@ -285,17 +291,18 @@ async def create_map_search(
 # ---------------------------------------------------------------------------
 
 
-async def get_source_counts_for_search(
-    db: AsyncSession, search_id: int
-) -> dict[str, int]:
+async def get_source_counts_for_search(db: AsyncSession, search_id: int) -> dict[str, int]:
     """Считает компании поиска по источникам: total / twogis / yandex_maps / both.
 
     Считается на ПОЛНОЙ выборке поиска (через map_search_results), без учёта
     активного source_filter — чтобы фронт мог показывать счётчики и до/после
     переключения.
     """
-    rows = (await db.execute(text(
-        """
+    rows = (
+        (
+            await db.execute(
+                text(
+                    """
         WITH ids AS (
             SELECT company_id FROM map_search_results WHERE map_search_id = :sid
         ),
@@ -314,7 +321,13 @@ async def get_source_counts_for_search(
             COUNT(*) FILTER (WHERE has_2gis AND has_yandex)  AS both
         FROM agg
         """
-    ), {"sid": search_id})).mappings().first()
+                ),
+                {"sid": search_id},
+            )
+        )
+        .mappings()
+        .first()
+    )
     if not rows:
         return {"total": 0, "twogis": 0, "yandex_maps": 0, "both": 0}
     return {
@@ -330,9 +343,7 @@ async def get_source_counts_for_search(
 # ---------------------------------------------------------------------------
 
 
-async def attach_sources_for_companies(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, list[dict[str, Any]]]:
+async def attach_sources_for_companies(db: AsyncSession, company_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
     """Тянет company_sources + company_contacts для списка company_ids за 2 SQL.
 
     Возвращает map company_id → list[CompanySourceOut-совместимых dict'ов].
@@ -342,8 +353,11 @@ async def attach_sources_for_companies(
     if not company_ids:
         return {}
     # Все источники
-    src_rows = (await db.execute(text(
-        """
+    src_rows = (
+        (
+            await db.execute(
+                text(
+                    """
         SELECT id, company_id, source, external_id, source_url, rating,
                reviews_count, reviews_positive_count, reviews_negative_count,
                reviews_neutral_count, has_owner_replies, owner_replies_count
@@ -351,42 +365,61 @@ async def attach_sources_for_companies(
         WHERE company_id = ANY(:ids)
         ORDER BY company_id, source
         """
-    ), {"ids": company_ids})).mappings().all()
+                ),
+                {"ids": company_ids},
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     # Все контакты
-    contacts_rows = (await db.execute(text(
-        """
+    contacts_rows = (
+        (
+            await db.execute(
+                text(
+                    """
         SELECT company_source_id, source, type, value, is_primary
         FROM company_contacts
         WHERE company_id = ANY(:ids)
         """
-    ), {"ids": company_ids})).mappings().all()
+                ),
+                {"ids": company_ids},
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     contacts_by_source_id: dict[int, list[dict[str, Any]]] = {}
     for row in contacts_rows:
-        contacts_by_source_id.setdefault(int(row["company_source_id"]), []).append({
-            "source": row["source"],
-            "type": row["type"],
-            "value": row["value"],
-            "is_primary": bool(row["is_primary"]),
-        })
+        contacts_by_source_id.setdefault(int(row["company_source_id"]), []).append(
+            {
+                "source": row["source"],
+                "type": row["type"],
+                "value": row["value"],
+                "is_primary": bool(row["is_primary"]),
+            }
+        )
 
     out: dict[int, list[dict[str, Any]]] = {}
     for r in src_rows:
         cid = int(r["company_id"])
-        out.setdefault(cid, []).append({
-            "source": r["source"],
-            "external_id": r["external_id"],
-            "source_url": r["source_url"],
-            "rating": float(r["rating"]) if r["rating"] is not None else None,
-            "reviews_count": int(r["reviews_count"] or 0),
-            "reviews_positive_count": int(r["reviews_positive_count"] or 0),
-            "reviews_negative_count": int(r["reviews_negative_count"] or 0),
-            "reviews_neutral_count": int(r["reviews_neutral_count"] or 0),
-            "has_owner_replies": bool(r["has_owner_replies"]),
-            "owner_replies_count": int(r["owner_replies_count"] or 0),
-            "contacts": contacts_by_source_id.get(int(r["id"]), []),
-        })
+        out.setdefault(cid, []).append(
+            {
+                "source": r["source"],
+                "external_id": r["external_id"],
+                "source_url": r["source_url"],
+                "rating": float(r["rating"]) if r["rating"] is not None else None,
+                "reviews_count": int(r["reviews_count"] or 0),
+                "reviews_positive_count": int(r["reviews_positive_count"] or 0),
+                "reviews_negative_count": int(r["reviews_negative_count"] or 0),
+                "reviews_neutral_count": int(r["reviews_neutral_count"] or 0),
+                "has_owner_replies": bool(r["has_owner_replies"]),
+                "owner_replies_count": int(r["owner_replies_count"] or 0),
+                "contacts": contacts_by_source_id.get(int(r["id"]), []),
+            }
+        )
     return out
 
 
@@ -420,38 +453,43 @@ async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> No
     `cron_dedup_multisource` (запускает скрипт scripts/dedup_multisource_phase2.py).
     """
     # 1. company_sources — UPSERT по (source, external_id)
-    src_ins = pg_insert(CompanySource).values(
-        company_id=company.id,
-        source=company.source,
-        external_id=company.external_id,
-        rating=company.rating,
-        reviews_count=company.reviews_count or 0,
-        reviews_positive_count=company.reviews_positive_count or 0,
-        reviews_negative_count=company.reviews_negative_count or 0,
-        reviews_neutral_count=company.reviews_neutral_count or 0,
-        has_owner_replies=company.has_owner_replies or False,
-        owner_replies_count=company.owner_replies_count or 0,
-        last_review_at=company.last_review_at,
-        raw_data=company.raw_data,
-        match_confidence=1.00,
-        matched_by="parser_sync",
-        last_parsed_at=func.now(),
-    ).on_conflict_do_update(
-        index_elements=["source", "external_id"],
-        set_={
-            "rating": company.rating,
-            "reviews_count": company.reviews_count or 0,
-            "reviews_positive_count": company.reviews_positive_count or 0,
-            "reviews_negative_count": company.reviews_negative_count or 0,
-            "reviews_neutral_count": company.reviews_neutral_count or 0,
-            "has_owner_replies": company.has_owner_replies or False,
-            "owner_replies_count": company.owner_replies_count or 0,
-            "last_review_at": company.last_review_at,
-            "raw_data": company.raw_data,
-            "last_parsed_at": func.now(),
-            "updated_at": func.now(),
-        },
-    ).returning(CompanySource.id)
+    src_ins = (
+        pg_insert(CompanySource)
+        .values(
+            company_id=company.id,
+            source=company.source,
+            external_id=company.external_id,
+            rating=company.rating,
+            reviews_count=company.reviews_count or 0,
+            reviews_positive_count=company.reviews_positive_count or 0,
+            reviews_negative_count=company.reviews_negative_count or 0,
+            reviews_neutral_count=company.reviews_neutral_count or 0,
+            has_owner_replies=company.has_owner_replies or False,
+            owner_replies_count=company.owner_replies_count or 0,
+            last_review_at=company.last_review_at,
+            raw_data=company.raw_data,
+            match_confidence=1.00,
+            matched_by="parser_sync",
+            last_parsed_at=func.now(),
+        )
+        .on_conflict_do_update(
+            index_elements=["source", "external_id"],
+            set_={
+                "rating": company.rating,
+                "reviews_count": company.reviews_count or 0,
+                "reviews_positive_count": company.reviews_positive_count or 0,
+                "reviews_negative_count": company.reviews_negative_count or 0,
+                "reviews_neutral_count": company.reviews_neutral_count or 0,
+                "has_owner_replies": company.has_owner_replies or False,
+                "owner_replies_count": company.owner_replies_count or 0,
+                "last_review_at": company.last_review_at,
+                "raw_data": company.raw_data,
+                "last_parsed_at": func.now(),
+                "updated_at": func.now(),
+            },
+        )
+        .returning(CompanySource.id)
+    )
     cs_id = (await db.execute(src_ins)).scalar_one()
 
     # 2. company_contacts — собираем все контакты компании в плоский список
@@ -460,13 +498,13 @@ async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> No
         contacts.append(("phone", company.phone, True))
     if company.website:
         contacts.append(("website", company.website, True))
-    for e in (company.emails or []):
+    for e in company.emails or []:
         if isinstance(e, str) and e:
             contacts.append(("email", e, False))
     extra = company.contacts_extra or {}
     if isinstance(extra, dict):
         for key, ctype in _CONTACTS_EXTRA_TYPE_MAP:
-            for v in (extra.get(key) or []):
+            for v in extra.get(key) or []:
                 if isinstance(v, str) and v:
                     contacts.append((ctype, v, False))
 
@@ -481,15 +519,19 @@ async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> No
         v = value[:500]
         if ctype == "website" and not found_website:
             found_website = v
-        contact_ins = pg_insert(CompanyContact).values(
-            company_source_id=cs_id,
-            company_id=company.id,
-            source=company.source,
-            type=ctype,
-            value=v,
-            is_primary=is_primary,
-        ).on_conflict_do_nothing(
-            index_elements=["company_source_id", "type", "value"],
+        contact_ins = (
+            pg_insert(CompanyContact)
+            .values(
+                company_source_id=cs_id,
+                company_id=company.id,
+                source=company.source,
+                type=ctype,
+                value=v,
+                is_primary=is_primary,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["company_source_id", "type", "value"],
+            )
         )
         await db.execute(contact_ins)
 
@@ -500,10 +542,7 @@ async def _sync_company_to_multisource(db: AsyncSession, company: Company) -> No
     # «первый нашёл»).
     if found_website:
         await db.execute(
-            text(
-                "UPDATE companies SET website = :w "
-                "WHERE id = :id AND (website IS NULL OR website = '')"
-            ),
+            text("UPDATE companies SET website = :w WHERE id = :id AND (website IS NULL OR website = '')"),
             {"w": found_website, "id": company.id},
         )
 
@@ -580,9 +619,7 @@ async def save_companies_batch(
                 "rating": ins.excluded.rating,
                 "reviews_count": ins.excluded.reviews_count,
                 "emails": func.coalesce(ins.excluded.emails, Company.__table__.c.emails),
-                "contacts_extra": func.coalesce(
-                    ins.excluded.contacts_extra, Company.__table__.c.contacts_extra
-                ),
+                "contacts_extra": func.coalesce(ins.excluded.contacts_extra, Company.__table__.c.contacts_extra),
                 "contacts_enriched_at": func.coalesce(
                     ins.excluded.contacts_enriched_at,
                     Company.__table__.c.contacts_enriched_at,
@@ -595,13 +632,17 @@ async def save_companies_batch(
         company_id = result.scalar_one()
 
         # Связь с поиском (на конфликт — обновляем position).
-        link = pg_insert(MapSearchResult).values(
-            map_search_id=search_id,
-            company_id=company_id,
-            position=start_position + offset,
-        ).on_conflict_do_update(
-            index_elements=["map_search_id", "company_id"],
-            set_={"position": start_position + offset},
+        link = (
+            pg_insert(MapSearchResult)
+            .values(
+                map_search_id=search_id,
+                company_id=company_id,
+                position=start_position + offset,
+            )
+            .on_conflict_do_update(
+                index_elements=["map_search_id", "company_id"],
+                set_={"position": start_position + offset},
+            )
         )
         await db.execute(link)
 
@@ -631,6 +672,7 @@ async def save_companies_batch(
         from app.modules.maps.website_lead_score import (
             recompute_for_companies as recompute_website_score,
         )
+
         ids = [c.id for c in saved]
         try:
             await recompute_temperature(db, ids)
@@ -743,6 +785,7 @@ async def update_company_aggregates(db: AsyncSession, company_id: int) -> None:
     try:
         from app.modules.maps.lead_temperature import recompute_for_company as _rt
         from app.modules.maps.website_lead_score import recompute_for_company as _rw
+
         await _rt(db, company_id)
         await _rw(db, company_id)
         await db.commit()
@@ -769,10 +812,7 @@ async def list_search_all_company_ids(
     ниш — старый from_cache-путь запускал analyze только для компаний
     с reviews_count=0.
     """
-    q = (
-        select(MapSearchResult.company_id)
-        .where(MapSearchResult.map_search_id == search_id)
-    )
+    q = select(MapSearchResult.company_id).where(MapSearchResult.map_search_id == search_id)
     rows = (await db.execute(q)).scalars().all()
     return [int(cid) for cid in rows]
 
@@ -828,14 +868,12 @@ async def get_search_results(
     # отфильтровываются на выдаче. Для mode='radius' фильтр не нужен —
     # там критерий = радиус, а не city.
     from app.models.maps import MapSearch
+
     search_obj = await db.get(MapSearch, search_id)
     if search_obj and (getattr(search_obj, "mode", "city") or "city") == "city":
         search_city = (search_obj.city or "").strip().lower()
         if search_city:
-            base_q = base_q.where(
-                (Company.city.is_(None))
-                | (func.lower(func.trim(Company.city)) == search_city)
-            )
+            base_q = base_q.where((Company.city.is_(None)) | (func.lower(func.trim(Company.city)) == search_city))
 
     base_q = apply_filters(base_q, flt)
 
@@ -883,9 +921,7 @@ async def get_top_pains_for_companies(
     }
     if priority_pain_tag_ids:
         params["priority_ids"] = list(priority_pain_tag_ids)
-        priority_order_sql = (
-            "CASE WHEN cps.pain_tag_id = ANY(:priority_ids) THEN 0 ELSE 1 END, "
-        )
+        priority_order_sql = "CASE WHEN cps.pain_tag_id = ANY(:priority_ids) THEN 0 ELSE 1 END, "
     else:
         priority_order_sql = ""
 
@@ -919,19 +955,21 @@ async def get_top_pains_for_companies(
         WHERE rn <= :limit
         """
     )
-    rows = list(
-        (await db.execute(sql, params)).mappings().all()
-    )
+    rows = list((await db.execute(sql, params)).mappings().all())
     by_company: dict[int, list[dict[str, Any]]] = {}
     for r in rows:
-        by_company.setdefault(int(r["company_id"]), []).append({
-            "pain_tag_id": int(r["pain_tag_id"]),
-            "label": r["label"],
-            "description": r["description"],
-            "mention_count": int(r["mention_count"] or 0),
-            "top_quote": r["top_quote"],
-            "top_quote_similarity": float(r["top_quote_similarity"]) if r["top_quote_similarity"] is not None else None,
-        })
+        by_company.setdefault(int(r["company_id"]), []).append(
+            {
+                "pain_tag_id": int(r["pain_tag_id"]),
+                "label": r["label"],
+                "description": r["description"],
+                "mention_count": int(r["mention_count"] or 0),
+                "top_quote": r["top_quote"],
+                "top_quote_similarity": float(r["top_quote_similarity"])
+                if r["top_quote_similarity"] is not None
+                else None,
+            }
+        )
     return by_company
 
 
@@ -978,9 +1016,7 @@ async def get_negative_snippets_for_companies(
         WHERE rn <= :limit
         """
     )
-    rows = list(
-        (await db.execute(sql, {"ids": list(company_ids), "limit": int(limit_per_company)})).mappings().all()
-    )
+    rows = list((await db.execute(sql, {"ids": list(company_ids), "limit": int(limit_per_company)})).mappings().all())
     by_company: dict[int, list[str]] = {}
     for r in rows:
         cid = int(r["company_id"])

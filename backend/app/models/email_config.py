@@ -9,6 +9,7 @@ from app.core.database import Base
 
 class EmailConfig(Base):
     """Global email configuration -- provider settings, SMTP, IMAP."""
+
     __tablename__ = "email_config"
 
     id = Column(Integer, primary_key=True, index=True)

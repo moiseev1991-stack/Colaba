@@ -32,10 +32,15 @@ logger = logging.getLogger(__name__)
 
 async def _analyze_reviews_for_company_async(company_id: int) -> dict[str, int]:
     async with AsyncSessionLocal() as db:
-        rows = list((await db.execute(
-            select(Review.id)
-            .where(Review.company_id == company_id, Review.ai_processed_at.is_(None))
-        )).scalars().all())
+        rows = list(
+            (
+                await db.execute(
+                    select(Review.id).where(Review.company_id == company_id, Review.ai_processed_at.is_(None))
+                )
+            )
+            .scalars()
+            .all()
+        )
         if not rows:
             return {"sentiment": 0, "embeddings": 0, "matched": 0}
         return await service.process_reviews_pipeline(db, [int(r) for r in rows])
@@ -83,7 +88,11 @@ async def _recluster_async(
 ) -> int:
     async with AsyncSessionLocal() as db:
         return await service.recluster_pains_for_niche(
-            db, niche, city, company_ids=company_ids, sentiment=sentiment,
+            db,
+            niche,
+            city,
+            company_ids=company_ids,
+            sentiment=sentiment,
         )
 
 
@@ -112,7 +121,10 @@ def recluster_pains_for_niche_task(
     except Exception as exc:
         logger.warning(
             "recluster_pains_for_niche_task retrying %r/%r [%s]: %s",
-            niche, city, sentiment, exc,
+            niche,
+            city,
+            sentiment,
+            exc,
         )
         raise self.retry(exc=exc, countdown=300, max_retries=1)
 
@@ -155,7 +167,10 @@ def recluster_popular_niches():
 
 
 async def _analyze_company_with_prompt_async(
-    user_id: int, company_id: int, prompt: str, prompt_hash_value: str,
+    user_id: int,
+    company_id: int,
+    prompt: str,
+    prompt_hash_value: str,
 ) -> dict[str, Any]:
     from app.modules.reviews_ai import llm
     from app.modules.reviews_ai import preset_analysis_service as svc
@@ -164,10 +179,14 @@ async def _analyze_company_with_prompt_async(
         ctx = await svc.gather_company_context(db, company_id)
         if ctx is None:
             await svc.write_result(
-                db, user_id=user_id, company_id=company_id,
+                db,
+                user_id=user_id,
+                company_id=company_id,
                 prompt_hash_value=prompt_hash_value,
-                score=None, comment=None,
-                status="failed", error="company not found",
+                score=None,
+                comment=None,
+                status="failed",
+                error="company not found",
             )
             return {"status": "failed", "reason": "company_not_found"}
 
@@ -178,15 +197,21 @@ async def _analyze_company_with_prompt_async(
         )
         if result is None:
             await svc.write_result(
-                db, user_id=user_id, company_id=company_id,
+                db,
+                user_id=user_id,
+                company_id=company_id,
                 prompt_hash_value=prompt_hash_value,
-                score=None, comment=None,
-                status="failed", error="llm returned no result",
+                score=None,
+                comment=None,
+                status="failed",
+                error="llm returned no result",
             )
             return {"status": "failed", "reason": "llm_failed"}
 
         await svc.write_result(
-            db, user_id=user_id, company_id=company_id,
+            db,
+            user_id=user_id,
+            company_id=company_id,
             prompt_hash_value=prompt_hash_value,
             score=result.get("score"),
             comment=result.get("comment"),
@@ -197,17 +222,18 @@ async def _analyze_company_with_prompt_async(
 
 @celery_app.task(name="analyze_company_with_prompt", queue="maps_ai", bind=True, max_retries=1)
 def analyze_company_with_prompt(
-    self, user_id: int, company_id: int, prompt: str, prompt_hash_value: str,
+    self,
+    user_id: int,
+    company_id: int,
+    prompt: str,
+    prompt_hash_value: str,
 ):
     """Применяет кастомный промпт к компании, пишет результат в company_ai_analyses.
     Строка со status='pending' должна быть создана ДО постановки таски (из
     preset_analysis_service.ensure_pending_row) — таска только update'ит её.
     """
     try:
-        return asyncio.run(
-            _analyze_company_with_prompt_async(user_id, company_id, prompt, prompt_hash_value)
-        )
+        return asyncio.run(_analyze_company_with_prompt_async(user_id, company_id, prompt, prompt_hash_value))
     except Exception as exc:
-        logger.warning("analyze_company_with_prompt retrying user=%d company=%d: %s",
-                       user_id, company_id, exc)
+        logger.warning("analyze_company_with_prompt retrying user=%d company=%d: %s", user_id, company_id, exc)
         raise self.retry(exc=exc, countdown=30, max_retries=1)

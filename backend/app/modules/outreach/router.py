@@ -29,6 +29,7 @@ router.include_router(channels_router)
 # Telegram webhook + setup: /outreach/telegram/* (приём Updates от Bot API,
 # setup webhook). Mount без префикса внутри /outreach → /outreach/telegram/*.
 from app.modules.outreach.telegram_router import router as telegram_router
+
 router.include_router(telegram_router)
 
 

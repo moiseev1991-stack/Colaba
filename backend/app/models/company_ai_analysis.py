@@ -28,7 +28,9 @@ class CompanyAiAnalysis(Base):
     __tablename__ = "company_ai_analyses"
     __table_args__ = (
         UniqueConstraint(
-            "company_id", "prompt_hash", "user_id",
+            "company_id",
+            "prompt_hash",
+            "user_id",
             name="uq_company_ai_analyses_company_prompt_user",
         ),
     )

@@ -63,23 +63,30 @@ async def iter_search_events(db: AsyncSession, search: MapSearch) -> AsyncIterat
     channel = maps_stream_channel(search.id)
 
     # 1) bootstrap — уже найденные компании
-    rows = list((await db.execute(
-        select(Company, MapSearchResult.position)
-        .join(MapSearchResult, MapSearchResult.company_id == Company.id)
-        .where(MapSearchResult.map_search_id == search.id)
-        .order_by(MapSearchResult.position.asc().nullslast(), Company.id.asc())
-    )).all())
+    rows = list(
+        (
+            await db.execute(
+                select(Company, MapSearchResult.position)
+                .join(MapSearchResult, MapSearchResult.company_id == Company.id)
+                .where(MapSearchResult.map_search_id == search.id)
+                .order_by(MapSearchResult.position.asc().nullslast(), Company.id.asc())
+            )
+        ).all()
+    )
     for company, position in rows:
         yield _format_event("company", _company_to_event(company, position))
 
     # Если поиск уже закрыт — сразу done, без подписки
     if search.status in ("completed", "failed", "from_cache"):
-        yield _format_event("done", {
-            "status": search.status,
-            "companies_found": search.companies_found or 0,
-            "reviews_found": search.reviews_found or 0,
-            "error": search.error,
-        })
+        yield _format_event(
+            "done",
+            {
+                "status": search.status,
+                "companies_found": search.companies_found or 0,
+                "reviews_found": search.reviews_found or 0,
+                "error": search.error,
+            },
+        )
         return
 
     # 2) live: подписка + heartbeat. Объединяем через asyncio.wait.

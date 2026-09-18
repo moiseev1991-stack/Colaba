@@ -9,6 +9,7 @@ from typing import Optional
 
 class DeploymentBase(BaseModel):
     """Base deployment schema."""
+
     version: str
     git_sha: str
     environment: str
@@ -19,11 +20,13 @@ class DeploymentBase(BaseModel):
 
 class DeploymentCreate(DeploymentBase):
     """Schema for creating a deployment record."""
+
     pass
 
 
 class DeploymentResponse(DeploymentBase):
     """Schema for deployment response."""
+
     id: int
     deployed_at: datetime
 
@@ -33,5 +36,6 @@ class DeploymentResponse(DeploymentBase):
 
 class DeploymentList(BaseModel):
     """Schema for list of deployments."""
+
     items: list[DeploymentResponse]
     total: int

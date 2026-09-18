@@ -62,15 +62,27 @@ _UA = "SpinLid-Colaba/1.0 (contact: moiseev1991@gmail.com)"
 # Ключевые слова маркетинговых вакансий. Ищем текстом — hh делает свой
 # морфологический поиск, но добавляем варианты чтобы не пропустить SMM/PR.
 _MARKETING_QUERY = (
-    "маркетолог OR \"директор по маркетингу\" OR CMO OR "
-    "\"руководитель отдела маркетинга\" OR SMM OR бренд-менеджер OR PR-менеджер"
+    'маркетолог OR "директор по маркетингу" OR CMO OR '
+    '"руководитель отдела маркетинга" OR SMM OR бренд-менеджер OR PR-менеджер'
 )
 
 
-_LEGAL_FORM_TOKENS = frozenset({
-    "ооо", "оао", "зао", "пао", "ао", "ип", "тоо",
-    "нко", "ано", "фгуп", "гуп", "муп",
-})
+_LEGAL_FORM_TOKENS = frozenset(
+    {
+        "ооо",
+        "оао",
+        "зао",
+        "пао",
+        "ао",
+        "ип",
+        "тоо",
+        "нко",
+        "ано",
+        "фгуп",
+        "гуп",
+        "муп",
+    }
+)
 
 
 def _normalize_company_name(name: str) -> str:
@@ -87,7 +99,7 @@ def _normalize_company_name(name: str) -> str:
     s = name.lower()
     # "+", "&" — часть бренда ("К+31", "S&P"), их НЕ разбиваем, а склеиваем:
     # "К+31" → "к31", чтобы бренд остался одним токеном.
-    s = re.sub(r'[+&]', "", s)
+    s = re.sub(r"[+&]", "", s)
     # Остальную пунктуацию (запятые, точки, знаки) — на пробел, чтобы
     # "Астра, клиника" ↔ "клиника Астра" сматчились по set of tokens.
     s = re.sub(r'[«»"\'`\-–—(),.:;/!?]+', " ", s)
@@ -106,13 +118,37 @@ def _name_tokens(name: str) -> frozenset[str]:
 # Generic-слова, которые в изоляции не подтверждают match: если пересечение
 # состоит ТОЛЬКО из них, отклоняем. «Клиника Астра» vs «Клиника Восток»
 # пересеклись бы по «клиника» = false-positive.
-_HH_GENERIC_TOKENS = frozenset({
-    "клиника", "центр", "медицинский", "медицинского", "стоматологическая",
-    "магазин", "сеть", "салон", "студия", "агентство", "компания", "группа",
-    "торговый", "торговая", "интернет", "онлайн", "офис", "офисы",
-    "ресторан", "кафе", "бар", "фитнес", "спа",
-    "клиника", "консалтинг", "международный", "мир",
-})
+_HH_GENERIC_TOKENS = frozenset(
+    {
+        "клиника",
+        "центр",
+        "медицинский",
+        "медицинского",
+        "стоматологическая",
+        "магазин",
+        "сеть",
+        "салон",
+        "студия",
+        "агентство",
+        "компания",
+        "группа",
+        "торговый",
+        "торговая",
+        "интернет",
+        "онлайн",
+        "офис",
+        "офисы",
+        "ресторан",
+        "кафе",
+        "бар",
+        "фитнес",
+        "спа",
+        "клиника",
+        "консалтинг",
+        "международный",
+        "мир",
+    }
+)
 
 
 # Транслит-запрос для брендов на латинице (Askona, Bello Dente, Secret Vi).
@@ -120,13 +156,41 @@ _HH_GENERIC_TOKENS = frozenset({
 # правильный работодатель с городом. Используем упрощённую обратную
 # транслитерацию (latin → кириллица) для дополнительного поискового запроса.
 _LATIN_TO_CYR = {
-    "sh": "ш", "ch": "ч", "zh": "ж", "kh": "х", "yu": "ю", "ya": "я",
-    "ts": "ц", "ye": "е", "yo": "ё",
-    "a": "а", "b": "б", "c": "с", "d": "д", "e": "е", "f": "ф",
-    "g": "г", "h": "х", "i": "и", "j": "дж", "k": "к", "l": "л",
-    "m": "м", "n": "н", "o": "о", "p": "п", "q": "к", "r": "р",
-    "s": "с", "t": "т", "u": "у", "v": "в", "w": "в", "x": "кс",
-    "y": "й", "z": "з",
+    "sh": "ш",
+    "ch": "ч",
+    "zh": "ж",
+    "kh": "х",
+    "yu": "ю",
+    "ya": "я",
+    "ts": "ц",
+    "ye": "е",
+    "yo": "ё",
+    "a": "а",
+    "b": "б",
+    "c": "с",
+    "d": "д",
+    "e": "е",
+    "f": "ф",
+    "g": "г",
+    "h": "х",
+    "i": "и",
+    "j": "дж",
+    "k": "к",
+    "l": "л",
+    "m": "м",
+    "n": "н",
+    "o": "о",
+    "p": "п",
+    "q": "к",
+    "r": "р",
+    "s": "с",
+    "t": "т",
+    "u": "у",
+    "v": "в",
+    "w": "в",
+    "x": "кс",
+    "y": "й",
+    "z": "з",
 }
 
 
@@ -143,8 +207,8 @@ def _latin_to_cyrillic(text: str) -> str:
     i = 0
     while i < len(s):
         # Пробуем 2-char comboj (sh, ch, zh, kh, yu, ya, ts, ye, yo).
-        if i + 1 < len(s) and s[i:i + 2] in _LATIN_TO_CYR:
-            out.append(_LATIN_TO_CYR[s[i:i + 2]])
+        if i + 1 < len(s) and s[i : i + 2] in _LATIN_TO_CYR:
+            out.append(_LATIN_TO_CYR[s[i : i + 2]])
             i += 2
             continue
         c = s[i]
@@ -164,9 +228,7 @@ def _looks_like_latin(text: str) -> bool:
     return ascii_count / len(letters) >= 0.6
 
 
-async def _hh_search_employers(
-    client: httpx.AsyncClient, query: str
-) -> list[dict[str, Any]]:
+async def _hh_search_employers(client: httpx.AsyncClient, query: str) -> list[dict[str, Any]]:
     """Один поисковый запрос к hh.ru/employers. Возвращает items[] или []."""
     try:
         r = await client.get(
@@ -182,9 +244,7 @@ async def _hh_search_employers(
     return data.get("items") or []
 
 
-async def _search_employer(
-    client: httpx.AsyncClient, company_name: str, city: str | None
-) -> int | None:
+async def _search_employer(client: httpx.AsyncClient, company_name: str, city: str | None) -> int | None:
     """Пытается найти employer_id на hh.ru по названию компании.
 
     Стратегия (2026-07-10):
@@ -261,9 +321,7 @@ async def _search_employer(
     return None
 
 
-async def _search_marketing_vacancy(
-    client: httpx.AsyncClient, employer_id: int
-) -> dict[str, Any] | None:
+async def _search_marketing_vacancy(client: httpx.AsyncClient, employer_id: int) -> dict[str, Any] | None:
     """Есть ли у employer_id активная маркетинговая вакансия? Возвращаем
     первую подходящую (dict с id/name/alternate_url) или None.
     """
@@ -291,10 +349,20 @@ async def _search_marketing_vacancy(
         # «менеджер по продажам» под текст «маркетолог»). Проверяем что
         # в названии вакансии есть маркетинговое ключевое слово.
         title = (it.get("name") or "").lower()
-        if any(k in title for k in (
-            "маркетолог", "маркетинг", "cmo", "smm", "бренд",
-            "pr-", "pr ", "пиар", "реклам",
-        )):
+        if any(
+            k in title
+            for k in (
+                "маркетолог",
+                "маркетинг",
+                "cmo",
+                "smm",
+                "бренд",
+                "pr-",
+                "pr ",
+                "пиар",
+                "реклам",
+            )
+        ):
             return {
                 "id": it.get("id"),
                 "name": it.get("name"),
@@ -303,9 +371,7 @@ async def _search_marketing_vacancy(
     return None
 
 
-async def _fetch_vacancy_contacts(
-    client: httpx.AsyncClient, vacancy_id: str | int
-) -> dict[str, Any] | None:
+async def _fetch_vacancy_contacts(client: httpx.AsyncClient, vacancy_id: str | int) -> dict[str, Any] | None:
     """GET /vacancies/{id} → contacts. Часто contacts=None."""
     try:
         r = await client.get(f"{_HH_API}/vacancies/{vacancy_id}")
@@ -322,9 +388,7 @@ async def _fetch_vacancy_contacts(
     return contacts
 
 
-async def enrich_from_hh(
-    db: AsyncSession, company_id: int
-) -> dict[str, Any]:
+async def enrich_from_hh(db: AsyncSession, company_id: int) -> dict[str, Any]:
     """Главная функция: ищет employer_id, проверяет наличие маркетинговой
     вакансии, при наличии — тянет контактное лицо, обновляет Company +
     company_decision_makers.
@@ -336,9 +400,7 @@ async def enrich_from_hh(
         return {"status": "no_name"}
 
     headers = {"User-Agent": _UA, "Accept": "application/json"}
-    async with httpx.AsyncClient(
-        timeout=_TIMEOUT, headers=headers, follow_redirects=True
-    ) as client:
+    async with httpx.AsyncClient(timeout=_TIMEOUT, headers=headers, follow_redirects=True) as client:
         employer_id = await _search_employer(client, company.name, company.city)
         if employer_id is None:
             return {"status": "no_employer"}
@@ -350,9 +412,7 @@ async def enrich_from_hh(
             # прошлый флаг (вакансия могла закрыться), контакты не трогаем.
             if company.hiring_marketing:
                 await db.execute(
-                    update(Company)
-                    .where(Company.id == company_id)
-                    .values(hiring_marketing=False, hiring_url=None)
+                    update(Company).where(Company.id == company_id).values(hiring_marketing=False, hiring_url=None)
                 )
                 await db.commit()
             return {"status": "no_marketing_vacancy", "employer_id": employer_id}
@@ -402,18 +462,22 @@ async def enrich_from_hh(
         # Контактное лицо в hh — почти всегда HR (не сам маркетолог).
         # Ставим role_category='hr', confidence=0.5 — оркестратор поставит
         # is_marketing_dm только если ничего лучше не нашлось.
-        stmt = pg_insert(CompanyDecisionMaker).values(
-            company_id=company_id,
-            name=name,
-            post="HR / контакт вакансии",
-            source="hh",
-            source_url=(vacancy.get("url") or "")[:1000] or None,
-            confidence=0.5,
-            is_decision_maker=False,
-            role_category="hr",
-            contact_type=contact_type,
-            contact_value=contact_value,
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(CompanyDecisionMaker)
+            .values(
+                company_id=company_id,
+                name=name,
+                post="HR / контакт вакансии",
+                source="hh",
+                source_url=(vacancy.get("url") or "")[:1000] or None,
+                confidence=0.5,
+                is_decision_maker=False,
+                role_category="hr",
+                contact_type=contact_type,
+                contact_value=contact_value,
+            )
+            .on_conflict_do_nothing()
+        )
         try:
             await db.execute(stmt)
             saved_person = True

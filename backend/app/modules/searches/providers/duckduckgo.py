@@ -28,10 +28,10 @@ async def fetch_search_results(
 ) -> List[Dict[str, Any]]:
     """
     Получить результаты поиска из DuckDuckGo.
-    
+
     DuckDuckGo - бесплатный поисковик без API ключа.
     Использует библиотеку duckduckgo-search для парсинга результатов.
-    
+
     Args:
         query: Поисковый запрос
         num_results: Количество результатов (максимум 100)
@@ -39,34 +39,32 @@ async def fetch_search_results(
         max_retries: Максимальное количество попыток при ошибках
         retry_delay: Задержка между попытками в секундах
         **kwargs: Дополнительные параметры
-    
+
     Returns:
         List of search results with title, url, snippet, position, domain
-    
+
     Raises:
         ValueError: Если библиотека не установлена или произошла ошибка после всех попыток
     """
     if DDGS is None:
-        raise ValueError(
-            "Библиотека duckduckgo-search не установлена. "
-            "Установите её: pip install duckduckgo-search"
-        )
+        raise ValueError("Библиотека duckduckgo-search не установлена. Установите её: pip install duckduckgo-search")
 
     # Регион из provider_config или аргумент
     region = (kwargs.get("provider_config") or {}).get("region") or region
 
     # Ограничиваем количество результатов
     num_results = min(num_results, 100)
-    
+
     # Retry логика с экспоненциальной задержкой
     last_error = None
-    
+
     # Добавляем случайную задержку перед первым запросом (1-3 секунды)
     # Это помогает избежать одновременных запросов и снижает риск rate limit
     import random
+
     initial_delay = random.uniform(1.0, 3.0)
     await asyncio.sleep(initial_delay)
-    
+
     for attempt in range(max_retries):
         try:
             # Добавляем задержку перед запросом (кроме первой попытки)
@@ -74,7 +72,7 @@ async def fetch_search_results(
                 # Увеличиваем задержку для rate limit: 5, 15, 45 секунд
                 delay = retry_delay * (3 ** (attempt - 1))
                 await asyncio.sleep(delay)
-            
+
             # DuckDuckGo поиск (синхронный, но быстрый)
             # Используем asyncio для неблокирующего выполнения
             def _search():
@@ -87,40 +85,42 @@ async def fetch_search_results(
                         region=region,
                         max_results=num_results,
                     )
-                    
+
                     for idx, item in enumerate(search_results, start=1):
                         url = item.get("href", "")
                         domain = urlparse(url).netloc if url else ""
-                        
-                        results.append({
-                            "position": idx,
-                            "title": item.get("title", ""),
-                            "url": url,
-                            "snippet": item.get("body", ""),
-                            "domain": domain,
-                        })
-                        
+
+                        results.append(
+                            {
+                                "position": idx,
+                                "title": item.get("title", ""),
+                                "url": url,
+                                "snippet": item.get("body", ""),
+                                "domain": domain,
+                            }
+                        )
+
                         # Останавливаемся когда получили нужное количество
                         if len(results) >= num_results:
                             break
-                
+
                 return results
-            
+
             # Выполняем синхронный поиск в executor чтобы не блокировать event loop
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(None, _search)
-            
+
             # Если получили результаты, возвращаем их
             if results:
                 return results
-            
+
             # Если результатов нет, но и ошибки нет - это нормально
             return []
-            
+
         except DuckDuckGoSearchException as e:
             error_msg = str(e).lower()
             last_error = e
-            
+
             # Если это rate limit, пробуем еще раз с большей задержкой
             if "ratelimit" in error_msg or "rate limit" in error_msg:
                 if attempt < max_retries - 1:
@@ -145,14 +145,14 @@ async def fetch_search_results(
                     continue
                 else:
                     raise ValueError(f"DuckDuckGo search failed: {str(e)}")
-                    
+
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
                 continue
             else:
                 raise ValueError(f"DuckDuckGo search failed: {str(e)}")
-    
+
     # Если дошли сюда, значит все попытки исчерпаны
     if last_error:
         raise ValueError(f"DuckDuckGo search failed after {max_retries} attempts: {str(last_error)}")

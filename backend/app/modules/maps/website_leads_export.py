@@ -39,9 +39,9 @@ logger = logging.getLogger(__name__)
 
 _HEADER_FONT = Font(bold=True, color="FFFFFF")
 _HEADER_FILL = PatternFill("solid", fgColor="334155")  # slate-700
-_SCORE_HOT_FILL = PatternFill("solid", fgColor="DC2626")    # red-600
-_SCORE_WARM_FILL = PatternFill("solid", fgColor="F59E0B")   # amber-500
-_SCORE_COLD_FILL = PatternFill("solid", fgColor="94A3B8")   # slate-400
+_SCORE_HOT_FILL = PatternFill("solid", fgColor="DC2626")  # red-600
+_SCORE_WARM_FILL = PatternFill("solid", fgColor="F59E0B")  # amber-500
+_SCORE_COLD_FILL = PatternFill("solid", fgColor="94A3B8")  # slate-400
 
 
 # Колонки вкладки «Лиды». (header, getter-callable, width, formatter)
@@ -145,9 +145,7 @@ def _extract_working_hours(c: Company) -> str:
             if isinstance(val, dict):
                 hours = val.get("working_hours") or val.get("hours")
                 if isinstance(hours, list) and hours:
-                    parts.append(f"{day}: " + ", ".join(
-                        f"{h.get('from','?')}–{h.get('to','?')}" for h in hours
-                    ))
+                    parts.append(f"{day}: " + ", ".join(f"{h.get('from', '?')}–{h.get('to', '?')}" for h in hours))
         if parts:
             return "\n".join(parts)
     return ""
@@ -166,11 +164,7 @@ def _extract_photos(c: Company) -> list[str]:
         if isinstance(items, list):
             for it in items[:20]:
                 if isinstance(it, dict):
-                    url = (
-                        it.get("main_photo_url")
-                        or it.get("photo_url")
-                        or it.get("url")
-                    )
+                    url = it.get("main_photo_url") or it.get("photo_url") or it.get("url")
                     if isinstance(url, str) and url.startswith("http"):
                         urls.append(url)
     return urls
@@ -196,9 +190,7 @@ def _extract_logo_url(c: Company) -> str:
     return ""
 
 
-async def _load_companies_for_search(
-    db: AsyncSession, search_id: int, only_website_leads: bool
-) -> list[Company]:
+async def _load_companies_for_search(db: AsyncSession, search_id: int, only_website_leads: bool) -> list[Company]:
     """Тянет все компании поиска. only_website_leads=True — только те, у
     кого website_lead_score IS NOT NULL (то есть нет собственного сайта)."""
     stmt = (
@@ -213,9 +205,7 @@ async def _load_companies_for_search(
     return list(res.scalars().all())
 
 
-async def _load_drafts(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, CompanyOutreachDraft]:
+async def _load_drafts(db: AsyncSession, company_ids: list[int]) -> dict[int, CompanyOutreachDraft]:
     """Кэшированные drafts писем по компаниям (любой angle, берём свежее)."""
     if not company_ids:
         return {}
@@ -235,9 +225,7 @@ async def _load_drafts(
     return drafts
 
 
-async def _load_legal(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, CompanyLegal]:
+async def _load_legal(db: AsyncSession, company_ids: list[int]) -> dict[int, CompanyLegal]:
     """Юр.данные по компаниям (блок 2 ТЗ)."""
     if not company_ids:
         return {}
@@ -249,9 +237,7 @@ async def _load_legal(
     return out
 
 
-async def _load_top_decision_makers(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, CompanyDecisionMaker]:
+async def _load_top_decision_makers(db: AsyncSession, company_ids: list[int]) -> dict[int, CompanyDecisionMaker]:
     """Топ-1 ЛПР по каждой компании.
 
     Приоритет (ТЗ Marketing-DM 2026-06-20):
@@ -329,18 +315,13 @@ async def _load_top_pain_tags(
     return out
 
 
-async def _load_company_sources_map(
-    db: AsyncSession, company_ids: list[int]
-) -> dict[int, set[str]]:
+async def _load_company_sources_map(db: AsyncSession, company_ids: list[int]) -> dict[int, set[str]]:
     """Множество источников по компании (2gis / yandex_maps / both)."""
     if not company_ids:
         return {}
     from sqlalchemy import text as sa_text
 
-    sql = sa_text(
-        "SELECT company_id, source FROM company_sources "
-        "WHERE company_id = ANY(:ids)"
-    )
+    sql = sa_text("SELECT company_id, source FROM company_sources WHERE company_id = ANY(:ids)")
     rows = list((await db.execute(sql, {"ids": list(company_ids)})).mappings().all())
     out: dict[int, set[str]] = {}
     for r in rows:
@@ -555,9 +536,7 @@ def _write_sheet(ws, columns: list[tuple], rows: list[tuple[Company, dict]]):
                 if fill is not None:
                     cell.fill = fill
                     cell.font = Font(bold=True, color="FFFFFF")
-                    cell.alignment = Alignment(
-                        vertical="center", horizontal="center"
-                    )
+                    cell.alignment = Alignment(vertical="center", horizontal="center")
 
 
 async def build_website_leads_xlsx(
@@ -600,16 +579,19 @@ async def build_website_leads_xlsx(
         from app.modules.maps.company_description import (
             find_company_ids_without_description,
         )
+
         missing = await find_company_ids_without_description(db, ids)
         if missing:
             from app.modules.maps.tasks import generate_company_description
+
             for cid in missing[:200]:  # ограничиваем чтобы не закидать очередь
                 try:
                     generate_company_description.delay(cid)
                 except Exception as e:
                     logger.warning(
                         "build_website_leads_xlsx: cannot enqueue desc for #%d: %s",
-                        cid, e,
+                        cid,
+                        e,
                     )
             logger.info(
                 "build_website_leads_xlsx: enqueued %d description tasks",

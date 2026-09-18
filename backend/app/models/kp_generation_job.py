@@ -67,7 +67,4 @@ class KpGenerationJob(Base):
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
-        return (
-            f"<KpGenerationJob #{self.id} user={self.user_id} status={self.status} "
-            f"{self.generated}/{self.total}>"
-        )
+        return f"<KpGenerationJob #{self.id} user={self.user_id} status={self.status} {self.generated}/{self.total}>"

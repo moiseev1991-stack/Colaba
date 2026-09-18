@@ -28,58 +28,166 @@ from urllib.parse import urlparse
 
 # Russian-market focused: domains of well-known catalogs, marketplaces,
 # social/news/gov properties. Matched as suffixes (foo.example.com counts).
-_CATALOG_DOMAINS: frozenset[str] = frozenset({
-    "zoon.ru", "yell.ru", "otzovik.com", "irecommend.ru", "flamp.ru",
-    "spr.ru", "rusprofile.ru", "list-org.com", "sbis.ru", "kontur.ru",
-    "tiu.ru", "pulscen.ru", "blizko.ru", "bestcompanyru.ru", "moscow.cataloxy.ru",
-    "cataloxy.ru", "1nsk.ru", "msk.ru", "tutu.ru", "yandex.ru/maps",
-    "2gis.ru", "yandex.ru", "yandex.com", "google.com", "search.yahoo.com",
-    "tripadvisor.ru", "tripadvisor.com", "restoclub.ru", "afisha.ru",
-    "doc.ua", "prodoctorov.ru", "docdoc.ru", "krasotaimedicina.ru",
-    "auto.ru", "drom.ru",
-})
+_CATALOG_DOMAINS: frozenset[str] = frozenset(
+    {
+        "zoon.ru",
+        "yell.ru",
+        "otzovik.com",
+        "irecommend.ru",
+        "flamp.ru",
+        "spr.ru",
+        "rusprofile.ru",
+        "list-org.com",
+        "sbis.ru",
+        "kontur.ru",
+        "tiu.ru",
+        "pulscen.ru",
+        "blizko.ru",
+        "bestcompanyru.ru",
+        "moscow.cataloxy.ru",
+        "cataloxy.ru",
+        "1nsk.ru",
+        "msk.ru",
+        "tutu.ru",
+        "yandex.ru/maps",
+        "2gis.ru",
+        "yandex.ru",
+        "yandex.com",
+        "google.com",
+        "search.yahoo.com",
+        "tripadvisor.ru",
+        "tripadvisor.com",
+        "restoclub.ru",
+        "afisha.ru",
+        "doc.ua",
+        "prodoctorov.ru",
+        "docdoc.ru",
+        "krasotaimedicina.ru",
+        "auto.ru",
+        "drom.ru",
+    }
+)
 
-_MARKETPLACE_DOMAINS: frozenset[str] = frozenset({
-    "avito.ru", "youla.ru", "profi.ru", "uslugi.yandex.ru",
-    "wildberries.ru", "ozon.ru", "market.yandex.ru", "aliexpress.ru",
-    "leroymerlin.ru", "lamoda.ru", "kazanexpress.ru", "petrovich.ru",
-})
+_MARKETPLACE_DOMAINS: frozenset[str] = frozenset(
+    {
+        "avito.ru",
+        "youla.ru",
+        "profi.ru",
+        "uslugi.yandex.ru",
+        "wildberries.ru",
+        "ozon.ru",
+        "market.yandex.ru",
+        "aliexpress.ru",
+        "leroymerlin.ru",
+        "lamoda.ru",
+        "kazanexpress.ru",
+        "petrovich.ru",
+    }
+)
 
-_SOCIAL_DOMAINS: frozenset[str] = frozenset({
-    "vk.com", "vk.ru", "ok.ru", "t.me", "telegram.me", "telegram.org",
-    "instagram.com", "facebook.com", "fb.com", "twitter.com", "x.com",
-    "youtube.com", "youtu.be", "rutube.ru", "tiktok.com", "dzen.ru",
-    "zen.yandex.ru", "pikabu.ru", "habr.com", "vc.ru", "tenchat.ru",
-    "linkedin.com",
-})
+_SOCIAL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "vk.com",
+        "vk.ru",
+        "ok.ru",
+        "t.me",
+        "telegram.me",
+        "telegram.org",
+        "instagram.com",
+        "facebook.com",
+        "fb.com",
+        "twitter.com",
+        "x.com",
+        "youtube.com",
+        "youtu.be",
+        "rutube.ru",
+        "tiktok.com",
+        "dzen.ru",
+        "zen.yandex.ru",
+        "pikabu.ru",
+        "habr.com",
+        "vc.ru",
+        "tenchat.ru",
+        "linkedin.com",
+    }
+)
 
-_NEWS_DOMAINS: frozenset[str] = frozenset({
-    "rbc.ru", "lenta.ru", "ria.ru", "tass.ru", "kommersant.ru", "vedomosti.ru",
-    "kp.ru", "mk.ru", "rg.ru", "iz.ru", "fontanka.ru", "e1.ru", "ngs.ru",
-    "74.ru", "ura.news", "interfax.ru", "gazeta.ru",
-})
+_NEWS_DOMAINS: frozenset[str] = frozenset(
+    {
+        "rbc.ru",
+        "lenta.ru",
+        "ria.ru",
+        "tass.ru",
+        "kommersant.ru",
+        "vedomosti.ru",
+        "kp.ru",
+        "mk.ru",
+        "rg.ru",
+        "iz.ru",
+        "fontanka.ru",
+        "e1.ru",
+        "ngs.ru",
+        "74.ru",
+        "ura.news",
+        "interfax.ru",
+        "gazeta.ru",
+    }
+)
 
-_GOV_DOMAINS: frozenset[str] = frozenset({
-    "gov.ru", "government.ru", "kremlin.ru", "minfin.gov.ru", "nalog.gov.ru",
-    "nalog.ru", "egrul.nalog.ru", "rkn.gov.ru", "fas.gov.ru", "rosreestr.ru",
-    "zakupki.gov.ru", "gosuslugi.ru", "pravo.gov.ru",
-})
+_GOV_DOMAINS: frozenset[str] = frozenset(
+    {
+        "gov.ru",
+        "government.ru",
+        "kremlin.ru",
+        "minfin.gov.ru",
+        "nalog.gov.ru",
+        "nalog.ru",
+        "egrul.nalog.ru",
+        "rkn.gov.ru",
+        "fas.gov.ru",
+        "rosreestr.ru",
+        "zakupki.gov.ru",
+        "gosuslugi.ru",
+        "pravo.gov.ru",
+    }
+)
 
 # Keyword hints for catalog-style pages even when the domain is unknown.
 _CATALOG_TITLE_HINTS: tuple[str, ...] = (
-    "каталог", "рейтинг", "отзывы", "топ-", "топ ", "список ", "лучшие ",
-    "обзор ", "цены и услуги", "адреса и телефоны", "сравнение",
-    "directory", "ranking",
+    "каталог",
+    "рейтинг",
+    "отзывы",
+    "топ-",
+    "топ ",
+    "список ",
+    "лучшие ",
+    "обзор ",
+    "цены и услуги",
+    "адреса и телефоны",
+    "сравнение",
+    "directory",
+    "ranking",
 )
 
 _NEWS_TITLE_HINTS: tuple[str, ...] = (
-    "новости", "статья", "журнал", "интервью", "блог",
-    "news", "article", "blog",
+    "новости",
+    "статья",
+    "журнал",
+    "интервью",
+    "блог",
+    "news",
+    "article",
+    "blog",
 )
 
 _BROKEN_URL_HINTS: tuple[str, ...] = (
-    "/parking", "domain-for-sale", "domain.for.sale", "expired-domain",
-    "default-page", "suspended-page", "/maintenance",
+    "/parking",
+    "domain-for-sale",
+    "domain.for.sale",
+    "expired-domain",
+    "default-page",
+    "suspended-page",
+    "/maintenance",
 )
 
 
@@ -98,9 +206,7 @@ def _suffix_match(host: str, blocklist: Iterable[str]) -> bool:
 # Trim leading emoji/dingbats and other symbol noise that often shows up in
 # titles/meta-desc ("🏆 Юридические…", "★ Лучший автосервис…").
 # Matches the broad symbol/pictograph blocks at the start of the string.
-_LEAD_NOISE_RE = re.compile(
-    r"^[\s -⁯←-⟿⤀-⯿\U0001F000-\U0001FFFF★☆■□●◆▶▷✓✔✦✧✪✫•·]+"
-)
+_LEAD_NOISE_RE = re.compile(r"^[\s -⁯←-⟿⤀-⯿\U0001F000-\U0001FFFF★☆■□●◆▶▷✓✔✦✧✪✫•·]+")
 _TRAILING_TAIL_RE = re.compile(r"\s+\|\s+[^|]{0,80}$")
 _WHITESPACE_RE = re.compile(r"\s+")
 _MIN_USEFUL_LEN = 20
@@ -129,6 +235,7 @@ def clean_description(text: Optional[str]) -> Optional[str]:
 
 
 # --- Site type classifier ---------------------------------------------------
+
 
 def classify_site(
     *,

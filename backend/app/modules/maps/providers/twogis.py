@@ -67,15 +67,52 @@ CITY_TO_REGION_ID: dict[str, int] = {
 # (вся Россия) и фильтрует по адресу. Это лучше, чем тихо ронять «no_region_id».
 # Источник списка — топ-45 городов РФ по населению.
 KNOWN_CITIES_FOR_UI: list[str] = [
-    "Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань",
-    "Нижний Новгород", "Челябинск", "Красноярск", "Самара", "Уфа",
-    "Ростов-на-Дону", "Омск", "Краснодар", "Воронеж", "Пермь",
-    "Волгоград", "Ижевск", "Иркутск", "Тюмень", "Хабаровск",
-    "Владивосток", "Томск", "Оренбург", "Кемерово", "Рязань",
-    "Тула", "Пенза", "Липецк", "Ярославль", "Барнаул",
-    "Ставрополь", "Сочи", "Калининград", "Новокузнецк", "Архангельск",
-    "Владимир", "Тверь", "Иваново", "Брянск", "Белгород",
-    "Курск", "Симферополь", "Севастополь", "Грозный", "Сургут", "Тольятти",
+    "Москва",
+    "Санкт-Петербург",
+    "Новосибирск",
+    "Екатеринбург",
+    "Казань",
+    "Нижний Новгород",
+    "Челябинск",
+    "Красноярск",
+    "Самара",
+    "Уфа",
+    "Ростов-на-Дону",
+    "Омск",
+    "Краснодар",
+    "Воронеж",
+    "Пермь",
+    "Волгоград",
+    "Ижевск",
+    "Иркутск",
+    "Тюмень",
+    "Хабаровск",
+    "Владивосток",
+    "Томск",
+    "Оренбург",
+    "Кемерово",
+    "Рязань",
+    "Тула",
+    "Пенза",
+    "Липецк",
+    "Ярославль",
+    "Барнаул",
+    "Ставрополь",
+    "Сочи",
+    "Калининград",
+    "Новокузнецк",
+    "Архангельск",
+    "Владимир",
+    "Тверь",
+    "Иваново",
+    "Брянск",
+    "Белгород",
+    "Курск",
+    "Симферополь",
+    "Севастополь",
+    "Грозный",
+    "Сургут",
+    "Тольятти",
 ]
 
 # Регион-ID 70000001 = "Россия" (универсальный fallback).
@@ -103,7 +140,7 @@ REVIEWS_PUBLIC_HEADERS = {
 }
 
 PAGE_SIZE = 10  # 2GIS free/standard план ограничивает page_size диапазоном 1..10.
-                # При 50 API возвращает HTTP 200 с meta.code=400 и пустым items.
+# При 50 API возвращает HTTP 200 с meta.code=400 и пустым items.
 # Free/standard план также ограничивает номер страницы: page ∈ 1..5.
 # При page=6 API отдаёт meta.code=400 "Length of parameter 'page' should be from 1 to 5".
 # До фикса это вылетало RuntimeError → таск падал в retry → status=failed,
@@ -145,7 +182,9 @@ async def _resolve_region_id_via_api(city: str, api_key: str) -> int | None:
             if resp.status_code != 200:
                 logger.warning(
                     "2gis region/search http %d for %r: %s",
-                    resp.status_code, city, (resp.text or "")[:200],
+                    resp.status_code,
+                    city,
+                    (resp.text or "")[:200],
                 )
                 return None
             data = resp.json()
@@ -153,7 +192,9 @@ async def _resolve_region_id_via_api(city: str, api_key: str) -> int | None:
             if isinstance(meta.get("code"), int) and meta["code"] >= 400:
                 logger.warning(
                     "2gis region/search meta.code=%s for %r: %s",
-                    meta["code"], city, meta.get("error"),
+                    meta["code"],
+                    city,
+                    meta.get("error"),
                 )
                 return None
             items = (data.get("result") or {}).get("items") or []
@@ -168,7 +209,9 @@ async def _resolve_region_id_via_api(city: str, api_key: str) -> int | None:
                     if rid is not None:
                         logger.info(
                             "2gis region/search %r → id=%s (type=city, name=%r)",
-                            city, rid, item.get("name"),
+                            city,
+                            rid,
+                            item.get("name"),
                         )
                         return int(rid)
             rid = items[0].get("id")
@@ -176,7 +219,10 @@ async def _resolve_region_id_via_api(city: str, api_key: str) -> int | None:
                 return None
             logger.info(
                 "2gis region/search %r → id=%s (первый item, type=%r, name=%r)",
-                city, rid, items[0].get("type"), items[0].get("name"),
+                city,
+                rid,
+                items[0].get("type"),
+                items[0].get("name"),
             )
             return int(rid)
     except Exception as e:
@@ -366,7 +412,7 @@ def _map_public_review_to_review_raw(item: dict[str, Any]) -> ReviewRaw | None:
     # Owner reply: либо явный official_answer, либо comment с is_official=True
     has_owner_reply = bool(item.get("official_answer"))
     if not has_owner_reply:
-        for c in (item.get("comments") or []):
+        for c in item.get("comments") or []:
             if c.get("is_official"):
                 has_owner_reply = True
                 break
@@ -395,6 +441,7 @@ class TwoGisProvider(MapProvider):
         else:
             # Приоритет: БД (если is_enabled и ключ задан) → fallback на env.
             from app.modules.maps.providers_settings_service import load_provider_keys
+
             keys = load_provider_keys("twogis")
             self._api_key = keys.get("api_key") or settings.TWOGIS_API_KEY
         self._delay = rate_limit_delay if rate_limit_delay is not None else settings.TWOGIS_RATE_LIMIT_DELAY
@@ -424,7 +471,11 @@ class TwoGisProvider(MapProvider):
                 last_exc = e
                 logger.warning("2gis %s: network error %s (attempt %d)", url, e, attempt + 1)
                 await log_call(
-                    "2gis", url, method="GET", ok=False, error=str(e),
+                    "2gis",
+                    url,
+                    method="GET",
+                    ok=False,
+                    error=str(e),
                     latency_ms=int((perf_counter() - t0) * 1000),
                 )
                 await asyncio.sleep(5)
@@ -434,23 +485,38 @@ class TwoGisProvider(MapProvider):
             latency_ms = int((perf_counter() - t0) * 1000)
             if status in (401, 403):
                 await log_call(
-                    "2gis", url, method="GET", http_status=status,
-                    ok=False, error="auth", latency_ms=latency_ms,
+                    "2gis",
+                    url,
+                    method="GET",
+                    http_status=status,
+                    ok=False,
+                    error="auth",
+                    latency_ms=latency_ms,
                 )
                 raise MissingAPIKeyError(f"2GIS ответил {status} на {url} — ключ невалиден/отозван")
             if status == 429:
                 logger.warning("2gis %s: 429 rate-limited (attempt %d), backoff 30s", url, attempt + 1)
                 await log_call(
-                    "2gis", url, method="GET", http_status=429,
-                    ok=False, error="rate_limited", latency_ms=latency_ms,
+                    "2gis",
+                    url,
+                    method="GET",
+                    http_status=429,
+                    ok=False,
+                    error="rate_limited",
+                    latency_ms=latency_ms,
                 )
                 await asyncio.sleep(30)
                 continue
             if status >= 500:
                 logger.warning("2gis %s: %d server error (attempt %d), backoff 5s", url, status, attempt + 1)
                 await log_call(
-                    "2gis", url, method="GET", http_status=status,
-                    ok=False, error="server_error", latency_ms=latency_ms,
+                    "2gis",
+                    url,
+                    method="GET",
+                    http_status=status,
+                    ok=False,
+                    error="server_error",
+                    latency_ms=latency_ms,
                 )
                 await asyncio.sleep(5)
                 continue
@@ -466,11 +532,20 @@ class TwoGisProvider(MapProvider):
                 err = (meta.get("error") or {}).get("message") or str(meta.get("error"))
                 if meta_code in (401, 403):
                     logger.error(
-                        "2gis API auth error %s on %s: %s (params=%s)", meta_code, url, err, params,
+                        "2gis API auth error %s on %s: %s (params=%s)",
+                        meta_code,
+                        url,
+                        err,
+                        params,
                     )
                     await log_call(
-                        "2gis", url, method="GET", http_status=status,
-                        ok=False, error=f"meta {meta_code}: {err}", latency_ms=latency_ms,
+                        "2gis",
+                        url,
+                        method="GET",
+                        http_status=status,
+                        ok=False,
+                        error=f"meta {meta_code}: {err}",
+                        latency_ms=latency_ms,
                     )
                     raise MissingAPIKeyError(f"2GIS meta.code={meta_code}: {err}")
                 # Любые другие meta.code (400 «ничего не найдено» / «параметр X неверен» /
@@ -481,19 +556,31 @@ class TwoGisProvider(MapProvider):
                 # caller (fetch_reviews_catalog) ловит и fallback'ит на public API.
                 logger.warning(
                     "2gis API logical %s on %s: %s (params=%s) — возвращаем пусто",
-                    meta_code, url, err, params,
+                    meta_code,
+                    url,
+                    err,
+                    params,
                 )
                 await log_call(
-                    "2gis", url, method="GET", http_status=status,
-                    ok=False, error=f"meta {meta_code}: {err}", latency_ms=latency_ms,
+                    "2gis",
+                    url,
+                    method="GET",
+                    http_status=status,
+                    ok=False,
+                    error=f"meta {meta_code}: {err}",
+                    latency_ms=latency_ms,
                 )
                 if "/reviews/list" in url:
                     raise RuntimeError(f"2GIS API error (meta.code={meta_code}): {err}")
                 return {"meta": meta, "result": {"items": [], "total": 0}}
             # Успешный ответ — логируем как ok.
             await log_call(
-                "2gis", url, method="GET", http_status=status,
-                ok=True, latency_ms=latency_ms,
+                "2gis",
+                url,
+                method="GET",
+                http_status=status,
+                ok=True,
+                latency_ms=latency_ms,
             )
             return data
 
@@ -522,7 +609,8 @@ class TwoGisProvider(MapProvider):
             return rid
         logger.info(
             "2gis region fallback for %r → region_id=%d (Россия, фильтрация по адресу)",
-            city, TWOGIS_FALLBACK_REGION_ID,
+            city,
+            TWOGIS_FALLBACK_REGION_ID,
         )
         return TWOGIS_FALLBACK_REGION_ID
 
@@ -657,14 +745,18 @@ class TwoGisProvider(MapProvider):
                 params = {**common, "page": page}
                 logger.info(
                     "2gis search: niche=%r city=%r region_id=%s point=%s radius=%s page=%d yielded=%d",
-                    niche, city, region_id,
-                    common.get("point"), common.get("radius"),
-                    page, yielded,
+                    niche,
+                    city,
+                    region_id,
+                    common.get("point"),
+                    common.get("radius"),
+                    page,
+                    yielded,
                 )
                 data = await self._request(client, url, params)
 
                 # Структура: {"meta": {...}, "result": {"items": [...], "total": N}}
-                result = (data.get("result") or {})
+                result = data.get("result") or {}
                 items = result.get("items") or []
                 total = int(result.get("total") or 0)
                 if not items:
@@ -705,9 +797,10 @@ class TwoGisProvider(MapProvider):
 
                 if page >= MAX_PAGES:
                     logger.info(
-                        "2gis search: достигнут потолок страниц (%d) на free-плане, "
-                        "yielded=%d (max %d на free)",
-                        MAX_PAGES, yielded, MAX_PAGES * PAGE_SIZE,
+                        "2gis search: достигнут потолок страниц (%d) на free-плане, yielded=%d (max %d на free)",
+                        MAX_PAGES,
+                        yielded,
+                        MAX_PAGES * PAGE_SIZE,
                     )
                     break
 
@@ -773,7 +866,9 @@ class TwoGisProvider(MapProvider):
                 params = {**common, "offset": offset}
                 logger.debug(
                     "2gis catalog reviews: company=%s offset=%d yielded=%d",
-                    company_external_id, offset, yielded,
+                    company_external_id,
+                    offset,
+                    yielded,
                 )
                 try:
                     data = await self._request(client, url, params)
@@ -781,7 +876,8 @@ class TwoGisProvider(MapProvider):
                     # Method not found на free-плане — это ожидаемо, лог только в DEBUG
                     logger.debug(
                         "2gis catalog reviews недоступен для company=%s: %s — переходим на public API",
-                        company_external_id, e,
+                        company_external_id,
+                        e,
                     )
                     return
 
@@ -828,6 +924,7 @@ class TwoGisProvider(MapProvider):
         }
         # Widget key: приоритет БД → env.
         from app.modules.maps.providers_settings_service import load_provider_keys
+
         _twogis_keys = load_provider_keys("twogis")
         widget_key = _twogis_keys.get("secondary_key") or settings.TWOGIS_REVIEWS_PUBLIC_API_KEY
         if widget_key:
@@ -847,14 +944,15 @@ class TwoGisProvider(MapProvider):
 
         yielded = 0
         offset = 0
-        async with httpx.AsyncClient(
-            timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS, proxy=_proxy
-        ) as client:
+        async with httpx.AsyncClient(timeout=15.0, headers=REVIEWS_PUBLIC_HEADERS, proxy=_proxy) as client:
             while yielded < limit:
                 params = {**common, "offset": offset}
                 logger.info(
                     "2gis public reviews: company=%s offset=%d yielded=%d limit=%d",
-                    company_external_id, offset, yielded, limit,
+                    company_external_id,
+                    offset,
+                    yielded,
+                    limit,
                 )
                 resp = None
                 for attempt in range(_max_attempts):
@@ -866,13 +964,16 @@ class TwoGisProvider(MapProvider):
                             continue
                         logger.warning(
                             "2gis public reviews: прокси не выдал ноду за %d попыток company=%s: %s",
-                            _max_attempts, company_external_id, e,
+                            _max_attempts,
+                            company_external_id,
+                            e,
                         )
                         return
                     except httpx.HTTPError as e:
                         logger.warning(
                             "2gis public reviews: network error company=%s: %s",
-                            company_external_id, e,
+                            company_external_id,
+                            e,
                         )
                         return
                     if resp.status_code == 503 and attempt < _max_attempts - 1:
@@ -893,7 +994,8 @@ class TwoGisProvider(MapProvider):
                     logger.warning(
                         "2gis public reviews %d для company=%s — widget API требует key. "
                         "Задайте TWOGIS_REVIEWS_PUBLIC_API_KEY или отключите TWOGIS_REVIEWS_PUBLIC_API_ENABLED.",
-                        resp.status_code, company_external_id,
+                        resp.status_code,
+                        company_external_id,
                     )
                     return
                 if resp.status_code == 429:
@@ -906,7 +1008,8 @@ class TwoGisProvider(MapProvider):
                 if resp.status_code >= 500:
                     logger.warning(
                         "2gis public reviews %d server error для company=%s — прерываем",
-                        resp.status_code, company_external_id,
+                        resp.status_code,
+                        company_external_id,
                     )
                     return
                 if resp.status_code != 200:
@@ -915,7 +1018,9 @@ class TwoGisProvider(MapProvider):
                     body_preview = (resp.text or "")[:400]
                     logger.warning(
                         "2gis public reviews unexpected %d для company=%s — прерываем. body=%s",
-                        resp.status_code, company_external_id, body_preview,
+                        resp.status_code,
+                        company_external_id,
+                        body_preview,
                     )
                     return
 

@@ -42,32 +42,64 @@ logger = logging.getLogger(__name__)
 # NB: "example"/"test" НЕ включаем сюда — они ловятся доменом (example.com,
 # test.ru). Иначе `example@example.com` вернёт blacklist_local, тогда как
 # концептуально причина в мусорном домене — это ухудшает читаемость логов.
-_EMAIL_LOCAL_BLACKLIST = frozenset({
-    "noreply", "no-reply", "donotreply", "do-not-reply",
-    "mailer-daemon", "postmaster", "abuse", "bounce", "bounces",
-    "user", "your", "name", "email",
-})
+_EMAIL_LOCAL_BLACKLIST = frozenset(
+    {
+        "noreply",
+        "no-reply",
+        "donotreply",
+        "do-not-reply",
+        "mailer-daemon",
+        "postmaster",
+        "abuse",
+        "bounce",
+        "bounces",
+        "user",
+        "your",
+        "name",
+        "email",
+    }
+)
 
 # Домены, на которые точно нет смысла писать (placeholder'ы CMS/инфра).
 # NB: "sentry.io" НЕ добавляем как suffix — реальные Sentry ingest-адреса
 # ловятся отдельной проверкой на 'ingest.sentry' в domain (даёт более
 # точный reason='sentry_id' в логах).
 _EMAIL_DOMAIN_BLACKLIST_SUFFIX: tuple[str, ...] = (
-    "example.com", "example.ru", "example.org", "example.net",
-    "domain.com", "domain.ru", "yourdomain.com", "yourdomain.ru",
-    "test.com", "test.ru", "localhost",
-    "wixpress.com", "wix.com",
-    "cloudflare.com", "godaddy.com", "shopify.com",
+    "example.com",
+    "example.ru",
+    "example.org",
+    "example.net",
+    "domain.com",
+    "domain.ru",
+    "yourdomain.com",
+    "yourdomain.ru",
+    "test.com",
+    "test.ru",
+    "localhost",
+    "wixpress.com",
+    "wix.com",
+    "cloudflare.com",
+    "godaddy.com",
+    "shopify.com",
 )
 
 # Номера, которые часто используются как placeholder / тестовые.
-_PHONE_BLACKLIST = frozenset({
-    "+70000000000", "+79999999999", "+77777777777",
-    "+71111111111", "+72222222222", "+73333333333",
-    "+74444444444", "+75555555555", "+76666666666",
-    "+78888888888",
-    "+71234567890", "+70123456789",
-})
+_PHONE_BLACKLIST = frozenset(
+    {
+        "+70000000000",
+        "+79999999999",
+        "+77777777777",
+        "+71111111111",
+        "+72222222222",
+        "+73333333333",
+        "+74444444444",
+        "+75555555555",
+        "+76666666666",
+        "+78888888888",
+        "+71234567890",
+        "+70123456789",
+    }
+)
 
 
 @functools.lru_cache(maxsize=2048)
@@ -81,6 +113,7 @@ def _domain_has_mx(domain: str) -> bool:
     """
     try:
         import dns.resolver
+
         answers = dns.resolver.resolve(domain, "MX", lifetime=3.0)
         return len(answers) > 0
     except Exception as e:
@@ -127,6 +160,7 @@ def is_valid_email(
     try:
         from email_validator import EmailNotValidError
         from email_validator import validate_email as _ev
+
         try:
             v = _ev(e, check_deliverability=False)
             normalized = v.normalized.lower()

@@ -113,15 +113,12 @@ async def forward_extra_to_owner(lead: InboundLead, text: str) -> None:
         logger.error("inbound_leads: пересылка дополнения к заявке #%s не удалась: %s", lead.id, e)
 
 
-async def notify_owner_email(
-    lead: InboundLead, brief: Optional[dict] = None, db=None
-) -> None:
+async def notify_owner_email(lead: InboundLead, brief: Optional[dict] = None, db=None) -> None:
     """Шлёт ту же сводку письмом на dmitry@spinlid-team.ru (SMTP Timeweb)."""
     to_email = (settings.PUBLIC_CONTACT_EMAIL or settings.SMTP_USER or "").strip()
     if not to_email:
         logger.warning(
-            "inbound_leads: PUBLIC_CONTACT_EMAIL и SMTP_USER не заданы — "
-            "email-уведомление о заявке #%s пропущено",
+            "inbound_leads: PUBLIC_CONTACT_EMAIL и SMTP_USER не заданы — email-уведомление о заявке #%s пропущено",
             lead.id,
         )
         return

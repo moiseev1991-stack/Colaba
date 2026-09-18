@@ -92,9 +92,7 @@ async def submit_lead(
 
     # 3. Server-issued one-shot token + time-trap (≥3 сек на заполнение,
     # токен живёт ≤30 мин, повторно не используется).
-    token_ok, token_reason = await antispam.verify_form_token(
-        payload.form_token or "", int(payload.fill_time_ms or 0)
-    )
+    token_ok, token_reason = await antispam.verify_form_token(payload.form_token or "", int(payload.fill_time_ms or 0))
     if not token_ok:
         logger.info(
             "website_lead.reject reason=token:%s ip=%s ua=%r",
@@ -175,12 +173,8 @@ async def list_leads(
     return list(items), int(total)
 
 
-async def update_status(
-    db: AsyncSession, lead_id: int, new_status: str
-) -> Optional[WebsiteLead]:
-    lead = (
-        await db.execute(select(WebsiteLead).where(WebsiteLead.id == lead_id))
-    ).scalar_one_or_none()
+async def update_status(db: AsyncSession, lead_id: int, new_status: str) -> Optional[WebsiteLead]:
+    lead = (await db.execute(select(WebsiteLead).where(WebsiteLead.id == lead_id))).scalar_one_or_none()
     if not lead:
         return None
     lead.status = new_status
@@ -190,9 +184,7 @@ async def update_status(
 
 
 async def soft_delete(db: AsyncSession, lead_id: int) -> bool:
-    lead = (
-        await db.execute(select(WebsiteLead).where(WebsiteLead.id == lead_id))
-    ).scalar_one_or_none()
+    lead = (await db.execute(select(WebsiteLead).where(WebsiteLead.id == lead_id))).scalar_one_or_none()
     if not lead:
         return False
     lead.deleted_at = datetime.utcnow()

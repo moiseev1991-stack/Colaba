@@ -51,9 +51,9 @@ async def run_seo_audit(
 ) -> schemas.SEOAuditResult:
     """Run SEO audit for a URL."""
     from app.modules.filters.seo_audit import audit_url
-    
+
     result = await audit_url(audit_request.url)
-    
+
     return schemas.SEOAuditResult(
         url=result["url"],
         score=result["score"],

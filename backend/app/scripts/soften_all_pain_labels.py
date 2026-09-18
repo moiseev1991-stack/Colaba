@@ -26,9 +26,7 @@ from app.modules.reviews_ai.llm import _soften_pain_label
 
 async def run() -> dict[str, int]:
     async with AsyncSessionLocal() as db:
-        tags = (
-            await db.execute(select(PainTag).where(PainTag.status == "active"))
-        ).scalars().all()
+        tags = (await db.execute(select(PainTag).where(PainTag.status == "active"))).scalars().all()
         changed = 0
         for t in tags:
             new_label = _soften_pain_label(t.label or "")

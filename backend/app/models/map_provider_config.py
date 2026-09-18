@@ -56,9 +56,7 @@ class MapProviderConfig(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
-    created_at = Column(
-        DateTime, default=datetime.utcnow, nullable=False, server_default="now()"
-    )
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, server_default="now()")
 
     def __str__(self):
         return f"MapProviderConfig [{self.provider_id}] enabled={self.is_enabled}"

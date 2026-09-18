@@ -97,15 +97,17 @@ def _regex_signatures(reply_texts: list[str]) -> list[dict]:
                 if key in seen:
                     continue
                 seen.add(key)
-                result.append({
-                    "name": name,
-                    "post": post,
-                    "role_category": None,
-                    "contact_email": None,
-                    "contact_vk": None,
-                    "contact_phone": None,
-                    "confidence_hint": 0.5,
-                })
+                result.append(
+                    {
+                        "name": name,
+                        "post": post,
+                        "role_category": None,
+                        "contact_email": None,
+                        "contact_vk": None,
+                        "contact_phone": None,
+                        "confidence_hint": 0.5,
+                    }
+                )
     return result
 
 
@@ -122,29 +124,29 @@ async def enrich_dm_from_owner_replies(
 
     if not force:
         cutoff = datetime.now(timezone.utc) - timedelta(days=_REPROCESS_AFTER_DAYS)
-        recent = (await db.execute(
-            select(CompanyDecisionMaker.id)
-            .where(CompanyDecisionMaker.company_id == company_id)
-            .where(CompanyDecisionMaker.source == "owner_reply")
-            .where(CompanyDecisionMaker.created_at >= cutoff)
-            .limit(1)
-        )).scalar_one_or_none()
+        recent = (
+            await db.execute(
+                select(CompanyDecisionMaker.id)
+                .where(CompanyDecisionMaker.company_id == company_id)
+                .where(CompanyDecisionMaker.source == "owner_reply")
+                .where(CompanyDecisionMaker.created_at >= cutoff)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         if recent is not None:
             return {"status": "skip_already_processed"}
 
-    rows = (await db.execute(
-        select(Review.owner_reply_text)
-        .where(Review.company_id == company_id)
-        .where(Review.owner_reply_text.isnot(None))
-        .order_by(Review.posted_at.desc().nullslast())
-        .limit(_MAX_REPLIES)
-    )).all()
+    rows = (
+        await db.execute(
+            select(Review.owner_reply_text)
+            .where(Review.company_id == company_id)
+            .where(Review.owner_reply_text.isnot(None))
+            .order_by(Review.posted_at.desc().nullslast())
+            .limit(_MAX_REPLIES)
+        )
+    ).all()
 
-    reply_texts = [
-        (r[0] or "").strip()
-        for r in rows
-        if r[0] and len(r[0].strip()) >= 20
-    ]
+    reply_texts = [(r[0] or "").strip() for r in rows if r[0] and len(r[0].strip()) >= 20]
     if not reply_texts:
         return {"status": "no_owner_replies", "replies": 0, "saved": 0}
 

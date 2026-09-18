@@ -12,11 +12,14 @@ from app.core.database import Base
 
 class Search(Base):
     """Search model."""
+
     __tablename__ = "searches"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)  # Nullable for superuser global searches
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id"), nullable=True, index=True
+    )  # Nullable for superuser global searches
     query = Column(String(500), nullable=False)
     search_provider = Column(String(50), default="duckduckgo")
     num_results = Column(Integer, default=50)
@@ -43,6 +46,7 @@ class Search(Base):
 
 class SearchResult(Base):
     """Search result model."""
+
     __tablename__ = "search_results"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -26,10 +26,7 @@ async def list_for_user(
     hidden=False (default) — только активные, hidden=True — только скрытые,
     hidden=None — все.
     """
-    stmt = (
-        select(UserFilterPreset)
-        .where(UserFilterPreset.user_id == user_id, UserFilterPreset.module == module)
-    )
+    stmt = select(UserFilterPreset).where(UserFilterPreset.user_id == user_id, UserFilterPreset.module == module)
     if hidden is not None:
         stmt = stmt.where(UserFilterPreset.hidden == hidden)
     stmt = stmt.order_by(UserFilterPreset.created_at.desc())
@@ -38,7 +35,9 @@ async def list_for_user(
 
 
 async def get_owned(
-    db: AsyncSession, preset_id: int, user_id: int,
+    db: AsyncSession,
+    preset_id: int,
+    user_id: int,
 ) -> UserFilterPreset | None:
     """Возвращает пресет, только если он принадлежит этому юзеру."""
     stmt = select(UserFilterPreset).where(

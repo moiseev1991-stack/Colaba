@@ -23,7 +23,7 @@ async def get_redis_client() -> redis.Redis:
         _redis_client = redis.from_url(
             settings.REDIS_URL,
             encoding="utf-8",
-            decode_responses=True  # Decode to strings for easier JSON handling
+            decode_responses=True,  # Decode to strings for easier JSON handling
         )
     return _redis_client
 
@@ -31,11 +31,11 @@ async def get_redis_client() -> redis.Redis:
 def get_cache_key(domain: str, cache_type: str = "crawl") -> str:
     """
     Generate cache key for domain.
-    
+
     Args:
         domain: Domain name
         cache_type: Type of cache (crawl, audit, etc.)
-    
+
     Returns:
         Cache key string
     """
@@ -48,10 +48,10 @@ def get_cache_key(domain: str, cache_type: str = "crawl") -> str:
 async def get_cached_crawl(domain: str) -> Optional[Dict[str, Any]]:
     """
     Get cached crawl results for domain.
-    
+
     Args:
         domain: Domain name
-    
+
     Returns:
         Cached crawl data or None
     """
@@ -59,19 +59,19 @@ async def get_cached_crawl(domain: str) -> Optional[Dict[str, Any]]:
         client = await get_redis_client()
         key = get_cache_key(domain, "crawl")
         cached_data = await client.get(key)
-        
+
         if cached_data:
             return json.loads(cached_data)
     except Exception as e:
         logger.warning("Failed to get cached crawl for %s: %s", domain, e)
-    
+
     return None
 
 
 async def set_cached_crawl(domain: str, crawl_data: Dict[str, Any], ttl: int = 3600 * 24):
     """
     Cache crawl results for domain.
-    
+
     Args:
         domain: Domain name
         crawl_data: Crawl results data
@@ -90,7 +90,7 @@ async def set_cached_crawl(domain: str, crawl_data: Dict[str, Any], ttl: int = 3
 async def invalidate_crawl_cache(domain: str):
     """
     Invalidate cached crawl for domain.
-    
+
     Args:
         domain: Domain name
     """

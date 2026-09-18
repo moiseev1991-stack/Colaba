@@ -47,10 +47,7 @@ logger = logging.getLogger(__name__)
 
 
 _TIMEOUT = httpx.Timeout(20.0, connect=10.0)
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 _REPROCESS_AFTER_DAYS = 30
 _MAX_TEXT_LEN = 8000
 
@@ -108,21 +105,21 @@ async def enrich_dm_from_checko(
     if company is None:
         return {"status": "not_found_company"}
 
-    legal = (await db.execute(
-        select(CompanyLegal).where(CompanyLegal.company_id == company_id)
-    )).scalar_one_or_none()
+    legal = (await db.execute(select(CompanyLegal).where(CompanyLegal.company_id == company_id))).scalar_one_or_none()
     if legal is None or not (legal.inn or "").strip():
         return {"status": "no_inn"}
 
     if not force:
         cutoff = datetime.now(timezone.utc) - timedelta(days=_REPROCESS_AFTER_DAYS)
-        recent = (await db.execute(
-            select(CompanyDecisionMaker.id)
-            .where(CompanyDecisionMaker.company_id == company_id)
-            .where(CompanyDecisionMaker.source == "checko")
-            .where(CompanyDecisionMaker.created_at >= cutoff)
-            .limit(1)
-        )).scalar_one_or_none()
+        recent = (
+            await db.execute(
+                select(CompanyDecisionMaker.id)
+                .where(CompanyDecisionMaker.company_id == company_id)
+                .where(CompanyDecisionMaker.source == "checko")
+                .where(CompanyDecisionMaker.created_at >= cutoff)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         if recent is not None:
             return {"status": "skip_already_processed"}
 

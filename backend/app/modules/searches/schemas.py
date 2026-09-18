@@ -9,24 +9,29 @@ from pydantic import BaseModel, Field
 
 class SearchCreate(BaseModel):
     """Schema for creating a search."""
+
     query: str = Field(..., min_length=1, max_length=500, description="Search query")
     search_provider: str = Field(
         default="yandex_xml",
-        description="Search provider: 'yandex_xml' (Yandex Cloud Search API, ключи), 'yandex_html' (парсинг HTML), 'google_html' (парсинг HTML), 'serpapi' (deprecated)"
+        description="Search provider: 'yandex_xml' (Yandex Cloud Search API, ключи), 'yandex_html' (парсинг HTML), 'google_html' (парсинг HTML), 'serpapi' (deprecated)",
     )
     num_results: int = Field(default=100, ge=1, le=100, description="Number of results (max 100)")
     config: Optional[Dict[str, Any]] = Field(default=None, description="Additional config")
-    organization_id: Optional[int] = Field(default=None, description="Organization ID (required for superusers, auto-filled for regular users)")
+    organization_id: Optional[int] = Field(
+        default=None, description="Organization ID (required for superusers, auto-filled for regular users)"
+    )
 
 
 class SearchUpdate(BaseModel):
     """Schema for updating a search."""
+
     status: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
 
 
 class SearchResultResponse(BaseModel):
     """Schema for search result response."""
+
     id: int
     search_id: int
     position: int
@@ -52,6 +57,7 @@ class SearchResultResponse(BaseModel):
 
 class SearchResponse(BaseModel):
     """Schema for search response."""
+
     id: int
     query: str
     status: str
@@ -68,6 +74,7 @@ class SearchResponse(BaseModel):
 
 class DomainGroupResponse(BaseModel):
     """Schema for domain group response."""
+
     domain: str
     results_count: int
     seo_score: Optional[int] = None
@@ -75,13 +82,14 @@ class DomainGroupResponse(BaseModel):
     email: Optional[str] = None
     contact_status: Optional[str] = None
     results: List[SearchResultResponse]
-    
+
     class Config:
         from_attributes = True
 
 
 class SearchResultsGroupedResponse(BaseModel):
     """Schema for grouped search results response."""
+
     domains: List[DomainGroupResponse]
     total_results: int
     unique_domains: int

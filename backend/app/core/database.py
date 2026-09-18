@@ -57,19 +57,17 @@ def get_sync_session_factory():
         if not sync_url:
             raise RuntimeError("DATABASE_URL_SYNC must be set for sync DB access")
         _sync_engine = create_engine(sync_url, pool_pre_ping=True, future=True)
-        _sync_session_factory = sessionmaker(
-            _sync_engine, class_=Session, expire_on_commit=False, autocommit=False
-        )
+        _sync_session_factory = sessionmaker(_sync_engine, class_=Session, expire_on_commit=False, autocommit=False)
     return _sync_session_factory
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency для получения async database session.
-    
+
     Yields:
         AsyncSession: Async database session
-    
+
     Usage:
         @router.get("/users")
         async def get_users(db: AsyncSession = Depends(get_db)):
@@ -85,13 +83,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """
     Инициализация базы данных.
-    
+
     Создает все таблицы из моделей (если не существуют).
     Используется при старте приложения.
     """
     # Import models here to ensure they are registered with Base
     # from app.models import User, Organization, ...
-    
+
     async with engine.begin() as conn:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)

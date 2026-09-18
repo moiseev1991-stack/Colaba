@@ -89,9 +89,7 @@ async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int |
     return int(row[0])
 
 
-async def _filter_user_company_ids(
-    db: AsyncSession, user_id: int, company_ids: Iterable[int]
-) -> list[int]:
+async def _filter_user_company_ids(db: AsyncSession, user_id: int, company_ids: Iterable[int]) -> list[int]:
     """Оставляет только id существующих компаний. На MVP не проверяем
     «принадлежность юзеру» — Company пока шарится между юзерами (выдача
     map-search'а). Главное — отрезать невалидные id, чтобы task не упал
@@ -101,9 +99,7 @@ async def _filter_user_company_ids(
     if not ids:
         return []
     # Сохраняем порядок переданных id — это order обработки в task.
-    rows = (
-        await db.execute(select(Company.id).where(Company.id.in_(ids)))
-    ).scalars().all()
+    rows = (await db.execute(select(Company.id).where(Company.id.in_(ids)))).scalars().all()
     valid = {int(r) for r in rows}
     return [i for i in ids if i in valid]
 
@@ -125,9 +121,7 @@ async def create_bulk_job(
     (роутер делает `.delay(job.id)` после коммита).
     """
     if not company_ids:
-        raise BulkJobError(
-            "Выберите хотя бы одну компанию для генерации.", status_code=400
-        )
+        raise BulkJobError("Выберите хотя бы одну компанию для генерации.", status_code=400)
     if len(company_ids) > MAX_BULK_COMPANY_IDS:
         raise BulkJobError(
             f"За один запуск можно сгенерировать не больше {MAX_BULK_COMPANY_IDS} КП.",
@@ -204,7 +198,9 @@ async def get_job_view(
                 .order_by(KpDraft.created_at.desc())
                 .limit(drafts_limit)
             )
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
     return JobView(job=job, recent_drafts=drafts)
 
@@ -285,12 +281,7 @@ async def list_user_drafts(
     """Все КП юзера + имя/город компании. Используется для вкладки «КП»
     в History."""
     total = int(
-        (
-            await db.execute(
-                select(sa_func.count(KpDraft.id)).where(KpDraft.user_id == user_id)
-            )
-        ).scalar_one()
-        or 0
+        (await db.execute(select(sa_func.count(KpDraft.id)).where(KpDraft.user_id == user_id))).scalar_one() or 0
     )
     rows = (
         await db.execute(
@@ -302,9 +293,7 @@ async def list_user_drafts(
             .offset(offset)
         )
     ).all()
-    items = [
-        DraftListRow(draft=r[0], company_name=r[1], company_city=r[2]) for r in rows
-    ]
+    items = [DraftListRow(draft=r[0], company_name=r[1], company_city=r[2]) for r in rows]
     return items, total
 
 
@@ -366,13 +355,25 @@ async def list_job_items(
     company_meta: dict[
         int,
         tuple[
-            str | None, str | None, str | None, str | None, str | None,
-            str | None, str | None, str | None,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
         ],
     ] = {
         int(r[0]): (
-            r[1], r[2], r[3], _extract_company_logo_url(r[4]), r[5],
-            r[6], r[7], r[8],
+            r[1],
+            r[2],
+            r[3],
+            _extract_company_logo_url(r[4]),
+            r[5],
+            r[6],
+            r[7],
+            r[8],
         )
         for r in company_rows
     }
@@ -395,7 +396,9 @@ async def list_job_items(
                 )
                 .order_by(KpDraft.created_at.asc())
             )
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
     # Если на одну компанию вдруг несколько драфтов (юзер перегенерил
     # вручную одиночной кнопкой между итерациями) — берём первый,
@@ -479,11 +482,7 @@ async def list_job_items(
                 recipient_email=pick_first_email(emails_by_company.get(cid)),
                 company_logo_url=meta[3] if meta else None,
                 company_phone=meta[4] if meta else None,
-                email_send_status=(
-                    email_status_by_draft.get(int(draft.id))
-                    if draft is not None
-                    else None
-                ),
+                email_send_status=(email_status_by_draft.get(int(draft.id)) if draft is not None else None),
                 company_inn=meta[5] if meta else None,
                 company_legal_full=meta[6] if meta else None,
                 company_address=meta[7] if meta else None,
@@ -493,17 +492,19 @@ async def list_job_items(
     return job, items
 
 
-async def list_user_jobs(
-    db: AsyncSession, *, user_id: int, limit: int = 50
-) -> list[KpGenerationJob]:
+async def list_user_jobs(db: AsyncSession, *, user_id: int, limit: int = 50) -> list[KpGenerationJob]:
     rows = (
-        await db.execute(
-            select(KpGenerationJob)
-            .where(KpGenerationJob.user_id == user_id)
-            .order_by(KpGenerationJob.created_at.desc())
-            .limit(limit)
+        (
+            await db.execute(
+                select(KpGenerationJob)
+                .where(KpGenerationJob.user_id == user_id)
+                .order_by(KpGenerationJob.created_at.desc())
+                .limit(limit)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 

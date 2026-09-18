@@ -53,12 +53,16 @@ async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
     if not review_ids:
         return 0
 
-    rows = list((await db.execute(
-        select(Review.id, Review.raw_text).where(
-            Review.id.in_(review_ids),
-            or_(Review.rating.is_(None), Review.rating == 3),
-        )
-    )).all())
+    rows = list(
+        (
+            await db.execute(
+                select(Review.id, Review.raw_text).where(
+                    Review.id.in_(review_ids),
+                    or_(Review.rating.is_(None), Review.rating == 3),
+                )
+            )
+        ).all()
+    )
     payload = [
         {"id": int(r[0]), "text": (r[1] or "")[:1500]}
         for r in rows
@@ -70,7 +74,7 @@ async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
     valid_labels = {"positive", "negative", "neutral"}
     updated = 0
     for i in range(0, len(payload), SENTIMENT_BATCH_SIZE):
-        batch = payload[i:i + SENTIMENT_BATCH_SIZE]
+        batch = payload[i : i + SENTIMENT_BATCH_SIZE]
         result = await llm.call_llm_sentiment(db, batch)
         if not result:
             continue
@@ -86,11 +90,7 @@ async def compute_sentiment(db: AsyncSession, review_ids: list[int]) -> int:
             except (TypeError, ValueError):
                 score = 0.5
             score = max(0.0, min(1.0, score))
-            await db.execute(
-                update(Review)
-                .where(Review.id == int(rid))
-                .values(sentiment=label, sentiment_score=score)
-            )
+            await db.execute(update(Review).where(Review.id == int(rid)).values(sentiment=label, sentiment_score=score))
             updated += 1
         await db.commit()
     return updated
@@ -105,9 +105,13 @@ async def compute_embeddings(db: AsyncSession, review_ids: list[int]) -> int:
     """Вычисляет embeddings и проставляет reviews.embedding. Возвращает count."""
     if not review_ids:
         return 0
-    rows = list((await db.execute(
-        select(Review.id, Review.raw_text).where(Review.id.in_(review_ids), Review.raw_text.isnot(None))
-    )).all())
+    rows = list(
+        (
+            await db.execute(
+                select(Review.id, Review.raw_text).where(Review.id.in_(review_ids), Review.raw_text.isnot(None))
+            )
+        ).all()
+    )
     if not rows:
         return 0
     texts = [(r[1] or "")[:2000] for r in rows]
@@ -117,9 +121,7 @@ async def compute_embeddings(db: AsyncSession, review_ids: list[int]) -> int:
 
     updated = 0
     for (rid, _txt), vec in zip(rows, vectors):
-        await db.execute(
-            update(Review).where(Review.id == int(rid)).values(embedding=vec)
-        )
+        await db.execute(update(Review).where(Review.id == int(rid)).values(embedding=vec))
         updated += 1
     await db.commit()
     return updated
@@ -142,13 +144,10 @@ async def _pain_tags_for_niche(
     2026-06-18: фильтр по sentiment добавлен для positive-recluster'а —
     иначе match positive-отзывов вытаскивал бы и negative-теги.
     """
-    q = (
-        select(PainTag)
-        .where(
-            PainTag.niche == niche,
-            PainTag.status == "active",
-            PainTag.sentiment == sentiment,
-        )
+    q = select(PainTag).where(
+        PainTag.niche == niche,
+        PainTag.status == "active",
+        PainTag.sentiment == sentiment,
     )
     if city is not None:
         q = q.where((PainTag.city == city) | (PainTag.city.is_(None)))
@@ -203,21 +202,27 @@ async def match_reviews_to_pain_tags(
     if is_positive:
         review_sentiment_filter = Review.sentiment == "positive"
     else:
-        review_sentiment_filter = or_(
-            Review.sentiment.is_(None), Review.sentiment != "positive"
-        )
-    rows = list((await db.execute(
-        select(
-            Review.id, Review.company_id, Review.embedding, Review.raw_text,
-            Company.niche, Company.city,
-        )
-        .join(Company, Company.id == Review.company_id)
-        .where(
-            Review.id.in_(review_ids),
-            Review.embedding.isnot(None),
-            review_sentiment_filter,
-        )
-    )).all())
+        review_sentiment_filter = or_(Review.sentiment.is_(None), Review.sentiment != "positive")
+    rows = list(
+        (
+            await db.execute(
+                select(
+                    Review.id,
+                    Review.company_id,
+                    Review.embedding,
+                    Review.raw_text,
+                    Company.niche,
+                    Company.city,
+                )
+                .join(Company, Company.id == Review.company_id)
+                .where(
+                    Review.id.in_(review_ids),
+                    Review.embedding.isnot(None),
+                    review_sentiment_filter,
+                )
+            )
+        ).all()
+    )
     if not rows:
         return {}
 
@@ -236,8 +241,7 @@ async def match_reviews_to_pain_tags(
         if not niche:
             continue
         tags = await _pain_tags_for_niche(db, niche, city, sentiment=force_sentiment)
-        tags_with_c = [(t, np.asarray(list(t.centroid), dtype=np.float64))
-                       for t in tags if t.centroid is not None]
+        tags_with_c = [(t, np.asarray(list(t.centroid), dtype=np.float64)) for t in tags if t.centroid is not None]
         if not tags_with_c:
             continue
 
@@ -278,9 +282,13 @@ async def match_reviews_to_pain_tags(
             raw_text = bucket[ridx][3]
             tag_id = int(tags_with_c[tidx][0].id)
 
-            rpt_rows.append({
-                "review_id": rid, "pain_tag_id": tag_id, "similarity": sim_rounded,
-            })
+            rpt_rows.append(
+                {
+                    "review_id": rid,
+                    "pain_tag_id": tag_id,
+                    "similarity": sim_rounded,
+                }
+            )
 
             quote_text = (raw_text or "").strip()
             if len(quote_text) > 280:
@@ -312,7 +320,7 @@ async def match_reviews_to_pain_tags(
         if rpt_rows:
             RPT_BATCH = 5000
             for _b in range(0, len(rpt_rows), RPT_BATCH):
-                chunk = rpt_rows[_b:_b + RPT_BATCH]
+                chunk = rpt_rows[_b : _b + RPT_BATCH]
                 rpt_ins = (
                     pg_insert(ReviewPainTag)
                     .values(chunk)
@@ -361,17 +369,15 @@ async def match_reviews_to_pain_tags(
                     else_=table.c.top_quote_similarity,
                 )
             cps_ins = cps_ins.on_conflict_do_update(
-                index_elements=["company_id", "pain_tag_id"], set_=set_clause,
+                index_elements=["company_id", "pain_tag_id"],
+                set_=set_clause,
             )
             await db.execute(cps_ins)
 
         # ---------- Помечаем все сматченные отзывы обработанными ----------
         matched_review_ids = list(assigned.keys())
         if matched_review_ids:
-            await db.execute(
-                update(Review).where(Review.id.in_(matched_review_ids))
-                .values(ai_processed_at=now)
-            )
+            await db.execute(update(Review).where(Review.id.in_(matched_review_ids)).values(ai_processed_at=now))
 
     await db.commit()
     return assigned
@@ -478,30 +484,34 @@ async def recluster_pains_for_niche(
             Review.sentiment.in_(["negative", "neutral"]),
             and_(Review.sentiment.is_(None), Review.rating <= 3),
         )
-    base = (
-        select(Review.id, Review.raw_text, Review.embedding, Review.company_id)
-        .where(Review.embedding.isnot(None), pain_filter)
+    base = select(Review.id, Review.raw_text, Review.embedding, Review.company_id).where(
+        Review.embedding.isnot(None), pain_filter
     )
     if company_ids:
         # Явный список компаний: фильтруем без JOIN на Company.niche/city
         base = base.where(Review.company_id.in_(company_ids))
     else:
-        base = base.join(Company, Company.id == Review.company_id).where(
-            Company.niche == niche
-        )
+        base = base.join(Company, Company.id == Review.company_id).where(Company.niche == niche)
         if city is not None:
             base = base.where(Company.city == city)
     rows = list((await db.execute(base)).all())
     logger.info(
         "recluster %r/%r [%s]: взяли %d reviews с embedding (company_ids=%s, min_cs=%d)",
-        niche, city, sentiment, len(rows),
+        niche,
+        city,
+        sentiment,
+        len(rows),
         f"{len(company_ids)} ids" if company_ids else "by Company.niche",
         min_cs,
     )
     if len(rows) < min_cs:
         logger.warning(
             "recluster %r/%r [%s]: ABORT — только %d reviews с embedding, нужно ≥%d",
-            niche, city, sentiment, len(rows), min_cs,
+            niche,
+            city,
+            sentiment,
+            len(rows),
+            min_cs,
         )
         return 0
 
@@ -512,16 +522,20 @@ async def recluster_pains_for_niche(
     if not cluster_ids:
         logger.warning(
             "recluster %r/%r [%s]: ABORT — кластеризация (HDBSCAN+kmeans fallback) вернула 0 кластеров на %d embeddings",
-            niche, city, sentiment, len(rows),
+            niche,
+            city,
+            sentiment,
+            len(rows),
         )
-        await _archive_unused_pain_tags(
-            db, niche, city, keep_ids=set(), sentiment=sentiment
-        )
+        await _archive_unused_pain_tags(db, niche, city, keep_ids=set(), sentiment=sentiment)
         await db.commit()
         return 0
     logger.info(
         "recluster %r/%r [%s]: нашли %d кластеров (размеры: %s)",
-        niche, city, sentiment, len(cluster_ids),
+        niche,
+        city,
+        sentiment,
+        len(cluster_ids),
         ", ".join(str(int(np.sum(labels == cid))) for cid in cluster_ids[:10]),
     )
 
@@ -552,20 +566,20 @@ async def recluster_pains_for_niche(
             label = f"{prefix} {cidx + 1}"
             description = None
 
-        examples = [
-            {"text_hash": None, "text_preview": (rows[i][1] or "")[:100]}
-            for i in sample_indices[:5]
-        ]
+        examples = [{"text_hash": None, "text_preview": (rows[i][1] or "")[:100]} for i in sample_indices[:5]]
 
         ins = pg_insert(PainTag).values(
-            niche=niche, city=city, label=label,
+            niche=niche,
+            city=city,
+            label=label,
             description=description,
             occurrences_count=len(member_idx),
             cluster_size=len(member_idx),
             examples=examples,
             status="active",
             sentiment=sentiment,
-            created_at=now, updated_at=now,
+            created_at=now,
+            updated_at=now,
         )
         # ON CONFLICT по основному UNIQUE — если city не NULL
         # NB: для (niche, city=NULL, label, sentiment) используется частичный индекс ux_pain_tags_global;
@@ -612,9 +626,7 @@ async def recluster_pains_for_niche(
     # 4. Архивируем неиспользуемые теги этой (niche, city, sentiment).
     # negative-recluster не трогает positive-теги и наоборот — каждый
     # набор живёт своей жизнью.
-    await _archive_unused_pain_tags(
-        db, niche, city, keep_ids=upserted_ids, sentiment=sentiment
-    )
+    await _archive_unused_pain_tags(db, niche, city, keep_ids=upserted_ids, sentiment=sentiment)
 
     # 5. Чистим связки для этой ниши+sentiment и матчим заново.
     # review_pain_tags чистим только для связок с тегами текущего sentiment —
@@ -660,7 +672,11 @@ async def recluster_pains_for_niche(
     )
     logger.info(
         "recluster %r/%r [%s]: DONE — %d тегов upserted, %d reviews сматчено к тегам",
-        niche, city, sentiment, len(upserted_ids), len(assigned),
+        niche,
+        city,
+        sentiment,
+        len(upserted_ids),
+        len(assigned),
     )
 
     return len(upserted_ids)
@@ -686,8 +702,7 @@ async def process_reviews_pipeline(db: AsyncSession, review_ids: list[int]) -> d
     # помечаем все обработанные (даже если матч пустой)
     now = datetime.now(timezone.utc)
     await db.execute(
-        update(Review).where(Review.id.in_(review_ids), Review.ai_processed_at.is_(None))
-        .values(ai_processed_at=now)
+        update(Review).where(Review.id.in_(review_ids), Review.ai_processed_at.is_(None)).values(ai_processed_at=now)
     )
     await db.commit()
     return {

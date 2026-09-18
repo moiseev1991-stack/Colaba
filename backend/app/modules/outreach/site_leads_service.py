@@ -43,9 +43,7 @@ def extract_domain(url: str) -> str:
     return host[:255] or "unknown"
 
 
-async def _resolve_user_organization_id(
-    db: AsyncSession, user_id: int
-) -> int | None:
+async def _resolve_user_organization_id(db: AsyncSession, user_id: int) -> int | None:
     row = (
         await db.execute(
             select(user_organizations.c.organization_id)
@@ -110,32 +108,27 @@ async def create_site_lead(
     return lead
 
 
-async def list_site_leads(
-    db: AsyncSession, *, user_id: int, limit: int = 100
-) -> list[SiteLead]:
+async def list_site_leads(db: AsyncSession, *, user_id: int, limit: int = 100) -> list[SiteLead]:
     rows = (
-        await db.execute(
-            select(SiteLead)
-            .where(SiteLead.user_id == user_id)
-            .order_by(desc(SiteLead.created_at))
-            .limit(limit)
+        (
+            await db.execute(
+                select(SiteLead).where(SiteLead.user_id == user_id).order_by(desc(SiteLead.created_at)).limit(limit)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 
-async def get_site_lead(
-    db: AsyncSession, *, user_id: int, lead_id: int
-) -> SiteLead | None:
+async def get_site_lead(db: AsyncSession, *, user_id: int, lead_id: int) -> SiteLead | None:
     lead = await db.get(SiteLead, lead_id)
     if lead is None or lead.user_id != user_id:
         return None
     return lead
 
 
-async def delete_site_lead(
-    db: AsyncSession, *, user_id: int, lead_id: int
-) -> bool:
+async def delete_site_lead(db: AsyncSession, *, user_id: int, lead_id: int) -> bool:
     lead = await get_site_lead(db, user_id=user_id, lead_id=lead_id)
     if lead is None:
         return False

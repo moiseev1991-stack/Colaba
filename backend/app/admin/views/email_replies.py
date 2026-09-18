@@ -8,11 +8,11 @@ from app.models.email_reply import EmailReply
 
 class EmailReplyAdmin(BaseAdminView, model=EmailReply):
     """Admin view for email replies management."""
-    
+
     name = "Email Reply"
     name_plural = "Email Replies"
     icon = "fa-solid fa-reply"
-    
+
     # List view columns
     column_list = [
         EmailReply.id,
@@ -24,7 +24,7 @@ class EmailReplyAdmin(BaseAdminView, model=EmailReply):
         EmailReply.forwarded_to,
         EmailReply.received_at,
     ]
-    
+
     # Searchable columns
     column_searchable_list = [
         EmailReply.from_email,
@@ -32,10 +32,10 @@ class EmailReplyAdmin(BaseAdminView, model=EmailReply):
         EmailReply.subject,
         EmailReply.body_text,
     ]
-    
+
     # Default sort
     column_default_sort = [(EmailReply.received_at, True)]  # Descending
-    
+
     # Read-only fields
     form_readonly_columns = [
         EmailReply.id,
@@ -52,7 +52,7 @@ class EmailReplyAdmin(BaseAdminView, model=EmailReply):
         EmailReply.received_at,
         EmailReply.created_at,
     ]
-    
+
     # Column labels
     column_labels = {
         EmailReply.id: "ID",
@@ -72,7 +72,7 @@ class EmailReplyAdmin(BaseAdminView, model=EmailReply):
         EmailReply.received_at: "Получен",
         EmailReply.created_at: "Создан",
     }
-    
+
     # Column formatters
     column_formatters = {
         EmailReply.is_processed: lambda v: "Да" if v else "Нет",

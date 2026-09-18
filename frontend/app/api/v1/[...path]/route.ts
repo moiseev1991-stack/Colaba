@@ -9,7 +9,8 @@ const ACCESS_COOKIE = 'access_token';
 const REFRESH_COOKIE = 'refresh_token';
 
 // Auth endpoints whose responses contain tokens that must be set as httpOnly cookies
-const AUTH_TOKEN_PATHS = ['auth/login', 'auth/register', 'auth/refresh'];
+// auth/oauth/*: OAuth-колбэк и Telegram возвращают пару токенов → тоже в куки
+const AUTH_TOKEN_PATHS = ['auth/login', 'auth/register', 'auth/refresh', 'auth/oauth'];
 // Auth endpoints that use refresh_token from cookie as request body
 const REFRESH_PATH = 'auth/refresh';
 
@@ -19,13 +20,23 @@ function getBackendOrigin(): string {
   if (_originCache) return _originCache;
   try {
     const content = (require('fs') as typeof import('fs'))
-      .readFileSync('/tmp/backend-origin', 'utf8').trim();
-    if (content.startsWith('http')) { _originCache = content; return content; }
+      .readFileSync('/tmp/backend-origin', 'utf8')
+      .trim();
+    if (content.startsWith('http')) {
+      _originCache = content;
+      return content;
+    }
   } catch {}
   const env = process.env['INTERNAL_BACKEND_ORIGIN'];
-  if (env?.startsWith('http')) { _originCache = env; return env; }
+  if (env?.startsWith('http')) {
+    _originCache = env;
+    return env;
+  }
   const devEnv = process.env['BACKEND_ORIGIN'];
-  if (devEnv?.startsWith('http')) { _originCache = devEnv; return devEnv; }
+  if (devEnv?.startsWith('http')) {
+    _originCache = devEnv;
+    return devEnv;
+  }
   // Docker Compose: задайте INTERNAL_BACKEND_ORIGIN=http://backend:8000.
   // Локально ``npm run dev`` на хосте: бэкенд на 127.0.0.1:8001 (см. docker-compose ports).
   const isProd = process.env['NODE_ENV'] === 'production';
@@ -43,7 +54,9 @@ async function dnsResolve4(hostname: string): Promise<string | null> {
     const { promisify } = require('util') as typeof import('util');
     const addrs = await promisify(dns.resolve4)(hostname);
     return addrs?.[0] ?? null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function rawHttpRequest(
@@ -63,7 +76,11 @@ function rawHttpRequest(
         const chunks: Buffer[] = [];
         res.on('data', (c: Buffer) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
         res.on('end', () =>
-          resolve({ status: res.statusCode ?? 502, headers: res.headers as Record<string, string | string[]>, buffer: Buffer.concat(chunks) }),
+          resolve({
+            status: res.statusCode ?? 502,
+            headers: res.headers as Record<string, string | string[]>,
+            buffer: Buffer.concat(chunks),
+          }),
         );
         res.on('error', reject);
       },
@@ -75,10 +92,11 @@ function rawHttpRequest(
   });
 }
 
-function cookieOptions(days: number): string {
-  const maxAge = days * 24 * 60 * 60;
+function cookieOptions(maxAgeSeconds: number): string {
+  // 18.09 (аудит С-1): TTL кук = TTL токенов — не храним мёртвые куки
+  // неделями (access 30 мин, refresh 7 дней).
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  return `Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+  return `Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
 }
 
 async function proxy(req: NextRequest, pathParts: string[]): Promise<Response> {
@@ -88,10 +106,12 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<Response> {
   upstreamUrl.search = req.nextUrl.search;
 
   const fwdHeaders = new Headers(req.headers);
-  ['host', 'connection', 'content-length', 'expect', 'transfer-encoding'].forEach(h => fwdHeaders.delete(h));
+  ['host', 'connection', 'content-length', 'expect', 'transfer-encoding'].forEach((h) =>
+    fwdHeaders.delete(h),
+  );
 
   // Inject Authorization header from httpOnly cookie (server-side — JS never touches the token)
-  const isAuthTokenEndpoint = AUTH_TOKEN_PATHS.some(p => apiPath.startsWith(p));
+  const isAuthTokenEndpoint = AUTH_TOKEN_PATHS.some((p) => apiPath.startsWith(p));
   if (!isAuthTokenEndpoint) {
     const accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
     if (accessToken) {
@@ -100,12 +120,13 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<Response> {
   }
 
   const headersObj: Record<string, string> = {};
-  fwdHeaders.forEach((v, k) => { headersObj[k] = v; });
+  fwdHeaders.forEach((v, k) => {
+    headersObj[k] = v;
+  });
 
   const method = req.method.toUpperCase();
-  let bodyBuf = (method === 'GET' || method === 'HEAD')
-    ? undefined
-    : Buffer.from(await req.arrayBuffer());
+  let bodyBuf =
+    method === 'GET' || method === 'HEAD' ? undefined : Buffer.from(await req.arrayBuffer());
 
   // For refresh endpoint: inject refresh_token from httpOnly cookie into request body
   if (apiPath.startsWith(REFRESH_PATH) && method === 'POST') {
@@ -129,43 +150,74 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<Response> {
   const isPublicIp = resolvedIp && !IS_PRIVATE_IP.test(resolvedIp) && !IS_IP.test(hostname);
   if (isPublicIp) {
     const proxyIp = await dnsResolve4('coolify-proxy');
-    if (proxyIp) { tcpHost = 'coolify-proxy'; tcpPort = 80; }
+    if (proxyIp) {
+      tcpHost = 'coolify-proxy';
+      tcpPort = 80;
+    }
   }
 
   try {
-    const upstream = await rawHttpRequest(tcpHost, tcpPort, hostname, path, method, headersObj, bodyBuf);
+    const upstream = await rawHttpRequest(
+      tcpHost,
+      tcpPort,
+      hostname,
+      path,
+      method,
+      headersObj,
+      bodyBuf,
+    );
     const resHeaders = new Headers();
     Object.entries(upstream.headers).forEach(([k, v]) => {
       if (v != null) resHeaders.set(k, Array.isArray(v) ? v.join(', ') : v);
     });
-    ['content-encoding', 'transfer-encoding', 'connection'].forEach(h => resHeaders.delete(h));
+    ['content-encoding', 'transfer-encoding', 'connection'].forEach((h) => resHeaders.delete(h));
 
     // For auth token endpoints: if backend returns tokens, set httpOnly cookies server-side
     if (isAuthTokenEndpoint && upstream.status >= 200 && upstream.status < 300) {
       try {
         const body = JSON.parse(upstream.buffer.toString('utf8'));
         if (body?.access_token) {
-          resHeaders.append('Set-Cookie', `${ACCESS_COOKIE}=${body.access_token}; ${cookieOptions(30)}`);
+          resHeaders.append(
+            'Set-Cookie',
+            `${ACCESS_COOKIE}=${body.access_token}; ${cookieOptions(30 * 60)}`,
+          );
         }
         if (body?.refresh_token) {
-          resHeaders.append('Set-Cookie', `${REFRESH_COOKIE}=${body.refresh_token}; ${cookieOptions(30)}`);
+          resHeaders.append(
+            'Set-Cookie',
+            `${REFRESH_COOKIE}=${body.refresh_token}; ${cookieOptions(7 * 24 * 60 * 60)}`,
+          );
         }
-      } catch { /* response is not JSON — ignore */ }
+      } catch {
+        /* response is not JSON — ignore */
+      }
     }
 
     return new Response(upstream.buffer, { status: upstream.status, headers: resHeaders });
   } catch (err: unknown) {
     const msg = (err as Error)?.message ?? String(err);
-    return new Response(
-      JSON.stringify({ detail: `Proxy error: ${msg}` }),
-      { status: 502, headers: { 'content-type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ detail: `Proxy error: ${msg}` }), {
+      status: 502,
+      headers: { 'content-type': 'application/json' },
+    });
   }
 }
 
-export async function GET(req: NextRequest, ctx: { params: { path: string[] } }) { return proxy(req, ctx.params.path || []); }
-export async function POST(req: NextRequest, ctx: { params: { path: string[] } }) { return proxy(req, ctx.params.path || []); }
-export async function PUT(req: NextRequest, ctx: { params: { path: string[] } }) { return proxy(req, ctx.params.path || []); }
-export async function PATCH(req: NextRequest, ctx: { params: { path: string[] } }) { return proxy(req, ctx.params.path || []); }
-export async function DELETE(req: NextRequest, ctx: { params: { path: string[] } }) { return proxy(req, ctx.params.path || []); }
-export async function OPTIONS(req: NextRequest, ctx: { params: { path: string[] } }) { return proxy(req, ctx.params.path || []); }
+export async function GET(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(req, ctx.params.path || []);
+}
+export async function POST(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(req, ctx.params.path || []);
+}
+export async function PUT(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(req, ctx.params.path || []);
+}
+export async function PATCH(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(req, ctx.params.path || []);
+}
+export async function DELETE(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(req, ctx.params.path || []);
+}
+export async function OPTIONS(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(req, ctx.params.path || []);
+}

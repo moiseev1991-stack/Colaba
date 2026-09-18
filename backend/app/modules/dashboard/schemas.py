@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 class RunsByDayItem(BaseModel):
     """Aggregated runs per day."""
+
     date: str
     total: int
     success: int
@@ -18,6 +19,7 @@ class RunsByDayItem(BaseModel):
 
 class ActiveRunItem(BaseModel):
     """Currently running/queued run."""
+
     id: str
     module: str
     query: str
@@ -29,6 +31,7 @@ class ActiveRunItem(BaseModel):
 
 class RecentRunItem(BaseModel):
     """Recent run for list."""
+
     id: str
     module: str
     query: str
@@ -40,6 +43,7 @@ class RecentRunItem(BaseModel):
 
 class DashboardKpi(BaseModel):
     """KPI block."""
+
     total: int
     success: int
     errors: int
@@ -51,6 +55,7 @@ class DashboardKpi(BaseModel):
 
 class DashboardResponse(BaseModel):
     """Full dashboard response."""
+
     kpi: DashboardKpi
     runs_by_day: List["RunsByDayItem"]
     active_runs: List[ActiveRunItem]

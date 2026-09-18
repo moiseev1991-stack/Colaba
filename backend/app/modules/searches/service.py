@@ -20,8 +20,9 @@ async def create_search(
     """Create a new search and trigger background task."""
     import logging
     import sys
+
     logger = logging.getLogger(__name__)
-    
+
     search = Search(
         user_id=user_id,
         organization_id=organization_id,
@@ -34,18 +35,23 @@ async def create_search(
     db.add(search)
     await db.commit()
     await db.refresh(search)
-    
+
     # Trigger background task (only if Celery is available)
     try:
         from app.queue.tasks import execute_search_task
-        logger.info(f"[SEARCH] Triggering execute_search_task for search_id={search.id}, provider={search_data.search_provider}")
+
+        logger.info(
+            f"[SEARCH] Triggering execute_search_task for search_id={search.id}, provider={search_data.search_provider}"
+        )
         # Use separate queue for execute_search_task to ensure it's processed before process_domain_task
         result = execute_search_task.apply_async(args=[search.id], queue="search_queue")
-        logger.info(f"[SEARCH] Successfully triggered execute_search_task for search_id={search.id}, task_id={result.id}")
+        logger.info(
+            f"[SEARCH] Successfully triggered execute_search_task for search_id={search.id}, task_id={result.id}"
+        )
     except Exception as e:
         # If Celery is not available, log error but don't fail
         logger.error(f"[SEARCH] Failed to trigger Celery task for search_id={search.id}: {e}", exc_info=True)
-    
+
     return schemas.SearchResponse.model_validate(search)
 
 
@@ -71,9 +77,7 @@ async def get_searches(
     if created_after is not None:
         query = query.where(Search.created_at >= created_after)
 
-    result = await db.execute(
-        query.order_by(Search.created_at.desc()).limit(limit).offset(offset)
-    )
+    result = await db.execute(query.order_by(Search.created_at.desc()).limit(limit).offset(offset))
     searches = result.scalars().all()
     return [schemas.SearchResponse.model_validate(s) for s in searches]
 
@@ -130,13 +134,9 @@ async def get_search_results(
             get_keyword_hits_per_result,
         )
 
-        matched_ids, highlight_words = await apply_filter_spec(
-            db, search_id=search_id, spec=filter_spec
-        )
+        matched_ids, highlight_words = await apply_filter_spec(db, search_id=search_id, spec=filter_spec)
         if highlight_words:
-            keyword_hits = await get_keyword_hits_per_result(
-                db, search_id=search_id, keywords=highlight_words
-            )
+            keyword_hits = await get_keyword_hits_per_result(db, search_id=search_id, keywords=highlight_words)
 
     stmt = select(SearchResult).where(SearchResult.search_id == search_id)
     if matched_ids is not None:
@@ -189,15 +189,13 @@ async def get_search_results_grouped_by_domain(
             total_results=0,
             unique_domains=0,
         )
-    
+
     # Get all results
     result = await db.execute(
-        select(SearchResult)
-        .where(SearchResult.search_id == search_id)
-        .order_by(SearchResult.position)
+        select(SearchResult).where(SearchResult.search_id == search_id).order_by(SearchResult.position)
     )
     all_results = result.scalars().all()
-    
+
     # Group by domain
     domains_dict: Dict[str, List[schemas.SearchResultResponse]] = {}
     for r in all_results:
@@ -205,7 +203,7 @@ async def get_search_results_grouped_by_domain(
         if domain not in domains_dict:
             domains_dict[domain] = []
         domains_dict[domain].append(schemas.SearchResultResponse.model_validate(r))
-    
+
     # Convert to list with domain info
     domains_list = []
     for domain, results in domains_dict.items():
@@ -221,10 +219,10 @@ async def get_search_results_grouped_by_domain(
             results=results,
         )
         domains_list.append(domain_group)
-    
+
     # Sort by results count (descending)
     domains_list.sort(key=lambda x: x.results_count, reverse=True)
-    
+
     return schemas.SearchResultsGroupedResponse(
         domains=domains_list,
         total_results=len(all_results),

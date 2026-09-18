@@ -52,12 +52,14 @@ async def get_providers_list(db) -> list:
             pid = p["id"]
             merged = await get_provider_config(pid, db)
             masked = _mask_secrets(merged, p["settings_schema"])
-            out.append({
-                **{k: v for k, v in p.items() if k != "settings_schema"},
-                "settings_schema": p["settings_schema"],
-                "config": masked,
-                "configured": _is_configured(pid, merged, p["settings_schema"]),
-            })
+            out.append(
+                {
+                    **{k: v for k, v in p.items() if k != "settings_schema"},
+                    "settings_schema": p["settings_schema"],
+                    "config": masked,
+                    "configured": _is_configured(pid, merged, p["settings_schema"]),
+                }
+            )
         return out
     except Exception as e:
         logger.exception("get_providers_list failed: %s", e)

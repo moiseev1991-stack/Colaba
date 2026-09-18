@@ -414,4 +414,3 @@ COMPANY_DESCRIPTION_PROMPT = """Ты — copywriter, который пишет h
   "description": "..."
 }}
 """
-

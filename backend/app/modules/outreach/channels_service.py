@@ -38,14 +38,34 @@ CHANNEL_REGISTRY: dict[str, dict[str, Any]] = {
         ),
         "secret_fields": ("bot_token",),
         "fields": [
-            {"key": "bot_token", "label": "Bot token", "type": "secret", "required": True,
-             "description": "От @BotFather в Telegram (например 123456:ABC-DEF1234...)."},
-            {"key": "bot_username", "label": "@username бота", "type": "text", "required": False,
-             "description": "Например @colaba_kp_bot (без @)."},
-            {"key": "welcome_message", "label": "Welcome-сообщение", "type": "text", "required": False,
-             "description": "Что увидит лид после /start (по умолчанию системное)."},
-            {"key": "cost_per_message", "label": "Цена за сообщение (₽)", "type": "number", "required": False,
-             "description": "Bot API бесплатный; ставьте 0 или себестоимость."},
+            {
+                "key": "bot_token",
+                "label": "Bot token",
+                "type": "secret",
+                "required": True,
+                "description": "От @BotFather в Telegram (например 123456:ABC-DEF1234...).",
+            },
+            {
+                "key": "bot_username",
+                "label": "@username бота",
+                "type": "text",
+                "required": False,
+                "description": "Например @colaba_kp_bot (без @).",
+            },
+            {
+                "key": "welcome_message",
+                "label": "Welcome-сообщение",
+                "type": "text",
+                "required": False,
+                "description": "Что увидит лид после /start (по умолчанию системное).",
+            },
+            {
+                "key": "cost_per_message",
+                "label": "Цена за сообщение (₽)",
+                "type": "number",
+                "required": False,
+                "description": "Bot API бесплатный; ставьте 0 или себестоимость.",
+            },
         ],
     },
     "whatsapp": {
@@ -57,14 +77,35 @@ CHANNEL_REGISTRY: dict[str, dict[str, Any]] = {
         ),
         "secret_fields": ("api_token",),
         "fields": [
-            {"key": "api_url", "label": "API URL", "type": "text", "required": True,
-             "default": "https://api.green-api.com", "description": "По умолчанию https://api.green-api.com."},
-            {"key": "instance_id", "label": "Instance ID", "type": "text", "required": True,
-             "description": "Из личного кабинета Green-API (например 1101000000)."},
-            {"key": "api_token", "label": "API token", "type": "secret", "required": True,
-             "description": "Из личного кабинета Green-API."},
-            {"key": "cost_per_message", "label": "Цена за сообщение (₽)", "type": "number", "required": False,
-             "description": "Себестоимость одного сообщения для учёта расходов."},
+            {
+                "key": "api_url",
+                "label": "API URL",
+                "type": "text",
+                "required": True,
+                "default": "https://api.green-api.com",
+                "description": "По умолчанию https://api.green-api.com.",
+            },
+            {
+                "key": "instance_id",
+                "label": "Instance ID",
+                "type": "text",
+                "required": True,
+                "description": "Из личного кабинета Green-API (например 1101000000).",
+            },
+            {
+                "key": "api_token",
+                "label": "API token",
+                "type": "secret",
+                "required": True,
+                "description": "Из личного кабинета Green-API.",
+            },
+            {
+                "key": "cost_per_message",
+                "label": "Цена за сообщение (₽)",
+                "type": "number",
+                "required": False,
+                "description": "Себестоимость одного сообщения для учёта расходов.",
+            },
         ],
     },
     "max": {
@@ -76,8 +117,13 @@ CHANNEL_REGISTRY: dict[str, dict[str, Any]] = {
         ),
         "secret_fields": (),
         "fields": [
-            {"key": "cost_per_message", "label": "Цена за сообщение (₽)", "type": "number", "required": False,
-             "description": "Задел под будущее, когда появится API."},
+            {
+                "key": "cost_per_message",
+                "label": "Цена за сообщение (₽)",
+                "type": "number",
+                "required": False,
+                "description": "Задел под будущее, когда появится API.",
+            },
         ],
     },
 }
@@ -88,13 +134,9 @@ CHANNEL_REGISTRY: dict[str, dict[str, Any]] = {
 # ────────────────────────────────────────────────────────────────────
 
 
-async def _get_or_create_row(
-    db: AsyncSession, channel_id: str
-) -> ChannelConfig:
+async def _get_or_create_row(db: AsyncSession, channel_id: str) -> ChannelConfig:
     """Возвращает строку конфига; создаёт если нет (с дефолтами)."""
-    result = await db.execute(
-        select(ChannelConfig).where(ChannelConfig.channel_id == channel_id)
-    )
+    result = await db.execute(select(ChannelConfig).where(ChannelConfig.channel_id == channel_id))
     row = result.scalar_one_or_none()
     if row:
         return row
@@ -115,9 +157,7 @@ async def get_all_channels(db: AsyncSession) -> list[ChannelConfig]:
     return [rows[cid] for cid in SUPPORTED_CHANNEL_IDS]
 
 
-async def get_channel_row(
-    db: AsyncSession, channel_id: str
-) -> Optional[ChannelConfig]:
+async def get_channel_row(db: AsyncSession, channel_id: str) -> Optional[ChannelConfig]:
     if channel_id not in SUPPORTED_CHANNEL_IDS:
         return None
     return await _get_or_create_row(db, channel_id)
@@ -174,18 +214,13 @@ def _compute_is_configured(channel_id: str, config: dict) -> bool:
     if channel_id == "telegram":
         return bool((cfg.get("bot_token") or "").strip())
     if channel_id == "whatsapp":
-        return bool(
-            (cfg.get("instance_id") or "").strip()
-            and (cfg.get("api_token") or "").strip()
-        )
+        return bool((cfg.get("instance_id") or "").strip() and (cfg.get("api_token") or "").strip())
     if channel_id == "max":
         return False  # API нет, всегда «не настроен»
     return False
 
 
-async def update_channel(
-    db: AsyncSession, channel_id: str, data: dict[str, Any]
-) -> ChannelConfig:
+async def update_channel(db: AsyncSession, channel_id: str, data: dict[str, Any]) -> ChannelConfig:
     """Partial update конфига канала.
 
     Принимает {config: {...}, enabled: bool, ...}. В config секретные поля

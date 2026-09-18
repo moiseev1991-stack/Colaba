@@ -78,7 +78,7 @@ def _build_queries(company_name: str, city: str | None, website: str | None) -> 
             if netloc.startswith("www."):
                 netloc = netloc[4:]
             if netloc and "." in netloc and len(netloc) < 100:
-                q2 = f'site:{netloc} директор OR маркетолог OR руководитель'
+                q2 = f"site:{netloc} директор OR маркетолог OR руководитель"
                 queries[1] = q2
         except Exception:
             pass
@@ -106,7 +106,9 @@ async def _serp_call(query: str, api_key: str) -> list[dict]:
     if r.status_code != 200:
         logger.warning(
             "serp_dm: SerpAPI status=%d q=%r body=%s",
-            r.status_code, query[:80], r.text[:200],
+            r.status_code,
+            query[:80],
+            r.text[:200],
         )
         return []
     j = r.json() or {}
@@ -160,13 +162,15 @@ async def enrich_dm_from_serp(
     # Идемпотентность
     if not force:
         cutoff = datetime.now(timezone.utc) - timedelta(days=_REPROCESS_AFTER_DAYS)
-        recent = (await db.execute(
-            select(CompanyDecisionMaker.id)
-            .where(CompanyDecisionMaker.company_id == company_id)
-            .where(CompanyDecisionMaker.source == "serp_google")
-            .where(CompanyDecisionMaker.created_at >= cutoff)
-            .limit(1)
-        )).scalar_one_or_none()
+        recent = (
+            await db.execute(
+                select(CompanyDecisionMaker.id)
+                .where(CompanyDecisionMaker.company_id == company_id)
+                .where(CompanyDecisionMaker.source == "serp_google")
+                .where(CompanyDecisionMaker.created_at >= cutoff)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         if recent is not None:
             return {"status": "skip_already_processed"}
 

@@ -21,13 +21,22 @@ class CompanyAdmin(ModelView, model=Company):
     icon = "fa-solid fa-building"
 
     column_list = [
-        Company.id, Company.name, Company.niche, Company.city,
-        Company.rating, Company.reviews_count, Company.reviews_negative_count,
-        Company.has_owner_replies, Company.source, Company.created_at,
+        Company.id,
+        Company.name,
+        Company.niche,
+        Company.city,
+        Company.rating,
+        Company.reviews_count,
+        Company.reviews_negative_count,
+        Company.has_owner_replies,
+        Company.source,
+        Company.created_at,
     ]
     column_searchable_list = [Company.name, Company.phone, Company.website, Company.external_id]
     column_sortable_list = [
-        Company.rating, Company.reviews_count, Company.reviews_negative_count,
+        Company.rating,
+        Company.reviews_count,
+        Company.reviews_negative_count,
         Company.created_at,
     ]
     column_default_sort = ("created_at", True)
@@ -52,12 +61,21 @@ class ReviewAdmin(ModelView, model=Review):
     icon = "fa-solid fa-comment"
 
     column_list = [
-        Review.id, Review.company_id, Review.author_masked, Review.rating,
-        Review.sentiment, Review.has_owner_reply, Review.posted_at,
-        Review.raw_text_purged_at, Review.ai_processed_at,
+        Review.id,
+        Review.company_id,
+        Review.author_masked,
+        Review.rating,
+        Review.sentiment,
+        Review.has_owner_reply,
+        Review.posted_at,
+        Review.raw_text_purged_at,
+        Review.ai_processed_at,
     ]
     column_sortable_list = [
-        Review.posted_at, Review.rating, Review.sentiment, Review.created_at,
+        Review.posted_at,
+        Review.rating,
+        Review.sentiment,
+        Review.created_at,
     ]
     column_default_sort = ("posted_at", True)
     page_size = 100
@@ -80,13 +98,22 @@ class MapSearchAdmin(ModelView, model=MapSearch):
     icon = "fa-solid fa-map"
 
     column_list = [
-        MapSearch.id, MapSearch.user_id, MapSearch.niche, MapSearch.city,
-        MapSearch.sources, MapSearch.status, MapSearch.ai_progress,
-        MapSearch.companies_found, MapSearch.reviews_found,
-        MapSearch.error_type, MapSearch.created_at,
+        MapSearch.id,
+        MapSearch.user_id,
+        MapSearch.niche,
+        MapSearch.city,
+        MapSearch.sources,
+        MapSearch.status,
+        MapSearch.ai_progress,
+        MapSearch.companies_found,
+        MapSearch.reviews_found,
+        MapSearch.error_type,
+        MapSearch.created_at,
     ]
     column_sortable_list = [
-        MapSearch.created_at, MapSearch.status, MapSearch.companies_found,
+        MapSearch.created_at,
+        MapSearch.status,
+        MapSearch.companies_found,
     ]
     column_default_sort = ("created_at", True)
     page_size = 50
@@ -111,14 +138,22 @@ class PainTagAdmin(ModelView, model=PainTag):
     icon = "fa-solid fa-bullseye"
 
     column_list = [
-        PainTag.id, PainTag.niche, PainTag.city, PainTag.label,
-        PainTag.occurrences_count, PainTag.cluster_size, PainTag.status,
-        PainTag.created_at, PainTag.updated_at,
+        PainTag.id,
+        PainTag.niche,
+        PainTag.city,
+        PainTag.label,
+        PainTag.occurrences_count,
+        PainTag.cluster_size,
+        PainTag.status,
+        PainTag.created_at,
+        PainTag.updated_at,
     ]
     column_searchable_list = [PainTag.label, PainTag.niche, PainTag.description]
     column_sortable_list = [
-        PainTag.occurrences_count, PainTag.cluster_size,
-        PainTag.created_at, PainTag.updated_at,
+        PainTag.occurrences_count,
+        PainTag.cluster_size,
+        PainTag.created_at,
+        PainTag.updated_at,
     ]
     column_default_sort = ("occurrences_count", True)
     page_size = 50
@@ -141,9 +176,14 @@ class MapSearchCacheAdmin(ModelView, model=MapSearchCache):
     icon = "fa-solid fa-database"
 
     column_list = [
-        MapSearchCache.id, MapSearchCache.niche, MapSearchCache.city,
-        MapSearchCache.source, MapSearchCache.companies_count,
-        MapSearchCache.reviews_count, MapSearchCache.parsed_at, MapSearchCache.expires_at,
+        MapSearchCache.id,
+        MapSearchCache.niche,
+        MapSearchCache.city,
+        MapSearchCache.source,
+        MapSearchCache.companies_count,
+        MapSearchCache.reviews_count,
+        MapSearchCache.parsed_at,
+        MapSearchCache.expires_at,
     ]
     column_sortable_list = [MapSearchCache.parsed_at, MapSearchCache.expires_at]
     column_default_sort = ("parsed_at", True)

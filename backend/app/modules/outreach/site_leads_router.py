@@ -66,9 +66,7 @@ async def get_site_lead(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> SiteLeadOut:
-    lead = await site_leads_service.get_site_lead(
-        db, user_id=user_id, lead_id=lead_id
-    )
+    lead = await site_leads_service.get_site_lead(db, user_id=user_id, lead_id=lead_id)
     if lead is None:
         raise HTTPException(status_code=404, detail="Site-лид не найден.")
     return SiteLeadOut.model_validate(lead)
@@ -87,9 +85,7 @@ async def delete_site_lead(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    ok = await site_leads_service.delete_site_lead(
-        db, user_id=user_id, lead_id=lead_id
-    )
+    ok = await site_leads_service.delete_site_lead(db, user_id=user_id, lead_id=lead_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Site-лид не найден.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

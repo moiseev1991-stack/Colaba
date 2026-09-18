@@ -57,7 +57,4 @@ class SiteLead(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<SiteLead #{self.id} user={self.user_id} {self.domain!r} "
-            f"entry={self.entry!r}>"
-        )
+        return f"<SiteLead #{self.id} user={self.user_id} {self.domain!r} entry={self.entry!r}>"

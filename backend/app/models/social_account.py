@@ -13,6 +13,7 @@ from app.core.database import Base
 
 class OAuthProvider(str, Enum):
     """Supported OAuth providers."""
+
     GOOGLE = "google"
     YANDEX = "yandex"
     VK = "vk"
@@ -21,6 +22,7 @@ class OAuthProvider(str, Enum):
 
 class SocialAccount(Base):
     """Social account for OAuth authentication."""
+
     __tablename__ = "social_accounts"
 
     id = Column(Integer, primary_key=True, index=True)

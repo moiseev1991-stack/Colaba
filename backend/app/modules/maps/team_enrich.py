@@ -38,10 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 _TIMEOUT = httpx.Timeout(15.0, connect=10.0)
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 # Страницы-кандидаты на наличие ФИО + должностей. Порядок — от наиболее
 # вероятных к менее. Краулер ходит по первым N (см. _MAX_PAGES).
@@ -99,17 +96,39 @@ _TEAM_PATHS: tuple[tuple[str, str], ...] = (
 _MAX_PAGES = 9
 
 _DM_ROLE_KEYWORDS = (
-    "руководител", "директор", "владел", "основател", "учредител",
-    "управляющ", "генеральный", "главврач", "главный врач", "шеф-повар",
-    "маркетолог", "ceo", "cmo", "cto", "coo",
+    "руководител",
+    "директор",
+    "владел",
+    "основател",
+    "учредител",
+    "управляющ",
+    "генеральный",
+    "главврач",
+    "главный врач",
+    "шеф-повар",
+    "маркетолог",
+    "ceo",
+    "cmo",
+    "cto",
+    "coo",
 )
 
 # Ключевые слова для маркетинг-роли (для определения role_category='marketing'
 # и is_marketing_dm=True). Также включает SMM/PR/бренд/рекламу.
 _MARKETING_KEYWORDS = (
-    "маркетолог", "маркетинг", "cmo", "директор по маркетинг",
-    "руководитель отдела маркетинг", "начальник отдела маркетинг",
-    "smm", "pr-", "pr ", "pr,", "пиар", "бренд-менедж", "бренд менедж",
+    "маркетолог",
+    "маркетинг",
+    "cmo",
+    "директор по маркетинг",
+    "руководитель отдела маркетинг",
+    "начальник отдела маркетинг",
+    "smm",
+    "pr-",
+    "pr ",
+    "pr,",
+    "пиар",
+    "бренд-менедж",
+    "бренд менедж",
     "реклам",
 )
 
@@ -135,10 +154,20 @@ def _infer_role_category(post: str | None) -> str | None:
         return "founder"
     if "владел" in low or "собственник" in low:
         return "owner"
-    if any(k in low for k in (
-        "директор", "руководител", "управляющ", "генеральный",
-        "ceo", "cto", "coo", "главврач", "главный врач",
-    )):
+    if any(
+        k in low
+        for k in (
+            "директор",
+            "руководител",
+            "управляющ",
+            "генеральный",
+            "ceo",
+            "cto",
+            "coo",
+            "главврач",
+            "главный врач",
+        )
+    ):
         return "management"
     if low.startswith("hr") or "рекрут" in low or "кадровик" in low:
         return "hr"
@@ -178,8 +207,7 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
         return {"status": "no_website"}
     # Псевдо-сайты соцсетей — там нет /team /о-нас в традиционном виде.
     low = website.lower()
-    if any(h in low for h in ("vk.com", "instagram.com", "facebook.com",
-                              "ok.ru", "t.me", "2gis.ru", "yandex.")):
+    if any(h in low for h in ("vk.com", "instagram.com", "facebook.com", "ok.ru", "t.me", "2gis.ru", "yandex.")):
         return {"status": "skip_social_website"}
 
     if not website.startswith(("http://", "https://")):
@@ -188,11 +216,9 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
     # Skip если у компании уже есть записи (повторно не дёргаем — LLM-токены
     # дорогие). Явный re-run делается отдельным force-флагом, который пока
     # не выставляем UI.
-    existing_cnt = (await db.execute(
-        select(CompanyDecisionMaker.id).where(
-            CompanyDecisionMaker.company_id == company_id
-        ).limit(1)
-    )).scalar_one_or_none()
+    existing_cnt = (
+        await db.execute(select(CompanyDecisionMaker.id).where(CompanyDecisionMaker.company_id == company_id).limit(1))
+    ).scalar_one_or_none()
     if existing_cnt is not None:
         return {"status": "skip_already_processed"}
 
@@ -207,9 +233,7 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
     saved = 0
     pages_tried = 0
 
-    async with httpx.AsyncClient(
-        timeout=_TIMEOUT, follow_redirects=True, headers=headers, max_redirects=4
-    ) as client:
+    async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True, headers=headers, max_redirects=4) as client:
         for path, source_tag in _TEAM_PATHS:
             if pages_tried >= _MAX_PAGES:
                 break
@@ -222,9 +246,7 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
             if len(text) < 100:
                 continue
             pages_tried += 1
-            extracted = await call_llm_extract_team(
-                db, company_name=company.name or "", page_text=text
-            )
+            extracted = await call_llm_extract_team(db, company_name=company.name or "", page_text=text)
             if not extracted:
                 continue
             for item in extracted:
@@ -258,9 +280,7 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
                 contact_phone = item.get("contact_phone")
                 contact_vk = item.get("contact_vk")
 
-                valid_email, _e_reason, norm_email = is_valid_email(
-                    contact_email, check_mx=False
-                )
+                valid_email, _e_reason, norm_email = is_valid_email(contact_email, check_mx=False)
                 valid_phone, _p_reason, norm_phone = is_valid_phone_ru(contact_phone)
 
                 if valid_email:
@@ -276,18 +296,22 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
                 # UNIQUE index по (company_id, lower(name)) автоматически.
                 # is_marketing_dm НЕ выставляем здесь — это делает оркестратор
                 # enrich_marketing_dm после сбора всех источников.
-                stmt = pg_insert(CompanyDecisionMaker).values(
-                    company_id=company_id,
-                    name=name,
-                    post=post,
-                    source=source_tag,
-                    source_url=url[:1000],
-                    confidence=confidence,
-                    is_decision_maker=is_dm,
-                    role_category=role_category,
-                    contact_type=contact_type,
-                    contact_value=contact_value,
-                ).on_conflict_do_nothing()
+                stmt = (
+                    pg_insert(CompanyDecisionMaker)
+                    .values(
+                        company_id=company_id,
+                        name=name,
+                        post=post,
+                        source=source_tag,
+                        source_url=url[:1000],
+                        confidence=confidence,
+                        is_decision_maker=is_dm,
+                        role_category=role_category,
+                        contact_type=contact_type,
+                        contact_value=contact_value,
+                    )
+                    .on_conflict_do_nothing()
+                )
                 try:
                     await db.execute(stmt)
                     saved += 1
@@ -295,7 +319,8 @@ async def enrich_company_team(db: AsyncSession, company_id: int) -> dict:
                     # При гонке вставок конфликт по UNIQUE index — норма.
                     logger.debug(
                         "enrich_company_team: insert conflict for %s: %s",
-                        name, e,
+                        name,
+                        e,
                     )
 
     await db.commit()

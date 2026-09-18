@@ -39,6 +39,7 @@ class BulkOutreachResponse(BaseModel):
 
 class SmtpConfig(BaseModel):
     """Frontend-editable SMTP settings (without password exposure)."""
+
     host: str
     port: int
     user: str

@@ -34,6 +34,7 @@ def _to_detail(ll, items: list[CompanyOut]) -> LeadListDetailOut:
     base = LeadListOut.model_validate(ll)
     return LeadListDetailOut(**base.model_dump(), items=items)
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/lead-lists", tags=["lead-lists"])
@@ -185,7 +186,9 @@ async def bulk_draft_emails(
         return BulkDraftsOut(list_id=list_id, total_companies=0)
 
     pains_map = await maps_service.get_top_pains_for_companies(
-        db, [c.id for c in items], limit_per_company=2,
+        db,
+        [c.id for c in items],
+        limit_per_company=2,
     )
 
     from app.modules.reviews_ai.llm import call_llm_outreach_draft
@@ -211,10 +214,7 @@ async def bulk_draft_emails(
                 niche=company.niche or "",
                 city=company.city or "",
                 source=company.source or "карты",
-                pains=[
-                    {"label": p["label"], "quote": p.get("top_quote") or ""}
-                    for p in pains_with_quote
-                ],
+                pains=[{"label": p["label"], "quote": p.get("top_quote") or ""} for p in pains_with_quote],
             )
         if draft is None:
             async with lock:
@@ -223,15 +223,17 @@ async def bulk_draft_emails(
         emails = company.emails if isinstance(company.emails, list) else []
         top_p = pains_with_quote[0]
         async with lock:
-            drafts.append(BulkDraftItem(
-                company_id=company.id,
-                company_name=company.name or "",
-                subject=draft["subject"],
-                body=draft["body"],
-                used_pain_label=top_p.get("label"),
-                used_pain_quote=top_p.get("top_quote"),
-                suggested_to_emails=list(emails)[:3],
-            ))
+            drafts.append(
+                BulkDraftItem(
+                    company_id=company.id,
+                    company_name=company.name or "",
+                    subject=draft["subject"],
+                    body=draft["body"],
+                    used_pain_label=top_p.get("label"),
+                    used_pain_quote=top_p.get("top_quote"),
+                    suggested_to_emails=list(emails)[:3],
+                )
+            )
 
     await asyncio.gather(*(gen_for(c) for c in items), return_exceptions=True)
 

@@ -47,9 +47,7 @@ class AdminAuth(AuthenticationBackend):
                 logger.warning("admin login denied: email=%s reason=bad-password", email)
                 return False
 
-            request.session.update(
-                {"admin_user_id": user.id, "admin_is_superuser": True}
-            )
+            request.session.update({"admin_user_id": user.id, "admin_is_superuser": True})
             logger.info("admin login ok: user_id=%s email=%s", user.id, email)
             return True
 

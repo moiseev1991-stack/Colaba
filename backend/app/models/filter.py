@@ -11,6 +11,7 @@ from app.core.database import Base
 
 class Filter(Base):
     """Filter model."""
+
     __tablename__ = "filters"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -29,6 +30,7 @@ class Filter(Base):
 
 class BlacklistDomain(Base):
     """Blacklist domain model."""
+
     __tablename__ = "blacklist_domains"
 
     id = Column(Integer, primary_key=True, index=True)

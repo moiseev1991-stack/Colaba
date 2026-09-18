@@ -35,45 +35,73 @@ _EMAIL_RE = re.compile(
 
 # tel:+7..., tel:8800..., tel:8(495)... — нормализуем дальше
 _TEL_HREF_RE = re.compile(r'href=["\']tel:([^"\']+)["\']', re.IGNORECASE)
-_TG_RE = re.compile(r'(?:t\.me|telegram\.me)/([A-Za-z0-9_]{3,})', re.IGNORECASE)
-_VK_RE = re.compile(r'vk\.com/([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
-_WA_RE = re.compile(r'(?:wa\.me|api\.whatsapp\.com/send\?phone=)/?\+?(\d{7,15})', re.IGNORECASE)
+_TG_RE = re.compile(r"(?:t\.me|telegram\.me)/([A-Za-z0-9_]{3,})", re.IGNORECASE)
+_VK_RE = re.compile(r"vk\.com/([A-Za-z0-9_.\-]{3,})", re.IGNORECASE)
+_WA_RE = re.compile(r"(?:wa\.me|api\.whatsapp\.com/send\?phone=)/?\+?(\d{7,15})", re.IGNORECASE)
 # Доп. соц.сети — ловим в footers/headers практически всех сайтов.
-_INSTA_RE = re.compile(r'instagram\.com/([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
-_FB_RE = re.compile(r'facebook\.com/([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
-_OK_RE = re.compile(r'ok\.ru/(?:profile/)?([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
-_YT_RE = re.compile(r'youtube\.com/(?:c/|channel/|user/|@)([A-Za-z0-9_.\-]{3,})', re.IGNORECASE)
+_INSTA_RE = re.compile(r"instagram\.com/([A-Za-z0-9_.\-]{3,})", re.IGNORECASE)
+_FB_RE = re.compile(r"facebook\.com/([A-Za-z0-9_.\-]{3,})", re.IGNORECASE)
+_OK_RE = re.compile(r"ok\.ru/(?:profile/)?([A-Za-z0-9_.\-]{3,})", re.IGNORECASE)
+_YT_RE = re.compile(r"youtube\.com/(?:c/|channel/|user/|@)([A-Za-z0-9_.\-]{3,})", re.IGNORECASE)
 
 # Ссылки на типовые «контактные» страницы у российских и не-российских сайтов.
 # Порядок важен: первые с большей вероятностью имеют полный набор контактов.
 _CONTACT_PATHS = (
-    "/contacts", "/contact", "/kontakty", "/kontakti",
-    "/about", "/o-nas", "/o-kompanii",
+    "/contacts",
+    "/contact",
+    "/kontakty",
+    "/kontakti",
+    "/about",
+    "/o-nas",
+    "/o-kompanii",
 )
 # Сколько доп. страниц мы пробуем (после homepage).
 _MAX_EXTRA_PAGES = 3
 # Чёрный список handles для соцсетей — путаются с share-кнопками.
 _SOCIAL_HANDLE_BLOCKLIST = {
-    "share", "sharer", "joinchat", "video", "audio", "doc",
-    "tr", "pages", "groups", "plugins", "dialog", "intent",
-    "explore", "p", "reel", "reels", "stories", "watch",
+    "share",
+    "sharer",
+    "joinchat",
+    "video",
+    "audio",
+    "doc",
+    "tr",
+    "pages",
+    "groups",
+    "plugins",
+    "dialog",
+    "intent",
+    "explore",
+    "p",
+    "reel",
+    "reels",
+    "stories",
+    "watch",
 }
 
 # Игнор-домены для emails: типовые «шумные» адреса систем/паблишеров, попадают
 # в HTML рандомно, контактом компании не являются.
 _EMAIL_DOMAIN_BLOCKLIST = {
-    "sentry.io", "wixpress.com", "wordpress.com", "godaddy.com",
-    "tilda.cc", "tildacdn.com", "tinkoff.ru",
-    "example.com", "test.com", "domain.com",
+    "sentry.io",
+    "wixpress.com",
+    "wordpress.com",
+    "godaddy.com",
+    "tilda.cc",
+    "tildacdn.com",
+    "tinkoff.ru",
+    "example.com",
+    "test.com",
+    "domain.com",
     # 2gis.ru попадает как help@2gis.ru — служебный email самого 2GIS,
     # не контакт компании. Из roadmap session_pending_2026-06-02.
-    "2gis.ru", "2gis.com",
+    "2gis.ru",
+    "2gis.com",
 }
 
 # Точные email-адреса в блоклисте (помимо доменов): помогает когда домен
 # мог бы быть полезен для других компаний, но конкретный адрес — мусор.
 _EMAIL_EXACT_BLOCKLIST = {
-    "help@2gis.ru",        # плейсхолдер 2GIS
+    "help@2gis.ru",  # плейсхолдер 2GIS
     "info@2gis.com",
     "support@2gis.ru",
     "noreply@2gis.ru",
@@ -81,12 +109,9 @@ _EMAIL_EXACT_BLOCKLIST = {
 
 # Лимиты
 _DEFAULT_TIMEOUT = 8.0
-_MAX_BYTES = 1_500_000   # 1.5 МБ HTML с головой хватит
+_MAX_BYTES = 1_500_000  # 1.5 МБ HTML с головой хватит
 _MAX_REDIRECTS = 3
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 
 @dataclass
@@ -112,8 +137,15 @@ class ContactEnrichResult:
     @property
     def is_empty(self) -> bool:
         return not (
-            self.emails or self.phones or self.telegrams or self.vks or self.whatsapps
-            or self.instagrams or self.facebooks or self.oks or self.youtubes
+            self.emails
+            or self.phones
+            or self.telegrams
+            or self.vks
+            or self.whatsapps
+            or self.instagrams
+            or self.facebooks
+            or self.oks
+            or self.youtubes
             or self.website
         )
 
@@ -121,8 +153,7 @@ class ContactEnrichResult:
         """Слить контакты из other в self (для контента нескольких страниц).
         Дедуп по value, сохраняем порядок первого вхождения.
         """
-        for attr in ("emails", "phones", "telegrams", "vks", "whatsapps",
-                     "instagrams", "facebooks", "oks", "youtubes"):
+        for attr in ("emails", "phones", "telegrams", "vks", "whatsapps", "instagrams", "facebooks", "oks", "youtubes"):
             existing = getattr(self, attr)
             existing_set = set(existing)
             for item in getattr(other, attr):
