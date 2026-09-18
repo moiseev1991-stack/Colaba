@@ -68,7 +68,13 @@ export default function LoginPage() {
 
   const handleOAuthLogin = (provider: string) => {
     setOAuthLoading(provider);
-    // Redirect to backend OAuth endpoint
+    // Яндекс/VK возвращают юзера на /auth/callback без параметра provider —
+    // запоминаем его здесь, чтобы колбэк знал, какой эндпоинт бэкенда звать.
+    try {
+      sessionStorage.setItem('oauth_provider', provider);
+    } catch {
+      // sessionStorage недоступен (приватный режим) — колбэк покажет ошибку
+    }
     window.location.href = `/api/v1/auth/oauth/${provider}`;
   };
 
