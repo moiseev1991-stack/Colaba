@@ -296,6 +296,7 @@ async def enqueue_job_send(
     job_id: int,
     channels: list[str],
     only_draft_ids: list[int] | None = None,
+    auto_commit: bool = True,
 ) -> EnqueueResult:
     """Создаёт KpSend-строки по всем готовым КП партии × выбранным каналам.
 
@@ -517,7 +518,13 @@ async def enqueue_job_send(
 
     if rows_to_add:
         db.add_all(rows_to_add)
-        await db.commit()
+        if auto_commit:
+            await db.commit()
+        else:
+            # Тарификация: роутер сначала списывает кредиты в этой же
+            # транзакции — при 402 строки откатываются, письма не уходят
+            # бесплатно (fix 2026-09-18). Коммитит вызывающий.
+            await db.flush()
 
     return EnqueueResult(job_id=int(job.id), created=created, queued=queued, skipped=skipped)
 

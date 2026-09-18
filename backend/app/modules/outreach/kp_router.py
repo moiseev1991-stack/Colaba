@@ -219,6 +219,18 @@ async def bulk_generate_kp(
         logger.error("bulk_generate_kp: failed to enqueue job=%d: %s", job.id, e)
         job.status = "failed"
         job.error_message = "Не удалось поставить задачу в очередь. Попробуй ещё раз."
+        # Тарификация: списание уже в этой сессии — вернём кредиты до
+        # commit, иначе юзер заплатит за несостоявшуюся генерацию.
+        from app.modules.billing.enforcement import refund_quietly
+
+        await refund_quietly(
+            db,
+            user_id,
+            "kp_generate",
+            OPERATIONS_PRICES["kp_generate"] * len(payload.company_ids),
+            ref_type="kp_job",
+            ref_id=job.id,
+        )
         await db.commit()
         await db.refresh(job)
         raise HTTPException(
