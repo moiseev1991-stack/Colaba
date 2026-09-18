@@ -34,12 +34,17 @@ function VerifyInner() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4 bg-ui-bg">
       <CardV2 className="w-full max-w-md p-8 text-center">
-        {state === 'loading' && <Loader2 className="mx-auto h-10 w-10 animate-spin text-ui-accent" aria-hidden />}
+        {state === 'loading' && (
+          <Loader2 className="mx-auto h-10 w-10 animate-spin text-ui-accent" aria-hidden />
+        )}
         {state === 'ok' && (
           <>
             <CheckCircle className="mx-auto mb-3 h-10 w-10 text-ui-success" aria-hidden />
             <p className="text-sm text-ui-text">Email подтверждён.</p>
-            <a href="/app/leads" className="mt-4 inline-block text-sm font-semibold text-ui-accent hover:underline">
+            <a
+              href="/app/leads"
+              className="mt-4 inline-block text-sm font-semibold text-ui-accent hover:underline"
+            >
               В кабинет →
             </a>
           </>

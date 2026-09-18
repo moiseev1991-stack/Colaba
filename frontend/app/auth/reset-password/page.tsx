@@ -48,18 +48,37 @@ function ResetInner() {
           <KeyRound className="h-5 w-5 text-ui-accent" aria-hidden /> Новый пароль
         </div>
         {!token ? (
-          <p className="text-sm text-ui-text-muted">Ссылка неполная — откройте её из письма целиком.</p>
+          <p className="text-sm text-ui-text-muted">
+            Ссылка неполная — откройте её из письма целиком.
+          </p>
         ) : done ? (
           <div>
             <p className="text-sm text-ui-text-muted">Пароль обновлён.</p>
-            <Button variant="primary" className="mt-4 w-full" onClick={() => (window.location.href = '/auth/login')}>
+            <Button
+              variant="primary"
+              className="mt-4 w-full"
+              onClick={() => (window.location.href = '/auth/login')}
+            >
               Войти с новым паролем
             </Button>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Новый пароль (8+)" autoFocus required />
-            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Повторите пароль" required />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Новый пароль (8+)"
+              autoFocus
+              required
+            />
+            <Input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Повторите пароль"
+              required
+            />
             <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
               Установить пароль
             </Button>

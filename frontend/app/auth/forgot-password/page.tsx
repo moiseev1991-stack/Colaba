@@ -37,7 +37,8 @@ export default function ForgotPasswordPage() {
         </div>
         {sent ? (
           <p className="text-sm text-ui-text-muted">
-            Если аккаунт существует, письмо со ссылкой отправлено. Проверьте почту — ссылка действует 1 час.
+            Если аккаунт существует, письмо со ссылкой отправлено. Проверьте почту — ссылка
+            действует 1 час.
           </p>
         ) : (
           <form onSubmit={submit} className="space-y-4">
@@ -57,7 +58,10 @@ export default function ForgotPasswordPage() {
             </Button>
           </form>
         )}
-        <a href="/auth/login" className="mt-6 block text-center text-sm text-ui-text-muted hover:text-ui-text hover:underline">
+        <a
+          href="/auth/login"
+          className="mt-6 block text-center text-sm text-ui-text-muted hover:text-ui-text hover:underline"
+        >
           Вернуться к входу
         </a>
       </CardV2>
