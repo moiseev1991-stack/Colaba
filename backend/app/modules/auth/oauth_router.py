@@ -73,7 +73,6 @@ def _pkce_pair() -> tuple[str, str]:
 @router.get("/{provider}")
 async def oauth_login(
     provider: str,
-    response: Response,
     redirect_uri: Optional[str] = Query(None),
 ):
     """
@@ -105,8 +104,12 @@ async def oauth_login(
     else:
         raise HTTPException(status_code=400, detail=f"Неподдерживаемый провайдер: {provider}")
 
-    _set_state_cookie(response, payload)
-    return RedirectResponse(url=url)
+    # Кука обязана ставиться на ТОТ ЖЕ объект, который возвращается:
+    # set_cookie на инжектированном response игнорируется при собственном
+    # RedirectResponse — state терялся, колбэк отбивал вход «Неверный state».
+    redirect = RedirectResponse(url=url)
+    _set_state_cookie(redirect, payload)
+    return redirect
 
 
 @router.get("/{provider}/callback")
