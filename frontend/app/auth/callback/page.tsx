@@ -23,7 +23,16 @@ function CallbackContent() {
   useEffect(() => {
     const processCallback = async () => {
       const code = searchParams.get('code');
-      const provider = searchParams.get('provider');
+      // Провайдеры (Яндекс, VK ID) возвращают только code+state и не умеют
+      // дописывать provider в redirect_uri — берём его из sessionStorage,
+      // куда login положил перед уходом к провайдеру.
+      let storedProvider: string | null = null;
+      try {
+        storedProvider = sessionStorage.getItem('oauth_provider');
+      } catch {
+        storedProvider = null;
+      }
+      const provider = searchParams.get('provider') || storedProvider || '';
       const state = searchParams.get('state');
       const deviceId = searchParams.get('device_id');
 
@@ -40,6 +49,12 @@ function CallbackContent() {
         setStatus('error');
         setMessage('Отсутствуют необходимые параметры');
         return;
+      }
+
+      try {
+        sessionStorage.removeItem('oauth_provider');
+      } catch {
+        // noop
       }
 
       try {
