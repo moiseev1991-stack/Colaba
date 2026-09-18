@@ -19,7 +19,7 @@ function LeadsPageInner() {
 
   if (searchParams?.get('tab') === 'sites') {
     return (
-      <PageContainer className="pb-16 pt-10 sm:pt-16">
+      <PageContainer className="pb-16 pt-8 sm:pt-10">
         <div className="mx-auto w-full max-w-[1072px]">
           <SiteLeadsPanel />
         </div>

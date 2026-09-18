@@ -403,40 +403,129 @@ function PainsPageInner() {
   );
 
   return (
-    <PageContainer className="pb-16 pt-10 sm:pt-16">
+    <PageContainer className="pb-16 pt-8 sm:pt-10">
       <div className="mx-auto w-full max-w-[1072px]">
-        <SearchHero
-          active="pains"
-          eyebrow="Письмо, которое начинается с цитаты их же отзыва"
-          title="Кто уже жалуется."
-          dim="Найдём по отзывам клиентов."
-        >
-          Выберите частую жалобу — покажем компании, где она встречается в реальных отзывах, с{' '}
-          <b className="font-semibold text-ui-text">цитатой и контактом</b>.
+        <SearchHero active="pains" hintTitle="Поиск по боли">
+          <p>
+            Выберите город, нишу и частую жалобу — покажем компании, где она встречается в реальных
+            отзывах, <b className="font-semibold text-ui-text">с цитатой и контактом</b>.
+          </p>
+          <p>
+            Ищем по уже собранной базе — результат сразу. Письмо можно начать с цитаты их же отзыва.
+          </p>
         </SearchHero>
 
-        <div className="mx-auto mt-4 grid w-full max-w-[880px] items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
+        {/* 18.09 (@user): одна компактная карточка — сверху «где искать» в строку, ниже жалобы,
+            внизу зелёная кнопка. */}
+        <div className="mx-auto mt-4 w-full max-w-[880px] overflow-hidden rounded-panel border border-black/[.06] bg-ui-surface shadow-floating">
+          {/* === Где искать === */}
+          <section aria-label="Где искать" className="px-5 pb-4 pt-5 sm:px-7 sm:pt-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
+              <div className="min-w-0">
+                <label htmlFor="pains-city" className={LABEL}>
+                  Город
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <CityCombobox
+                    id="pains-city"
+                    city={city}
+                    onCityChange={(c) => setCity(c)}
+                    placeholder="Любой"
+                    className="min-w-0 flex-1"
+                  />
+                  {city && (
+                    <button
+                      type="button"
+                      onClick={() => setCity('')}
+                      aria-label="Убрать город"
+                      className="grid h-11 w-8 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="pains-niche" className={LABEL}>
+                  Ниша
+                </label>
+                {/* 18.09 (@user): ниша — выпадающий список ниш из базы, как город. */}
+                <div className="flex items-center gap-1.5">
+                  <NicheCombobox
+                    id="pains-niche"
+                    niche={niche}
+                    onNicheChange={setNiche}
+                    options={niches}
+                    loading={nichesLoading}
+                    placeholder="Все ниши"
+                    className="min-w-0 flex-1"
+                  />
+                  {niche && (
+                    <button
+                      type="button"
+                      onClick={() => setNiche('')}
+                      aria-label="Убрать нишу"
+                      className="grid h-11 w-8 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+                <span className={LABEL}>Источник отзывов</span>
+                <div
+                  className="flex min-h-11 flex-wrap items-center gap-1"
+                  role="group"
+                  aria-label="Источник отзывов"
+                >
+                  {REVIEW_SOURCES.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={reviewSource === opt.value}
+                      onClick={() => {
+                        setReviewSource(opt.value);
+                        setExpandedCompanies({});
+                      }}
+                      className={cn(
+                        'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                        reviewSource === opt.value
+                          ? 'border-ui-text bg-ui-text text-ui-surface'
+                          : 'border-ui-border text-ui-text-muted hover:text-ui-text',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* === На что жалуются === */}
           <section
             aria-labelledby="pains-what"
-            className="overflow-hidden rounded-panel border border-black/[.05] bg-ui-surface shadow-raised"
+            className="border-t border-black/[.06] px-5 pb-4 pt-4 sm:px-7"
           >
-            <div className="px-5 pt-4 sm:px-6">
-              <h2 id="pains-what" className="text-xl font-extrabold tracking-tight text-ui-text">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <h2 id="pains-what" className="text-base font-bold text-ui-text">
                 На что жалуются
               </h2>
-              <p className="text-small text-ui-text-muted">
+              <p className="text-xs text-ui-text-muted">
                 {niche
                   ? `${capitalize(niche)}${city ? ` · ${city}` : ''}${totalMentions > 0 ? ` · ${totalMentions.toLocaleString('ru-RU')} упоминаний в отзывах` : ''}`
-                  : 'Частые жалобы по всем нишам — выберите нишу справа, чтобы увидеть её боли'}
+                  : 'Частые жалобы по всем нишам — выберите нишу, чтобы увидеть её боли'}
               </p>
             </div>
-            <div className="px-3 pb-3 pt-3">
+            <div className="-mx-3 mt-2 grid gap-x-2 sm:grid-cols-2">
               {niche && topTagsLoading && topTags.length === 0 && (
-                <p className="px-3 py-4 text-small text-ui-text-muted">Загрузка болей ниши…</p>
+                <p className="px-3 py-4 text-small text-ui-text-muted sm:col-span-2">
+                  Загрузка болей ниши…
+                </p>
               )}
               {niche && !topTagsLoading && topTags.length === 0 && (
-                <p className="px-3 py-4 text-small text-ui-text-muted">
+                <p className="px-3 py-4 text-small text-ui-text-muted sm:col-span-2">
                   Для этой ниши боли ещё не размечены. Выберите категорию ниже — или пересоберите
                   AI-теги в результатах.
                 </p>
@@ -461,32 +550,33 @@ function PainsPageInner() {
                       onClick={() => pickPainKey(k)}
                     />
                   ))}
-              {niche && topTags.length > TAGS_SHOWN && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTags((v) => !v)}
-                  className="mt-2 w-full border-t border-black/[.06] pt-3 text-center text-small font-semibold text-ui-accent hover:underline"
-                >
-                  {showAllTags
-                    ? 'Скрыть'
-                    : `Показать ещё ${topTags.length - TAGS_SHOWN} ${plural(topTags.length - TAGS_SHOWN, 'боль', 'боли', 'болей')}`}
-                </button>
-              )}
             </div>
-            <div className="border-t border-black/[.06] bg-ui-surface-2 px-5 pb-5 pt-4 sm:px-6">
-              <label
-                htmlFor="pains-own"
-                className="mb-1.5 block text-xs font-semibold text-ui-text-muted"
+            {niche && topTags.length > TAGS_SHOWN && (
+              <button
+                type="button"
+                onClick={() => setShowAllTags((v) => !v)}
+                className="mt-1 text-small font-semibold text-ui-accent hover:underline"
               >
-                Или впишите своё — найдём подходящий тег
+                {showAllTags
+                  ? 'Скрыть'
+                  : `Показать ещё ${topTags.length - TAGS_SHOWN} ${plural(topTags.length - TAGS_SHOWN, 'боль', 'боли', 'болей')}`}
+              </button>
+            )}
+            <div className="mt-3">
+              <label htmlFor="pains-own" className="sr-only">
+                Своя жалоба
               </label>
               <Input
                 id="pains-own"
                 value={ownPain}
                 onChange={(e) => setOwnPain(e.target.value)}
                 disabled={!niche}
-                placeholder={niche ? 'например: «не перезвонили»' : 'сначала выберите нишу'}
-                className="h-11 bg-ui-surface"
+                placeholder={
+                  niche
+                    ? 'Или впишите своё — например: «не перезвонили»'
+                    : 'Своя жалоба — сначала выберите нишу'
+                }
+                className="h-10"
               />
               {ownPain.trim().length >= 3 && (
                 <div className="mt-2.5 text-small text-ui-text-muted">
@@ -512,123 +602,31 @@ function PainsPageInner() {
             </div>
           </section>
 
-          {/* === Где искать === */}
-          <section
-            aria-labelledby="pains-where"
-            className="rounded-panel border border-black/[.05] bg-ui-surface shadow-raised"
-          >
-            <div className="px-5 pt-4 sm:px-6">
-              <h2 id="pains-where" className="text-xl font-extrabold tracking-tight text-ui-text">
-                Где искать
-              </h2>
-            </div>
-            <div className="flex flex-col gap-4 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-              <div>
-                <label htmlFor="pains-city" className={LABEL}>
-                  Город
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <CityCombobox
-                    id="pains-city"
-                    city={city}
-                    onCityChange={(c) => setCity(c)}
-                    placeholder="Любой"
-                    className="min-w-0 flex-1"
-                  />
-                  {city && (
-                    <button
-                      type="button"
-                      onClick={() => setCity('')}
-                      aria-label="Убрать город"
-                      className="grid h-11 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label htmlFor="pains-niche" className={LABEL}>
-                  Ниша
-                </label>
-                {/* 18.09 (@user): ниша — выпадающий список ниш из базы, как город. */}
-                <div className="flex items-center gap-1.5">
-                  <NicheCombobox
-                    id="pains-niche"
-                    niche={niche}
-                    onNicheChange={setNiche}
-                    options={niches}
-                    loading={nichesLoading}
-                    placeholder="Все ниши"
-                    className="min-w-0 flex-1"
-                  />
-                  {niche && (
-                    <button
-                      type="button"
-                      onClick={() => setNiche('')}
-                      aria-label="Убрать нишу"
-                      className="grid h-11 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-                <p className="mt-1.5 text-xs text-ui-text-muted">
-                  Все ниши — жалобы по всему городу; выберите нишу, чтобы увидеть её жалобы слева
-                </p>
-              </div>
-              <div>
-                <span className={LABEL}>Источник отзывов</span>
-                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Источник отзывов">
-                  {REVIEW_SOURCES.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={reviewSource === opt.value}
-                      onClick={() => {
-                        setReviewSource(opt.value);
-                        setExpandedCompanies({});
-                      }}
-                      className={cn(
-                        'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                        reviewSource === opt.value
-                          ? 'border-ui-text bg-ui-text text-ui-surface'
-                          : 'border-ui-border text-ui-text-muted hover:text-ui-text',
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Button
-                onClick={() => requestSearch(0, true)}
-                loading={isLoading}
-                iconRight={!isLoading ? <ArrowRight /> : undefined}
-                className="mt-1 h-12 w-full text-base"
+          <div className="border-t border-black/[.06] bg-ui-surface-2/60 px-5 py-4 sm:px-7">
+            <Button
+              onClick={() => requestSearch(0, true)}
+              loading={isLoading}
+              iconRight={!isLoading ? <ArrowRight /> : undefined}
+              className="h-12 w-full text-base"
+            >
+              Показать компании
+            </Button>
+            {error && (
+              <p
+                role="alert"
+                className="mt-3 rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger"
               >
-                Показать компании
-              </Button>
-              <p className="-mt-2 text-center text-xs text-ui-text-muted">
-                по уже собранной базе — результат сразу
+                {error}
               </p>
-              {error && (
-                <p
-                  role="alert"
-                  className="rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger"
-                >
-                  {error}
-                </p>
-              )}
-            </div>
-          </section>
+            )}
+          </div>
         </div>
 
         {/* === Результаты === */}
         <section
           ref={resultsRef}
           aria-label="Компании"
-          className="mx-auto mt-14 w-full max-w-[880px] scroll-mt-20"
+          className="mx-auto mt-10 w-full max-w-[880px] scroll-mt-20"
         >
           {data && data.items.length === 0 && !isLoading && (
             <div className="rounded-panel bg-ui-surface-2 p-6 text-small text-ui-text-muted">

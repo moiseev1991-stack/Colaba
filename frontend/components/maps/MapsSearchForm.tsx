@@ -493,15 +493,14 @@ export function MapsSearchForm({ onStarted }: Props) {
   return (
     <div className="mx-auto w-full max-w-[1232px] px-4 sm:px-6">
       {/* === Первый экран: заголовок и форма === */}
-      <div className="mx-auto w-full max-w-[1072px] pt-10 text-center sm:pt-16">
-        <SearchHero
-          active="maps"
-          eyebrow="Отзывы с трёх карт — 2GIS, Яндекс и Google"
-          title="Кому писать первым."
-          dim="Подскажут отзывы клиентов."
-        >
-          Укажите нишу и город — соберём компании с карт, прочитаем отзывы и покажем,{' '}
-          <b className="font-semibold text-ui-text">на что жалуются клиенты</b> каждой компании.
+      <div className="mx-auto w-full max-w-[1072px] pt-8 text-center sm:pt-10">
+        <SearchHero active="maps" hintTitle="Поиск компаний на картах">
+          <p>
+            Укажите нишу и город — соберём компании из 2GIS, Яндекс.Карт и Google, прочитаем их
+            отзывы и покажем, <b className="font-semibold text-ui-text">на что жалуются клиенты</b>{' '}
+            каждой компании.
+          </p>
+          <p>Жалоба из отзыва — готовый повод для первого письма: кому писать первым.</p>
         </SearchHero>
 
         <form
