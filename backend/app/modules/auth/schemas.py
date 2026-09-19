@@ -3,7 +3,7 @@ Auth module schemas.
 """
 
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import field_validator, BaseModel, EmailStr, Field
 
 
 class UserRegister(BaseModel):
@@ -46,7 +46,13 @@ class UserResponse(BaseModel):
     # True, когда после регистрации выслано письмо подтверждения и вход
     # будет разрешён только после клика по ссылке (19.09).
     email_verification_required: bool = False
+    # до flush у ORM-объекта поле может быть None — трактуем как False
     email_verified: bool = False
+
+    @field_validator("email_verified", mode="before")
+    @classmethod
+    def _email_verified_none_to_false(cls, v: object) -> object:
+        return False if v is None else v
 
     class Config:
         from_attributes = True
