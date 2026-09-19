@@ -40,7 +40,7 @@ import { LeadCaptureForm } from '@/components/LeadCaptureForm';
  *
  * Значения совпадают с :root (light) из globals.css.
  */
-const SEO_LIGHT_VARS = {
+export const SEO_LIGHT_VARS = {
   '--bg': '216 20% 97%',
   '--surface': '0 0% 100%',
   '--surface-2': '214 32% 95%',

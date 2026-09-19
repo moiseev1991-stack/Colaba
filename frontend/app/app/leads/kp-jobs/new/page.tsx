@@ -22,7 +22,6 @@ import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 
 import { ButtonV2 } from '@/components/ui/ButtonV2';
 import { CardV2 } from '@/components/ui/CardV2';
-import { ColdEmailCalculator } from '@/components/ColdEmailCalculator';
 import { PageColumn, PageContainer, PageHeader } from '@/components/ui/page';
 import { cn, pluralRu } from '@/lib/utils';
 import { clearBulkKpPending, readBulkKpPending } from '@/lib/kp-bulk-pending';
@@ -461,10 +460,15 @@ function KpJobNewInner() {
               )}
             </div>
 
-            {/* Калькулятор «что выжмем» — независимый блок, не влияет на старт.
-              Юзеру нужен сразу до отправки, чтобы понять, имеет ли смысл
-              катать партию из N компаний или поднять/опустить лимит. */}
-            <ColdEmailCalculator letterCount={companyIds.length} />
+            {/* 19.09 (@user): калькулятор выручки убран — вместо прогнозных цифр коротко,
+              что получится на выходе партии. */}
+            <div className="rounded-card bg-ui-surface-2 px-4 py-3 text-small text-ui-text-muted">
+              <b className="font-semibold text-ui-text">Что получится:</b> по каждой из{' '}
+              {companyIds.length}{' '}
+              {pluralRu(companyIds.length, ['компании', 'компаний', 'компаний'])} — готовое КП под
+              её боль из отзывов. На странице партии скачаете таблицу: контакты (телефон, email,
+              сайт, мессенджеры) и текст КП по каждой.
+            </div>
 
             {startError && (
               <div className="rounded-md border border-ui-danger/35 bg-ui-danger/[.07] px-3 py-2 text-sm text-ui-danger">

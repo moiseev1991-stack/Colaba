@@ -3746,6 +3746,58 @@ def _pain_companies_query(matched_tag_ids: list[int], city: Optional[str], niche
     return base, company_filter
 
 
+def _pain_text_terms(q: str) -> list[str]:
+    """«не перезвонили, грубят» → ['не перезвонили', 'грубят']; % и _ экранируем для ILIKE."""
+    terms = []
+    for raw in q.split(","):
+        t = raw.strip()
+        if len(t) >= 3:
+            terms.append(t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_"))
+    return terms[:5]
+
+
+def _pain_text_query(q: str, city: Optional[str], niche: Optional[str]):
+    """Своя боль текстом (19.09, @user): компании, у которых в негативных отзывах
+    (sentiment=negative или оценка ≤3) встречается одна из фраз. Кортежи те же, что у
+    _pain_companies_query — (Company, число таких отзывов, цитата свежего из них), чтобы
+    переиспользовать выдачу и Excel-экспорт. Возвращает (base_select, where-условия)."""
+    terms = _pain_text_terms(q)
+    text_match = or_(*[Review.raw_text.ilike(f"%{t}%", escape="\\") for t in terms])
+    review_filter = [
+        text_match,
+        or_(Review.sentiment == "negative", Review.rating <= 3),
+    ]
+    company_filter = []
+    if city:
+        company_filter.append(Company.city == city)
+    if niche:
+        company_filter.append(Company.niche == niche)
+
+    rn = (
+        sa_func.row_number()
+        .over(partition_by=Review.company_id, order_by=Review.posted_at.desc().nulls_last())
+        .label("rn")
+    )
+    quote_sub = (
+        select(Review.company_id.label("company_id"), sa_func.left(Review.raw_text, 400).label("quote"), rn)
+        .join(Company, Company.id == Review.company_id)
+        .where(*review_filter, *company_filter)
+        .subquery()
+    )
+    best_quote_sub = select(quote_sub.c.company_id, quote_sub.c.quote).where(quote_sub.c.rn == 1).subquery()
+
+    mentions = sa_func.count(Review.id).label("mentions")
+    base = (
+        select(Company, mentions, best_quote_sub.c.quote)
+        .join(Review, Review.company_id == Company.id)
+        .join(best_quote_sub, best_quote_sub.c.company_id == Company.id, isouter=True)
+        .where(*review_filter, *company_filter)
+        .group_by(Company.id, best_quote_sub.c.quote)
+        .order_by(mentions.desc(), Company.reviews_count.desc())
+    )
+    return base, [*review_filter, *company_filter]
+
+
 @router.get("/pains/companies", response_model=CompaniesByPainListOut)
 @limiter.limit("60/minute")
 async def list_companies_by_pain(
@@ -3756,6 +3808,11 @@ async def list_companies_by_pain(
     ),
     city: Optional[str] = Query(default=None, max_length=100),
     niche: Optional[str] = Query(default=None, max_length=100),
+    q: Optional[str] = Query(
+        default=None,
+        max_length=200,
+        description="Своя боль текстом: фразы через запятую, ищем в негативных отзывах (вместо pain_key/pain_tag_ids)",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: int = Depends(get_current_user_id),
@@ -3771,9 +3828,35 @@ async def list_companies_by_pain(
       UI мог показывать плитку топ-тегов ниши и/или искать по тексту,
       минуя PAIN_KEYS (у нас всего 8, а pain_tag'ов сотни).
 
-    Ровно один из pain_key/pain_tag_ids обязателен.
+    Ровно один из pain_key/pain_tag_ids обязателен — либо `q` (своя боль текстом).
     """
     from app.models.pain_tag import CompanyPainScore
+
+    if q is not None and q.strip():
+        if not _pain_text_terms(q):
+            raise HTTPException(status_code=422, detail="q: нужна фраза от 3 символов")
+        base, where = _pain_text_query(q, city, niche)
+        total_stmt = (
+            select(sa_func.count(sa_func.distinct(Company.id)))
+            .join(Review, Review.company_id == Company.id)
+            .where(*where)
+        )
+        total = int((await db.execute(total_stmt)).scalar() or 0)
+        rows = list((await db.execute(base.limit(limit).offset(offset))).all())
+        items = []
+        for company, mentions, quote in rows:
+            item = CompanyByPainOut.model_validate(company)
+            item.pain_mention_count = int(mentions or 0)
+            item.top_quote = quote
+            items.append(item)
+        return CompaniesByPainListOut(
+            pain_key="",
+            pain_labels=[q.strip()],
+            total=total,
+            limit=limit,
+            offset=offset,
+            items=items,
+        )
 
     matched_tag_ids, matched_labels = await _resolve_pain_tags(db, pain_key, pain_tag_ids, city, niche)
 
@@ -3830,6 +3913,7 @@ async def export_companies_by_pain(
     company_ids: Optional[list[int]] = Query(
         default=None, description="Выгрузить только выбранные компании (иначе — все по фильтру)"
     ),
+    q: Optional[str] = Query(default=None, max_length=200, description="Своя боль текстом — как у /pains/companies"),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -3841,9 +3925,18 @@ async def export_companies_by_pain(
 
     from app.modules.maps.pains_export import build_pains_xlsx
 
-    matched_tag_ids, matched_labels = await _resolve_pain_tags(db, pain_key, pain_tag_ids, city, niche)
-
     rows: list = []
+    if q is not None and q.strip():
+        if not _pain_text_terms(q):
+            raise HTTPException(status_code=422, detail="q: нужна фраза от 3 символов")
+        matched_tag_ids, matched_labels = [], [q.strip()]
+        base, _where = _pain_text_query(q, city, niche)
+        if company_ids:
+            base = base.where(Company.id.in_(company_ids))
+        rows = list((await db.execute(base.limit(_PAINS_EXPORT_CAP))).all())
+    else:
+        matched_tag_ids, matched_labels = await _resolve_pain_tags(db, pain_key, pain_tag_ids, city, niche)
+
     if matched_tag_ids:
         base, _company_filter = _pain_companies_query(matched_tag_ids, city, niche)
         if company_ids:

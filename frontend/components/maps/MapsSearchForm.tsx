@@ -129,8 +129,11 @@ const HOW_IT_WORKS = [
 const HINT_NICHES = ['стоматология', 'автосервис', 'фитнес клуб'];
 
 const LABEL = 'mb-1.5 block text-xs font-semibold text-ui-text-muted';
-const HINT_CHIP =
-  'rounded-full bg-ui-surface-2 px-3 py-1 text-xs text-ui-text-muted transition-colors hover:bg-ui-border hover:text-ui-text';
+// Чипы «Популярные» — как в форме «Сайты» (SiteLeadsPanel), 19.09 одна раскладка форм поиска.
+const CHIP =
+  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-ui-border bg-ui-surface px-3.5 py-1 text-xs sm:min-h-8 font-semibold text-ui-text-muted transition-colors hover:border-ui-text-muted/50 hover:text-ui-text disabled:cursor-not-allowed disabled:opacity-50';
+const CHIP_ON =
+  'border-ui-text bg-ui-text text-ui-surface hover:border-ui-text hover:text-ui-surface';
 const PRESET_CHIP =
   'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-ui-border bg-ui-surface px-4 py-2 text-small font-semibold text-ui-text-muted shadow-raised transition-all hover:-translate-y-px hover:text-ui-text';
 const PRESET_CHIP_ON = 'border-ui-text bg-ui-text text-ui-surface hover:text-ui-surface';
@@ -493,7 +496,7 @@ export function MapsSearchForm({ onStarted }: Props) {
   return (
     <div className="mx-auto w-full max-w-[1232px] px-4 sm:px-6">
       {/* === Первый экран: заголовок и форма === */}
-      <div className="mx-auto w-full max-w-[1072px] pt-8 text-center sm:pt-10">
+      <div className="w-full pt-8 text-center sm:pt-10">
         <SearchHero active="maps" hintTitle="Поиск компаний на картах">
           <p>
             Укажите нишу и город — соберём компании из 2GIS, Яндекс.Карт и Google, прочитаем их
@@ -503,12 +506,14 @@ export function MapsSearchForm({ onStarted }: Props) {
           <p>Жалоба из отзыва — готовый повод для первого письма: кому писать первым.</p>
         </SearchHero>
 
+        {/* 19.09 (@user): форма на всю ширину и в той же раскладке, что «Сайты»: поля в строку,
+            «Популярные», серая панель условий, кнопка внизу слева с пояснением. */}
         <form
           onSubmit={handleSubmit}
           aria-label="Параметры поиска"
-          className="mx-auto mt-4 w-full max-w-[880px] rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
+          className="mt-4 w-full rounded-panel border border-black/[.06] bg-ui-surface p-5 text-left shadow-floating sm:p-7"
         >
-          <div className="grid gap-4 sm:grid-cols-[1.25fr_1fr]">
+          <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
             <div className="min-w-0">
               <label htmlFor="search-niche" className={LABEL}>
                 Ниша или вид бизнеса
@@ -523,29 +528,6 @@ export function MapsSearchForm({ onStarted }: Props) {
                 className="h-12 text-base font-medium"
                 autoFocus
               />
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {hintNiches.map((p) => (
-                  <button
-                    key={p.label}
-                    type="button"
-                    onClick={() => handlePreset(p.label)}
-                    className={cn(
-                      HINT_CHIP,
-                      niche === p.label &&
-                        'bg-ui-text text-ui-surface hover:bg-ui-text hover:text-ui-surface',
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setShowAllPresets(!showAllPresets)}
-                  className={cn(HINT_CHIP, 'font-semibold text-ui-accent')}
-                >
-                  {showAllPresets ? 'свернуть' : `+${NICHE_PRESETS.length - HINT_NICHES.length}`}
-                </button>
-              </div>
             </div>
 
             {mode === 'city' ? (
@@ -561,9 +543,6 @@ export function MapsSearchForm({ onStarted }: Props) {
                   triggerClassName="h-12"
                   placeholder="Выберите город"
                 />
-                <p className="mt-2 text-xs text-ui-text-muted">
-                  Несколько городов сразу — в «Тонкой настройке»
-                </p>
               </div>
             ) : (
               <div className="min-w-0">
@@ -599,81 +578,108 @@ export function MapsSearchForm({ onStarted }: Props) {
             )}
           </div>
 
-          <div
-            role="group"
-            aria-label="Источники отзывов"
-            className="mt-5 flex flex-wrap gap-2 border-t border-black/[.06] pt-5"
-          >
-            {SOURCE_OPTIONS.map((s) => {
-              const checked = sources.includes(s.id);
-              const lockedByRadius = mode === 'radius' && s.id !== '2gis';
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-pressed={checked}
-                  onClick={() => toggleSource(s.id)}
-                  disabled={isLoading || lockedByRadius}
-                  title={
-                    lockedByRadius ? 'Поиск в радиусе пока работает только через 2GIS' : undefined
-                  }
-                  className={cn(
-                    'inline-flex min-h-10 items-center gap-2 rounded-full border py-2 pl-2.5 pr-4 text-small font-semibold transition-colors',
-                    'disabled:cursor-not-allowed disabled:opacity-50',
-                    checked
-                      ? 'border-ui-accent bg-ui-accent/[.06] text-ui-text'
-                      : 'border-ui-border text-ui-text-muted hover:border-ui-text-muted/50',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'grid h-[18px] w-[18px] place-items-center rounded-full border-[1.5px] transition-colors',
-                      checked
-                        ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast'
-                        : 'border-ui-text-muted/40 text-transparent',
-                    )}
-                    aria-hidden
-                  >
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                  {s.name}
-                  {isSuperuser && (
-                    <span className="text-xs font-medium text-ui-text-muted">{s.hint}</span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-semibold text-ui-text-muted">Популярные</span>
+            {hintNiches.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => handlePreset(p.label)}
+                disabled={isLoading}
+                className={cn(CHIP, niche === p.label && CHIP_ON)}
+              >
+                {p.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setShowAllPresets(!showAllPresets)}
+              className={cn(CHIP, 'text-ui-accent')}
+            >
+              {showAllPresets ? 'свернуть' : `+${NICHE_PRESETS.length - HINT_NICHES.length}`}
+            </button>
           </div>
 
-          <div className="mt-5 border-t border-black/[.06] pt-5">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <label
-                htmlFor="search-review-words"
-                className="mr-1 text-xs font-semibold text-ui-text-muted"
-              >
-                Слова в отзывах — необязательно
-              </label>
-              {reviewToggle('contains', 'Содержит')}
-              {reviewToggle('excludes', 'Не содержит')}
+          <div className="mt-5 rounded-card bg-ui-surface-2 p-4 sm:p-5">
+            <div className="mb-3">
+              <h2 className="text-base font-bold text-ui-text">Откуда и какие отзывы</h2>
+              <p className="text-xs text-ui-text-muted">
+                Карты, с которых собираем компании и отзывы. Слова — необязательно: оставим или
+                уберём компании по тексту их отзывов.
+              </p>
             </div>
-            <Input
-              id="search-review-words"
-              placeholder={
-                reviewMode === 'contains'
-                  ? 'не дозвонился, не перезвонили, грязно'
-                  : 'реклама, спам'
-              }
-              value={reviewWord}
-              onChange={(e) => setReviewWord(e.target.value)}
-              disabled={isLoading}
-              className="h-11"
-            />
-            <p className="mt-1.5 text-xs text-ui-text-muted">
-              Несколько слов через запятую — подходит любое.{' '}
-              {reviewMode === 'contains'
-                ? 'Останутся компании, у которых есть отзыв с одним из слов.'
-                : 'Пропадут компании, у которых хоть один отзыв содержит одно из слов.'}
-            </p>
+            <div role="group" aria-label="Источники отзывов" className="flex flex-wrap gap-2">
+              {SOURCE_OPTIONS.map((s) => {
+                const checked = sources.includes(s.id);
+                const lockedByRadius = mode === 'radius' && s.id !== '2gis';
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-pressed={checked}
+                    onClick={() => toggleSource(s.id)}
+                    disabled={isLoading || lockedByRadius}
+                    title={
+                      lockedByRadius ? 'Поиск в радиусе пока работает только через 2GIS' : undefined
+                    }
+                    className={cn(
+                      'inline-flex min-h-10 items-center gap-2 rounded-full border py-2 pl-2.5 pr-4 text-small font-semibold transition-colors',
+                      'disabled:cursor-not-allowed disabled:opacity-50',
+                      checked
+                        ? 'border-ui-accent bg-ui-surface text-ui-text'
+                        : 'border-ui-border bg-ui-surface text-ui-text-muted hover:border-ui-text-muted/50',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'grid h-[18px] w-[18px] place-items-center rounded-full border-[1.5px] transition-colors',
+                        checked
+                          ? 'border-ui-accent bg-ui-accent text-ui-accent-contrast'
+                          : 'border-ui-text-muted/40 text-transparent',
+                      )}
+                      aria-hidden
+                    >
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    {s.name}
+                    {isSuperuser && (
+                      <span className="text-xs font-medium text-ui-text-muted">{s.hint}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 border-t border-black/[.06] pt-4">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <label
+                  htmlFor="search-review-words"
+                  className="mr-1 text-xs font-semibold text-ui-text-muted"
+                >
+                  Слова в отзывах
+                </label>
+                {reviewToggle('contains', 'Содержит')}
+                {reviewToggle('excludes', 'Не содержит')}
+              </div>
+              <Input
+                id="search-review-words"
+                placeholder={
+                  reviewMode === 'contains'
+                    ? 'не дозвонился, не перезвонили, грязно'
+                    : 'реклама, спам'
+                }
+                value={reviewWord}
+                onChange={(e) => setReviewWord(e.target.value)}
+                disabled={isLoading}
+                className="h-11 bg-ui-surface"
+              />
+              <p className="mt-1.5 text-xs text-ui-text-muted">
+                Несколько слов через запятую — подходит любое.{' '}
+                {reviewMode === 'contains'
+                  ? 'Останутся компании, у которых есть отзыв с одним из слов.'
+                  : 'Пропадут компании, у которых хоть один отзыв содержит одно из слов.'}
+              </p>
+            </div>
           </div>
 
           {error && (
@@ -685,7 +691,7 @@ export function MapsSearchForm({ onStarted }: Props) {
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-black/[.06] pt-5">
             <Button
               type="submit"
               disabled={isLoading}
@@ -719,7 +725,7 @@ export function MapsSearchForm({ onStarted }: Props) {
               ) : mode === 'radius' ? (
                 'Введите нишу и адрес центра'
               ) : (
-                '~1–2 мин до выдачи · сразу с отзывами и болями'
+                '~1–2 мин до выдачи · сразу с отзывами и болями. Несколько городов — в «Тонкой настройке»'
               )}
             </p>
           </div>
@@ -747,7 +753,7 @@ export function MapsSearchForm({ onStarted }: Props) {
         aria-labelledby="quick-start-title"
         className="mt-16 bg-ui-surface-2 py-12 sm:mt-20 sm:py-14"
       >
-        <div className="mx-auto w-full max-w-[1072px]">
+        <div className="w-full">
           <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
             <h2
               id="quick-start-title"
@@ -850,7 +856,7 @@ export function MapsSearchForm({ onStarted }: Props) {
       </section>
 
       {/* === Тонкая настройка === */}
-      <div className="mx-auto w-full max-w-[1072px] pb-16 pt-14 sm:pb-24 sm:pt-16">
+      <div className="w-full pb-16 pt-14 sm:pb-24 sm:pt-16">
         <details className="group">
           <summary className="flex cursor-pointer list-none items-center gap-3 rounded-control text-base font-bold text-ui-text [&::-webkit-details-marker]:hidden">
             Тонкая настройка.
