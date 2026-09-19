@@ -132,6 +132,7 @@ class OAuthService:
             user = result.scalar_one_or_none()
 
         # Create new user if not exists
+        created = False
         if not user:
             # Generate a random password for OAuth users
             import secrets
@@ -149,6 +150,7 @@ class OAuthService:
             user.hashed_password = hash_password(random_password)
             db.add(user)
             await db.flush()
+            created = True
 
         # 18.09 (Этап 3): email от OAuth-провайдера считается верифицированным
         if email and user.email_verified is False:
@@ -175,6 +177,19 @@ class OAuthService:
         )
 
         await ensure_user_has_personal_organization(db, user)
+
+        # 19.09: новому OAuth-юзеру — приветственные кредиты бесплатного
+        # тарифа, как при обычной регистрации (раньде соцвход их не выдавал).
+        if created:
+            try:
+                from app.modules.billing.service import grant_welcome_credits
+
+                await grant_welcome_credits(db, user.id)
+            except Exception:
+                # Кредиты — не причина блокировать вход
+                import logging
+
+                logging.getLogger(__name__).exception("Welcome credits grant failed for OAuth user %s", user.id)
 
         return user
 

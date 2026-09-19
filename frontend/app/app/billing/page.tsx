@@ -26,6 +26,7 @@ interface Tariff {
   searches: number;
   rub_per_credit: number;
   description: string;
+  purchasable: boolean;
 }
 
 interface Summary {
@@ -216,19 +217,27 @@ export default function BillingPage() {
               </Button>
             </div>
           ) : (
-            <p className="mt-2 text-sm text-ui-text-muted">
-              Подписки нет — выберите тариф ниже. Подписочные кредиты действуют 30 дней, докупленные
-              не сгорают.
-            </p>
+            <div className="mt-2">
+              <div className="text-xl font-bold text-ui-text">
+                Бесплатный
+                <span className="ml-2 text-sm font-normal text-ui-text-muted">0 ₽</span>
+              </div>
+              <p className="mt-1 text-small text-ui-text-muted">
+                Тариф по умолчанию: приветственные кредиты на пару поисков при регистрации. Платные
+                тарифы ниже — пакеты кредитов на 30 дней, докупленные не сгорают.
+              </p>
+            </div>
           )}
         </CardV2>
       </div>
 
       {/* Тарифы */}
       <h2 className="mt-10 text-xl font-extrabold tracking-tight text-ui-text">Тарифы</h2>
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {summary.tariffs.map((t) => {
-          const isCurrent = summary.subscription?.tariff_code === t.code;
+          const isCurrent =
+            summary.subscription?.tariff_code === t.code ||
+            (!summary.subscription && t.code === 'free');
           return (
             <CardV2 key={t.code} className={cn('p-6', isCurrent && 'ring-2 ring-ui-accent/40')}>
               <div className="flex items-center justify-between">
@@ -246,16 +255,23 @@ export default function BillingPage() {
                 <span className="text-sm text-ui-text-muted">кредитов</span>
               </div>
               <p className="mt-1 text-small text-ui-text-muted">
-                ≈ {t.searches} поисков · {t.rub_per_credit.toFixed(2)} ₽/кредит
+                ≈ {t.searches} поисков
+                {t.price_rub > 0 && <> · {t.rub_per_credit.toFixed(2)} ₽/кредит</>}
               </p>
               <p className="mt-3 min-h-10 text-small text-ui-text-muted">{t.description}</p>
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xl font-extrabold tabular-nums text-ui-text">
                   {t.price_rub.toLocaleString('ru-RU')} ₽
-                  <span className="text-sm font-normal text-ui-text-muted"> / 30 дней</span>
+                  {t.price_rub > 0 && (
+                    <span className="text-sm font-normal text-ui-text-muted"> / 30 дней</span>
+                  )}
                 </span>
               </div>
-              {summary.payments_configured ? (
+              {!t.purchasable ? (
+                <Button variant="secondary" className="mt-4 w-full" disabled>
+                  Выдаётся при регистрации
+                </Button>
+              ) : summary.payments_configured ? (
                 <Button
                   variant="primary"
                   className="mt-4 w-full"

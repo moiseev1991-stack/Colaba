@@ -28,17 +28,28 @@ from typing import Dict, List, Optional
 
 SUBSCRIPTION_PERIOD_DAYS = 30
 
-# Приветственные кредиты при регистрации (10 поисков — попробовать продукт).
-WELCOME_CREDITS = 100
+# Приветственные кредиты нового пользователя (бесплатный тариф:
+# 2 поиска — попробовать продукт). Решение владельца 19.09.
+WELCOME_CREDITS = 20
 
 
 class Tariff:
-    def __init__(self, code: str, name: str, price_rub: int, credits: int, description: str):
+    def __init__(
+        self,
+        code: str,
+        name: str,
+        price_rub: int,
+        credits: int,
+        description: str,
+        purchasable: bool = True,
+    ):
         self.code = code
         self.name = name
         self.price_rub = price_rub
         self.credits = credits
         self.description = description
+        # Бесплатный тариф нельзя купить — он выдаётся при регистрации.
+        self.purchasable = purchasable
 
     @property
     def rub_per_credit(self) -> float:
@@ -54,12 +65,21 @@ class Tariff:
             "searches": self.credits // OPERATIONS_PRICES["map_search"],
             "rub_per_credit": self.rub_per_credit,
             "description": self.description,
+            "purchasable": self.purchasable,
         }
 
 
 TARIFFS: Dict[str, Tariff] = {
     t.code: t
     for t in [
+        Tariff(
+            "free",
+            "Бесплатный",
+            0,
+            WELCOME_CREDITS,
+            "2 пробных поиска при регистрации — без карты и оплаты",
+            purchasable=False,
+        ),
         Tariff(
             "starter",
             "Старт",
@@ -84,7 +104,7 @@ TARIFFS: Dict[str, Tariff] = {
     ]
 }
 
-TARIFF_ORDER: List[str] = ["starter", "business", "pro"]
+TARIFF_ORDER: List[str] = ["free", "starter", "business", "pro"]
 
 # Цены операций в кредитах. Прозрачность — мировая практика (z.ai, Claude):
 # юзер видит, сколько стоит каждое действие.

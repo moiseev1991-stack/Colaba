@@ -121,3 +121,31 @@ def test_tariffs_math():
     assert payload["pro"]["rub_per_credit"] > 1.3
     assert payload["starter"]["searches"] == 50
     assert OPERATIONS_PRICES["map_search"] == 10
+
+
+def test_free_tariff_in_lineup():
+    """Бесплатный тариф первый в линейке, непокупаемый, кредиты = welcome."""
+    from app.modules.billing.tariffs import TARIFF_ORDER, WELCOME_CREDITS
+
+    payload = {p["code"]: p for p in tariffs_payload()}
+    assert TARIFF_ORDER[0] == "free"
+    free = payload["free"]
+    assert free["price_rub"] == 0
+    assert free["purchasable"] is False
+    assert free["credits"] == WELCOME_CREDITS == 20
+    assert free["searches"] == 2
+    # платные остались покупаемыми
+    assert payload["starter"]["purchasable"] is True
+
+
+async def test_welcome_grant_idempotent(db: AsyncSession):
+    """Повторный вызов welcome-гранта не удваивает кредиты (OAuth-повторы)."""
+    await credits.grant_welcome_credits(db, USER)
+    await credits.grant_welcome_credits(db, USER)
+    await db.commit()
+    from app.modules.billing.tariffs import WELCOME_CREDITS
+
+    assert await credits.get_balance(db, USER) == WELCOME_CREDITS
+    buckets = (await db.execute(select(CreditBucket).where(CreditBucket.user_id == USER))).scalars().all()
+    welcome_buckets = [b for b in buckets if b.source == "welcome"]
+    assert len(welcome_buckets) == 1
