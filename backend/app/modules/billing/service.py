@@ -329,14 +329,30 @@ async def expire_stale_subscriptions(db: AsyncSession) -> int:
 
 
 async def grant_welcome_credits(db: AsyncSession, user_id: int) -> None:
-    """Приветственные кредиты при регистрации — попробовать продукт."""
+    """Приветственные кредиты при регистрации — попробовать продукт.
+
+    Идемпотентно: welcome-грант выдается один раз на пользователя —
+    защита от двойной выдачи при повторном входе через OAuth.
+    """
+    from sqlalchemy import select
+
+    from app.models.billing import CreditBucket
     from app.modules.billing.tariffs import WELCOME_CREDITS
+
+    existing = await db.execute(
+        select(CreditBucket.id).where(
+            CreditBucket.user_id == user_id,
+            CreditBucket.source == "welcome",
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
 
     await grant_credits(
         db,
         user_id,
         WELCOME_CREDITS,
         "welcome",
-        comment="Приветственные кредиты",
+        comment="Приветственные кредиты (бесплатный тариф)",
     )
     await db.commit()

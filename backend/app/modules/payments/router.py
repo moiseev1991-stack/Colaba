@@ -46,6 +46,11 @@ async def create_payment(
     tariff = get_tariff(payload.plan)
     if not tariff:
         raise HTTPException(status_code=400, detail="Неизвестный тарифный план")
+    if not tariff.purchasable:
+        raise HTTPException(
+            status_code=400,
+            detail="Бесплатный тариф не требует оплаты — он выдаётся при регистрации",
+        )
 
     return_url = payload.return_url or settings.YOOKASSA_RETURN_URL or "https://www.spinlid.ru/payment/success"
 
