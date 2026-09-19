@@ -62,7 +62,7 @@ const OP_TEXT: Record<string, string> = {
 
 const LABEL = 'mb-1.5 block text-xs font-semibold text-ui-text-muted';
 const CHIP =
-  'inline-flex min-h-8 items-center gap-1.5 rounded-full border border-ui-border bg-ui-surface px-3.5 py-1 text-xs font-semibold text-ui-text-muted transition-colors hover:border-ui-text-muted/50 hover:text-ui-text disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-ui-border bg-ui-surface px-3.5 py-1 text-xs sm:min-h-8 font-semibold text-ui-text-muted transition-colors hover:border-ui-text-muted/50 hover:text-ui-text disabled:cursor-not-allowed disabled:opacity-50';
 const CHIP_ON =
   'border-ui-text bg-ui-text text-ui-surface hover:border-ui-text hover:text-ui-surface';
 
@@ -199,7 +199,7 @@ export function SiteLeadsPanel() {
       <form
         onSubmit={handleSubmit}
         aria-label="Параметры поиска по сайтам"
-        className="mx-auto mt-4 max-w-[880px] rounded-panel border border-black/[.06] bg-ui-surface p-5 shadow-floating sm:p-7"
+        className="mt-4 w-full rounded-panel border border-black/[.06] bg-ui-surface p-5 shadow-floating sm:p-7"
       >
         <div className="grid gap-4 md:grid-cols-[1.4fr_1fr_0.8fr]">
           <div className="min-w-0">
@@ -386,19 +386,19 @@ export function SiteLeadsPanel() {
       {errorMsg && (
         <p
           role="alert"
-          className="mx-auto mt-6 w-full max-w-[880px] rounded-card bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger"
+          className="mt-6 w-full rounded-card bg-ui-danger/[.07] px-4 py-3 text-small text-ui-danger"
         >
           {errorMsg}
         </p>
       )}
 
       {activeSearchId && (
-        <div ref={resultsRef} className="mx-auto mt-10 w-full max-w-[880px] scroll-mt-20">
+        <div ref={resultsRef} className="mt-10 w-full scroll-mt-20">
           <SiteSearchResults searchId={activeSearchId} defaultTemplateKey={kpDefaultTemplateKey} />
         </div>
       )}
 
-      <section aria-labelledby="sites-recent" className="mx-auto mt-14 max-w-[880px]">
+      <section aria-labelledby="sites-recent" className="mt-14 w-full">
         <div className="mb-4 flex items-baseline gap-3">
           <h2 id="sites-recent" className="text-xl font-extrabold tracking-tight text-ui-text">
             Последние запуски.

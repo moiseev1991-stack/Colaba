@@ -122,16 +122,12 @@ export interface KpCommonPain {
   example_quote: string | null;
 }
 
-export async function findCommonPains(
-  companyIds: number[],
-): Promise<KpCommonPain[]> {
-  const r = await apiClient.post<KpCommonPain[]>(
-    '/outreach/kp/common-pains',
-    { company_ids: companyIds },
-  );
+export async function findCommonPains(companyIds: number[]): Promise<KpCommonPain[]> {
+  const r = await apiClient.post<KpCommonPain[]>('/outreach/kp/common-pains', {
+    company_ids: companyIds,
+  });
   return r.data;
 }
-
 
 export async function generateKp(req: KpGenerateRequest): Promise<KpDraft> {
   const r = await apiClient.post<KpDraft>('/outreach/kp/generate', req);
@@ -150,21 +146,13 @@ export async function updateKpDraft(
   draftId: number,
   patch: KpDraftUpdateRequest,
 ): Promise<KpDraft> {
-  const r = await apiClient.patch<KpDraft>(
-    `/outreach/kp/drafts/${draftId}`,
-    patch,
-  );
+  const r = await apiClient.patch<KpDraft>(`/outreach/kp/drafts/${draftId}`, patch);
   return r.data;
 }
 
 // --- Bulk-генерация КП (миграция 036) --------------------------------------
 
-export type KpBulkJobStatus =
-  | 'queued'
-  | 'running'
-  | 'done'
-  | 'cancelled'
-  | 'failed';
+export type KpBulkJobStatus = 'queued' | 'running' | 'done' | 'cancelled' | 'failed';
 
 export interface KpBulkDraftPreview {
   id: number;
@@ -205,9 +193,7 @@ export interface KpBulkGenerateRequest {
   my_offer_step?: string | null;
 }
 
-export async function startBulkKpGeneration(
-  req: KpBulkGenerateRequest,
-): Promise<KpBulkJob> {
+export async function startBulkKpGeneration(req: KpBulkGenerateRequest): Promise<KpBulkJob> {
   const r = await apiClient.post<KpBulkJob>('/outreach/kp/bulk-generate', req);
   return r.data;
 }
@@ -218,10 +204,7 @@ export async function getBulkKpJob(jobId: number): Promise<KpBulkJob> {
 }
 
 export async function cancelBulkKpJob(jobId: number): Promise<KpBulkJob> {
-  const r = await apiClient.post<KpBulkJob>(
-    `/outreach/kp/jobs/${jobId}/cancel`,
-    {},
-  );
+  const r = await apiClient.post<KpBulkJob>(`/outreach/kp/jobs/${jobId}/cancel`, {});
   return r.data;
 }
 
@@ -246,10 +229,12 @@ export interface KpDraftListResponse {
   offset: number;
 }
 
-export async function listKpDrafts(params: {
-  limit?: number;
-  offset?: number;
-} = {}): Promise<KpDraftListResponse> {
+export async function listKpDrafts(
+  params: {
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<KpDraftListResponse> {
   const r = await apiClient.get<KpDraftListResponse>('/outreach/kp/drafts', {
     params: {
       limit: params.limit ?? 50,
@@ -311,9 +296,7 @@ export interface KpJobItemsResponse {
 
 /** GET /outreach/kp/jobs/{id}/items — таблица всех компаний партии + прогресс. */
 export async function getKpJobItems(jobId: number): Promise<KpJobItemsResponse> {
-  const r = await apiClient.get<KpJobItemsResponse>(
-    `/outreach/kp/jobs/${jobId}/items`,
-  );
+  const r = await apiClient.get<KpJobItemsResponse>(`/outreach/kp/jobs/${jobId}/items`);
   return r.data;
 }
 
@@ -347,12 +330,7 @@ export async function listKpJobs(limit = 50): Promise<KpJobListResponse> {
 
 export type KpSendChannel = 'email' | 'telegram' | 'whatsapp' | 'sms' | 'max';
 
-export type KpSendStatus =
-  | 'queued'
-  | 'sending'
-  | 'sent'
-  | 'failed'
-  | 'skipped';
+export type KpSendStatus = 'queued' | 'sending' | 'sent' | 'failed' | 'skipped';
 
 export interface KpJobSendStatus {
   job_id: number;
@@ -409,20 +387,13 @@ export async function sendKpJob(
     channels,
   };
   if (draftIds && draftIds.length > 0) body.draft_ids = draftIds;
-  const r = await apiClient.post<KpJobSendStatus>(
-    `/outreach/kp/jobs/${jobId}/send`,
-    body,
-  );
+  const r = await apiClient.post<KpJobSendStatus>(`/outreach/kp/jobs/${jobId}/send`, body);
   return r.data;
 }
 
 /** GET /outreach/kp/jobs/{id}/send-status — поллинг прогресса рассылки. */
-export async function getKpJobSendStatus(
-  jobId: number,
-): Promise<KpJobSendStatus> {
-  const r = await apiClient.get<KpJobSendStatus>(
-    `/outreach/kp/jobs/${jobId}/send-status`,
-  );
+export async function getKpJobSendStatus(jobId: number): Promise<KpJobSendStatus> {
+  const r = await apiClient.get<KpJobSendStatus>(`/outreach/kp/jobs/${jobId}/send-status`);
   return r.data;
 }
 
@@ -439,13 +410,28 @@ export async function getKpJobSendStatus(
 export async function downloadKpJobCallList(
   jobId: number,
 ): Promise<{ blob: Blob; filename: string }> {
-  const r = await apiClient.get<Blob>(
-    `/outreach/kp/jobs/${jobId}/call-list.xlsx`,
-    { responseType: 'blob' },
-  );
+  const r = await apiClient.get<Blob>(`/outreach/kp/jobs/${jobId}/call-list.xlsx`, {
+    responseType: 'blob',
+  });
   const dispo = r.headers?.['content-disposition'] || '';
   const match = /filename="?([^";]+)"?/i.exec(dispo);
   const filename = match?.[1] || `kp-call-list_job-${jobId}.xlsx`;
+  return { blob: r.data, filename };
+}
+
+/**
+ * GET /outreach/kp/jobs/{id}/export.xlsx — вся партия: контакты (телефон, email, сайт,
+ * Telegram, WhatsApp, VK) + боль, цитата, тема и текст КП по каждой компании.
+ */
+export async function downloadKpJobExport(
+  jobId: number,
+): Promise<{ blob: Blob; filename: string }> {
+  const r = await apiClient.get<Blob>(`/outreach/kp/jobs/${jobId}/export.xlsx`, {
+    responseType: 'blob',
+  });
+  const dispo = r.headers?.['content-disposition'] || '';
+  const match = /filename="?([^";]+)"?/i.exec(dispo);
+  const filename = match?.[1] || `kp-partiya-${jobId}.xlsx`;
   return { blob: r.data, filename };
 }
 

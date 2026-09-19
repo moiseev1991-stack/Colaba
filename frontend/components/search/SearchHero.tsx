@@ -11,7 +11,7 @@ import { SearchModeSwitch } from './SearchModeSwitch';
  * «Поиск» + переключатель режимов, объяснение режима — в подсказке «Как это работает».
  * Главный акцент — форма поиска сразу под шапкой. Ширина контента — SEARCH_CONTENT_WIDTH.
  */
-export const SEARCH_CONTENT_WIDTH = 'mx-auto w-full max-w-[880px]';
+export const SEARCH_CONTENT_WIDTH = 'w-full';
 
 export function SearchHero({
   active,
@@ -69,7 +69,7 @@ function SearchHint({ title, children }: { title: string; children: React.ReactN
         aria-expanded={open}
         aria-controls={panelId}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-small font-semibold transition-colors',
+          'inline-flex min-h-10 items-center gap-1.5 rounded-full px-2.5 py-1 text-small font-semibold transition-colors sm:min-h-0',
           open
             ? 'bg-ui-accent/10 text-ui-accent'
             : 'text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text',

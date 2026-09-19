@@ -56,6 +56,7 @@ import { apiClient } from '@/client';
 import { OUTREACH_SENDING_ENABLED, SENDING_SOON_HINT } from '@/lib/outreach';
 import {
   downloadKpJobCallList,
+  downloadKpJobExport,
   getKpJobItems,
   getKpJobSendStatus,
   sendKpJob,
@@ -124,6 +125,11 @@ interface PageProps {
   params: { id: string };
 }
 
+// 19.09 (@user): отправка КП из кабинета — «скоро»; пока рабочий путь — выгрузка таблицы.
+// Включить обратно — true (обработчики и планы отправки ниже не тронуты).
+const KP_SEND_FROM_CABINET = false;
+const SEND_SOON_TITLE =
+  'Отправка из кабинета появится скоро — пока скачайте таблицу и разошлите сами.';
 export default function KpJobPage({ params }: PageProps) {
   const jobId = Number(params.id);
 
@@ -878,6 +884,7 @@ function SendBar({
   const [error, setError] = useState<string | null>(null);
   const [callListDownloading, setCallListDownloading] = useState(false);
   const [callListError, setCallListError] = useState<string | null>(null);
+  const [exportDownloading, setExportDownloading] = useState(false);
 
   // Готовые драфты + разбор по «куда что пойдёт». Считается из items
   // на клиенте — backend этих счётчиков пока не отдаёт. Если в будущем
@@ -980,6 +987,32 @@ function SendBar({
       if (it.company_id !== null) ids.add(it.company_id);
     }
     setExcludedIds(ids);
+  }
+
+  // 19.09 (@user): рабочий путь партии — выгрузить таблицу со всеми контактами и КП,
+  // отправка из кабинета пока «скоро».
+  async function handleDownloadExport() {
+    if (exportDownloading) return;
+    setExportDownloading(true);
+    setCallListError(null);
+    try {
+      const { blob, filename } = await downloadKpJobExport(jobId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      setCallListError(
+        typeof detail === 'string' ? detail : e?.message || 'Не удалось скачать таблицу.',
+      );
+    } finally {
+      setExportDownloading(false);
+    }
   }
 
   async function handleDownloadCallList() {
@@ -1247,7 +1280,7 @@ function SendBar({
         {/* Подсказка: не указан email для ответов. Без него лиди не смогут
             ответить на КП (ответ уйдёт на системный From, а не клиенту).
             Показываем только когда выбран email-канал и reply_to пуст. */}
-        {replyToMissing && (
+        {KP_SEND_FROM_CABINET && replyToMissing && (
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-ui-warning/35 bg-ui-warning/[.07] px-3 py-2 text-small text-ui-warning">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ui-warning" />
             <div>
@@ -1262,54 +1295,53 @@ function SendBar({
           </div>
         )}
 
-        {/* Кнопки: два пресета + xlsx обзвон.
-            «Отправить всем» — на компанию один лучший канал (email или WA).
-            «Во все каналы» — на компанию все доступные каналы (макс охват). */}
-        <div className="mt-3 flex flex-wrap items-stretch gap-2">
+        {/* Кнопки (19.09, @user): главная — выгрузить таблицу со всеми контактами и КП;
+            отправка из кабинета — серая с пометкой «скоро»; «На обзвон» — как было. */}
+        <div className="mt-3 flex flex-wrap items-end gap-2">
           <ButtonV2
             variant="primary"
             size="md"
-            onClick={handleSendOnePerCompany}
-            disabled={oneDisabled || !OUTREACH_SENDING_ENABLED}
-            iconLeft={submitting || isActive ? <Loader2 className="animate-spin" /> : <Send />}
-            title={
-              !OUTREACH_SENDING_ENABLED
-                ? SENDING_SOON_HINT
-                : isActive
-                  ? 'Сейчас идёт рассылка — дождись окончания.'
-                  : oneCount === 0
-                    ? 'Ни одной компании не достать выбранными каналами. Включи каналы или добавь контакты.'
-                    : 'Каждой компании уйдёт ОДНА КП в первый доступный канал (email → WhatsApp). Без дублей.'
-            }
+            onClick={handleDownloadExport}
+            disabled={exportDownloading}
+            iconLeft={exportDownloading ? <Loader2 className="animate-spin" /> : <Download />}
+            title="Скачать .xlsx: по каждой компании телефон, email, сайт, Telegram, WhatsApp, VK, боль, тема и текст КП"
+            className="w-full sm:w-auto"
           >
-            {isActive
-              ? `Отправляется… ${sentCount}/${status!.total}`
-              : `Отправить всем (${oneCount})`}
+            {exportDownloading ? 'Подготовка…' : 'Скачать таблицу: контакты и КП'}
           </ButtonV2>
 
-          <ButtonV2
-            variant="secondary"
-            size="md"
-            onClick={handleSendAllChannels}
-            disabled={allDisabled || !OUTREACH_SENDING_ENABLED}
-            iconLeft={submitting && !isActive ? <Loader2 className="animate-spin" /> : <Send />}
-            title={
-              !OUTREACH_SENDING_ENABLED
-                ? SENDING_SOON_HINT
-                : isActive
-                  ? 'Сейчас идёт рассылка — дождись окончания.'
-                  : allSendsCount === 0
-                    ? 'Ни одной компании не достать выбранными каналами.'
-                    : 'Каждой компании уйдёт КП по ВСЕМ доступным каналам сразу (email + WhatsApp если есть оба). Больше шансов, что увидят, но риск дубль-сообщения.'
-            }
-          >
-            {`Во все каналы (${allSendsCount} ${pluralize(
-              allSendsCount,
-              'отправка',
-              'отправки',
-              'отправок',
-            )})`}
-          </ButtonV2>
+          <div className="flex flex-col items-start gap-1">
+            <span className="rounded bg-ui-surface-2 px-1.5 text-xs font-semibold uppercase tracking-wider text-ui-text-muted">
+              скоро
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <ButtonV2
+                variant="secondary"
+                size="md"
+                onClick={handleSendOnePerCompany}
+                disabled={!KP_SEND_FROM_CABINET || oneDisabled}
+                iconLeft={<Send />}
+                title={SEND_SOON_TITLE}
+              >
+                {`Отправить всем (${oneCount})`}
+              </ButtonV2>
+              <ButtonV2
+                variant="secondary"
+                size="md"
+                onClick={handleSendAllChannels}
+                disabled={!KP_SEND_FROM_CABINET || allDisabled}
+                iconLeft={<Send />}
+                title={SEND_SOON_TITLE}
+              >
+                {`Во все каналы (${allSendsCount} ${pluralize(
+                  allSendsCount,
+                  'отправка',
+                  'отправки',
+                  'отправок',
+                )})`}
+              </ButtonV2>
+            </div>
+          </div>
 
           <ButtonV2
             variant="ghost"
@@ -1652,7 +1684,7 @@ function RowSendButton({
   state: RowSendState;
   onClick: (e: MouseEvent<HTMLButtonElement>) => void;
 }) {
-  if (!OUTREACH_SENDING_ENABLED) {
+  if (!OUTREACH_SENDING_ENABLED || !KP_SEND_FROM_CABINET) {
     return (
       <button
         type="button"

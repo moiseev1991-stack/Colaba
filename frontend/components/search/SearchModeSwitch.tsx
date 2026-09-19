@@ -59,7 +59,7 @@ export function SearchModeSwitch({
             title={`${m.label} — ${m.hint}`}
             aria-current={on ? 'page' : undefined}
             className={cn(
-              'flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-small font-semibold transition-all',
+              'flex min-h-10 min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-small font-semibold transition-all sm:min-h-0',
               on
                 ? 'bg-ui-surface text-ui-text shadow-[0_1px_6px_rgba(0,0,0,0.1)]'
                 : 'text-ui-text-muted hover:text-ui-text',

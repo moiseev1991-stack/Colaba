@@ -16,6 +16,7 @@ from app.modules.auth.router import get_current_user_id
 from app.modules.outreach import (
     kp_bulk_service,
     kp_call_list_export,
+    kp_job_export,
     kp_send_service,
     kp_service,
 )
@@ -367,6 +368,29 @@ async def get_job_items(
             )
             for row in item_rows
         ],
+    )
+
+
+@router.get("/jobs/{job_id}/export.xlsx")
+async def export_job_xlsx(
+    job_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """xlsx всей партии: контакты (телефон, email, сайт, Telegram, WhatsApp, VK) +
+    боль, цитата, тема и текст КП по каждой компании. Рабочий путь, пока отправка
+    из кабинета «скоро» (решение @user 19.09)."""
+    xlsx_bytes = await kp_job_export.build_job_xlsx(db, user_id=user_id, job_id=job_id)
+    if xlsx_bytes is None:
+        raise HTTPException(status_code=404, detail="Партия не найдена.")
+    filename = kp_job_export.build_job_filename(job_id)
+    return StreamingResponse(
+        iter([xlsx_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
     )
 
 

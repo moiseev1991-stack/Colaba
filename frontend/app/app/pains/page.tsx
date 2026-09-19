@@ -25,6 +25,7 @@ import { NicheCombobox, type NicheOption } from '@/components/NicheCombobox';
 import { SearchHero } from '@/components/search/SearchHero';
 import { Button, buttonClass } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { PageContainer } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
 import {
@@ -109,6 +110,8 @@ function PainsPageInner() {
   const [topTagsLoading, setTopTagsLoading] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [ownPain, setOwnPain] = useState('');
+  // Своя боль, по которой идёт текущий поиск (зафиксирована по «Показать компании» / Enter).
+  const [textQuery, setTextQuery] = useState('');
 
   const [addToListOpen, setAddToListOpen] = useState(false);
   // «Написать» — для одной компании или для выбранных / всех на странице.
@@ -280,7 +283,8 @@ function PainsPageInner() {
         limit: PAGE_SIZE,
         offset: nextOffset,
       };
-      if (selectedTagIds.size > 0) params.pain_tag_ids = Array.from(selectedTagIds);
+      if (textQuery) params.text = textQuery;
+      else if (selectedTagIds.size > 0) params.pain_tag_ids = Array.from(selectedTagIds);
       else params.pain_key = painKey;
       const result = await listCompaniesByPain(params);
       setData(result);
@@ -329,7 +333,8 @@ function PainsPageInner() {
         {
           sentiment: 'negative' as const,
           source: reviewSource !== 'all' ? reviewSource : undefined,
-          pain_tag_id: firstTagId,
+          pain_tag_id: textQuery ? undefined : firstTagId,
+          text_contains: textQuery ? textQuery.split(',')[0].trim() : undefined,
         },
         REVIEWS_PAGE,
         currentOffset,
@@ -362,13 +367,38 @@ function PainsPageInner() {
       return next;
     });
     setOwnPain('');
+    setTextQuery('');
     requestSearch(0);
   };
 
   const pickPainKey = (key: PainKey) => {
     setPainKey(key);
     setSelectedTagIds(new Set());
+    setOwnPain('');
+    setTextQuery('');
     requestSearch(0);
+  };
+
+  // «Показать компании» / Enter: есть своя боль (от 3 символов) — ищем по тексту отзывов,
+  // иначе по выбранной боли из списка.
+  const submitSearch = () => {
+    const text = ownPain.trim();
+    if (text.length >= 3) {
+      setTextQuery(text);
+      setSelectedTagIds(new Set());
+    } else {
+      setTextQuery('');
+    }
+    setExpandedCompanies({});
+    requestSearch(0, true);
+  };
+
+  const clearOwnPain = () => {
+    setOwnPain('');
+    if (textQuery) {
+      setTextQuery('');
+      requestSearch(0);
+    }
   };
 
   const selectedTags = useMemo(
@@ -376,6 +406,7 @@ function PainsPageInner() {
     [topTags, selectedTagIds],
   );
   const activePainLabel = useMemo(() => {
+    if (textQuery) return textQuery;
     if (selectedTags.length === 1) return selectedTags[0].label;
     if (selectedTags.length > 1) {
       const preview = selectedTags
@@ -385,7 +416,7 @@ function PainsPageInner() {
       return `${selectedTags.length} ${plural(selectedTags.length, 'боль', 'боли', 'болей')} (${preview}${selectedTags.length > 2 ? `, +${selectedTags.length - 2}` : ''})`;
     }
     return PAIN_KEY_LABELS[painKey];
-  }, [selectedTags, painKey]);
+  }, [selectedTags, painKey, textQuery]);
 
   const ownMatches = useMemo(() => {
     const q = ownPain.trim().toLowerCase();
@@ -404,7 +435,7 @@ function PainsPageInner() {
 
   return (
     <PageContainer className="pb-16 pt-8 sm:pt-10">
-      <div className="mx-auto w-full max-w-[1072px]">
+      <div className="w-full">
         <SearchHero active="pains" hintTitle="Поиск по боли">
           <p>
             Выберите город, нишу и частую жалобу — покажем компании, где она встречается в реальных
@@ -415,100 +446,96 @@ function PainsPageInner() {
           </p>
         </SearchHero>
 
-        {/* 18.09 (@user): одна компактная карточка — сверху «где искать» в строку, ниже жалобы,
-            внизу зелёная кнопка. */}
-        <div className="mx-auto mt-4 w-full max-w-[880px] overflow-hidden rounded-panel border border-black/[.06] bg-ui-surface shadow-floating">
-          {/* === Где искать === */}
-          <section aria-label="Где искать" className="px-5 pb-4 pt-5 sm:px-7 sm:pt-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
-              <div className="min-w-0">
-                <label htmlFor="pains-city" className={LABEL}>
-                  Город
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <CityCombobox
-                    id="pains-city"
-                    city={city}
-                    onCityChange={(c) => setCity(c)}
-                    placeholder="Любой"
-                    className="min-w-0 flex-1"
-                  />
-                  {city && (
-                    <button
-                      type="button"
-                      onClick={() => setCity('')}
-                      aria-label="Убрать город"
-                      className="grid h-11 w-8 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <label htmlFor="pains-niche" className={LABEL}>
-                  Ниша
-                </label>
-                {/* 18.09 (@user): ниша — выпадающий список ниш из базы, как город. */}
-                <div className="flex items-center gap-1.5">
-                  <NicheCombobox
-                    id="pains-niche"
-                    niche={niche}
-                    onNicheChange={setNiche}
-                    options={niches}
-                    loading={nichesLoading}
-                    placeholder="Все ниши"
-                    className="min-w-0 flex-1"
-                  />
-                  {niche && (
-                    <button
-                      type="button"
-                      onClick={() => setNiche('')}
-                      aria-label="Убрать нишу"
-                      className="grid h-11 w-8 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-                <span className={LABEL}>Источник отзывов</span>
-                <div
-                  className="flex min-h-11 flex-wrap items-center gap-1"
-                  role="group"
-                  aria-label="Источник отзывов"
-                >
-                  {REVIEW_SOURCES.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={reviewSource === opt.value}
-                      onClick={() => {
-                        setReviewSource(opt.value);
-                        setExpandedCompanies({});
-                      }}
-                      className={cn(
-                        'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                        reviewSource === opt.value
-                          ? 'border-ui-text bg-ui-text text-ui-surface'
-                          : 'border-ui-border text-ui-text-muted hover:text-ui-text',
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+        {/* 19.09 (@user): форма на всю ширину и в раскладке «Сайтов»: поля в строку, серая панель
+            «На что жалуются» со своей болью текстом, кнопка внизу слева с пояснением. */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitSearch();
+          }}
+          aria-label="Параметры поиска по боли"
+          className="mt-4 w-full rounded-panel border border-black/[.06] bg-ui-surface p-5 shadow-floating sm:p-7"
+        >
+          <div className="grid gap-4 md:grid-cols-[1fr_1fr_0.8fr]">
+            <div className="min-w-0">
+              <label htmlFor="pains-city" className={LABEL}>
+                Город
+              </label>
+              <div className="flex items-center gap-1.5">
+                <CityCombobox
+                  id="pains-city"
+                  city={city}
+                  onCityChange={(c) => setCity(c)}
+                  placeholder="Любой"
+                  triggerClassName="h-12"
+                  className="min-w-0 flex-1"
+                />
+                {city && (
+                  <button
+                    type="button"
+                    onClick={() => setCity('')}
+                    aria-label="Убрать город"
+                    className="grid h-12 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             </div>
-          </section>
+            <div className="min-w-0">
+              <label htmlFor="pains-niche" className={LABEL}>
+                Ниша
+              </label>
+              <div className="flex items-center gap-1.5">
+                <NicheCombobox
+                  id="pains-niche"
+                  niche={niche}
+                  onNicheChange={setNiche}
+                  options={niches}
+                  loading={nichesLoading}
+                  placeholder="Все ниши"
+                  className="min-w-0 flex-1 [&>button]:h-12"
+                />
+                {niche && (
+                  <button
+                    type="button"
+                    onClick={() => setNiche('')}
+                    aria-label="Убрать нишу"
+                    className="grid h-12 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface-2 hover:text-ui-text"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="pains-source" className={LABEL}>
+                Источник отзывов
+              </label>
+              <Select
+                id="pains-source"
+                value={reviewSource}
+                onChange={(e) => {
+                  setReviewSource(e.target.value as ReviewSource);
+                  setExpandedCompanies({});
+                }}
+                wrapperClassName="block"
+                className="h-12 w-full"
+              >
+                {REVIEW_SOURCES.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.value === 'all' ? 'Все карты' : opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
 
-          {/* === На что жалуются === */}
           <section
             aria-labelledby="pains-what"
-            className="border-t border-black/[.06] px-5 pb-4 pt-4 sm:px-7"
+            className="mt-5 rounded-card bg-ui-surface-2 p-4 sm:p-5"
           >
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
               <h2 id="pains-what" className="text-base font-bold text-ui-text">
                 На что жалуются
               </h2>
@@ -518,16 +545,16 @@ function PainsPageInner() {
                   : 'Частые жалобы по всем нишам — выберите нишу, чтобы увидеть её боли'}
               </p>
             </div>
-            <div className="-mx-3 mt-2 grid gap-x-2 sm:grid-cols-2">
+            <div className="-mx-3 grid gap-x-2 sm:grid-cols-2 xl:grid-cols-3">
               {niche && topTagsLoading && topTags.length === 0 && (
-                <p className="px-3 py-4 text-small text-ui-text-muted sm:col-span-2">
+                <p className="px-3 py-4 text-small text-ui-text-muted sm:col-span-2 xl:col-span-3">
                   Загрузка болей ниши…
                 </p>
               )}
               {niche && !topTagsLoading && topTags.length === 0 && (
-                <p className="px-3 py-4 text-small text-ui-text-muted sm:col-span-2">
-                  Для этой ниши боли ещё не размечены. Выберите категорию ниже — или пересоберите
-                  AI-теги в результатах.
+                <p className="px-3 py-4 text-small text-ui-text-muted sm:col-span-2 xl:col-span-3">
+                  Для этой ниши боли ещё не размечены. Впишите свою боль ниже — найдём по тексту
+                  отзывов.
                 </p>
               )}
               {niche && topTags.length > 0
@@ -538,7 +565,7 @@ function PainsPageInner() {
                       title={t.description ?? undefined}
                       count={t.occurrences_count}
                       share={t.occurrences_count / maxOccurrences}
-                      active={selectedTagIds.has(t.id)}
+                      active={!textQuery && selectedTagIds.has(t.id)}
                       onClick={() => toggleTag(t)}
                     />
                   ))
@@ -546,7 +573,9 @@ function PainsPageInner() {
                     <PainRow
                       key={k}
                       label={PAIN_KEY_LABELS[k]}
-                      active={selectedTagIds.size === 0 && painKey === k && data !== null}
+                      active={
+                        !textQuery && selectedTagIds.size === 0 && painKey === k && data !== null
+                      }
                       onClick={() => pickPainKey(k)}
                     />
                   ))}
@@ -562,72 +591,92 @@ function PainsPageInner() {
                   : `Показать ещё ${topTags.length - TAGS_SHOWN} ${plural(topTags.length - TAGS_SHOWN, 'боль', 'боли', 'болей')}`}
               </button>
             )}
-            <div className="mt-3">
-              <label htmlFor="pains-own" className="sr-only">
-                Своя жалоба
+
+            {/* 19.09 (@user): своя боль руками — работает и без ниши (поиск по тексту
+                негативных отзывов, /maps/pains/companies?q=). */}
+            <div className="mt-3 border-t border-black/[.06] pt-4">
+              <label htmlFor="pains-own" className={LABEL}>
+                Своя боль — впишите, на что жалуются клиенты
               </label>
-              <Input
-                id="pains-own"
-                value={ownPain}
-                onChange={(e) => setOwnPain(e.target.value)}
-                disabled={!niche}
-                placeholder={
-                  niche
-                    ? 'Или впишите своё — например: «не перезвонили»'
-                    : 'Своя жалоба — сначала выберите нишу'
-                }
-                className="h-10"
-              />
-              {ownPain.trim().length >= 3 && (
-                <div className="mt-2.5 text-small text-ui-text-muted">
-                  {ownMatches.length === 0 ? (
-                    'Подходящих тегов в этой нише нет — попробуйте другое слово.'
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span>Найдено:</span>
-                      {ownMatches.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => toggleTag(t)}
-                          className="rounded-full bg-ui-surface px-3 py-1 text-small font-semibold text-ui-accent shadow-raised hover:bg-ui-accent/[.06]"
-                        >
-                          «{t.label}» · {t.occurrences_count}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              <div className="flex items-center gap-1.5">
+                <Input
+                  id="pains-own"
+                  value={ownPain}
+                  onChange={(e) => setOwnPain(e.target.value)}
+                  placeholder="Например: не перезвонили, долго ждать, грубят"
+                  className="h-11 min-w-0 flex-1 bg-ui-surface"
+                />
+                {(ownPain || textQuery) && (
+                  <button
+                    type="button"
+                    onClick={clearOwnPain}
+                    aria-label="Очистить свою боль"
+                    className="grid h-11 w-9 shrink-0 place-items-center rounded-control text-ui-text-muted hover:bg-ui-surface hover:text-ui-text"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <p className="mt-1.5 text-xs text-ui-text-muted">
+                Несколько фраз через запятую — подходит любая. Ищем в негативных отзывах
+                {niche ? ' этой ниши' : ' всех ниш'}
+                {city ? ` в городе ${city}` : ''}.
+              </p>
+              {niche && ownMatches.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2 text-small text-ui-text-muted">
+                  <span>Или готовый тег:</span>
+                  {ownMatches.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleTag(t)}
+                      className="rounded-full bg-ui-surface px-3 py-1 text-small font-semibold text-ui-accent shadow-raised hover:bg-ui-accent/[.06]"
+                    >
+                      «{t.label}» · {t.occurrences_count}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
           </section>
 
-          <div className="border-t border-black/[.06] bg-ui-surface-2/60 px-5 py-4 sm:px-7">
+          {error && (
+            <p
+              role="alert"
+              className="mt-4 rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger"
+            >
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-black/[.06] pt-5">
             <Button
-              onClick={() => requestSearch(0, true)}
+              type="submit"
               loading={isLoading}
               iconRight={!isLoading ? <ArrowRight /> : undefined}
-              className="h-12 w-full text-base"
+              className="h-12 w-full px-7 text-base sm:w-auto"
             >
               Показать компании
             </Button>
-            {error && (
-              <p
-                role="alert"
-                className="mt-3 rounded-control bg-ui-danger/10 px-3 py-2 text-small text-ui-danger"
-              >
-                {error}
-              </p>
-            )}
+            <p className="min-w-0 flex-1 text-small text-ui-text-muted">
+              {ownPain.trim().length >= 3 ? (
+                <>
+                  Найдём компании, где в отзывах{' '}
+                  <b className="font-semibold text-ui-text">«{ownPain.trim()}»</b>
+                </>
+              ) : (
+                <>
+                  Боль <b className="font-semibold text-ui-text">«{activePainLabel}»</b>
+                </>
+              )}
+              {niche ? ` · ${niche}` : ''} · {city || 'все города'} · по уже собранной базе —
+              результат сразу
+            </p>
           </div>
-        </div>
+        </form>
 
         {/* === Результаты === */}
-        <section
-          ref={resultsRef}
-          aria-label="Компании"
-          className="mx-auto mt-10 w-full max-w-[880px] scroll-mt-20"
-        >
+        <section ref={resultsRef} aria-label="Компании" className="mt-10 w-full scroll-mt-20">
           {data && data.items.length === 0 && !isLoading && (
             <div className="rounded-panel bg-ui-surface-2 p-6 text-small text-ui-text-muted">
               <p className="text-base font-bold text-ui-text">
@@ -768,9 +817,12 @@ function PainsPageInner() {
                   </label>
                   <a
                     href={buildPainsExportUrl({
-                      pain_key: selectedTagIds.size > 0 ? undefined : painKey,
+                      text: textQuery || undefined,
+                      pain_key: textQuery || selectedTagIds.size > 0 ? undefined : painKey,
                       pain_tag_ids:
-                        selectedTagIds.size > 0 ? Array.from(selectedTagIds) : undefined,
+                        !textQuery && selectedTagIds.size > 0
+                          ? Array.from(selectedTagIds)
+                          : undefined,
                       city: city || undefined,
                       niche: niche || undefined,
                       company_ids: selectedIds.size > 0 ? Array.from(selectedIds) : undefined,

@@ -243,7 +243,7 @@ export function FilterBuilder({
         type="button"
         disabled={disabled}
         onClick={addCondition}
-        className="inline-flex w-fit items-center gap-1.5 rounded-full px-1 py-1 text-small font-semibold text-ui-accent hover:underline disabled:opacity-50"
+        className="inline-flex min-h-10 w-fit items-center gap-1.5 rounded-full px-1 py-1 text-small font-semibold text-ui-accent hover:underline disabled:opacity-50 sm:min-h-0"
       >
         <Plus className="h-4 w-4" aria-hidden />{' '}
         {conditions.length === 0 ? 'Добавить условие' : 'Ещё условие'}

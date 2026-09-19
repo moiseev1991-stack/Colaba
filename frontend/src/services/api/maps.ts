@@ -34,13 +34,7 @@ export function isClientOnlySort(s: SortBy | undefined | null): boolean {
 
 /** Блок 5 ТЗ 2026-06-02 + §2 ТЗ 2026-06-10: переключаемые слои тепловой карты.
  *  pain_type — слой по конкретному pain_tag_id (требует доп. query-param). */
-export type HeatmapLayer =
-  | 'density'
-  | 'pain'
-  | 'website'
-  | 'rating'
-  | 'wealth'
-  | 'pain_type';
+export type HeatmapLayer = 'density' | 'pain' | 'website' | 'rating' | 'wealth' | 'pain_type';
 
 export interface HeatmapPoint {
   lat: number;
@@ -196,8 +190,8 @@ export interface CompanyPainOut {
  *  Дедуп между источниками НЕ делается — если телефон совпал в 2GIS и Я.Картах,
  *  это две записи (UI может пометить «совпадает»). */
 export interface CompanyContactOut {
-  source: string;        // '2gis' | 'yandex_maps'
-  type: string;          // 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' | ...
+  source: string; // '2gis' | 'yandex_maps'
+  type: string; // 'phone' | 'email' | 'website' | 'telegram' | 'whatsapp' | 'vk' | ...
   value: string;
   is_primary: boolean;
 }
@@ -429,17 +423,12 @@ export async function getMapSearch(id: number): Promise<MapSearchOut> {
   return response.data;
 }
 
-export async function listMyMapSearches(
-  limit = 50,
-  offset = 0,
-): Promise<MapSearchOut[]> {
+export async function listMyMapSearches(limit = 50, offset = 0): Promise<MapSearchOut[]> {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
-  const response = await apiClient.get<MapSearchOut[]>(
-    `/maps/searches?${params.toString()}`,
-  );
+  const response = await apiClient.get<MapSearchOut[]>(`/maps/searches?${params.toString()}`);
   return response.data;
 }
 
@@ -447,7 +436,7 @@ export async function listMapCompanies(
   searchId: number,
   filter: MapSearchFilter = {},
   limit = 50,
-  offset = 0
+  offset = 0,
 ): Promise<CompaniesListOut> {
   const params = new URLSearchParams();
   if (filter.min_rating !== undefined && filter.min_rating !== null)
@@ -471,10 +460,8 @@ export async function listMapCompanies(
   }
   if (filter.min_pain_mentions !== undefined)
     params.set('min_pain_mentions', String(filter.min_pain_mentions));
-  if (filter.review_text_contains)
-    params.set('review_text_contains', filter.review_text_contains);
-  if (filter.review_text_excludes)
-    params.set('review_text_excludes', filter.review_text_excludes);
+  if (filter.review_text_contains) params.set('review_text_contains', filter.review_text_contains);
+  if (filter.review_text_excludes) params.set('review_text_excludes', filter.review_text_excludes);
   if (filter.review_text_contains_any?.length)
     for (const t of filter.review_text_contains_any) params.append('review_text_contains_any', t);
   if (filter.review_text_excludes_any?.length)
@@ -483,14 +470,13 @@ export async function listMapCompanies(
   if (filter.source_filter && filter.source_filter !== 'all')
     params.set('source_filter', filter.source_filter);
   // 2026-06-19: фильтр «Тип юр.лица» — массив значений (multi-select).
-  if (filter.opf_in?.length)
-    for (const v of filter.opf_in) params.append('opf_in', v);
+  if (filter.opf_in?.length) for (const v of filter.opf_in) params.append('opf_in', v);
   params.set('sort_by', backendSortBy(filter.sort_by));
   params.set('limit', String(limit));
   params.set('offset', String(offset));
 
   const response = await apiClient.get<CompaniesListOut>(
-    `/maps/search/${searchId}/companies?${params.toString()}`
+    `/maps/search/${searchId}/companies?${params.toString()}`,
   );
   return response.data;
 }
@@ -515,8 +501,8 @@ export interface ReviewQueryFilter {
 }
 
 export interface PainTrendPoint {
-  month: string;          // 'YYYY-MM'
-  source: string;         // '2gis' | 'yandex_maps' | 'google'
+  month: string; // 'YYYY-MM'
+  source: string; // '2gis' | 'yandex_maps' | 'google'
   count: number;
 }
 
@@ -611,9 +597,7 @@ export interface PainBenchmarkOut {
   items: PainBenchmarkItem[];
 }
 
-export async function getCompanyPainBenchmark(
-  companyId: number,
-): Promise<PainBenchmarkOut> {
+export async function getCompanyPainBenchmark(companyId: number): Promise<PainBenchmarkOut> {
   const response = await apiClient.get<PainBenchmarkOut>(
     `/maps/companies/${companyId}/pain-benchmark`,
   );
@@ -628,9 +612,7 @@ export interface NegativeTrendOut {
   verdict: 'rising' | 'stable' | 'falling' | 'no_data';
 }
 
-export async function getCompanyNegativeTrend(
-  companyId: number,
-): Promise<NegativeTrendOut> {
+export async function getCompanyNegativeTrend(companyId: number): Promise<NegativeTrendOut> {
   const response = await apiClient.get<NegativeTrendOut>(
     `/maps/companies/${companyId}/negative-trend`,
   );
@@ -685,7 +667,7 @@ export async function getCompanyReviews(
   id: number,
   filterOrSentiment?: ReviewQueryFilter | 'positive' | 'negative' | 'neutral',
   limit = 50,
-  offset = 0
+  offset = 0,
 ): Promise<ReviewsListOut> {
   // Backwards compat: старые места передают sentiment-строку первым аргументом.
   const filter: ReviewQueryFilter =
@@ -696,19 +678,16 @@ export async function getCompanyReviews(
   if (filter.sentiment) params.set('sentiment', filter.sentiment);
   if (filter.text_contains && filter.text_contains.trim())
     params.set('text_contains', filter.text_contains.trim());
-  if (filter.min_rating !== undefined)
-    params.set('min_rating', String(filter.min_rating));
-  if (filter.max_rating !== undefined)
-    params.set('max_rating', String(filter.max_rating));
+  if (filter.min_rating !== undefined) params.set('min_rating', String(filter.min_rating));
+  if (filter.max_rating !== undefined) params.set('max_rating', String(filter.max_rating));
   if (filter.has_owner_reply !== undefined)
     params.set('has_owner_reply', String(filter.has_owner_reply));
   if (filter.source) params.set('source', filter.source);
-  if (filter.pain_tag_id !== undefined)
-    params.set('pain_tag_id', String(filter.pain_tag_id));
+  if (filter.pain_tag_id !== undefined) params.set('pain_tag_id', String(filter.pain_tag_id));
   params.set('limit', String(limit));
   params.set('offset', String(offset));
   const response = await apiClient.get<ReviewsListOut>(
-    `/maps/companies/${id}/reviews?${params.toString()}`
+    `/maps/companies/${id}/reviews?${params.toString()}`,
   );
   return response.data;
 }
@@ -799,12 +778,15 @@ export interface CompaniesByPainListOut {
 export async function listCompaniesByPain(params: {
   pain_key?: PainKey;
   pain_tag_ids?: number[];
+  /** Своя боль текстом (фразы через запятую) — вместо pain_key/pain_tag_ids. */
+  text?: string;
   city?: string;
   niche?: string;
   limit?: number;
   offset?: number;
 }): Promise<CompaniesByPainListOut> {
   const q = new URLSearchParams();
+  if (params.text) q.set('q', params.text);
   if (params.pain_key) q.set('pain_key', params.pain_key);
   if (params.pain_tag_ids && params.pain_tag_ids.length > 0) {
     for (const id of params.pain_tag_ids) q.append('pain_tag_ids', String(id));
@@ -827,11 +809,13 @@ export async function listCompaniesByPain(params: {
 export function buildPainsExportUrl(params: {
   pain_key?: PainKey;
   pain_tag_ids?: number[];
+  text?: string;
   city?: string;
   niche?: string;
   company_ids?: number[];
 }): string {
   const q = new URLSearchParams();
+  if (params.text) q.set('q', params.text);
   if (params.pain_key) q.set('pain_key', params.pain_key);
   if (params.pain_tag_ids && params.pain_tag_ids.length > 0) {
     for (const id of params.pain_tag_ids) q.append('pain_tag_ids', String(id));
@@ -853,7 +837,7 @@ export async function nicheSuggestions(q = ''): Promise<string[]> {
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   const response = await apiClient.get<string[]>(
-    `/maps/niche-suggestions${params.toString() ? '?' + params.toString() : ''}`
+    `/maps/niche-suggestions${params.toString() ? '?' + params.toString() : ''}`,
   );
   return response.data;
 }
@@ -886,7 +870,7 @@ export async function adminReclusterNiche(
 ): Promise<ReclusterNicheResponse> {
   const response = await apiClient.post<ReclusterNicheResponse>(
     `/maps/admin/recluster-niche?search_id=${searchId}&sentiment=${sentiment}`,
-    {}
+    {},
   );
   return response.data;
 }
@@ -913,9 +897,7 @@ export interface MapsAiProgressOut {
 }
 
 export async function getMapsAiProgress(searchId: number): Promise<MapsAiProgressOut> {
-  const response = await apiClient.get<MapsAiProgressOut>(
-    `/maps/search/${searchId}/ai-progress`,
-  );
+  const response = await apiClient.get<MapsAiProgressOut>(`/maps/search/${searchId}/ai-progress`);
   return response.data;
 }
 
@@ -949,7 +931,7 @@ export async function adminReclusterNicheDiagnostic(
 export async function draftEmailForCompany(companyId: number): Promise<OutreachDraftOut> {
   const response = await apiClient.post<OutreachDraftOut>(
     `/maps/companies/${companyId}/draft-email`,
-    {}
+    {},
   );
   return response.data;
 }
@@ -962,11 +944,11 @@ export async function draftEmailForCompany(companyId: number): Promise<OutreachD
  */
 export async function generateOutreachDraft(
   companyId: number,
-  payload: OutreachDraftRequest = {}
+  payload: OutreachDraftRequest = {},
 ): Promise<OutreachDraftCachedOut> {
   const response = await apiClient.post<OutreachDraftCachedOut>(
     `/maps/companies/${companyId}/outreach-draft`,
-    payload
+    payload,
   );
   return response.data;
 }
@@ -992,11 +974,11 @@ export interface CompanyDigestOut {
  */
 export async function getCompanyDigest(
   companyId: number,
-  days: number | null = 30
+  days: number | null = 30,
 ): Promise<CompanyDigestOut> {
   const dParam = days == null ? 0 : days;
   const response = await apiClient.get<CompanyDigestOut>(
-    `/maps/companies/${companyId}/digest?days=${dParam}`
+    `/maps/companies/${companyId}/digest?days=${dParam}`,
   );
   return response.data;
 }
@@ -1020,10 +1002,10 @@ export async function enrichCompaniesTeam(
   searchId: number,
   companyIds: number[],
 ): Promise<EnrichTeamResponse> {
-  const resp = await apiClient.post<EnrichTeamResponse>(
-    `/maps/companies/enrich-team`,
-    { search_id: searchId, company_ids: companyIds },
-  );
+  const resp = await apiClient.post<EnrichTeamResponse>(`/maps/companies/enrich-team`, {
+    search_id: searchId,
+    company_ids: companyIds,
+  });
   return resp.data;
 }
 
