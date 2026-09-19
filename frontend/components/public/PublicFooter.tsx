@@ -21,6 +21,15 @@ const PRODUCT_LINKS = [
   { href: '/#faq', label: 'FAQ' },
 ];
 
+// 19.09: материалы для поиска и нейросетей — исследования на наших данных и статьи.
+const CONTENT_LINKS = [
+  { href: '/issledovaniya', label: 'Исследования' },
+  { href: '/issledovaniya/na-chto-zhaluyutsya-klienty', label: 'На что жалуются клиенты' },
+  { href: '/stati', label: 'Статьи' },
+  { href: '/baza-znaniy', label: 'База знаний' },
+  { href: '/o-kompanii', label: 'О SpinLid' },
+];
+
 type FooterLink = { href: string; label: string };
 
 export function PublicFooter({ currentHref }: { currentHref?: string } = {}) {
@@ -78,6 +87,10 @@ export function PublicFooter({ currentHref }: { currentHref?: string } = {}) {
 
         <FooterColumn title="Продукт" links={PRODUCT_LINKS} />
         <FooterColumn title="Решения" links={solutions} />
+        <FooterColumn
+          title="Материалы"
+          links={CONTENT_LINKS.filter((l) => l.href !== currentHref)}
+        />
         <FooterColumn title="Правовые документы" links={LEGAL_LINKS} />
       </div>
     </footer>

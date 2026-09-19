@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 
+import { ALL_ARTICLES, SECTION_META, articlePath } from '@/lib/content';
+
 const SITE = 'https://spinlid.ru';
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -140,6 +142,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
+    },
+    // 19.09: исследования и статьи (контент для поиска и нейросетей).
+    ...Object.values(SECTION_META).map((m) => ({
+      url: `${SITE}${m.path}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    })),
+    ...ALL_ARTICLES.map((a) => ({
+      url: `${SITE}${articlePath(a)}`,
+      lastModified: new Date(a.updated),
+      changeFrequency: 'monthly' as const,
+      priority: a.kind === 'research' ? 0.85 : 0.75,
+    })),
+    {
+      url: `${SITE}/o-kompanii`,
+      lastModified: now,
+      changeFrequency: 'yearly',
+      priority: 0.5,
     },
   ];
 }
