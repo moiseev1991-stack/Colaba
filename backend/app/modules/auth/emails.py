@@ -21,22 +21,26 @@ async def send_transactional_email(to_email: str, subject: str, html: str) -> bo
         return False
 
     msg = EmailMessage()
-    msg["From"] = settings.SMTP_USER
+    # SMTP_FROM — адрес отправителя, когда SMTP-логин технический
+    # (Яндекс Postbox: логин postbox_*_Bd, адрес hello@spinlid.ru).
+    msg["From"] = getattr(settings, "SMTP_FROM", "") or settings.SMTP_USER
     msg["To"] = to_email
     msg["Subject"] = subject
     msg.set_content("Откройте письмо в HTML-совместимом клиенте.")
     msg.add_alternative(html, subtype="html")
 
     try:
-        # aiosmtplib 5.x: hostname/port в connect, не в конструкторе
-        smtp = aiosmtplib.SMTP()
-        await smtp.connect(
-            host=settings.SMTP_HOST,
+        # aiosmtplib 5.x: всё в конструкторе; 465 — SSL, 587/2525 — STARTTLS
+        smtp = aiosmtplib.SMTP(
+            hostname=settings.SMTP_HOST,
             port=settings.SMTP_PORT,
             username=settings.SMTP_USER,
             password=settings.SMTP_PASSWORD,
             use_tls=settings.SMTP_PORT == 465,
+            start_tls=None if settings.SMTP_PORT == 465 else True,
+            timeout=20,
         )
+        await smtp.connect()
         try:
             await smtp.send_message(msg)
         finally:
