@@ -8,6 +8,7 @@ from sqlalchemy import select
 from fastapi import HTTPException, status
 
 from app.models.user import User
+from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
 from app.modules.auth import schemas
 
@@ -123,6 +124,37 @@ async def login_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Обязательное подтверждение email (19.09): без верификации пароль верен,
+    # но вход запрещён — отправляем письмо со ссылкой и отдаём 403 с кодом.
+    if (
+        settings.REQUIRE_EMAIL_VERIFICATION
+        and settings.SMTP_HOST
+        and settings.SMTP_USER
+        and not user.email_verified
+        and not user.email.endswith("@oauth.local")
+    ):
+        try:
+            from app.modules.auth.emails import send_transactional_email, verify_email_html
+            from app.modules.auth.router import _auth_token_link, _issue_auth_token
+
+            raw = await _issue_auth_token(db, user.id, "email_verify", ttl_seconds=24 * 3600)
+            await send_transactional_email(
+                user.email,
+                "SpinLid — подтверждение email",
+                verify_email_html(_auth_token_link("email_verify", raw)),
+            )
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception("Verification letter on login failed (user %s)", user.id)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "email_not_verified",
+                "message": "Подтвердите email — письмо со ссылкой отправлено на ваш адрес",
+            },
         )
 
     # Create tokens

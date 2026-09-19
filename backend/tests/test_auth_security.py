@@ -139,3 +139,69 @@ def test_telegram_auth_date_freshness():
     no_date = {"id": 1, "hash": "x"}
     assert svc.verify_telegram_auth(no_date, "bot") is False
     assert secrets.token_urlsafe(8)  # smoke
+
+
+# --- Обязательное подтверждение email (19.09) -------------------------------
+
+
+async def test_login_blocked_when_unverified_and_smtp_on(db: AsyncSession, monkeypatch):
+    """SMTP настроен + включён флаг → неверифицированный не входит (403)."""
+    from app.core.config import settings as cfg
+    from fastapi import HTTPException
+    from app.modules.auth import schemas as auth_schemas
+    from app.modules.auth.service import login_user
+
+    monkeypatch.setattr(cfg, "SMTP_HOST", "smtp.test", raising=False)
+    monkeypatch.setattr(cfg, "SMTP_USER", "noreply@test.ru", raising=False)
+    monkeypatch.setattr(cfg, "REQUIRE_EMAIL_VERIFICATION", True, raising=False)
+
+    sent: list[tuple[str, str]] = []
+
+    async def fake_send(to_email, subject, html):
+        sent.append((to_email, subject))
+        return True
+
+    import app.modules.auth.emails as emails_mod
+
+    monkeypatch.setattr(emails_mod, "send_transactional_email", fake_send)
+
+    # u@t.ru из фикстуры: is_active, email_verified=False
+    try:
+        await login_user(db, auth_schemas.UserLogin(email="u@t.ru", password="Passw0rd!"))
+        assert False, "unverified login must raise"
+    except HTTPException as e:
+        assert e.status_code == 403
+        assert e.detail["code"] == "email_not_verified"
+    assert sent and sent[0][0] == "u@t.ru"
+
+
+async def test_login_allowed_without_smtp(db: AsyncSession, monkeypatch):
+    """SMTP не настроен → fail-open: неверифицированный входит как раньше."""
+    from app.core.config import settings as cfg
+    from app.modules.auth import schemas as auth_schemas
+    from app.modules.auth.service import login_user
+
+    monkeypatch.setattr(cfg, "SMTP_HOST", "", raising=False)
+    monkeypatch.setattr(cfg, "SMTP_USER", "", raising=False)
+
+    tokens = await login_user(db, auth_schemas.UserLogin(email="u@t.ru", password="Passw0rd!"))
+    assert tokens.access_token
+
+
+async def test_login_verified_user_passes(db: AsyncSession, monkeypatch):
+    from app.core.config import settings as cfg
+    from sqlalchemy import select as sa_select
+
+    from app.models.user import User
+    from app.modules.auth import schemas as auth_schemas
+    from app.modules.auth.service import login_user
+
+    monkeypatch.setattr(cfg, "SMTP_HOST", "smtp.test", raising=False)
+    monkeypatch.setattr(cfg, "SMTP_USER", "noreply@test.ru", raising=False)
+
+    user = (await db.execute(sa_select(User).where(User.email == "u@t.ru"))).scalar_one()
+    user.email_verified = True
+    await db.flush()
+
+    tokens = await login_user(db, auth_schemas.UserLogin(email="u@t.ru", password="Passw0rd!"))
+    assert tokens.access_token

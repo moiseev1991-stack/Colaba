@@ -40,12 +40,12 @@ function VerifyInner() {
         {state === 'ok' && (
           <>
             <CheckCircle className="mx-auto mb-3 h-10 w-10 text-ui-success" aria-hidden />
-            <p className="text-sm text-ui-text">Email подтверждён.</p>
+            <p className="text-sm text-ui-text">Email подтверждён — теперь войдите в аккаунт.</p>
             <a
-              href="/app/leads"
+              href="/auth/login"
               className="mt-4 inline-block text-sm font-semibold text-ui-accent hover:underline"
             >
-              В кабинет →
+              Перейти ко входу →
             </a>
           </>
         )}

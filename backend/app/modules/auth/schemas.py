@@ -43,6 +43,9 @@ class UserResponse(BaseModel):
     is_superuser: bool
     created_at: datetime
     reply_to_email: str | None = None
+    # True, когда после регистрации выслано письмо подтверждения и вход
+    # будет разрешён только после клика по ссылке (19.09).
+    email_verification_required: bool = False
 
     class Config:
         from_attributes = True

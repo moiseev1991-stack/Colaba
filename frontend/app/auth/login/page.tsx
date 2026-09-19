@@ -20,12 +20,16 @@ const VK_ENABLED = process.env.NEXT_PUBLIC_OAUTH_VK === 'true';
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resent, setResent] = useState(false);
   const [oauthLoading, setOAuthLoading] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setNeedsVerification(false);
+    setResent(false);
     setLoading(true);
 
     const form = e.currentTarget;
@@ -48,13 +52,21 @@ export default function LoginPage() {
           : null;
       window.location.href = next && next.startsWith('/') ? next : '/app';
     } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      if (detail?.code === 'email_not_verified') {
+        // 19.09: вход запрещён до подтверждения email — показываем
+        // плашку с повторной отправкой письма, а не «проверьте пароль».
+        setNeedsVerification(true);
+        setError('');
+        return;
+      }
       let msg = 'Ошибка при входе. Проверьте email и пароль.';
       if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
         // 16.09 UX-аудит: без внутренних заметок для пользователя
         msg = 'Сервис временно недоступен. Попробуйте через минуту.';
-      } else if (err.response?.data?.detail) {
-        const d = err.response.data.detail;
-        msg = Array.isArray(d) ? d.join(', ') : String(d);
+      } else if (detail) {
+        const d = detail;
+        msg = Array.isArray(d) ? d.join(', ') : typeof d === 'string' ? d : d.message;
       } else if (err.response?.status === 500) {
         msg = 'Сервис временно недоступен. Попробуйте через минуту.';
       } else if (err.message) {
@@ -160,6 +172,45 @@ export default function LoginPage() {
 
           {/* Email/Password Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
+            {needsVerification && (
+              <div
+                className="rounded-v2-sm border p-4"
+                style={{
+                  background: 'var(--signal-cool-bg)',
+                  borderColor: 'rgb(59 130 246 / 0.3)',
+                  color: 'var(--signal-cool)',
+                }}
+                role="status"
+              >
+                <p className="text-sm font-medium">
+                  Подтвердите email — письмо со ссылкой отправлено на ваш адрес.
+                  {resent && ' Письмо отправлено повторно.'}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 text-sm font-medium underline underline-offset-2 disabled:opacity-60"
+                  disabled={loading}
+                  onClick={async () => {
+                    const formEl = document.querySelector<HTMLFormElement>('form');
+                    const email = String(
+                      new FormData(formEl as HTMLFormElement).get('email') ?? '',
+                    ).trim();
+                    if (!email) return;
+                    setLoading(true);
+                    try {
+                      await apiClient.post('/auth/verify-email/resend', { email });
+                      setResent(true);
+                    } catch {
+                      setResent(false);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Отправить письмо повторно
+                </button>
+              </div>
+            )}
             {error && (
               <div
                 className="rounded-v2-sm border p-4 flex items-start gap-2"
