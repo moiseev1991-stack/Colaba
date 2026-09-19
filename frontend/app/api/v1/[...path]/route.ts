@@ -128,6 +128,13 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<Response> {
   let bodyBuf =
     method === 'GET' || method === 'HEAD' ? undefined : Buffer.from(await req.arrayBuffer());
 
+  // Node http.request может отправить тело без Content-Length/TE (замечено
+  // на DELETE) — uvicorn h11 такое отвергает «Invalid HTTP request».
+  // Явная длина чинит DELETE/PATCH/PUT с телом.
+  if (bodyBuf && bodyBuf.byteLength > 0) {
+    headersObj['content-length'] = String(bodyBuf.byteLength);
+  }
+
   // For refresh endpoint: inject refresh_token from httpOnly cookie into request body
   if (apiPath.startsWith(REFRESH_PATH) && method === 'POST') {
     const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
