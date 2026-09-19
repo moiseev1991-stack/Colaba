@@ -132,6 +132,7 @@ class Settings(BaseSettings):
 
     # Обязательное подтверждение email при регистрации/входе. Активно только
     # при настроенном SMTP (иначе fail-open — не закрываем вход всему проду).
+    SMTP_FROM: str = Field(default="", description="From-адрес транзакционных писем (пусто = SMTP_USER)")
     REQUIRE_EMAIL_VERIFICATION: bool = Field(default=True, description="Требовать подтверждение email перед входом")
 
     # Hyvor Relay - Email API Server
