@@ -130,6 +130,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = Field(default="", description="SMTP password")
     SMTP_USE_SSL: bool = Field(default=True, description="Use SSL for SMTP connection")
 
+    # Обязательное подтверждение email при регистрации/входе. Активно только
+    # при настроенном SMTP (иначе fail-open — не закрываем вход всему проду).
+    REQUIRE_EMAIL_VERIFICATION: bool = Field(default=True, description="Требовать подтверждение email перед входом")
+
     # Hyvor Relay - Email API Server
     HYVOR_RELAY_API_URL: str = Field(
         default="http://hyvor-relay:8000", description="Hyvor Relay API URL (internal Docker)"

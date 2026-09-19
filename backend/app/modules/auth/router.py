@@ -19,6 +19,28 @@ from app.modules.auth import schemas, service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _verification_required() -> bool:
+    """Верификация обязательна? Только при настроенном SMTP — без почты
+    не блокируем вход (fail-open), но пишем warning один раз на процесс."""
+    if not settings.REQUIRE_EMAIL_VERIFICATION:
+        return False
+    if not (settings.SMTP_HOST and settings.SMTP_USER):
+        return False
+    return True
+
+
+async def _send_verification_letter(db, user) -> bool:
+    """Отправить письмо подтверждения. True — отправлено."""
+    from app.modules.auth.emails import send_transactional_email, verify_email_html
+
+    raw = await _issue_auth_token(db, user.id, "email_verify", ttl_seconds=24 * 3600)
+    return await send_transactional_email(
+        user.email,
+        "SpinLid — подтверждение email",
+        verify_email_html(_auth_token_link("email_verify", raw)),
+    )
+
+
 @router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 async def register(
@@ -29,8 +51,9 @@ async def register(
     """
     Register a new user.
 
-    Creates a new user account with email and password + приветственные
-    кредиты (WELCOME_CREDITS) — попробовать продукт (тарификация 2026-09).
+    Creates a new user account with email + password + приветственные
+    кредиты (WELCOME_CREDITS). При настроенном SMTP — сразу отправляем
+    письмо подтверждения: вход запрещён до подтверждения email.
     """
     user = await service.register_user(db=db, user_data=user_data)
     try:
@@ -42,7 +65,19 @@ async def register(
         import logging
 
         logging.getLogger(__name__).exception("Welcome credits grant failed for user %s", user.id)
-    return user
+
+    verification_required = False
+    if _verification_required():
+        try:
+            verification_required = await _send_verification_letter(db, user)
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception("Verification letter on register failed (user %s)", user.id)
+
+    resp = schemas.UserResponse.model_validate(user)
+    resp.email_verification_required = verification_required
+    return resp
 
 
 @router.post("/login", response_model=schemas.TokenResponse)
@@ -228,6 +263,32 @@ async def verify_email_request(
         verify_email_html(_auth_token_link("email_verify", raw)),
     )
     return {"message": "Письмо отправлено" if sent else "SMTP не настроен — письмо не отправлено"}
+
+
+class EmailOnly(BaseModel):
+    email: EmailStr
+
+
+@router.post("/verify-email/resend")
+@limiter.limit("3/minute")
+async def verify_email_resend(
+    request: Request,
+    payload: EmailOnly,
+    db: AsyncSession = Depends(get_db),
+):
+    """Публичная повторная отправка письма подтверждения — для тех, кто ещё
+    не может войти. Анти-перебор: всегда одинаковый ответ."""
+    if not _verification_required():
+        return {"message": "Подтверждение email не требуется"}
+    user = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
+    if user and user.is_active and not user.email_verified and not user.email.endswith("@oauth.local"):
+        try:
+            await _send_verification_letter(db, user)
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception("Verification resend failed (user %s)", user.id)
+    return {"message": "Если аккаунт ожидает подтверждения — письмо отправлено"}
 
 
 @router.post("/verify-email/confirm")

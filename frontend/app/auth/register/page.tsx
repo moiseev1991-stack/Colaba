@@ -20,6 +20,8 @@ function RegisterForm() {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const getNextPath = (): string => {
     // После регистрации — сразу в 4-шаговый обзор (онбординг): кто вы →
@@ -52,7 +54,13 @@ function RegisterForm() {
     setLoading(true);
 
     try {
-      await apiClient.post('/auth/register', { email, password });
+      const resp = await apiClient.post('/auth/register', { email, password });
+      // 19.09: обязательное подтверждение email — авто-входа нет, показываем
+      // экран «проверьте почту» (аккаунт уже создан, кредиты начислены).
+      if (resp.data?.email_verification_required) {
+        setVerificationSent(true);
+        return;
+      }
       await apiClient.post('/auth/login', { email, password });
       tokenStorage.setTokens('', '');
       window.location.href = getNextPath();
@@ -76,6 +84,82 @@ function RegisterForm() {
     borderColor: 'hsl(var(--border))',
     color: 'hsl(var(--text))',
   } as const;
+
+  if (verificationSent) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-4 bg-ui-bg"
+        style={{ background: 'hsl(var(--bg))' }}
+      >
+        <div className="max-w-md w-full">
+          <div
+            className="rounded-v2-lg border p-8 shadow-v2 text-center"
+            style={{ background: 'hsl(var(--surface))', borderColor: 'hsl(var(--border))' }}
+          >
+            <div
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
+              style={{ background: 'rgb(16 185 129 / 0.12)', color: 'rgb(5 150 105)' }}
+              aria-hidden
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h2
+              className="mt-4 font-display font-semibold tracking-tight text-2xl"
+              style={{ color: 'hsl(var(--text))' }}
+            >
+              Аккаунт создан
+            </h2>
+            <p className="mt-2 text-sm" style={{ color: 'hsl(var(--muted))' }}>
+              Мы отправили письмо со ссылкой подтверждения на{' '}
+              <span className="font-medium" style={{ color: 'hsl(var(--text))' }}>
+                {email}
+              </span>
+              . Перейдите по ней, чтобы войти в кабинет.
+              {resent && ' Письмо отправлено повторно.'}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: 'hsl(var(--muted))' }}>
+              Не пришло? Проверьте папку «Спам».
+            </p>
+            <button
+              type="button"
+              className="mt-6 w-full h-10 rounded-v2-sm text-sm font-medium underline underline-offset-2 disabled:opacity-60"
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await apiClient.post('/auth/verify-email/resend', { email });
+                  setResent(true);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              Отправить письмо повторно
+            </button>
+            <a
+              href="/auth/login"
+              className="mt-3 block text-sm font-medium"
+              style={{ color: 'hsl(var(--text))' }}
+            >
+              Уже подтвердили? Войти
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
