@@ -132,8 +132,8 @@ def test_free_tariff_in_lineup():
     free = payload["free"]
     assert free["price_rub"] == 0
     assert free["purchasable"] is False
-    assert free["credits"] == WELCOME_CREDITS == 20
-    assert free["searches"] == 2
+    assert free["credits"] == WELCOME_CREDITS == 100
+    assert free["searches"] == 10
     # платные остались покупаемыми
     assert payload["starter"]["purchasable"] is True
 

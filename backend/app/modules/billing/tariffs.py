@@ -29,8 +29,8 @@ from typing import Dict, List, Optional
 SUBSCRIPTION_PERIOD_DAYS = 30
 
 # Приветственные кредиты нового пользователя (бесплатный тариф:
-# 2 поиска — попробовать продукт). Решение владельца 19.09.
-WELCOME_CREDITS = 20
+# 10 поисков — попробовать продукт). Решение владельца 19.09 (вернули 100).
+WELCOME_CREDITS = 100
 
 
 class Tariff:
@@ -77,7 +77,7 @@ TARIFFS: Dict[str, Tariff] = {
             "Бесплатный",
             0,
             WELCOME_CREDITS,
-            "2 пробных поиска при регистрации — без карты и оплаты",
+            "10 поисков при регистрации — без карты и оплаты",
             purchasable=False,
         ),
         Tariff(
