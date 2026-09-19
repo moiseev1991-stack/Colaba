@@ -4,6 +4,8 @@ FastAPI dependencies: authentication, authorization, database.
 Используется для Dependency Injection в endpoints.
 """
 
+from datetime import timezone
+
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -75,13 +77,27 @@ async def get_current_user_id(
 
     from app.models.user import User as _User
 
-    is_active = (await db.execute(_select(_User.is_active).where(_User.id == user_id))).scalar_one_or_none()
+    row = (await db.execute(_select(_User.is_active, _User.tokens_valid_from).where(_User.id == user_id))).one_or_none()
+    is_active = bool(row.is_active) if row is not None else None
     if is_active is None or not is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account is blocked",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Отзыв сессий (19.09): токены, выпущенные ДО tokens_valid_from, мертвы —
+    # смена пароля, «выйти со всех устройств», удаление аккаунта.
+    tvf = row.tokens_valid_from if row is not None else None
+    iat = payload.get("iat")
+    if tvf is not None and iat is not None:
+        tvf_epoch = tvf.replace(tzinfo=timezone.utc).timestamp() if tvf.tzinfo is None else tvf.timestamp()
+        if float(iat) < tvf_epoch:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session revoked — войдите заново",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     return user_id
 
 

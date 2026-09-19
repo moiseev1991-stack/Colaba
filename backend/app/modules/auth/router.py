@@ -303,3 +303,200 @@ async def verify_email_confirm(payload: dict, db: AsyncSession = Depends(get_db)
         user.email_verified = True
     await db.commit()
     return {"message": "Email подтверждён"}
+
+
+# ---------------------------------------------------------------------------
+# Настройки аккаунта (19.09): смена пароля, смена email, сессии, удаление
+# Практики: ре-аутентификация паролем перед чувствительными изменениями,
+# подтверждение нового email до переключения, честная danger zone.
+# ---------------------------------------------------------------------------
+
+from itsdangerous import URLSafeTimedSerializer  # noqa: E402
+
+from sqlalchemy import func  # noqa: E402
+
+from app.core.security import verify_password  # noqa: E402
+
+_email_change_serializer = URLSafeTimedSerializer(secret_key=settings.SECRET_KEY, salt="email-change")
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=72)
+
+
+class EmailChangeRequest(BaseModel):
+    password: str
+    new_email: EmailStr
+
+
+class EmailChangeConfirm(BaseModel):
+    payload: str
+
+
+class PasswordOnly(BaseModel):
+    password: str
+
+
+async def _get_user_or_404(db: AsyncSession, user_id: int) -> User:
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return user
+
+
+def _revoke_sessions(user: User) -> None:
+    """Все ранее выданные JWT юзера становятся недействительными."""
+    user.tokens_valid_from = datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+@router.post("/change-password")
+@limiter.limit("10/minute")
+async def change_password(
+    request: Request,
+    payload: ChangePasswordRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Смена пароля: требует текущий пароль, отзывает все сессии
+    (включая текущую — юзер входит заново с новым паролем)."""
+    user = await _get_user_or_404(db, user_id)
+    if not user.hashed_password or not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Текущий пароль неверен")
+    user.hashed_password = hash_password(payload.new_password)
+    _revoke_sessions(user)
+    await db.commit()
+    return {"message": "Пароль изменён — войдите заново с новым паролем"}
+
+
+@router.post("/email/change-request")
+@limiter.limit("5/minute")
+async def email_change_request(
+    request: Request,
+    payload: EmailChangeRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Запрос смены email: письмо-подтверждение уходит на НОВЫЙ адрес,
+    текущий продолжает работать до подтверждения (double opt-in)."""
+    from app.modules.auth.emails import send_transactional_email
+
+    user = await _get_user_or_404(db, user_id)
+    if not user.hashed_password or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Пароль неверен")
+    new_email = payload.new_email.lower()
+    if new_email == user.email.lower():
+        raise HTTPException(status_code=400, detail="Это уже ваш текущий email")
+    taken = (
+        await db.execute(select(func.count()).select_from(User).where(func.lower(User.email) == new_email))
+    ).scalar_one()
+    if taken:
+        raise HTTPException(status_code=400, detail="Этот email уже занят другим аккаунтом")
+
+    signed = _email_change_serializer.dumps({"uid": user.id, "email": new_email})
+    link = f"{settings.OAUTH_FRONTEND_URL.rstrip('/')}/auth/email-change?payload={signed}"
+    sent = await send_transactional_email(
+        new_email,
+        "SpinLid — подтверждение нового email",
+        f"""<p>Вы запросили смену email аккаунта SpinLid на этот адрес.</p>
+<p><a href="{link}" style="display:inline-block;background:#059669;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Подтвердить новый email</a></p>
+<p style="font-size:13px;color:#86868b">Ссылка действует 24 часа. Если вы не запрашивали смену — просто проигнорируйте письмо.</p>""",
+    )
+    if not sent:
+        raise HTTPException(status_code=503, detail="Не удалось отправить письмо — попробуйте позже")
+    return {"message": f"Письмо с подтверждением отправлено на {new_email}"}
+
+
+@router.post("/email/change-confirm")
+@limiter.limit("10/minute")
+async def email_change_confirm(
+    request: Request,
+    payload: EmailChangeConfirm,
+    db: AsyncSession = Depends(get_db),
+):
+    """Подтверждение смены email по ссылке из письма (страница /auth/email-change)."""
+    try:
+        data = _email_change_serializer.loads(payload.payload, max_age=24 * 3600)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+    user = await db.get(User, int(data["uid"]))
+    new_email = str(data["email"]).lower()
+    if not user:
+        raise HTTPException(status_code=400, detail="Аккаунт не найден")
+    if user.email.lower() == new_email:
+        return {"message": "Email уже обновлён"}
+    taken = (
+        await db.execute(select(func.count()).select_from(User).where(func.lower(User.email) == new_email))
+    ).scalar_one()
+    if taken:
+        raise HTTPException(status_code=400, detail="Этот email уже занят другим аккаунтом")
+    user.email = new_email
+    user.email_verified = True  # владение адресом доказано кликом по письму
+    await db.commit()
+    return {"message": "Email обновлён — войдите с новым адресом"}
+
+
+@router.post("/sessions/revoke")
+async def revoke_sessions(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """«Выйти со всех устройств»: убивает все ранее выданные токены."""
+    user = await _get_user_or_404(db, user_id)
+    _revoke_sessions(user)
+    await db.commit()
+    return {"message": "Все сессии завершены — войдите заново"}
+
+
+@router.delete("/account")
+@limiter.limit("3/minute")
+async def delete_account(
+    request: Request,
+    payload: PasswordOnly,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Удаление аккаунта (danger zone): деактивация с проверкой пароля.
+    Последнего суперпользователя удалить нельзя — останетесь без админки."""
+    user = await _get_user_or_404(db, user_id)
+    if not user.hashed_password or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Пароль неверен")
+    if user.is_superuser:
+        other_admins = (
+            await db.execute(
+                select(func.count())
+                .select_from(User)
+                .where(User.is_superuser.is_(True), User.is_active.is_(True), User.id != user.id)
+            )
+        ).scalar_one()
+        if not other_admins:
+            raise HTTPException(status_code=400, detail="Нельзя удалить последнего администратора")
+    user.is_active = False
+    _revoke_sessions(user)
+    await db.commit()
+    return {"message": "Аккаунт деактивирован"}
+
+
+@router.get("/connections")
+async def list_connections(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Подключённые внешние входы (Яндекс/VK/…) для страницы аккаунта."""
+    from app.models.social_account import SocialAccount
+
+    rows = (
+        (await db.execute(select(SocialAccount).where(SocialAccount.user_id == user_id).order_by(SocialAccount.id)))
+        .scalars()
+        .all()
+    )
+    return {
+        "connections": [
+            {
+                "provider": c.provider.value if hasattr(c.provider, "value") else str(c.provider),
+                "email": c.provider_email,
+                "name": c.provider_name,
+            }
+            for c in rows
+        ]
+    }
