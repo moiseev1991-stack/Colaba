@@ -24,6 +24,9 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
     email_verified = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Момент (UTC), раньше которого все JWT юзера считаются отозванными
+    # (смена пароля / «выйти со всех устройств» / удаление аккаунта).
+    tokens_valid_from = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 

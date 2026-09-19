@@ -62,7 +62,7 @@ const WORK_SECTION: NavSection = {
 const SETTINGS_SECTION: NavSection = {
   title: 'Настройки',
   items: [
-    { href: '/app/settings/profile', label: 'Профиль', icon: User },
+    { href: '/app/settings/profile', label: 'Аккаунт', icon: User },
     { href: '/app/leads/settings', label: 'Параметры поиска', icon: Settings },
     { href: '/app/leads/blacklist', label: 'Блеклист', icon: Ban },
     { href: '/app/billing', label: 'Баланс и тарифы', icon: CreditCard },

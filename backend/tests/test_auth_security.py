@@ -205,3 +205,128 @@ async def test_login_verified_user_passes(db: AsyncSession, monkeypatch):
 
     tokens = await login_user(db, auth_schemas.UserLogin(email="u@t.ru", password="Passw0rd!"))
     assert tokens.access_token
+
+
+# --- Настройки аккаунта: пароль, email, сессии, удаление (19.09) ------------
+
+
+async def test_change_password_flow(db: AsyncSession):
+    from app.core.security import hash_password, verify_password
+    from app.modules.auth.router import ChangePasswordRequest, change_password
+
+    from starlette.requests import Request as _StarRequest
+
+    def _req():
+        return _StarRequest(
+            {
+                "type": "http",
+                "headers": [],
+                "method": "POST",
+                "path": "/",
+                "query_string": b"",
+                "client": ("test", 12345),
+            }
+        )
+
+    user = (await db.execute(select(User).where(User.email == "u@t.ru"))).scalar_one()
+    # неверный текущий пароль
+    try:
+        await change_password(
+            _req(),
+            ChangePasswordRequest(current_password="WrongPass1!", new_password="NewPassw0rd!"),
+            user_id=user.id,
+            db=db,
+        )
+        assert False
+    except Exception as e:
+        assert getattr(e, "status_code", 0) == 400
+    # верный
+    res = await change_password(
+        _req(),
+        ChangePasswordRequest(current_password="Passw0rd!", new_password="NewPassw0rd!"),
+        user_id=user.id,
+        db=db,
+    )
+    assert "изменён" in res["message"]
+    await db.refresh(user)
+    assert verify_password("NewPassw0rd!", user.hashed_password)
+    assert user.tokens_valid_from is not None
+
+
+async def test_email_change_roundtrip(db: AsyncSession):
+    from app.modules.auth.router import (
+        EmailChangeConfirm,
+        EmailChangeRequest,
+        _email_change_serializer,
+        email_change_confirm,
+        email_change_request,
+    )
+
+    from starlette.requests import Request as _StarRequest
+
+    def _req():
+        return _StarRequest(
+            {
+                "type": "http",
+                "headers": [],
+                "method": "POST",
+                "path": "/",
+                "query_string": b"",
+                "client": ("test", 12345),
+            }
+        )
+
+    user = (await db.execute(select(User).where(User.email == "u@t.ru"))).scalar_one()
+    # запрос: неверный пароль отклоняется
+    try:
+        await email_change_request(
+            _req(), EmailChangeRequest(password="nope", new_email="new@t.ru"), user_id=user.id, db=db
+        )
+        assert False
+    except Exception as e:
+        assert getattr(e, "status_code", 0) == 400
+    # подпись-подтверждение без запроса (как из письма)
+    signed = _email_change_serializer.dumps({"uid": user.id, "email": "new@t.ru"})
+    monkey_send = None
+    import app.modules.auth.emails as emails_mod
+
+    orig = emails_mod.send_transactional_email
+
+    async def fake_send(to_email, subject, html):
+        return True
+
+    emails_mod.send_transactional_email = fake_send
+    try:
+        await email_change_request(
+            _req(), EmailChangeRequest(password="Passw0rd!", new_email="new@t.ru"), user_id=user.id, db=db
+        )
+    finally:
+        emails_mod.send_transactional_email = orig
+    res = await email_change_confirm(_req(), EmailChangeConfirm(payload=signed), db=db)
+    assert "обновлён" in res["message"]
+    await db.refresh(user)
+    assert user.email == "new@t.ru" and user.email_verified
+
+
+async def test_delete_account_deactivates(db: AsyncSession):
+    from app.modules.auth.router import PasswordOnly, delete_account
+
+    from starlette.requests import Request as _StarRequest
+
+    def _req():
+        return _StarRequest(
+            {
+                "type": "http",
+                "headers": [],
+                "method": "POST",
+                "path": "/",
+                "query_string": b"",
+                "client": ("test", 12345),
+            }
+        )
+
+    user = (await db.execute(select(User).where(User.email == "b@t.ru"))).scalar_one()
+    res = await delete_account(_req(), PasswordOnly(password="Passw0rd!"), user_id=user.id, db=db)
+    assert "деактивирован" in res["message"]
+    await db.refresh(user)
+    assert user.is_active is False
